@@ -881,6 +881,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	if len(taskNames) == 0 && len(displayNames) == 0 {
 		createAll = true
 	}
+	// tables includes only new and existing tasks
 	execTable := taskIds.ExecutionTasks
 	displayTable := taskIds.DisplayTasks
 
@@ -981,6 +982,32 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			continue
 		}
 		if !createAll && !utility.StringSliceContains(displayNames, dt.Name) {
+			// this display task already exists, but may need to be updated
+			execTaskIdsToAdd := []string{}
+			for _, et := range dt.ExecTasks {
+				execTaskId := execTable.GetId(b.BuildVariant, et)
+				if execTaskId == "" {
+					grip.Error(message.Fields{
+						"message":                     "execution task not found",
+						"variant":                     b.BuildVariant,
+						"exec_task":                   et,
+						"available_tasks":             execTable,
+						"project":                     project.Identifier,
+						"display_task":                id,
+						"display_task_already_exists": true,
+					})
+					continue
+				}
+				if taskMap[execTaskId] != nil { // this is a new exec task and we need to update
+					execTaskIdsToAdd = append(execTaskIdsToAdd, execTaskId)
+				}
+			}
+			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIdsToAdd), message.Fields{
+				"message":      "problem adding exec tasks to display tasks",
+				"exec_tasks":   execTaskIdsToAdd,
+				"display_task": dt.Name,
+				"build_id":     b.Id,
+			}))
 			continue
 		}
 		execTaskIds := []string{}
@@ -988,11 +1015,13 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			execTaskId := execTable.GetId(b.BuildVariant, et)
 			if execTaskId == "" {
 				grip.Error(message.Fields{
-					"message":         "execution task not found",
-					"variant":         b.BuildVariant,
-					"exec_task":       et,
-					"available_tasks": execTable,
-					"project":         project.Identifier,
+					"message":                     "execution task not found",
+					"variant":                     b.BuildVariant,
+					"exec_task":                   et,
+					"available_tasks":             execTable,
+					"project":                     project.Identifier,
+					"display_task":                id,
+					"display_task_already_exists": false,
 				})
 				continue
 			}

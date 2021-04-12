@@ -2317,3 +2317,31 @@ func TestAddParentDisplayTasks(t *testing.T) {
 	assert.Equal(t, "et4", tasks[3].Id)
 	assert.Equal(t, dt2.Id, tasks[3].DisplayTask.Id)
 }
+
+func TestAddExecTasksToDisplayTask(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	dt1 := Task{
+		Id:             "dt1",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et1", "et2"},
+	}
+	assert.NoError(t, dt1.Insert())
+
+	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{}))
+	dtFromDB, err := FindOneId(dt1.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, dtFromDB)
+	assert.Len(t, dtFromDB.ExecutionTasks, 2)
+	assert.Contains(t, dtFromDB.ExecutionTasks, "et1")
+	assert.Contains(t, dtFromDB.ExecutionTasks, "et2")
+
+	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{"et3", "et4"}))
+	dtFromDB, err = FindOneId(dt1.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, dtFromDB)
+	assert.Len(t, dtFromDB.ExecutionTasks, 4)
+	assert.Contains(t, dtFromDB.ExecutionTasks, "et1")
+	assert.Contains(t, dtFromDB.ExecutionTasks, "et2")
+	assert.Contains(t, dtFromDB.ExecutionTasks, "et3")
+	assert.Contains(t, dtFromDB.ExecutionTasks, "et4")
+}

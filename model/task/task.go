@@ -3005,3 +3005,16 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		Status:          result.Status,
 	}
 }
+
+func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
+	if len(execTasks) == 0 {
+		return nil
+	}
+
+	return UpdateOne(
+		bson.M{IdKey: displayTaskId},
+		bson.M{"$push": bson.M{
+			ExecutionTasksKey: bson.M{"$each": execTasks},
+		}},
+	)
+}
