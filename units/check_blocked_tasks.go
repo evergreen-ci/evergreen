@@ -3,10 +3,10 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"gopkg.in/mgo.v2/bson"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
@@ -48,7 +48,7 @@ func makeCheckBlockedTasksJob() *checkBlockedTasksJob {
 func NewCheckBlockedTasksJob(distroId string, taskIDs []string) amboy.Job {
 	job := makeCheckBlockedTasksJob()
 	job.TaskIDs = taskIDs
-	job.SetID(fmt.Sprintf("%s:%s:%s", checkBlockedTasks, distroId, time.Now().String()))
+	job.SetID(fmt.Sprintf("%s:%s:%s", checkBlockedTasks, distroId, bson.NewObjectId().Hex()))
 	return job
 }
 
