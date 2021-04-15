@@ -316,6 +316,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
 		ParentPatchID:       p.Triggers.ParentPatch,
+		IsParent:            p.IsParent(),
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,

@@ -3,8 +3,10 @@ package data
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/gimlet"
@@ -25,7 +27,6 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 				Message:    "Error parsing request body: " + err.Error(),
 			}
 		}
-
 		dbSubscription, ok := subscriptionInterface.(event.Subscription)
 		if !ok {
 			return gimlet.ErrorResponse{
@@ -81,6 +82,39 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 		}
 
 		dbSubscriptions = append(dbSubscriptions, dbSubscription)
+
+		if dbSubscription.ResourceType == event.ResourceTypeVersion {
+
+			//find all children, iterate through them
+			var versionId string
+			for _, selector := range dbSubscription.Selectors {
+				if selector.Type == "id" {
+					versionId = selector.Data
+				}
+			}
+			children, err := getVersionChildren(versionId)
+			if err != nil {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    "Error retrieving child versions: " + err.Error(),
+				}
+			}
+
+			for _, childPatchId := range children {
+				childDbSubscription := dbSubscription
+				childDbSubscription.LastUpdated = time.Now()
+				var selectors []event.Selector
+				for _, selector := range dbSubscription.Selectors {
+					if selector.Type == "id" {
+						selector.Data = childPatchId
+					}
+					selectors = append(selectors, selector)
+				}
+				childDbSubscription.Selectors = selectors
+				dbSubscriptions = append(dbSubscriptions, childDbSubscription)
+			}
+		}
+
 	}
 
 	catcher := grip.NewSimpleCatcher()
@@ -88,6 +122,18 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 		catcher.Add(subscription.Upsert())
 	}
 	return catcher.Resolve()
+}
+
+func getVersionChildren(versionId string) ([]string, error) {
+	patchDoc, err := patch.FindOne(patch.ByVersion(versionId))
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting patch")
+	}
+	if patchDoc == nil {
+		return nil, errors.Wrap(err, "patch not found")
+	}
+	return patchDoc.Triggers.ChildPatches, nil
+
 }
 
 func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
