@@ -318,7 +318,7 @@ func getLimit(vals url.Values) (int, error) {
 		}
 	}
 
-	if limit == 0 {
+	if limit <= 0 {
 		return defaultLimit, nil
 	}
 
