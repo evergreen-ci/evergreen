@@ -1459,7 +1459,6 @@ func resetTaskUpdate(t *Task) bson.M {
 			DetailsKey:           "",
 			HasCedarResultsKey:   "",
 			ResetWhenFinishedKey: "",
-			HostIdKey:            "",
 			AgentVersionKey:      "",
 		},
 	}
