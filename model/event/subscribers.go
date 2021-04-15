@@ -13,7 +13,6 @@ import (
 const (
 	GithubPullRequestSubscriberType = "github_pull_request"
 	GithubCheckSubscriberType       = "github_check"
-	ParentWaitOnChildSubscriberType = "parent_wait_on_child"
 	JIRAIssueSubscriberType         = "jira-issue"
 	JIRACommentSubscriberType       = "jira-comment"
 	EvergreenWebhookSubscriberType  = "evergreen-webhook"
@@ -27,7 +26,6 @@ const (
 var SubscriberTypes = []string{
 	GithubPullRequestSubscriberType,
 	GithubCheckSubscriberType,
-	ParentWaitOnChildSubscriberType,
 	JIRAIssueSubscriberType,
 	JIRACommentSubscriberType,
 	EvergreenWebhookSubscriberType,
@@ -72,8 +70,6 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &GithubPullRequestSubscriber{}
 	case GithubCheckSubscriberType:
 		s.Target = &GithubCheckSubscriber{}
-	case ParentWaitOnChildSubscriberType:
-		s.Target = &ParentWaitOnChildSubscriber{}
 	case EvergreenWebhookSubscriberType:
 		s.Target = &WebhookSubscriber{}
 	case JIRAIssueSubscriberType:
@@ -176,13 +172,6 @@ type GithubCheckSubscriber struct {
 	Ref   string `bson:"ref"`
 }
 
-type ParentWaitOnChildSubscriber struct {
-	ParentPatchId string        `bson:"parent_status"`
-	ChildPatchId  string        `bson:"child_patch_id"`
-	Requester     string        `bson:"requester"`
-	OriginalSub   *Subscription `bson:"original_sub"`
-}
-
 type ChildPatchSubscriber struct {
 	ParentStatus string `bson:"parent_status"`
 	ChildPatchId string `bson:"child_patch_id"`
@@ -210,13 +199,6 @@ func NewRunChildPatchSubscriber(s ChildPatchSubscriber) Subscriber {
 func NewGithubStatusAPISubscriber(s GithubPullRequestSubscriber) Subscriber {
 	return Subscriber{
 		Type:   GithubPullRequestSubscriberType,
-		Target: s,
-	}
-}
-
-func NewParentWaitOnChildSubscriber(s ParentWaitOnChildSubscriber) Subscriber {
-	return Subscriber{
-		Type:   ParentWaitOnChildSubscriberType,
 		Target: s,
 	}
 }

@@ -188,21 +188,6 @@ func getChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 
 }
 
-func subscribeOnChild(parentId, childPatchId string, sub *event.Subscription) error {
-	waitOnChildSubscriber := event.NewParentWaitOnChildSubscriber(event.ParentWaitOnChildSubscriber{
-		ParentPatchId: parentId,
-		ChildPatchId:  childPatchId,
-		Requester:     "patch_outcome_notification",
-		OriginalSub:   sub,
-	})
-	childPatchSub := event.NewExpiringPatchOutcomeSubscription(childPatchId, waitOnChildSubscriber)
-	err := childPatchSub.Upsert()
-	if err != nil {
-		return errors.Wrapf(err, "failed to insert patch subscription for child patch %s", childPatchId)
-	}
-	return nil
-}
-
 func finalizeChildPatch(sub *event.Subscription) error {
 	target, ok := sub.Subscriber.Target.(*event.ChildPatchSubscriber)
 	if !ok {
