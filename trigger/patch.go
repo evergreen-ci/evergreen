@@ -138,8 +138,7 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 					return nil, nil
 				}
 			}
-			//todo: remove unused
-			childrenStatus, _, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
+			childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
 			if err != nil {
 				return nil, errors.Wrap(err, "error getting child or sibling information")
 			}
@@ -154,8 +153,6 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 			if t.patch.IsChild() {
 				// we want the subscription to be on the parent. now that the children are done, the parent can be considered done.
 				t.patch = parentPatch
-				// newSub := event.NewExpiringPatchOutcomeSubscription(parentPatch.Id.Hex(), sub.Subscriber)
-				// return t.generate(&newSub)
 			}
 		}
 	}
