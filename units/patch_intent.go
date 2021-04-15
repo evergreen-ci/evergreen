@@ -350,6 +350,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			Repo:     patchDoc.GithubPatchData.BaseRepo,
 			PRNumber: patchDoc.GithubPatchData.PRNumber,
 			Ref:      patchDoc.GithubPatchData.HeadHash,
+			Type:     event.WaitOnChild,
 		})
 		patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
 		if err = patchSub.Upsert(); err != nil {
@@ -360,18 +361,26 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
 		}
 		if patchDoc.IsParent() {
+			// add a subscription on each child patch to report it's status to github when it's done.
 			for _, childPatch := range patchDoc.Triggers.ChildPatches {
-				ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+				childGhSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 					Owner:    patchDoc.GithubPatchData.BaseOwner,
 					Repo:     patchDoc.GithubPatchData.BaseRepo,
 					PRNumber: patchDoc.GithubPatchData.PRNumber,
 					Ref:      patchDoc.GithubPatchData.HeadHash,
 					ChildId:  childPatch,
+					Type:     event.SendChildPatchOutcome,
 				})
-				patchSub := event.NewExpiringPatchOutcomeSubscription(childPatch, ghSub)
+				patchSub := event.NewExpiringPatchOutcomeSubscription(childPatch, childGhSub)
 				if err = patchSub.Upsert(); err != nil {
 					catcher.Add(errors.Wrap(err, "failed to insert child patch subscription for Github PR"))
 				}
+				// add subscription so that the parent can wait on the children
+				patchSub = event.NewExpiringPatchOutcomeSubscription(childPatch, ghSub)
+				if err = patchSub.Upsert(); err != nil {
+					catcher.Add(errors.Wrap(err, "failed to insert patch subscription for Github PR"))
+				}
+
 			}
 		}
 	}

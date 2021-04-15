@@ -158,7 +158,13 @@ type GithubPullRequestSubscriber struct {
 	PRNumber int    `bson:"pr_number"`
 	Ref      string `bson:"ref"`
 	ChildId  string `bson:"child"`
+	Type     string `bson:"type"`
 }
+
+const (
+	WaitOnChild           = "wait-on-child"
+	SendChildPatchOutcome = "send-child-patch-outcome"
+)
 
 func (s *GithubPullRequestSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%d-%s-%s", s.Owner, s.Repo, s.PRNumber, s.Ref, s.ChildId)
