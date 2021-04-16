@@ -395,7 +395,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if opts.Skip != 0 {
 		pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
 	}
-	if opts.Limit == 0 {
+	if opts.Limit <= 0 {
 		opts.Limit = defaultVersionLimit
 	}
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
