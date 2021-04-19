@@ -16,14 +16,14 @@ import (
 )
 
 type TaskQueueItemDispatcher interface {
-	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
+	FindNextTask(string, TaskSpec) (*TaskQueueItem, []string, error) // optionally returns a list of tasks to check dependencies for
 	Refresh(string) error
-	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
+	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, []string, error)
 }
 
 type CachedDispatcher interface {
 	Refresh() error
-	FindNextTask(TaskSpec) *TaskQueueItem
+	FindNextTask(TaskSpec) (*TaskQueueItem, []string)
 	Type() string
 	CreatedAt() time.Time
 }
@@ -50,58 +50,27 @@ func NewTaskDispatchAliasService(ttl time.Duration) TaskQueueItemDispatcher {
 	}
 }
 
-func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
+func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, []string, error) {
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
-
-	return distroDispatchService.FindNextTask(spec), nil
+	item, dependencies := distroDispatchService.FindNextTask(spec)
+	return item, dependencies, nil
 }
 
-func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
-	start := time.Now()
+func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, []string, error) {
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
-	grip.DebugWhen(time.Since(start).Seconds() > 1, message.Fields{
-		"step":            "RefreshFindNextTask",
-		"distro":          distroID,
-		"dispatcher_type": distroDispatchService.Type(),
-		"op":              "ensureQueue",
-		"duration":        time.Since(start),
-		"duration_secs":   time.Since(start).Seconds(),
-	})
-	start = time.Now()
 
 	if err := distroDispatchService.Refresh(); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
-	grip.DebugWhen(time.Since(start).Seconds() > 1, message.Fields{
-		"step":            "RefreshFindNextTask",
-		"distro":          distroID,
-		"dispatcher_type": distroDispatchService.Type(),
-		"op":              "Refresh",
-		"duration":        time.Since(start),
-		"duration_secs":   time.Since(start).Seconds(),
-	})
-	start = time.Now()
 
-	item := distroDispatchService.FindNextTask(spec)
-	msg := message.Fields{
-		"step":            "RefreshFindNextTask",
-		"distro":          distroID,
-		"dispatcher_type": distroDispatchService.Type(),
-		"op":              "FindNextTask",
-		"duration":        time.Since(start),
-		"duration_secs":   time.Since(start).Seconds(),
-	}
-	if item != nil {
-		msg["item"] = item.Id
-	}
-	grip.DebugWhen(time.Since(start).Seconds() > 1, msg)
-	return item, nil
+	item, dependencies := distroDispatchService.FindNextTask(spec)
+	return item, dependencies, nil
 }
 
 func (s *taskDispatchService) Refresh(distroID string) error {
@@ -199,7 +168,7 @@ func newDistroTaskDispatchService(taskQueue TaskQueue, typeName string, ttl time
 		ttl:      ttl,
 		typeName: typeName,
 	}
-	start := time.Now()
+
 	if taskQueue.Length() != 0 {
 		d.rebuild(taskQueue.Queue)
 	}
@@ -214,8 +183,6 @@ func newDistroTaskDispatchService(taskQueue TaskQueue, typeName string, ttl time
 		"num_schedulableunits": len(d.units),
 		"num_orders":           len(d.order),
 		"num_taskqueueitems":   taskQueue.Length(),
-		"duration":             time.Since(start),
-		"duration_secs":        time.Since(start).Seconds(),
 	})
 
 	return d
@@ -307,13 +274,13 @@ func (d *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
-func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
+func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	if len(d.units) == 0 && len(d.order) > 0 {
 		d.order = []string{}
-		return nil
+		return nil, nil
 	}
 
 	var unit schedulableUnit
@@ -324,7 +291,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		unit, ok = d.units[compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)]
 		if ok {
 			if next = d.nextTaskGroupTask(unit); next != nil {
-				return next
+				return next, nil
 			}
 		}
 		// If the task group is not present in the schedulableUnit map, then all its tasks are considered dispatched.
@@ -360,7 +327,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"schedulableunit_num_tasks":     len(unit.tasks),
 				})
 
-				return nil
+				return nil, nil
 			}
 
 			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contains a single element.
@@ -375,7 +342,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				}))
-				return nil
+				return nil, nil
 			}
 			if nextTaskFromDB == nil {
 				grip.Warning(message.Fields{
@@ -385,7 +352,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				})
-				return nil
+				return nil, nil
 			}
 
 			var dependenciesMet bool
@@ -406,7 +373,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				continue
 			}
 
-			return &unit.tasks[0]
+			return &unit.tasks[0], nil
 		}
 
 		if unit.runningHosts < unit.maxHosts {
@@ -430,20 +397,20 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"taskspec_project":              spec.Project,
 					"taskspec_version":              spec.Version,
 				}))
-				return nil
+				return nil, nil
 			}
 			unit.runningHosts = numHosts
 			d.units[schedulableUnitID] = unit
 
 			if unit.runningHosts < unit.maxHosts {
 				if next = d.nextTaskGroupTask(unit); next != nil {
-					return next
+					return next, nil
 				}
 			}
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func compositeGroupID(group, variant, project, version string) string {
