@@ -350,8 +350,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	params := append(proj.GetParameters(), v.Parameters...)
 	for _, param := range params {
 		res.Vars[param.Key] = param.Value
-		// parameters aren't private
-		res.PrivateVars[param.Key] = false
 	}
 
 	gimlet.WriteJSON(w, res)
