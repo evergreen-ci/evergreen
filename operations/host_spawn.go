@@ -366,11 +366,12 @@ func hostConfigure() cli.Command {
 			}
 
 			grip.Info(message.Fields{
-				"operation": "setup project",
-				"directory": directory,
-				"commands":  len(cmds),
-				"project":   projectRef.Id,
-				"dry-run":   dryRun,
+				"operation":          "setup project",
+				"directory":          directory,
+				"commands":           len(cmds),
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Identifier,
+				"dry-run":            dryRun,
 			})
 
 			for idx, cmd := range cmds {

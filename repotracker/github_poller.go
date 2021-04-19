@@ -212,11 +212,12 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			commitSHAs = append(commitSHAs, commits[i].GetSHA())
 		}
 		grip.Info(message.Fields{
-			"source":        "github poller",
-			"message":       "no new revisions",
-			"last_revision": revision,
-			"project":       gRepoPoller.ProjectRef,
-			"commits":       commitSHAs,
+			"source":             "github poller",
+			"message":            "no new revisions",
+			"last_revision":      revision,
+			"project":            gRepoPoller.ProjectRef.Id,
+			"project_identifier": gRepoPoller.ProjectRef.Identifier,
+			"commits":            commitSHAs,
 		})
 	}
 
