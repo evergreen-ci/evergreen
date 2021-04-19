@@ -28,7 +28,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 	logger.Task().Info("Attaching results to server...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if conf.ProjectRef.IsCedarTestResultsEnabled() {
-		if err := sendTestResultsToCedar(ctx, conf.Task, td, comm, results); err != nil {
+		if err := sendTestResultsToCedar(ctx, conf, td, comm, results); err != nil {
 			logger.Task().Errorf("problem posting parsed results to the cedar: %+v", err)
 			return errors.Wrap(err, "problem sending test results to cedar")
 		}
@@ -84,7 +84,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 	return sendTestResults(ctx, comm, logger, conf, &allResults)
 }
 
-func sendTestResultsToCedar(ctx context.Context, t *task.Task, td client.TaskData, comm client.Communicator, results *task.LocalTestResults) error {
+func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td client.TaskData, comm client.Communicator, results *task.LocalTestResults) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting cedar connection")
@@ -98,12 +98,12 @@ func sendTestResultsToCedar(ctx context.Context, t *task.Task, td client.TaskDat
 		return errors.Wrap(err, "getting this task's display task info")
 	}
 
-	id, err := client.CreateRecord(ctx, makeCedarTestResultsRecord(t, displayTaskInfo))
+	id, err := client.CreateRecord(ctx, makeCedarTestResultsRecord(conf, displayTaskInfo))
 	if err != nil {
 		return errors.Wrap(err, "creating test results record")
 	}
 
-	if err = client.AddResults(ctx, makeCedarTestResults(id, t, results)); err != nil {
+	if err = client.AddResults(ctx, makeCedarTestResults(id, conf.Task, results)); err != nil {
 		return errors.Wrap(err, "adding test results")
 	}
 
@@ -150,18 +150,18 @@ func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communica
 	return nil
 }
 
-func makeCedarTestResultsRecord(t *task.Task, displayTaskInfo *apimodels.DisplayTaskInfo) testresults.CreateOptions {
+func makeCedarTestResultsRecord(conf *internal.TaskConfig, displayTaskInfo *apimodels.DisplayTaskInfo) testresults.CreateOptions {
 	return testresults.CreateOptions{
-		Project:         t.Project,
-		Version:         t.Version,
-		Variant:         t.BuildVariant,
-		TaskID:          t.Id,
-		TaskName:        t.DisplayName,
+		Project:         conf.Task.Project,
+		Version:         conf.Task.Version,
+		Variant:         conf.Task.BuildVariant,
+		TaskID:          conf.Task.Id,
+		TaskName:        conf.Task.DisplayName,
 		DisplayTaskID:   displayTaskInfo.ID,
 		DisplayTaskName: displayTaskInfo.Name,
-		Execution:       int32(t.Execution),
-		RequestType:     t.Requester,
-		Mainline:        !t.IsPatchRequest(),
+		Execution:       int32(conf.Task.Execution),
+		RequestType:     conf.Task.Requester,
+		Mainline:        !conf.Task.IsPatchRequest(),
 	}
 }
 
