@@ -161,13 +161,13 @@ func executableInWorkingDir(pid int, workingDir string, logger grip.Journaler) b
 		return false
 	}
 
-	executablePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
+	cmdInfo, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 	if err != nil {
 		if !os.IsPermission(err) {
-			logger.Infof("Could not get executable path for process %d", pid)
+			logger.Infof("Could not get executable path for process %d: %s", pid, err.Error())
 		}
 		return false
 	}
 
-	return strings.HasPrefix(executablePath, workingDir)
+	return strings.HasPrefix(string(cmdInfo), workingDir)
 }
