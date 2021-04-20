@@ -82,7 +82,6 @@ type ExpansionVars struct {
 }
 
 type AgentSetupData struct {
-	SumoLogicEndpoint string                  `json:"sumo_logic_endpoint"`
 	SplunkServerURL   string                  `json:"splunk_server_url"`
 	SplunkClientToken string                  `json:"splunk_client_token"`
 	SplunkChannel     string                  `json:"splunk_channel"`

@@ -5,8 +5,6 @@ imports:
   version: 6dc8b843c670f2027cc26b164935635840a40526
   subpackages:
   - journal
-- name: github.com/nutmegdevelopment/sumologic
-  version: 42ed9b372fa36887ba95cba2eab345991ca6e217
 - name: github.com/bluele/slack
   version: b4b4d354a079fbf4bd948faad01b32cecb2ffe03
 - name: github.com/mattn/go-xmpp
