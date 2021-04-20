@@ -561,8 +561,12 @@ func (s *jasperService) SendMessages(ctx context.Context, lp *LoggingPayload) (*
 
 	payload := lp.Export()
 
+	if err := payload.Validate(); err != nil {
+		return nil, newGRPCError(codes.InvalidArgument, errors.Wrapf(err, "invalid payload for logger with id '%s'", lp.LoggerID))
+	}
+
 	if err := logger.Send(payload); err != nil {
-		return nil, newGRPCError(codes.NotFound, errors.Errorf("sending message to logger with id '%s'", lp.LoggerID))
+		return nil, newGRPCError(codes.Internal, errors.Wrapf(err, "sending message to logger with id '%s'", lp.LoggerID))
 	}
 
 	return &OperationOutcome{Success: true}, nil

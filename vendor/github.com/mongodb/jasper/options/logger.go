@@ -36,7 +36,7 @@ func (f LogFormat) Validate() error {
 	case LogFormatInvalid:
 		return errors.New("invalid log format")
 	default:
-		return errors.New("unknown log format")
+		return errors.Errorf("unknown log format '%s'", f)
 	}
 }
 
@@ -141,8 +141,9 @@ type loggerConfigInfo struct {
 }
 
 // NewLoggerConfig returns a LoggerConfig with the given info. This function
-// expects a raw logger config as a byte slice. When using a LoggerProducer
-// directly, use LoggerConfig's Set function.
+// expects a raw logger config as a byte slice. If this logger config is meant
+// to be used in-memory, (*LoggerConfig).Set must be called before it can be
+// used.
 func NewLoggerConfig(producerType string, format RawLoggerConfigFormat, config []byte) *LoggerConfig {
 	return &LoggerConfig{
 		info: loggerConfigInfo{

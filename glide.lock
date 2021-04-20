@@ -119,7 +119,7 @@ imports:
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
   - name: github.com/mongodb/grip
-    version: 2a52b0304869b5d0197d5db7e2733b9d1cb9bf65
+    version: 70a100cc5b73d77779b9a26d8e84729067327eb5
   - name: github.com/mongodb/amboy
     version: c3275e3384e78a425594f29013af7c2a06fc53ae
   - name: github.com/evergreen-ci/gimlet
@@ -129,7 +129,7 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 1a7ed05e11ee7fef549d3a0644a572da2e98ab02
   - name: github.com/mongodb/jasper
-    version: b1f3790794cc4f947943e063cc724b604153ed5a
+    version: e1b4e69149355a7a0373f3ec351bef76b22e1c4f
   - name: go.mongodb.org/mongo-driver
     version: 6760875fa58e0fa5518c992582efa6d807960d6c
   - name: github.com/evergreen-ci/timber

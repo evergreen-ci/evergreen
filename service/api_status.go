@@ -190,7 +190,6 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 
 func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
 	out := &apimodels.AgentSetupData{
-		SumoLogicEndpoint: as.Settings.Credentials["sumologic"],
 		SplunkServerURL:   as.Settings.Splunk.ServerURL,
 		SplunkClientToken: as.Settings.Splunk.Token,
 		SplunkChannel:     as.Settings.Splunk.Channel,

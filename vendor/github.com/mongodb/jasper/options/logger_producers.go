@@ -195,58 +195,6 @@ func (opts *InMemoryLoggerOptions) Configure() (send.Sender, error) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Sumo Logic Logger
-///////////////////////////////////////////////////////////////////////////////
-
-// LogSumoLogic is the name for the Sumo Logic logger.
-const LogSumoLogic = "sumo-logic"
-
-// SumoLogicLoggerOptions encapsulates the options for creating a Sumo Logic
-// logger.
-type SumoLogicLoggerOptions struct {
-	SumoEndpoint string      `json:"sumo_endpoint" bson:"sumo_endpoint"`
-	Base         BaseOptions `json:"base" bson:"base"`
-}
-
-// NewSumoLogicLoggerProducer returns a LoggerProducer for creating Sumo Logic
-// loggers.
-func NewSumoLogicLoggerProducer() LoggerProducer { return &SumoLogicLoggerOptions{} }
-
-// Validate checks that the Sumo Log endpoint is specified and that the common
-// base options are valid.
-func (opts *SumoLogicLoggerOptions) Validate() error {
-	catcher := grip.NewBasicCatcher()
-
-	catcher.NewWhen(opts.SumoEndpoint == "", "must specify a sumo endpoint")
-	catcher.Add(opts.Base.Validate())
-	return catcher.Resolve()
-}
-
-// Type returns the log type for Sumo Logic.
-func (*SumoLogicLoggerOptions) Type() string { return LogSumoLogic }
-
-// Configure returns a send.Sender based on the Sumo Logic options.
-func (opts *SumoLogicLoggerOptions) Configure() (send.Sender, error) {
-	if err := opts.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
-
-	sender, err := send.NewSumo(DefaultLogName, opts.SumoEndpoint)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem creating base sumo logic logger")
-	}
-	if err = sender.SetLevel(opts.Base.Level); err != nil {
-		return nil, errors.Wrap(err, "problem setting level for sumo logic logger")
-	}
-
-	sender, err = NewSafeSender(sender, opts.Base)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem creating safe sumo logic logger")
-	}
-	return sender, nil
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // Splunk Logger
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -266,7 +214,6 @@ func NewSplunkLoggerProducer() LoggerProducer { return &SplunkLoggerOptions{} }
 // base options are valid.
 func (opts *SplunkLoggerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
-
 	catcher.NewWhen(!opts.Splunk.Populated(), "missing connection info for output type splunk")
 	catcher.Add(opts.Base.Validate())
 	return catcher.Resolve()
