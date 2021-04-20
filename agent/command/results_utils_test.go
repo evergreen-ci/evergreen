@@ -50,7 +50,10 @@ func TestSendTestResults(t *testing.T) {
 			Execution:    5,
 			Requester:    evergreen.GithubPRRequester,
 		},
-		ProjectRef: &model.ProjectRef{},
+		ProjectRef: &model.ProjectRef{
+			FilesIgnoredFromCache: []string{"ignoreMe"},
+			DisabledStatsCache:    utility.ToBoolPtr(true),
+		},
 	}
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	comm := client.NewMock("url")
@@ -76,6 +79,8 @@ func TestSendTestResults(t *testing.T) {
 			assert.Equal(t, displayTaskInfo.ID, srv.Create.DisplayTaskId)
 			assert.Equal(t, displayTaskInfo.Name, srv.Create.DisplayTaskName)
 			assert.False(t, srv.Create.Mainline)
+			assert.Equal(t, conf.ProjectRef.FilesIgnoredFromCache, srv.Create.HistoricalDataIgnore)
+			assert.Equal(t, conf.ProjectRef.IsStatsCacheDisabled(), srv.Create.HistoricalDataDisabled)
 		}
 		checkResults := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
 			require.Len(t, srv.Results, 1)
