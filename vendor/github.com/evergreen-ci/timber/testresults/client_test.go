@@ -177,14 +177,16 @@ func TestClient(t *testing.T) {
 
 func validCreateOptions() CreateOptions {
 	return CreateOptions{
-		Project:         "project",
-		Version:         "version",
-		Variant:         "variant",
-		TaskID:          "task_id",
-		TaskName:        "task_name",
-		DisplayTaskName: "display_task_name",
-		DisplayTaskID:   "display_task_id",
-		RequestType:     "request_type",
+		Project:                "project",
+		Version:                "version",
+		Variant:                "variant",
+		TaskID:                 "task_id",
+		TaskName:               "task_name",
+		DisplayTaskName:        "display_task_name",
+		DisplayTaskID:          "display_task_id",
+		RequestType:            "request_type",
+		HistoricalDataIgnore:   []string{"ignoreMe"},
+		HistoricalDataDisabled: true,
 	}
 }
 
