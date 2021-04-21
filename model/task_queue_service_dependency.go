@@ -512,7 +512,7 @@ func CheckUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 		}
 	}
 
-	grip.Debug(message.Fields{
+	grip.DebugWhen(len(blockingTasks)+len(blockingDeactivatedTasks) > 0, message.Fields{
 		"message":                            "checked unmarked blocking tasks",
 		"blocking_tasks_updated":             len(blockingTasks),
 		"blocking_deactivated_tasks_updated": len(blockingDeactivatedTasks),
