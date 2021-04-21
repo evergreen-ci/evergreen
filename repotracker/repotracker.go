@@ -95,9 +95,10 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		// repotracker runner process doesn't run for disabled
 		// projects.
 		grip.Info(message.Fields{
-			"message": "skip disabled project",
-			"project": projectRef,
-			"runner":  RunnerName,
+			"message":            "skip disabled project",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"runner":             RunnerName,
 		})
 		return nil
 	}
@@ -122,27 +123,30 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		// if this is the first time we're running the tracker for this project,
 		// fetch the most recent `numNewRepoRevisionsToFetch` revisions
 		grip.Debug(message.Fields{
-			"runner":  RunnerName,
-			"project": projectRef,
-			"message": "no last recorded revision, using most recent revisions",
-			"number":  numRevisions,
+			"runner":             RunnerName,
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"message":            "no last recorded revision, using most recent revisions",
+			"number":             numRevisions,
 		})
 		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
 	} else {
 		grip.Debug(message.Fields{
-			"message":  "found last recorded revision",
-			"project":  projectRef,
-			"runner":   RunnerName,
-			"revision": lastRevision,
+			"message":            "found last recorded revision",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"runner":             RunnerName,
+			"revision":           lastRevision,
 		})
 		// if the projectRef has a repotracker error then don't get the revisions
 		if projectRef.RepotrackerError != nil {
 			if projectRef.RepotrackerError.Exists {
 				grip.Warning(message.Fields{
-					"runner":  RunnerName,
-					"message": "repotracker error for base revision",
-					"project": projectRef,
-					"path":    fmt.Sprintf("%s/%s:%s", projectRef.Owner, projectRef.Repo, projectRef.Branch),
+					"runner":             RunnerName,
+					"message":            "repotracker error for base revision",
+					"project":            projectRef.Id,
+					"project_identifier": projectRef.Identifier,
+					"path":               fmt.Sprintf("%s/%s:%s", projectRef.Owner, projectRef.Repo, projectRef.Branch),
 				})
 				return nil
 			}
@@ -156,26 +160,29 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "problem fetching revisions for repository",
-			"runner":  RunnerName,
-			"project": projectRef.Id,
+			"message":            "problem fetching revisions for repository",
+			"runner":             RunnerName,
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
 		}))
 		return nil
 	}
 
 	if len(revisions) > 0 {
 		grip.Debug(message.Fields{
-			"message":       "storing revisions",
-			"project":       repoTracker.ProjectRef.Id,
-			"new_revisions": revisions,
-			"last_revision": lastRevision,
+			"message":            "storing revisions",
+			"project":            repoTracker.ProjectRef.Id,
+			"project_identifier": repoTracker.ProjectRef.Identifier,
+			"new_revisions":      revisions,
+			"last_revision":      lastRevision,
 		})
 		err = repoTracker.StoreRevisions(ctx, revisions)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem sorting revisions for repository",
-				"runner":  RunnerName,
-				"project": projectRef,
+				"message":            "problem sorting revisions for repository",
+				"runner":             RunnerName,
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Identifier,
 			}))
 			return errors.WithStack(err)
 		}
@@ -183,18 +190,20 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	ok, err := model.DoProjectActivation(projectRef.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "problem activating recent commit for project",
-			"project": projectRef.Id,
-			"runner":  RunnerName,
-			"mode":    "ingestion",
+			"message":            "problem activating recent commit for project",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"runner":             RunnerName,
+			"mode":               "ingestion",
 		}))
 		return errors.WithStack(err)
 	}
 	if ok {
 		grip.Debug(message.Fields{
-			"message": "activated recent commit for project",
-			"project": projectRef.Id,
-			"runner":  RunnerName,
+			"message":            "activated recent commit for project",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"runner":             RunnerName,
 		})
 	}
 
@@ -216,18 +225,20 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
 		existingVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(ref.Id, revisions[i].Revision))
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "problem looking up version for project",
-			"runner":   RunnerName,
-			"project":  ref.Id,
-			"revision": revision,
+			"message":            "problem looking up version for project",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
 		}))
 
 		if existingVersion != nil {
 			grip.Info(message.Fields{
-				"message":  "skipping creating version because it already exists",
-				"runner":   RunnerName,
-				"project":  ref.Id,
-				"revision": revision,
+				"message":            "skipping creating version because it already exists",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
 			})
 			// We bind newestVersion here since we still need to return the most recent
 			// version, even if it already exists
@@ -249,30 +260,33 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					stubVersion, dbErr := shellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
-							"message":  "error creating shell version",
-							"runner":   RunnerName,
-							"project":  ref.Id,
-							"revision": revision,
+							"message":            "error creating shell version",
+							"runner":             RunnerName,
+							"project":            ref.Id,
+							"project_identifier": ref.Identifier,
+							"revision":           revision,
 						}))
 					}
 					stubVersion.Errors = versionErrs.Errors
 					stubVersion.Warnings = versionErrs.Warnings
 					err = stubVersion.Insert()
 					grip.Error(message.WrapError(err, message.Fields{
-						"message":  "error inserting shell version",
-						"runner":   RunnerName,
-						"project":  ref.Id,
-						"revision": revision,
+						"message":            "error inserting shell version",
+						"runner":             RunnerName,
+						"project":            ref.Id,
+						"project_identifier": ref.Identifier,
+						"revision":           revision,
 					}))
 					newestVersion = stubVersion
 					continue
 				}
 			} else {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message":  "error getting project config",
-					"runner":   RunnerName,
-					"project":  ref.Id,
-					"revision": revision,
+					"message":            "error getting project config",
+					"runner":             RunnerName,
+					"project":            ref.Id,
+					"project_identifier": ref.Identifier,
+					"revision":           revision,
 				}))
 				return err
 			}
@@ -285,10 +299,11 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			filenames, err = repoTracker.GetChangedFiles(ctx, revision)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message":  "error checking GitHub for ignored files",
-					"runner":   RunnerName,
-					"project":  ref.Id,
-					"revision": revision,
+					"message":            "error checking GitHub for ignored files",
+					"runner":             RunnerName,
+					"project":            ref.Id,
+					"project_identifier": ref.Identifier,
+					"revision":           revision,
 				}))
 				continue
 			}
@@ -308,29 +323,32 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "error creating version",
-				"runner":   RunnerName,
-				"project":  ref.Id,
-				"revision": revision,
+				"message":            "error creating version",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
 			}))
 			continue
 		}
 		if err = AddBuildBreakSubscriptions(v, ref); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "error creating build break subscriptions",
-				"runner":   RunnerName,
-				"project":  ref.Id,
-				"revision": revision,
+				"message":            "error creating build break subscriptions",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
 			}))
 			continue
 		}
 		if ref.IsGithubChecksEnabled() {
 			if err = addGithubCheckSubscriptions(v); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message":  "error adding github check subscriptions",
-					"runner":   RunnerName,
-					"project":  ref.Id,
-					"revision": revision,
+					"message":            "error adding github check subscriptions",
+					"runner":             RunnerName,
+					"project":            ref.Id,
+					"project_identifier": ref.Identifier,
+					"revision":           revision,
 				}))
 			}
 		}
@@ -338,10 +356,11 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		_, err = CreateManifest(*v, project, ref, repoTracker.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "error creating manifest",
-				"runner":   RunnerName,
-				"project":  ref.Id,
-				"revision": revision,
+				"message":            "error creating manifest",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
 			}))
 			continue
 		}
@@ -352,9 +371,10 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		err := model.UpdateLastRevision(newestVersion.Identifier, newestVersion.Revision)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem updating last revision for repository",
-				"project": ref.Id,
-				"runner":  RunnerName,
+				"message":            "problem updating last revision for repository",
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"runner":             RunnerName,
 			}))
 			return errors.WithStack(err)
 		}
@@ -383,11 +403,12 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			// does not exist, we treat this the same as when the remote config
 			// is invalid - but add a different error message
 			msg := message.ConvertToComposer(level.Error, message.Fields{
-				"message":  fmt.Sprintf("problem with project configuration: %s", errors.Cause(err)),
-				"runner":   RunnerName,
-				"project":  projectRef.Id,
-				"revision": revision,
-				"path":     projectRef.RemotePath,
+				"message":            fmt.Sprintf("problem with project configuration: %s", errors.Cause(err)),
+				"runner":             RunnerName,
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Identifier,
+				"revision":           revision,
+				"path":               projectRef.RemotePath,
 			})
 
 			grip.Error(message.WrapError(err, msg))
@@ -405,19 +426,21 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		repository, fErr := model.FindRepository(projectRef.Id)
 		if fErr != nil || repository == nil {
 			grip.Error(message.WrapError(fErr, message.Fields{
-				"message": "problem finding repository",
-				"project": projectRef.Id,
-				"runner":  RunnerName,
+				"message":            "problem finding repository",
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Identifier,
+				"runner":             RunnerName,
 			}))
 		} else {
 			lastRevision = repository.LastRevision
 		}
 
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":      "repotracker configuration problem",
-			"project":      projectRef.Id,
-			"runner":       RunnerName,
-			"lastRevision": lastRevision,
+			"message":            "repotracker configuration problem",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"runner":             RunnerName,
+			"lastRevision":       lastRevision,
 		}))
 
 		return nil, nil, err
@@ -650,12 +673,13 @@ func CreateManifest(v model.Version, proj *model.Project, projectRef *model.Proj
 	}
 	newManifest.Modules = modules
 	grip.Debug(message.Fields{
-		"message":     "creating manifest",
-		"version_id":  v.Id,
-		"manifest":    newManifest,
-		"project":     v.Identifier,
-		"modules":     modules,
-		"branch_info": gitBranch,
+		"message":            "creating manifest",
+		"version_id":         v.Id,
+		"manifest":           newManifest,
+		"project":            v.Identifier,
+		"project_identifier": projectRef.Identifier,
+		"modules":            modules,
+		"branch_info":        gitBranch,
 	})
 	_, err = newManifest.TryInsert()
 
@@ -727,10 +751,11 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			return v, errors.Wrapf(err, "error finding project alias for tag '%s'", metadata.GitTag.Tag)
 		}
 		grip.Debug(message.Fields{
-			"message": "aliases for creating version",
-			"tag":     metadata.GitTag.Tag,
-			"project": projectInfo.Ref.Id,
-			"aliases": aliases,
+			"message":            "aliases for creating version",
+			"tag":                metadata.GitTag.Tag,
+			"project":            projectInfo.Ref.Id,
+			"project_identifier": projectInfo.Ref.Identifier,
+			"aliases":            aliases,
 		})
 	} else if metadata.Alias != "" {
 		aliases, err = model.FindAliasInProjectOrRepo(projectInfo.Ref.Id, metadata.Alias)
@@ -947,10 +972,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		var aliasesMatchingVariant model.ProjectAliases
 		aliasesMatchingVariant, err = githubCheckAliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error getting aliases matching variant",
-			"project": projectInfo.Ref.Id,
-			"version": v.Id,
-			"variant": buildvariant.Name,
+			"message":            "error getting aliases matching variant",
+			"project":            projectInfo.Ref.Id,
+			"project_identifier": projectInfo.Ref.Identifier,
+			"version":            v.Id,
+			"variant":            buildvariant.Name,
 		}))
 		args := model.BuildCreateArgs{
 			Project:             *projectInfo.Project,
@@ -969,9 +995,10 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error creating build",
-				"project": projectInfo.Ref.Id,
-				"version": v.Id,
+				"message":            "error creating build",
+				"project":            projectInfo.Ref.Id,
+				"project_identifier": projectInfo.Ref.Identifier,
+				"version":            v.Id,
 			}))
 			debuggingData[buildvariant.Name] = "error creating build"
 			continue
@@ -1015,12 +1042,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		grip.Debug(message.Fields{
-			"message": "activating build",
-			"name":    buildvariant.Name,
-			"project": projectInfo.Ref.Id,
-			"version": v.Id,
-			"time":    activateVariantAt,
-			"runner":  RunnerName,
+			"message":            "activating build",
+			"name":               buildvariant.Name,
+			"project":            projectInfo.Ref.Id,
+			"project_identifier": projectInfo.Ref.Identifier,
+			"version":            v.Id,
+			"time":               activateVariantAt,
+			"runner":             RunnerName,
 		})
 		v.BuildIds = append(v.BuildIds, b.Id)
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
@@ -1131,7 +1159,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"message": "successfully created version",
 			"version": v.Id,
 			"hash":    v.Revision,
-			"project": v.Branch,
+			"project": v.Identifier,
 			"runner":  RunnerName,
 		})
 		return nil

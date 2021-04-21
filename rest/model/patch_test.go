@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -15,12 +17,18 @@ import (
 )
 
 func TestAPIPatch(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 	assert := assert.New(t)
 	baseTime := time.Now()
+	pRef := model.ProjectRef{
+		Id:         "mci",
+		Identifier: "evergreen",
+	}
+	assert.NoError(pRef.Insert())
 	p := patch.Patch{
 		Id:            mgobson.NewObjectId(),
 		Description:   "test",
-		Project:       "mci",
+		Project:       pRef.Id,
 		Githash:       "hash",
 		PatchNumber:   9000,
 		Author:        "root",
@@ -65,6 +73,7 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Id.Hex(), utility.FromStringPtr(a.Id))
 	assert.Equal(p.Description, utility.FromStringPtr(a.Description))
 	assert.Equal(p.Project, utility.FromStringPtr(a.ProjectId))
+	assert.Equal(pRef.Identifier, utility.FromStringPtr(a.ProjectIdentifier))
 	assert.Equal(p.Project, utility.FromStringPtr(a.Branch))
 	assert.Equal(p.Githash, utility.FromStringPtr(a.Githash))
 	assert.Equal(p.PatchNumber, a.PatchNumber)
@@ -114,9 +123,14 @@ func TestGithubPatch(t *testing.T) {
 
 func TestDownstreamTasks(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.Clear(patch.Collection))
+	require.NoError(t, db.ClearCollections(patch.Collection, model.ProjectRefCollection))
 	childPatchId := "6047a08d93572d8dd14fb5eb"
 
+	projectRef := model.ProjectRef{
+		Id:         "mci",
+		Identifier: "evergreen",
+	}
+	assert.NoError(projectRef.Insert())
 	p := patch.Patch{
 		Id:          mgobson.NewObjectId(),
 		Description: "test",

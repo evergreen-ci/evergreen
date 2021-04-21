@@ -749,6 +749,17 @@ func GetIdForProject(identifier string) (string, error) {
 	return pRef.Id, nil
 }
 
+func GetIdentifierForProject(id string) (string, error) {
+	pRef, err := findOneProjectRefQ(byId(id).WithFields(ProjectRefIdentifierKey))
+	if err != nil {
+		return "", err
+	}
+	if pRef == nil {
+		return "", errors.Errorf("project '%s' does not exist", id)
+	}
+	return pRef.Identifier, nil
+}
+
 func CountProjectRefsWithIdentifier(identifier string) (int, error) {
 	return db.CountQ(ProjectRefCollection, byId(identifier))
 }
@@ -1226,50 +1237,7 @@ func (projectRef *ProjectRef) Upsert() error {
 		ProjectRefCollection,
 		bson.M{
 			ProjectRefIdKey: projectRef.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				ProjectRefIdentifierKey:              projectRef.Identifier,
-				ProjectRefRepoRefIdKey:               projectRef.RepoRefId,
-				ProjectRefEnabledKey:                 projectRef.Enabled,
-				ProjectRefPrivateKey:                 projectRef.Private,
-				ProjectRefRestrictedKey:              projectRef.Restricted,
-				ProjectRefBatchTimeKey:               projectRef.BatchTime,
-				ProjectRefOwnerKey:                   projectRef.Owner,
-				ProjectRefRepoKey:                    projectRef.Repo,
-				ProjectRefBranchKey:                  projectRef.Branch,
-				ProjectRefDisplayNameKey:             projectRef.DisplayName,
-				ProjectRefDeactivatePreviousKey:      projectRef.DeactivatePrevious,
-				ProjectRefRemotePathKey:              projectRef.RemotePath,
-				ProjectRefHiddenKey:                  projectRef.Hidden,
-				ProjectRefRepotrackerError:           projectRef.RepotrackerError,
-				ProjectRefFilesIgnoredFromCache:      projectRef.FilesIgnoredFromCache,
-				ProjectRefDisabledStatsCache:         projectRef.DisabledStatsCache,
-				ProjectRefAdminsKey:                  projectRef.Admins,
-				ProjectRefGitTagAuthorizedUsersKey:   projectRef.GitTagAuthorizedUsers,
-				ProjectRefGitTagAuthorizedTeamsKey:   projectRef.GitTagAuthorizedTeams,
-				projectRefTracksPushEventsKey:        projectRef.TracksPushEvents,
-				projectRefDefaultLoggerKey:           projectRef.DefaultLogger,
-				projectRefCedarTestResultsEnabledKey: projectRef.CedarTestResultsEnabled,
-				projectRefPRTestingEnabledKey:        projectRef.PRTestingEnabled,
-				projectRefGithubChecksEnabledKey:     projectRef.GithubChecksEnabled,
-				projectRefGitTagVersionsEnabledKey:   projectRef.GitTagVersionsEnabled,
-				projectRefUseRepoSettingsKey:         projectRef.UseRepoSettings,
-				projectRefCommitQueueKey:             projectRef.CommitQueue,
-				projectRefTaskSyncKey:                projectRef.TaskSync,
-				projectRefPatchingDisabledKey:        projectRef.PatchingDisabled,
-				projectRefRepotrackerDisabledKey:     projectRef.RepotrackerDisabled,
-				projectRefDispatchingDisabledKey:     projectRef.DispatchingDisabled,
-				projectRefNotifyOnFailureKey:         projectRef.NotifyOnBuildFailure,
-				projectRefSpawnHostScriptPathKey:     projectRef.SpawnHostScriptPath,
-				projectRefTriggersKey:                projectRef.Triggers,
-				projectRefPatchTriggerAliasesKey:     projectRef.PatchTriggerAliases,
-				projectRefGithubTriggerAliasesKey:    projectRef.GithubTriggerAliases,
-				projectRefPeriodicBuildsKey:          projectRef.PeriodicBuilds,
-				projectRefWorkstationConfigKey:       projectRef.WorkstationConfig,
-			},
-		},
-	)
+		}, projectRef)
 	return err
 }
 

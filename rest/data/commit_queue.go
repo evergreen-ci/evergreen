@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 type DBCommitQueueConnector struct{}
@@ -60,7 +59,8 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return "", err
 	}
 
-	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, pr.GetTitle(), messageOverride)
+	title := fmt.Sprintf("%s (#%d)", pr.GetTitle(), prNum)
+	patchDoc, err := patch.MakeNewMergePatch(pr, projectRef.Id, evergreen.CommitQueueAlias, title, messageOverride)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to make commit queue patch")
 	}
@@ -99,7 +99,11 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return "", err
 	}
 
-	modulePRs, modulePatches, err := getModules(ctx, githubToken, prNum, modules, projectConfig)
+	serviceModules := []commitqueue.Module{}
+	for _, module := range modules {
+		serviceModules = append(serviceModules, *restModel.APIModuleToService(module))
+	}
+	modulePRs, modulePatches, err := model.GetModulesFromPR(ctx, githubToken, prNum, serviceModules, projectConfig)
 	if err != nil {
 		return "", err
 	}
@@ -108,7 +112,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	// populate tasks/variants matching the commitqueue alias
 	projectConfig.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
-	if err = addMergeTaskAndVariant(patchDoc, projectConfig, &projectRef, commitqueue.SourcePullRequest); err != nil {
+	if err = units.AddMergeTaskAndVariant(patchDoc, projectConfig, &projectRef, commitqueue.SourcePullRequest); err != nil {
 		return "", err
 	}
 
@@ -153,157 +157,6 @@ func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, 
 			PatchFileId: patchFileID,
 			Summary:     patchSummaries,
 		},
-	})
-
-	return nil
-}
-
-func getModules(ctx context.Context, githubToken string, prNum int, modules []restModel.APIModule, projectConfig *model.Project) ([]*github.PullRequest, []patch.ModulePatch, error) {
-	var modulePRs []*github.PullRequest
-	var modulePatches []patch.ModulePatch
-	for _, mod := range modules {
-		module, err := projectConfig.GetModuleByName(utility.FromStringPtr(mod.Module))
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "can't get module for module name '%s'", *mod.Module)
-		}
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", *mod.Module)
-		}
-
-		pr, err := thirdparty.GetPullRequest(ctx, prNum, githubToken, owner, repo)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "PR not valid for merge")
-		}
-		modulePRs = append(modulePRs, pr)
-		githash := pr.GetMergeCommitSHA()
-
-		modulePatches = append(modulePatches, patch.ModulePatch{
-			ModuleName: utility.FromStringPtr(mod.Module),
-			Githash:    githash,
-			PatchSet: patch.PatchSet{
-				Patch: utility.FromStringPtr(mod.Issue),
-			},
-		})
-	}
-
-	return modulePRs, modulePatches, nil
-}
-
-func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef, source string) error {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "error retrieving Evergreen config")
-	}
-
-	modules := make([]string, 0, len(patchDoc.Patches))
-	for _, module := range patchDoc.Patches {
-		if module.ModuleName != "" {
-			modules = append(modules, module.ModuleName)
-		}
-	}
-
-	mergeBuildVariant := model.BuildVariant{
-		Name:        evergreen.MergeTaskVariant,
-		DisplayName: "Commit Queue Merge",
-		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
-		Tasks: []model.BuildVariantTaskUnit{
-			{
-				Name:             evergreen.MergeTaskGroup,
-				IsGroup:          true,
-				CommitQueueMerge: true,
-			},
-		},
-		Modules: modules,
-	}
-
-	// Merge task depends on all the tasks already in the patch
-	status := ""
-	if source == commitqueue.SourcePullRequest {
-		// for pull requests we need to run the merge task at the end even if something
-		// fails, so that it can tell github something failed
-		status = model.AllStatuses
-	}
-	dependencies := []model.TaskUnitDependency{}
-	for _, vt := range patchDoc.VariantsTasks {
-		for _, t := range vt.Tasks {
-			dependencies = append(dependencies, model.TaskUnitDependency{
-				Name:    t,
-				Variant: vt.Variant,
-				Status:  status,
-			})
-		}
-	}
-
-	mergeTask := model.ProjectTask{
-		Name: evergreen.MergeTaskName,
-		Commands: []model.PluginCommandConf{
-			{
-				Command: "git.get_project",
-				Type:    evergreen.CommandTypeSetup,
-				Params: map[string]interface{}{
-					"directory":       "src",
-					"committer_name":  settings.CommitQueue.CommitterName,
-					"committer_email": settings.CommitQueue.CommitterEmail,
-				},
-			},
-		},
-		DependsOn: dependencies,
-	}
-
-	if source == commitqueue.SourceDiff {
-		mergeTask.Commands = append(mergeTask.Commands,
-			model.PluginCommandConf{
-				Command: "git.push",
-				Params: map[string]interface{}{
-					"directory": "src",
-				},
-			})
-	} else if source == commitqueue.SourcePullRequest {
-		mergeTask.Commands = append(mergeTask.Commands,
-			model.PluginCommandConf{
-				Command: "git.merge_pr",
-				Params: map[string]interface{}{
-					"url": fmt.Sprintf("%s/version/%s", settings.Ui.Url, patchDoc.Id.Hex()),
-				},
-			})
-	} else {
-		return errors.Errorf("unknown commit queue source: %s", source)
-	}
-
-	// Define as part of a task group with no pre to skip
-	// running a project's pre before the merge task
-	mergeTaskGroup := model.TaskGroup{
-		Name:     evergreen.MergeTaskGroup,
-		Tasks:    []string{evergreen.MergeTaskName},
-		MaxHosts: 1,
-	}
-
-	project.BuildVariants = append(project.BuildVariants, mergeBuildVariant)
-	project.Tasks = append(project.Tasks, mergeTask)
-	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
-
-	validationErrors := validator.CheckProjectSyntax(project)
-	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
-	catcher := grip.NewBasicCatcher()
-	for _, validationErr := range validationErrors.AtLevel(validator.Error) {
-		catcher.Add(validationErr)
-	}
-	if catcher.HasErrors() {
-		return errors.Errorf("project validation failed: %s", catcher.Resolve())
-	}
-
-	yamlBytes, err := yaml.Marshal(project)
-	if err != nil {
-		return errors.Wrap(err, "can't marshall remote config file")
-	}
-
-	patchDoc.PatchedConfig = string(yamlBytes)
-	patchDoc.BuildVariants = append(patchDoc.BuildVariants, evergreen.MergeTaskVariant)
-	patchDoc.Tasks = append(patchDoc.Tasks, evergreen.MergeTaskName)
-	patchDoc.VariantsTasks = append(patchDoc.VariantsTasks, patch.VariantTasks{
-		Variant: evergreen.MergeTaskVariant,
-		Tasks:   []string{evergreen.MergeTaskName},
 	})
 
 	return nil

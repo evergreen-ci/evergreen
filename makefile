@@ -4,7 +4,7 @@ buildDir := bin
 tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client api apimodels operations cloud cloud-userdata
-packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service service-testutil repotracker cmd-codegen-core
+packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service service-testutil repotracker cmd-codegen-core mock
 packages += model-annotations model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
@@ -386,6 +386,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/shirou/gopsutil/host/host_linux_riscv64.go
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/tklauser/go-sysconf/zsysconf_values_linux_riscv64.go
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
 	rm -rf vendor/github.com/square/certstrap/vendor/github.com/urfave/cli/
 	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/unix/

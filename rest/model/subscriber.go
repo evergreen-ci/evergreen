@@ -29,12 +29,6 @@ type APIGithubCheckSubscriber struct {
 	Ref   *string `json:"ref" mapstructure:"ref"`
 }
 
-type APIGithubMergeSubscriber struct {
-	PRs         []APIPRInfo `json:"prs" mapstructure:"prs"`
-	Item        *string     `json:"item" mapstructure:"item"`
-	MergeMethod *string     `json:"merge_method" mapstructure:"merge_method"`
-}
-
 type APIPRInfo struct {
 	Owner       *string `json:"owner" mapstructure:"owner"`
 	Repo        *string `json:"repo" mapstructure:"repo"`
@@ -239,43 +233,6 @@ func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
 		Repo:     utility.FromStringPtr(s.Repo),
 		Ref:      utility.FromStringPtr(s.Ref),
 		PRNumber: s.PRNumber,
-	}, nil
-}
-
-func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *event.GithubMergeSubscriber:
-		s.MergeMethod = utility.ToStringPtr(v.MergeMethod)
-		s.Item = utility.ToStringPtr(v.Item)
-		s.PRs = make([]APIPRInfo, 0, len(v.PRs))
-		for _, pr := range v.PRs {
-			apiPR := APIPRInfo{}
-			if err := apiPR.BuildFromService(pr); err != nil {
-				return errors.Wrap(err, "can't build PR from service")
-			}
-			s.PRs = append(s.PRs, apiPR)
-		}
-	default:
-		return errors.Errorf("type '%T' does not match subscriber type APIGithubMergeSubscriber", v)
-	}
-
-	return nil
-}
-
-func (s *APIGithubMergeSubscriber) ToService() (interface{}, error) {
-	prs := make([]event.PRInfo, 0, len(s.PRs))
-	for _, apiPR := range s.PRs {
-		pr, err := apiPR.ToService()
-		if err != nil {
-			return nil, errors.Wrap(err, "can't convert PR to service")
-		}
-		prs = append(prs, pr.(event.PRInfo))
-	}
-
-	return event.GithubMergeSubscriber{
-		PRs:         prs,
-		MergeMethod: utility.FromStringPtr(s.MergeMethod),
-		Item:        utility.FromStringPtr(s.Item),
 	}, nil
 }
 

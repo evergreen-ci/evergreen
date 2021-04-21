@@ -1762,7 +1762,7 @@ func TestDequeueAndRestart(t *testing.T) {
 	}
 	assert.NoError(t, commitqueue.InsertQueue(&cq))
 
-	assert.NoError(t, DequeueAndRestart(&t2, ""))
+	assert.NoError(t, DequeueAndRestart(&t2, "", ""))
 	dbCq, err := commitqueue.FindOneId(cq.ProjectID)
 	assert.NoError(t, err)
 	assert.Len(t, dbCq.Queue, 2)

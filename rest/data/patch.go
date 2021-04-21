@@ -48,7 +48,7 @@ func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time,
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem fetching converting patch")
+			return nil, errors.Wrap(err, "problem converting patch")
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}
@@ -76,7 +76,7 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 	apiPatch := restModel.APIPatch{}
 	err = apiPatch.BuildFromService(*p)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem fetching converting patch")
+		return nil, errors.Wrap(err, "problem converting patch")
 	}
 
 	return &apiPatch, nil
@@ -234,7 +234,7 @@ func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit i
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem fetching converting patch")
+			return nil, errors.Wrap(err, "problem converting patch")
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}

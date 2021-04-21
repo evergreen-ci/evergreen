@@ -295,8 +295,6 @@ func (logger *LoggerConfig) Export() (*options.LoggerConfig, error) {
 		producer = logger.GetFile().Export()
 	case logger.GetInherited() != nil:
 		producer = logger.GetInherited().Export()
-	case logger.GetSumo() != nil:
-		producer = logger.GetSumo().Export()
 	case logger.GetInMemory() != nil:
 		producer = logger.GetInMemory().Export()
 	case logger.GetSplunk() != nil:
@@ -433,15 +431,6 @@ func (opts *FileLoggerOptions) Export() options.LoggerProducer {
 func (opts *InheritedLoggerOptions) Export() options.LoggerProducer {
 	return &options.InheritedLoggerOptions{
 		Base: opts.Base.Export(),
-	}
-}
-
-// Export takes a protobuf RPC SumoLogicLoggerOptions struct and returns the
-// analogous Jasper options.LoggerProducer.
-func (opts *SumoLogicLoggerOptions) Export() options.LoggerProducer {
-	return &options.SumoLogicLoggerOptions{
-		SumoEndpoint: opts.SumoEndpoint,
-		Base:         opts.Base.Export(),
 	}
 }
 

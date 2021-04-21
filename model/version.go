@@ -315,7 +315,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if err != nil {
 		return nil, err
 	}
-	if opts.Limit == 0 {
+	if opts.Limit <= 0 {
 		opts.Limit = defaultVersionLimit
 	}
 

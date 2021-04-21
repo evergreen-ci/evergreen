@@ -120,8 +120,8 @@ buildvariants:
     display_name: Ubuntu 16.04
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.9/bin/go
-      GOROOT: /opt/golang/go1.9
+      GO_BIN_PATH: /opt/golang/go1.13/bin/go
+      GOROOT: /opt/golang/go1.13
     run_on:
       - ubuntu1604-test
       - ubuntu1604-build
@@ -131,8 +131,8 @@ buildvariants:
     display_name: macOS
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.9/bin/go
-      GOROOT: /opt/golang/go1.9
+      GO_BIN_PATH: /opt/golang/go1.13/bin/go
+      GOROOT: /opt/golang/go1.13
     run_on:
       - macos-1014
     tasks: [ ".test" ]
@@ -140,14 +140,12 @@ buildvariants:
   - name: windows
     display_name: Windows
     run_on:
-      - windows-64-vs2017-test
-      - windows-64-vs2017-compile
-      - windows-64-vs2015-test
-      - windows-64-vs2015-compile
-      - windows-64-vs2015-small
-      - windows-64-vs2015-large
+      - windows-64-vs2019-small
+      - windows-64-vs2019-large
+      - windows-64-vs2017-small
+      - windows-64-vs2017-large
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /cygdrive/c/golang/go1.9/bin/go
-      GOROOT: C;/goalng/go1.9
+      GO_BIN_PATH: /cygdrive/c/golang/go1.13/bin/go
+      GOROOT: C;/golang/go1.13
     tasks: [ ".test" ]

@@ -635,10 +635,10 @@ func createTestRevision(revision string,
 func createTestProject(override1, override2 *int) *model.ParserProject {
 	pp := &model.ParserProject{}
 	pp.AddBuildVariant("bv1", "bv1", "", override1, []string{"t1"})
-	pp.BuildVariants[0].Tasks[0].Distros = []string{"test-distro-one"}
+	pp.BuildVariants[0].Tasks[0].RunOn = []string{"test-distro-one"}
 
 	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"t1"})
-	pp.BuildVariants[1].Tasks[0].Distros = []string{"test-distro-one"}
+	pp.BuildVariants[1].Tasks[0].RunOn = []string{"test-distro-one"}
 
 	pp.AddTask("t1", nil)
 
@@ -839,7 +839,7 @@ tasks:
 	s.NoError(err)
 	s.Equal(v.Config, dbVersion.Config)
 	s.Require().Len(dbVersion.Errors, 1)
-	s.Equal("buildvariant 'bv' in project 'mci' must either specify run_on field or have every task specify a distro.", dbVersion.Errors[0])
+	s.Equal("buildvariant 'bv' in project 'mci' must either specify run_on field or have every task specify run_on.", dbVersion.Errors[0])
 
 	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
 	s.NoError(err)

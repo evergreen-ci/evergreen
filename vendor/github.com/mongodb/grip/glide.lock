@@ -5,8 +5,6 @@ imports:
   version: 6dc8b843c670f2027cc26b164935635840a40526
   subpackages:
   - journal
-- name: github.com/nutmegdevelopment/sumologic
-  version: 42ed9b372fa36887ba95cba2eab345991ca6e217
 - name: github.com/bluele/slack
   version: b4b4d354a079fbf4bd948faad01b32cecb2ffe03
 - name: github.com/mattn/go-xmpp
@@ -20,8 +18,13 @@ imports:
 - name: github.com/google/go-github
   version: 7a51fb928f52a196d5f31daefb8a489453ef54ff
 
+# gopsutil and its dependencies
 - name: github.com/shirou/gopsutil
-  version: 7e94bb8bcde053b6d6c98bda5145e9742c913c39
+  version: v3.21.3
+- name: github.com/tklauser/go-sysconf
+  version: v0.3.4
+- name: github.com/tklauser/numcpus
+  version: v0.2.1
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/StackExchange/wmi
@@ -38,7 +41,7 @@ imports:
 - name: golang.org/x/oauth2
   version: f047394b6d14284165300fd82dad67edb3a4d7f6
 - name: golang.org/x/sys
-  version: bd437916bb0eb726b873ee8e9b2dcf212d32e2fd
+  version: 93ed5bcd2bfe7230f8abd84e0663ab1cb9148722
 
 - name: github.com/trivago/tgo
   version: 27c472027c1e3b665eb2f6368d000ce9b879f34a

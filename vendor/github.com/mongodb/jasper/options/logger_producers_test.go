@@ -45,13 +45,6 @@ func TestLoggerProducers(t *testing.T) {
 			},
 		},
 		{
-			name: LogSumoLogic,
-			producer: &SumoLogicLoggerOptions{
-				SumoEndpoint: "https://endpoint",
-				Base:         BaseOptions{Format: LogFormatPlain},
-			},
-		},
-		{
 			name: LogSplunk,
 			producer: &SplunkLoggerOptions{
 				Splunk: send.SplunkConnectionInfo{

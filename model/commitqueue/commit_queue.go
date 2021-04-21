@@ -17,6 +17,7 @@ const (
 	triggerComment    = "evergreen merge"
 	SourcePullRequest = "PR"
 	SourceDiff        = "diff"
+	GithubContext     = "evergreen/commitqueue"
 )
 
 type Module struct {

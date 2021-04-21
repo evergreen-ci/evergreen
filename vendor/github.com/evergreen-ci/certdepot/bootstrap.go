@@ -91,11 +91,15 @@ func BootstrapDepotWithMongoClient(ctx context.Context, client *mongo.Client, co
 			return nil, errors.Wrap(err, "problem adding a ca cert")
 		}
 	}
-	if !depot.CheckCertificate(d, conf.CAName) {
+	if exists, err := CheckCertificateWithError(d, conf.CAName); err != nil {
+		return nil, err
+	} else if !exists {
 		if err = createCA(d, conf); err != nil {
 			return nil, errors.Wrap(err, "problem during certificate creation")
 		}
-	} else if !depot.CheckCertificate(d, conf.ServiceName) {
+	} else if exists, err = CheckCertificateWithError(d, conf.ServiceName); err != nil {
+		return nil, err
+	} else if !exists {
 		if err = createServerCert(d, conf); err != nil {
 			return nil, errors.Wrap(err, "problem checking the service certificate")
 		}
@@ -134,7 +138,7 @@ func CreateDepot(ctx context.Context, client *mongo.Client, conf BootstrapDepotC
 	return d, nil
 }
 
-func addCert(d depot.Depot, conf BootstrapDepotConfig) error {
+func addCert(d Depot, conf BootstrapDepotConfig) error {
 	if err := d.Put(depot.CrtTag(conf.CAName), []byte(conf.CACert)); err != nil {
 		return errors.Wrap(err, "problem adding CA cert to depot")
 	}
@@ -146,7 +150,7 @@ func addCert(d depot.Depot, conf BootstrapDepotConfig) error {
 	return nil
 }
 
-func createCA(d depot.Depot, conf BootstrapDepotConfig) error {
+func createCA(d Depot, conf BootstrapDepotConfig) error {
 	if conf.CAOpts == nil {
 		return errors.New("cannot create a new CA with nil CA options")
 	}
@@ -160,7 +164,7 @@ func createCA(d depot.Depot, conf BootstrapDepotConfig) error {
 	return nil
 }
 
-func createServerCert(d depot.Depot, conf BootstrapDepotConfig) error {
+func createServerCert(d Depot, conf BootstrapDepotConfig) error {
 	if conf.ServiceOpts == nil {
 		return errors.New("cannot create a new server cert with nil service options")
 	}

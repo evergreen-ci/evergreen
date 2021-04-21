@@ -366,11 +366,12 @@ func hostConfigure() cli.Command {
 			}
 
 			grip.Info(message.Fields{
-				"operation": "setup project",
-				"directory": directory,
-				"commands":  len(cmds),
-				"project":   projectRef.Id,
-				"dry-run":   dryRun,
+				"operation":          "setup project",
+				"directory":          directory,
+				"commands":           len(cmds),
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Identifier,
+				"dry-run":            dryRun,
 			})
 
 			for idx, cmd := range cmds {
@@ -381,6 +382,7 @@ func hostConfigure() cli.Command {
 				}
 
 				if err := cmd.Run(ctx); err != nil {
+					grip.Infof("You may need to accept an email invite to receive access to repo '%s/%s'", projectRef.Owner, projectRef.Repo)
 					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Id)
 				}
 			}

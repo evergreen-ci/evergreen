@@ -472,12 +472,13 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 
 	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token) {
 		grip.Debug(message.Fields{
-			"source":  "github hook",
-			"msg_id":  gh.msgID,
-			"event":   gh.eventType,
-			"project": pRef.Id,
-			"tag":     tag,
-			"message": "user not authorized for git tag version",
+			"source":             "github hook",
+			"msg_id":             gh.msgID,
+			"event":              gh.eventType,
+			"project":            pRef.Id,
+			"project_identifier": pRef.Identifier,
+			"tag":                tag,
+			"message":            "user not authorized for git tag version",
 		})
 		return nil, nil
 	}

@@ -676,7 +676,7 @@ func (e *envState) initDepot(ctx context.Context) error {
 			CollectionName: CredentialsCollection,
 			DepotOptions: certdepot.DepotOptions{
 				CA:                CAName,
-				DefaultExpiration: 365 * 24 * time.Hour,
+				DefaultExpiration: maxExpiration,
 			},
 		},
 		CAOpts: &certdepot.CertificateOptions{

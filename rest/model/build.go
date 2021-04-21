@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -25,6 +26,7 @@ var (
 type APIBuild struct {
 	Id                  *string        `json:"_id"`
 	ProjectId           *string        `json:"project_id"`
+	ProjectIdentifier   *string        `json:"project_identifier"`
 	CreateTime          *time.Time     `json:"create_time"`
 	StartTime           *time.Time     `json:"start_time"`
 	FinishTime          *time.Time     `json:"finish_time"`
@@ -92,6 +94,12 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 		origin = gitTagOrigin
 	}
 	apiBuild.Origin = utility.ToStringPtr(origin)
+	if v.Project != "" {
+		identifier, err := model.GetIdentifierForProject(v.Project)
+		if err == nil {
+			apiBuild.ProjectIdentifier = utility.ToStringPtr(identifier)
+		}
+	}
 	return nil
 }
 

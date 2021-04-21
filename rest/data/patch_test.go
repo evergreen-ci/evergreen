@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	dbModel "github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -51,7 +53,10 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 				return err
 			}
 		}
-
+		pRef1 := dbModel.ProjectRef{Id: "project1", Identifier: "project_one"}
+		pRef2 := dbModel.ProjectRef{Id: "project2", Identifier: "project_two"}
+		assert.NoError(t, pRef1.Insert())
+		assert.NoError(t, pRef2.Insert())
 		return nil
 	}
 

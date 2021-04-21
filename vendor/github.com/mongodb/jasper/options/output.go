@@ -9,7 +9,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper/util"
-	"github.com/pkg/errors"
 )
 
 // Output provides a common way to define and represent the
@@ -70,31 +69,35 @@ func (o *Output) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
 	if o.SuppressOutput && (!o.outputIsNull() || o.outputLogging()) {
-		catcher.Add(errors.New("cannot suppress output if output is defined"))
+		catcher.New("cannot suppress output if output is defined")
 	}
 
 	if o.SuppressError && (!o.errorIsNull() || o.errorLogging()) {
-		catcher.Add(errors.New("cannot suppress error if error is defined"))
+		catcher.New("cannot suppress error if error is defined")
 	}
 
 	if o.SuppressOutput && o.SendOutputToError {
-		catcher.Add(errors.New("cannot suppress output and redirect it to error"))
+		catcher.New("cannot suppress output and redirect it to error")
 	}
 
 	if o.SuppressError && o.SendErrorToOutput {
-		catcher.Add(errors.New("cannot suppress error and redirect it to output"))
+		catcher.New("cannot suppress error and redirect it to output")
 	}
 
 	if o.SendOutputToError && o.errorIsNull() && !o.errorLogging() {
-		catcher.Add(errors.New("cannot redirect output to error without a defined error writer"))
+		catcher.New("cannot redirect output to error without a defined error writer")
 	}
 
 	if o.SendErrorToOutput && o.outputIsNull() && !o.outputLogging() {
-		catcher.Add(errors.New("cannot redirect error to output without a defined output writer"))
+		catcher.New("cannot redirect error to output without a defined output writer")
 	}
 
 	if o.SendOutputToError && o.SendErrorToOutput {
-		catcher.Add(errors.New("cannot create redirect cycle between output and error"))
+		catcher.New("cannot create redirect cycle between output and error")
+	}
+
+	for _, l := range o.Loggers {
+		catcher.Wrap(l.validate(), "invalid logger")
 	}
 
 	return catcher.Resolve()

@@ -394,21 +394,28 @@ func shouldContainPair(actual interface{}, expected ...interface{}) string {
 
 func TestIncludeDependencies(t *testing.T) {
 	Convey("With a project task config with cross-variant dependencies", t, func() {
-		p := &Project{
-			Tasks: []ProjectTask{
+		parserProject := &ParserProject{
+			Tasks: []parserTask{
 				{Name: "t1"},
-				{Name: "t2", DependsOn: []TaskUnitDependency{{Name: "t1"}}},
+				{Name: "t2", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "t1"}}}},
 				{Name: "t3"},
 				{Name: "t4", Patchable: new(bool)},
-				{Name: "t5", DependsOn: []TaskUnitDependency{{Name: "t4"}}},
+				{Name: "t5", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "t4"}}}},
 			},
-			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}}},
-				{Name: "v2", Tasks: []BuildVariantTaskUnit{
-					{Name: "t3", DependsOn: []TaskUnitDependency{{Name: "t2", Variant: "v1"}}}, {Name: "t4"}, {Name: "t5"}},
-				},
+			BuildVariants: []parserBV{
+				{Name: "v1", Tasks: []parserBVTaskUnit{{Name: "t1"}, {Name: "t2"}}},
+				{Name: "v2", Tasks: []parserBVTaskUnit{
+					{Name: "t3", DependsOn: parserDependencies{
+						{TaskSelector: taskSelector{Name: "t2", Variant: &variantSelector{StringSelector: "v1"}}},
+					}},
+					{Name: "t4"},
+					{Name: "t5"},
+				}},
 			},
 		}
+		p, err := TranslateProject(parserProject)
+		So(err, ShouldBeNil)
+		So(p, ShouldNotBeNil)
 
 		Convey("a patch against v1/t1 should remain unchanged", func() {
 			pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "t1"}}, evergreen.PatchVersionRequester)
@@ -441,21 +448,32 @@ func TestIncludeDependencies(t *testing.T) {
 	})
 
 	Convey("With a project task config with * selectors", t, func() {
-		p := &Project{
-			Tasks: []ProjectTask{
+		parserProject := &ParserProject{
+			Tasks: []parserTask{
 				{Name: "t1"},
 				{Name: "t2"},
-				{Name: "t3", DependsOn: []TaskUnitDependency{{Name: AllDependencies}}},
-				{Name: "t4", DependsOn: []TaskUnitDependency{{Name: "t3", Variant: AllVariants}}},
-				{Name: "t5", DependsOn: []TaskUnitDependency{{Name: AllDependencies, Variant: AllVariants}}},
+				{Name: "t3", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: AllDependencies}}}},
+				{Name: "t4", DependsOn: parserDependencies{
+					{TaskSelector: taskSelector{
+						Name: "t3", Variant: &variantSelector{StringSelector: AllVariants},
+					}},
+				}},
+				{Name: "t5", DependsOn: parserDependencies{
+					{TaskSelector: taskSelector{
+						Name: AllDependencies, Variant: &variantSelector{StringSelector: AllVariants},
+					}},
+				}},
 			},
-			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
-				{Name: "v2", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
-				{Name: "v3", Tasks: []BuildVariantTaskUnit{{Name: "t4"}}},
-				{Name: "v4", Tasks: []BuildVariantTaskUnit{{Name: "t5"}}},
+			BuildVariants: []parserBV{
+				{Name: "v1", Tasks: []parserBVTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
+				{Name: "v2", Tasks: []parserBVTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
+				{Name: "v3", Tasks: []parserBVTaskUnit{{Name: "t4"}}},
+				{Name: "v4", Tasks: []parserBVTaskUnit{{Name: "t5"}}},
 			},
 		}
+		p, err := TranslateProject(parserProject)
+		So(err, ShouldBeNil)
+		So(p, ShouldNotBeNil)
 
 		Convey("a patch against v1/t3 should include t2 and t1", func() {
 			pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "t3"}}, evergreen.PatchVersionRequester)
@@ -496,18 +514,23 @@ func TestIncludeDependencies(t *testing.T) {
 	})
 
 	Convey("With a project task config with cyclical requirements", t, func() {
-		all := []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"}}
-		p := &Project{
-			Tasks: []ProjectTask{
-				{Name: "1", DependsOn: []TaskUnitDependency{{Name: "2"}, {Name: "3"}}},
-				{Name: "2", DependsOn: []TaskUnitDependency{{Name: "1"}, {Name: "3"}}},
-				{Name: "3", DependsOn: []TaskUnitDependency{{Name: "2"}, {Name: "1"}}},
+		all := []parserBVTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"}}
+		parserProject := &ParserProject{
+			Tasks: []parserTask{
+				{Name: "1", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "2"}}, {TaskSelector: taskSelector{Name: "3"}}}},
+				{Name: "2", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "1"}}, {TaskSelector: taskSelector{Name: "3"}}}},
+				{Name: "3", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "2"}}, {TaskSelector: taskSelector{Name: "1"}}}},
 			},
-			BuildVariants: []BuildVariant{
+			BuildVariants: []parserBV{
 				{Name: "v1", Tasks: all},
 				{Name: "v2", Tasks: all},
 			},
 		}
+
+		p, err := TranslateProject(parserProject)
+		So(err, ShouldBeNil)
+		So(p, ShouldNotBeNil)
+
 		Convey("all tasks should be scheduled no matter which is initially added", func() {
 			Convey("for '1'", func() {
 				pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "1"}}, evergreen.PatchVersionRequester)
@@ -536,19 +559,22 @@ func TestIncludeDependencies(t *testing.T) {
 		})
 	})
 	Convey("With a task that depends on task groups", t, func() {
-		p := &Project{
-			Tasks: []ProjectTask{
-				{Name: "a", DependsOn: []TaskUnitDependency{{Name: "*", Variant: "*"}}},
+		parserProject := &ParserProject{
+			Tasks: []parserTask{
+				{Name: "a", DependsOn: parserDependencies{{TaskSelector: taskSelector{Name: "*", Variant: &variantSelector{StringSelector: "*"}}}}},
 				{Name: "b"},
 			},
-			TaskGroups: []TaskGroup{
+			TaskGroups: []parserTaskGroup{
 				{Name: "task-group", Tasks: []string{"b"}},
 			},
-			BuildVariants: []BuildVariant{
-				{Name: "variant-with-group", Tasks: []BuildVariantTaskUnit{{Name: "task-group"}}},
-				{Name: "initial-variant", Tasks: []BuildVariantTaskUnit{{Name: "a"}}},
+			BuildVariants: []parserBV{
+				{Name: "variant-with-group", Tasks: []parserBVTaskUnit{{Name: "task-group"}}},
+				{Name: "initial-variant", Tasks: []parserBVTaskUnit{{Name: "a"}}},
 			},
 		}
+		p, err := TranslateProject(parserProject)
+		So(err, ShouldBeNil)
+		So(p, ShouldNotBeNil)
 
 		initDep := TVPair{TaskName: "a", Variant: "initial-variant"}
 		pairs, _ := IncludeDependencies(p, []TVPair{initDep}, evergreen.PatchVersionRequester)

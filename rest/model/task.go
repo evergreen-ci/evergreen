@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -23,6 +25,7 @@ const (
 type APITask struct {
 	Id                      *string          `json:"task_id"`
 	ProjectId               *string          `json:"project_id"`
+	ProjectIdentifier       *string          `json:"project_identifier"`
 	CreateTime              *time.Time       `json:"create_time"`
 	DispatchTime            *time.Time       `json:"dispatch_time"`
 	ScheduledTime           *time.Time       `json:"scheduled_time"`
@@ -98,6 +101,7 @@ type ApiTaskEndDetail struct {
 	Type        *string           `json:"type"`
 	Description *string           `json:"desc"`
 	TimedOut    bool              `json:"timed_out"`
+	TimeoutType *string           `json:"timeout_type"`
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
 }
 
@@ -110,6 +114,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t interface{}) error {
 	at.Type = utility.ToStringPtr(v.Type)
 	at.Description = utility.ToStringPtr(v.Description)
 	at.TimedOut = v.TimedOut
+	at.TimeoutType = utility.ToStringPtr(v.TimeoutType)
 
 	apiOomTracker := APIOomTrackerInfo{}
 	if err := apiOomTracker.BuildFromService(v.OOMTracker); err != nil {
@@ -126,6 +131,7 @@ func (ad *ApiTaskEndDetail) ToService() (interface{}, error) {
 		Type:        utility.FromStringPtr(ad.Type),
 		Description: utility.FromStringPtr(ad.Description),
 		TimedOut:    ad.TimedOut,
+		TimeoutType: utility.FromStringPtr(ad.TimeoutType),
 	}
 	oomTrackerIface, err := ad.OOMTracker.ToService()
 	if err != nil {
@@ -299,6 +305,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				dependsOn[i] = apiDep
 			}
 			at.DependsOn = dependsOn
+		}
+		if v.Project != "" {
+			identifier, err := model.GetIdentifierForProject(v.Project)
+			if err == nil {
+				at.ProjectIdentifier = utility.ToStringPtr(identifier)
+			}
 		}
 	case string:
 		ll := LogLinks{

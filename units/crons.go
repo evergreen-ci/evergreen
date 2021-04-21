@@ -874,22 +874,6 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			return errors.WithStack(err)
 		}
 
-		expiringHosts, err := host.FindByExpiringJasperCredentials(expirationCutoff)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"operation": "Jasper service restart",
-				"cron":      jasperRestartJobName,
-				"impact":    "existing hosts will not have their Jasper services restarted",
-			}))
-			return errors.Wrap(err, "problem finding hosts with expiring credentials")
-		}
-		catcher := grip.NewBasicCatcher()
-		for _, h := range expiringHosts {
-			if err = h.SetNeedsJasperRestart(evergreen.User); err != nil {
-				catcher.Add(errors.Wrapf(err, "problem marking host as needing Jasper service restarted"))
-			}
-		}
-
 		hosts, err := host.FindByNeedsJasperRestart()
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -900,8 +884,9 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			return errors.Wrap(err, "problem finding hosts that need their Jasper service restarted")
 		}
 
+		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			catcher.Wrapf(EnqueueHostReprovisioningJob(ctx, env, &h), "host %s", h.Id)
+			catcher.Wrapf(EnqueueHostReprovisioningJob(ctx, env, &h), "host '%s'", h.Id)
 		}
 
 		return catcher.Resolve()

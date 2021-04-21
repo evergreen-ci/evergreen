@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -10,6 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -18,6 +22,7 @@ type BackgroundSuite struct {
 	a                *Agent
 	mockCommunicator *client.Mock
 	tc               *taskContext
+	sender           *send.InternalSender
 }
 
 func TestBackgroundSuite(t *testing.T) {
@@ -35,14 +40,16 @@ func (s *BackgroundSuite) SetupTest() {
 		},
 		comm: client.NewMock("url"),
 	}
+	s.a.jasper, err = jasper.NewSynchronizedManager(true)
+	s.Require().NoError(err)
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 
 	s.tc = &taskContext{}
 	s.tc.taskConfig = &internal.TaskConfig{}
 	s.tc.taskConfig.Project = &model.Project{}
 	s.tc.taskConfig.Project.CallbackTimeout = 0
-	s.tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
-	s.NoError(err)
+	s.sender = send.MakeInternalLogger()
+	s.tc.logger = client.NewSingleChannelLogHarness("test", s.sender)
 }
 
 func (s *BackgroundSuite) TestWithCallbackTimeoutDefault() {
@@ -124,4 +131,63 @@ func (s *BackgroundSuite) TestGetCurrentTimeout() {
 
 func (s *BackgroundSuite) TestGetTimeoutDefault() {
 	s.Equal(defaultIdleTimeout, s.tc.getCurrentTimeout())
+}
+
+func (s *BackgroundSuite) TestEarlyTerminationWatcher() {
+	cwd, err := os.Getwd()
+	s.Require().NoError(err)
+	s.tc.taskDirectory = cwd
+	yml := `
+early_termination:
+- command: shell.exec
+  params:
+    script: "echo 'spot instance is being taken away'"
+`
+	p := &model.Project{}
+	_, err = model.LoadProjectInto([]byte(yml), "", p)
+	s.NoError(err)
+	s.tc.project = p
+	s.tc.taskConfig = &internal.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id: "task_id",
+		},
+		Project: p,
+		WorkDir: s.tc.taskDirectory,
+	}
+
+	alwaysTrue := func() bool {
+		return true
+	}
+	calledActionFunc := false
+	action := func() {
+		calledActionFunc = true
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	doneChan := make(chan bool)
+	go s.a.startEarlyTerminationWatcher(ctx, s.tc, alwaysTrue, action, doneChan)
+
+	for {
+		select {
+		case <-doneChan:
+			s.True(calledActionFunc)
+			successMsg := "spot instance is being taken away"
+			foundSuccessMsg := false
+			for s.sender.HasMessage() {
+				msg, _ := s.sender.GetMessageSafe()
+				if msg.Rendered == successMsg {
+					foundSuccessMsg = true
+				}
+			}
+			s.True(foundSuccessMsg)
+			return
+		case <-ctx.Done():
+			s.Fail("waited 20s without calling action func")
+			return
+		}
+	}
 }

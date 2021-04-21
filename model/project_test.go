@@ -1149,6 +1149,13 @@ func (s *projectSuite) TestIsGenerateTask() {
 	s.False(s.project.IsGenerateTask("task_does_not_exist"))
 }
 
+func (s *projectSuite) TestFindAllTasksMap() {
+	allTasks := s.project.FindAllTasksMap()
+	s.Len(allTasks, 8)
+	task := allTasks["a_task_1"]
+	s.Len(task.Tags, 2)
+}
+
 func TestModuleList(t *testing.T) {
 	assert := assert.New(t)
 
@@ -1611,7 +1618,9 @@ func TestVariantTasksForSelectors(t *testing.T) {
 			{
 				Name:         "bv0",
 				DisplayTasks: []patch.DisplayTask{{Name: "dt0", ExecTasks: []string{"t0"}}},
-				Tasks:        []BuildVariantTaskUnit{{Name: "t0"}, {Name: "t1"}},
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "t0"},
+					{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "t0", Variant: "bv0"}}}},
 			},
 		},
 		Tasks: []ProjectTask{

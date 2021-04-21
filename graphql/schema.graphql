@@ -447,6 +447,7 @@ type Patch {
   id: ID!
   description: String!
   projectID: String!
+  projectIdentifier: String!
   githash: String!
   patchNumber: Int!
   author: String!
@@ -565,6 +566,7 @@ type TaskEndDetail {
   type: String!
   description: String
   timedOut: Boolean
+  timeoutType: String
   oomTracker: OomTrackerInfo!
 }
 

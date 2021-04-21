@@ -18,16 +18,16 @@ import (
 )
 
 func getTagPath(tag *depot.Tag) string {
-	if name := depot.GetNameFromCrtTag(tag); name != "" {
+	if name := GetNameFromCrtTag(tag); name != "" {
 		return name + ".crt"
 	}
-	if name := depot.GetNameFromPrivKeyTag(tag); name != "" {
+	if name := GetNameFromPrivKeyTag(tag); name != "" {
 		return name + ".key"
 	}
-	if name := depot.GetNameFromCsrTag(tag); name != "" {
+	if name := GetNameFromCsrTag(tag); name != "" {
 		return name + ".csr"
 	}
-	if name := depot.GetNameFromCrlTag(tag); name != "" {
+	if name := GetNameFromCrlTag(tag); name != "" {
 		return name + ".crl"
 	}
 	return ""
@@ -128,17 +128,17 @@ func TestDepot(t *testing.T) {
 					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 
-						assert.NoError(t, d.Put(depot.CrtTag(name), []byte("data")))
-						assert.Error(t, d.Put(depot.CrtTag(name), []byte("other data")))
+						assert.NoError(t, d.Put(CrtTag(name), []byte("data")))
+						assert.Error(t, d.Put(CrtTag(name), []byte("other data")))
 
-						assert.NoError(t, d.Put(depot.PrivKeyTag(name), []byte("data")))
-						assert.Error(t, d.Put(depot.PrivKeyTag(name), []byte("other data")))
+						assert.NoError(t, d.Put(PrivKeyTag(name), []byte("data")))
+						assert.Error(t, d.Put(PrivKeyTag(name), []byte("other data")))
 
-						assert.NoError(t, d.Put(depot.CsrTag(name), []byte("data")))
-						assert.Error(t, d.Put(depot.CsrTag(name), []byte("other data")))
+						assert.NoError(t, d.Put(CsrTag(name), []byte("data")))
+						assert.Error(t, d.Put(CsrTag(name), []byte("other data")))
 
-						assert.NoError(t, d.Put(depot.CrlTag(name), []byte("data")))
-						assert.Error(t, d.Put(depot.CrlTag(name), []byte("other data")))
+						assert.NoError(t, d.Put(CrlTag(name), []byte("data")))
+						assert.Error(t, d.Put(CrlTag(name), []byte("other data")))
 					},
 				},
 				{
@@ -146,10 +146,10 @@ func TestDepot(t *testing.T) {
 					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 
-						assert.Error(t, d.Delete(depot.CrtTag(name)))
-						assert.Error(t, d.Delete(depot.PrivKeyTag(name)))
-						assert.Error(t, d.Delete(depot.CsrTag(name)))
-						assert.Error(t, d.Delete(depot.CrlTag(name)))
+						assert.Error(t, d.Delete(CrtTag(name)))
+						assert.Error(t, d.Delete(PrivKeyTag(name)))
+						assert.Error(t, d.Delete(CsrTag(name)))
+						assert.Error(t, d.Delete(CrlTag(name)))
 					},
 				},
 			},
@@ -234,7 +234,7 @@ func TestDepot(t *testing.T) {
 						time.Sleep(time.Second)
 
 						certData := []byte("bob's new fake certificate")
-						assert.NoError(t, d.Put(depot.CrtTag(name), certData))
+						assert.NoError(t, d.Put(CrtTag(name), certData))
 						u := &User{}
 						require.NoError(t, session.DB(databaseName).C(collectionName).FindId(name).One(u))
 						assert.Equal(t, name, u.ID)
@@ -244,7 +244,7 @@ func TestDepot(t *testing.T) {
 						assert.Equal(t, user.CertRevocList, u.CertRevocList)
 
 						keyData := []byte("bob's new fake private key")
-						assert.NoError(t, d.Put(depot.PrivKeyTag(name), keyData))
+						assert.NoError(t, d.Put(PrivKeyTag(name), keyData))
 						u = &User{}
 						require.NoError(t, session.DB(databaseName).C(collectionName).FindId(name).One(u))
 						assert.Equal(t, name, u.ID)
@@ -254,7 +254,7 @@ func TestDepot(t *testing.T) {
 						assert.Equal(t, user.CertRevocList, u.CertRevocList)
 
 						certReqData := []byte("bob's new fake certificate request")
-						assert.NoError(t, d.Put(depot.CsrTag(name), certReqData))
+						assert.NoError(t, d.Put(CsrTag(name), certReqData))
 						u = &User{}
 						require.NoError(t, session.DB(databaseName).C(collectionName).FindId(name).One(u))
 						assert.Equal(t, name, u.ID)
@@ -264,7 +264,7 @@ func TestDepot(t *testing.T) {
 						assert.Equal(t, user.CertRevocList, u.CertRevocList)
 
 						certRevocListData := []byte("bob's new fake certificate revocation list")
-						assert.NoError(t, d.Put(depot.CrlTag(name), certRevocListData))
+						assert.NoError(t, d.Put(CrlTag(name), certRevocListData))
 						u = &User{}
 						require.NoError(t, session.DB(databaseName).C(collectionName).FindId(name).One(u))
 						assert.Equal(t, name, u.ID)
@@ -283,10 +283,10 @@ func TestDepot(t *testing.T) {
 						}
 						require.NoError(t, session.DB(databaseName).C(collectionName).Insert(u))
 
-						assert.False(t, d.Check(depot.CrtTag(name)))
-						assert.False(t, d.Check(depot.PrivKeyTag(name)))
-						assert.False(t, d.Check(depot.CsrTag(name)))
-						assert.False(t, d.Check(depot.CrlTag(name)))
+						assert.False(t, d.Check(CrtTag(name)))
+						assert.False(t, d.Check(PrivKeyTag(name)))
+						assert.False(t, d.Check(CsrTag(name)))
+						assert.False(t, d.Check(CrlTag(name)))
 					},
 				},
 				{
@@ -298,19 +298,19 @@ func TestDepot(t *testing.T) {
 						}
 						require.NoError(t, session.DB(databaseName).C(collectionName).Insert(u))
 
-						data, err = d.Get(depot.CrtTag(name))
+						data, err = d.Get(CrtTag(name))
 						assert.Error(t, err)
 						assert.Nil(t, data)
 
-						data, err = d.Get(depot.PrivKeyTag(name))
+						data, err = d.Get(PrivKeyTag(name))
 						assert.Error(t, err)
 						assert.Nil(t, data)
 
-						data, err = d.Get(depot.CsrTag(name))
+						data, err = d.Get(CsrTag(name))
 						assert.Error(t, err)
 						assert.Nil(t, data)
 
-						data, err = d.Get(depot.CrlTag(name))
+						data, err = d.Get(CrlTag(name))
 						assert.Error(t, err)
 						assert.Nil(t, data)
 					},
@@ -320,10 +320,10 @@ func TestDepot(t *testing.T) {
 					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 
-						assert.NoError(t, d.Delete(depot.CrtTag(name)))
-						assert.NoError(t, d.Delete(depot.PrivKeyTag(name)))
-						assert.NoError(t, d.Delete(depot.CsrTag(name)))
-						assert.NoError(t, d.Delete(depot.CrlTag(name)))
+						assert.NoError(t, d.Delete(CrtTag(name)))
+						assert.NoError(t, d.Delete(PrivKeyTag(name)))
+						assert.NoError(t, d.Delete(CsrTag(name)))
+						assert.NoError(t, d.Delete(CrlTag(name)))
 					},
 				},
 			},
@@ -410,7 +410,7 @@ func TestDepot(t *testing.T) {
 						time.Sleep(time.Second)
 
 						certData := []byte("bob's new fake certificate")
-						assert.NoError(t, d.Put(depot.CrtTag(name), certData))
+						assert.NoError(t, d.Put(CrtTag(name), certData))
 						u := &User{}
 						require.NoError(t, coll.FindOne(ctx, bson.M{userIDKey: name}).Decode(u))
 						assert.Equal(t, name, u.ID)
@@ -420,7 +420,7 @@ func TestDepot(t *testing.T) {
 						assert.Equal(t, user.CertRevocList, u.CertRevocList)
 
 						keyData := []byte("bob's new fake private key")
-						assert.NoError(t, d.Put(depot.PrivKeyTag(name), keyData))
+						assert.NoError(t, d.Put(PrivKeyTag(name), keyData))
 						u = &User{}
 						require.NoError(t, coll.FindOne(ctx, bson.M{userIDKey: name}).Decode(u))
 						assert.Equal(t, name, u.ID)
@@ -430,7 +430,7 @@ func TestDepot(t *testing.T) {
 						assert.Equal(t, user.CertRevocList, u.CertRevocList)
 
 						certReqData := []byte("bob's new fake certificate request")
-						assert.NoError(t, d.Put(depot.CsrTag(name), certReqData))
+						assert.NoError(t, d.Put(CsrTag(name), certReqData))
 						u = &User{}
 						require.NoError(t, coll.FindOne(ctx, bson.M{userIDKey: name}).Decode(u))
 						assert.Equal(t, name, u.ID)
@@ -440,7 +440,7 @@ func TestDepot(t *testing.T) {
 						assert.Equal(t, user.CertRevocList, u.CertRevocList)
 
 						certRevocListData := []byte("bob's new fake certificate revocation list")
-						assert.NoError(t, d.Put(depot.CrlTag(name), certRevocListData))
+						assert.NoError(t, d.Put(CrlTag(name), certRevocListData))
 						u = &User{}
 						require.NoError(t, coll.FindOne(ctx, bson.M{userIDKey: name}).Decode(u))
 						assert.Equal(t, name, u.ID)
@@ -460,10 +460,10 @@ func TestDepot(t *testing.T) {
 						_, err = client.Database(databaseName).Collection(collectionName).InsertOne(ctx, u)
 						require.NoError(t, err)
 
-						assert.False(t, d.Check(depot.CrtTag(name)))
-						assert.False(t, d.Check(depot.PrivKeyTag(name)))
-						assert.False(t, d.Check(depot.CsrTag(name)))
-						assert.False(t, d.Check(depot.CrlTag(name)))
+						assert.False(t, d.Check(CrtTag(name)))
+						assert.False(t, d.Check(PrivKeyTag(name)))
+						assert.False(t, d.Check(CsrTag(name)))
+						assert.False(t, d.Check(CrlTag(name)))
 					},
 				},
 				{
@@ -476,19 +476,19 @@ func TestDepot(t *testing.T) {
 						_, err = client.Database(databaseName).Collection(collectionName).InsertOne(ctx, u)
 						require.NoError(t, err)
 
-						data, err = d.Get(depot.CrtTag(name))
+						data, err = d.Get(CrtTag(name))
 						assert.Error(t, err)
 						assert.Nil(t, data)
 
-						data, err = d.Get(depot.PrivKeyTag(name))
+						data, err = d.Get(PrivKeyTag(name))
 						assert.Error(t, err)
 						assert.Nil(t, data)
 
-						data, err = d.Get(depot.CsrTag(name))
+						data, err = d.Get(CsrTag(name))
 						assert.Error(t, err)
 						assert.Nil(t, data)
 
-						data, err = d.Get(depot.CrlTag(name))
+						data, err = d.Get(CrlTag(name))
 						assert.Error(t, err)
 						assert.Nil(t, data)
 					},
@@ -498,10 +498,10 @@ func TestDepot(t *testing.T) {
 					test: func(t *testing.T, d Depot) {
 						const name = "bob"
 
-						assert.NoError(t, d.Delete(depot.CrtTag(name)))
-						assert.NoError(t, d.Delete(depot.PrivKeyTag(name)))
-						assert.NoError(t, d.Delete(depot.CsrTag(name)))
-						assert.NoError(t, d.Delete(depot.CrlTag(name)))
+						assert.NoError(t, d.Delete(CrtTag(name)))
+						assert.NoError(t, d.Delete(PrivKeyTag(name)))
+						assert.NoError(t, d.Delete(CsrTag(name)))
+						assert.NoError(t, d.Delete(CrlTag(name)))
 					},
 				},
 			},
@@ -522,36 +522,36 @@ func TestDepot(t *testing.T) {
 				const name = "bob"
 
 				t.Run("FailsWithNilData", func(t *testing.T) {
-					assert.Error(t, d.Put(depot.CrtTag(name), nil))
+					assert.Error(t, d.Put(CrtTag(name), nil))
 				})
 				t.Run("AddsDataCorrectly", func(t *testing.T) {
 					certData := []byte("bob's fake certificate")
-					assert.NoError(t, d.Put(depot.CrtTag(name), certData))
-					impl.check(t, depot.CrtTag(name), certData)
-					impl.check(t, depot.PrivKeyTag(name), nil)
-					impl.check(t, depot.CsrTag(name), nil)
-					impl.check(t, depot.CrlTag(name), nil)
+					assert.NoError(t, d.Put(CrtTag(name), certData))
+					impl.check(t, CrtTag(name), certData)
+					impl.check(t, PrivKeyTag(name), nil)
+					impl.check(t, CsrTag(name), nil)
+					impl.check(t, CrlTag(name), nil)
 
 					keyData := []byte("bob's fake private key")
-					assert.NoError(t, d.Put(depot.PrivKeyTag(name), keyData))
-					impl.check(t, depot.CrtTag(name), certData)
-					impl.check(t, depot.PrivKeyTag(name), keyData)
-					impl.check(t, depot.CsrTag(name), nil)
-					impl.check(t, depot.CrlTag(name), nil)
+					assert.NoError(t, d.Put(PrivKeyTag(name), keyData))
+					impl.check(t, CrtTag(name), certData)
+					impl.check(t, PrivKeyTag(name), keyData)
+					impl.check(t, CsrTag(name), nil)
+					impl.check(t, CrlTag(name), nil)
 
 					certReqData := []byte("bob's fake certificate request")
-					assert.NoError(t, d.Put(depot.CsrTag(name), certReqData))
-					impl.check(t, depot.CrtTag(name), certData)
-					impl.check(t, depot.PrivKeyTag(name), keyData)
-					impl.check(t, depot.CsrTag(name), certReqData)
-					impl.check(t, depot.CrlTag(name), nil)
+					assert.NoError(t, d.Put(CsrTag(name), certReqData))
+					impl.check(t, CrtTag(name), certData)
+					impl.check(t, PrivKeyTag(name), keyData)
+					impl.check(t, CsrTag(name), certReqData)
+					impl.check(t, CrlTag(name), nil)
 
 					certRevocListData := []byte("bob's fake certificate revocation list")
-					assert.NoError(t, d.Put(depot.CrlTag(name), certRevocListData))
-					impl.check(t, depot.CrtTag(name), certData)
-					impl.check(t, depot.PrivKeyTag(name), keyData)
-					impl.check(t, depot.CsrTag(name), certReqData)
-					impl.check(t, depot.CrlTag(name), certRevocListData)
+					assert.NoError(t, d.Put(CrlTag(name), certRevocListData))
+					impl.check(t, CrtTag(name), certData)
+					impl.check(t, PrivKeyTag(name), keyData)
+					impl.check(t, CsrTag(name), certReqData)
+					impl.check(t, CrlTag(name), certRevocListData)
 				})
 			})
 			t.Run("Check", func(t *testing.T) {
@@ -560,39 +560,39 @@ func TestDepot(t *testing.T) {
 				const name = "alice"
 
 				t.Run("ReturnsFalseWhenDNE", func(t *testing.T) {
-					assert.False(t, d.Check(depot.CrtTag(name)))
-					assert.False(t, d.Check(depot.PrivKeyTag(name)))
-					assert.False(t, d.Check(depot.CsrTag(name)))
-					assert.False(t, d.Check(depot.CrlTag(name)))
+					assert.False(t, d.Check(CrtTag(name)))
+					assert.False(t, d.Check(PrivKeyTag(name)))
+					assert.False(t, d.Check(CsrTag(name)))
+					assert.False(t, d.Check(CrlTag(name)))
 				})
 				t.Run("ReturnsTrueForCorrectTag", func(t *testing.T) {
 					data := []byte("alice's fake certificate")
-					assert.NoError(t, d.Put(depot.CrtTag(name), data))
-					assert.True(t, d.Check(depot.CrtTag(name)))
-					assert.False(t, d.Check(depot.PrivKeyTag(name)))
-					assert.False(t, d.Check(depot.CsrTag(name)))
-					assert.False(t, d.Check(depot.CrlTag(name)))
+					assert.NoError(t, d.Put(CrtTag(name), data))
+					assert.True(t, d.Check(CrtTag(name)))
+					assert.False(t, d.Check(PrivKeyTag(name)))
+					assert.False(t, d.Check(CsrTag(name)))
+					assert.False(t, d.Check(CrlTag(name)))
 
 					data = []byte("alice's fake private key")
-					assert.NoError(t, d.Put(depot.PrivKeyTag(name), data))
-					assert.True(t, d.Check(depot.CrtTag(name)))
-					assert.True(t, d.Check(depot.PrivKeyTag(name)))
-					assert.False(t, d.Check(depot.CsrTag(name)))
-					assert.False(t, d.Check(depot.CrlTag(name)))
+					assert.NoError(t, d.Put(PrivKeyTag(name), data))
+					assert.True(t, d.Check(CrtTag(name)))
+					assert.True(t, d.Check(PrivKeyTag(name)))
+					assert.False(t, d.Check(CsrTag(name)))
+					assert.False(t, d.Check(CrlTag(name)))
 
 					data = []byte("alice's fake certificate request")
-					assert.NoError(t, d.Put(depot.CsrTag(name), data))
-					assert.True(t, d.Check(depot.CrtTag(name)))
-					assert.True(t, d.Check(depot.PrivKeyTag(name)))
-					assert.True(t, d.Check(depot.CsrTag(name)))
-					assert.False(t, d.Check(depot.CrlTag(name)))
+					assert.NoError(t, d.Put(CsrTag(name), data))
+					assert.True(t, d.Check(CrtTag(name)))
+					assert.True(t, d.Check(PrivKeyTag(name)))
+					assert.True(t, d.Check(CsrTag(name)))
+					assert.False(t, d.Check(CrlTag(name)))
 
 					data = []byte("alice's fake certificate revocation list")
-					assert.NoError(t, d.Put(depot.CrlTag(name), data))
-					assert.True(t, d.Check(depot.CrtTag(name)))
-					assert.True(t, d.Check(depot.PrivKeyTag(name)))
-					assert.True(t, d.Check(depot.CsrTag(name)))
-					assert.True(t, d.Check(depot.CrlTag(name)))
+					assert.NoError(t, d.Put(CrlTag(name), data))
+					assert.True(t, d.Check(CrtTag(name)))
+					assert.True(t, d.Check(PrivKeyTag(name)))
+					assert.True(t, d.Check(CsrTag(name)))
+					assert.True(t, d.Check(CrlTag(name)))
 				})
 			})
 			t.Run("Get", func(t *testing.T) {
@@ -601,44 +601,44 @@ func TestDepot(t *testing.T) {
 				const name = "bob"
 
 				t.Run("FailsWhenDNE", func(t *testing.T) {
-					data, err := d.Get(depot.CrtTag(name))
+					data, err := d.Get(CrtTag(name))
 					assert.Error(t, err)
 					assert.Nil(t, data)
 
-					data, err = d.Get(depot.PrivKeyTag(name))
+					data, err = d.Get(PrivKeyTag(name))
 					assert.Error(t, err)
 					assert.Nil(t, data)
 
-					data, err = d.Get(depot.CsrTag(name))
+					data, err = d.Get(CsrTag(name))
 					assert.Error(t, err)
 					assert.Nil(t, data)
 
-					data, err = d.Get(depot.CrlTag(name))
+					data, err = d.Get(CrlTag(name))
 					assert.Error(t, err)
 					assert.Nil(t, data)
 				})
 				t.Run("ReturnsCorrectData", func(t *testing.T) {
 					certData := []byte("bob's fake certificate")
-					assert.NoError(t, d.Put(depot.CrtTag(name), certData))
-					data, err := d.Get(depot.CrtTag(name))
+					assert.NoError(t, d.Put(CrtTag(name), certData))
+					data, err := d.Get(CrtTag(name))
 					assert.NoError(t, err)
 					assert.Equal(t, certData, data)
 
 					keyData := []byte("bob's fake private key")
-					assert.NoError(t, d.Put(depot.PrivKeyTag(name), keyData))
-					data, err = d.Get(depot.PrivKeyTag(name))
+					assert.NoError(t, d.Put(PrivKeyTag(name), keyData))
+					data, err = d.Get(PrivKeyTag(name))
 					assert.NoError(t, err)
 					assert.Equal(t, keyData, data)
 
 					certReqData := []byte("bob's fake certificate request")
-					assert.NoError(t, d.Put(depot.CsrTag(name), certReqData))
-					data, err = d.Get(depot.CsrTag(name))
+					assert.NoError(t, d.Put(CsrTag(name), certReqData))
+					data, err = d.Get(CsrTag(name))
 					assert.NoError(t, err)
 					assert.Equal(t, certReqData, data)
 
 					certRevocListData := []byte("bob's fake certificate revocation list")
-					assert.NoError(t, d.Put(depot.CrlTag(name), certRevocListData))
-					data, err = d.Get(depot.CrlTag(name))
+					assert.NoError(t, d.Put(CrlTag(name), certRevocListData))
+					data, err = d.Get(CrlTag(name))
 					assert.NoError(t, err)
 					assert.Equal(t, certRevocListData, data)
 				})
@@ -653,57 +653,57 @@ func TestDepot(t *testing.T) {
 				keyData := []byte("alice's fake private key")
 				certReqData := []byte("alice's fake certificate request")
 				certRevocListData := []byte("alice's fake certificate revocation list")
-				require.NoError(t, d.Put(depot.CrtTag(deleteName), certData))
-				require.NoError(t, d.Put(depot.PrivKeyTag(deleteName), keyData))
-				require.NoError(t, d.Put(depot.CsrTag(deleteName), certReqData))
-				require.NoError(t, d.Put(depot.CrlTag(deleteName), certRevocListData))
+				require.NoError(t, d.Put(CrtTag(deleteName), certData))
+				require.NoError(t, d.Put(PrivKeyTag(deleteName), keyData))
+				require.NoError(t, d.Put(CsrTag(deleteName), certReqData))
+				require.NoError(t, d.Put(CrlTag(deleteName), certRevocListData))
 
 				data := []byte("bob's data")
-				require.NoError(t, d.Put(depot.CrtTag(name), data))
-				require.NoError(t, d.Put(depot.PrivKeyTag(name), data))
-				require.NoError(t, d.Put(depot.CsrTag(name), data))
-				require.NoError(t, d.Put(depot.CrlTag(name), data))
+				require.NoError(t, d.Put(CrtTag(name), data))
+				require.NoError(t, d.Put(PrivKeyTag(name), data))
+				require.NoError(t, d.Put(CsrTag(name), data))
+				require.NoError(t, d.Put(CrlTag(name), data))
 
 				t.Run("RemovesCorrectData", func(t *testing.T) {
-					assert.NoError(t, d.Delete(depot.CrtTag(deleteName)))
-					impl.check(t, depot.CrtTag(deleteName), nil)
-					impl.check(t, depot.PrivKeyTag(deleteName), keyData)
-					impl.check(t, depot.CsrTag(deleteName), certReqData)
-					impl.check(t, depot.CrlTag(deleteName), certRevocListData)
-					impl.check(t, depot.CrtTag(name), data)
-					impl.check(t, depot.PrivKeyTag(name), data)
-					impl.check(t, depot.CsrTag(name), data)
-					impl.check(t, depot.CrlTag(name), data)
+					assert.NoError(t, d.Delete(CrtTag(deleteName)))
+					impl.check(t, CrtTag(deleteName), nil)
+					impl.check(t, PrivKeyTag(deleteName), keyData)
+					impl.check(t, CsrTag(deleteName), certReqData)
+					impl.check(t, CrlTag(deleteName), certRevocListData)
+					impl.check(t, CrtTag(name), data)
+					impl.check(t, PrivKeyTag(name), data)
+					impl.check(t, CsrTag(name), data)
+					impl.check(t, CrlTag(name), data)
 
-					assert.NoError(t, d.Delete(depot.PrivKeyTag(deleteName)))
-					impl.check(t, depot.CrtTag(deleteName), nil)
-					impl.check(t, depot.PrivKeyTag(deleteName), nil)
-					impl.check(t, depot.CsrTag(deleteName), certReqData)
-					impl.check(t, depot.CrlTag(deleteName), certRevocListData)
-					impl.check(t, depot.CrtTag(name), data)
-					impl.check(t, depot.PrivKeyTag(name), data)
-					impl.check(t, depot.CsrTag(name), data)
-					impl.check(t, depot.CrlTag(name), data)
+					assert.NoError(t, d.Delete(PrivKeyTag(deleteName)))
+					impl.check(t, CrtTag(deleteName), nil)
+					impl.check(t, PrivKeyTag(deleteName), nil)
+					impl.check(t, CsrTag(deleteName), certReqData)
+					impl.check(t, CrlTag(deleteName), certRevocListData)
+					impl.check(t, CrtTag(name), data)
+					impl.check(t, PrivKeyTag(name), data)
+					impl.check(t, CsrTag(name), data)
+					impl.check(t, CrlTag(name), data)
 
-					assert.NoError(t, d.Delete(depot.CsrTag(deleteName)))
-					impl.check(t, depot.CrtTag(deleteName), nil)
-					impl.check(t, depot.PrivKeyTag(deleteName), nil)
-					impl.check(t, depot.CsrTag(deleteName), nil)
-					impl.check(t, depot.CrlTag(deleteName), certRevocListData)
-					impl.check(t, depot.CrtTag(name), data)
-					impl.check(t, depot.PrivKeyTag(name), data)
-					impl.check(t, depot.CsrTag(name), data)
-					impl.check(t, depot.CrlTag(name), data)
+					assert.NoError(t, d.Delete(CsrTag(deleteName)))
+					impl.check(t, CrtTag(deleteName), nil)
+					impl.check(t, PrivKeyTag(deleteName), nil)
+					impl.check(t, CsrTag(deleteName), nil)
+					impl.check(t, CrlTag(deleteName), certRevocListData)
+					impl.check(t, CrtTag(name), data)
+					impl.check(t, PrivKeyTag(name), data)
+					impl.check(t, CsrTag(name), data)
+					impl.check(t, CrlTag(name), data)
 
-					assert.NoError(t, d.Delete(depot.CrlTag(deleteName)))
-					impl.check(t, depot.CrtTag(deleteName), nil)
-					impl.check(t, depot.PrivKeyTag(deleteName), nil)
-					impl.check(t, depot.CsrTag(deleteName), nil)
-					impl.check(t, depot.CrlTag(deleteName), nil)
-					impl.check(t, depot.CrtTag(name), data)
-					impl.check(t, depot.PrivKeyTag(name), data)
-					impl.check(t, depot.CsrTag(name), data)
-					impl.check(t, depot.CrlTag(name), data)
+					assert.NoError(t, d.Delete(CrlTag(deleteName)))
+					impl.check(t, CrtTag(deleteName), nil)
+					impl.check(t, PrivKeyTag(deleteName), nil)
+					impl.check(t, CsrTag(deleteName), nil)
+					impl.check(t, CrlTag(deleteName), nil)
+					impl.check(t, CrtTag(name), data)
+					impl.check(t, PrivKeyTag(name), data)
+					impl.check(t, CsrTag(name), data)
+					impl.check(t, CrlTag(name), data)
 				})
 			})
 			t.Run("Generate", func(t *testing.T) {
@@ -723,11 +723,11 @@ func TestDepot(t *testing.T) {
 					assert.NotZero(t, creds)
 					assert.Equal(t, name, creds.ServerName)
 
-					data, err := d.Get(depot.CsrTag(name))
+					data, err := d.Get(CsrTag(name))
 					assert.Error(t, err)
 					assert.Zero(t, data)
 
-					data, err = d.Get(depot.CrtTag(name))
+					data, err = d.Get(CrtTag(name))
 					assert.Error(t, err)
 					assert.Zero(t, data)
 				})
@@ -752,11 +752,11 @@ func TestDepot(t *testing.T) {
 					assert.NotZero(t, creds)
 					assert.Equal(t, name, creds.ServerName)
 
-					data, err := d.Get(depot.CsrTag(name))
+					data, err := d.Get(CsrTag(name))
 					assert.Error(t, err)
 					assert.Zero(t, data)
 
-					data, err = d.Get(depot.CrtTag(name))
+					data, err = d.Get(CrtTag(name))
 					assert.Error(t, err)
 					assert.Zero(t, data)
 				})

@@ -49,7 +49,7 @@ func TestSubscribers(t *testing.T) {
 			Target: &targetTicket,
 		},
 	}
-	expected := []string{"github_pull_request-evergreen-ci-evergreen-9001-sadasdkjsad",
+	expected := []string{"github_pull_request-evergreen-ci-evergreen-9001-sadasdkjsad-",
 		"evergreen-webhook-https://example.com", "email-hi@example.com",
 		"jira-issue-BF-Fail", "jira-comment-BF-1234"}
 	for i := range subs {
