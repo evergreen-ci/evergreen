@@ -565,7 +565,8 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	p := &ParserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling into parser project")
+		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+		return nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
 	}
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
