@@ -331,7 +331,6 @@ func hostConfigure() cli.Command {
 
 			projectRef, err := ac.GetProjectRef(project)
 			if err != nil {
-				grip.Infof("may need to accept email invite to receive access to the repo")
 				return errors.Wrapf(err, "can't find project for queue id '%s'", project)
 			}
 
@@ -383,6 +382,7 @@ func hostConfigure() cli.Command {
 				}
 
 				if err := cmd.Run(ctx); err != nil {
+					grip.Infof("You may need to accept an email invite to receive access to %s.", projectRef.Repo)
 					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Id)
 				}
 			}
