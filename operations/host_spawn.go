@@ -514,6 +514,7 @@ func hostSSH() cli.Command {
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
+			grip.Info("Note: User must be on the VPN to gain access to the host.")
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			key := c.String(identityFlagName)
