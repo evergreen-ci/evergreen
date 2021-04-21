@@ -3015,7 +3015,7 @@ func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
 
 	return UpdateOne(
 		bson.M{IdKey: displayTaskId},
-		bson.M{"$push": bson.M{
+		bson.M{"$addToSet": bson.M{
 			ExecutionTasksKey: bson.M{"$each": execTasks},
 		}},
 	)
