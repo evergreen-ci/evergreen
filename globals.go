@@ -444,6 +444,7 @@ func (k SenderKey) String() string {
 // Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
 const (
 	ArchDarwinAmd64  = "darwin_amd64"
+	ArchDarwinArm64  = "darwin_arm64"
 	ArchLinux386     = "linux_386"
 	ArchLinuxPpc64le = "linux_ppc64le"
 	ArchLinuxS390x   = "linux_s390x"
@@ -588,6 +589,7 @@ var (
 		ArchLinuxArm64:   "Linux ARM 64-bit",
 		ArchWindows386:   "Windows 32-bit",
 		ArchDarwinAmd64:  "OSX 64-bit",
+		ArchDarwinArm64:  "OSX ARM 64-bit",
 		ArchLinuxAmd64:   "Linux 64-bit",
 		ArchLinux386:     "Linux 32-bit",
 	}

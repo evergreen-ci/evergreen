@@ -48,7 +48,7 @@ export GOCACHE := $(gocache)
 
 # start evergreen specific configuration
 
-unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_s390x linux_arm64 linux_ppc64le)
+unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,darwin_arm64 linux_s390x linux_arm64 linux_ppc64le)
 windowsPlatforms := windows_amd64
 
 
