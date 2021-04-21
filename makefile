@@ -386,6 +386,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/vmware/govmomi/vendor/github.com/google/uuid/
 	rm -rf vendor/github.com/shirou/gopsutil/host/host_linux_riscv64.go
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/tklauser/go-sysconf/zsysconf_values_linux_riscv64.go
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
 	rm -rf vendor/github.com/square/certstrap/vendor/github.com/urfave/cli/
 	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/unix/

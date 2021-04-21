@@ -119,7 +119,7 @@ imports:
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
   - name: github.com/mongodb/grip
-    version: 70a100cc5b73d77779b9a26d8e84729067327eb5
+    version: d883a62b49faf8279c9209d28db88858a103177e
   - name: github.com/mongodb/amboy
     version: c3275e3384e78a425594f29013af7c2a06fc53ae
   - name: github.com/evergreen-ci/gimlet
@@ -197,7 +197,11 @@ imports:
 
   # gopsutil and its dependencies
   - name: github.com/shirou/gopsutil
-    version: 7e94bb8bcde053b6d6c98bda5145e9742c913c39
+    version: v3.21.3
+  - name: github.com/tklauser/go-sysconf
+    version: v0.3.4
+  - name: github.com/tklauser/numcpus
+    version: v0.2.1
   - name: github.com/StackExchange/wmi
     version: cbe66965904dbe8a6cd589e2298e5d8b986bd7dd
   - name: github.com/go-ole/go-ole
