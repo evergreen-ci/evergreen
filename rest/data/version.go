@@ -61,21 +61,21 @@ func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId 
 	return model.LoadProjectForVersion(v, projectId, false)
 }
 
-// GetProjectVersionsWithOptions returns the versions that fit the given constraint, and returns the revision order number for the next batch.
-func (vc *DBVersionConnector) GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, int, error) {
-	versions, nextKey, err := model.GetVersionsWithOptions(projectName, opts)
+// GetProjectVersionsWithOptions returns the versions that fit the given constraint.
+func (vc *DBVersionConnector) GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
+	versions, err := model.GetVersionsWithOptions(projectName, opts)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	res := []restModel.APIVersion{}
 	for _, v := range versions {
 		apiVersion := restModel.APIVersion{}
 		if err = apiVersion.BuildFromService(&v); err != nil {
-			return nil, 0, errors.Wrap(err, "error building API versions")
+			return nil, errors.Wrap(err, "error building API versions")
 		}
 		res = append(res, apiVersion)
 	}
-	return res, nextKey, nil
+	return res, nil
 }
 
 // Fetch versions until 'numVersionElements' elements are created, including
@@ -389,6 +389,6 @@ func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, project
 	return nil, nil, errors.New("no project for version")
 }
 
-func (mvc *MockVersionConnector) GetProjectVersionsWithOptions(projectId string, opts model.GetVersionsOptions) ([]restModel.APIVersion, int, error) {
-	return nil, 0, nil
+func (mvc *MockVersionConnector) GetProjectVersionsWithOptions(projectId string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
+	return nil, nil
 }

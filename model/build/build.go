@@ -50,7 +50,6 @@ type Build struct {
 	ActivatedTime       time.Time     `bson:"activated_time" json:"activated_time,omitempty"`
 	RevisionOrderNumber int           `bson:"order,omitempty" json:"order,omitempty"`
 	Tasks               []TaskCache   `bson:"tasks" json:"tasks"`
-	LookupTasks         []TaskCache   `bson:"lookup_tasks" json:"lookup_tasks"`
 	TimeTaken           time.Duration `bson:"time_taken" json:"time_taken,omitempty"`
 	DisplayName         string        `bson:"display_name" json:"display_name,omitempty"`
 	PredictedMakespan   time.Duration `bson:"predicted_makespan" json:"predicted_makespan,omitempty"`

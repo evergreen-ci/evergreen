@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -311,48 +310,15 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, int, error) {
+func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	if opts.Limit == 0 {
 		opts.Limit = defaultVersionLimit
 	}
 
-	return getVersionsBatchWithOptions(projectId, opts)
-	//res := []Version{}
-	//var nextKey int
-	//// we don't need to batch if we aren't filtering by task, because we won't be filtering any versions out
-	//if opts.ByTask == "" {
-	//	return getVersionsBatchWithOptions(projectId, opts)
-	//}
-	//
-	//batchSize := opts.Limit
-	//// have a max iteration number so we don't infinite loop if there aren't limit number of activated tasks
-	//for i := 0; i < maxQueryAttempts; i++ {
-	//	var batch []Version
-	//	batch, nextKey, err = getVersionsBatchWithOptions(projectId, opts)
-	//	if err != nil {
-	//		return nil, 0, err
-	//	}
-	//	res = append(res, batch...)
-	//	if len(res) == batchSize {
-	//		return res, nextKey, nil
-	//	}
-	//	if len(res) > batchSize {
-	//		return res[0 : opts.Limit-1], res[opts.Limit-1].RevisionOrderNumber, nil
-	//	}
-	//	opts.StartAfter = nextKey
-	//	if batchSize < 10 {
-	//		opts.Limit = 10 // rewrite limit in memory so we can check larger batches for future query attempts
-	//	}
-	//}
-	//// if we never get up to limit that's fine, return what we have
-	//return res, nextKey, nil
-}
-
-func getVersionsBatchWithOptions(projectId string, opts GetVersionsOptions) ([]Version, int, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey:  opts.Requester,
@@ -364,9 +330,11 @@ func getVersionsBatchWithOptions(projectId string, opts GetVersionsOptions) ([]V
 	if opts.StartAfter > 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
-
+	innerPipeline := []bson.M{}
 	pipeline := []bson.M{bson.M{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+
+	// initial projection of version items
 	project := bson.M{
 		VersionCreateTimeKey:          1,
 		VersionStartTimeKey:           1,
@@ -382,85 +350,62 @@ func getVersionsBatchWithOptions(projectId string, opts GetVersionsOptions) ([]V
 		VersionRequesterKey:           1,
 	}
 
-	if !opts.IncludeBuilds { // add project to the pipeline as is
-		pipeline = append(pipeline, bson.M{"$project": project})
-	} else {
+	pipeline = append(pipeline, bson.M{"$project": project})
+	if opts.IncludeBuilds {
+		// filter builds by version and variant (if applicable)
+		matchVersion := bson.M{"$expr": bson.M{"$eq": []string{"$version", "$$temp_version_id"}}}
 		if opts.ByBuildVariant != "" {
-			// add a filter so we only have the build variant we want (we already know this exists from the match stage)
-			project[VersionBuildVariantsKey] = bson.M{
-				"$filter": bson.M{
-					"input": "$" + VersionBuildVariantsKey,
-					"as":    "item",
-					"cond": bson.M{
-						"$eq": []string{"$$item.build_variant", opts.ByBuildVariant},
-					},
-				},
-			}
+			matchVersion[build.BuildVariantKey] = opts.ByBuildVariant
+			matchVersion[build.ActivatedKey] = true
 		}
 
-		pipeline = append(pipeline, bson.M{"$project": project})
-		lookupBuilds := bson.M{
-			"from": build.Collection,
-			"let":  bson.M{"temp_version_id": "$_id"},
-			"as":   "build_variants",
-			"pipeline": []bson.M{
-				{"$match": bson.M{"$expr": bson.M{"$eq": []string{"$version", "$$temp_version_id"}}}},
-			},
-		}
-		pipeline = append(pipeline, bson.M{"$lookup": lookupBuilds})
+		innerPipeline = []bson.M{{"$match": matchVersion}}
 
-		if opts.ByBuildVariant != "" {
-			// filter out versions that don't have this variant activated
-			matchBuildVariantActivated := bson.M{
-				bsonutil.GetDottedKeyName("build_variants", build.ActivatedKey): true,
-			}
-			pipeline = append(pipeline, bson.M{"$match": matchBuildVariantActivated})
+		// project out the task cache so we can rewrite it with updated data
+		innerProject := bson.M{
+			build.TasksKey: 0,
 		}
-
-		// projectWithBuilds is initially the same as the first project but with build_variants instead of build_variants_status.
-		projectWithBuilds := bson.M{
-			VersionRevisionKey:            1,
-			VersionErrorsKey:              1,
-			VersionMessageKey:             1,
-			VersionAuthorKey:              1,
-			VersionRevisionOrderNumberKey: 1,
-			VersionCreateTimeKey:          1,
-			VersionStartTimeKey:           1,
-			VersionFinishTimeKey:          1,
-			VersionStatusKey:              1,
-			"build_variants":              1,
-		}
-		projectWithoutTaskCache := bson.M{
-			"build_variants.tasks": 0,
-		}
-		pipeline = append(pipeline, bson.M{"$project": projectWithBuilds})
-		pipeline = append(pipeline, bson.M{"$project": projectWithoutTaskCache})
+		innerPipeline = append(innerPipeline, bson.M{"$project": innerProject})
+		// include tasks and filter by task name (if applicable)
 		if opts.IncludeTasks {
-			taskLookup := bson.M{"$lookup": bson.M{
+			taskMatch := []bson.M{
+				{"$eq": []string{"$build_id", "$$temp_build_id"}},
+				{"$eq": []interface{}{"$activated", true}},
+			}
+			if opts.ByTask != "" {
+				taskMatch = append(taskMatch, bson.M{"$eq": []string{"$display_name", opts.ByTask}})
+			}
+			taskLookup := bson.M{
 				"from": task.Collection,
 				"let":  bson.M{"temp_build_id": "$_id"},
-				"as":   "lookup_tasks",
+				"as":   "tasks",
 				"pipeline": []bson.M{
-					{"$match": bson.M{"$expr": bson.M{"$and": []bson.M{
-						{"$eq": []string{"$build_id", "$$temp_build_id"}},
-						//{"$eq": []interface{}{"$activated", true}},
-					}}}},
+					{"$match": bson.M{"$expr": bson.M{"$and": taskMatch}}},
 				},
-			}}
-			pipeline = append(pipeline, taskLookup)
-			if opts.ByTask != "" {
-				//project[VersionBuildVariantsKey] = bson.M{
-				//	"$filter": bson.M{
-				//		"input": "$" + VersionBuildVariantsKey,
-				//		"as":    "item",
-				//		"cond": bson.M{
-				//			"$eq": []string{"$$item.build_variant", opts.ByBuildVariant},
-				//		},
-				//	},
-				//}
 			}
+			innerPipeline = append(innerPipeline, bson.M{"$lookup": taskLookup})
+
+			// filter out builds that don't have any tasks included
+			matchTasksExist := bson.M{
+				"tasks": bson.M{"$exists": true, "$ne": []interface{}{}},
+			}
+			innerPipeline = append(innerPipeline, bson.M{"$match": matchTasksExist})
 		}
+		lookupBuilds := bson.M{
+			"from":     build.Collection,
+			"let":      bson.M{"temp_version_id": "$_id"},
+			"as":       "build_variants",
+			"pipeline": innerPipeline,
+		}
+		pipeline = append(pipeline, bson.M{"$lookup": lookupBuilds})
+		//
+		// filter out versions that don't have any activated builds
+		matchBuildsExist := bson.M{
+			"build_variants": bson.M{"$exists": true, "$ne": []interface{}{}},
+		}
+		pipeline = append(pipeline, bson.M{"$match": matchBuildsExist})
 	}
+
 	if opts.Skip != 0 {
 		pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
 	}
@@ -469,56 +414,12 @@ func getVersionsBatchWithOptions(projectId string, opts GetVersionsOptions) ([]V
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, 0, errors.Wrapf(err, "error aggregating versions and builds")
+		return nil, errors.Wrapf(err, "error aggregating versions and builds")
 	}
 	if len(res) == 0 {
-		return res, 0, nil
+		return res, nil
 	}
-
-	body := []interface{}{}
-	if err := db.Aggregate(VersionCollection, pipeline, &body); err != nil {
-		return nil, 0, errors.Wrapf(err, "error with bytes")
-	}
-	pp.Println(body)
-	//
-	//// set what the next key will be before filtering out versions that aren't applicable
-	//nextBatchKey := res[len(res)-1].RevisionOrderNumber
-	//if opts.IncludeTasks {
-	//	buildIds := []string{}
-	//	for _, v := range res {
-	//		for _, b := range v.Builds {
-	//			buildIds = append(buildIds, b.Id)
-	//		}
-	//	}
-	//	q := bson.M{task.BuildIdKey: bson.M{"$in": buildIds}}
-	//	if opts.ByTask != "" {
-	//		q[task.DisplayNameKey] = opts.ByTask
-	//		q[task.ActivatedKey] = true
-	//	}
-	//	tasks, err := task.Find(db.Query(q).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey, task.BuildIdKey, task.VersionKey))
-	//	if err != nil {
-	//		return nil, 0, errors.Wrapf(err, "error finding tasks")
-	//	}
-	//
-	//	tasksByBuildId := map[string][]task.Task{}
-	//	versionHasTasks := map[string]bool{}
-	//	for i, t := range tasks {
-	//		tasksByBuildId[t.BuildId] = append(tasksByBuildId[t.BuildId], tasks[i])
-	//		versionHasTasks[t.Version] = true
-	//	}
-	//
-	//	for i := len(res) - 1; i >= 0; i-- {
-	//		// if filtering by task, filter out versions that don't have it activated
-	//		if opts.ByTask != "" && !versionHasTasks[res[i].Id] {
-	//			res = append(res[:i], res[i+1:]...)
-	//		} else {
-	//			for j, b := range res[i].Builds {
-	//				res[i].Builds[j].Tasks = CreateTasksCache(tasksByBuildId[b.Id])
-	//			}
-	//		}
-	//	}
-	//}
-	return res, 0, nil
+	return res, nil
 }
 
 type VersionsByCreateTime []Version
