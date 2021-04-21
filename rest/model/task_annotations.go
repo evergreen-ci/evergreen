@@ -1,7 +1,9 @@
 package model
 
 import (
+	"log"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/evergreen-ci/birch"
@@ -174,7 +176,13 @@ func GetJiraTickets(issueLinks []APIIssueLink) ([]*APIIssueLink, error) {
 		urlObject, err := url.Parse(*issue.URL)
 		catcher.Wrap(err, "problem parsing the issue url")
 		if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
-			issue.JiraTicket, err = jiraHandler.GetJIRATicket(*issue.IssueKey)
+			myUrl, err := url.Parse(*issue.URL)
+			if err != nil {
+				log.Fatal(err)
+			}
+			jiraKey := path.Base(myUrl.Path)
+
+			issue.JiraTicket, err = jiraHandler.GetJIRATicket(jiraKey)
 			catcher.Wrap(err, "error getting Jira ticket")
 		}
 		issueToAdd := issue
