@@ -628,8 +628,8 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector
     run_on:
-      - archlinux-small
-      - archlinux-large
+      - archlinux-new-small
+      - archlinux-new-large
     expansions:
       # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
       gobin: /opt/golang/go1.13/bin/go
@@ -643,8 +643,8 @@ buildvariants:
   - name: lint
     display_name: Lint
     run_on:
-      - archlinux-small
-      - archlinux-large
+      - archlinux-new-small
+      - archlinux-new-large
     expansions:
       # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
       gobin: /opt/golang/go1.13/bin/go
@@ -655,8 +655,8 @@ buildvariants:
   - name: coverage
     display_name: Coverage
     run_on:
-      - archlinux-small
-      - archlinux-large
+      - archlinux-new-small
+      - archlinux-new-large
     expansions:
       # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
       gobin: /opt/golang/go1.13/bin/go
