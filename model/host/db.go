@@ -652,14 +652,27 @@ var IsIdle = db.Query(
 // last reachability check was before the specified threshold,
 // filtering out user-spawned hosts and hosts currently running tasks.
 func ByNotMonitoredSince(threshold time.Time) db.Q {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": false}},
-			{StatusKey: evergreen.HostRunning},
 			{StartedByKey: evergreen.User},
-			{"$or": []bson.M{
-				{LastCommunicationTimeKey: bson.M{"$lte": threshold}},
-				{LastCommunicationTimeKey: bson.M{"$exists": false}},
+			{"$and": []bson.M{
+				{"$or": []bson.M{
+					{StatusKey: evergreen.HostRunning},
+					// Hosts provisioned with user data which have not started
+					// the agent yet may be externally terminated without our
+					// knowledge, so they should be monitored.
+					{
+						StatusKey:      evergreen.HostStarting,
+						ProvisionedKey: true,
+						bootstrapKey:   distro.BootstrapMethodUserData,
+					},
+				}},
+				{"$or": []bson.M{
+					{LastCommunicationTimeKey: bson.M{"$lte": threshold}},
+					{LastCommunicationTimeKey: bson.M{"$exists": false}},
+				}},
 			}},
 		},
 	})
