@@ -15,7 +15,7 @@ evghome := $(abspath .)
 ifeq ($(OS),Windows_NT)
 	evghome := $(shell cygpath -m $(evghome))
 endif
-lobsterTempDir := $(buildDir)/lobster-temp
+lobsterTempDir := $(abspath $(buildDir))/lobster-temp
 # end project configuration
 
 # start go runtime settings
