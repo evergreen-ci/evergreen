@@ -83,7 +83,7 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 }
 
 func (s *StatusSuite) TestAgentFailsToStartTwice() {
-	resp, err := http.Get("http://127.0.0.1:2287/status")
+	_, err := http.Get("http://127.0.0.1:2287/status")
 	s.Error(err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -101,7 +101,7 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 		c <- agt.Start(ctx)
 	}(first)
 
-	resp, err = http.Get("http://127.0.0.1:2287/status")
+	resp, err := http.Get("http://127.0.0.1:2287/status")
 	if err != nil {
 		// the service hasn't started.
 
