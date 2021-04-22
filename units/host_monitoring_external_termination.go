@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -117,7 +118,8 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 	switch cloudStatus {
 	case cloud.StatusRunning:
-		if h.Status != evergreen.HostRunning {
+		userDataProvisioning := h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && h.Status == evergreen.HostStarting
+		if h.Status != evergreen.HostRunning && !userDataProvisioning {
 			grip.Info(message.Fields{
 				"op_id":   id,
 				"message": "found running host with incorrect status",

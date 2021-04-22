@@ -216,6 +216,36 @@ func TestMonitorHosts(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 0)
 		})
+		Convey("a non-user data provisioned host with no reachability check should not return", func() {
+			require.NoError(t, db.Clear(Collection), "clearing collection '%s'", Collection)
+			h := Host{
+				Id:        "id",
+				Status:    evergreen.HostStarting,
+				StartedBy: evergreen.User,
+			}
+			So(h.Insert(), ShouldBeNil)
+			found, err := Find(ByNotMonitoredSince(now))
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 0)
+		})
+		Convey("a user data provisioned host with no reachability check should return", func() {
+			require.NoError(t, db.Clear(Collection), "clearing collection '%s'", Collection)
+			h := Host{
+				Id:          "id",
+				Status:      evergreen.HostStarting,
+				StartedBy:   evergreen.User,
+				Provisioned: true,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodUserData,
+					},
+				},
+			}
+			So(h.Insert(), ShouldBeNil)
+			found, err := Find(ByNotMonitoredSince(now))
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 1)
+		})
 	})
 }
 
