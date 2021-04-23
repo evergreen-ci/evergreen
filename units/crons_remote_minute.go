@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
@@ -87,10 +86,6 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		catcher.Add(errors.Wrap(err, "error getting commit queue queue"))
 	} else {
 		catcher.Add(PopulateCommitQueueJobs(j.env)(ctx, commitQueueQueue))
-	}
-
-	if err := queue.Put(ctx, NewFakeRetryableJob("fake_scope", time.Now())); err != nil {
-		catcher.Add(err)
 	}
 
 	j.ErrorCount = catcher.Len()
