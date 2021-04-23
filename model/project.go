@@ -698,6 +698,11 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 
 	sort.Stable(p.BuildVariants)
 
+	projName := p.Identifier
+	name, err := GetIdentifierForProject(p.Identifier)
+	if err == nil {
+		projName = name
+	}
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
 		if evergreen.IsPatchRequester(v.Requester) {
@@ -716,19 +721,19 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
-					taskId := generateId(groupTask, p, &bv, rev, v)
+					taskId := generateId(groupTask, projName, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
 				}
 			} else {
 				// create a unique Id for each task
-				taskId := generateId(t.Name, p, &bv, rev, v)
+				taskId := generateId(t.Name, projName, &bv, rev, v)
 				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
 			}
 		}
 
 		for _, dt := range bv.DisplayTasks {
 			name := fmt.Sprintf("display_%s", dt.Name)
-			taskId := generateId(name, p, &bv, rev, v)
+			taskId := generateId(name, projName, &bv, rev, v)
 			displayTable[TVPair{bv.Name, dt.Name}] = util.CleanName(taskId)
 		}
 	}
@@ -811,9 +816,9 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 	return table
 }
 
-func generateId(name string, proj *Project, projBV *BuildVariant, rev string, v *Version) string {
+func generateId(name string, projName string, projBV *BuildVariant, rev string, v *Version) string {
 	return fmt.Sprintf("%s_%s_%s_%s_%s",
-		proj.Identifier,
+		projName,
 		projBV.Name,
 		name,
 		rev,
