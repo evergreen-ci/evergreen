@@ -323,7 +323,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "error checking for conflicting project ref", http.StatusInternalServerError)
 			return
 		}
-		if conflictingRef != nil {
+		if conflictingRef != nil && conflictingRef.Id != origProjectRef.Id {
 			http.Error(w, "identifier already being used for another project", http.StatusBadRequest)
 			return
 		}
