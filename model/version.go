@@ -84,7 +84,6 @@ func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, 
 
 const (
 	defaultVersionLimit = 20
-	maxQueryAttempts    = 5
 )
 
 type GetVersionsOptions struct {
