@@ -330,7 +330,6 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if opts.StartAfter > 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
-	innerPipeline := []bson.M{}
 	pipeline := []bson.M{bson.M{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
@@ -359,7 +358,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 			matchVersion[build.ActivatedKey] = true
 		}
 
-		innerPipeline = []bson.M{{"$match": matchVersion}}
+		innerPipeline := []bson.M{{"$match": matchVersion}}
 
 		// project out the task cache so we can rewrite it with updated data
 		innerProject := bson.M{
