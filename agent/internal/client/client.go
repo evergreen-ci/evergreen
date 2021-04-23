@@ -277,6 +277,11 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 
 func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 	if c.cedarGRPCClient == nil {
+		// We need to create a new HTTP client since cedar gRPC
+		// requests may often exceed one minute.
+		httpClient := utility.GetDefaultHTTPRetryableClient()
+		httpClient.Timeout = 0
+
 		cc, err := c.GetCedarConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error setting up buildlogger sender")
@@ -290,10 +295,11 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 			APIKey:      cc.APIKey,
 			Retries:     10,
 		}
-		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
+		c.cedarGRPCClient, err = timber.DialCedar(ctx, httpClient, dialOpts)
 		if err != nil {
 			return errors.Wrap(err, "error creating cedar grpc client connection")
 		}
 	}
+
 	return nil
 }
