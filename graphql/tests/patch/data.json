@@ -116,6 +116,11 @@
           "task": null
         }
       }
+    },
+    {
+      "_id": "8",
+      "version": "9e4ff3abe3c3317e352063e3",
+      "status": "aborted"
     }
   ],
   "builds": [
@@ -735,6 +740,57 @@
       },
       "desc": "NO BASE COMMIT PATCH",
       "branch": "mongodb-mongo-master"
+    },
+        {
+      "_id": {
+        "$oid": "9e4ff3abe3c3317e352063e3"
+      },
+      "desc": "'evergreen-ci/spruce' pull request #700 by khelif96: Test out aborted patch statuses",
+      "branch": "spruce",
+      "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+      "patch_number": 20,
+      "author": "mohamed.khelif",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "status": "failed",
+      "create_time": {
+        "$date": "2019-11-18T18:53:15Z"
+      },
+      "start_time": {
+        "$date": "2019-11-18T18:54:15.734Z"
+      },
+      "finish_time": {
+        "$date": "2019-11-18T18:57:15.053Z"
+      },
+      "build_variants": [
+        "ubuntu1804"
+      ],
+      "tasks": [
+        "compile"
+
+      ],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1804",
+          "tasks": [
+            "compile"
+          ],
+          "displaytasks": []
+        }
+      ],
+      "activated": true,
+      "alias": "__github",
+      "github_patch_data": {
+        "pr_number": 27,
+        "base_owner": "evergreen-ci",
+        "base_repo": "spruce",
+        "base_branch": "main",
+        "head_owner": "evergreen-ci",
+        "head_repo": "spruce",
+        "head_hash": "2b37dacf86f9d4d1545faaba37c7c5693202e645",
+        "author": "khelif96",
+        "author_uid": 123456,
+        "merge_commit_sha": ""
+      }
     }
   ],
   "commit_queue": [
