@@ -59,9 +59,6 @@ func TestManagerImplementations(t *testing.T) {
 	getInvalidFilters := func() []string {
 		return []string{"", "foo", "inprog"}
 	}
-	getInvalidWindows := func() []time.Duration {
-		return []time.Duration{-1, 0, time.Millisecond, -time.Hour}
-	}
 
 	type filteredJob struct {
 		job            amboy.Job
@@ -297,15 +294,13 @@ func TestManagerImplementations(t *testing.T) {
 					}
 
 					for _, f := range ValidStatusFilters() {
-						r, err := mgr.JobIDsByState(ctx, testJobName, f)
+						groupedIDs, err := mgr.JobIDsByState(ctx, testJobName, f)
 						require.NoError(t, err)
-						assert.Equal(t, f, r.Filter)
-						assert.Equal(t, testJobName, r.Type)
 
 						matched, unmatched := partitionByFilter(fjs, f)
 						for _, fj := range matched {
 							var foundJobID bool
-							for _, gid := range r.GroupedIDs {
+							for _, gid := range groupedIDs {
 								if strings.Contains(gid.ID, fj.job.ID()) {
 									foundJobID = true
 									break
@@ -314,7 +309,7 @@ func TestManagerImplementations(t *testing.T) {
 							assert.True(t, foundJobID)
 						}
 						for _, fj := range unmatched {
-							for _, gid := range r.GroupedIDs {
+							for _, gid := range groupedIDs {
 								assert.NotContains(t, gid.ID, fj.job.ID())
 							}
 						}
@@ -322,93 +317,30 @@ func TestManagerImplementations(t *testing.T) {
 				},
 				"JobIDsByStateSucceedsWithEmptyResult": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
 					for _, f := range ValidStatusFilters() {
-						r, err := mgr.JobStatus(ctx, f)
+						counts, err := mgr.JobIDsByState(ctx, "foo", f)
 						assert.NoError(t, err)
-						assert.NotZero(t, r)
+						assert.Empty(t, counts)
 					}
 				},
 				"JobIDsByStateFailsWithInvalidFilter": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
 					for _, f := range getInvalidFilters() {
 						r, err := mgr.JobIDsByState(ctx, "foo", StatusFilter(f))
 						assert.Error(t, err)
-						assert.Zero(t, r)
+						assert.Empty(t, r)
 					}
 				},
 				"JobStatusSucceedsWithEmptyResult": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
 					for _, f := range ValidStatusFilters() {
-						r, err := mgr.JobStatus(ctx, f)
+						counts, err := mgr.JobStatus(ctx, f)
 						assert.NoError(t, err)
-						assert.NotZero(t, r)
+						assert.Empty(t, counts)
 					}
 				},
 				"JobStatusFailsWithInvalidFilter": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
 					for _, f := range getInvalidFilters() {
-						r, err := mgr.JobStatus(ctx, StatusFilter(f))
+						counts, err := mgr.JobStatus(ctx, StatusFilter(f))
 						assert.Error(t, err)
-						assert.Zero(t, r)
-					}
-				},
-				"RecentTimingSucceedsWithEmptyResult": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, f := range ValidRuntimeFilters() {
-						r, err := mgr.RecentTiming(ctx, time.Hour, f)
-						assert.NoError(t, err)
-						assert.NotZero(t, r)
-					}
-				},
-				"RecentTimingFailsWithInvalidFilter": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, f := range getInvalidFilters() {
-						r, err := mgr.RecentTiming(ctx, time.Hour, RuntimeFilter(f))
-						assert.Error(t, err)
-						assert.Zero(t, r)
-					}
-				},
-				"RecentTimingFailsWithInvalidWindow": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, w := range getInvalidWindows() {
-						r, err := mgr.RecentTiming(ctx, w, Duration)
-						assert.Error(t, err)
-						assert.Zero(t, r)
-					}
-				},
-				"RecentJobErrorsSucceedsWithEmptyResult": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, f := range ValidErrorFilters() {
-						r, err := mgr.RecentJobErrors(ctx, "foo", time.Hour, f)
-						assert.NoError(t, err)
-						assert.NotZero(t, r)
-					}
-				},
-				"RecentJobErrorsFailsWithInvalidFilter": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, f := range getInvalidFilters() {
-						r, err := mgr.RecentJobErrors(ctx, "foo", time.Hour, ErrorFilter(f))
-						assert.Error(t, err)
-						assert.Zero(t, r)
-					}
-				},
-				"RecentErrorsSucceedsWithEmptyResult": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, f := range ValidErrorFilters() {
-						r, err := mgr.RecentErrors(ctx, time.Hour, f)
-						assert.NoError(t, err)
-						assert.NotZero(t, r)
-					}
-				},
-				"RecentJobErrorsFailsWithInvalidWindow": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, w := range getInvalidWindows() {
-						r, err := mgr.RecentJobErrors(ctx, "foo", w, StatsOnly)
-						assert.Error(t, err)
-						assert.Zero(t, r)
-					}
-				},
-				"RecentErrorsFailsWithInvalidFilter": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, f := range getInvalidFilters() {
-						r, err := mgr.RecentErrors(ctx, time.Hour, ErrorFilter(f))
-						assert.Error(t, err)
-						assert.Zero(t, r)
-					}
-				},
-				"RecentErrorsFailsWithInvalidWindow": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {
-					for _, w := range getInvalidWindows() {
-						r, err := mgr.RecentErrors(ctx, w, StatsOnly)
-						assert.Error(t, err)
-						assert.Zero(t, r)
+						assert.Empty(t, counts)
 					}
 				},
 				"CompleteJobSucceeds": func(ctx context.Context, t *testing.T, mgr Manager, q amboy.Queue) {

@@ -193,7 +193,7 @@ func TestDispatcherImplementations(t *testing.T) {
 					assert.NotZero(t, oldStatus.ModificationTime)
 					assert.True(t, oldStatus.InProgress)
 
-					time.Sleep(lockTimeout)
+					time.Sleep(2 * lockTimeout)
 
 					newStatus := j.Status()
 					assert.True(t, oldStatus.ModificationTime.Before(newStatus.ModificationTime))
@@ -216,7 +216,7 @@ func TestDispatcherImplementations(t *testing.T) {
 					assert.NotZero(t, oldStatus.ModificationTime)
 					assert.True(t, oldStatus.InProgress)
 
-					time.Sleep(lockTimeout)
+					time.Sleep(2 * lockTimeout)
 
 					newStatus := j.Status()
 					assert.Equal(t, oldStatus.ModificationTime, newStatus.ModificationTime)
@@ -238,7 +238,7 @@ func TestDispatcherImplementations(t *testing.T) {
 					assert.NotZero(t, oldStatus.ModificationTime)
 					assert.True(t, oldStatus.InProgress)
 
-					time.Sleep(lockTimeout)
+					time.Sleep(2 * lockTimeout)
 
 					newStatus := j.Status()
 					assert.True(t, oldStatus.ModificationTime.Before(newStatus.ModificationTime))
@@ -259,7 +259,7 @@ func TestDispatcherImplementations(t *testing.T) {
 					assert.NotZero(t, oldStatus.ModificationTime)
 					assert.True(t, oldStatus.InProgress)
 
-					time.Sleep(lockTimeout)
+					time.Sleep(2 * lockTimeout)
 
 					newStatus := j.Status()
 					assert.Equal(t, oldStatus.ModificationTime, newStatus.ModificationTime)
@@ -281,7 +281,7 @@ func TestDispatcherImplementations(t *testing.T) {
 
 					d.Complete(ctx, j)
 
-					time.Sleep(lockTimeout)
+					time.Sleep(2 * lockTimeout)
 
 					newStatus := j.Status()
 					assert.Equal(t, oldStatus.ModificationTime, newStatus.ModificationTime)
