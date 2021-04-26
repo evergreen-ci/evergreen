@@ -303,17 +303,17 @@ func (p *ewmaRateLimiting) Abort(ctx context.Context, id string) error {
 		return errors.Errorf("could not find '%s' in the queue", id)
 	}
 
-	p.queue.Complete(ctx, job)
-
-	return nil
+	return errors.Wrap(p.queue.Complete(ctx, job), "marking job complete")
 }
 
-func (p *ewmaRateLimiting) AbortAll(ctx context.Context) {
+func (p *ewmaRateLimiting) AbortAll(ctx context.Context) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
+	catcher := grip.NewBasicCatcher()
 	for id, cancel := range p.jobs {
 		if ctx.Err() != nil {
+			catcher.Add(ctx.Err())
 			break
 		}
 		cancel()
@@ -322,6 +322,7 @@ func (p *ewmaRateLimiting) AbortAll(ctx context.Context) {
 		if !ok {
 			continue
 		}
-		p.queue.Complete(ctx, job)
+		catcher.Wrapf(p.queue.Complete(ctx, job), "marking job '%s' complete", job.ID())
 	}
+	return catcher.Resolve()
 }

@@ -45,7 +45,6 @@ type Distro struct {
 	DispatcherSettings    DispatcherSettings    `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
 	HostAllocatorSettings HostAllocatorSettings `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
 	DisableShallowClone   bool                  `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
-	UseLegacyAgent        bool                  `bson:"use_legacy_agent" json:"use_legacy_agent" mapstructure:"use_legacy_agent"`
 	Note                  string                `bson:"note" json:"note" mapstructure:"note"`
 	ValidProjects         []string              `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
 	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
@@ -437,11 +436,7 @@ func (d *Distro) BinaryName() string {
 
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
-	arch := d.Arch
-	if d.UseLegacyAgent {
-		arch += "_legacy"
-	}
-	return filepath.Join(arch, d.BinaryName())
+	return filepath.Join(d.Arch, d.BinaryName())
 }
 
 // HomeDir gets the absolute path to the home directory for this distro's user.
@@ -451,7 +446,7 @@ func (d *Distro) HomeDir() string {
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}
-	if d.Arch == evergreen.ArchDarwinAmd64 {
+	if d.Arch == evergreen.ArchDarwinAmd64 || d.Arch == evergreen.ArchDarwinArm64 {
 		return filepath.Join("/Users", d.User)
 	}
 	return filepath.Join("/home", d.User)

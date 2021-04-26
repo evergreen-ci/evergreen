@@ -113,6 +113,8 @@ func statsByDistroPipeline() []bson.M {
 				StatusKey: bson.M{
 					"$in": evergreen.ActiveStatus,
 				},
+				// exclude hostcreate tasks EVG-14363
+				bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
 			},
 		},
 		{

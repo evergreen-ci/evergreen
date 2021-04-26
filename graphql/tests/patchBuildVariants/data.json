@@ -345,5 +345,15 @@
       "actual_makespan": 0,
       "r": "ad_hoc"
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "mci",
+      "identifier": "mci"
+    }
   ]
 }

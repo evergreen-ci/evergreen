@@ -19,6 +19,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -112,7 +113,11 @@ func (p *simpleRateLimited) worker(bctx context.Context) {
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				p.queue.Complete(bctx, job)
+				grip.Error(message.WrapError(p.queue.Complete(bctx, job), message.Fields{
+					"message":  "could not mark job complete",
+					"job_id":   job.ID(),
+					"queue_id": p.queue.ID(),
+				}))
 			}
 			// start a replacement worker.
 			go p.worker(bctx)

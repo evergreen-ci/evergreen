@@ -418,7 +418,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	if bson.IsObjectIdHex(itemId) {
 		patch, err := m.sc.FindPatchById(itemId)
 		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
 			return
 		}
 		if user.Id != *patch.Author {
@@ -432,8 +432,8 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		pr, err := m.sc.GetGitHubPR(ctx, projRef.Owner, projRef.Repo, itemInt)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    "can't get information about PR",
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("unable to get pull request info, PR number ('%d') may be invalid: %s", itemInt, err),
 			}))
 			return
 		}
@@ -450,11 +450,11 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			return
 		}
 	} else {
-		grip.Error(message.Fields{
-			"message": "commit queue entry has unknown source",
-			"entry":   itemId,
-			"project": projRef.Identifier,
-		})
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "commit queue item is not a valid identifier",
+		}))
+		return
 	}
 
 	next(rw, r)

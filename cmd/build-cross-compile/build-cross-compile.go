@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -26,16 +25,15 @@ func supportsRaceDetector(arch, system string) bool {
 
 func main() {
 	var (
-		arch        string
-		system      string
-		directory   string
-		source      string
-		ldFlags     string
-		buildName   string
-		output      string
-		goBin       string
-		legacyGobin string
-		race        bool
+		arch      string
+		system    string
+		directory string
+		source    string
+		ldFlags   string
+		buildName string
+		output    string
+		goBin     string
+		race      bool
 
 		defaultArch   string
 		defaultSystem string
@@ -57,7 +55,6 @@ func main() {
 	flag.StringVar(&ldFlags, "ldflags", "", "specify any ldflags to pass to go build")
 	flag.StringVar(&buildName, "buildName", "", "use GOOS_ARCH to specify target platform")
 	flag.StringVar(&goBin, "goBinary", "go", "specify path to go binary")
-	flag.StringVar(&legacyGobin, "legacyGoBinary", "/opt/golang/go1.9/bin/go", "specify path to a legacy go binary")
 	flag.StringVar(&output, "output", "", "specify the name of executable")
 	flag.BoolVar(&race, "race", false, "specify to enable the race detector")
 	flag.Parse()
@@ -71,15 +68,7 @@ func main() {
 		buildName = fmt.Sprintf("%s_%s", system, arch)
 	}
 
-	if strings.Contains(output, "legacy") {
-		goBin = legacyGobin
-	}
 	cmd := exec.Command(goBin, "build")
-
-	goRoot := runtime.GOROOT()
-	if len(goBin) > 2 {
-		goRoot = filepath.Dir(filepath.Dir(goBin))
-	}
 
 	if system == runtime.GOOS && arch == runtime.GOARCH {
 		cmd.Args = append(cmd.Args, "-i")
@@ -89,18 +78,7 @@ func main() {
 	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)
 	cmd.Args = append(cmd.Args, ldf)
 
-	absDirectory, err := filepath.Abs(directory)
-	if err != nil {
-		fmt.Printf("problem building %s: %v\n", output, err)
-		os.Exit(1)
-	}
-	cmd.Env = []string{
-		"PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1),
-		"GOPATH=" + strings.Replace(os.Getenv("GOPATH"), `\`, `\\`, -1),
-		"GOROOT=" + goRoot,
-		"GOCACHE=" + filepath.Join(absDirectory, ".cache"),
-	}
-
+	cmd.Env = os.Environ()
 	if tmpdir := os.Getenv("TMPDIR"); tmpdir != "" {
 		cmd.Env = append(cmd.Env, "TMPDIR="+strings.Replace(tmpdir, `\`, `\\`, -1))
 	}
@@ -110,10 +88,10 @@ func main() {
 		cmd.Env = append(cmd.Env, "CGO_ENABLED=1", "GORACE=\"halt_on_error=1\"")
 	}
 
+	goos := "GOOS=" + system
+	goarch := "GOARCH=" + arch
 	if runtime.Compiler != "gccgo" {
-		cmd.Env = append(cmd.Env,
-			"GOOS="+system,
-			"GOARCH="+arch)
+		cmd.Env = append(cmd.Env, goos, goarch)
 	}
 
 	cmd.Args = append(cmd.Args, "-o", output)
@@ -122,7 +100,7 @@ func main() {
 	cmd.Stderr = os.Stderr
 
 	cmdString := strings.Join(cmd.Args, " ")
-	fmt.Println(strings.Join(cmd.Env[1:], " "), strings.Replace(cmdString, ldf, ldfQuoted, -1))
+	fmt.Println(goos, goarch, strings.Replace(cmdString, ldf, ldfQuoted, -1))
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("problem building %s: %v\n", output, err)
 		os.Exit(1)

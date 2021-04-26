@@ -38,9 +38,11 @@ notify:
 
 jira:
   host: "$JIRA_SERVER"
-  basic_auth:
-    username: "$CROWD_USER"
-    password: "$CROWD_PW"
+  oauth1:
+    private_key: "$JIRA_PRIVATE_KEY"
+    access_token: "$JIRA_ACCESS_TOKEN"
+    token_secret: "$JIRA_TOKEN_SECRET"
+    consumer_key: "$JIRA_CONSUMER_KEY"
 
 providers:
   aws:

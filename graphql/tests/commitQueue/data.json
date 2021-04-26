@@ -122,6 +122,7 @@
       "queue": [
         {
           "issue": "5e94c2dfe3c3312519b59480",
+          "patch_id": "5e94c2dfe3c3312519b59480",
           "source": "diff",
           "enqueue_time": { "$date": "2020-04-13T19:52:00.182Z" },
           "modules": null
@@ -149,6 +150,7 @@
       "queue": [
         {
           "issue": "5e6bb9e23066155a993effff",
+          "patch_id": "5e6bb9e23066155a993effff",
           "enqueue_time": { "$date": "2020-05-12T19:52:00.182Z" }
         }
       ]
@@ -192,6 +194,10 @@
         "enabled": true,
         "message": "this is a message"
       }
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
     },
     {
       "_id": "cli-queue",

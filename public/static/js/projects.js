@@ -3,7 +3,6 @@ mciModule.controller(
   function ($scope, $window, $http, $location, $mdDialog, timeUtil) {
     $scope.availableTriggers = $window.availableTriggers;
     $scope.userId = $window.user.Id;
-    $scope.isAdmin = $window.isAdmin;
     $scope.create = $window.canCreate;
     $scope.validDefaultLoggers = $window.validDefaultLoggers;
 

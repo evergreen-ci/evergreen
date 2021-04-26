@@ -13,11 +13,12 @@ import (
 // provides a common format for different Queue implementations to
 // report on their state.
 //
-// Implement's grip's message.Composer interface when passed as a
+// Implements grip's message.Composer interface when passed as a
 // pointer.
 type QueueStats struct {
 	Running   int            `bson:"running" json:"running" yaml:"running"`
 	Completed int            `bson:"completed" json:"completed" yaml:"completed"`
+	Retrying  int            `bson:"retrying" json:"retrying" yaml:"retrying"`
 	Pending   int            `bson:"pending" json:"pending" yaml:"pending"`
 	Blocked   int            `bson:"blocked" json:"blocked" yaml:"blocked"`
 	Total     int            `bson:"total" json:"total" yaml:"total"`
@@ -28,16 +29,20 @@ type QueueStats struct {
 
 // String prints a long form report of the queue for human consumption.
 func (s QueueStats) String() string {
-	return fmt.Sprintf("running='%d', completed='%d', pending='%d', blocked='%d', total='%d'",
-		s.Running, s.Completed, s.Pending, s.Blocked, s.Total)
+	return fmt.Sprintf("running='%d', completed='%d', retrying='%d' pending='%d', blocked='%d', total='%d'",
+		s.Running, s.Completed, s.Retrying, s.Pending, s.Blocked, s.Total)
 }
 
-// IsComplete reutrns true when the total number of tasks are equal to
+// IsComplete returns true when the total number of jobs are equal to
 // the number completed, or if the number of completed and blocked are
-// greater than or equal to total. This method is used by the Wait<>
-// functions to determine when a queue has completed all actionable
-// work.
+// greater than or equal to total. For retryable queues, if any job is retrying,
+// it is not considered complete. This method is used by the Wait functions to
+// determine when a queue has completed all actionable work.
 func (s QueueStats) IsComplete() bool {
+	if s.Retrying > 0 {
+		return false
+	}
+
 	if s.Total == s.Completed {
 		return true
 	}

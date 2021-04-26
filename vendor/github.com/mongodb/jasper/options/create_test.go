@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -257,54 +258,44 @@ func TestCreate(t *testing.T) {
 			assert.Equal(t, 1, opts.TimeoutSecs)
 		},
 		"ResolveFailsWithInvalidLoggerConfiguration": func(t *testing.T, opts *Create) {
-			config, err := bson.Marshal(&SumoLogicLoggerOptions{})
+			b, err := bson.Marshal(&SplunkLoggerOptions{})
 			require.NoError(t, err)
-			opts.Output.Loggers = []*LoggerConfig{
-				{
-					info: loggerConfigInfo{
-						Type:   LogSumoLogic,
-						Format: RawLoggerConfigFormatBSON,
-						Config: config,
-					},
-				},
-			}
+			lc := NewLoggerConfig(LogSplunk, RawLoggerConfigFormatBSON, b)
+			opts.Output.Loggers = []*LoggerConfig{lc}
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
-		"ResolveFailsWithMismatchingLoggerConfiguration": func(t *testing.T, opts *Create) {
-			config, err := json.Marshal(&SumoLogicLoggerOptions{
-				SumoEndpoint: "endpoint",
+		"ResolveFailsWithMismatchingLoggerConfigurationFormat": func(t *testing.T, opts *Create) {
+			b, err := bson.Marshal(&SplunkLoggerOptions{
+				Splunk: send.SplunkConnectionInfo{
+					ServerURL: "https://example.com",
+					Token:     "token",
+					Channel:   "channel",
+				},
+				Base: BaseOptions{Format: LogFormatPlain},
 			})
 			require.NoError(t, err)
-			opts.Output.Loggers = []*LoggerConfig{
-				{
-					info: loggerConfigInfo{
-						Type:   LogSumoLogic,
-						Format: RawLoggerConfigFormatBSON,
-						Config: config,
-					},
-				},
-			}
+			lc := NewLoggerConfig(LogSplunk, RawLoggerConfigFormatBSON, b)
+			require.NoError(t, lc.Set(NewSplunkLoggerProducer()))
+			opts.Output.Loggers = []*LoggerConfig{lc}
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
-		"ResolveFailsWithInvalidErrorLoggingConfiguration": func(t *testing.T, opts *Create) {
-			config, err := json.Marshal(&SumoLogicLoggerOptions{
-				SumoEndpoint: "endpoint",
+		"ResolveSucceedsWithValidLoggingConfiguration": func(t *testing.T, opts *Create) {
+			b, err := json.Marshal(&SplunkLoggerOptions{
+				Splunk: send.SplunkConnectionInfo{
+					ServerURL: "https://example.com",
+					Token:     "token",
+					Channel:   "channel",
+				},
+				Base: BaseOptions{Format: LogFormatPlain},
 			})
 			require.NoError(t, err)
-			opts.Output.Loggers = []*LoggerConfig{
-				{
-					info: loggerConfigInfo{
-						Type:   LogSumoLogic,
-						Format: RawLoggerConfigFormatJSON,
-						Config: config,
-					},
-				},
-			}
-			opts.Output.SuppressOutput = true
+			lc := NewLoggerConfig(LogSplunk, RawLoggerConfigFormatJSON, b)
+			require.NoError(t, lc.Set(NewSplunkLoggerProducer()))
+			opts.Output.Loggers = []*LoggerConfig{lc}
 			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)

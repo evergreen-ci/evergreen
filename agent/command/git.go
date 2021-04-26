@@ -232,7 +232,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
+func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -254,7 +254,9 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 			// https://docs.github.com/en/rest/guides/getting-started-with-the-git-database-api#checking-mergeability-of-pull-requests
 			commitToTest, err = c.waitForMergeableCheck(ctx, opts.owner, opts.repo, conf.GithubPatchData.PRNumber)
 			if err != nil {
-				return nil, err
+				logger.Task().Error(errors.Wrap(err, "error checking if pull request is mergeable"))
+				commitToTest = conf.GithubPatchData.HeadHash
+				logger.Task().Warning(fmt.Sprintf("because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s)", commitToTest))
 			}
 			ref = "merge"
 			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
@@ -409,7 +411,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		return errors.Wrap(err, "could not validate options for cloning")
 	}
 
-	gitCommands, err := c.buildCloneCommand(ctx, conf, opts)
+	gitCommands, err := c.buildCloneCommand(ctx, conf, logger, opts)
 	if err != nil {
 		return err
 	}

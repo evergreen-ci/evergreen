@@ -812,6 +812,14 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restM
 	return commitQueuePosition, nil
 }
 
+func (r *patchResolver) ProjectIdentifier(ctx context.Context, apiPatch *restModel.APIPatch) (*string, error) {
+	identifier, err := model.GetIdentifierForProject(*apiPatch.ProjectId)
+	if err != nil {
+		return apiPatch.ProjectId, nil
+	}
+	return utility.ToStringPtr(identifier), nil
+}
+
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
@@ -1156,7 +1164,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}
 	opts := apimodels.GetCedarTestResultsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: *execution,
+		Execution: dbTask.Execution,
 	}
 	if len(dbTask.ExecutionTasks) > 0 {
 		opts.DisplayTaskID = taskID
@@ -1241,9 +1249,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 		for _, t := range paginatedFilteredTests {
 			apiTest := restModel.APITest{}
-			buildErr := apiTest.BuildFromService(&t)
-			if buildErr != nil {
-				return nil, InternalServerError.Send(ctx, buildErr.Error())
+			if err = apiTest.BuildFromService(taskID); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = apiTest.BuildFromService(&t); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
 				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
@@ -1269,9 +1279,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(cedarTestResults, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam)
 		for _, t := range filteredTestResults {
 			apiTest := restModel.APITest{}
-			buildErr := apiTest.BuildFromService(&t)
-			if buildErr != nil {
-				return nil, InternalServerError.Send(ctx, buildErr.Error())
+			if err = apiTest.BuildFromService(taskID); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = apiTest.BuildFromService(&t); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 
 			testPointers = append(testPointers, &apiTest)
@@ -1529,8 +1541,8 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		patchId := ""
 		if utility.FromStringPtr(item.Version) != "" {
 			patchId = utility.FromStringPtr(item.Version)
-		} else if utility.FromStringPtr(item.Issue) != "" && utility.FromStringPtr(item.Source) == commitqueue.SourceDiff {
-			patchId = utility.FromStringPtr(item.Issue)
+		} else if utility.FromStringPtr(item.PatchId) != "" {
+			patchId = utility.FromStringPtr(item.PatchId)
 		}
 		if patchId != "" {
 			p, err := r.sc.FindPatchById(patchId)
@@ -1837,7 +1849,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
 
-	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.Project), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, false)
+	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.ProjectId), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
 	}
@@ -2200,6 +2212,21 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 
 type taskResolver struct{ *Resolver }
 
+func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	t, err := r.sc.FindTaskById(*obj.Id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find task with id: %s", *obj.Id))
+	}
+	dt, err := t.GetDisplayTask()
+	if dt == nil || err != nil {
+		return nil, nil
+	}
+	apiTask := &restModel.APITask{}
+	if err = apiTask.BuildFromService(dt); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
+	}
+	return apiTask, nil
+}
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	tests, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
 	if err != nil {

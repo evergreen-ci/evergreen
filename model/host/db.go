@@ -471,52 +471,6 @@ func FindByProvisioningAttempt(attempt int) ([]Host, error) {
 	}))
 }
 
-// FindByExpiringJasperCredentials finds all hosts whose Jasper service
-// credentials will expire within the given cutoff. These hosts are marked as
-// needing provisioning changes.
-func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
-	deadline := time.Now().Add(cutoff)
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-	credentialsKey := evergreen.CredentialsCollection
-	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, CertUserTTLKey)
-
-	var hosts []Host
-
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			bootstrapKey: bson.M{"$in": []string{
-				distro.BootstrapMethodSSH,
-				distro.BootstrapMethodUserData,
-			}},
-			StatusKey: bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostProvisioning}},
-			"$or": []bson.M{
-				{NeedsReprovisionKey: bson.M{"$exists": false}},
-				{NeedsReprovisionKey: ReprovisionJasperRestart},
-			},
-			HasContainersKey: bson.M{"$ne": true},
-			ParentIDKey:      bson.M{"$exists": false},
-		}},
-		{"$lookup": bson.M{
-			"from":         evergreen.CredentialsCollection,
-			"localField":   JasperCredentialsIDKey,
-			"foreignField": CertUserIDKey,
-			"as":           credentialsKey,
-		}},
-		{"$match": bson.M{
-			expirationKey: bson.M{"$lte": deadline},
-		}},
-		{"$project": bson.M{
-			credentialsKey: 0,
-		}},
-	}
-
-	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
-		return nil, err
-	}
-
-	return hosts, nil
-}
-
 // FindByShouldConvertProvisioning finds all hosts that are ready and waiting to
 // convert their provisioning type.
 func FindByShouldConvertProvisioning() ([]Host, error) {
@@ -698,14 +652,27 @@ var IsIdle = db.Query(
 // last reachability check was before the specified threshold,
 // filtering out user-spawned hosts and hosts currently running tasks.
 func ByNotMonitoredSince(threshold time.Time) db.Q {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": false}},
-			{StatusKey: evergreen.HostRunning},
 			{StartedByKey: evergreen.User},
-			{"$or": []bson.M{
-				{LastCommunicationTimeKey: bson.M{"$lte": threshold}},
-				{LastCommunicationTimeKey: bson.M{"$exists": false}},
+			{"$and": []bson.M{
+				{"$or": []bson.M{
+					{StatusKey: evergreen.HostRunning},
+					// Hosts provisioned with user data which have not started
+					// the agent yet may be externally terminated without our
+					// knowledge, so they should be monitored.
+					{
+						StatusKey:      evergreen.HostStarting,
+						ProvisionedKey: true,
+						bootstrapKey:   distro.BootstrapMethodUserData,
+					},
+				}},
+				{"$or": []bson.M{
+					{LastCommunicationTimeKey: bson.M{"$lte": threshold}},
+					{LastCommunicationTimeKey: bson.M{"$exists": false}},
+				}},
 			}},
 		},
 	})
@@ -908,12 +875,15 @@ func ShouldDeployAgentMonitor() db.Q {
 // provisioned by the app server but are still being provisioned by user data.
 func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+	provisioningCutoff := time.Now().Add(-30 * time.Minute)
 
 	hosts, err := Find(db.Query(bson.M{
 		StatusKey:      evergreen.HostStarting,
 		ProvisionedKey: true,
-		StartedByKey:   bson.M{"$ne": evergreen.User},
-		bootstrapKey:   distro.BootstrapMethodUserData,
+		// Ignore hosts that have failed to provision within the cutoff.
+		ProvisionTimeKey: bson.M{"$gte": provisioningCutoff},
+		StartedByKey:     bson.M{"$ne": evergreen.User},
+		bootstrapKey:     distro.BootstrapMethodUserData,
 	}))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not find user data spawn hosts that are still provisioning themselves")

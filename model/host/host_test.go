@@ -3,7 +3,6 @@ package host
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
 	"testing"
 	"time"
@@ -216,6 +215,36 @@ func TestMonitorHosts(t *testing.T) {
 			found, err := Find(ByNotMonitoredSince(now))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 0)
+		})
+		Convey("a non-user data provisioned host with no reachability check should not return", func() {
+			require.NoError(t, db.Clear(Collection), "clearing collection '%s'", Collection)
+			h := Host{
+				Id:        "id",
+				Status:    evergreen.HostStarting,
+				StartedBy: evergreen.User,
+			}
+			So(h.Insert(), ShouldBeNil)
+			found, err := Find(ByNotMonitoredSince(now))
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 0)
+		})
+		Convey("a user data provisioned host with no reachability check should return", func() {
+			require.NoError(t, db.Clear(Collection), "clearing collection '%s'", Collection)
+			h := Host{
+				Id:          "id",
+				Status:      evergreen.HostStarting,
+				StartedBy:   evergreen.User,
+				Provisioned: true,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodUserData,
+					},
+				},
+			}
+			So(h.Insert(), ShouldBeNil)
+			found, err := Find(ByNotMonitoredSince(now))
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 1)
 		})
 	})
 }
@@ -1459,6 +1488,14 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
+		"IgnoresSpawnHostsThatProvisionForTooLong": func(t *testing.T, h *Host) {
+			h.ProvisionTime = time.Now().Add(-24 * time.Hour)
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
@@ -1466,10 +1503,11 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 				assert.NoError(t, db.Clear(Collection))
 			}()
 			h := Host{
-				Id:          "host_id",
-				Status:      evergreen.HostStarting,
-				Provisioned: true,
-				StartedBy:   "user",
+				Id:            "host_id",
+				Status:        evergreen.HostStarting,
+				Provisioned:   true,
+				ProvisionTime: time.Now(),
+				StartedBy:     "user",
 				Distro: distro.Distro{
 					Id: "distro_id",
 					BootstrapSettings: distro.BootstrapSettings{
@@ -1577,205 +1615,6 @@ func TestGenerateAndSaveJasperCredentials(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
 			testCase(tctx, t, env, &Host{Id: "id"})
-		})
-	}
-}
-
-func TestFindByExpiringJasperCredentials(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	env := testutil.NewEnvironment(ctx, t)
-
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
-		"IgnoresLegacyHost": func(ctx context.Context, t *testing.T) {
-			h := &Host{
-				Id: "id",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodLegacySSH,
-						Communication: distro.CommunicationMethodLegacySSH,
-					},
-				},
-				JasperCredentialsID: "cid",
-				Status:              evergreen.HostRunning,
-			}
-			require.NoError(t, h.Insert())
-
-			creds, err := h.GenerateJasperCredentials(ctx, env)
-			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
-
-			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
-			require.NoError(t, err)
-			assert.Empty(t, dbHosts)
-		},
-		"IgnoresWithoutCredentials": func(ctx context.Context, t *testing.T) {
-			h := &Host{
-				Id: "id",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodSSH,
-						Communication: distro.CommunicationMethodSSH,
-					},
-				},
-				JasperCredentialsID: "cid",
-				Status:              evergreen.HostRunning,
-			}
-			require.NoError(t, h.Insert())
-
-			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
-			require.NoError(t, err)
-			assert.Empty(t, dbHosts)
-		},
-		"IgnoresNonexpiringCredentials": func(ctx context.Context, t *testing.T) {
-			h := &Host{
-				Id: "id",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodSSH,
-						Communication: distro.CommunicationMethodSSH,
-					},
-				},
-				JasperCredentialsID: "cid",
-				Status:              evergreen.HostRunning,
-			}
-			require.NoError(t, h.Insert())
-
-			creds, err := h.GenerateJasperCredentials(ctx, env)
-			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
-
-			dbHosts, err := FindByExpiringJasperCredentials(time.Second)
-			require.NoError(t, err)
-			assert.Empty(t, dbHosts)
-		},
-		"IgnoresHostsAlreadyNeedingOtherProvisioning": func(ctx context.Context, t *testing.T) {
-			h := &Host{
-				Id: "id",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodSSH,
-						Communication: distro.CommunicationMethodSSH,
-					},
-				},
-				JasperCredentialsID: "cid",
-				Status:              evergreen.HostProvisioning,
-				NeedsReprovision:    ReprovisionToLegacy,
-			}
-			require.NoError(t, h.Insert())
-
-			creds, err := h.GenerateJasperCredentials(ctx, env)
-			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
-
-			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
-			require.NoError(t, err)
-			assert.Empty(t, dbHosts)
-		},
-		"ReturnsProvisioningHostsWithExpiringCredentials": func(ctx context.Context, t *testing.T) {
-			h := &Host{
-				Id: "id",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodSSH,
-						Communication: distro.CommunicationMethodSSH,
-					},
-				},
-				JasperCredentialsID: "cid",
-				Status:              evergreen.HostProvisioning,
-				NeedsReprovision:    ReprovisionJasperRestart,
-			}
-			require.NoError(t, h.Insert())
-
-			creds, err := h.GenerateJasperCredentials(ctx, env)
-			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
-
-			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
-			require.NoError(t, err)
-			require.Len(t, dbHosts, 1)
-			assert.Equal(t, h.Id, dbHosts[0].Id)
-		},
-		"ReturnsWithExpiringCredentials": func(ctx context.Context, t *testing.T) {
-			h := &Host{
-				Id: "id",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodSSH,
-						Communication: distro.CommunicationMethodSSH,
-					},
-				},
-				JasperCredentialsID: "cid",
-				Status:              evergreen.HostRunning,
-			}
-			require.NoError(t, h.Insert())
-
-			creds, err := h.GenerateJasperCredentials(ctx, env)
-			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
-
-			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
-			require.NoError(t, err)
-			require.Len(t, dbHosts, 1)
-			assert.Equal(t, h.Id, dbHosts[0].Id)
-		},
-		"IgnoresNotRunning": func(ctx context.Context, t *testing.T) {
-			h := &Host{
-				Id: "id",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodSSH,
-						Communication: distro.CommunicationMethodSSH,
-					},
-				},
-				JasperCredentialsID: "cid",
-				Status:              evergreen.HostTerminated,
-			}
-			require.NoError(t, h.Insert())
-
-			creds, err := h.GenerateJasperCredentials(ctx, env)
-			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
-
-			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
-			require.NoError(t, err)
-			assert.Empty(t, dbHosts)
-		},
-		"IgnoresContainers": func(ctx context.Context, t *testing.T) {
-			h := &Host{
-				Id: "id",
-				Distro: distro.Distro{
-					BootstrapSettings: distro.BootstrapSettings{
-						Method:        distro.BootstrapMethodSSH,
-						Communication: distro.CommunicationMethodSSH,
-					},
-				},
-				JasperCredentialsID: "cid",
-				Status:              evergreen.HostRunning,
-				ParentID:            "parent",
-			}
-			require.NoError(t, h.Insert())
-
-			creds, err := h.GenerateJasperCredentials(ctx, env)
-			require.NoError(t, err)
-			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
-
-			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
-			require.NoError(t, err)
-			assert.Empty(t, dbHosts)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
-
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx))
-			env.EnvContext = tctx
-
-			testCase(tctx, t)
-			assert.NoError(t, db.ClearCollections(evergreen.CredentialsCollection, Collection))
 		})
 	}
 }

@@ -37,16 +37,7 @@ func makeTasks() *shrub.Configuration {
 			FunctionWithVars("run-make", map[string]string{"target": target}).
 			Function("attach-test-results")
 	}
-	ubuntu1604 := config.Variant("ubuntu1604")
-	ubuntu1604.DisplayName("Ubuntu 16.04")
-	ubuntu1604.RunOn("ubuntu1604-test")
-	ubuntu1604.SetExpansions(map[string]interface{}{
-		"gobin":            "/opt/golang/go1.9/bin/go",
-		"disable_coverage": "yes",
-		"goroot":           "/opt/golang/go1.9",
-		"mongodb_url":      "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz",
-	})
-	ubuntu1604.AddTasks(targets...)
+	_ = config.Variant("ubuntu1604").AddTasks(targets...)
 
 	config.Function("get-project").Append(&shrub.CommandDefinition{
 		CommandName:   "git.get_project",
@@ -64,13 +55,15 @@ func makeTasks() *shrub.Configuration {
 			"working_dir": "gopath/src/github.com/evergreen-ci/evergreen",
 			"command":     "bash scripts/setup-credentials.sh",
 			"env": map[string]string{
-				"GITHUB_TOKEN": "${github_token}",
-				"JIRA_SERVER":  "${jiraserver}",
-				"CROWD_SERVER": "${crowdserver}",
-				"CROWD_USER":   "${crowduser}",
-				"CROWD_PW":     "${crowdpw}",
-				"AWS_KEY":      "${aws_key}",
-				"AWS_SECRET":   "${aws_secret}",
+				"GITHUB_TOKEN":      "${github_token}",
+				"JIRA_SERVER":       "${jiraserver}",
+				"CROWD_SERVER":      "${crowdserver}",
+				"AWS_KEY":           "${aws_key}",
+				"AWS_SECRET":        "${aws_secret}",
+				"JIRA_PRIVATE_KEY":  "${jira_private_key}",
+				"JIRA_ACCESS_TOKEN": "${jira_access_token}",
+				"JIRA_TOKEN_SECRET": "${jira_token_secret}",
+				"JIRA_CONSUMER_KEY": "${jira_consumer_key}",
 			},
 		},
 	})

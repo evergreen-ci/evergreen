@@ -3,7 +3,6 @@ package gimlet
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -270,8 +269,6 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 	var resources []string
 	var status int
 	var err error
-	start := time.Now()
-	begin := start
 	if rp.opts.ResourceFunc != nil {
 		resources, status, err = rp.opts.ResourceFunc(r)
 		if err != nil {
@@ -286,14 +283,6 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 			}
 		}
 	}
-	grip.Debug(message.Fields{
-		"ticket":      "EVG-14261",
-		"resources":   resources,
-		"step":        "ResourceFunc",
-		"func":        "requiresPermissionHandler",
-		"duration_ns": time.Since(start).Nanoseconds(),
-	})
-	start = time.Now()
 
 	if len(resources) == 0 {
 		http.Error(rw, "no resources found", http.StatusNotFound)
@@ -302,20 +291,6 @@ func (rp *requiresPermissionHandler) ServeHTTP(rw http.ResponseWriter, r *http.R
 	if ok := rp.checkPermissions(rw, r.Context(), resources); !ok {
 		return
 	}
-	grip.Debug(message.Fields{
-		"ticket":      "EVG-14261",
-		"resources":   resources,
-		"step":        "ResourceFunc",
-		"func":        "requiresPermissionHandler",
-		"duration_ns": time.Since(start).Nanoseconds(),
-	})
-	grip.Debug(message.Fields{
-		"ticket":      "EVG-14261",
-		"resources":   resources,
-		"step":        "total",
-		"func":        "requiresPermissionHandler",
-		"duration_ns": time.Since(begin).Nanoseconds(),
-	})
 
 	next(rw, r)
 }

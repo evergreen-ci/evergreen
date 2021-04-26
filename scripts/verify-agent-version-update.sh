@@ -3,7 +3,7 @@
 set -eo pipefail
 
 if [[ "${BRANCH_NAME}" == "" ]]; then
-    BRANCH_NAME=master;
+    BRANCH_NAME=main;
 fi
 
 # Find the common ancestor between the current set of changes and the upstream branch, then see if any source code files
@@ -32,6 +32,5 @@ if [[ "${last_commit_agent_version_updated}" == "0000000000000000000000000000000
 fi
 
 echo -e "Files affected by agent version update:\n${files_changed}" >&2
-echo "${files_changed}" >&2
 echo "Agent has been changed but agent version has not been updated. Please update the agent version." >&2
 exit 1

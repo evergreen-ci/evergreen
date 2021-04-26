@@ -291,8 +291,30 @@ type TestResult struct {
 	TaskID          string  `json:"task_id" bson:"task_id"`
 	Execution       int     `json:"execution" bson:"execution"`
 
-	// LogRaw is not saved in the task
-	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
+	// LogRaw and LogTestName are not saved in the task
+	LogRaw      string `json:"log_raw" bson:"log_raw,omitempty"`
+	LogTestName string `json:"log_test_name" bson:"log_test_name"`
+}
+
+// GetLogTestName returns the name of the test in the logging backend. This is
+// used for test logs in cedar where the name of the test in the logging
+// service may differ from that in the test results service.
+func (tr *TestResult) GetLogTestName() string {
+	if tr.LogTestName != "" {
+		return tr.LogTestName
+	}
+
+	return tr.TestFile
+}
+
+// GetDisplayTestName returns the name of the test that should be displayed in
+// the UI. In most cases, this will just be TestFile.
+func (tr *TestResult) GetDisplayTestName() string {
+	if tr.DisplayTestName != "" {
+		return tr.DisplayTestName
+	}
+
+	return tr.TestFile
 }
 
 type DisplayTaskCache struct {
@@ -1373,34 +1395,7 @@ func (t *Task) displayTaskPriority() int {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func (t *Task) Reset() error {
-	t.Activated = true
-	t.Secret = utility.RandomString()
-	t.DispatchTime = utility.ZeroTime
-	t.StartTime = utility.ZeroTime
-	t.ScheduledTime = utility.ZeroTime
-	t.FinishTime = utility.ZeroTime
-	t.DependenciesMetTime = utility.ZeroTime
-	t.ResetWhenFinished = false
-	reset := bson.M{
-		"$set": bson.M{
-			ActivatedKey:           true,
-			SecretKey:              t.Secret,
-			StatusKey:              evergreen.TaskUndispatched,
-			DispatchTimeKey:        utility.ZeroTime,
-			StartTimeKey:           utility.ZeroTime,
-			ScheduledTimeKey:       utility.ZeroTime,
-			FinishTimeKey:          utility.ZeroTime,
-			DependenciesMetTimeKey: utility.ZeroTime,
-			LastHeartbeatKey:       utility.ZeroTime,
-		},
-		"$unset": bson.M{
-			DetailsKey:           "",
-			ResetWhenFinishedKey: "",
-			HasCedarResultsKey:   "",
-			HostIdKey:            "",
-			AgentVersionKey:      "",
-		},
-	}
+	reset := resetTaskUpdate(t)
 
 	return UpdateOne(
 		bson.M{
@@ -1417,28 +1412,57 @@ func ResetTasks(taskIds []string) error {
 		bson.M{
 			IdKey: bson.M{"$in": taskIds},
 		},
-		bson.M{
-			"$set": bson.M{
-				ActivatedKey:           true,
-				SecretKey:              utility.RandomString(),
-				HostIdKey:              "",
-				StatusKey:              evergreen.TaskUndispatched,
-				DispatchTimeKey:        utility.ZeroTime,
-				StartTimeKey:           utility.ZeroTime,
-				ScheduledTimeKey:       utility.ZeroTime,
-				FinishTimeKey:          utility.ZeroTime,
-				DependenciesMetTimeKey: utility.ZeroTime,
-				TimeTakenKey:           utility.ZeroTime,
-			},
-			"$unset": bson.M{
-				DetailsKey:           "",
-				HasCedarResultsKey:   "",
-				ResetWhenFinishedKey: "",
-			},
-		},
+		resetTaskUpdate(nil),
 	)
 
 	return err
+}
+
+func resetTaskUpdate(t *Task) bson.M {
+	newSecret := utility.RandomString()
+	now := time.Now()
+	if t != nil {
+		t.Activated = true
+		t.ActivatedTime = now
+		t.Secret = newSecret
+		t.HostId = ""
+		t.Status = evergreen.TaskUndispatched
+		t.DispatchTime = utility.ZeroTime
+		t.StartTime = utility.ZeroTime
+		t.ScheduledTime = utility.ZeroTime
+		t.FinishTime = utility.ZeroTime
+		t.DependenciesMetTime = utility.ZeroTime
+		t.TimeTaken = 0
+		t.LastHeartbeat = utility.ZeroTime
+		t.Details = apimodels.TaskEndDetail{}
+		t.HasCedarResults = false
+		t.ResetWhenFinished = false
+		t.HostId = ""
+		t.AgentVersion = ""
+	}
+	update := bson.M{
+		"$set": bson.M{
+			ActivatedKey:           true,
+			ActivatedTimeKey:       now,
+			SecretKey:              newSecret,
+			HostIdKey:              "",
+			StatusKey:              evergreen.TaskUndispatched,
+			DispatchTimeKey:        utility.ZeroTime,
+			StartTimeKey:           utility.ZeroTime,
+			ScheduledTimeKey:       utility.ZeroTime,
+			FinishTimeKey:          utility.ZeroTime,
+			DependenciesMetTimeKey: utility.ZeroTime,
+			TimeTakenKey:           0,
+			LastHeartbeatKey:       utility.ZeroTime,
+		},
+		"$unset": bson.M{
+			DetailsKey:           "",
+			HasCedarResultsKey:   "",
+			ResetWhenFinishedKey: "",
+			AgentVersionKey:      "",
+		},
+	}
+	return update
 }
 
 // UpdateHeartbeat updates the heartbeat to be the current time
@@ -2976,9 +3000,23 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		TestFile:        result.TestName,
 		DisplayTestName: result.DisplayTestName,
 		GroupID:         result.GroupID,
+		LogTestName:     result.LogTestName,
 		LineNum:         result.LineNum,
 		StartTime:       float64(result.Start.Unix()),
 		EndTime:         float64(result.End.Unix()),
 		Status:          result.Status,
 	}
+}
+
+func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
+	if len(execTasks) == 0 {
+		return nil
+	}
+
+	return UpdateOne(
+		bson.M{IdKey: displayTaskId},
+		bson.M{"$addToSet": bson.M{
+			ExecutionTasksKey: bson.M{"$each": execTasks},
+		}},
+	)
 }

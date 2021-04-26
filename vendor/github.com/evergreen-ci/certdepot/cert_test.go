@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
-	"github.com/square/certstrap/depot"
 	"github.com/square/certstrap/pkix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +23,7 @@ func TestInit(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tempDir))
 	}()
-	d, err := depot.NewFileDepot(tempDir)
+	d, err := NewFileDepot(tempDir)
 	require.NoError(t, err)
 
 	opts := &CertificateOptions{
@@ -62,7 +61,7 @@ func TestInit(t *testing.T) {
 			keyTest: func() {
 				var key *pkix.Key
 
-				key, err = depot.GetPrivateKey(d, opts.CommonName)
+				key, err = GetPrivateKey(d, opts.CommonName)
 				require.NoError(t, err)
 				privKey, ok := key.Private.(*rsa.PrivateKey)
 				require.True(t, ok)
@@ -92,7 +91,7 @@ func TestInit(t *testing.T) {
 				require.NoError(t, err)
 				existingKey, err = pkix.NewKeyFromPrivateKeyPEM(data)
 				require.NoError(t, err)
-				key, err = depot.GetPrivateKey(d, opts.CommonName)
+				key, err = GetPrivateKey(d, opts.CommonName)
 				require.NoError(t, err)
 				assert.Equal(t, existingKey, key)
 			},
@@ -107,7 +106,7 @@ func TestInit(t *testing.T) {
 			keyTest: func() {
 				var key *pkix.Key
 
-				key, err = depot.GetPrivateKey(d, opts.CommonName)
+				key, err = GetPrivateKey(d, opts.CommonName)
 				require.NoError(t, err)
 				privKey, ok := key.Private.(*rsa.PrivateKey)
 				require.True(t, ok)
@@ -122,9 +121,9 @@ func TestInit(t *testing.T) {
 				opts.Passphrase = "passphrase"
 			},
 			keyTest: func() {
-				_, err = depot.GetPrivateKey(d, opts.CommonName)
+				_, err = GetPrivateKey(d, opts.CommonName)
 				assert.Error(t, err)
-				_, err = depot.GetEncryptedPrivateKey(d, opts.CommonName, []byte(opts.Passphrase))
+				_, err = GetEncryptedPrivateKey(d, opts.CommonName, []byte(opts.Passphrase))
 				assert.NoError(t, err)
 
 			},
@@ -176,7 +175,7 @@ func TestCertRequest(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tempDir))
 	}()
-	d, err := depot.NewFileDepot(tempDir)
+	d, err := NewFileDepot(tempDir)
 	require.NoError(t, err)
 
 	opts := &CertificateOptions{
@@ -217,7 +216,7 @@ func TestCertRequest(t *testing.T) {
 			keyTest: func() {
 				var key *pkix.Key
 
-				key, err = depot.GetPrivateKey(d, opts.Domain[0])
+				key, err = GetPrivateKey(d, opts.Domain[0])
 				require.NoError(t, err)
 				privKey, ok := key.Private.(*rsa.PrivateKey)
 				require.True(t, ok)
@@ -233,7 +232,7 @@ func TestCertRequest(t *testing.T) {
 			keyTest: func() {
 				var key *pkix.Key
 
-				key, err = depot.GetPrivateKey(d, opts.CommonName)
+				key, err = GetPrivateKey(d, opts.CommonName)
 				require.NoError(t, err)
 				privKey, ok := key.Private.(*rsa.PrivateKey)
 				require.True(t, ok)
@@ -264,7 +263,7 @@ func TestCertRequest(t *testing.T) {
 				require.NoError(t, err)
 				existingKey, err = pkix.NewKeyFromPrivateKeyPEM(data)
 				require.NoError(t, err)
-				key, err = depot.GetPrivateKey(d, opts.CommonName)
+				key, err = GetPrivateKey(d, opts.CommonName)
 				require.NoError(t, err)
 				assert.Equal(t, existingKey, key)
 			},
@@ -280,7 +279,7 @@ func TestCertRequest(t *testing.T) {
 			keyTest: func() {
 				var key *pkix.Key
 
-				key, err = depot.GetPrivateKey(d, opts.CommonName)
+				key, err = GetPrivateKey(d, opts.CommonName)
 				require.NoError(t, err)
 				privKey, ok := key.Private.(*rsa.PrivateKey)
 				require.True(t, ok)
@@ -296,9 +295,9 @@ func TestCertRequest(t *testing.T) {
 				opts.Passphrase = "passphrase"
 			},
 			keyTest: func() {
-				_, err = depot.GetPrivateKey(d, opts.CommonName)
+				_, err = GetPrivateKey(d, opts.CommonName)
 				assert.Error(t, err)
-				_, err = depot.GetEncryptedPrivateKey(d, opts.CommonName, []byte(opts.Passphrase))
+				_, err = GetEncryptedPrivateKey(d, opts.CommonName, []byte(opts.Passphrase))
 				assert.NoError(t, err)
 			},
 		},
@@ -339,7 +338,7 @@ func TestCertRequest(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 
-				csr, err := depot.GetCertificateSigningRequest(d, test.csrName)
+				csr, err := GetCertificateSigningRequest(d, test.csrName)
 				require.NoError(t, err)
 				rawCSR, err := csr.GetRawCertificateSigningRequest()
 				require.NoError(t, err)
@@ -360,23 +359,23 @@ func TestCertRequest(t *testing.T) {
 }
 
 func TestInMemory(t *testing.T) {
-	// Resets depot state
-	clearByName := func(d depot.Depot, name string) error {
+	// Resets depot state.
+	clearByName := func(d Depot, name string) error {
 		catcher := grip.NewBasicCatcher()
-		if csrTag := depot.CsrTag(name); d.Check(csrTag) {
+		if csrTag := CsrTag(name); d.Check(csrTag) {
 			catcher.Add(d.Delete(csrTag))
 		}
-		if keyTag := depot.PrivKeyTag(name); d.Check(keyTag) {
+		if keyTag := PrivKeyTag(name); d.Check(keyTag) {
 			catcher.Add(d.Delete(keyTag))
 		}
-		if crtTag := depot.CrtTag(name); d.Check(crtTag) {
+		if crtTag := CrtTag(name); d.Check(crtTag) {
 			catcher.Add(d.Delete(crtTag))
 		}
 		return catcher.Resolve()
 	}
 
-	for testName, testCase := range map[string]func(t *testing.T, d depot.Depot, opts *CertificateOptions){
-		"CertRequestInMemory": func(t *testing.T, d depot.Depot, opts *CertificateOptions) {
+	for testName, testCase := range map[string]func(t *testing.T, d Depot, opts *CertificateOptions){
+		"CertRequestInMemory": func(t *testing.T, d Depot, opts *CertificateOptions) {
 			checkMatchingCSR := func(t *testing.T, opts *CertificateOptions, rawCSR *x509.CertificateRequest) {
 				assert.Equal(t, opts.CommonName, rawCSR.Subject.CommonName)
 				assert.Equal(t, []string{opts.Organization}, rawCSR.Subject.Organization)
@@ -406,8 +405,8 @@ func TestInMemory(t *testing.T) {
 
 					checkMatchingCSR(t, opts, rawCSR)
 
-					assert.False(t, depot.CheckCertificateSigningRequest(d, name))
-					assert.False(t, depot.CheckPrivateKey(d, name))
+					assert.False(t, CheckCertificateSigningRequest(d, name))
+					assert.False(t, CheckPrivateKey(d, name))
 				},
 				"SucceedsAfterCertRequestInDepot": func(t *testing.T, name string) {
 					require.NoError(t, opts.CertRequest(d))
@@ -416,10 +415,10 @@ func TestInMemory(t *testing.T) {
 
 					pemCSR, pemKey := exportCSRAndKey(t, csr, key)
 
-					dbCSR, err := d.Get(depot.CsrTag(name))
+					dbCSR, err := d.Get(CsrTag(name))
 					require.NoError(t, err)
 
-					dbKey, err := d.Get(depot.PrivKeyTag(name))
+					dbKey, err := d.Get(PrivKeyTag(name))
 					require.NoError(t, err)
 
 					assert.Equal(t, dbCSR, pemCSR)
@@ -431,9 +430,9 @@ func TestInMemory(t *testing.T) {
 					pemCSR, pemKey := exportCSRAndKey(t, csr, key)
 
 					require.NoError(t, opts.CertRequest(d))
-					dbCSR, err := d.Get(depot.CsrTag(name))
+					dbCSR, err := d.Get(CsrTag(name))
 					require.NoError(t, err)
-					dbKey, err := d.Get(depot.PrivKeyTag(name))
+					dbKey, err := d.Get(PrivKeyTag(name))
 					require.NoError(t, err)
 
 					assert.Equal(t, dbCSR, pemCSR)
@@ -466,7 +465,7 @@ func TestInMemory(t *testing.T) {
 				})
 			}
 		},
-		"PutCertRequest": func(t *testing.T, d depot.Depot, opts *CertificateOptions) {
+		"PutCertRequest": func(t *testing.T, d Depot, opts *CertificateOptions) {
 			for subTestName, subTestCase := range map[string]func(t *testing.T, name string){
 				"FailsWithoutCertRequestInMemory": func(t *testing.T, name string) {
 					assert.Error(t, opts.PutCertRequestFromMemory(d))
@@ -482,13 +481,13 @@ func TestInMemory(t *testing.T) {
 
 					pemCSR, err := csr.Export()
 					require.NoError(t, err)
-					depotCSR, err := d.Get(depot.CsrTag(name))
+					depotCSR, err := d.Get(CsrTag(name))
 					require.NoError(t, err)
 					assert.Equal(t, pemCSR, depotCSR)
 
 					pemKey, err := key.ExportPrivate()
 					require.NoError(t, err)
-					depotKey, err := d.Get(depot.PrivKeyTag(name))
+					depotKey, err := d.Get(PrivKeyTag(name))
 					require.NoError(t, err)
 					assert.Equal(t, pemKey, depotKey)
 				},
@@ -507,7 +506,7 @@ func TestInMemory(t *testing.T) {
 				})
 			}
 		},
-		"SignInMemory": func(t *testing.T, d depot.Depot, opts *CertificateOptions) {
+		"SignInMemory": func(t *testing.T, d Depot, opts *CertificateOptions) {
 			checkMatchingCert := func(t *testing.T, opts *CertificateOptions, rawCrt *x509.Certificate) {
 				assert.Equal(t, opts.CommonName, rawCrt.Subject.CommonName)
 				assert.Equal(t, []string{opts.Organization}, rawCrt.Subject.Organization)
@@ -555,7 +554,7 @@ func TestInMemory(t *testing.T) {
 
 					require.NoError(t, opts.Sign(d))
 
-					dbCrt, err := d.Get(depot.CrtTag(name))
+					dbCrt, err := d.Get(CrtTag(name))
 					require.NoError(t, err)
 
 					assert.Equal(t, dbCrt, pemCrt)
@@ -593,7 +592,7 @@ func TestInMemory(t *testing.T) {
 				})
 			}
 		},
-		"PutCertFromMemory": func(t *testing.T, d depot.Depot, opts *CertificateOptions) {
+		"PutCertFromMemory": func(t *testing.T, d Depot, opts *CertificateOptions) {
 			for subTestName, subTestCase := range map[string]func(t *testing.T, name string){
 				"FailsWithoutSignInMemory": func(t *testing.T, name string) {
 					assert.Error(t, opts.PutCertFromMemory(d))
@@ -607,7 +606,7 @@ func TestInMemory(t *testing.T) {
 
 					pemCert, err := cert.Export()
 					require.NoError(t, err)
-					depotCert, err := d.Get(depot.CrtTag(name))
+					depotCert, err := d.Get(CrtTag(name))
 					require.NoError(t, err)
 					assert.Equal(t, pemCert, depotCert)
 				},
@@ -648,7 +647,7 @@ func TestInMemory(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.RemoveAll(tempDir))
 			}()
-			d, err := depot.NewFileDepot(tempDir)
+			d, err := NewFileDepot(tempDir)
 			require.NoError(t, err)
 
 			require.NoError(t, caOpts.Init(d))
@@ -679,7 +678,7 @@ func TestSign(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tempDir))
 	}()
-	d, err := depot.NewFileDepot(tempDir)
+	d, err := NewFileDepot(tempDir)
 	require.NoError(t, err)
 
 	caOpts := &CertificateOptions{

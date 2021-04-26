@@ -20,6 +20,7 @@ type CedarTestResult struct {
 	DisplayTestName string    `json:"display_test_name"`
 	GroupID         string    `json:"group_id"`
 	Status          string    `json:"status"`
+	LogTestName     string    `json:"log_test_name"`
 	LineNum         int       `json:"line_num"`
 	Start           time.Time `json:"test_start_time"`
 	End             time.Time `json:"test_end_time"`
@@ -52,8 +53,16 @@ func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (
 	}
 
 	testResults := []CedarTestResult{}
-	if err = json.Unmarshal(data, &testResults); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal test results for from cedar")
+	if opts.TestName != "" {
+		testResult := CedarTestResult{}
+		if err = json.Unmarshal(data, &testResult); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal test result for from cedar")
+		}
+		testResults = append(testResults, testResult)
+	} else {
+		if err = json.Unmarshal(data, &testResults); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal test results for from cedar")
+		}
 	}
 
 	return testResults, nil

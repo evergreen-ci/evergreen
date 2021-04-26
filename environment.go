@@ -378,11 +378,12 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
 
 	args := queue.MongoDBQueueCreationOptions{
-		Size:    e.settings.Amboy.PoolSizeRemote,
-		Name:    e.settings.Amboy.Name,
-		Ordered: false,
-		Client:  e.client,
-		MDB:     opts,
+		Size:      e.settings.Amboy.PoolSizeRemote,
+		Name:      e.settings.Amboy.Name,
+		Ordered:   false,
+		Client:    e.client,
+		MDB:       opts,
+		Retryable: e.settings.Amboy.Retry.RetryableQueueOptions(),
 	}
 
 	rq, err := queue.NewMongoDBQueue(ctx, args)
@@ -420,6 +421,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
+		Retryable:                 e.settings.Amboy.Retry.RetryableQueueOptions(),
 	}
 
 	remoteQueueGroup, err := queue.NewMongoDBSingleQueueGroup(ctx, remoteQueueGroupOpts, e.client, opts)
@@ -676,7 +678,7 @@ func (e *envState) initDepot(ctx context.Context) error {
 			CollectionName: CredentialsCollection,
 			DepotOptions: certdepot.DepotOptions{
 				CA:                CAName,
-				DefaultExpiration: 365 * 24 * time.Hour,
+				DefaultExpiration: maxExpiration,
 			},
 		},
 		CAOpts: &certdepot.CertificateOptions{

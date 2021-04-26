@@ -11,30 +11,34 @@ import (
 
 // CreateOptions represent options to create a new test results record.
 type CreateOptions struct {
-	Project         string `bson:"project" json:"project" yaml:"project"`
-	Version         string `bson:"version" json:"version" yaml:"version"`
-	Variant         string `bson:"variant" json:"variant" yaml:"variant"`
-	TaskID          string `bson:"task_id" json:"task_id" yaml:"task_id"`
-	TaskName        string `bson:"task_name" json:"task_name" yaml:"task_name"`
-	DisplayTaskName string `bson:"display_task_name" json:"display_task_name" yaml:"display_task_name"`
-	DisplayTaskID   string `bson:"display_task_id" json:"display_task_id" yaml:"display_task_id"`
-	Execution       int32  `bson:"execution" json:"execution" yaml:"execution"`
-	RequestType     string `bson:"request_type" json:"request_type" yaml:"request_type"`
-	Mainline        bool   `bson:"mainline" json:"mainline" yaml:"mainline"`
+	Project                string   `bson:"project" json:"project" yaml:"project"`
+	Version                string   `bson:"version" json:"version" yaml:"version"`
+	Variant                string   `bson:"variant" json:"variant" yaml:"variant"`
+	TaskID                 string   `bson:"task_id" json:"task_id" yaml:"task_id"`
+	TaskName               string   `bson:"task_name" json:"task_name" yaml:"task_name"`
+	DisplayTaskName        string   `bson:"display_task_name" json:"display_task_name" yaml:"display_task_name"`
+	DisplayTaskID          string   `bson:"display_task_id" json:"display_task_id" yaml:"display_task_id"`
+	Execution              int32    `bson:"execution" json:"execution" yaml:"execution"`
+	RequestType            string   `bson:"request_type" json:"request_type" yaml:"request_type"`
+	Mainline               bool     `bson:"mainline" json:"mainline" yaml:"mainline"`
+	HistoricalDataIgnore   []string `bson:"historical_data_ignore" json:"historical_data_ignore" yaml:"historical_data_ignore"`
+	HistoricalDataDisabled bool     `bson:"historical_data_disabled" json:"historical_data_disabled" yaml:"historical_data_disabled"`
 }
 
 func (opts CreateOptions) export() *gopb.TestResultsInfo {
 	return &gopb.TestResultsInfo{
-		Project:         opts.Project,
-		Version:         opts.Version,
-		Variant:         opts.Variant,
-		TaskName:        opts.TaskName,
-		TaskId:          opts.TaskID,
-		DisplayTaskName: opts.DisplayTaskName,
-		DisplayTaskId:   opts.DisplayTaskID,
-		Execution:       opts.Execution,
-		RequestType:     opts.RequestType,
-		Mainline:        opts.Mainline,
+		Project:                opts.Project,
+		Version:                opts.Version,
+		Variant:                opts.Variant,
+		TaskName:               opts.TaskName,
+		TaskId:                 opts.TaskID,
+		DisplayTaskName:        opts.DisplayTaskName,
+		DisplayTaskId:          opts.DisplayTaskID,
+		Execution:              opts.Execution,
+		RequestType:            opts.RequestType,
+		Mainline:               opts.Mainline,
+		HistoricalDataIgnore:   opts.HistoricalDataIgnore,
+		HistoricalDataDisabled: opts.HistoricalDataDisabled,
 	}
 }
 
@@ -73,6 +77,7 @@ type Result struct {
 	GroupID         string    `bson:"group_id" json:"group_id" yaml:"group_id"`
 	Trial           int32     `bson:"trial" json:"trial" yaml:"trial"`
 	Status          string    `bson:"status" json:"status" yaml:"status"`
+	LogTestName     string    `bson:"log_test_name" json:"log_test_name" yaml:"log_test_name"`
 	LineNum         int32     `bson:"line_num" json:"line_num" yaml:"line_num"`
 	TaskCreated     time.Time `bson:"task_created" json:"task_created" yaml:"task_created"`
 	TestStarted     time.Time `bson:"test_started" json:"test_started" yaml:"test_started"`
@@ -99,6 +104,7 @@ func (r Result) export() (*gopb.TestResult, error) {
 		GroupId:         r.GroupID,
 		Trial:           r.Trial,
 		Status:          r.Status,
+		LogTestName:     r.LogTestName,
 		LineNum:         r.LineNum,
 		TaskCreateTime:  created,
 		TestStartTime:   started,

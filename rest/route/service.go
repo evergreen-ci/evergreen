@@ -83,7 +83,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/commit_queue/{project_id}/{item}").Version(2).Delete().Wrap(checkUser, addProject, checkCommitQueueItemOwner, editTasks).RouteHandler(makeDeleteCommitQueueItems(sc, env))
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Put().Wrap(checkUser, addProject, checkCommitQueueItemOwner, editTasks).RouteHandler(makeCommitQueueEnqueueItem(sc))
 	app.AddRoute("/commit_queue/{patch_id}/additional").Version(2).Get().Wrap(checkTask).RouteHandler(makeCommitQueueAdditionalPatches(sc))
-	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Get().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc)) // TODO EVG-14087 remove this
 	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Post().Wrap(checkTask).RouteHandler(makeCommitQueueConcludeMerge(sc))
 	app.AddRoute("/commit_queue/{patch_id}/message").Version(2).Get().Wrap(checkUser).RouteHandler(makecqMessageForPatch(sc))
 	app.AddRoute("/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeDistroRoute(sc))
@@ -190,7 +189,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetUserConfig(sc))
 	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/users/{user_id}/patches").Version(2).Get().Wrap(checkUser).RouteHandler(makeUserPatchHandler(sc))
-	app.AddRoute("/users/{user_id}/offboard_user").Version(2).Post().Wrap(checkUser, editRoles).RouteHandler(makeOffboardUser(sc, env))
+	app.AddRoute("/users/offboard_user").Version(2).Post().Wrap(checkUser, editRoles).RouteHandler(makeOffboardUser(sc, env))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetUserPermissions(sc, evergreen.GetEnvironment().RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(checkUser, editRoles).RouteHandler(makeModifyUserPermissions(sc, evergreen.GetEnvironment().RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Delete().Wrap(checkUser, editRoles).RouteHandler(makeDeleteUserPermissions(sc, evergreen.GetEnvironment().RoleManager()))

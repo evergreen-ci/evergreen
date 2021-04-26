@@ -389,6 +389,7 @@ type ComplexityRoot struct {
 		PatchNumber             func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
+		ProjectIdentifier       func(childComplexity int) int
 		Status                  func(childComplexity int) int
 		TaskCount               func(childComplexity int) int
 		TaskStatuses            func(childComplexity int) int
@@ -564,6 +565,7 @@ type ComplexityRoot struct {
 		DispatchTime            func(childComplexity int) int
 		DisplayName             func(childComplexity int) int
 		DisplayOnly             func(childComplexity int) int
+		DisplayTask             func(childComplexity int) int
 		DistroId                func(childComplexity int) int
 		EstimatedStart          func(childComplexity int) int
 		Execution               func(childComplexity int) int
@@ -607,6 +609,7 @@ type ComplexityRoot struct {
 		OOMTracker  func(childComplexity int) int
 		Status      func(childComplexity int) int
 		TimedOut    func(childComplexity int) int
+		TimeoutType func(childComplexity int) int
 		Type        func(childComplexity int) int
 	}
 
@@ -692,19 +695,21 @@ type ComplexityRoot struct {
 	}
 
 	TestResult struct {
-		BaseStatus func(childComplexity int) int
-		Duration   func(childComplexity int) int
-		EndTime    func(childComplexity int) int
-		Execution  func(childComplexity int) int
-		ExitCode   func(childComplexity int) int
-		GroupId    func(childComplexity int) int
-		Id         func(childComplexity int) int
-		LineNum    func(childComplexity int) int
-		Logs       func(childComplexity int) int
-		StartTime  func(childComplexity int) int
-		Status     func(childComplexity int) int
-		TaskId     func(childComplexity int) int
-		TestFile   func(childComplexity int) int
+		BaseStatus      func(childComplexity int) int
+		DisplayTestName func(childComplexity int) int
+		Duration        func(childComplexity int) int
+		EndTime         func(childComplexity int) int
+		Execution       func(childComplexity int) int
+		ExitCode        func(childComplexity int) int
+		GroupId         func(childComplexity int) int
+		Id              func(childComplexity int) int
+		LineNum         func(childComplexity int) int
+		LogTestName     func(childComplexity int) int
+		Logs            func(childComplexity int) int
+		StartTime       func(childComplexity int) int
+		Status          func(childComplexity int) int
+		TaskId          func(childComplexity int) int
+		TestFile        func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -895,6 +900,8 @@ type TaskResolver interface {
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
 
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
+
+	DisplayTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
 	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
 
@@ -2625,6 +2632,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.ProjectId(childComplexity), true
 
+	case "Patch.projectIdentifier":
+		if e.complexity.Patch.ProjectIdentifier == nil {
+			break
+		}
+
+		return e.complexity.Patch.ProjectIdentifier(childComplexity), true
+
 	case "Patch.status":
 		if e.complexity.Patch.Status == nil {
 			break
@@ -3572,6 +3586,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.DisplayOnly(childComplexity), true
 
+	case "Task.displayTask":
+		if e.complexity.Task.DisplayTask == nil {
+			break
+		}
+
+		return e.complexity.Task.DisplayTask(childComplexity), true
+
 	case "Task.distroId":
 		if e.complexity.Task.DistroId == nil {
 			break
@@ -3851,6 +3872,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskEndDetail.TimedOut(childComplexity), true
+
+	case "TaskEndDetail.timeoutType":
+		if e.complexity.TaskEndDetail.TimeoutType == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.TimeoutType(childComplexity), true
 
 	case "TaskEndDetail.type":
 		if e.complexity.TaskEndDetail.Type == nil {
@@ -4223,6 +4251,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestResult.BaseStatus(childComplexity), true
 
+	case "TestResult.displayTestName":
+		if e.complexity.TestResult.DisplayTestName == nil {
+			break
+		}
+
+		return e.complexity.TestResult.DisplayTestName(childComplexity), true
+
 	case "TestResult.duration":
 		if e.complexity.TestResult.Duration == nil {
 			break
@@ -4271,6 +4306,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TestResult.LineNum(childComplexity), true
+
+	case "TestResult.logTestName":
+		if e.complexity.TestResult.LogTestName == nil {
+			break
+		}
+
+		return e.complexity.TestResult.LogTestName(childComplexity), true
 
 	case "TestResult.logs":
 		if e.complexity.TestResult.Logs == nil {
@@ -5112,6 +5154,7 @@ type Patch {
   id: ID!
   description: String!
   projectID: String!
+  projectIdentifier: String!
   githash: String!
   patchNumber: Int!
   author: String!
@@ -5230,6 +5273,7 @@ type TaskEndDetail {
   type: String!
   description: String
   timedOut: Boolean
+  timeoutType: String
   oomTracker: OomTrackerInfo!
 }
 
@@ -5250,6 +5294,7 @@ type TestResult {
   status: String!
   baseStatus: String
   testFile: String!
+  displayTestName: String
   logs: TestLog!
   exitCode: Int
   startTime: Time
@@ -5257,6 +5302,7 @@ type TestResult {
   endTime: Time
   taskId: String
   execution: Int
+  logTestName: String
   lineNum: Int
 }
 
@@ -5319,6 +5365,7 @@ type Task {
   dispatchTime: Time
   displayName: String!
   displayOnly: Boolean
+  displayTask: Task
   distroId: String!
   estimatedStart: Duration
   execution: Int!
@@ -13769,6 +13816,40 @@ func (ec *executionContext) _Patch_projectID(ctx context.Context, field graphql.
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Patch_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectIdentifier, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Patch_githash(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -18451,6 +18532,37 @@ func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_displayTask(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().DisplayTask(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_distroId(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -19740,6 +19852,37 @@ func (ec *executionContext) _TaskEndDetail_timedOut(ctx context.Context, field g
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskEndDetail_timeoutType(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskEndDetail",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeoutType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEndDetail_oomTracker(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
@@ -21611,6 +21754,37 @@ func (ec *executionContext) _TestResult_testFile(ctx context.Context, field grap
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestResult_displayTestName(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayTestName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TestResult_logs(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -21829,6 +22003,37 @@ func (ec *executionContext) _TestResult_execution(ctx context.Context, field gra
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TestResult_logTestName(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LogTestName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TestResult_lineNum(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
@@ -26765,6 +26970,11 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "projectIdentifier":
+			out.Values[i] = ec._Patch_projectIdentifier(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "githash":
 			out.Values[i] = ec._Patch_githash(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -28213,6 +28423,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "displayOnly":
 			out.Values[i] = ec._Task_displayOnly(ctx, field, obj)
+		case "displayTask":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_displayTask(ctx, field, obj)
+				return res
+			})
 		case "distroId":
 			out.Values[i] = ec._Task_distroId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -28483,6 +28704,8 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._TaskEndDetail_description(ctx, field, obj)
 		case "timedOut":
 			out.Values[i] = ec._TaskEndDetail_timedOut(ctx, field, obj)
+		case "timeoutType":
+			out.Values[i] = ec._TaskEndDetail_timeoutType(ctx, field, obj)
 		case "oomTracker":
 			out.Values[i] = ec._TaskEndDetail_oomTracker(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -28950,6 +29173,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "displayTestName":
+			out.Values[i] = ec._TestResult_displayTestName(ctx, field, obj)
 		case "logs":
 			out.Values[i] = ec._TestResult_logs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -28967,6 +29192,8 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TestResult_taskId(ctx, field, obj)
 		case "execution":
 			out.Values[i] = ec._TestResult_execution(ctx, field, obj)
+		case "logTestName":
+			out.Values[i] = ec._TestResult_logTestName(ctx, field, obj)
 		case "lineNum":
 			out.Values[i] = ec._TestResult_lineNum(ctx, field, obj)
 		default:

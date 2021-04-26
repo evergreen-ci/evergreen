@@ -17,7 +17,7 @@ func deleteIfExists(dpt depot.Depot, tags ...*depot.Tag) error {
 	return catcher.Resolve()
 }
 
-func depotSave(dpt depot.Depot, name string, creds *Credentials) error {
+func depotSave(dpt Depot, name string, creds *Credentials) error {
 	if err := deleteIfExists(dpt, CsrTag(name), PrivKeyTag(name), CrtTag(name)); err != nil {
 		return errors.Wrap(err, "problem deleting existing credentials")
 	}

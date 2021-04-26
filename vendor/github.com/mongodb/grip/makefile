@@ -124,7 +124,6 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 vendor-clean:
 	rm -rf vendor/github.com/mattn/go-xmpp/_example/
 	rm -rf vendor/github.com/bluele/slack/examples/
-	sed -ri 's%(\tlog.*)%// \1%g' `find vendor/github.com/nutmegdevelopment/sumologic/upload/upload.go`
 	find vendor/ -name "*.go" | xargs gofmt -w -r '"golang.org/x/net/context" -> "context"'
 	find vendor/github.com/shirou/gopsutil/ -name "*.go" | xargs -n 1 gofmt -w || true
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -fr

@@ -153,12 +153,16 @@ func (g *remoteMongoQueueGroupSingle) startQueues(ctx context.Context) error {
 
 func (g *remoteMongoQueueGroupSingle) Get(ctx context.Context, id string) (amboy.Queue, error) {
 	var queue remoteQueue
+	var err error
 
 	switch q := g.cache.Get(id).(type) {
 	case remoteQueue:
 		return q, nil
 	case nil:
-		queue = g.opts.constructor(ctx, id)
+		queue, err = g.opts.constructor(ctx, id)
+		if err != nil {
+			return nil, errors.Wrap(err, "constructing queue")
+		}
 	default:
 		return q, nil
 	}

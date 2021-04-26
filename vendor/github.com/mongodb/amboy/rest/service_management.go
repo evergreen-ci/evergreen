@@ -37,7 +37,7 @@ func (s *ManagementService) App() *gimlet.APIApp {
 	app.AddRoute("/jobs/mark_complete/{name}").Version(1).Post().Handler(s.MarkComplete)
 	app.AddRoute("/jobs/mark_complete_by_type/{type}/{filter}").Version(1).Post().Handler(s.MarkCompleteByType)
 	app.AddRoute("/jobs/mark_many_complete/{filter}").Version(1).Post().Handler(s.MarkManyComplete)
-	app.AddRoute("/jobs/mark_complete_by_prefix/{prefix}/{filter}").Version(1).Post().Handler(s.MarkCompleteByPrefix)
+	app.AddRoute("/jobs/mark_complete_by_pattern/{pattern}/{filter}").Version(1).Post().Handler(s.MarkCompleteByPattern)
 
 	return app
 }
@@ -180,6 +180,7 @@ func (s *ManagementService) MarkComplete(rw http.ResponseWriter, r *http.Request
 	if err := s.manager.CompleteJob(ctx, name); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(errors.Wrapf(err,
 			"problem complete job '%s'", name)))
+		return
 	}
 
 	gimlet.WriteJSON(rw, struct {
@@ -202,6 +203,7 @@ func (s *ManagementService) MarkCompleteByType(rw http.ResponseWriter, r *http.R
 	if err := s.manager.CompleteJobsByType(ctx, management.StatusFilter(filter), jobType); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(errors.Wrapf(err,
 			"problem completing jobs by type '%s'", jobType)))
+		return
 	}
 
 	gimlet.WriteJSON(rw, struct {
@@ -223,6 +225,7 @@ func (s *ManagementService) MarkManyComplete(rw http.ResponseWriter, r *http.Req
 	if err := s.manager.CompleteJobs(ctx, management.StatusFilter(filter)); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(errors.Wrapf(err,
 			"problem completing jobs with filter '%s'", filter)))
+		return
 	}
 
 	gimlet.WriteJSON(rw, struct {
@@ -232,22 +235,23 @@ func (s *ManagementService) MarkManyComplete(rw http.ResponseWriter, r *http.Req
 	})
 }
 
-// MarkCompleteByPrefix is an http.Handlerfunc marks all jobs with the
-// specified prefix and status complete.
-func (s *ManagementService) MarkCompleteByPrefix(rw http.ResponseWriter, r *http.Request) {
+// MarkCompleteByPattern is an http.Handlerfunc marks all jobs with the
+// specified pattern and status complete.
+func (s *ManagementService) MarkCompleteByPattern(rw http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
-	prefix := vars["prefix"]
+	pattern := vars["pattern"]
 	filter := vars["filter"]
 
 	ctx := r.Context()
-	if err := s.manager.CompleteJobsByPrefix(ctx, management.StatusFilter(filter), prefix); err != nil {
+	if err := s.manager.CompleteJobsByPattern(ctx, management.StatusFilter(filter), pattern); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(errors.Wrapf(err,
-			"problem completing jobs by prefix '%s' with filter '%s'", prefix, filter)))
+			"problem completing jobs by pattern '%s' with filter '%s'", pattern, filter)))
+		return
 	}
 
 	gimlet.WriteJSON(rw, struct {
 		Message string `json:"message"`
 	}{
-		Message: "mark jobs complete by prefix successful",
+		Message: "mark jobs complete by pattern successful",
 	})
 }

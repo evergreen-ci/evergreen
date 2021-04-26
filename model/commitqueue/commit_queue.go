@@ -17,6 +17,7 @@ const (
 	triggerComment    = "evergreen merge"
 	SourcePullRequest = "PR"
 	SourceDiff        = "diff"
+	GithubContext     = "evergreen/commitqueue"
 )
 
 type Module struct {
@@ -152,7 +153,7 @@ func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 	}
 	item := q.Queue[itemIndex]
 
-	if err := remove(q.ProjectID, issue); err != nil {
+	if err := remove(q.ProjectID, item.Issue); err != nil {
 		return nil, errors.Wrap(err, "can't remove item")
 	}
 

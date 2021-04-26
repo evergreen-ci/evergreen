@@ -47,6 +47,16 @@ and local versions of the queue group possible, but these groups make it
 possible to create new queues at runtime, and improve the isolation of queues
 from each other.
 
+Retryable Queues
+~~~~~~~~~~~~~~~~
+
+The `RetryableQueue
+<https://godoc.org/github.com/mongodb/amboy#RetryableQueue>_` interface provides
+a superset of the queue functionality. Along with regular queue operations, it
+also supports jobs that can retry. When a job finishes executing and needs to
+retry (e.g. due to a transient error), the retryable queue will automatically
+re-run the job.
+
 Runners
 ~~~~~~~
 
@@ -88,10 +98,10 @@ methods for reporting and safely interacting with the state of jobs.
 REST Interface
 ~~~~~~~~~~~~~~
 
-The REST interface provides tools to submit jobs to an Amboy queue
-provided as a service. The rest package in Amboy provides the tools to
-build clients and services, although any client that can construct
-JSON formated Job object can use the REST API.
+The REST interface provides tools to manage jobs in an Amboy queue provided as a
+service. The rest package in Amboy provides the tools to build clients and
+services, although any client that can construct JSON-formatted Job object can
+use the REST API.
 
 Additionally the REST package provides remote implementations of the `management
 interface <https://godoc.org/github.com/mongodb/amboy/rest#ManagementService>`_
@@ -108,9 +118,9 @@ See the documentation of the `REST package
 Logger
 ~~~~~~
 
-The Logger package provides amboy.Queue backed implementation of the
-grip logging system's sender interface for asynchronous log message
-delivery. These jobs do not support remote-backed queues.
+The Logger package provides amboy.Queue backed implementation of the grip
+logging system's sender interface for asynchronous log message delivery. These
+jobs do not support remote-backed queues.
 
 Patterns
 --------
@@ -120,37 +130,33 @@ The following patterns have emerged during our use of Amboy.
 Base Job
 ~~~~~~~~
 
-Embed the `job.Base
-<https://godoc.org/github.com/mongodb/amboy/job/#Base>`_
-type in your amboy.Job implementations. This provides a number of
-helpers for basic job defintion in addition to implementations of all
-general methods in the interface. With the Base, you only need to
-implement a ``Run()`` method and whatever application logic is required
-for the task.
+Embed the `job.Base <https://godoc.org/github.com/mongodb/amboy/job/#Base>`_
+type in your Job implementations. This provides a number of helpers for
+basic job definition, in addition to implementations of all general methods in
+the interface. With the Base, you only need to implement a ``Run()`` method and
+whatever application logic is required for the task.
 
-The only case where embedding the Base type *may* be contraindicated is
-in conjunction with the REST interface, as the Base type may require
-more complicated initialization processes.
+The only case where embedding the Base type *may* be contraindicated is in
+conjunction with the REST interface, as the Base type may require more
+complicated initialization processes.
 
 Change Queue Implementations for Different Deployment Architectures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If your core application operations are implemented in terms of
-amboy.Jobs, then you can: execute them independently of queues by
-calling the ``Run()`` method, use a locally backed queue for
-synchronous operation for short running queues, and use a limited size
-queue or remote-backed queue as part of a long running service.
+If your core application operations are implemented in terms of Jobs, then
+you can: execute them independently of queues by calling the ``Run()`` method,
+use a locally backed queue for synchronous operation for short running queues,
+and use a limited size queue or remote-backed queue as part of a long running
+service.
 
-Please submit pull requests or `issues
-<https://github.com/mongodb/amboy>`_ with additional examples of amboy
-use.
+Please submit pull requests or `issues <https://github.com/mongodb/amboy>`_ with
+additional examples of amboy use.
 
 API and Documentation
 ---------------------
 
-See the `godoc API documentation
-<https://godoc.org/github.com/mongodb/amboy>` for more information
-about amboy interfaces and internals.
+See the `godoc API documentation <https://godoc.org/github.com/mongodb/amboy>`
+for more information about amboy interfaces and internals.
 
 Development
 -----------

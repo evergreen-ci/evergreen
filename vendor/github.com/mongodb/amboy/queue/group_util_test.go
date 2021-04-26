@@ -99,7 +99,9 @@ func TestGroupCache(t *testing.T) {
 					test: func(t *testing.T, cache GroupCache) {
 						q := NewLocalLimitedSize(1, 128)
 						require.NoError(t, q.Start(ctx))
-						require.NoError(t, q.Put(ctx, &sleepJob{Sleep: time.Minute}))
+						j := newSleepJob()
+						j.Sleep = time.Minute
+						require.NoError(t, q.Put(ctx, j))
 
 						require.NoError(t, cache.Set("foo", q, 1))
 						require.Equal(t, 1, cache.Len())

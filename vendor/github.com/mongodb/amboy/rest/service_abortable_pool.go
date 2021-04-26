@@ -50,10 +50,12 @@ func (s *AbortablePoolManagementService) ListJobs(rw http.ResponseWriter, r *htt
 func (s *AbortablePoolManagementService) AbortAllJobs(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	s.pool.AbortAll(ctx)
-
-	if ctx.Err() != nil {
-		gimlet.WriteJSONResponse(rw, http.StatusRequestTimeout, struct{}{})
+	if err := s.pool.AbortAll(ctx); err != nil {
+		if ctx.Err() != nil {
+			gimlet.WriteJSONResponse(rw, http.StatusRequestTimeout, struct{}{})
+			return
+		}
+		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
 	}
 

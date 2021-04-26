@@ -1,8 +1,9 @@
 gopsutil: psutil for golang
 ==============================
 
-.. image:: https://circleci.com/gh/shirou/gopsutil.svg?&style=shield
-        :target: https://circleci.com/gh/shirou/gopsutil
+
+.. image:: https://github.com/shirou/gopsutil/workflows/Test/badge.svg
+        :target: https://github.com/shirou/gopsutil/actions?query=workflow%3ATest
 
 .. image:: https://coveralls.io/repos/shirou/gopsutil/badge.svg?branch=master
         :target: https://coveralls.io/r/shirou/gopsutil?branch=master
@@ -13,6 +14,10 @@ gopsutil: psutil for golang
 This is a port of psutil (https://github.com/giampaolo/psutil). The challenge is porting all
 psutil functions on some architectures.
 
+v3 migration
+---------------
+
+from v3.20.10, gopsutil becomes v3 which breaks backawards compatiblity. See `v3Changes.md <_tools/v3migration/v3Changes.md>`_ more detail changes.
 
 Tag semantics
 -------------------------
@@ -51,7 +56,6 @@ All works are implemented without cgo by porting c struct to golang struct.
 Usage
 ---------
 
-Note: gopsutil v2 breaks compatibility. If you want to stay with compatibility, please use v1 branch and vendoring.
 
 .. code:: go
 
@@ -60,7 +64,8 @@ Note: gopsutil v2 breaks compatibility. If you want to stay with compatibility, 
    import (
        "fmt"
 
-       "github.com/shirou/gopsutil/mem"
+       "github.com/shirou/gopsutil/v3/mem"
+       // "github.com/shirou/gopsutil/mem"  // to use v2
    )
 
    func main() {
@@ -101,7 +106,7 @@ see http://godoc.org/github.com/shirou/gopsutil
 Requirements
 -----------------
 
-- go1.7 or above is required.
+- go1.11 or above is required.
 
 
 More Info

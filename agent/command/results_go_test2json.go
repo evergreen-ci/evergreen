@@ -110,7 +110,7 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 
 	evgResults := make([]task.TestResult, 0, len(results.Tests))
 	for _, v := range results.Tests {
-		testResult := goTest2JSONToTestResult(v.Name, conf.Task, v)
+		testResult := goTest2JSONToTestResult(suiteName, v.Name, conf.Task, v)
 		testResult.LogId = logId
 		evgResults = append(evgResults, testResult)
 	}
@@ -148,13 +148,14 @@ func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProdu
 	return results, nil
 }
 
-func goTest2JSONToTestResult(key string, t *task.Task, test *test2json.Test) task.TestResult {
+func goTest2JSONToTestResult(suiteName, key string, t *task.Task, test *test2json.Test) task.TestResult {
 	result := task.TestResult{
-		TestFile:  key,
-		LineNum:   test.FirstLogLine,
-		Status:    evergreen.TestFailedStatus,
-		StartTime: float64(test.StartTime.Unix()),
-		EndTime:   float64(test.EndTime.Unix()),
+		TestFile:    key,
+		LogTestName: suiteName,
+		LineNum:     test.FirstLogLine,
+		Status:      evergreen.TestFailedStatus,
+		StartTime:   float64(test.StartTime.Unix()),
+		EndTime:     float64(test.EndTime.Unix()),
 	}
 	switch test.Status {
 	case test2json.Passed:

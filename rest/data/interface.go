@@ -111,6 +111,7 @@ type Connector interface {
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
+	// GetProjectVersionsWithOptions returns the batch of project versions
 	GetProjectVersionsWithOptions(string, model.GetVersionsOptions) ([]restModel.APIVersion, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
@@ -122,6 +123,8 @@ type Connector interface {
 	// for paginating through the results.
 	FindTasksByProjectAndCommit(string, string, string, string, int) ([]task.Task, error)
 
+	// FindTestById returns a single test result with the given id.
+	FindTestById(string) ([]testresult.TestResult, error)
 	// FindTestsByTaskId is a method to find a set of tests that correspond to
 	// a given task. It takes a taskId, testId to start from, test name and status to filter,
 	// limit, and sort to provide additional control over the results.

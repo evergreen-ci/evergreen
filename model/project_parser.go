@@ -68,6 +68,7 @@ type ParserProject struct {
 	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
 	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
@@ -116,6 +117,7 @@ type parserTask struct {
 	DependsOn       parserDependencies  `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands,omitempty"`
 	Tags            parserStringSlice   `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	RunOn           parserStringSlice   `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
 	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
 	AllowForGitTag  *bool               `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
@@ -406,12 +408,12 @@ func (pbvt *parserBVTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) e
 	if copy.Name == "" {
 		return errors.New("buildvariant task selector must have a name")
 	}
-	// logic for aliasing the "run_on" field to "distros"
-	if len(copy.RunOn) > 0 {
-		if len(copy.Distros) > 0 {
+	// logic for aliasing the "distros" field to "run_on"
+	if len(copy.Distros) > 0 {
+		if len(copy.RunOn) > 0 {
 			return errors.New("cannot use both 'run_on' and 'distros' fields")
 		}
-		copy.Distros, copy.RunOn = copy.RunOn, nil
+		copy.RunOn, copy.Distros = copy.Distros, nil
 	}
 	*pbvt = parserBVTaskUnit(copy)
 	return nil
@@ -524,7 +526,9 @@ func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserP
 
 	// return project even with errors
 	p, err := TranslateProject(intermediateProject)
-	*project = *p
+	if p != nil {
+		*project = *p
+	}
 	project.Identifier = identifier
 	return intermediateProject, errors.Wrap(err, LoadProjectError)
 }
@@ -561,7 +565,8 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	p := &ParserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling into parser project")
+		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+		return nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
 	}
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
@@ -592,6 +597,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Parameters:        pp.Parameters,
 		Pre:               pp.Pre,
 		Post:              pp.Post,
+		EarlyTermination:  pp.EarlyTermination,
 		Timeout:           pp.Timeout,
 		CallbackTimeout:   pp.CallbackTimeout,
 		Modules:           pp.Modules,
@@ -667,6 +673,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			ExecTimeoutSecs: pt.ExecTimeoutSecs,
 			Commands:        pt.Commands,
 			Tags:            pt.Tags,
+			RunOn:           pt.RunOn,
 			Patchable:       pt.Patchable,
 			PatchOnly:       pt.PatchOnly,
 			AllowForGitTag:  pt.AllowForGitTag,
@@ -733,7 +740,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			RunOn:         pbv.RunOn,
 			Tags:          pbv.Tags,
 		}
-		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv)
+		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 
 		// evaluate any rules passed in during matrix construction
 		for _, r := range pbv.MatrixRules {
@@ -767,7 +774,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 				var added []BuildVariantTaskUnit
 				pbv.Tasks = r.AddTasks
-				added, errs = evaluateBVTasks(tse, tgse, vse, pbv)
+				added, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 				evalErrs = append(evalErrs, errs...)
 				// check for conflicting duplicates
 				for _, t := range added {
@@ -788,7 +795,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		for _, tg := range tgs {
 			tgMap[tg.Name] = tg
 		}
-		dtse := newDisplayTaskSelectorEvaluator(bv, tasks, tgs, tgMap)
+		dtse := newDisplayTaskSelectorEvaluator(bv, tasks, tgMap)
 
 		// check that display tasks contain real tasks that are not duplicated
 		bvTasks := make(map[string]struct{})        // map of all execution tasks
@@ -850,11 +857,15 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 // evaluating any selectors referencing tasks, and further evaluating any selectors
 // in the DependsOn field of those tasks.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pbv parserBV) ([]BuildVariantTaskUnit, []error) {
+	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []error) {
 	var evalErrs, errs []error
 	ts := []BuildVariantTaskUnit{}
 	taskUnitsByName := map[string]BuildVariantTaskUnit{}
-	for _, pt := range pbv.Tasks {
+	tasksByName := map[string]parserTask{}
+	for _, t := range tasks {
+		tasksByName[t.Name] = t
+	}
+	for _, pbvt := range pbv.Tasks {
 		// evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found
 		// in one or the other
@@ -862,11 +873,11 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		var err1, err2 error
 		isGroup := false
 		if tse != nil {
-			temp, err1 = tse.evalSelector(ParseSelector(pt.Name))
+			temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
 			names = append(names, temp...)
 		}
 		if tgse != nil {
-			temp, err2 = tgse.evalSelector(ParseSelector(pt.Name))
+			temp, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
 			if len(temp) > 0 {
 				names = append(names, temp...)
 				isGroup = true
@@ -878,35 +889,21 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		}
 		// create new task definitions--duplicates must have the same status requirements
 		for _, name := range names {
+			parserTask := tasksByName[name]
 			// create a new task by copying the task that selected it,
 			// so we can preserve the "Variant" and "Status" field.
-			t := BuildVariantTaskUnit{
-				Name:             name,
-				Patchable:        pt.Patchable,
-				PatchOnly:        pt.PatchOnly,
-				AllowForGitTag:   pt.AllowForGitTag,
-				GitTagOnly:       pt.GitTagOnly,
-				Priority:         pt.Priority,
-				ExecTimeoutSecs:  pt.ExecTimeoutSecs,
-				Stepback:         pt.Stepback,
-				Distros:          pt.Distros,
-				CommitQueueMerge: pt.CommitQueueMerge,
-				CronBatchTime:    pt.CronBatchTime,
-				BatchTime:        pt.BatchTime,
-			}
+			t := getParserBuildVariantTaskUnit(name, parserTask, pbvt)
 
-			// Task-level dependencies in the variant override variant-level dependencies
-			// in the variant. If neither is present, then the BuildVariantTaskUnit unit
-			// will contain no dependencies, so dependencies will come from the task
-			// spec at task creation time.
+			// Task-level dependencies defined in the variant override variant-level dependencies which override
+			// task-level dependencies defined in the task.
 			var dependsOn parserDependencies
-			if len(pbv.DependsOn) > 0 {
+			if len(pbvt.DependsOn) > 0 {
+				dependsOn = pbvt.DependsOn
+			} else if len(pbv.DependsOn) > 0 {
 				dependsOn = pbv.DependsOn
+			} else if len(parserTask.DependsOn) > 0 {
+				dependsOn = parserTask.DependsOn
 			}
-			if len(pt.DependsOn) > 0 {
-				dependsOn = pt.DependsOn
-			}
-
 			t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, dependsOn)
 			evalErrs = append(evalErrs, errs...)
 			t.IsGroup = isGroup
@@ -926,6 +923,54 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		}
 	}
 	return ts, evalErrs
+}
+
+// getParserBuildVariantTaskUnit combines the parser project's task definition with the build variant task definition.
+// DependsOn will be handled separately.
+func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit) BuildVariantTaskUnit {
+	res := BuildVariantTaskUnit{
+		Name:             name,
+		Patchable:        bvt.Patchable,
+		PatchOnly:        bvt.PatchOnly,
+		AllowForGitTag:   bvt.AllowForGitTag,
+		GitTagOnly:       bvt.GitTagOnly,
+		Priority:         bvt.Priority,
+		ExecTimeoutSecs:  bvt.ExecTimeoutSecs,
+		Stepback:         bvt.Stepback,
+		RunOn:            bvt.RunOn,
+		CommitQueueMerge: bvt.CommitQueueMerge,
+		CronBatchTime:    bvt.CronBatchTime,
+		BatchTime:        bvt.BatchTime,
+	}
+	if res.Priority == 0 {
+		res.Priority = pt.Priority
+	}
+	if res.Patchable == nil {
+		res.Patchable = pt.Patchable
+	}
+	if res.PatchOnly == nil {
+		res.PatchOnly = pt.PatchOnly
+	}
+	if res.AllowForGitTag == nil {
+		res.AllowForGitTag = pt.AllowForGitTag
+	}
+	if res.GitTagOnly == nil {
+		res.GitTagOnly = pt.GitTagOnly
+	}
+	if res.ExecTimeoutSecs == 0 {
+		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
+	}
+	if res.Stepback == nil {
+		res.Stepback = pt.Stepback
+	}
+	if len(res.RunOn) == 0 {
+		// first consider that we may be using the legacy "distros" field
+		res.RunOn = bvt.Distros
+	}
+	if len(res.RunOn) == 0 {
+		res.RunOn = pt.RunOn
+	}
+	return res
 }
 
 // evaluateDependsOn expands any selectors in a dependency definition.

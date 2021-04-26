@@ -68,7 +68,7 @@ func setupHostCredentials(ctx context.Context, env *mock.Environment) error {
 			CollectionName: evergreen.CredentialsCollection,
 			DepotOptions: certdepot.DepotOptions{
 				CA:                evergreen.CAName,
-				DefaultExpiration: 365 * 24 * time.Hour,
+				DefaultExpiration: maxExpiration,
 			},
 		},
 		CAOpts: &certdepot.CertificateOptions{

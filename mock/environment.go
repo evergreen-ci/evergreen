@@ -121,7 +121,7 @@ func BootstrapCredentialsCollection(ctx context.Context, client *mongo.Client, d
 			CollectionName: evergreen.CredentialsCollection,
 			DepotOptions: certdepot.DepotOptions{
 				CA:                evergreen.CAName,
-				DefaultExpiration: 365 * 24 * time.Hour,
+				DefaultExpiration: maxExpiration,
 			},
 		},
 		CAOpts: &certdepot.CertificateOptions{

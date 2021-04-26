@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -70,8 +69,6 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
 		n.Payload = &message.GithubStatus{}
-	case event.GithubMergeSubscriberType:
-		n.Payload = &commitqueue.GithubMergePR{}
 
 	case event.EnqueuePatchSubscriberType:
 		n.Payload = &model.EnqueuePatch{}

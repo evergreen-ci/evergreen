@@ -315,9 +315,9 @@ func (self *TaskQueue) Save() error {
 	return updateTaskQueue(self.Distro, self.Queue, self.DistroQueueInfo)
 }
 
-func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
+func (self *TaskQueue) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
 	if self.Length() == 0 {
-		return nil
+		return nil, nil
 	}
 	// With a spec, find a matching task.
 	if spec.Group != "" && spec.Project != "" && spec.BuildVariant != "" && spec.Version != "" {
@@ -337,7 +337,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			if it.Group != spec.Group {
 				continue
 			}
-			return &it
+			return &it, nil
 		}
 	}
 
@@ -346,7 +346,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	for _, it := range self.Queue {
 		// Always return a task if the task group is empty.
 		if it.Group == "" {
-			return &it
+			return &it, nil
 		}
 
 		// If we already determined that this task group is not runnable, continue.
@@ -367,10 +367,10 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			GroupMaxHosts: it.GroupMaxHosts,
 		}
 		if shouldRun := shouldRunTaskGroup(it.Id, spec); shouldRun {
-			return &it
+			return &it, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo DistroQueueInfo) error {

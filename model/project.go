@@ -49,6 +49,7 @@ type Project struct {
 	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
 	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
 	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	EarlyTermination  *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
 	CallbackTimeout   int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules           ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
 	BuildVariants     BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
@@ -93,8 +94,7 @@ type BuildVariantTaskUnit struct {
 	DependsOn      []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// the distros that the task can be run on
-	Distros []string `yaml:"distros,omitempty" bson:"distros"`
-
+	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 	// currently unsupported (TODO EVG-578)
 	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -145,6 +145,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if len(bvt.DependsOn) == 0 {
 		bvt.DependsOn = pt.DependsOn
 	}
+	if len(bvt.RunOn) == 0 {
+		bvt.RunOn = pt.RunOn
+	}
 	if bvt.Priority == 0 {
 		bvt.Priority = pt.Priority
 	}
@@ -167,6 +170,7 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
 	}
+
 }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
@@ -493,6 +497,7 @@ type ProjectTask struct {
 	DependsOn       []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 	Commands        []PluginCommandConf  `yaml:"commands,omitempty" bson:"commands"`
 	Tags            []string             `yaml:"tags,omitempty" bson:"tags"`
+	RunOn           []string             `yaml:"run_on,omitempty" bson:"run_on"`
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
@@ -1081,8 +1086,8 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 
 	var distro string
 
-	if len(bvt.Distros) > 0 {
-		distro = bvt.Distros[0]
+	if len(bvt.RunOn) > 0 {
+		distro = bvt.RunOn[0]
 	} else if len(bv.RunOn) > 0 {
 		distro = bv.RunOn[0]
 	} else {
@@ -1147,7 +1152,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 		if bvt.Name == task {
 			bvt.Variant = variant
 			if projectTask := p.FindProjectTask(task); projectTask != nil {
-				bvt.Populate(*projectTask)
 				return &bvt
 			} else if _, exists := tgMap[task]; exists {
 				return &bvt
@@ -1157,6 +1161,7 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 			for _, t := range tg.Tasks {
 				if t == task {
 					bvt.Variant = variant
+					// task group tasks need to be repopulated from the task list
 					bvt.Populate(*p.FindProjectTask(task))
 					return &bvt
 				}
@@ -1279,6 +1284,15 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 		}
 	}
 	return allBVTs
+}
+
+func (p *Project) FindAllTasksMap() map[string]ProjectTask {
+	allTasks := map[string]ProjectTask{}
+	for _, task := range p.Tasks {
+		allTasks[task.Name] = task
+	}
+
+	return allTasks
 }
 
 // FindVariantsWithTask returns the name of each variant containing

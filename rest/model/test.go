@@ -27,6 +27,7 @@ type APITest struct {
 	StartTime       *time.Time `json:"start_time"`
 	EndTime         *time.Time `json:"end_time"`
 	Duration        float64    `json:"duration"`
+	LogTestName     *string    `json:"log_test_name,omitempty"`
 	LineNum         int        `json:"line_num,omitempty"`
 }
 
@@ -89,6 +90,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.Logs.RawDisplayURL = &dispString
 		}
 	case *apimodels.CedarTestResult:
+		at.Id = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution
 		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
@@ -100,17 +102,18 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.EndTime = utility.ToTimePtr(v.End)
 		duration := v.End.Sub(v.Start)
 		at.Duration = float64(duration)
-		rawDisplayStr := fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s&text=true", v.TaskID, v.Execution, v.TestName, v.GroupID)
-		htmlDisplayStr := fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s#L%d", v.TaskID, v.Execution, v.TestName, v.GroupID, v.LineNum)
+
+		testName := v.TestName
+		if v.LogTestName != "" {
+			testName = v.LogTestName
+			at.LogTestName = utility.ToStringPtr(v.LogTestName)
+		}
 		at.Logs = TestLogs{
 			LineNum:        v.LineNum,
-			RawDisplayURL:  &rawDisplayStr,
-			HTMLDisplayURL: &htmlDisplayStr,
+			RawDisplayURL:  utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s&text=true", v.TaskID, v.Execution, testName, v.GroupID)),
+			HTMLDisplayURL: utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s#L%d", v.TaskID, v.Execution, testName, v.GroupID, v.LineNum)),
 		}
 
-		// Need to generate a consistent id for test results.
-		testResultID := fmt.Sprintf("ceder_test_%s_%d_%s_%s_%s", v.TaskID, v.Execution, v.TestName, v.Start, v.GroupID)
-		at.Id = utility.ToStringPtr(testResultID)
 		if v.GroupID != "" {
 			at.GroupId = utility.ToStringPtr(v.GroupID)
 		}
@@ -119,6 +122,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 	default:
 		return fmt.Errorf("incorrect type '%v' when creating APITest", v)
 	}
+
 	return nil
 }
 

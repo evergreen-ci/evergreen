@@ -657,9 +657,10 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		if pRef.IsGithubChecksEnabled() {
 			githubCheckAliases, err = FindAliasInProject(v.Identifier, evergreen.GithubChecksAlias)
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error getting github check aliases when adding tasks to build",
-				"project": v.Identifier,
-				"version": v.Id,
+				"message":            "error getting github check aliases when adding tasks to build",
+				"project":            v.Identifier,
+				"project_identifier": pRef.Identifier,
+				"version":            v.Id,
 			}))
 		}
 	}
@@ -852,7 +853,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			GitTagOnly:       in.GitTagOnly,
 			Priority:         in.Priority,
 			DependsOn:        in.DependsOn,
-			Distros:          in.Distros,
+			RunOn:            in.RunOn,
 			ExecTimeoutSecs:  in.ExecTimeoutSecs,
 			Stepback:         in.Stepback,
 			CommitQueueMerge: in.CommitQueueMerge,
@@ -881,6 +882,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	if len(taskNames) == 0 && len(displayNames) == 0 {
 		createAll = true
 	}
+	// tables includes only new and existing tasks
 	execTable := taskIds.ExecutionTasks
 	displayTable := taskIds.DisplayTasks
 
@@ -890,11 +892,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	for _, task := range buildVariant.Tasks {
-		// get the task spec out of the project
-		taskSpec := project.GetSpecForTask(task.Name)
 		// sanity check that the config isn't malformed
-		if taskSpec.Name != "" {
-			task.Populate(taskSpec)
+		if task.Name != "" && !task.IsGroup {
 			if task.SkipOnRequester(b.Requester) {
 				continue
 			}
@@ -981,6 +980,30 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			continue
 		}
 		if !createAll && !utility.StringSliceContains(displayNames, dt.Name) {
+			// this display task already exists, but may need to be updated
+			execTaskIds := []string{}
+			for _, et := range dt.ExecTasks {
+				execTaskId := execTable.GetId(b.BuildVariant, et)
+				if execTaskId == "" {
+					grip.Error(message.Fields{
+						"message":                     "execution task not found",
+						"variant":                     b.BuildVariant,
+						"exec_task":                   et,
+						"available_tasks":             execTable,
+						"project":                     project.Identifier,
+						"display_task":                id,
+						"display_task_already_exists": true,
+					})
+					continue
+				}
+				execTaskIds = append(execTaskIds, execTaskId)
+			}
+			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds), message.Fields{
+				"message":      "problem adding exec tasks to display tasks",
+				"exec_tasks":   execTaskIds,
+				"display_task": dt.Name,
+				"build_id":     b.Id,
+			}))
 			continue
 		}
 		execTaskIds := []string{}
@@ -988,11 +1011,13 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			execTaskId := execTable.GetId(b.BuildVariant, et)
 			if execTaskId == "" {
 				grip.Error(message.Fields{
-					"message":         "execution task not found",
-					"variant":         b.BuildVariant,
-					"exec_task":       et,
-					"available_tasks": execTable,
-					"project":         project.Identifier,
+					"message":                     "execution task not found",
+					"variant":                     b.BuildVariant,
+					"exec_task":                   et,
+					"available_tasks":             execTable,
+					"project":                     project.Identifier,
+					"display_task":                id,
+					"display_task_already_exists": false,
 				})
 				continue
 			}
@@ -1297,7 +1322,7 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project, buildVariant *BuildVariant,
 	b *build.Build, v *Version, dat distro.AliasLookupTable, createTime time.Time, activateTask bool, githubChecksAliases ProjectAliases) (*task.Task, error) {
 
-	buildVarTask.Distros = dat.Expand(buildVarTask.Distros)
+	buildVarTask.RunOn = dat.Expand(buildVarTask.RunOn)
 	buildVariant.RunOn = dat.Expand(buildVariant.RunOn)
 
 	var (
@@ -1305,11 +1330,11 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		distroAliases []string
 	)
 
-	if len(buildVarTask.Distros) > 0 {
-		distroID = buildVarTask.Distros[0]
+	if len(buildVarTask.RunOn) > 0 {
+		distroID = buildVarTask.RunOn[0]
 
-		if len(buildVarTask.Distros) > 1 {
-			distroAliases = append(distroAliases, buildVarTask.Distros[1:]...)
+		if len(buildVarTask.RunOn) > 1 {
+			distroAliases = append(distroAliases, buildVarTask.RunOn[1:]...)
 		}
 
 	} else if len(buildVariant.RunOn) > 0 {

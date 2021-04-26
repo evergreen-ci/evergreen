@@ -82,7 +82,9 @@ type Version struct {
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
 
-const defaultVersionLimit = 20
+const (
+	defaultVersionLimit = 20
+)
 
 type GetVersionsOptions struct {
 	StartAfter     int    `json:"start"`
@@ -92,6 +94,7 @@ type GetVersionsOptions struct {
 	IncludeBuilds  bool   `json:"include_builds"`
 	IncludeTasks   bool   `json:"include_tasks"`
 	ByBuildVariant string `json:"by_build_variant"`
+	ByTask         string `json:"by_task"`
 }
 
 func (v *Version) LastSuccessful() (*Version, error) {
@@ -311,6 +314,10 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if err != nil {
 		return nil, err
 	}
+	if opts.Limit <= 0 {
+		opts.Limit = defaultVersionLimit
+	}
+
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey:  opts.Requester,
@@ -322,9 +329,10 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if opts.StartAfter > 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
-
 	pipeline := []bson.M{bson.M{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+
+	// initial projection of version items
 	project := bson.M{
 		VersionCreateTimeKey:          1,
 		VersionStartTimeKey:           1,
@@ -340,95 +348,75 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		VersionRequesterKey:           1,
 	}
 
-	if !opts.IncludeBuilds { // add project to the pipeline as is
-		pipeline = append(pipeline, bson.M{"$project": project})
-	} else {
+	pipeline = append(pipeline, bson.M{"$project": project})
+	if opts.IncludeBuilds {
+		// filter builds by version and variant (if applicable)
+		matchVersion := bson.M{"$expr": bson.M{"$eq": []string{"$version", "$$temp_version_id"}}}
 		if opts.ByBuildVariant != "" {
-			// add a filter so we only have the build variant we want (we already know this exists from the match stage)
-			project[VersionBuildVariantsKey] = bson.M{
-				"$filter": bson.M{
-					"input": "$" + VersionBuildVariantsKey,
-					"as":    "item",
-					"cond": bson.M{
-						"$eq": []string{"$$item.build_variant", opts.ByBuildVariant},
-					},
+			matchVersion[build.BuildVariantKey] = opts.ByBuildVariant
+			matchVersion[build.ActivatedKey] = true
+		}
+
+		innerPipeline := []bson.M{{"$match": matchVersion}}
+
+		// project out the task cache so we can rewrite it with updated data
+		innerProject := bson.M{
+			build.TasksKey: 0,
+		}
+		innerPipeline = append(innerPipeline, bson.M{"$project": innerProject})
+		// include tasks and filter by task name (if applicable)
+		if opts.IncludeTasks {
+			taskMatch := []bson.M{
+				{"$eq": []string{"$build_id", "$$temp_build_id"}},
+				{"$eq": []interface{}{"$activated", true}},
+			}
+			if opts.ByTask != "" {
+				taskMatch = append(taskMatch, bson.M{"$eq": []string{"$display_name", opts.ByTask}})
+			}
+			taskLookup := bson.M{
+				"from": task.Collection,
+				"let":  bson.M{"temp_build_id": "$_id"},
+				"as":   "tasks",
+				"pipeline": []bson.M{
+					{"$match": bson.M{"$expr": bson.M{"$and": taskMatch}}},
 				},
 			}
-		}
+			innerPipeline = append(innerPipeline, bson.M{"$lookup": taskLookup})
 
-		pipeline = append(pipeline, bson.M{"$project": project})
+			// filter out builds that don't have any tasks included
+			matchTasksExist := bson.M{
+				"tasks": bson.M{"$exists": true, "$ne": []interface{}{}},
+			}
+			innerPipeline = append(innerPipeline, bson.M{"$match": matchTasksExist})
+		}
 		lookupBuilds := bson.M{
-			"from":         build.Collection,
-			"localField":   bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusBuildIdKey),
-			"foreignField": build.IdKey,
-			"as":           "build_variants",
+			"from":     build.Collection,
+			"let":      bson.M{"temp_version_id": "$_id"},
+			"as":       "build_variants",
+			"pipeline": innerPipeline,
 		}
 		pipeline = append(pipeline, bson.M{"$lookup": lookupBuilds})
-
-		if opts.ByBuildVariant != "" {
-			// filter out versions that don't have this variant activated
-			matchBuildVariantActivated := bson.M{
-				bsonutil.GetDottedKeyName("build_variants", build.ActivatedKey): true,
-			}
-			pipeline = append(pipeline, bson.M{"$match": matchBuildVariantActivated})
+		//
+		// filter out versions that don't have any activated builds
+		matchBuildsExist := bson.M{
+			"build_variants": bson.M{"$exists": true, "$ne": []interface{}{}},
 		}
-
-		// projectWithBuilds is initially the same as the first project but with build_variants instead of build_variants_status.
-		projectWithBuilds := bson.M{
-			VersionRevisionKey:            1,
-			VersionErrorsKey:              1,
-			VersionMessageKey:             1,
-			VersionAuthorKey:              1,
-			VersionRevisionOrderNumberKey: 1,
-			VersionCreateTimeKey:          1,
-			VersionStartTimeKey:           1,
-			VersionFinishTimeKey:          1,
-			VersionStatusKey:              1,
-			"build_variants":              1,
-		}
-		projectWithoutTaskCache := bson.M{
-			"build_variants.tasks": 0,
-		}
-		pipeline = append(pipeline, bson.M{"$project": projectWithBuilds})
-		pipeline = append(pipeline, bson.M{"$project": projectWithoutTaskCache})
+		pipeline = append(pipeline, bson.M{"$match": matchBuildsExist})
 	}
+
 	if opts.Skip != 0 {
 		pipeline = append(pipeline, bson.M{"$skip": opts.Skip})
-	}
-	if opts.Limit == 0 {
-		opts.Limit = defaultVersionLimit
 	}
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []Version{}
 
-	if err = db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrapf(err, "error aggregating versions and builds")
 	}
-
-	// TODO: need to either iterate the query or use a nested lookup in order to use ByTask
-	if opts.IncludeTasks {
-		buildIds := []string{}
-		for _, v := range res {
-			for _, b := range v.Builds {
-				buildIds = append(buildIds, b.Id)
-			}
-		}
-		tasks, err := task.Find(task.ByBuildIds(buildIds).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey, task.BuildIdKey))
-		if err != nil {
-			return nil, errors.Wrapf(err, "error finding tasks")
-		}
-		tasksByBuildId := map[string][]task.Task{}
-		for i, t := range tasks {
-			tasksByBuildId[t.BuildId] = append(tasksByBuildId[t.BuildId], tasks[i])
-		}
-		for i, v := range res {
-			for j, b := range v.Builds {
-				res[i].Builds[j].Tasks = CreateTasksCache(tasksByBuildId[b.Id])
-			}
-		}
+	if len(res) == 0 {
+		return res, nil
 	}
-
 	return res, nil
 }
 

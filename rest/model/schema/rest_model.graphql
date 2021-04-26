@@ -17,3 +17,8 @@ type BaseTaskInfo {
   Id: String
   Status: String
 }
+
+type Module {
+  Module: String
+  Issue: String
+}

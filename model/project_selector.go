@@ -285,7 +285,7 @@ func newTaskGroupSelectorEvaluator(groups []parserTaskGroup) *tagSelectorEvaluat
 }
 
 // Display task selector
-func newDisplayTaskSelectorEvaluator(bv BuildVariant, tasks []parserTask, tgs []TaskGroup, tgMap map[string]TaskGroup) *tagSelectorEvaluator {
+func newDisplayTaskSelectorEvaluator(bv BuildVariant, tasks []parserTask, tgMap map[string]TaskGroup) *tagSelectorEvaluator {
 	var selectees []tagged
 	for _, t := range bv.Tasks {
 		if tg, ok := tgMap[t.Name]; ok {

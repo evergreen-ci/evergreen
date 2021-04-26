@@ -32,10 +32,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2021-03-23"
+	ClientVersion = "2021-03-29"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2021-03-22"
+	AgentVersion = "2021-04-21"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -492,22 +492,6 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 
 	// set up external log aggregation services:
 	//
-	if endpoint, ok := s.Credentials["sumologic"]; ok {
-		sender, err = send.NewSumo("", endpoint)
-		if err == nil {
-			if err = sender.SetLevel(levelInfo); err != nil {
-				return nil, errors.Wrap(err, "problem setting level")
-			}
-			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-				return nil, errors.Wrap(err, "problem setting error handler")
-			}
-			senders = append(senders,
-				send.NewBufferedSender(sender,
-					time.Duration(s.LoggerConfig.Buffer.DurationSeconds)*time.Second,
-					s.LoggerConfig.Buffer.Count))
-		}
-	}
-
 	if s.Splunk.Populated() {
 		retryConf := utility.NewDefaultHTTPRetryConf()
 		retryConf.MaxDelay = time.Second

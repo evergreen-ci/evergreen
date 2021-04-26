@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -50,7 +52,8 @@ func (s *cronsEventSuite) TearDownSuite() {
 }
 
 func (s *cronsEventSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection, patch.Collection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, evergreen.ConfigCollection, notification.Collection,
+		event.SubscriptionsCollection, patch.Collection, model.ProjectRefCollection))
 
 	events := []event.EventLogEntry{
 		{
@@ -201,6 +204,11 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	}
 	s.NoError(p.Insert())
 
+	pRef := model.ProjectRef{
+		Id:         "test",
+		Identifier: "testing",
+	}
+	s.NoError(pRef.Insert())
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
 		EventType:    event.PatchStateChange,

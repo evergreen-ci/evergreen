@@ -232,7 +232,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.Requester == evergreen.MergeTestRequester && details.Status != evergreen.TaskSucceeded && !t.Aborted {
-		if err = model.DequeueAndRestart(t, APIServerLockTitle); err != nil {
+		if err = model.DequeueAndRestart(t, APIServerLockTitle, fmt.Sprintf("task '%s' failed", t.DisplayName)); err != nil {
 			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -411,15 +411,28 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		var queueItem *model.TaskQueueItem
+		// var taskIdsToCheckBlocked []string
 		switch d.DispatcherSettings.Version {
 		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
-			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec)
+			queueItem, _, err = dispatcher.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
-			queueItem = taskQueue.FindNextTask(spec)
+			queueItem, _ = taskQueue.FindNextTask(spec)
 		}
+		// if len(taskIdsToCheckBlocked) > 0 {
+		//     env := evergreen.GetEnvironment()
+		//     j := units.NewCheckBlockedTasksJob(d.Id, taskIdsToCheckBlocked)
+		//     if err = env.RemoteQueue().Put(ctx, j); err != nil {
+		//         grip.Error(message.WrapError(err, message.Fields{
+		//             "message":                   "problem putting new CheckBlockedTasks job",
+		//             "distro_id":                 d.Id,
+		//             "tasks_to_check":            taskIdsToCheckBlocked,
+		//             "distro_dispatcher_version": d.DispatcherSettings.Version,
+		//         }))
+		//     }
+		// }
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "RefreshFindNextTask",
@@ -516,6 +529,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				"task_id":              nextTask.Id,
 				"host_id":              currentHost.Id,
 				"project":              projectRef.Id,
+				"project_identifier":   projectRef.Identifier,
 				"enabled":              projectRef.Enabled,
 				"dispatching_disabled": projectRef.DispatchingDisabled,
 			}))

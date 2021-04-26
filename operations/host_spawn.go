@@ -80,6 +80,7 @@ func hostCreate() cli.Command {
 				Usage: "name of a json or yaml file containing the spawn host params",
 			},
 		},
+		Before: requireStringFlag(keyFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
@@ -366,11 +367,12 @@ func hostConfigure() cli.Command {
 			}
 
 			grip.Info(message.Fields{
-				"operation": "setup project",
-				"directory": directory,
-				"commands":  len(cmds),
-				"project":   projectRef.Id,
-				"dry-run":   dryRun,
+				"operation":          "setup project",
+				"directory":          directory,
+				"commands":           len(cmds),
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Identifier,
+				"dry-run":            dryRun,
 			})
 
 			for idx, cmd := range cmds {
@@ -381,6 +383,7 @@ func hostConfigure() cli.Command {
 				}
 
 				if err := cmd.Run(ctx); err != nil {
+					grip.Infof("You may need to accept an email invite to receive access to repo '%s/%s'", projectRef.Owner, projectRef.Repo)
 					return errors.Wrapf(err, "problem running cmd %d of %d to provision %s", idx+1, len(cmds), projectRef.Id)
 				}
 			}
@@ -512,6 +515,7 @@ func hostSSH() cli.Command {
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
+			grip.Info("Note: User must be on the VPN to gain access to the host.")
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			key := c.String(identityFlagName)

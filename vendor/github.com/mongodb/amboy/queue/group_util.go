@@ -8,6 +8,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -134,14 +135,15 @@ func (c *cacheImpl) Remove(ctx context.Context, name string) error {
 		return errors.Errorf("cannot delete in progress queue, '%s'", name)
 	}
 
-	queue.Runner().Close(ctx)
+	queue.Close(ctx)
 	delete(c.q, name)
 	return nil
 }
 
 func (c *cacheImpl) getCacheIterUnsafe() <-chan *cacheItem {
 	out := make(chan *cacheItem, len(c.q))
-	for _, v := range c.q {
+	for k := range c.q {
+		v := c.q[k]
 		out <- &v
 	}
 	close(out)
@@ -186,7 +188,19 @@ func (c *cacheImpl) Prune(ctx context.Context) error {
 							defer recovery.LogStackTraceAndContinue("panic in queue waiting")
 							defer close(wait)
 
-							item.q.Runner().Close(ctx)
+							// It's possible for a job to be enqueued in between
+							// the queue completeness check and closing the
+							// queue. In this case, the job that was just
+							// enqueued will not execute unless the queue is
+							// restarted. This log makes it easier to identify
+							// if/when this occurs.
+							grip.Info(message.Fields{
+								"message":  "pruning completed queue",
+								"queue_id": item.q.ID(),
+								"ttl":      item.ttl.String(),
+							})
+
+							item.q.Close(ctx)
 							c.mu.Lock()
 							defer c.mu.Unlock()
 							catcher.Add(c.hook(ctx, item.name))
@@ -235,7 +249,7 @@ func (c *cacheImpl) Close(ctx context.Context) error {
 					go func() {
 						defer recovery.LogStackTraceAndContinue("panic in queue waiting")
 						defer close(wait)
-						item.q.Runner().Close(ctx)
+						item.q.Close(ctx)
 					}()
 					select {
 					case <-ctx.Done():

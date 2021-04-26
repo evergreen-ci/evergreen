@@ -13,17 +13,18 @@ import (
 // queue, that store jobs in a remote persistence layer to support
 // distributed systems of workers.
 type MongoDBQueueCreationOptions struct {
-	Size    int
-	Name    string
-	Ordered bool
-	MDB     MongoDBOptions
-	Client  *mongo.Client
+	Size      int
+	Name      string
+	Ordered   bool
+	MDB       MongoDBOptions
+	Client    *mongo.Client
+	Retryable RetryableQueueOptions
 }
 
 // NewMongoDBQueue builds a new queue that persists jobs to a MongoDB
 // instance. These queues allow workers running in multiple processes
 // to service shared workloads in multiple processes.
-func NewMongoDBQueue(ctx context.Context, opts MongoDBQueueCreationOptions) (amboy.Queue, error) {
+func NewMongoDBQueue(ctx context.Context, opts MongoDBQueueCreationOptions) (amboy.RetryableQueue, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -40,12 +41,29 @@ func (opts *MongoDBQueueCreationOptions) Validate() error {
 	catcher.NewWhen(opts.Client == nil && (opts.MDB.URI == "" && opts.MDB.DB == ""),
 		"must specify database options")
 
+	catcher.Wrap(opts.Retryable.Validate(), "invalid retryable queue options")
+
 	return catcher.Resolve()
 }
 
-func (opts *MongoDBQueueCreationOptions) build(ctx context.Context) (amboy.Queue, error) {
+func (opts *MongoDBQueueCreationOptions) build(ctx context.Context) (amboy.RetryableQueue, error) {
 	var driver remoteQueueDriver
 	var err error
+
+	var q remoteQueue
+	qOpts := remoteOptions{
+		numWorkers: opts.Size,
+		retryable:  opts.Retryable,
+	}
+	if opts.Ordered {
+		if q, err = newRemoteSimpleOrderedWithOptions(qOpts); err != nil {
+			return nil, errors.Wrap(err, "initializing ordered queue")
+		}
+	} else {
+		if q, err = newRemoteUnorderedWithOptions(qOpts); err != nil {
+			return nil, errors.Wrap(err, "initializing unordered queue")
+		}
+	}
 
 	if opts.Client == nil {
 		if opts.MDB.UseGroups {
@@ -71,13 +89,6 @@ func (opts *MongoDBQueueCreationOptions) build(ctx context.Context) (amboy.Queue
 
 	if err != nil {
 		return nil, errors.Wrap(err, "problem building driver")
-	}
-
-	var q remoteQueue
-	if opts.Ordered {
-		q = newSimpleRemoteOrdered(opts.Size)
-	} else {
-		q = newRemoteUnordered(opts.Size)
 	}
 
 	if err = q.SetDriver(driver); err != nil {

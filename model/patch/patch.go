@@ -668,6 +668,27 @@ func (p *Patch) IsParent() bool {
 	return len(p.Triggers.ChildPatches) > 0
 }
 
+func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
+	var childrenOrSiblings []string
+	var parentPatch *Patch
+	var err error
+	if p.IsParent() {
+		childrenOrSiblings = p.Triggers.ChildPatches
+	}
+	if p.IsChild() {
+		parentPatchId := p.Triggers.ParentPatch
+		parentPatch, err = FindOneId(parentPatchId)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "can't get parent patch")
+		}
+		if parentPatch == nil {
+			return nil, nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+		}
+		childrenOrSiblings = parentPatch.Triggers.ChildPatches
+	}
+	return childrenOrSiblings, parentPatch, nil
+}
+
 func (p *Patch) SetParametersFromParent() error {
 	parentPatchId := p.Triggers.ParentPatch
 	parentPatch, err := FindOneId(parentPatchId)
