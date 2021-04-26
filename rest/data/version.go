@@ -61,6 +61,7 @@ func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId 
 	return model.LoadProjectForVersion(v, projectId, false)
 }
 
+// GetProjectVersionsWithOptions returns the versions that fit the given constraint.
 func (vc *DBVersionConnector) GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
 	versions, err := model.GetVersionsWithOptions(projectName, opts)
 	if err != nil {
