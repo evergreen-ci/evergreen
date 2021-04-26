@@ -808,7 +808,8 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		}
 
 		pref := &ProjectRef{
-			Id: "projectName",
+			Id:         "projectId",
+			Identifier: "projectName",
 		}
 		So(pref.Insert(), ShouldBeNil)
 
@@ -817,7 +818,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		So(alias.Upsert(), ShouldBeNil)
 		mustHaveResults := true
 		parserProject := &ParserProject{
-			Identifier: "projectName",
+			Identifier: "projectId",
 			Tasks: []parserTask{
 				{
 					Name:      "taskA",
@@ -1494,7 +1495,7 @@ func TestGetTaskIdTable(t *testing.T) {
 	}
 
 	p := &Project{
-		Identifier: "p0",
+		Identifier: "p0_id",
 		BuildVariants: []BuildVariant{
 			{
 				Name: "bv0",
@@ -1519,7 +1520,7 @@ func TestGetTaskIdTable(t *testing.T) {
 	existingTask := task.Task{Id: "t2", DisplayName: "existing_task", BuildVariant: "bv0", Version: v.Id}
 	require.NoError(t, existingTask.Insert())
 
-	tables, err := getTaskIdTables(v, p, newPairs)
+	tables, err := getTaskIdTables(v, p, newPairs, "p0")
 	assert.NoError(t, err)
 	assert.Len(t, tables.ExecutionTasks, 2)
 	assert.Equal(t, "p0_bv0_t0_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
