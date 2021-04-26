@@ -59,7 +59,7 @@ func (j *duplicateTaskCheckJob) Run(ctx context.Context) {
 		dupTaskToDistros[dup.TaskID] = dup.DistroIDs
 	}
 	if len(dupTaskToDistros) != 0 {
-		grip.Critical(message.Fields{
+		grip.Error(message.Fields{
 			"message":         "tasks are enqueued multiple times in primary task queues",
 			"task_to_distros": dupTaskToDistros,
 			"job":             j.ID(),

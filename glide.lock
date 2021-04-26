@@ -108,7 +108,7 @@ imports:
   - name: golang.org/x/oauth2
     version: f047394b6d14284165300fd82dad67edb3a4d7f6
   - name: golang.org/x/sys
-    version: d2e65c121b96ff63726fb564ece016e70ec81a44
+    version: 93ed5bcd2bfe7230f8abd84e0663ab1cb9148722
   - name: github.com/google/go-github
     version: c99a09ea581ff69c33c6f8e6915fe73df8aeee51
   - name: github.com/google/go-querystring
@@ -121,7 +121,7 @@ imports:
   - name: github.com/mongodb/grip
     version: d883a62b49faf8279c9209d28db88858a103177e
   - name: github.com/mongodb/amboy
-    version: c3275e3384e78a425594f29013af7c2a06fc53ae
+    version: 4ac2579777de9a61243dff467e63c9be19825859
   - name: github.com/evergreen-ci/gimlet
     version: 330e9e955820a5e846d9acd67539c2884527486a
   - name: github.com/evergreen-ci/shrub

@@ -6,27 +6,37 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
-// RemoteUnordered are queues that use a Driver as backend for job
-// storage and processing and do not impose any additional ordering
-// beyond what's provided by the driver.
+// remoteUnordered implements the amboy.RetryableQueue interface. It uses a
+// Driver to access a backend for job storage and processing. The queue does not
+// impose any additional job ordering beyond what's provided by the driver.
 type remoteUnordered struct {
 	*remoteBase
 }
 
 // newRemoteUnordered returns a queue that has been initialized with a
-// local worker pool Runner instance of the specified size.
-func newRemoteUnordered(size int) remoteQueue {
-	q := &remoteUnordered{
-		remoteBase: newRemoteBase(),
+// configured local worker pool with the specified number of workers.
+func newRemoteUnordered(size int) (remoteQueue, error) {
+	return newRemoteUnorderedWithOptions(remoteOptions{numWorkers: size})
+}
+
+// newRemoteUnorderedWithOptions returns a queue that has been initialized with
+// a configured runner and the given options.
+func newRemoteUnorderedWithOptions(opts remoteOptions) (remoteQueue, error) {
+	b, err := newRemoteBaseWithOptions(opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing remote base")
 	}
-
+	q := &remoteUnordered{remoteBase: b}
 	q.dispatcher = NewDispatcher(q)
-	grip.Error(q.SetRunner(pool.NewLocalWorkers(size, q)))
-	grip.Infof("creating new remote job queue with %d workers", size)
+	if err := q.SetRunner(pool.NewLocalWorkers(opts.numWorkers, q)); err != nil {
+		return nil, errors.Wrap(err, "configuring runner")
+	}
+	grip.Infof("creating new remote job queue with %d workers", opts.numWorkers)
 
-	return q
+	return q, nil
 }
 
 // Next returns a Job from the queue. Returns a nil Job object if the

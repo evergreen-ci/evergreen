@@ -80,6 +80,7 @@ func hostCreate() cli.Command {
 				Usage: "name of a json or yaml file containing the spawn host params",
 			},
 		},
+		Before: requireStringFlag(keyFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
@@ -514,6 +515,7 @@ func hostSSH() cli.Command {
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
+			grip.Info("Note: User must be on the VPN to gain access to the host.")
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			key := c.String(identityFlagName)

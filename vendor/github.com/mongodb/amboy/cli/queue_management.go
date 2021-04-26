@@ -13,7 +13,7 @@ import (
 const (
 	jobNameFlagName      = "name"
 	jobTypeFlagName      = "type"
-	jobPrefixFlagName    = "job-prefix"
+	jobPatternFlagName   = "job-pattern"
 	statusFilterFlagName = "filter"
 )
 
@@ -28,7 +28,7 @@ func queueManagement(opts *ServiceOptions) cli.Command {
 			managementCompleteJob(opts),
 			managementCompleteJobsByType(opts),
 			managementCompleteJobsByStatus(opts),
-			managementCompleteJobsByPrefix(opts),
+			managementCompleteJobsByPattern(opts),
 		},
 	}
 }
@@ -139,15 +139,15 @@ func managementReportJobIDs(opts *ServiceOptions) cli.Command {
 			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
 
 				t := tabby.New()
-				t.AddHeader("Job Type", "ID", "Group")
+				t.AddHeader("Job Type", "Group", "ID")
 
 				for _, jt := range jobTypes {
 					report, err := client.JobIDsByState(ctx, jt, filter)
 					if err != nil {
 						return errors.WithStack(err)
 					}
-					for _, j := range report.IDs {
-						t.AddLine(jt, j, report.Group)
+					for _, j := range report.GroupedIDs {
+						t.AddLine(jt, j.Group, j.ID)
 					}
 				}
 				t.Print()
@@ -308,13 +308,13 @@ func managementCompleteJobsByType(opts *ServiceOptions) cli.Command {
 	}
 }
 
-func managementCompleteJobsByPrefix(opts *ServiceOptions) cli.Command {
+func managementCompleteJobsByPattern(opts *ServiceOptions) cli.Command {
 	return cli.Command{
-		Name: "complete-jobs-by-prefix",
+		Name: "complete-jobs-by-pattern",
 		Flags: opts.managementReportFlags(
 			cli.StringFlag{
-				Name:  jobPrefixFlagName,
-				Usage: "job prefix to filter by",
+				Name:  jobPatternFlagName,
+				Usage: "job pattern to filter by",
 			},
 			cli.StringFlag{
 				Name:  statusFilterFlagName,
@@ -326,11 +326,11 @@ func managementCompleteJobsByPrefix(opts *ServiceOptions) cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			prefix := c.String(jobPrefixFlagName)
+			pattern := c.String(jobPatternFlagName)
 			filter := management.StatusFilter(c.String(statusFilterFlagName))
 
 			return opts.withManagementClient(ctx, c, func(client management.Manager) error {
-				if err := client.CompleteJobsByPrefix(ctx, filter, prefix); err != nil {
+				if err := client.CompleteJobsByPattern(ctx, filter, pattern); err != nil {
 					return errors.Wrap(err, "problem marking jobs complete")
 				}
 				return nil

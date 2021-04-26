@@ -12,12 +12,13 @@ import (
 )
 
 type QueueTester struct {
-	started     bool
-	pool        amboy.Runner
-	id          string
-	numComplete int
-	toProcess   chan amboy.Job
-	storage     map[string]amboy.Job
+	started      bool
+	pool         amboy.Runner
+	retryHandler amboy.RetryHandler
+	id           string
+	numComplete  int
+	toProcess    chan amboy.Job
+	storage      map[string]amboy.Job
 
 	mutex sync.RWMutex
 }
@@ -80,17 +81,23 @@ func (q *QueueTester) Info() amboy.QueueInfo {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
+	return q.info()
+}
+
+func (q *QueueTester) info() amboy.QueueInfo {
 	return amboy.QueueInfo{
 		Started:     q.started,
 		LockTimeout: amboy.LockTimeout,
 	}
 }
 
-func (q *QueueTester) Complete(ctx context.Context, j amboy.Job) {
+func (q *QueueTester) Complete(ctx context.Context, j amboy.Job) error {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
 	q.numComplete++
+
+	return nil
 }
 
 func (q *QueueTester) Stats(ctx context.Context) amboy.QueueStats {
@@ -162,23 +169,28 @@ func (q *QueueTester) Results(ctx context.Context) <-chan amboy.Job {
 	return output
 }
 
-func (q *QueueTester) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
-	output := make(chan amboy.JobStatusInfo)
+func (q *QueueTester) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
+	infos := make(chan amboy.JobInfo)
+
 	go func() {
-		defer close(output)
-		for _, job := range q.storage {
+		defer close(infos)
+		for _, j := range q.storage {
 			if ctx.Err() != nil {
 				return
 
 			}
-			status := job.Status()
-			status.ID = job.ID()
-			output <- status
+			select {
+			case <-ctx.Done():
+				return
+			case infos <- amboy.NewJobInfo(j):
+			}
 		}
 	}()
 
-	return output
+	return infos
 }
+
+func (q *QueueTester) Close(context.Context) {}
 
 type jobThatPanics struct {
 	job.Base

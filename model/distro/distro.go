@@ -446,7 +446,7 @@ func (d *Distro) HomeDir() string {
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}
-	if d.Arch == evergreen.ArchDarwinAmd64 {
+	if d.Arch == evergreen.ArchDarwinAmd64 || d.Arch == evergreen.ArchDarwinArm64 {
 		return filepath.Join("/Users", d.User)
 	}
 	return filepath.Join("/home", d.User)

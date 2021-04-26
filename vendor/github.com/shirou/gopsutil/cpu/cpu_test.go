@@ -7,11 +7,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shirou/gopsutil/internal/common"
 	"github.com/stretchr/testify/assert"
 )
 
+func skipIfNotImplementedErr(t *testing.T, err error) {
+	if err == common.ErrNotImplementedError {
+		t.Skip("not implemented")
+	}
+}
+
 func TestCpu_times(t *testing.T) {
 	v, err := Times(false)
+	skipIfNotImplementedErr(t, err)
 	if err != nil {
 		t.Errorf("error %v", err)
 	}
@@ -27,18 +35,20 @@ func TestCpu_times(t *testing.T) {
 
 	// test sum of per cpu stats is within margin of error for cpu total stats
 	cpuTotal, err := Times(false)
+	skipIfNotImplementedErr(t, err)
 	if err != nil {
 		t.Errorf("error %v", err)
 	}
 	if len(cpuTotal) == 0 {
-		t.Error("could not get CPUs ", err)
+		t.Error("could not get CPUs", err)
 	}
 	perCPU, err := Times(true)
+	skipIfNotImplementedErr(t, err)
 	if err != nil {
 		t.Errorf("error %v", err)
 	}
 	if len(perCPU) == 0 {
-		t.Error("could not get CPUs ", err)
+		t.Error("could not get CPUs", err)
 	}
 	var perCPUUserTimeSum float64
 	var perCPUSystemTimeSum float64
@@ -49,19 +59,42 @@ func TestCpu_times(t *testing.T) {
 		perCPUIdleTimeSum += pc.Idle
 	}
 	margin := 2.0
-	assert.InEpsilon(t, cpuTotal[0].User, perCPUUserTimeSum, margin)
-	assert.InEpsilon(t, cpuTotal[0].System, perCPUSystemTimeSum, margin)
-	assert.InEpsilon(t, cpuTotal[0].Idle, perCPUIdleTimeSum, margin)
+	t.Log(cpuTotal[0])
+
+	if cpuTotal[0].User == 0 && cpuTotal[0].System == 0 && cpuTotal[0].Idle == 0 {
+		t.Error("could not get cpu values")
+	}
+	if cpuTotal[0].User != 0 {
+		assert.InEpsilon(t, cpuTotal[0].User, perCPUUserTimeSum, margin)
+	}
+	if cpuTotal[0].System != 0 {
+		assert.InEpsilon(t, cpuTotal[0].System, perCPUSystemTimeSum, margin)
+	}
+	if cpuTotal[0].Idle != 0 {
+		assert.InEpsilon(t, cpuTotal[0].Idle, perCPUIdleTimeSum, margin)
+	}
+
 }
 
 func TestCpu_counts(t *testing.T) {
 	v, err := Counts(true)
+	skipIfNotImplementedErr(t, err)
 	if err != nil {
 		t.Errorf("error %v", err)
 	}
 	if v == 0 {
-		t.Errorf("could not get CPU counts: %v", v)
+		t.Errorf("could not get logical CPU counts: %v", v)
 	}
+	t.Logf("logical cores: %d", v)
+	v, err = Counts(false)
+	skipIfNotImplementedErr(t, err)
+	if err != nil {
+		t.Errorf("error %v", err)
+	}
+	if v == 0 {
+		t.Errorf("could not get physical CPU counts: %v", v)
+	}
+	t.Logf("physical cores: %d", v)
 }
 
 func TestCPUTimeStat_String(t *testing.T) {
@@ -79,6 +112,7 @@ func TestCPUTimeStat_String(t *testing.T) {
 
 func TestCpuInfo(t *testing.T) {
 	v, err := Info()
+	skipIfNotImplementedErr(t, err)
 	if err != nil {
 		t.Errorf("error %v", err)
 	}
@@ -99,6 +133,7 @@ func testCPUPercent(t *testing.T, percpu bool) {
 	if runtime.GOOS != "windows" {
 		testCount = 100
 		v, err := Percent(time.Millisecond, percpu)
+		skipIfNotImplementedErr(t, err)
 		if err != nil {
 			t.Errorf("error %v", err)
 		}
@@ -112,6 +147,7 @@ func testCPUPercent(t *testing.T, percpu bool) {
 	for i := 0; i < testCount; i++ {
 		duration := time.Duration(10) * time.Microsecond
 		v, err := Percent(duration, percpu)
+		skipIfNotImplementedErr(t, err)
 		if err != nil {
 			t.Errorf("error %v", err)
 		}
@@ -132,6 +168,7 @@ func testCPUPercentLastUsed(t *testing.T, percpu bool) {
 	if runtime.GOOS != "windows" {
 		testCount = 2
 		v, err := Percent(time.Millisecond, percpu)
+		skipIfNotImplementedErr(t, err)
 		if err != nil {
 			t.Errorf("error %v", err)
 		}
@@ -144,6 +181,7 @@ func testCPUPercentLastUsed(t *testing.T, percpu bool) {
 	}
 	for i := 0; i < testCount; i++ {
 		v, err := Percent(0, percpu)
+		skipIfNotImplementedErr(t, err)
 		if err != nil {
 			t.Errorf("error %v", err)
 		}

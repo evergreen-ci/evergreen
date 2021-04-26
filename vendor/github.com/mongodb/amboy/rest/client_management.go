@@ -158,7 +158,8 @@ func (c *managementClient) CompleteJob(ctx context.Context, name string) error {
 	return nil
 }
 
-// CompleteJobsByType marks all jobs of the given type complete.
+// CompleteJobsByType marks all jobs of the given type complete. If a matching
+// job is retrying, it will not longer retry.
 func (c *managementClient) CompleteJobsByType(ctx context.Context, f management.StatusFilter, jobType string) error {
 	path := fmt.Sprintf("/jobs/mark_complete_by_type/%s/%s", jobType, f)
 	req, err := http.NewRequest(http.MethodPost, c.url+path, nil)
@@ -186,7 +187,8 @@ func (c *managementClient) CompleteJobsByType(ctx context.Context, f management.
 	return nil
 }
 
-// CompleteJobs marks all jobs of the given type complete.
+// CompleteJobs marks all jobs of the given type complete. If a matching job is
+// retrying, it will no longer retry.
 func (c *managementClient) CompleteJobs(ctx context.Context, f management.StatusFilter) error {
 	path := fmt.Sprintf("/jobs/mark_many_complete/%s", f)
 	req, err := http.NewRequest(http.MethodPost, c.url+path, nil)
@@ -214,9 +216,10 @@ func (c *managementClient) CompleteJobs(ctx context.Context, f management.Status
 	return nil
 }
 
-// CompleteJobsByPrefix marks all jobs with the given prefix complete.
-func (c *managementClient) CompleteJobsByPrefix(ctx context.Context, f management.StatusFilter, prefix string) error {
-	path := fmt.Sprintf("/jobs/mark_complete_by_prefix/%s/%s", prefix, f)
+// CompleteJobsByPattern marks all jobs with the given pattern and filter
+// complete. If a matching job is retrying, it will no longer retry.
+func (c *managementClient) CompleteJobsByPattern(ctx context.Context, f management.StatusFilter, prefix string) error {
+	path := fmt.Sprintf("/jobs/mark_complete_by_pattern/%s/%s", prefix, f)
 	req, err := http.NewRequest(http.MethodPost, c.url+path, nil)
 	if err != nil {
 		return errors.Wrap(err, "problem building request")

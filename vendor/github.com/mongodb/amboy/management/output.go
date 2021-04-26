@@ -5,7 +5,7 @@ import "time"
 // JobStatusReport contains data for the numbers of jobs that exist
 // for a specified type.
 type JobStatusReport struct {
-	Filter string        `bson:"filter" json:"filter" yaml:"filter"`
+	Filter StatusFilter  `bson:"filter" json:"filter" yaml:"filter"`
 	Stats  []JobCounters `bson:"data" json:"data" yaml:"data"`
 }
 
@@ -19,7 +19,7 @@ type JobCounters struct {
 // JobRuntimeReport contains data for the runtime of jobs, by type,
 // that have run a specified period.
 type JobRuntimeReport struct {
-	Filter string        `bson:"filter" json:"filter" yaml:"filter"`
+	Filter RuntimeFilter `bson:"filter" json:"filter" yaml:"filter"`
 	Period time.Duration `bson:"period" json:"period" yaml:"period"`
 	Stats  []JobRuntimes `bson:"data" json:"data" yaml:"data"`
 }
@@ -33,10 +33,14 @@ type JobRuntimes struct {
 
 // JobReportIDs contains the IDs of all jobs of a specific type.
 type JobReportIDs struct {
-	Type   string   `bson:"_id" json:"type" yaml:"type"`
-	Filter string   `bson:"filter" json:"filter" yaml:"filter"`
-	IDs    []string `bson:"jobs" json:"jobs" yaml:"jobs"`
-	Group  string   `bson:"group,omitempty" json:"group,omitempty" yaml:"group,omitempty"`
+	Type       string       `bson:"_id" json:"type" yaml:"type"`
+	Filter     StatusFilter `bson:"filter" json:"filter" yaml:"filter"`
+	GroupedIDs []GroupedID  `bson:"grouped_ids" json:"grouped_ids" yaml:"grouped_ids"`
+}
+
+type GroupedID struct {
+	ID    string `bson:"_id" bson:"_id" yaml:"_id"`
+	Group string `bson:"group,omitempty" json:"group,omitempty" yaml:"group,omitempty"`
 }
 
 // JobErrorsReport contains data for all job errors, by job type,

@@ -233,10 +233,12 @@ functions:
         GITHUB_TOKEN: ${github_token}
         JIRA_SERVER: ${jiraserver}
         CROWD_SERVER: ${crowdserver}
-        CROWD_USER: ${crowduser}
-        CROWD_PW: ${crowdpw}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
+        JIRA_PRIVATE_KEY: ${jira_private_key}
+        JIRA_ACCESS_TOKEN: ${jira_access_token}
+        JIRA_TOKEN_SECRET: ${jira_token_secret}
+        JIRA_CONSUMER_KEY: ${jira_consumer_key}
       command: bash scripts/setup-credentials.sh
   setup-mongodb:
     - command: subprocess.exec
@@ -613,7 +615,6 @@ buildvariants:
     expansions:
       goos: linux
       goarch: amd64
-      # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
       gobin: /opt/golang/go1.13/bin/go
       goroot: /opt/golang/go1.13
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
@@ -631,9 +632,8 @@ buildvariants:
       - archlinux-new-small
       - archlinux-new-large
     expansions:
-      # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
       test_timeout: 15m
@@ -646,9 +646,8 @@ buildvariants:
       - archlinux-new-small
       - archlinux-new-large
     expansions:
-      # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
     tasks:
       - name: generate-lint
 
@@ -658,9 +657,8 @@ buildvariants:
       - archlinux-new-small
       - archlinux-new-large
     expansions:
-      # TODO (EVG-13513): update to go1.16 once it's available (needs BUILD-12977).
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     tasks:

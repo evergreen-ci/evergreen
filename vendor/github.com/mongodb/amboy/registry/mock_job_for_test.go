@@ -1,6 +1,6 @@
 package registry
 
-// This file has a mock implementation of a job. Used in other tests.
+// This file has a mock implementation of an amboy.Job. Used in other tests.
 
 import (
 	"context"
@@ -59,6 +59,10 @@ func jobTestFactory() amboy.Job {
 
 func (j *JobTest) ID() string {
 	return j.Name
+}
+
+func (j *JobTest) SetID(id string) {
+	j.Name = id
 }
 
 func (j *JobTest) Run(_ context.Context) {
@@ -148,6 +152,10 @@ func (j *JobTest) UpdateTimeInfo(i amboy.JobTimeInfo) {
 	j.TimingInfo = i
 }
 
+func (j *JobTest) SetTimeInfo(i amboy.JobTimeInfo) {
+	j.TimingInfo = i
+}
+
 func (j *JobTest) SetScopes(in []string) {
 	j.LockScopes = in
 }
@@ -175,7 +183,22 @@ func (j *JobTest) UpdateRetryInfo(opts amboy.JobRetryOptions) {
 	if opts.NeedsRetry != nil {
 		j.Retry.NeedsRetry = *opts.NeedsRetry
 	}
-	if opts.CurrentTrial != nil {
-		j.Retry.CurrentTrial = *opts.CurrentTrial
+	if opts.CurrentAttempt != nil {
+		j.Retry.CurrentAttempt = *opts.CurrentAttempt
+	}
+	if opts.MaxAttempts != nil {
+		j.Retry.MaxAttempts = *opts.MaxAttempts
+	}
+	if opts.DispatchBy != nil {
+		j.Retry.DispatchBy = *opts.DispatchBy
+	}
+	if opts.WaitUntil != nil {
+		j.Retry.WaitUntil = *opts.WaitUntil
+	}
+	if opts.Start != nil {
+		j.Retry.Start = *opts.Start
+	}
+	if opts.End != nil {
+		j.Retry.End = *opts.End
 	}
 }

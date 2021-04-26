@@ -25,6 +25,8 @@ variables:
           directory: gopath/src/github.com/mongodb/amboy
       - func: run-make
         vars: { target: "${task_name}" }
+    must_have_test_results: true
+    tags: ["test"]
   - &run-go-test-suite-with-mongodb
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
@@ -37,6 +39,8 @@ variables:
       - func: set-up-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
+    must_have_test_results: true
+    tags: ["test"]
 
 #######################################
 #              Functions              #
@@ -55,44 +59,30 @@ functions:
         AWS_SECRET: ${aws_secret}
         GOPATH: ${workdir}/gopath
   set-up-mongodb:
-    # TODO replace this configuration with something more robust.
-    # Current version is borrowed directly from the Evergreen self tests.
-    - command: shell.exec
+    - command: subprocess.exec
       type: setup
       params:
-        script: |
-          set -o errexit
-          set -o verbose
-
-          rm -rf mongodb
-          mkdir mongodb
-          cd mongodb
-          curl ${mongodb_url} -o mongodb${archiveExt|.tgz}
-
-          ${decompress} mongodb${archiveExt|.tgz}
-          chmod +x ./mongodb-*/bin/*
-          mv ./mongodb-*/bin/* .
-          rm -rf db_files
-          rm -rf db_logs
-          mkdir db_files
-          mkdir db_logs
-    - command: shell.exec
+        command: make get-mongodb
+        env:
+          MONGODB_URL: ${mongodb_url}
+          DECOMPRESS: ${decompress}
+        working_dir: gopath/src/github.com/mongodb/amboy
+    - command: subprocess.exec
       type: setup
       params:
+        command: make start-mongod
+        working_dir: gopath/src/github.com/mongodb/amboy
         background: true
-        script: |
-          set -o verbose
-          cd mongodb
-          echo "starting mongod..."
-          ./mongod --dbpath ./db_files &
-          echo "waiting for mongod to start up"
-    - command: shell.exec
+    - command: subprocess.exec
       type: setup
       params:
-        script: |
-          cd mongodb
-          ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
-          echo "mongod is up."
+        command: make check-mongod
+        working_dir: gopath/src/github.com/mongodb/amboy
+    - command: subprocess.exec
+      type: setup
+      params:
+        command: make init-rs
+        working_dir: gopath/src/github.com/mongodb/amboy
 
 
 #######################################
@@ -102,9 +92,9 @@ tasks:
   # the build (with and without the race detector) and lint tasks use
   # a template that does not include test result parsing.
   - <<: *run-build
-    tags: ["dist"]
     name: build
-  - <<: *run-build
+
+  - <<: *run-go-test-suite
     tags: ["report"]
     name: lint
 
@@ -125,42 +115,28 @@ tasks:
   # define tasks for all test suites (modules)
   - <<: *run-go-test-suite
     name: test-dependency
-    tags: ["test"]
   - <<: *run-go-test-suite
     name: test-job
-    tags: ["test"]
   - <<: *run-go-test-suite
     name: test-registry
-    tags: ["test"]
   - <<: *run-go-test-suite
     name: test-pool
-    tags: ["test"]
   - <<: *run-go-test-suite
     name: test-rest
-    tags: ["test"]
   - <<: *run-go-test-suite
     name: test-logger
-    tags: ["test"]
   - <<: *run-go-test-suite-with-mongodb
     name: test-queue
-    tags: ["test"]
   - <<: *run-go-test-suite-with-mongodb
     name: test-management
-    tags: ["test"]
 
 post:
   - command: gotest.parse_files
     type: setup
     params:
       files:
+        - "gopath/src/github.com/mongodb/amboy/build/output.*.lint"
         - "gopath/src/github.com/mongodb/amboy/build/output.*.test"
-        - "gopath/src/github.com/mongodb/amboy/build/output.*.race"
-        - "gopath/src/github.com/mongodb/amboy/build/output.*"
-  - command: shell.exec
-    type: setup
-    params:
-      script: |
-        rm -rf amboy
   - command: s3.put
     type: system
     params:
@@ -196,21 +172,21 @@ buildvariants:
       GO_BIN_PATH: /opt/golang/go1.13/bin/go
       GOROOT: /opt/golang/go1.13
       RACE_DETECTOR: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     run_on:
-      - archlinux-build
+      - archlinux-large
     tasks:
       - ".test"
 
   - name: report
     display_name: Reporting
     run_on:
-      - archlinux-build
+      - archlinux-large
     expansions:
       GO_BIN_PATH: /opt/golang/go1.13/bin/go
       GOROOT: /opt/golang/go1.13
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     tasks:
       - name: ".report"
@@ -219,15 +195,15 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     run_on:
-      - ubuntu1604-build
+      - ubuntu1604-large
     expansions:
       DISABLE_COVERAGE: true
       GO_BIN_PATH: /opt/golang/go1.9/bin/go
       GOROOT: /opt/golang/go1.9
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.4.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
-      - name: ".dist"
-      - name: ".test"
+      - build
+      - ".test"
 
   - name: macos
     display_name: macOS 10.14
@@ -235,33 +211,29 @@ buildvariants:
       DISABLE_COVERAGE: true
       GO_BIN_PATH: /opt/golang/go1.13/bin/go
       GOROOT: /opt/golang/go1.13
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.4.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
       test_timeout: 15m
     run_on:
       - macos-1014
     tasks:
-      - ".dist"
+      - build
       - ".test"
 
   - name: windows
     display_name: Windows
     run_on:
-      - windows-64-vs2017-compile
-      - windows-64-vs2017-test
-      - windows-64-vs2015-compile
-      - windows-64-vs2015-large
-      - windows-64-vs2015-small
-      - windows-64-vs2015-test
-      - windows-64-vs2013-compile
-      - windows-64-vs2013-test
+      - windows-64-vs2019-large
+      - windows-64-vs2019-small
+      - windows-64-vs2017-large
+      - windows-64-vs2017-small
     expansions:
       GO_BIN_PATH: /cygdrive/c/golang/go1.13/bin/go
       GOROOT: C:/golang/go1.13
       DISABLE_COVERAGE: true
       test_timeout: 15m
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.4.zip
+      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
-      - ".dist"
+      - build
       - ".test"

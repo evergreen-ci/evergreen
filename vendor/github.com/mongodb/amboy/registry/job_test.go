@@ -11,26 +11,26 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// AmboyJobRegustrySuite tests the amboy job registry resource, which is
+// AmboyJobRegistrySuite tests the amboy job registry resource, which is
 // internal to the amboy package, but has an isolated interface for
 // client code that writes amboy jobs to support serialization and
 // de-serialization of jobs.
-type AmboyJobRegustrySuite struct {
+type AmboyJobRegistrySuite struct {
 	registry *typeRegistry
 	suite.Suite
 }
 
 func TestAmboyJobRegistryResources(t *testing.T) {
-	suite.Run(t, new(AmboyJobRegustrySuite))
+	suite.Run(t, new(AmboyJobRegistrySuite))
 }
 
-func (s *AmboyJobRegustrySuite) SetupSuite() {
+func (s *AmboyJobRegistrySuite) SetupSuite() {
 	lvl := grip.GetSender().Level()
 	lvl.Threshold = level.Emergency
 	s.NoError(grip.GetSender().SetLevel(lvl))
 }
 
-func (s *AmboyJobRegustrySuite) SetupTest() {
+func (s *AmboyJobRegistrySuite) SetupTest() {
 	s.registry = newTypeRegistry()
 	s.Len(s.registry.job.m, 0)
 }
@@ -43,7 +43,7 @@ func groupJobFactory() amboy.Job {
 	return (amboy.Job)(nil)
 }
 
-func (s *AmboyJobRegustrySuite) TestRegisterNewJobTypePersists() {
+func (s *AmboyJobRegistrySuite) TestRegisterNewJobTypePersists() {
 	s.registry.registerJobType("group_one", exampleJobFactory)
 	s.Len(s.registry.job.m, 1)
 
@@ -56,14 +56,14 @@ func (s *AmboyJobRegustrySuite) TestRegisterNewJobTypePersists() {
 	s.Len(s.registry.job.m, 1)
 }
 
-func (s *AmboyJobRegustrySuite) TestJobsHaveUniqueNames() {
+func (s *AmboyJobRegistrySuite) TestJobsHaveUniqueNames() {
 	s.registry.registerJobType("group", groupJobFactory)
 	s.registry.registerJobType("group", groupJobFactory)
 	s.registry.registerJobType("group", groupJobFactory)
 	s.Len(s.registry.job.m, 1)
 }
 
-func (s *AmboyJobRegustrySuite) TestConcurrentAccess() {
+func (s *AmboyJobRegistrySuite) TestConcurrentAccess() {
 	// this is a little simulation to test a moderate number
 	// threads doing read and write access on a registry object.
 	wg := &sync.WaitGroup{}
@@ -101,7 +101,7 @@ func (s *AmboyJobRegustrySuite) TestConcurrentAccess() {
 		fmt.Sprintf("%d jobs in registry, %d expected", len(s.registry.job.m), num))
 }
 
-func (s *AmboyJobRegustrySuite) TestRegistryFactoriesProduceTypesWithMatchingNames() {
+func (s *AmboyJobRegistrySuite) TestRegistryFactoriesProduceTypesWithMatchingNames() {
 	amboyRegistry.job.l.RLock()
 	defer amboyRegistry.job.l.RUnlock()
 

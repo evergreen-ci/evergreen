@@ -124,7 +124,7 @@ func (q *adaptiveLocalOrdering) Save(ctx context.Context, j amboy.Job) error {
 	op := func(ctx context.Context, items *adaptiveOrderItems, fixed *fixedStorage) {
 		defer close(out)
 		if _, ok := items.jobs[name]; !ok {
-			out <- errors.New("cannot save job that does not exist")
+			out <- amboy.NewJobNotFoundError("cannot save job that does not exist")
 			return
 		}
 
@@ -189,33 +189,30 @@ func (q *adaptiveLocalOrdering) Results(ctx context.Context) <-chan amboy.Job {
 	}
 }
 
-func (q *adaptiveLocalOrdering) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
-	ret := make(chan chan amboy.JobStatusInfo)
+// JobInfo returns a channel that produces job information for all jobs in the
+// queue. Job information is returned in no particular order.
+func (q *adaptiveLocalOrdering) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
+	infos := make(chan amboy.JobInfo)
 	op := func(opctx context.Context, items *adaptiveOrderItems, fixed *fixedStorage) {
-		out := make(chan amboy.JobStatusInfo, len(items.jobs))
-		defer close(out)
-		defer close(ret)
+		defer close(infos)
 
 		for _, j := range items.jobs {
-			if ctx.Err() != nil || opctx.Err() != nil {
+			select {
+			case <-opctx.Done():
 				return
+			case <-ctx.Done():
+				return
+			case infos <- amboy.NewJobInfo(j):
 			}
-
-			stat := j.Status()
-			stat.ID = j.ID()
-			out <- stat
 		}
-		ret <- out
 	}
 
 	select {
 	case <-ctx.Done():
-		out := make(chan amboy.JobStatusInfo)
-		close(out)
-		return out
+		close(infos)
 	case q.operations <- op:
-		return <-ret
 	}
+	return infos
 }
 
 func (q *adaptiveLocalOrdering) Stats(ctx context.Context) amboy.QueueStats {
@@ -314,13 +311,14 @@ func (q *adaptiveLocalOrdering) Next(ctx context.Context) amboy.Job {
 	}
 }
 
-func (q *adaptiveLocalOrdering) Complete(ctx context.Context, j amboy.Job) {
+func (q *adaptiveLocalOrdering) Complete(ctx context.Context, j amboy.Job) error {
 	if ctx.Err() != nil {
-		return
+		return ctx.Err()
 	}
-	wait := make(chan struct{})
+	waitForOp := make(chan struct{})
 	q.dispatcher.Complete(ctx, j)
 	op := func(ctx context.Context, items *adaptiveOrderItems, fixed *fixedStorage) {
+		defer close(waitForOp)
 		id := j.ID()
 		items.completed = append(items.completed, id)
 		items.jobs[id] = j
@@ -331,14 +329,18 @@ func (q *adaptiveLocalOrdering) Complete(ctx context.Context, j amboy.Job) {
 				items.remove(fixed.Pop())
 			}
 		}
-
-		close(wait)
 	}
 
 	select {
 	case <-ctx.Done():
+		return ctx.Err()
 	case q.operations <- op:
-		<-wait
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-waitForOp:
+			return nil
+		}
 	}
 }
 
@@ -350,4 +352,10 @@ func (q *adaptiveLocalOrdering) SetRunner(r amboy.Runner) error {
 
 	q.runner = r
 	return r.SetQueue(q)
+}
+
+func (q *adaptiveLocalOrdering) Close(ctx context.Context) {
+	if r := q.Runner(); r != nil {
+		r.Close(ctx)
+	}
 }
