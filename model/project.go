@@ -741,7 +741,7 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 }
 
 // NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task  id])
-func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs) TaskIdConfig {
+func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, projectName string) TaskIdConfig {
 	config := TaskIdConfig{ExecutionTasks: TaskIdTable{}, DisplayTasks: TaskIdTable{}}
 	processedVariants := map[string]bool{}
 
@@ -770,7 +770,7 @@ func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs) Task
 			continue
 		}
 		processedVariants[vt.Variant] = true
-		config.ExecutionTasks = generateIdsForVariant(vt, proj, v, tasks.ExecTasks, config.ExecutionTasks, tgMap)
+		config.ExecutionTasks = generateIdsForVariant(vt, proj, v, tasks.ExecTasks, config.ExecutionTasks, tgMap, projectName)
 	}
 	processedVariants = map[string]bool{}
 	for _, vt := range tasks.DisplayTasks {
@@ -779,12 +779,13 @@ func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs) Task
 			continue
 		}
 		processedVariants[vt.Variant] = true
-		config.DisplayTasks = generateIdsForVariant(vt, proj, v, tasks.DisplayTasks, config.DisplayTasks, tgMap)
+		config.DisplayTasks = generateIdsForVariant(vt, proj, v, tasks.DisplayTasks, config.DisplayTasks, tgMap, projectName)
 	}
 	return config
 }
 
-func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet, table TaskIdTable, tgMap map[string]TaskGroup) TaskIdTable {
+func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet, table TaskIdTable,
+	tgMap map[string]TaskGroup, projectName string) TaskIdTable {
 	if table == nil {
 		table = map[TVPair]string{}
 	}
@@ -799,17 +800,17 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 	}
 	for _, t := range projBV.Tasks { // create Ids for each task that can run on the variant and is requested by the patch.
 		if utility.StringSliceContains(taskNamesForVariant, t.Name) {
-			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(t.Name, proj, projBV, rev, v))
+			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(t.Name, projectName, projBV, rev, v))
 		} else if tg, ok := tgMap[t.Name]; ok {
 			for _, name := range tg.Tasks {
-				table[TVPair{vt.Variant, name}] = util.CleanName(generateId(name, proj, projBV, rev, v))
+				table[TVPair{vt.Variant, name}] = util.CleanName(generateId(name, projectName, projBV, rev, v))
 			}
 		}
 	}
 	for _, t := range projBV.DisplayTasks {
 		// create Ids for each task that can run on the variant and is requested by the patch.
 		if utility.StringSliceContains(taskNamesForVariant, t.Name) {
-			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(fmt.Sprintf("display_%s", t.Name), proj, projBV, rev, v))
+			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(fmt.Sprintf("display_%s", t.Name), projectName, projBV, rev, v))
 		}
 	}
 
