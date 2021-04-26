@@ -28,6 +28,10 @@ export GOROOT := $(goroot)
 # Ensure the build directory exists, since most targets require it.
 $(shell mkdir -p $(buildDir))
 
+
+.DEFAULT_GOAL := compile
+
+
 # start lint setup targets
 lintDeps := $(buildDir)/run-linter $(buildDir)/golangci-lint
 $(buildDir)/golangci-lint:
@@ -44,14 +48,6 @@ $(buildDir)/run-benchmarks:cmd/run-benchmarks/run-benchmarks.go
 	$(gobin) build -o $@ $<
 # end benchmark setup targets
 
-
-######################################################################
-##
-## Everything below this point is generic, and does not contain
-## project specific configuration. (with one noted case in the "build"
-## target for library-only projects)
-##
-######################################################################
 
 _compilePackages := $(subst $(name),,$(subst -,/,$(foreach target,$(packages),./$(target))))
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
@@ -73,8 +69,7 @@ coverage: $(coverageOutput)
 coverage-html: $(coverageHtmlOutput)
 compile $(buildDir):
 	$(gobin) build $(_compilePackages)
-compile-base:
-	$(gobin) build  ./
+phony += compile $(buildDir)
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
 test-%:$(buildDir)/output.%.test
@@ -130,6 +125,23 @@ $(buildDir)/output.%.lint:$(buildDir)/run-linter .FORCE
 	@$(if $(GO_BIN_PATH),PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)") ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 # end test and coverage artifacts
 
+# mongodb utility targets
+mongodb/.get-mongodb:
+	rm -rf mongodb
+	mkdir -p mongodb
+	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
+	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
+get-mongodb:mongodb/.get-mongodb
+	@touch $<
+start-mongod:mongodb/.get-mongodb
+	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet amboy
+	@echo "waiting for mongod to start up"
+check-mongod:mongodb/.get-mongodb
+	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
+	@echo "mongod is up"
+init-rs:mongodb/.get-mongodb
+	./mongodb/mongo --eval 'rs.initiate()'
+# end mongodb targets
 
 # start vendoring configuration
 vendor-clean:
@@ -142,6 +154,7 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/amboy/
 	rm -rf vendor/github.com/evergreen-ci/poplar/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/utility/file.go
+	rm -rf vendor/github.com/evergreen-ci/utility/gitignore.go
 	rm -rf vendor/github.com/evergreen-ci/utility/http.go
 	rm -rf vendor/github.com/evergreen-ci/utility/network.go
 	rm -rf vendor/github.com/evergreen-ci/utility/parsing.go
@@ -167,7 +180,7 @@ phony += vendor-clean
 
 # clean and other utility targets
 clean:
-	rm -rf $(name) $(lintDeps) $(buildDir)/output.*
+	rm -rf $(buildDir)
 phony += clean
 # end dependency targets
 

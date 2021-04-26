@@ -49,8 +49,10 @@ func (s *QueueService) getJobStatusResponse(ctx context.Context, name string) (*
 		return resp, err
 	}
 
+	completed := j.Status().Completed && (!j.RetryInfo().ShouldRetry())
+
 	resp.Exists = true
-	resp.Completed = j.Status().Completed
+	resp.Completed = completed
 	resp.Job = j
 
 	return resp, nil
@@ -139,7 +141,4 @@ func (s *QueueService) waitForJob(ctx context.Context, name string) (*jobStatusR
 	}
 
 	return response, http.StatusOK, nil
-}
-
-func (s *QueueService) markTypeCompleteLocal(jobType string) {
 }

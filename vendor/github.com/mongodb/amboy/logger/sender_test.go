@@ -142,7 +142,7 @@ func (s *SenderSuite) TestFlush() {
 		for i := 0; i < 10; i++ {
 			sender.Send(message.ConvertToComposer(level.Error, "message"))
 		}
-		s.Require().NoError(sender.Flush(context.TODO()), t)
+		s.Require().NoError(sender.Flush(context.Background()), t)
 		for i := 0; i < 10; i++ {
 			m, ok := s.mock.GetMessageSafe()
 			s.Require().True(ok, t)

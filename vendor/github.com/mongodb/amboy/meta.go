@@ -9,10 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ResolveErrors takes a queue object and iterates over the results
-// and returns a single aggregated error for the queue's job. The
-// completeness of this operation depends on the implementation of a
-// the queue implementation's Results() method.
+// ResolveErrors takes a Queue and iterates over the completed Jobs' results,
+// returning a single aggregated error for all of the Queue's Jobs.
 func ResolveErrors(ctx context.Context, q Queue) error {
 	catcher := grip.NewCatcher()
 
@@ -28,8 +26,8 @@ func ResolveErrors(ctx context.Context, q Queue) error {
 	return catcher.Resolve()
 }
 
-// PopulateQueue adds jobs from a channel to a queue and returns an
-// error with the aggregated results of these operations.
+// PopulateQueue adds Jobs from a channel to a Queue and returns an error with
+// the aggregated results of these operations.
 func PopulateQueue(ctx context.Context, q Queue, jobs <-chan Job) error {
 	catcher := grip.NewCatcher()
 
@@ -45,14 +43,15 @@ func PopulateQueue(ctx context.Context, q Queue, jobs <-chan Job) error {
 	return catcher.Resolve()
 }
 
-// QueueReport holds the ids of all tasks in a queue by state.
+// QueueReport holds the IDs of Jobs in a Queue based on their current state.
 type QueueReport struct {
-	Completed  []string `json:"completed"`
-	InProgress []string `json:"in_progress"`
 	Pending    []string `json:"pending"`
+	InProgress []string `json:"in_progress"`
+	Completed  []string `json:"completed"`
+	Retrying   []string `json:"retrying"`
 }
 
-// Report returns a QueueReport status for the state of a queue.
+// Report returns a QueueReport status for the state of a Queue.
 func Report(ctx context.Context, q Queue, limit int) QueueReport {
 	var out QueueReport
 
@@ -61,14 +60,18 @@ func Report(ctx context.Context, q Queue, limit int) QueueReport {
 	}
 
 	var count int
-	for stat := range q.JobStats(ctx) {
+	for info := range q.JobInfo(ctx) {
 		switch {
-		case stat.Completed:
-			out.Completed = append(out.Completed, stat.ID)
-		case stat.InProgress:
-			out.InProgress = append(out.InProgress, stat.ID)
+		case info.Status.Completed:
+			if info.Retry.ShouldRetry() {
+				out.Retrying = append(out.Retrying, info.ID)
+			} else {
+				out.Completed = append(out.Completed, info.ID)
+			}
+		case info.Status.InProgress:
+			out.InProgress = append(out.InProgress, info.ID)
 		default:
-			out.Pending = append(out.Pending, stat.ID)
+			out.Pending = append(out.Pending, info.ID)
 		}
 
 		count++
@@ -81,10 +84,10 @@ func Report(ctx context.Context, q Queue, limit int) QueueReport {
 	return out
 }
 
-// RunJob executes a single job directly, without a queue, with
-// similar semantics as it would execute in a queue: MaxTime is
-// respected, and it uses similar logging as is present in the queue,
-// with errors propogated functionally.
+// RunJob executes a single job directly, without a Queue, with similar
+// semantics as it would execute in a Queue: MaxTime is respected, and it uses
+// similar logging as is present in the queue, with errors propagated
+// functionally.
 func RunJob(ctx context.Context, job Job) error {
 	var cancel context.CancelFunc
 	ti := job.TimeInfo()

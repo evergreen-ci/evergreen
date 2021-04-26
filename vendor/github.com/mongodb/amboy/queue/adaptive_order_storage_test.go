@@ -113,7 +113,7 @@ func (s *AdaptiveOrderItemsSuite) TestRefilterIgnoresWorkWithCanceledContext() {
 	s.Len(s.items.stalled, 1)
 }
 
-func (s *AdaptiveOrderItemsSuite) TestRefilterReoRdersItemsInSuite() {
+func (s *AdaptiveOrderItemsSuite) TestRefilterReordersItemsInSuite() {
 	ctx := context.Background()
 	originalOrder := []string{"foo", "bar", "buzz", "what", "foo"}
 	s.items.ready = []string{"foo", "bar", "buzz", "what", "foo"}

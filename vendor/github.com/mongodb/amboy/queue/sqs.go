@@ -18,7 +18,6 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -99,9 +98,6 @@ func (q *sqsFIFOQueue) Put(ctx context.Context, j amboy.Job) error {
 	}
 
 	dedupID := strings.Replace(j.ID(), " ", "", -1) //remove all spaces
-	curStatus := j.Status()
-	curStatus.ID = dedupID
-	j.SetStatus(curStatus)
 	jobItem, err := registry.MakeJobInterchange(j, amboy.JSON)
 	if err != nil {
 		return errors.Wrap(err, "Error converting job in Put")
@@ -136,7 +132,7 @@ func (q *sqsFIFOQueue) Save(ctx context.Context, j amboy.Job) error {
 	}
 
 	if _, ok := q.tasks.all[name]; !ok {
-		return errors.Errorf("cannot save '%s' because a job does not exist with that name", name)
+		return amboy.NewJobNotFoundErrorf("cannot save '%s' because a job does not exist with that name", name)
 	}
 
 	q.tasks.all[name] = j
@@ -212,28 +208,22 @@ func (q *sqsFIFOQueue) Info() amboy.QueueInfo {
 
 // Used to mark a Job complete and remove it from the pending
 // work of the queue.
-func (q *sqsFIFOQueue) Complete(ctx context.Context, job amboy.Job) {
+func (q *sqsFIFOQueue) Complete(ctx context.Context, job amboy.Job) error {
 	if ctx.Err() != nil {
-		return
+		return ctx.Err()
 	}
 	name := job.ID()
 	q.dispatcher.Complete(ctx, job)
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
-	if ctx.Err() != nil {
-		grip.Notice(message.Fields{
-			"message":   "Did not complete job because context cancelled",
-			"id":        name,
-			"operation": "Complete",
-		})
-		return
-	}
 	q.tasks.completed[name] = true
 	savedJob := q.tasks.all[name]
 	if savedJob != nil {
 		savedJob.SetStatus(job.Status())
 		savedJob.UpdateTimeInfo(job.TimeInfo())
 	}
+
+	return nil
 }
 
 // Returns a channel that produces completed Job objects.
@@ -259,24 +249,23 @@ func (q *sqsFIFOQueue) Results(ctx context.Context) <-chan amboy.Job {
 	return results
 }
 
-// Returns a channel that produces the status objects for all
-// jobs in the queue, completed and otherwise.
-func (q *sqsFIFOQueue) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
-	allInfo := make(chan amboy.JobStatusInfo)
+// JobInfo returns a channel that produces information for all jobs in the
+// queue. Job information is returned in no particular order.
+func (q *sqsFIFOQueue) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
+	infos := make(chan amboy.JobInfo)
 	go func() {
 		q.mutex.RLock()
 		defer q.mutex.RUnlock()
-		defer close(allInfo)
-		for _, job := range q.tasks.all {
+		defer close(infos)
+		for _, j := range q.tasks.all {
 			select {
 			case <-ctx.Done():
 				return
-			case allInfo <- job.Status():
+			case infos <- amboy.NewJobInfo(j):
 			}
-
 		}
 	}()
-	return allInfo
+	return infos
 }
 
 // Returns an object that contains statistics about the
@@ -338,4 +327,10 @@ func (q *sqsFIFOQueue) Start(ctx context.Context) error {
 		return errors.Wrap(err, "problem starting runner")
 	}
 	return nil
+}
+
+func (q *sqsFIFOQueue) Close(ctx context.Context) {
+	if r := q.Runner(); r != nil {
+		r.Close(ctx)
+	}
 }

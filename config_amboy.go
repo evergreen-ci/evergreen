@@ -4,8 +4,11 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -163,4 +166,33 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 	}
 
 	return nil
+}
+
+func (c *AmboyRetryConfig) RetryableQueueOptions() queue.RetryableQueueOptions {
+	return queue.RetryableQueueOptions{
+		Disabled: func() bool {
+			flags, err := GetServiceFlags()
+			if err != nil {
+				grip.ErrorWhen(sometimes.Percent(DegradedLoggingPercent), message.WrapError(err, message.Fields{
+					"message": "could not load service flags",
+					"context": "checking if Amboy retrying is disabled",
+				}))
+				return false
+			}
+			grip.InfoWhen(flags.AmboyRetriesDisabled && sometimes.Percent(DegradedLoggingPercent), message.Fields{
+				"message": "Amboy retries are disabled",
+				"impact":  "Amboy jobs will not retry automatically",
+				"mode":    "degraded",
+			})
+			return flags.AmboyRetriesDisabled
+		},
+		RetryHandler: amboy.RetryHandlerOptions{
+			NumWorkers:       c.NumWorkers,
+			MaxRetryAttempts: c.MaxRetryAttempts,
+			MaxRetryTime:     time.Duration(c.MaxRetryTimeSeconds) * time.Second,
+			RetryBackoff:     time.Duration(c.RetryBackoffSeconds) * time.Second,
+			MaxCapacity:      c.MaxCapacity,
+		},
+		StaleRetryingMonitorInterval: time.Duration(c.StaleRetryingMonitorIntervalSeconds) * time.Second,
+	}
 }

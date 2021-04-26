@@ -23,30 +23,66 @@ func jitterNilJobWait() time.Duration {
 
 }
 
-func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
+func executeJob(ctx context.Context, id string, j amboy.Job, q amboy.Queue) {
 	var jobCtx context.Context
-	if maxTime := job.TimeInfo().MaxTime; maxTime > 0 {
+	if maxTime := j.TimeInfo().MaxTime; maxTime > 0 {
 		var jobCancel context.CancelFunc
 		jobCtx, jobCancel = context.WithTimeout(ctx, maxTime)
 		defer jobCancel()
 	} else {
 		jobCtx = ctx
 	}
-	job.Run(jobCtx)
-	q.Complete(ctx, job)
-	ti := job.TimeInfo()
+	j.Run(jobCtx)
+	if err := q.Complete(ctx, j); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "could not mark job complete",
+			"job_id":   j.ID(),
+			"queue_id": q.ID(),
+		}))
+		// If the job cannot not marked as complete in the queue, set the end
+		// time so that the calculated job execution statistics are valid.
+		j.UpdateTimeInfo(amboy.JobTimeInfo{
+			End: time.Now(),
+		})
+	}
+
+	amboy.WithRetryableQueue(q, func(rq amboy.RetryableQueue) {
+		if !j.RetryInfo().ShouldRetry() {
+			return
+		}
+
+		rh := rq.RetryHandler()
+		if rh == nil {
+			grip.Error(message.Fields{
+				"message":  "cannot retry a job in a queue that does not support retrying",
+				"job_id":   j.ID(),
+				"queue_id": rq.ID(),
+			})
+			return
+		}
+
+		if err := rh.Put(ctx, j); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "could not prepare job for retry",
+				"job_id":   j.ID(),
+				"queue_id": rq.ID(),
+			}))
+		}
+	})
+
+	ti := j.TimeInfo()
 	r := message.Fields{
-		"job_id":        job.ID(),
-		"job_type":      job.Type().Name,
+		"job_id":        j.ID(),
+		"job_type":      j.Type().Name,
 		"duration_secs": ti.Duration().Seconds(),
 		"dispatch_secs": ti.Start.Sub(ti.Created).Seconds(),
 		"pending_secs":  ti.End.Sub(ti.Created).Seconds(),
 		"queue_type":    fmt.Sprintf("%T", q),
-		"stat":          job.Status(),
+		"stat":          j.Status(),
 		"pool":          id,
 		"max_time_secs": ti.MaxTime.Seconds(),
 	}
-	err := job.Error()
+	err := j.Error()
 	if err != nil {
 		r["error"] = err.Error()
 	}
@@ -54,7 +90,7 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 	if err != nil {
 		grip.Error(r)
 	} else {
-		grip.Debug(r)
+		grip.Info(r)
 	}
 }
 
@@ -77,7 +113,15 @@ func worker(bctx context.Context, id string, q amboy.Queue, wg *sync.WaitGroup, 
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				q.Complete(bctx, job)
+				if err := q.Complete(ctx, job); err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message":     "could not mark job complete",
+						"job_id":      job.ID(),
+						"queue_id":    q.ID(),
+						"panic_error": err,
+					}))
+					job.AddError(err)
+				}
 			}
 			// start a replacement worker.
 			go worker(bctx, id, q, wg, mu)

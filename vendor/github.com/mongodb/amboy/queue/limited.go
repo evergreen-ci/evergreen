@@ -15,11 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// LocalLimitedSize implements the amboy.Queue interface, and unlike
-// other implementations, the size of the queue is limited for both
-// incoming tasks and completed tasks. This makes it possible to use
-// these queues in situations as parts of services and in
-// longer-running contexts.
+// limitedSizeLocal implements the amboy.Queue interface. Unlike other
+// implementations, the size of the queue is limited for both incoming tasks and
+// completed tasks; this makes it possible to use these queues in situations as
+// parts of services and in longer-running contexts.
 //
 // Specify a capacity when constructing the queue; the queue will
 // store no more than 2x the number specified, and no more the
@@ -40,8 +39,8 @@ type limitedSizeLocal struct {
 	mu           sync.RWMutex
 }
 
-// NewLocalLimitedSize constructs a LocalLimitedSize queue instance
-// with the specified number of workers and capacity.
+// NewLocalLimitedSize constructs a queue instance with the specified number of
+// workers and maximum capacity.
 func NewLocalLimitedSize(workers, capacity int) amboy.Queue {
 	q := &limitedSizeLocal{
 		capacity: capacity,
@@ -58,10 +57,11 @@ func (q *limitedSizeLocal) ID() string {
 	return q.id
 }
 
-// Put adds a job to the queue, returning an error if the queue isn't
-// opened, a task of that name exists has been completed (and is
-// stored in the results storage,) or is pending, and finally if the
-// queue is at capacity.
+// Put adds a job to the queue. It returns an error if the queue is not yet
+// opened or a job of the same name already exists in the queue. If the queue is
+// at capacity, it will block until it can be added or the context is done;
+// waiting for these conditions can cause the other queue operations to also
+// block, so it is not recommended to pass a long-lived context to Put.
 func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
 	if !q.Info().Started {
 		return errors.Errorf("queue not open. could not add %s", j.ID())
@@ -109,7 +109,7 @@ func (q *limitedSizeLocal) Save(ctx context.Context, j amboy.Job) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.storage[name]; !ok {
-		return errors.Errorf("cannot save '%s', which is not tracked", name)
+		return amboy.NewJobNotFoundErrorf("cannot save '%s', which is not tracked", name)
 	}
 
 	if err := q.scopes.Acquire(name, j.Scopes()); err != nil {
@@ -222,22 +222,23 @@ func (q *limitedSizeLocal) Results(ctx context.Context) <-chan amboy.Job {
 	return out
 }
 
-// JobStats returns an iterator for job status documents for all jobs
-// in the queue. For this queue implementation *queued* jobs are returned
-// first.
-func (q *limitedSizeLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+// JobInfo returns a channel for information on all jobs in the queue. Job
+// information is returned in no particular order.
+func (q *limitedSizeLocal) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	out := make(chan amboy.JobStatusInfo, len(q.storage))
-	for name, job := range q.storage {
-		stat := job.Status()
-		stat.ID = name
-		out <- stat
+	infos := make(chan amboy.JobInfo, len(q.storage))
+	defer close(infos)
+	for _, j := range q.storage {
+		select {
+		case <-ctx.Done():
+			return infos
+		case infos <- amboy.NewJobInfo(j):
+		}
 	}
-	close(out)
 
-	return out
+	return infos
 }
 
 // Runner returns the Queue's embedded amboy.Runner instance.
@@ -279,9 +280,9 @@ func (q *limitedSizeLocal) Stats(ctx context.Context) amboy.QueueStats {
 }
 
 // Complete marks a job complete in the queue.
-func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
+func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) error {
 	if ctx.Err() != nil {
-		return
+		return ctx.Err()
 	}
 	q.dispatcher.Complete(ctx, j)
 
@@ -301,16 +302,16 @@ func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
 		q.deletedCount++
 	}
 
-	grip.Alert(message.WrapError(
-		q.scopes.Release(j.ID(), j.Scopes()),
-		message.Fields{
-			"id":     j.ID(),
-			"scopes": j.Scopes(),
-			"queue":  q.ID(),
-			"op":     "releasing scope lock during completion",
-		}))
+	if err := q.scopes.Release(j.ID(), j.Scopes()); err != nil {
+		return errors.Wrapf(err, "releasing scopes '%s'", j.Scopes())
+	}
 
-	q.toDelete <- j.ID()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case q.toDelete <- j.ID():
+		return nil
+	}
 }
 
 // Start starts the runner and initializes the pending task
@@ -336,4 +337,12 @@ func (q *limitedSizeLocal) Start(ctx context.Context) error {
 	grip.Info("job server running")
 
 	return nil
+}
+
+// Close stops all processing of jobs and waits for the work in progress to
+// finish.
+func (q *limitedSizeLocal) Close(ctx context.Context) {
+	if r := q.Runner(); r != nil {
+		r.Close(ctx)
+	}
 }

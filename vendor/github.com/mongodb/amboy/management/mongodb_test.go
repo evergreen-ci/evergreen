@@ -12,6 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func defaultMongoDBTestOptions() queue.MongoDBOptions {
+	opts := queue.DefaultMongoDBOptions()
+	opts.DB = "amboy_test"
+	return opts
+}
+
 func TestMongoDBConstructors(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -21,8 +27,7 @@ func TestMongoDBConstructors(t *testing.T) {
 	require.NoError(t, client.Connect(ctx))
 
 	t.Run("NilSessionShouldError", func(t *testing.T) {
-		opts := queue.DefaultMongoDBOptions()
-		opts.DB = "amboy_test"
+		opts := defaultMongoDBTestOptions()
 		conf := DBQueueManagerOptions{Options: opts}
 
 		db, err := MakeDBQueueManager(ctx, conf, nil)
@@ -30,8 +35,7 @@ func TestMongoDBConstructors(t *testing.T) {
 		assert.Nil(t, db)
 	})
 	t.Run("UnpingableSessionError", func(t *testing.T) {
-		opts := queue.DefaultMongoDBOptions()
-		opts.DB = "amboy_test"
+		opts := defaultMongoDBTestOptions()
 		conf := DBQueueManagerOptions{Options: opts}
 
 		db, err := MakeDBQueueManager(ctx, conf, client)
@@ -39,8 +43,7 @@ func TestMongoDBConstructors(t *testing.T) {
 		assert.Nil(t, db)
 	})
 	t.Run("BuildNewConnector", func(t *testing.T) {
-		opts := queue.DefaultMongoDBOptions()
-		opts.DB = "amboy_test"
+		opts := defaultMongoDBTestOptions()
 		conf := DBQueueManagerOptions{Name: "foo", Options: opts}
 
 		db, err := MakeDBQueueManager(ctx, conf, client)
@@ -53,8 +56,7 @@ func TestMongoDBConstructors(t *testing.T) {
 		assert.NotZero(t, r.collection)
 	})
 	t.Run("DialWithNewConstructor", func(t *testing.T) {
-		opts := queue.DefaultMongoDBOptions()
-		opts.DB = "amboy_test"
+		opts := defaultMongoDBTestOptions()
 		conf := DBQueueManagerOptions{Name: "foo", Options: opts}
 
 		r, err := NewDBQueueManager(ctx, conf)
@@ -62,8 +64,7 @@ func TestMongoDBConstructors(t *testing.T) {
 		assert.NotNil(t, r)
 	})
 	t.Run("DialWithBadURI", func(t *testing.T) {
-		opts := queue.DefaultMongoDBOptions()
-		opts.DB = "amboy_test"
+		opts := defaultMongoDBTestOptions()
 		opts.URI = "mongodb://lochost:26016"
 		conf := DBQueueManagerOptions{Options: opts}
 

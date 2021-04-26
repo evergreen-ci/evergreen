@@ -182,8 +182,8 @@ func (s *JobInterchangeSuite) TestApplyScopesOnEnqueuePersists() {
 
 func (s *JobInterchangeSuite) TestRetryInfoPersists() {
 	info := amboy.JobRetryInfo{
-		Retryable:    true,
-		CurrentTrial: 5,
+		Retryable:      true,
+		CurrentAttempt: 5,
 	}
 	s.job.UpdateRetryInfo(info.Options())
 	s.Equal(info, s.job.RetryInfo())

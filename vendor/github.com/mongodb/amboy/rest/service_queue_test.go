@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -21,8 +20,6 @@ func init() {
 	lvl := grip.GetSender().Level()
 	lvl.Threshold = level.Warning
 	_ = grip.GetSender().SetLevel(lvl)
-
-	job.RegisterDefaultJobs()
 }
 
 type RestServiceSuite struct {
@@ -36,9 +33,6 @@ func TestRestServiceSuite(t *testing.T) {
 }
 
 func (s *RestServiceSuite) SetupSuite() {
-	// need to import job so that we load the init functions that
-	// register jobs so these tests are more meaningful.
-	job.RegisterDefaultJobs()
 	s.require = s.Require()
 }
 

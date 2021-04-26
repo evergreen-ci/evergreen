@@ -15,10 +15,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func init() {
-	job.RegisterDefaultJobs()
-}
-
 type RemoteUnorderedSuite struct {
 	queue             *remoteUnordered
 	driver            remoteQueueDriver
@@ -33,8 +29,7 @@ type RemoteUnorderedSuite struct {
 func TestRemoteUnorderedMongoSuite(t *testing.T) {
 	tests := new(RemoteUnorderedSuite)
 	name := "test-" + uuid.New().String()
-	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
+	opts := defaultMongoDBTestOptions()
 
 	tests.driverConstructor = func() (remoteQueueDriver, error) {
 		return newMongoDriver(name, opts)
@@ -66,7 +61,11 @@ func (s *RemoteUnorderedSuite) SetupTest() {
 	s.driver, err = s.driverConstructor()
 	s.Require().NoError(err)
 	s.Require().NoError(s.driver.Open(s.ctx))
-	s.queue = newRemoteUnordered(2).(*remoteUnordered)
+	rq, err := newRemoteUnordered(2)
+	s.Require().NoError(err)
+	q, ok := rq.(*remoteUnordered)
+	s.Require().True(ok)
+	s.queue = q
 }
 
 func (s *RemoteUnorderedSuite) TearDownTest() {
@@ -84,6 +83,7 @@ func (s *RemoteUnorderedSuite) TestDriverIsUnitializedByDefault() {
 
 func (s *RemoteUnorderedSuite) TestRemoteUnorderdImplementsQueueInterface() {
 	s.Implements((*amboy.Queue)(nil), s.queue)
+	s.Implements((*amboy.RetryableQueue)(nil), s.queue)
 }
 
 func (s *RemoteUnorderedSuite) TestJobPutIntoQueueFetchableViaGetMethod() {
@@ -245,6 +245,9 @@ func (s *RemoteUnorderedSuite) TestNextMethodSkipsLockedJobs() {
 
 		if i%3 == 0 {
 			numLocked++
+			j.SetStatus(amboy.JobStatusInfo{
+				InProgress: true,
+			})
 			err := j.Lock(s.driver.ID(), amboy.LockTimeout)
 			s.NoError(err)
 
@@ -294,7 +297,7 @@ checkResults:
 	s.Equal(created, observed+numLocked, "%+v", qStat)
 }
 
-func (s *RemoteUnorderedSuite) TestJobStatsIterator() {
+func (s *RemoteUnorderedSuite) TestJobInfo() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.Require().NoError(s.queue.SetDriver(s.driver))
@@ -310,8 +313,8 @@ func (s *RemoteUnorderedSuite) TestJobStatsIterator() {
 	}
 
 	counter := 0
-	for stat := range s.queue.JobStats(ctx) {
-		_, ok := names[stat.ID]
+	for info := range s.queue.JobInfo(ctx) {
+		_, ok := names[info.ID]
 		s.True(ok)
 		counter++
 	}
@@ -336,7 +339,7 @@ func (s *RemoteUnorderedSuite) TestInfoReturnsDefaultLockTimeout() {
 }
 
 func (s *RemoteUnorderedSuite) TestInfoReturnsConfigurableLockTimeout() {
-	opts := DefaultMongoDBOptions()
+	opts := defaultMongoDBTestOptions()
 	opts.LockTimeout = 30 * time.Minute
 	d, err := newMongoDriver(s.T().Name(), opts)
 	s.Require().NoError(err)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
 )
 
 // ManagementGroupService provides the reporting service
@@ -57,16 +58,23 @@ func (s *ManagementGroupService) ListJobs(rw http.ResponseWriter, r *http.Reques
 func (s *ManagementGroupService) AbortAllJobs(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	catcher := grip.NewBasicCatcher()
 	for _, group := range s.group.Queues(ctx) {
 		if queue, err := s.group.Get(ctx, group); err == nil {
 			if pool, ok := queue.Runner().(amboy.AbortableRunner); ok {
-				pool.AbortAll(ctx)
-				if ctx.Err() != nil {
-					gimlet.WriteJSONResponse(rw, http.StatusRequestTimeout, struct{}{})
-					return
+				if err := pool.AbortAll(ctx); err != nil {
+					if ctx.Err() != nil {
+						gimlet.WriteJSONResponse(rw, http.StatusRequestTimeout, struct{}{})
+						return
+					}
+					catcher.Wrapf(err, "queue '%s'", queue.ID())
 				}
 			}
 		}
+	}
+	if catcher.HasErrors() {
+		gimlet.WriteJSONInternalError(rw, catcher.Resolve().Error())
+		return
 	}
 
 	gimlet.WriteJSON(rw, struct{}{})
