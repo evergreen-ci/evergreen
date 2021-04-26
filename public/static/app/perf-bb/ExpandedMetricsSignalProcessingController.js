@@ -6,9 +6,10 @@ mciModule.controller('ExpandedMetricsSignalProcessingController', function (
   $scope.totalPages = 1;
   $scope.projectId = $routeParams.projectId;
   $scope.measurementRegex = 'Latency50thPercentile|Latency95thPercentile';
-  $scope.taskRegex = 'mixed_writes_replica|large_scale_model|big_update|service_architecture_workloads|out_of_cache_scanner';
-  // This is essentially "not containing ActorFinished/ActorStarted/Setup/Cleanup"
-  $scope.testRegex = '^(?!.*(ActorFinished|ActorStarted|Setup|Cleanup))';
+  // Look at all tasks except genny_canaries.
+  $scope.taskRegex = '^(?!.*(genny_canaries).*)';
+  // Don't look at any test-specific canaries (eg. canary_InsertBigDocs.ActorFinished).
+  $scope.testRegex = '^(?!.*(canary_|Cleanup).*)';
   $scope.hazardValues = [
     'Major Regression',
     'Moderate Regression',
