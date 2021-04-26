@@ -27,7 +27,7 @@ func NewQueueManager(q amboy.Queue) Manager {
 	}
 }
 
-func (m *queueManager) JobStatus(ctx context.Context, f StatusFilter) (*JobStatusReport, error) {
+func (m *queueManager) JobStatus(ctx context.Context, f StatusFilter) ([]JobTypeCount, error) {
 	if err := f.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid filter")
 	}
@@ -40,83 +40,18 @@ func (m *queueManager) JobStatus(ctx context.Context, f StatusFilter) (*JobStatu
 		counters[info.Type.Name]++
 	}
 
-	out := JobStatusReport{}
-
+	var out []JobTypeCount
 	for jt, num := range counters {
-		out.Stats = append(out.Stats, JobCounters{
-			ID:    jt,
+		out = append(out, JobTypeCount{
+			Type:  jt,
 			Count: num,
 		})
 	}
 
-	out.Filter = f
-
-	return &out, nil
+	return out, nil
 }
 
-func (m *queueManager) RecentTiming(ctx context.Context, window time.Duration, f RuntimeFilter) (*JobRuntimeReport, error) {
-	var err error
-
-	if err = f.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid filter")
-	}
-
-	if window <= time.Second {
-		return nil, errors.New("must specify windows greater than one second")
-	}
-
-	counters := map[string][]time.Duration{}
-
-	for info := range m.queue.JobInfo(ctx) {
-		switch f {
-		case Running:
-			if !info.Status.InProgress {
-				continue
-			}
-			counters[info.Type.Name] = append(counters[info.Type.Name], time.Since(info.Time.Start))
-		case Latency:
-			if info.Status.Completed {
-				continue
-			}
-			if time.Since(info.Time.Created) > window {
-				continue
-			}
-			counters[info.Type.Name] = append(counters[info.Type.Name], time.Since(info.Time.Created))
-		case Duration:
-			if !info.Status.Completed {
-				continue
-			}
-			if time.Since(info.Time.End) > window {
-				continue
-			}
-			counters[info.Type.Name] = append(counters[info.Type.Name], info.Time.End.Sub(info.Time.Start))
-		default:
-			return nil, errors.New("invalid job runtime filter")
-		}
-	}
-
-	runtimes := []JobRuntimes{}
-
-	for k, v := range counters {
-		var total time.Duration
-		for _, i := range v {
-			total += i
-		}
-
-		runtimes = append(runtimes, JobRuntimes{
-			ID:       k,
-			Duration: total / time.Duration(len(v)),
-		})
-	}
-
-	return &JobRuntimeReport{
-		Filter: f,
-		Period: window,
-		Stats:  runtimes,
-	}, nil
-}
-
-func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f StatusFilter) (*JobReportIDs, error) {
+func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f StatusFilter) ([]GroupedID, error) {
 	var err error
 	if err = f.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid filter")
@@ -135,16 +70,12 @@ func (m *queueManager) JobIDsByState(ctx context.Context, jobType string, f Stat
 		uniqueIDs[info.ID] = struct{}{}
 	}
 
-	ids := make([]GroupedID, 0, len(uniqueIDs))
+	var ids []GroupedID
 	for id := range uniqueIDs {
 		ids = append(ids, GroupedID{ID: id})
 	}
 
-	return &JobReportIDs{
-		Filter:     f,
-		Type:       jobType,
-		GroupedIDs: ids,
-	}, nil
+	return ids, nil
 }
 
 // matchesStatusFilter returns whether or not a job's information matches the
@@ -160,158 +91,14 @@ func (m *queueManager) matchesStatusFilter(info amboy.JobInfo, f StatusFilter) b
 	case Completed:
 		return info.Status.Completed
 	case Retrying:
-		return info.Status.Completed && info.Retry.NeedsRetry
+		return info.Status.Completed && info.Retry.Retryable && info.Retry.NeedsRetry
+	case StaleRetrying:
+		return info.Status.Completed && info.Retry.Retryable && info.Retry.NeedsRetry && time.Since(info.Status.ModificationTime) > m.queue.Info().LockTimeout
 	case All:
 		return true
 	default:
 		return false
 	}
-}
-
-func (m *queueManager) RecentErrors(ctx context.Context, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
-	var err error
-	if err = f.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid filter")
-
-	}
-	if window <= time.Second {
-		return nil, errors.New("must specify windows greater than one second")
-	}
-
-	collector := map[string]JobErrorsForType{}
-
-	for info := range m.queue.JobInfo(ctx) {
-		if !info.Status.Completed {
-			continue
-		}
-
-		if info.Status.ErrorCount == 0 {
-			continue
-		}
-
-		if time.Since(info.Time.End) > window {
-			continue
-		}
-
-		switch f {
-		case AllErrors, UniqueErrors:
-			val := collector[info.Type.Name]
-			val.Count++
-			val.Total += info.Status.ErrorCount
-			val.Errors = append(val.Errors, info.Status.Errors...)
-			collector[info.Type.Name] = val
-		case StatsOnly:
-			val := collector[info.Type.Name]
-			val.Count++
-			val.Total += info.Status.ErrorCount
-			collector[info.Type.Name] = val
-		default:
-			return nil, errors.New("operation is not supported")
-		}
-	}
-	if f == UniqueErrors {
-		for k, v := range collector {
-			errs := map[string]struct{}{}
-
-			for _, e := range v.Errors {
-				errs[e] = struct{}{}
-			}
-
-			v.Errors = []string{}
-			for e := range errs {
-				v.Errors = append(v.Errors, e)
-			}
-
-			collector[k] = v
-		}
-	}
-
-	var reports []JobErrorsForType
-
-	for k, v := range collector {
-		v.ID = k
-		v.Average = float64(v.Total / v.Count)
-
-		reports = append(reports, v)
-	}
-
-	return &JobErrorsReport{
-		Period:         window,
-		FilteredByType: false,
-		Data:           reports,
-	}, nil
-}
-
-func (m *queueManager) RecentJobErrors(ctx context.Context, jobType string, window time.Duration, f ErrorFilter) (*JobErrorsReport, error) {
-	var err error
-	if err = f.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid filter")
-
-	}
-	if window <= time.Second {
-		return nil, errors.New("must specify windows greater than one second")
-	}
-
-	collector := map[string]JobErrorsForType{}
-
-	for info := range m.queue.JobInfo(ctx) {
-		if !info.Status.Completed || info.Status.ErrorCount == 0 {
-			continue
-		}
-		if time.Since(info.Time.End) > window {
-			continue
-		}
-		if info.Type.Name != jobType {
-			continue
-		}
-
-		switch f {
-		case AllErrors, UniqueErrors:
-			val := collector[info.Type.Name]
-			val.Count++
-			val.Total += info.Status.ErrorCount
-			val.Errors = append(val.Errors, info.Status.Errors...)
-			collector[info.Type.Name] = val
-		case StatsOnly:
-			val := collector[info.Type.Name]
-			val.Count++
-			val.Total += info.Status.ErrorCount
-			collector[info.Type.Name] = val
-		default:
-			return nil, errors.New("operation is not supported")
-		}
-	}
-	if f == UniqueErrors {
-		for k, v := range collector {
-			errs := map[string]struct{}{}
-
-			for _, e := range v.Errors {
-				errs[e] = struct{}{}
-			}
-
-			v.Errors = []string{}
-			for e := range errs {
-				v.Errors = append(v.Errors, e)
-			}
-
-			collector[k] = v
-		}
-	}
-
-	var reports []JobErrorsForType
-
-	for k, v := range collector {
-		v.ID = k
-		v.Average = float64(v.Total / v.Count)
-
-		reports = append(reports, v)
-	}
-
-	return &JobErrorsReport{
-		Period:         window,
-		FilteredByType: true,
-		Data:           reports,
-	}, nil
 }
 
 // getJob resolves a job's information into the job that supplied the
