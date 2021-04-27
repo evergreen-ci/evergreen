@@ -83,7 +83,7 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 
 		dbSubscriptions = append(dbSubscriptions, dbSubscription)
 
-		if dbSubscription.ResourceType == event.ResourceTypeVersion {
+		if dbSubscription.ResourceType == event.ResourceTypeVersion && dbSubscription.Trigger == event.TriggerOutcome {
 
 			//find all children, iterate through them
 			var versionId string
