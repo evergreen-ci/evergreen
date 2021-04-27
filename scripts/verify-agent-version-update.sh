@@ -9,7 +9,7 @@ fi
 # Find the common ancestor between the current set of changes and the upstream branch, then see if any source code files
 # have changed in the agent or its subpackages.
 common_ancestor=$(git merge-base ${BRANCH_NAME}@{upstream} HEAD);
-files_changed="$(git diff --name-only ${common_ancestor} -- agent/**.go agent/**/*.go ':!agent/**_test.go' ':!agent/**/*_test.go' rest/client/evergreen_sender.go rest/client/logger.go rest/client/timeout_sender.go)"
+files_changed="$(git diff --name-only "${common_ancestor}" -- 'agent/**.go' 'agent/**/*.go' ':!agent/**_test.go' ':!agent/**/*_test.go')"
 if [[ "${files_changed}" == "" ]]; then
     exit 0;
 fi
