@@ -98,8 +98,7 @@ type Host struct {
 
 	// NeedsReprovision is set if the host needs to be reprovisioned.
 	// These fields must be unset if no provisioning is needed anymore.
-	NeedsReprovision     ReprovisionType `bson:"needs_reprovision,omitempty" json:"needs_reprovision,omitempty"`
-	ReprovisioningLocked bool            `bson:"reprovisioning_locked,omitempty" json:"reprovisioning_locked,omitempty"`
+	NeedsReprovision ReprovisionType `bson:"needs_reprovision,omitempty" json:"needs_reprovision,omitempty"`
 
 	// JasperCredentialsID is used to match hosts to their Jasper credentials
 	// for non-legacy hosts.
@@ -980,9 +979,8 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 			{NeedsReprovisionKey: bson.M{"$exists": false}},
 			{NeedsReprovisionKey: ReprovisionJasperRestart},
 		},
-		ReprovisioningLockedKey: bson.M{"$ne": true},
-		HasContainersKey:        bson.M{"$ne": true},
-		ParentIDKey:             bson.M{"$exists": false},
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
 	}, bson.M{
 		"$set": bson.M{
 			NeedsReprovisionKey: ReprovisionJasperRestart,
@@ -1047,9 +1045,8 @@ func (h *Host) setAwaitingReprovisionToNew(user string) error {
 			{NeedsReprovisionKey: bson.M{"$exists": false}},
 			{NeedsReprovisionKey: ReprovisionToNew},
 		},
-		ReprovisioningLockedKey: bson.M{"$ne": true},
-		HasContainersKey:        bson.M{"$ne": true},
-		ParentIDKey:             bson.M{"$exists": false},
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
 	}, bson.M{
 		"$set": bson.M{
 			NeedsReprovisionKey: ReprovisionToNew,
@@ -1357,41 +1354,6 @@ func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
 		return err
 	}
 	h.NeedsNewAgentMonitor = needsAgentMonitor
-	return nil
-}
-
-// SetReprovisioningLocked sets the "provisioning is locked" flag on the host to
-// indicate that provisioning jobs should not run.
-func (h *Host) SetReprovisioningLocked(locked bool) error {
-	var update bson.M
-	if locked {
-		update = bson.M{"$set": bson.M{ReprovisioningLockedKey: true}}
-	} else {
-		update = bson.M{"$unset": bson.M{ReprovisioningLockedKey: false}}
-	}
-	if err := UpdateOne(bson.M{IdKey: h.Id}, update); err != nil {
-		return err
-	}
-	h.ReprovisioningLocked = locked
-	return nil
-}
-
-// SetReprovisioningLockedAtomically is the same as SetReprovisioningLocked but
-// performs an atomic update on the host in the database.
-func (h *Host) SetReprovisioningLockedAtomically(locked bool) error {
-	query := bson.M{IdKey: h.Id}
-	var update bson.M
-	if locked {
-		query[ReprovisioningLockedKey] = bson.M{"$ne": true}
-		update = bson.M{"$set": bson.M{ReprovisioningLockedKey: true}}
-	} else {
-		query[ReprovisioningLockedKey] = true
-		update = bson.M{"$unset": bson.M{ReprovisioningLockedKey: false}}
-	}
-	if err := UpdateOne(query, update); err != nil {
-		return err
-	}
-	h.ReprovisioningLocked = locked
 	return nil
 }
 

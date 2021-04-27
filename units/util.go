@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -69,16 +68,7 @@ func EnqueueHostReprovisioningJob(ctx context.Context, env evergreen.Environment
 			return errors.Wrap(err, "enqueueing job to reprovision host to new")
 		}
 	case host.ReprovisionJasperRestart:
-		expiration, err := h.JasperCredentialsExpiration(ctx, env)
-		if err != nil {
-			grip.Warning(message.WrapError(err, "getting credentials expiration time"))
-			// If we cannot get the credentials for some reason (e.g. the
-			// host's credentials were deleted), assume the credentials have
-			// expired.
-			expiration = time.Now()
-		}
-		foundExpiration := err == nil
-		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewJasperRestartJob(env, *h, expiration, foundExpiration && h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts, 0)); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewJasperRestartJob(env, *h, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts)); err != nil {
 			return errors.Wrap(err, "enqueueing jobs to restart Jasper")
 		}
 	}

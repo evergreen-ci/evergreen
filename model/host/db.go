@@ -61,7 +61,6 @@ var (
 	NeedsNewAgentMonitorKey            = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
 	JasperCredentialsIDKey             = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
 	NeedsReprovisionKey                = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
-	ReprovisioningLockedKey            = bsonutil.MustHaveTag(Host{}, "ReprovisioningLocked")
 	StartedByKey                       = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey                    = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumesKey                         = bsonutil.MustHaveTag(Host{}, "Volumes")
@@ -507,25 +506,6 @@ func FindByNeedsJasperRestart() ([]Host, error) {
 			{NeedsNewAgentMonitorKey: true},
 		},
 	}))
-}
-
-// NeedsReprovisioningLocked finds all hosts that need their provisioning changed
-// but their provisioning has been locked for more than the max LCT interval.
-func NeedsReprovisioningLocked(currentTime time.Time) bson.M {
-	cutoffTime := currentTime.Add(-MaxLCTInterval)
-	return bson.M{
-		StatusKey:               evergreen.HostProvisioning,
-		RunningTaskKey:          bson.M{"$exists": false},
-		HasContainersKey:        bson.M{"$ne": true},
-		ParentIDKey:             bson.M{"$exists": false},
-		NeedsReprovisionKey:     bson.M{"$exists": true, "$ne": ""},
-		ReprovisioningLockedKey: true,
-		"$or": []bson.M{
-			{LastCommunicationTimeKey: utility.ZeroTime},
-			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
-			{LastCommunicationTimeKey: bson.M{"$exists": false}},
-		},
-	}
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts

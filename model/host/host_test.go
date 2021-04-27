@@ -1121,12 +1121,6 @@ func TestSetNeedsJasperRestart(t *testing.T) {
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
 			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
 		},
-		"FailsIfReprovisioningLocked": func(t *testing.T, h *Host) {
-			h.ReprovisioningLocked = true
-			require.NoError(t, h.Insert())
-
-			assert.Error(t, h.SetNeedsJasperRestart(evergreen.User))
-		},
 		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
@@ -1190,12 +1184,6 @@ func TestSetNeedsReprovisionToNew(t *testing.T) {
 			assert.Equal(t, ReprovisionToNew, h.NeedsReprovision)
 		},
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
-			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
-		},
-		"FailsIfReprovisioningLocked": func(t *testing.T, h *Host) {
-			h.ReprovisioningLocked = true
-			require.NoError(t, h.Insert())
-
 			assert.Error(t, h.SetNeedsReprovisionToNew(evergreen.User))
 		},
 		"FailsIfHostNotRunningOrProvisioning": func(t *testing.T, h *Host) {
@@ -1382,66 +1370,6 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 				NeedsNewAgentMonitor: true,
 			}
 			testCase(t, &h)
-		})
-	}
-}
-
-func TestNeedsReprovisioningLocked(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, h *Host){
-		"IgnoresHostWithRecentLCT": func(t *testing.T, h *Host) {
-			h.LastCommunicationTime = time.Now()
-			require.NoError(t, h.Insert())
-
-			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
-			assert.NoError(t, err)
-			assert.Empty(t, hosts)
-		},
-		"IgnoresRunningHosts": func(t *testing.T, h *Host) {
-			h.Status = evergreen.HostRunning
-			require.NoError(t, h.Insert())
-
-			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
-			assert.NoError(t, err)
-			assert.Empty(t, hosts)
-		},
-		"IgnoresHostsWithoutProvisioningNeeds": func(t *testing.T, h *Host) {
-			h.NeedsReprovision = ReprovisionNone
-			require.NoError(t, h.Insert())
-
-			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
-			assert.NoError(t, err)
-			assert.Empty(t, hosts)
-		},
-		"IgnoresHostsWithProvisioningUnlocked": func(t *testing.T, h *Host) {
-			h.ReprovisioningLocked = false
-			require.NoError(t, h.Insert())
-
-			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
-			assert.NoError(t, err)
-			assert.Empty(t, hosts)
-		},
-		"ReturnsReprovisioningLockedHosts": func(t *testing.T, h *Host) {
-			require.NoError(t, h.Insert())
-
-			hosts, err := Find(db.Query(NeedsReprovisioningLocked(time.Now())))
-			require.NoError(t, err)
-			require.Len(t, hosts, 1)
-			assert.Equal(t, h.Id, hosts[0].Id)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.Clear(Collection))
-			defer func() {
-				assert.NoError(t, db.Clear(Collection))
-			}()
-			h := &Host{
-				Id:                   "id",
-				StartedBy:            evergreen.User,
-				Status:               evergreen.HostProvisioning,
-				NeedsReprovision:     ReprovisionToNew,
-				ReprovisioningLocked: true,
-			}
-			testCase(t, h)
 		})
 	}
 }

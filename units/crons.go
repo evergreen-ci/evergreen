@@ -863,17 +863,6 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			return nil
 		}
 
-		if err = host.UpdateAll(host.NeedsReprovisioningLocked(time.Now()), bson.M{"$unset": bson.M{
-			host.ReprovisioningLockedKey: false,
-		}}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":   "problem updating hosts with elapsed last communication time",
-				"operation": "reprovisioning hosts",
-				"impact":    "hosts cannot be reprovisioned",
-			}))
-			return errors.WithStack(err)
-		}
-
 		hosts, err := host.FindByNeedsJasperRestart()
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -909,17 +898,6 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 				"mode":    "degraded",
 			})
 			return nil
-		}
-
-		if err = host.UpdateAll(host.NeedsReprovisioningLocked(time.Now()), bson.M{"$unset": bson.M{
-			host.ReprovisioningLockedKey: false,
-		}}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":   "problem updating hosts with elapsed last communication time",
-				"operation": "reprovisioning hosts",
-				"impact":    "hosts cannot be reprovisioned",
-			}))
-			return errors.WithStack(err)
 		}
 
 		hosts, err := host.FindByShouldConvertProvisioning()
