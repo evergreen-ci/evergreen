@@ -60,7 +60,7 @@ type Version struct {
 	// child patches will store the id of the parent patch
 	ParentPatchID string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
 
-	// IsParent will store a boolean indicating wether the patch is a parent patch
+	// IsParent will store a boolean indicating whether the patch is a parent patch
 	IsParent bool `bson:"is_parent" json:"is_parent,omitempty"`
 	// version errors - this is used to keep track of any errors that were
 	// encountered in the process of creating a version. If there are no errors
@@ -132,13 +132,13 @@ func (v *Version) GetParentVersion() (*Version, error) {
 	if v.ParentPatchID == "" {
 		return nil, errors.Errorf("Version '%v's ParentPatchID is nil", v.Id)
 	}
-	v, err := VersionFindOne(VersionById(v.ParentPatchID))
+	parentVersion, err := VersionFindOne(VersionById(v.ParentPatchID))
 	if err != nil {
 		return nil, errors.WithStack(err)
-	} else if v == nil {
+	} else if parentVersion == nil {
 		return nil, errors.Errorf("Version '%v' not found", v.ParentPatchID)
 	}
-	return v, nil
+	return parentVersion, nil
 }
 
 func (v *Version) AddSatisfiedTrigger(definitionID string) error {

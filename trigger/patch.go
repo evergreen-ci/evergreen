@@ -139,6 +139,9 @@ func (t *patchTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (bool,
 	}
 	subType := target.Type
 
+	// notifications are only delayed if the patch is either a parent, or a child that is of subType event.WaitOnChild.
+	// we don't always wait on siblings when it is a childpatch, since childpatches need to let github know when they
+	// are done running so their status can be displayed to the user as they finish
 	if !(t.patch.IsParent() || (t.patch.IsChild() && subType == event.WaitOnChild)) {
 		return true, nil
 	}

@@ -327,7 +327,7 @@ func (t *versionTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (boo
 			return isReady, errors.Wrap(err, "error getting parentVersion")
 		}
 		if parentVersion == nil {
-			return isReady, errors.Wrap(err, "error finding parentVersion")
+			return isReady, errors.Errorf("parentVersion not found for '%s'", t.version.Id)
 		}
 		t.version = parentVersion
 
