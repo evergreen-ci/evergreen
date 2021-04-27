@@ -1728,7 +1728,7 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project, pairs TaskVariantPairs,
-	syncAtEndOpts patch.SyncAtEndOptions, projectName string, generatedBy string) ([]string, error) {
+	syncAtEndOpts patch.SyncAtEndOptions, projectIdentifier string, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
 		return nil, nil
 	}
@@ -1742,7 +1742,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		return nil, err
 	}
 
-	taskIdTables, err := getTaskIdTables(v, p, pairs, projectName)
+	taskIdTables, err := getTaskIdTables(v, p, pairs, projectIdentifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get table of task IDs")
 	}

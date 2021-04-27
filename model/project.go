@@ -698,10 +698,9 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 
 	sort.Stable(p.BuildVariants)
 
-	projName := p.Identifier
 	projectIdentifier, err := GetIdentifierForProject(p.Identifier)
-	if err == nil {
-		projName = projectIdentifier
+	if err != nil { // default to ID
+		projectIdentifier = p.Identifier
 	}
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
@@ -721,19 +720,19 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
-					taskId := generateId(groupTask, projName, &bv, rev, v)
+					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
 				}
 			} else {
 				// create a unique Id for each task
-				taskId := generateId(t.Name, projName, &bv, rev, v)
+				taskId := generateId(t.Name, projectIdentifier, &bv, rev, v)
 				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
 			}
 		}
 
 		for _, dt := range bv.DisplayTasks {
 			name := fmt.Sprintf("display_%s", dt.Name)
-			taskId := generateId(name, projName, &bv, rev, v)
+			taskId := generateId(name, projectIdentifier, &bv, rev, v)
 			displayTable[TVPair{bv.Name, dt.Name}] = util.CleanName(taskId)
 		}
 	}
