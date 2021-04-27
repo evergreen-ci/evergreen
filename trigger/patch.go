@@ -196,7 +196,7 @@ func getChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 			return "", errors.Wrapf(err, "error getting tasks for child patch '%s'", childPatch)
 		}
 		if childPatchDoc == nil {
-			return "", errors.Wrapf(err, "child patch '%s' not found", childPatch)
+			return "", errors.Errorf("child patch '%s' not found", childPatch)
 		}
 		if childPatchDoc.Status == evergreen.PatchFailed {
 			childrenStatus = evergreen.PatchFailed
