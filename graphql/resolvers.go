@@ -943,6 +943,9 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(id, []string{}, []string{}, "", "", 0, 0, []string{task.DisplayStatusKey}, []task.TasksSortOrder{})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+	}
 	statuses := getAllTaskStatuses(tasks)
 
 	// If theres an aborted task we should set the patch status to aborted if there are no other failures
