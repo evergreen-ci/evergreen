@@ -340,14 +340,21 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
+		projectRef, err := model.FindOneProjectRef(project.Identifier)
+		if err != nil {
+			return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
+		}
+		if projectRef == nil {
+			return errors.Errorf("project '%s' not found", project.Identifier), http.StatusInternalServerError, "", ""
+		}
 
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks)
+		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating new tasks for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
 
-		err := model.AddNewBuildsForPatch(ctx, p, version, project, tasks)
+		err = model.AddNewBuildsForPatch(ctx, p, version, project, tasks, projectRef)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating new builds for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}

@@ -91,29 +91,17 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	projectRef, err := FindOneProjectRef(project.Identifier)
-	if err != nil {
-		return errors.Wrap(err, "unable to find project ref")
-	}
-	if projectRef == nil {
-		return errors.Errorf("project '%s' not found", project.Identifier)
-	}
-	_, _, err = addNewBuilds(ctx, batchTimeTasksAndVariants{}, patchVersion, project, tasks, p.SyncAtEndOpts, projectRef, "")
+func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
+	tasks TaskVariantPairs, pRef *ProjectRef) error {
+	_, _, err := addNewBuilds(ctx, batchTimeTasksAndVariants{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
-	projectRef, err := FindOneProjectRef(project.Identifier)
-	if err != nil {
-		return errors.Wrap(err, "unable to find project ref")
-	}
-	if projectRef == nil {
-		return errors.Errorf("project '%s' not found", project.Identifier)
-	}
-	_, err = addNewTasks(ctx, batchTimeTasksAndVariants{}, patchVersion, project, pairs, p.SyncAtEndOpts, projectRef.Identifier, "")
+func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
+	pairs TaskVariantPairs, projectIdentifier string) error {
+	_, err := addNewTasks(ctx, batchTimeTasksAndVariants{}, patchVersion, project, pairs, p.SyncAtEndOpts, projectIdentifier, "")
 	return errors.Wrap(err, "can't add new tasks")
 }
 
