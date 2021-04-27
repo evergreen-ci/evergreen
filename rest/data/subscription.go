@@ -83,7 +83,7 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 
 		dbSubscriptions = append(dbSubscriptions, dbSubscription)
 
-		if dbSubscription.ResourceType == event.ResourceTypeVersion && dbSubscription.Trigger == event.TriggerOutcome {
+		if dbSubscription.ResourceType == event.ResourceTypeVersion && isEndTrigger(dbSubscription.Trigger) {
 
 			//find all children, iterate through them
 			var versionId string
@@ -122,6 +122,10 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 		catcher.Add(subscription.Upsert())
 	}
 	return catcher.Resolve()
+}
+
+func isEndTrigger(trigger string) bool {
+	return trigger == event.TriggerFailure || trigger == event.TriggerSuccess || trigger == event.TriggerOutcome
 }
 
 func getVersionChildren(versionId string) ([]string, error) {
