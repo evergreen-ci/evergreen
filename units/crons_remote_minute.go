@@ -60,8 +60,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		PopulateOldestImageRemovalJobs(),
 		PopulateParentDecommissionJobs(),
 		PopulatePeriodicNotificationJobs(1),
-		// kim: TODO: uncomment once tested.
-		// PopulateUserDataDoneJobs(j.env),
+		PopulateUserDataDoneJobs(j.env),
 	}
 
 	catcher := grip.NewBasicCatcher()

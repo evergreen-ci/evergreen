@@ -52,7 +52,9 @@ func makeUserDataDoneJob() *userDataDoneJob {
 }
 
 // NewUserDataDoneJob creates a job that checks if the host is done provisioning
-// with user data (if bootstrapped with user data).
+// with user data (if bootstrapped with user data). This check only applies to
+// spawn hosts, since hosts running agents check into the server to verify their
+// liveliness.
 func NewUserDataDoneJob(env evergreen.Environment, hostID string, ts time.Time) amboy.Job {
 	j := makeUserDataDoneJob()
 	j.HostID = hostID
@@ -70,12 +72,6 @@ func NewUserDataDoneJob(env evergreen.Environment, hostID string, ts time.Time) 
 }
 
 func (j *userDataDoneJob) Run(ctx context.Context) {
-	grip.Info(message.Fields{
-		"message":    "kim: executing user data done job",
-		"retry_info": j.RetryInfo(),
-		"job_id":     j.ID(),
-		"host_id":    j.HostID,
-	})
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(); err != nil {

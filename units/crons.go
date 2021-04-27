@@ -1144,14 +1144,8 @@ func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(1)
 		for _, h := range hosts {
-			// kim: TODO: verify that this will return duplicate scope errors
-			// when enqueued but the job is already in the queue.
-			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewUserDataDoneJob(env, h.Id, ts)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewUserDataDoneJob(env, h.Id, ts)), "host '%s'", h.Id)
 		}
-		grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
-			"message":  "kim: got error when enqueueing job via cron job",
-			"job_type": userDataDoneJobName,
-		}))
 		return catcher.Resolve()
 	}
 }
