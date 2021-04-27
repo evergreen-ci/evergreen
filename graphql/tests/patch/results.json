@@ -218,6 +218,16 @@
           }
         }
       }
+    },
+    {
+      "query_file": "abortedPatchTasks.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "status": "aborted"
+          }
+        }
+      }
     }
   ]
 }
