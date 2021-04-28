@@ -61,6 +61,7 @@ func NewConvertHostToNewProvisioningJob(env evergreen.Environment, h host.Host, 
 		MaxTime: maxHostReprovisioningJobTime,
 	})
 	j.SetScopes([]string{reprovisioningJobScope(h.Id)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(15),

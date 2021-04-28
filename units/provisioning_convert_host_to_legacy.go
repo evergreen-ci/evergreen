@@ -58,6 +58,7 @@ func NewConvertHostToLegacyProvisioningJob(env evergreen.Environment, h host.Hos
 		MaxTime: maxHostReprovisioningJobTime,
 	})
 	j.SetScopes([]string{reprovisioningJobScope(h.Id)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(15),
@@ -93,7 +94,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 	}
 
 	if err := j.host.UpdateLastCommunicated(); err != nil {
-		j.AddError(errors.Wrap(err, "updating host last communciated time"))
+		j.AddError(errors.Wrap(err, "updating host last communication time"))
 	}
 
 	settings := j.env.Settings()
@@ -133,7 +134,7 @@ func (j *convertHostToLegacyProvisioningJob) populateIfUnset() error {
 	if j.host == nil {
 		h, err := host.FindOneId(j.HostID)
 		if err != nil {
-			return errors.Wrapf(err, "could not find host '%s'")
+			return errors.Wrapf(err, "could not find host '%s'", j.HostID)
 		}
 		j.host = h
 	}

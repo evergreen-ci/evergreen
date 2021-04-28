@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -67,8 +66,8 @@ func EnqueueHostReprovisioningJob(ctx context.Context, env evergreen.Environment
 		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
 			return errors.Wrap(err, "enqueueing job to reprovision host to new")
 		}
-	case host.ReprovisionJasperRestart:
-		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewJasperRestartJob(env, *h, h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC, ts)); err != nil {
+	case host.ReprovisionRestartJasper:
+		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewRestartJasperJob(env, *h, ts)); err != nil {
 			return errors.Wrap(err, "enqueueing jobs to restart Jasper")
 		}
 	}

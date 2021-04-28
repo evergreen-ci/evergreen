@@ -170,9 +170,9 @@ const (
 	// ReprovisionToLegacy indicates a transition from non-legacy
 	// provisioning to legacy provisioning.
 	ReprovisionToLegacy ReprovisionType = "convert-to-legacy"
-	// ReprovisionJasperRestart indicates that the host's Jasper service should
+	// ReprovisionRestartJasper indicates that the host's Jasper service should
 	// restart.
-	ReprovisionJasperRestart ReprovisionType = "jasper-restart"
+	ReprovisionRestartJasper ReprovisionType = "restart-jasper"
 )
 
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
@@ -927,11 +927,11 @@ func (h *Host) UpdateStartingToRunning() error {
 	return nil
 }
 
-// SetNeedsJasperRestart sets this host as needing to have its Jasper service
+// SetNeedsToRestartJasper sets this host as needing to have its Jasper service
 // restarted as long as the host does not already need a different
 // reprovisioning change. If the host is ready to reprovision now (i.e. no agent
 // monitor is running), it is put in the reprovisioning state.
-func (h *Host) SetNeedsJasperRestart(user string) error {
+func (h *Host) SetNeedsToRestartJasper(user string) error {
 	// Ignore hosts that are not provisioned by us (e.g. hosts spawned by
 	// tasks) and legacy SSH hosts.
 	if utility.StringSliceContains([]string{distro.BootstrapMethodNone, distro.BootstrapMethodLegacySSH}, h.Distro.BootstrapSettings.Method) {
@@ -954,7 +954,7 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 	// While these checks aren't strictly necessary since they're already
 	// filtered in the query, they do return more useful error messages.
 
-	if h.NeedsReprovision == ReprovisionJasperRestart {
+	if h.NeedsReprovision == ReprovisionRestartJasper {
 		return nil
 	}
 	if h.NeedsReprovision != ReprovisionNone {
@@ -977,19 +977,19 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 		bootstrapKey: bson.M{"$in": allowedBootstrapMethods},
 		"$or": []bson.M{
 			{NeedsReprovisionKey: bson.M{"$exists": false}},
-			{NeedsReprovisionKey: ReprovisionJasperRestart},
+			{NeedsReprovisionKey: ReprovisionRestartJasper},
 		},
 		HasContainersKey: bson.M{"$ne": true},
 		ParentIDKey:      bson.M{"$exists": false},
 	}, bson.M{
 		"$set": bson.M{
-			NeedsReprovisionKey: ReprovisionJasperRestart,
+			NeedsReprovisionKey: ReprovisionRestartJasper,
 		},
 	}); err != nil {
 		return err
 	}
 
-	h.NeedsReprovision = ReprovisionJasperRestart
+	h.NeedsReprovision = ReprovisionRestartJasper
 
 	event.LogHostJasperRestarting(h.Id, user)
 
@@ -1077,7 +1077,7 @@ func (h *Host) MarkAsReprovisioning() error {
 		needsAgent = true
 	case ReprovisionToNew:
 		needsAgentMonitor = true
-	case ReprovisionJasperRestart:
+	case ReprovisionRestartJasper:
 		needsAgentMonitor = h.StartedBy == evergreen.User
 	}
 

@@ -487,9 +487,9 @@ func FindByShouldConvertProvisioning() ([]Host, error) {
 	}))
 }
 
-// FindByNeedsJasperRestart finds all hosts that are ready and waiting to
+// FindByNeedsToRestartJasper finds all hosts that are ready and waiting to
 // restart their Jasper service.
-func FindByNeedsJasperRestart() ([]Host, error) {
+func FindByNeedsToRestartJasper() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return Find(db.Query(bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
@@ -497,7 +497,7 @@ func FindByNeedsJasperRestart() ([]Host, error) {
 		RunningTaskKey:      bson.M{"$exists": false},
 		HasContainersKey:    bson.M{"$ne": true},
 		ParentIDKey:         bson.M{"$exists": false},
-		NeedsReprovisionKey: ReprovisionJasperRestart,
+		NeedsReprovisionKey: ReprovisionRestartJasper,
 		"$or": []bson.M{
 			{"$and": []bson.M{
 				{StartedByKey: bson.M{"$ne": evergreen.User}},
