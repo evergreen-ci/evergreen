@@ -105,7 +105,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			logger.Execution().Errorf("No module found for %s", modulePatch.ModuleName)
 			continue
 		}
-		moduleBase := filepath.Join(module.Prefix, module.Name)
+		moduleBase := filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name)
 
 		checkoutCommand = fmt.Sprintf("git checkout %s", module.Branch)
 		logger.Execution().Debugf("git checkout command: %s", checkoutCommand)

@@ -575,6 +575,9 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		Status:          status,
 		Message:         message,
 		Logs:            tc.logs,
+		Modules: apimodels.ModuleCloneInfo{
+			Prefixes: tc.taskConfig.ModulePaths,
+		},
 	}
 }
 
