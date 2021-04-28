@@ -753,7 +753,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	}))
 
 	stoppedAgentMonitor := (h.Distro.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
-		h.NeedsReprovision == host.ReprovisionJasperRestart)
+		h.NeedsReprovision == host.ReprovisionRestartJasper)
 	defer func() {
 		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
 			"message":               "slow next_task operation",
