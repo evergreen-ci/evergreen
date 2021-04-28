@@ -1142,9 +1142,9 @@ func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "error finding user data hosts that are still provisioning")
 		}
 		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfMinute(15)
+		ts := utility.RoundPartOfHour(1)
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewUserDataDoneJob(env, h.Id, ts)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewUserDataDoneJob(env, h.Id, ts)), "host '%s'", h.Id)
 		}
 		return catcher.Resolve()
 	}

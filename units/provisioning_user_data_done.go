@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -50,8 +51,10 @@ func makeUserDataDoneJob() *userDataDoneJob {
 	return j
 }
 
-// NewUserDataDoneJob creates a job that checks if the host is done running its
-// user data if bootstrapped with user data.
+// NewUserDataDoneJob creates a job that checks if the host is done provisioning
+// with user data (if bootstrapped with user data). This check only applies to
+// spawn hosts, since hosts running agents check into the server to verify their
+// liveliness.
 func NewUserDataDoneJob(env evergreen.Environment, hostID string, ts time.Time) amboy.Job {
 	j := makeUserDataDoneJob()
 	j.HostID = hostID
@@ -59,6 +62,12 @@ func NewUserDataDoneJob(env evergreen.Environment, hostID string, ts time.Time) 
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", userDataDoneJobName, j.HostID, ts.Format(TSFormat)))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", userDataDoneJobName, hostID)})
+	j.SetShouldApplyScopesOnEnqueue(true)
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(50),
+		WaitUntil:   utility.ToTimeDurationPtr(20 * time.Second),
+	})
 	return j
 }
 
@@ -66,11 +75,14 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(); err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 
 	if j.host.Status != evergreen.HostStarting {
+		j.UpdateRetryInfo(amboy.JobRetryOptions{
+			NeedsRetry: utility.TruePtr(),
+		})
 		return
 	}
 
@@ -88,7 +100,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 
@@ -137,7 +149,7 @@ func (j *userDataDoneJob) finishJob() {
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 }
