@@ -37,6 +37,20 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return t, nil
 }
 
+func (tc *DBTaskConnector) FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
+	t, err := task.FindByIdExecution(taskId, &execution)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", taskId),
+		}
+	}
+	return t, nil
+}
+
 func (tc *DBTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
 	project string, statuses []string) ([]task.Task, error) {
 	id, err := model.GetIdForProject(project)
