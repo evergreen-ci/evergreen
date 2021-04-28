@@ -18,12 +18,12 @@ import (
 )
 
 const (
-	reauthorizationJobName  = "reauthorize-user"
+	reauthorizeUserJobName  = "reauthorize-user"
 	defaultBackgroundReauth = time.Hour
 	maxReauthAttempts       = 10
 )
 
-type reauthorizationJob struct {
+type reauthorizeUserJob struct {
 	UserID   string `bson:"user_id" json:"user_id" yaml:"user_id"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
@@ -32,16 +32,16 @@ type reauthorizationJob struct {
 }
 
 func init() {
-	registry.AddJobType(reauthorizationJobName, func() amboy.Job {
-		return makeReauthorizationJob()
+	registry.AddJobType(reauthorizeUserJobName, func() amboy.Job {
+		return makeReauthorizeUserJob()
 	})
 }
 
-func makeReauthorizationJob() *reauthorizationJob {
-	j := &reauthorizationJob{
+func makeReauthorizeUserJob() *reauthorizeUserJob {
+	j := &reauthorizeUserJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    reauthorizationJobName,
+				Name:    reauthorizeUserJobName,
 				Version: 0,
 			},
 		},
@@ -51,21 +51,21 @@ func makeReauthorizationJob() *reauthorizationJob {
 	return j
 }
 
-// NewReauthorizationJob returns a job that attempts to reauthorize the given
+// NewReauthorizeUserJob returns a job that attempts to reauthorize the given
 // user.
-func NewReauthorizationJob(env evergreen.Environment, u *user.DBUser, id string) amboy.Job {
-	j := makeReauthorizationJob()
+func NewReauthorizeUserJob(env evergreen.Environment, u *user.DBUser, id string) amboy.Job {
+	j := makeReauthorizeUserJob()
 	j.UserID = u.Username()
 	j.env = env
 	j.user = u
 	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("reauthorize.%s", u.Username())})
 	j.SetShouldApplyScopesOnEnqueue(true)
-	j.SetID(fmt.Sprintf("%s.%s.%s", reauthorizationJobName, u.Username(), id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", reauthorizeUserJobName, u.Username(), id))
 	return j
 }
 
-func (j *reauthorizationJob) Run(ctx context.Context) {
+func (j *reauthorizeUserJob) Run(ctx context.Context) {
 	if j.user == nil {
 		user, err := user.FindOneById(j.UserID)
 		if err != nil {

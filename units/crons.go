@@ -1187,7 +1187,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		if !env.UserManagerInfo().CanReauthorize {
 			return nil
@@ -1199,8 +1199,8 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		}
 		if flags.BackgroundReauthDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "background reauth is disabled",
-				"impact":  "users will reauth on page loads after periodic auth expiration",
+				"message": "background user reauth is disabled",
+				"impact":  "users will need to log in again once their login session expires",
 				"mode":    "degraded",
 			})
 			return nil
@@ -1218,7 +1218,7 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(0).Format(TSFormat)
 		for _, user := range users {
-			catcher.Wrap(queue.Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
+			catcher.Wrap(queue.Put(ctx, NewReauthorizeUserJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
 		}
 
 		return catcher.Resolve()
