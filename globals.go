@@ -662,6 +662,7 @@ var (
 	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
+	PermissionGitTagVersions   = "project_git_tags"
 	PermissionTasks            = "project_tasks"
 	PermissionAnnotations      = "project_task_annotations"
 	PermissionPatches          = "project_patches"
@@ -699,6 +700,14 @@ var (
 	}
 	ProjectSettingsNone = PermissionLevel{
 		Description: "No project settings permissions",
+		Value:       0,
+	}
+	GitTagVersionsCreate = PermissionLevel{
+		Description: "Create versions with git tags",
+		Value:       10,
+	}
+	GitTagVersionsNone = PermissionLevel{
+		Description: "Not able to create versions with git tags",
 		Value:       0,
 	}
 	AnnotationsModify = PermissionLevel{
@@ -786,6 +795,8 @@ func GetDisplayNameForPermissionKey(permissionKey string) string {
 		return "Task Annotations"
 	case PermissionPatches:
 		return "Patches"
+	case PermissionGitTagVersions:
+		return "Git Tag Versions"
 	case PermissionLogs:
 		return "Logs"
 	case PermissionDistroSettings:
@@ -824,6 +835,11 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 			PatchSubmit,
 			PatchNone,
 		}
+	case PermissionGitTagVersions:
+		return []PermissionLevel{
+			GitTagVersionsCreate,
+			GitTagVersionsNone,
+		}
 	case PermissionLogs:
 		return []PermissionLevel{
 			LogsView,
@@ -855,6 +871,7 @@ var ProjectPermissions = []string{
 	PermissionTasks,
 	PermissionAnnotations,
 	PermissionPatches,
+	PermissionGitTagVersions,
 	PermissionLogs,
 }
 
