@@ -273,6 +273,7 @@ func (mtc *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return nil, mtc.StoredError
 }
 
+// FindTaskByIdAndExecution
 func (mtc *MockTaskConnector) FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
 	for _, t := range mtc.CachedTasks {
 		if t.Id == taskId && t.Execution == execution {
