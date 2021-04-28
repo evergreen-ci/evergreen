@@ -481,6 +481,7 @@ type ComplexityRoot struct {
 		HostEvents              func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
 		Hosts                   func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
 		InstanceTypes           func(childComplexity int) int
+		JiraTickets             func(childComplexity int, issues []*model.APIIssueLink) int
 		MyHosts                 func(childComplexity int) int
 		MyPublicKeys            func(childComplexity int) int
 		MyVolumes               func(childComplexity int) int
@@ -883,6 +884,7 @@ type QueryResolver interface {
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
+	JiraTickets(ctx context.Context, issues []*model.APIIssueLink) ([]*model.APIIssueLink, error)
 }
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
@@ -3069,6 +3071,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.InstanceTypes(childComplexity), true
 
+	case "Query.jiraTickets":
+		if e.complexity.Query.JiraTickets == nil {
+			break
+		}
+
+		args, err := ec.field_Query_jiraTickets_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.JiraTickets(childComplexity, args["issues"].([]*model.APIIssueLink)), true
+
 	case "Query.myHosts":
 		if e.complexity.Query.MyHosts == nil {
 			break
@@ -4777,6 +4791,7 @@ var sources = []*ast.Source{
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
+  jiraTickets(issues: [IssueLinkInput]!): [IssueLink!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -5006,6 +5021,13 @@ input UpdateVolumeInput {
 input IssueLinkInput {
   url: String!
   issueKey: String!
+  source: SourceInput
+}
+
+input SourceInput {
+  author: String!
+  time: Time!
+  requester: String!
 }
 
 input SortOrder {
@@ -6607,6 +6629,20 @@ func (ec *executionContext) field_Query_hosts_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["limit"] = arg8
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_jiraTickets_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*model.APIIssueLink
+	if tmp, ok := rawArgs["issues"]; ok {
+		arg0, err = ec.unmarshalNIssueLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["issues"] = arg0
 	return args, nil
 }
 
@@ -16953,6 +16989,47 @@ func (ec *executionContext) _Query_bbGetCreatedTickets(ctx context.Context, fiel
 	return ec.marshalNJiraTicket2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicketᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_jiraTickets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_jiraTickets_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().JiraTickets(rctx, args["issues"].([]*model.APIIssueLink))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIIssueLink)
+	fc.Result = res
+	return ec.marshalNIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLinkᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -24625,6 +24702,12 @@ func (ec *executionContext) unmarshalInputIssueLinkInput(ctx context.Context, ob
 			if err != nil {
 				return it, err
 			}
+		case "source":
+			var err error
+			it.Source, err = ec.unmarshalOSourceInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -24838,6 +24921,36 @@ func (ec *executionContext) unmarshalInputSortOrder(ctx context.Context, obj int
 		case "Direction":
 			var err error
 			it.Direction, err = ec.unmarshalNSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSourceInput(ctx context.Context, obj interface{}) (model.APISource, error) {
+	var it model.APISource
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "author":
+			var err error
+			it.Author, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "time":
+			var err error
+			it.Time, err = ec.unmarshalNTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "requester":
+			var err error
+			it.Requester, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28003,6 +28116,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "jiraTickets":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_jiraTickets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
@@ -30505,8 +30632,79 @@ func (ec *executionContext) marshalNInt2ᚖint(ctx context.Context, sel ast.Sele
 	return ec.marshalNInt2int(ctx, sel, *v)
 }
 
+func (ec *executionContext) marshalNIssueLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, sel ast.SelectionSet, v model.APIIssueLink) graphql.Marshaler {
+	return ec._IssueLink(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNIssueLink2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIIssueLink) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNIssueLink2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNIssueLink2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, sel ast.SelectionSet, v *model.APIIssueLink) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._IssueLink(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, v interface{}) (model.APIIssueLink, error) {
 	return ec.unmarshalInputIssueLinkInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNIssueLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, v interface{}) ([]*model.APIIssueLink, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*model.APIIssueLink, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOIssueLinkInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalNJiraStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx context.Context, sel ast.SelectionSet, v thirdparty.JiraStatus) graphql.Marshaler {
@@ -32563,6 +32761,18 @@ func (ec *executionContext) marshalOIssueLink2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._IssueLink(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, v interface{}) (model.APIIssueLink, error) {
+	return ec.unmarshalInputIssueLinkInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOIssueLinkInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx context.Context, v interface{}) (*model.APIIssueLink, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOIssueLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIssueLink(ctx, v)
+	return &res, err
+}
+
 func (ec *executionContext) marshalOJiraConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx context.Context, sel ast.SelectionSet, v model.APIJiraConfig) graphql.Marshaler {
 	return ec._JiraConfig(ctx, sel, &v)
 }
@@ -32799,6 +33009,18 @@ func (ec *executionContext) unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreen�
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) unmarshalOSourceInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx context.Context, v interface{}) (model.APISource, error) {
+	return ec.unmarshalInputSourceInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOSourceInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx context.Context, v interface{}) (*model.APISource, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOSourceInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) unmarshalOSpawnHostInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostInput(ctx context.Context, v interface{}) (SpawnHostInput, error) {

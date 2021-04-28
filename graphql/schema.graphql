@@ -70,6 +70,7 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
+  jiraTickets(issues: [IssueLinkInput]!): [IssueLink!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -299,6 +300,13 @@ input UpdateVolumeInput {
 input IssueLinkInput {
   url: String!
   issueKey: String!
+  source: SourceInput
+}
+
+input SourceInput {
+  author: String!
+  time: Time!
+  requester: String!
 }
 
 input SortOrder {

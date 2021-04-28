@@ -190,3 +190,13 @@ func GetJiraTickets(issueLinks []APIIssueLink) ([]*APIIssueLink, error) {
 	}
 	return res, catcher.Resolve()
 }
+
+func ConvertIssuePointers(issueLinks []*APIIssueLink) []APIIssueLink {
+
+	var res []APIIssueLink
+	for _, i := range issueLinks {
+		issue := *i
+		res = append(res, issue)
+	}
+	return res
+}

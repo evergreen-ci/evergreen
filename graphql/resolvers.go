@@ -2530,6 +2530,15 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
+func (r *queryResolver) JiraTickets(ctx context.Context, issues []*restModel.APIIssueLink) ([]*restModel.APIIssueLink, error) {
+
+	jiraIssues, err := restModel.GetJiraTickets(restModel.ConvertIssuePointers(issues))
+	if err != nil {
+		return nil, err
+	}
+	return jiraIssues, nil
+}
+
 type ticketFieldsResolver struct{ *Resolver }
 
 func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {

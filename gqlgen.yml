@@ -56,6 +56,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
   Source:
     model: github.com/evergreen-ci/evergreen/rest/model.APISource
+  SourceInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISource
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:
