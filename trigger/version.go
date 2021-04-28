@@ -290,11 +290,20 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 }
 
 func (t *versionTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (bool, error) {
-	if !(t.version.IsParent || t.version.IsChild()) {
+	isReady := false
+	patchDoc, err := patch.FindOne(patch.ByVersion(t.version.Id))
+	if err != nil {
+		return isReady, errors.Wrapf(err, "error getting patchDoc '%s'", t.version.Id)
+	}
+	if patchDoc == nil {
+		return isReady, errors.Errorf("patchDoc '%s' not found for ", t.version.Id)
+	}
+
+	// don't wait on children or siblings if the patch is a regular patch
+	if !(patchDoc.IsParent() || patchDoc.IsChild()) {
 		return true, nil
 	}
-	isReady := false
-	patchDoc, _ := patch.FindOne(patch.ByVersion(t.version.Id))
+
 	// get the children or siblings to wait on
 	childrenOrSiblings, parentPatch, err := patchDoc.GetPatchFamily()
 	if err != nil {
