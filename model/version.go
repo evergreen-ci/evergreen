@@ -59,6 +59,7 @@ type Version struct {
 
 	// child patches will store the id of the parent patch
 	ParentPatchID string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
+
 	// version errors - this is used to keep track of any errors that were
 	// encountered in the process of creating a version. If there are no errors
 	// this field is omitted in the database
@@ -119,6 +120,23 @@ func (self *Version) UpdateBuildVariants() error {
 
 func (self *Version) Insert() error {
 	return db.Insert(VersionCollection, self)
+}
+
+func (v *Version) IsChild() bool {
+	return v.ParentPatchID != ""
+}
+
+func (v *Version) GetParentVersion() (*Version, error) {
+	if v.ParentPatchID == "" {
+		return nil, errors.Errorf("Version '%v's ParentPatchID is nil", v.Id)
+	}
+	parentVersion, err := VersionFindOne(VersionById(v.ParentPatchID))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	} else if parentVersion == nil {
+		return nil, errors.Errorf("Version '%v' not found", v.ParentPatchID)
+	}
+	return parentVersion, nil
 }
 
 func (v *Version) AddSatisfiedTrigger(definitionID string) error {
