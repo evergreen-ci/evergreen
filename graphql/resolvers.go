@@ -2515,6 +2515,69 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
+func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) ([]*restModel.APIVersion, error) {
+	opts := model.GetVersionsOptions{}
+	opts.IncludeBuilds = true
+	opts.Requester = evergreen.RepotrackerVersionRequester
+	versions, err := model.GetVersionsWithOptions(options.ProjectID, opts)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, err.Error())
+	}
+	var apiVersions []*restModel.APIVersion
+
+	for _, v := range versions {
+		apiVersion := restModel.APIVersion{}
+		err = apiVersion.BuildFromService(&v)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service: %s", err.Error()))
+		}
+
+		apiVersions = append(apiVersions, &apiVersion)
+	}
+	return apiVersions, nil
+}
+
+type versionResolver struct{ *Resolver }
+
+func (r *versionResolver) BuildVariants(ctx context.Context, version *restModel.APIVersion) ([]*PatchBuildVariant, error) {
+	var variantDisplayName map[string]string = map[string]string{}
+	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
+	}
+	tasks, _, err := r.sc.FindTasksByVersion(*version.Id, []string{}, []string{}, "", "", 0, 0, []string{}, defaultSort)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", *version.Id, err))
+	}
+	for _, task := range tasks {
+		apiTask := restModel.APITask{}
+		err := apiTask.BuildFromService(&task)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", task.Id))
+		}
+		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
+		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &apiTask)
+
+	}
+
+	result := []*PatchBuildVariant{}
+	for variant, tasks := range tasksByVariant {
+		pbv := PatchBuildVariant{
+			Variant:     variant,
+			DisplayName: variantDisplayName[variant],
+			Tasks:       tasks,
+		}
+		result = append(result, &pbv)
+	}
+	// sort variants by name
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].DisplayName < result[j].DisplayName
+	})
+	return result, nil
+}
+
+func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
+
 type ticketFieldsResolver struct{ *Resolver }
 
 func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {

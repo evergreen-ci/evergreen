@@ -84,6 +84,15 @@ type HostsResponse struct {
 	Hosts              []*model.APIHost `json:"hosts"`
 }
 
+type MainlineCommitsOptions struct {
+	ProjectID string   `json:"projectID"`
+	Variants  []string `json:"variants"`
+	Tasks     []string `json:"tasks"`
+	Statuses  []string `json:"statuses"`
+	Limit     *int     `json:"limit"`
+	Page      *int     `json:"page"`
+}
+
 type PatchBuildVariant struct {
 	Variant     string           `json:"variant"`
 	DisplayName string           `json:"displayName"`

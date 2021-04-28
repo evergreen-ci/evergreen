@@ -70,6 +70,7 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
+  mainlineCommits(options: MainlineCommitsOptions!): [Version!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -136,6 +137,27 @@ type Mutation {
   clearMySubscriptions: Int!
 }
 
+type Version {
+  id: String!
+  createTime: Time!
+  startTime: Time!
+  finishTime: Time!
+  revision: String!
+  author: String!
+  message: String!
+  status: String!
+  order: Int!
+  buildVariants: [PatchBuildVariant]
+}
+
+input MainlineCommitsOptions {
+  projectID: String! 
+  variants: [String!]
+  tasks: [String!]
+  statuses: [String!]
+  limit: Int = 7
+  page: Int = 0
+}
 enum SpawnHostStatusActions {
   START
   STOP
