@@ -96,18 +96,7 @@ func (s *UserTestSuite) SetupTest() {
 			},
 		},
 		&DBUser{
-			Id:     "Test6",
-			APIKey: "api",
-			LoginCache: LoginCache{
-				Token:          "token6",
-				AccessToken:    "access6",
-				RefreshToken:   "refresh6",
-				TTL:            time.Now().Add(-time.Hour),
-				ReauthAttempts: 5,
-			},
-		},
-		&DBUser{
-			Id: "Test7",
+			Id: "Test6",
 			PubKeys: []PubKey{
 				{
 					Name:      "key1",
@@ -243,36 +232,36 @@ func (s *UserTestSuite) checkUserNotDestroyed(fromDB *DBUser, expected *DBUser) 
 }
 
 func (s *UserTestSuite) TestUpdatePublicKey() {
-	s.NoError(s.users[6].UpdatePublicKey("key1", "key1", "this is an amazing key"))
-	s.Len(s.users[6].PubKeys, 1)
-	s.Contains(s.users[6].PubKeys[0].Name, "key1")
-	s.Contains(s.users[6].PubKeys[0].Key, "this is an amazing key")
+	s.NoError(s.users[5].UpdatePublicKey("key1", "key1", "this is an amazing key"))
+	s.Len(s.users[5].PubKeys, 1)
+	s.Contains(s.users[5].PubKeys[0].Name, "key1")
+	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
 
-	u, err := FindOne(ById(s.users[6].Id))
+	u, err := FindOne(ById(s.users[5].Id))
 	s.NoError(err)
-	s.checkUserNotDestroyed(u, s.users[6])
+	s.checkUserNotDestroyed(u, s.users[5])
 }
 
 func (s *UserTestSuite) TestUpdatePublicKeyWithSameKeyName() {
-	s.NoError(s.users[6].UpdatePublicKey("key1", "keyAmazing", "this is an amazing key"))
-	s.Len(s.users[6].PubKeys, 1)
-	s.Contains(s.users[6].PubKeys[0].Name, "keyAmazing")
-	s.Contains(s.users[6].PubKeys[0].Key, "this is an amazing key")
+	s.NoError(s.users[5].UpdatePublicKey("key1", "keyAmazing", "this is an amazing key"))
+	s.Len(s.users[5].PubKeys, 1)
+	s.Contains(s.users[5].PubKeys[0].Name, "keyAmazing")
+	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
 
-	u, err := FindOne(ById(s.users[6].Id))
+	u, err := FindOne(ById(s.users[5].Id))
 	s.NoError(err)
-	s.checkUserNotDestroyed(u, s.users[6])
+	s.checkUserNotDestroyed(u, s.users[5])
 }
 
 func (s *UserTestSuite) TestUpdatePublicKeyThatDoesntExist() {
-	s.Error(s.users[6].UpdatePublicKey("non-existent-key", "keyAmazing", "this is an amazing key"))
-	s.Len(s.users[6].PubKeys, 1)
-	s.Contains(s.users[6].PubKeys[0].Name, "key1")
-	s.Contains(s.users[6].PubKeys[0].Key, "ssh-mock 12345")
+	s.Error(s.users[5].UpdatePublicKey("non-existent-key", "keyAmazing", "this is an amazing key"))
+	s.Len(s.users[5].PubKeys, 1)
+	s.Contains(s.users[5].PubKeys[0].Name, "key1")
+	s.Contains(s.users[5].PubKeys[0].Key, "ssh-mock 12345")
 
-	u, err := FindOne(ById(s.users[6].Id))
+	u, err := FindOne(ById(s.users[5].Id))
 	s.NoError(err)
-	s.checkUserNotDestroyed(u, s.users[6])
+	s.checkUserNotDestroyed(u, s.users[5])
 }
 
 func (s *UserTestSuite) TestDeletePublicKey() {
@@ -565,24 +554,24 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 		return len(left) == 0 && len(right) == 0
 	}
 
-	users, err := FindNeedsReauthorization(0, 100)
+	users, err := FindNeedsReauthorization(0)
 	s.NoError(err)
-	s.Len(users, 5)
-	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5", "Test6"), "should find all logged in users")
+	s.Require().Len(users, 4)
+	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5"), "should find all logged in users")
 	s.False(containsUsers(users, "Test3"), "should not find logged out users")
 
-	users, err = FindNeedsReauthorization(0, 1)
+	users, err = FindNeedsReauthorization(0)
 	s.NoError(err)
-	s.Len(users, 4)
+	s.Require().Len(users, 4)
 	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5"), "should find logged in users who have not exceeded max reauth attempts")
 	s.False(containsUsers(users, "Test3", "Test6"), "should not find logged out users or users who have exceeded max reauth attempts")
 
-	users, err = FindNeedsReauthorization(30*time.Minute, 100)
+	users, err = FindNeedsReauthorization(30 * time.Minute)
 	s.NoError(err)
-	s.Len(users, 2)
-	s.True(containsUsers(users, "Test2", "Test6"), "should find logged in users who have exceeded the reauth limit")
+	s.Require().Len(users, 1)
+	s.True(containsUsers(users, "Test2"), "should find logged in users who have exceeded the reauth limit")
 
-	users, err = FindNeedsReauthorization(24*time.Hour, 1)
+	users, err = FindNeedsReauthorization(24 * time.Hour)
 	s.NoError(err)
 	s.Empty(users, "should not find users who have not exceeded the reauth limit")
 }

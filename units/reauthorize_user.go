@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -61,6 +62,11 @@ func NewReauthorizeUserJob(env evergreen.Environment, u *user.DBUser, id string)
 	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("reauthorize.%s", u.Username())})
 	j.SetShouldApplyScopesOnEnqueue(true)
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(maxReauthAttempts),
+		WaitUntil:   utility.ToTimeDurationPtr(time.Hour),
+	})
 	j.SetID(fmt.Sprintf("%s.%s.%s", reauthorizeUserJobName, u.Username(), id))
 	return j
 }
@@ -69,7 +75,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 	if j.user == nil {
 		user, err := user.FindOneById(j.UserID)
 		if err != nil {
-			j.AddError(err)
+			j.AddRetryableError(err)
 			return
 		}
 		if user == nil {
@@ -96,12 +102,6 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 		return
 	}
 
-	// Do not try background reauth if they've exceeded their attempt limit
-	// until they refresh their login cache.
-	if j.user.LoginCache.ReauthAttempts >= maxReauthAttempts {
-		return
-	}
-
 	reauthAfter := time.Duration(j.env.Settings().AuthConfig.BackgroundReauthMinutes) * time.Minute
 	if reauthAfter == 0 {
 		reauthAfter = defaultBackgroundReauth
@@ -113,13 +113,11 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 
 	um := j.env.UserManager()
 	if um == nil {
-		grip.Notice(message.WrapError(err, message.Fields{
-			"message": "cannot get user manager",
-			"job":     j.ID(),
-		}))
+		j.AddRetryableError(errors.New("cannot get global user manager"))
 		return
 	}
 	if !j.env.UserManagerInfo().CanReauthorize {
+		j.AddRetryableError(errors.New("cannot reauthorize user when the user manager does not support reauthorization"))
 		return
 	}
 
@@ -129,31 +127,27 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 	// Okta has expired, in which case they should be logged out, so that they
 	// are forced to log in to get a new refresh token.
 	if err != nil && strings.Contains(err.Error(), "invalid_grant") && strings.Contains(err.Error(), "The refresh token is invalid or expired.") {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Info(message.WrapError(err, message.Fields{
 			"message": "user's refresh token is invalid, logging them out",
 			"user":    j.UserID,
 			"job":     j.ID(),
 		}))
 		if err = user.ClearLoginCache(j.user, false); err != nil {
-			j.AddError(errors.Wrapf(err, "clearing login cache for user '%s'", j.UserID))
+			j.AddError(errors.Wrapf(err, "clearing login cache"))
 		}
 		return
 	}
 
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "could not reauthorize user",
+	j.AddRetryableError(errors.Wrap(err, "reauthorizing user"))
+
+	if err != nil && j.RetryInfo().GetRemainingAttempts() == 0 {
+		grip.Info(message.WrapError(err, message.Fields{
+			"message": "user has no more background reauth attempts, logging them out",
 			"user":    j.UserID,
 			"job":     j.ID(),
 		}))
-		j.AddError(err)
-		if err := j.user.IncReauthAttempts(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "failed to modify user reauth attempts",
-				"user":    j.UserID,
-				"job":     j.ID(),
-			}))
+		if err := user.ClearLoginCache(j.user, false); err != nil {
+			j.AddError(errors.Wrapf(err, "clearing login cache"))
 		}
-		return
 	}
 }

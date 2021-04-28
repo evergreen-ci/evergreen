@@ -19,28 +19,27 @@ const (
 )
 
 var (
-	IdKey                       = bsonutil.MustHaveTag(DBUser{}, "Id")
-	FirstNameKey                = bsonutil.MustHaveTag(DBUser{}, "FirstName")
-	LastNameKey                 = bsonutil.MustHaveTag(DBUser{}, "LastName")
-	DispNameKey                 = bsonutil.MustHaveTag(DBUser{}, "DispName")
-	EmailAddressKey             = bsonutil.MustHaveTag(DBUser{}, "EmailAddress")
-	PatchNumberKey              = bsonutil.MustHaveTag(DBUser{}, "PatchNumber")
-	CreatedAtKey                = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
-	SettingsKey                 = bsonutil.MustHaveTag(DBUser{}, "Settings")
-	APIKeyKey                   = bsonutil.MustHaveTag(DBUser{}, "APIKey")
-	OnlyAPIKey                  = bsonutil.MustHaveTag(DBUser{}, "OnlyAPI")
-	PubKeysKey                  = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
-	LoginCacheKey               = bsonutil.MustHaveTag(DBUser{}, "LoginCache")
-	RolesKey                    = bsonutil.MustHaveTag(DBUser{}, "SystemRoles")
-	LoginCacheTokenKey          = bsonutil.MustHaveTag(LoginCache{}, "Token")
-	LoginCacheTTLKey            = bsonutil.MustHaveTag(LoginCache{}, "TTL")
-	LoginCacheAccessTokenKey    = bsonutil.MustHaveTag(LoginCache{}, "AccessToken")
-	LoginCacheRefreshTokenKey   = bsonutil.MustHaveTag(LoginCache{}, "RefreshToken")
-	LoginCacheReauthAttemptsKey = bsonutil.MustHaveTag(LoginCache{}, "ReauthAttempts")
-	PubKeyNameKey               = bsonutil.MustHaveTag(PubKey{}, "Name")
-	PubKeyKey                   = bsonutil.MustHaveTag(PubKey{}, "Key")
-	PubKeyNCreatedAtKey         = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
-	FavoriteProjectsKey         = bsonutil.MustHaveTag(DBUser{}, "FavoriteProjects")
+	IdKey                     = bsonutil.MustHaveTag(DBUser{}, "Id")
+	FirstNameKey              = bsonutil.MustHaveTag(DBUser{}, "FirstName")
+	LastNameKey               = bsonutil.MustHaveTag(DBUser{}, "LastName")
+	DispNameKey               = bsonutil.MustHaveTag(DBUser{}, "DispName")
+	EmailAddressKey           = bsonutil.MustHaveTag(DBUser{}, "EmailAddress")
+	PatchNumberKey            = bsonutil.MustHaveTag(DBUser{}, "PatchNumber")
+	CreatedAtKey              = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
+	SettingsKey               = bsonutil.MustHaveTag(DBUser{}, "Settings")
+	APIKeyKey                 = bsonutil.MustHaveTag(DBUser{}, "APIKey")
+	OnlyAPIKey                = bsonutil.MustHaveTag(DBUser{}, "OnlyAPI")
+	PubKeysKey                = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
+	LoginCacheKey             = bsonutil.MustHaveTag(DBUser{}, "LoginCache")
+	RolesKey                  = bsonutil.MustHaveTag(DBUser{}, "SystemRoles")
+	LoginCacheTokenKey        = bsonutil.MustHaveTag(LoginCache{}, "Token")
+	LoginCacheTTLKey          = bsonutil.MustHaveTag(LoginCache{}, "TTL")
+	LoginCacheAccessTokenKey  = bsonutil.MustHaveTag(LoginCache{}, "AccessToken")
+	LoginCacheRefreshTokenKey = bsonutil.MustHaveTag(LoginCache{}, "RefreshToken")
+	PubKeyNameKey             = bsonutil.MustHaveTag(PubKey{}, "Name")
+	PubKeyKey                 = bsonutil.MustHaveTag(PubKey{}, "Key")
+	PubKeyNCreatedAtKey       = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
+	FavoriteProjectsKey       = bsonutil.MustHaveTag(DBUser{}, "FavoriteProjects")
 )
 
 //nolint: deadcode, megacheck, unused
@@ -302,15 +301,11 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 // FindNeedsReauthorization finds all users that need to be reauthorized after
 // the given period has passed and who have not exceeded the max reauthorization
 // attempts.
-func FindNeedsReauthorization(reauthorizeAfter time.Duration, maxAttempts int) ([]DBUser, error) {
+func FindNeedsReauthorization(reauthorizeAfter time.Duration) ([]DBUser, error) {
 	cutoff := time.Now().Add(-reauthorizeAfter)
 	users, err := Find(db.Query(bson.M{
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): bson.M{"$exists": true},
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   bson.M{"$lte": cutoff},
-		"$or": []bson.M{
-			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$exists": false}},
-			{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): bson.M{"$lt": maxAttempts}},
-		},
 	}))
 	return users, errors.Wrap(err, "could not find users who need reauthorization")
 }
@@ -337,8 +332,7 @@ func PutLoginCache(g gimlet.User) (string, error) {
 	// Always update the TTL. If the user doesn't have a token, generate and set it.
 	token := u.LoginCache.Token
 	setFields := bson.M{
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):            time.Now(),
-		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): 0,
+		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey): time.Now(),
 	}
 	if token == "" {
 		token = utility.RandomString()
