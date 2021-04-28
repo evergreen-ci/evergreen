@@ -2515,7 +2515,7 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
-func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) ([]*restModel.APIVersion, error) {
+func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) ([]*MainlineCommit, error) {
 	opts := model.GetVersionsOptions{}
 	opts.IncludeBuilds = true
 	opts.Requester = evergreen.RepotrackerVersionRequester
@@ -2523,6 +2523,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
+	var mainlineCommits []*MainlineCommit
 	var apiVersions []*restModel.APIVersion
 
 	for _, v := range versions {
@@ -2531,10 +2532,28 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service: %s", err.Error()))
 		}
+		defaultSort := []task.TasksSortOrder{
+			{Key: task.DisplayNameKey, Order: 1},
+		}
+		tasks, _, err := r.sc.FindTasksByVersion(v.Id, []string{}, []string{}, "", "", 0, 0, []string{}, defaultSort)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", v.Id, err.Error()))
+		}
+		if !task.AnyActiveTasks(tasks) {
+			mainlineCommit := MainlineCommit{}
+			versionMeta := VersionMeta{
+				ID:         v.Id,
+				CreateTime: v.CreateTime,
+				Author:     v.Author,
+				Message:    v.Message,
+			}
+			mainlineCommit.VersionMeta = &versionMeta
+			mainlineCommits = append(mainlineCommits, &mainlineCommit)
+		}
 
 		apiVersions = append(apiVersions, &apiVersion)
 	}
-	return apiVersions, nil
+	return mainlineCommits, nil
 }
 
 type versionResolver struct{ *Resolver }

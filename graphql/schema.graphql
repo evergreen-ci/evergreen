@@ -70,7 +70,7 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  mainlineCommits(options: MainlineCommitsOptions!): [Version!]!
+  mainlineCommits(options: MainlineCommitsOptions!): [MainlineCommit!]!
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -137,6 +137,18 @@ type Mutation {
   clearMySubscriptions: Int!
 }
 
+# Returns either a version or versionMeta for rolled up commits
+type MainlineCommit {
+  version: Version
+  versionMeta: VersionMeta
+}
+
+type VersionMeta {
+  id: String!
+  createTime: Time!
+  author: String!
+  message: String!
+}
 type Version {
   id: String!
   createTime: Time!

@@ -84,6 +84,11 @@ type HostsResponse struct {
 	Hosts              []*model.APIHost `json:"hosts"`
 }
 
+type MainlineCommit struct {
+	Version     *model.APIVersion `json:"version"`
+	VersionMeta *VersionMeta      `json:"versionMeta"`
+}
+
 type MainlineCommitsOptions struct {
 	ProjectID string   `json:"projectID"`
 	Variants  []string `json:"variants"`
@@ -259,6 +264,13 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
+}
+
+type VersionMeta struct {
+	ID         string    `json:"id"`
+	CreateTime time.Time `json:"createTime"`
+	Author     string    `json:"author"`
+	Message    string    `json:"message"`
 }
 
 type VolumeHost struct {
