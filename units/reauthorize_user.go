@@ -59,6 +59,8 @@ func NewReauthorizationJob(env evergreen.Environment, u *user.DBUser, id string)
 	j.env = env
 	j.user = u
 	j.SetPriority(1)
+	j.SetScopes([]string{fmt.Sprintf("reauthorize.%s", u.Username())})
+	j.SetShouldApplyScopesOnEnqueue(true)
 	j.SetID(fmt.Sprintf("%s.%s.%s", reauthorizationJobName, u.Username(), id))
 	return j
 }
