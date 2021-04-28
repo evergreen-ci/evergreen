@@ -317,6 +317,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "owner not validated in settings", http.StatusBadRequest)
 		return
 	}
+	if responseRef.Identifier != origProjectRef.Identifier {
+		conflictingRef, err := model.FindOneProjectRef(responseRef.Identifier)
+		if err != nil {
+			http.Error(w, "error checking for conflicting project ref", http.StatusInternalServerError)
+			return
+		}
+		if conflictingRef != nil && conflictingRef.Id != origProjectRef.Id {
+			http.Error(w, "identifier already being used for another project", http.StatusBadRequest)
+			return
+		}
+	}
 
 	errs := []string{}
 	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubPRAliases, "GitHub PR Aliases")...)
@@ -544,6 +555,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	projectRef.Id = id
+	projectRef.Identifier = responseRef.Identifier
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
 	projectRef.SpawnHostScriptPath = responseRef.SpawnHostScriptPath
