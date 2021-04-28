@@ -1200,7 +1200,7 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 		if flags.BackgroundReauthDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "background user reauth is disabled",
-				"impact":  "users will need to log in again once their login session expires",
+				"impact":  "users will need to manually log in again once their login session expires",
 				"mode":    "degraded",
 			})
 			return nil
@@ -1218,7 +1218,7 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(0).Format(TSFormat)
 		for _, user := range users {
-			catcher.Wrap(queue.Put(ctx, NewReauthorizeUserJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewReauthorizeUserJob(env, &user, ts)), "user %s", user.Id)
 		}
 
 		return catcher.Resolve()

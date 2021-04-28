@@ -412,9 +412,9 @@ func (s *UserTestSuite) TestGetLoginCache() {
 	s.Nil(u)
 }
 
-func (s *UserTestSuite) TestClearLoginCacheSingleUser() {
+func (s *UserTestSuite) TestClearLoginCache() {
 	// Error on non-existent user
-	s.Error(ClearLoginCache(&DBUser{Id: "asdf"}, false))
+	s.Error(ClearLoginCache(&DBUser{Id: "asdf"}))
 
 	// Two valid users...
 	u1, valid, err := GetLoginCache("1234", time.Minute)
@@ -427,7 +427,7 @@ func (s *UserTestSuite) TestClearLoginCacheSingleUser() {
 	s.Require().Equal("Test4", u2.Username())
 
 	// One is cleared...
-	s.NoError(ClearLoginCache(u1, false))
+	s.NoError(ClearLoginCache(u1))
 	// and is no longer found
 	u1, valid, err = GetLoginCache("1234", time.Minute)
 	s.NoError(err)
@@ -441,9 +441,9 @@ func (s *UserTestSuite) TestClearLoginCacheSingleUser() {
 	s.Equal("Test4", u2.Username())
 }
 
-func (s *UserTestSuite) TestClearLoginCacheAllUsers() {
+func (s *UserTestSuite) TestClearAllLoginCaches() {
 	// Clear all users
-	s.NoError(ClearLoginCache(nil, true))
+	s.NoError(ClearAllLoginCaches())
 	// Sample user is no longer in cache
 	u, valid, err := GetLoginCache("1234", time.Minute)
 	s.NoError(err)

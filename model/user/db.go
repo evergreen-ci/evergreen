@@ -371,28 +371,32 @@ func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, 
 	return u, true, nil
 }
 
-// ClearLoginCache clears either one user's or all users' tokens from the cache,
-// forcibly logging them out.
-func ClearLoginCache(user gimlet.User, all bool) error {
+// ClearLoginCache clears one user's login cache, forcibly logging them out.
+func ClearLoginCache(user gimlet.User) error {
 	update := bson.M{"$unset": bson.M{LoginCacheKey: 1}}
 
-	if all {
-		query := bson.M{}
-		if err := UpdateAll(query, update); err != nil {
-			return errors.Wrap(err, "problem updating user cache")
-		}
-	} else {
-		u, err := FindOneById(user.Username())
-		if err != nil {
-			return errors.Wrapf(err, "problem finding user %s by id", user.Username())
-		}
-		if u == nil {
-			return errors.Errorf("no user '%s' found", user.Username())
-		}
-		query := bson.M{IdKey: u.Id}
-		if err := UpdateOne(query, update); err != nil {
-			return errors.Wrap(err, "problem updating user cache")
-		}
+	u, err := FindOneById(user.Username())
+	if err != nil {
+		return errors.Wrapf(err, "problem finding user %s by id", user.Username())
+	}
+	if u == nil {
+		return errors.Errorf("no user '%s' found", user.Username())
+	}
+	query := bson.M{IdKey: u.Id}
+	if err := UpdateOne(query, update); err != nil {
+		return errors.Wrap(err, "problem updating user cache")
+	}
+
+	return nil
+}
+
+// ClearAllLoginCaches clears all users' login caches, forcibly logging them
+// out.
+func ClearAllLoginCaches() error {
+	update := bson.M{"$unset": bson.M{LoginCacheKey: 1}}
+	query := bson.M{}
+	if err := UpdateAll(query, update); err != nil {
+		return errors.Wrap(err, "problem updating user cache")
 	}
 	return nil
 }

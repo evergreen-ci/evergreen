@@ -132,7 +132,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 			"user":    j.UserID,
 			"job":     j.ID(),
 		}))
-		if err = user.ClearLoginCache(j.user, false); err != nil {
+		if err = user.ClearLoginCache(j.user); err != nil {
 			j.AddError(errors.Wrapf(err, "clearing login cache"))
 		}
 		return
@@ -146,7 +146,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 			"user":    j.UserID,
 			"job":     j.ID(),
 		}))
-		if err := user.ClearLoginCache(j.user, false); err != nil {
+		if err := user.ClearLoginCache(j.user); err != nil {
 			j.AddError(errors.Wrapf(err, "clearing login cache"))
 		}
 	}

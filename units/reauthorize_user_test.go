@@ -99,7 +99,7 @@ func TestReauthorizeUserJob(t *testing.T) {
 			assert.False(t, um.attemptedReauth)
 		},
 		"NoopsIfUserLoggedOut": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
-			require.NoError(t, user.ClearLoginCache(u, false))
+			require.NoError(t, user.ClearLoginCache(u))
 			var err error
 			u, err = user.FindOneById(u.Id)
 			require.NoError(t, err)
