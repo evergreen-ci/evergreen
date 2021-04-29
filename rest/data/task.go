@@ -38,7 +38,7 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 }
 
 func (tc *DBTaskConnector) FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
-	t, err := task.FindByIdExecution(taskId, &execution)
+	t, err := task.FindOneIdAndExecution(taskId, execution)
 	if err != nil {
 		return nil, err
 	}

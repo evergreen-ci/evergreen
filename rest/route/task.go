@@ -47,9 +47,9 @@ func (tgh *taskGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	_, tgh.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
 	execution := r.URL.Query().Get("execution")
 
-	if execution != "" && tgh.fetchAllExecutions == true {
+	if execution != "" && tgh.fetchAllExecutions {
 		return gimlet.ErrorResponse{
-			Message:    "fetchAllExecutions=true cannot be combined with execution={task_execution}",
+			Message:    "fetch_all_executions=true cannot be combined with execution={task_execution}",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
