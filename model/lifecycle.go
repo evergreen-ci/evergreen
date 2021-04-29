@@ -81,7 +81,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	if err = build.UpdateActivation(buildIDs, active, caller); err != nil {
 		return errors.Wrapf(err, "can't set activation for builds in '%s'", versionId)
 	}
-	Version.
+
 	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, nil, caller),
 		"can't set activation for tasks in version '%s'", versionId)
 }
