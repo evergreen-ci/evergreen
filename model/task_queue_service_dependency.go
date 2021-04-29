@@ -247,7 +247,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 }
 
 // FindNextTask returns the next dispatchable task in the queue, and returns the tasks that need to be checked for dependencies.
-func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
+func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	// If the host just ran a task group, give it one back.
@@ -262,7 +262,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueIt
 				taskGroupTask := d.getItemByNodeID(node.ID())
 				taskGroupTask.IsDispatched = true
 
-				return next, nil
+				return next
 			}
 		}
 		// If the task group is not present in the TaskGroups map, then all its tasks are considered dispatched.
@@ -282,7 +282,6 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueIt
 		})
 	}
 	var numIterated int
-	taskIdsToCheckBlocked := []string{}
 	dependencyCaches := make(map[string]task.Task)
 	for i := range d.sorted {
 		numIterated += 1
@@ -313,7 +312,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueIt
 					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				}))
-				return nil, nil
+				return nil
 			}
 			if nextTaskFromDB == nil {
 				grip.Warning(message.Fields{
@@ -323,7 +322,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueIt
 					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				})
-				return nil, nil
+				return nil
 			}
 
 			// Cache the task as dispatched from the in-memory queue's point of view.
@@ -348,10 +347,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueIt
 			}
 
 			if !dependenciesMet {
-				taskIdsToCheckBlocked = append(taskIdsToCheckBlocked, nextTaskFromDB.Id)
 				continue
 			}
-			return item, taskIdsToCheckBlocked
+			return item
 		}
 
 		// For a task group task, do some arithmetic to see if the group's next task is dispatchable.
@@ -374,7 +372,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueIt
 					"version":    item.Version,
 					"distro_id":  d.distroID,
 				}))
-				return nil, nil
+				return nil
 			}
 
 			taskGroupUnit.runningHosts = numHosts
@@ -385,12 +383,12 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueIt
 					taskGroupTask := d.getItemByNodeID(node.ID()) // *TaskQueueItem
 					taskGroupTask.IsDispatched = true
 
-					return next, taskIdsToCheckBlocked
+					return next
 				}
 			}
 		}
 	}
-	return nil, taskIdsToCheckBlocked
+	return nil
 }
 
 func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
@@ -483,6 +481,14 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 
 func CheckUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) error {
 	catcher := grip.NewBasicCatcher()
+
+	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
+	if err != nil {
+		return errors.Wrapf(err, "error checking if dependencies met for task '%s'", t.Id)
+	}
+	if dependenciesMet {
+		return nil
+	}
 
 	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
 	catcher.Add(errors.Wrap(err, "can't get blocking tasks"))

@@ -411,21 +411,16 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		var queueItem *model.TaskQueueItem
-		var taskIdsToCheckBlocked []string
 		switch d.DispatcherSettings.Version {
 		case evergreen.DispatcherVersionRevised, evergreen.DispatcherVersionRevisedWithDependencies:
-			queueItem, taskIdsToCheckBlocked, err = dispatcher.RefreshFindNextTask(d.Id, spec)
+			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				return nil, false, errors.Wrap(err, "problem getting next task")
 			}
 		default:
 			queueItem, _ = taskQueue.FindNextTask(spec)
 		}
-		if len(taskIdsToCheckBlocked) > 0 {
-			env := evergreen.GetEnvironment()
-			j := units.NewCheckBlockedTasksJob(d.Id, taskIdsToCheckBlocked)
-			_ = env.RemoteQueue().Put(ctx, j) // suppress error, because duplicate IDs are expected
-		}
+
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "RefreshFindNextTask",
