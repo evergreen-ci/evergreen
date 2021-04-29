@@ -225,6 +225,18 @@ func startedTaskHostsQuery(distroID string) bson.M {
 	return query
 }
 
+func idleHostsQuery(distroID string) bson.M {
+	query := bson.M{
+		RunningTaskKey: bson.M{"$exists": false},
+		StatusKey:      evergreen.HostRunning,
+		StartedByKey:   evergreen.User,
+	}
+	if distroID != "" {
+		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	}
+	return query
+}
+
 func CountRunningHosts(distroID string) (int, error) {
 	num, err := Count(db.Query(runningHostsQuery(distroID)))
 	return num, errors.Wrap(err, "problem finding running hosts")
@@ -245,6 +257,16 @@ func CountStartedTaskHosts() (int, error) {
 func CountStartedTaskHostsForDistro(distroID string) (int, error) {
 	num, err := Count(db.Query(startedTaskHostsQuery(distroID)))
 	return num, errors.Wrapf(err, "problem finding started hosts for '%s'", distroID)
+}
+
+// IdleHostsForDistroID, given a distroID, returns a slice of all idle hosts in that distro
+func IdleHostsWithDistroID(distroID string) ([]Host, error) {
+	q := idleHostsQuery(distroID)
+	idleHosts, err := Find(db.Query(q))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding idle hosts")
+	}
+	return idleHosts, nil
 }
 
 // AllActiveHosts produces a HostGroup for all hosts with UpHost

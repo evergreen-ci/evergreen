@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/scheduler"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -246,7 +247,29 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
-	// kick off a job to decom hosts if needed
+	// make sure to calculate maxhostsTerminate with totalRunning - MinimumHosts (from HAS
+
+	killableHosts := int(float32(len(upHosts)) * (1 - hostQueueRatio))
+
+	if (len(upHosts) - killableHosts) < distro.HostAllocatorSettings.MinimumHosts {
+		killableHosts = len(upHosts) - distro.HostAllocatorSettings.MinimumHosts
+	}
+	lowRatioThresh := float32(.25)
+	lowCountFloor := 5
+	if hostQueueRatio > 0 && hostQueueRatio < lowRatioThresh && killableHosts > lowCountFloor {
+
+		bleedInfo := BleedInfo{
+			DistroID:         distro.Id,
+			BleedCountTarget: killableHosts,
+		}
+		queue := j.env.RemoteQueue()
+		err := queue.Put(ctx, NewHostBleedJob(j.env, bleedInfo, utility.RoundPartOfHour(1).Format(TSFormat)))
+		if err != nil {
+			j.AddError(errors.Wrap(err, "Error bleeding hosts"))
+			return
+		}
+
+	}
 
 	grip.Info(message.Fields{
 		"message":                      "distro-scheduler-report",
@@ -270,4 +293,5 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"instance":                     j.ID(),
 		"runner":                       scheduler.RunnerName,
 	})
+	// at some point here we have to set bleedTarget, and also need persistence to know when to do so
 }
