@@ -424,14 +424,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		if len(taskIdsToCheckBlocked) > 0 {
 			env := evergreen.GetEnvironment()
 			j := units.NewCheckBlockedTasksJob(d.Id, taskIdsToCheckBlocked)
-			if err = env.RemoteQueue().Put(ctx, j); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":                   "problem putting new CheckBlockedTasks job",
-					"distro_id":                 d.Id,
-					"tasks_to_check":            taskIdsToCheckBlocked,
-					"distro_dispatcher_version": d.DispatcherSettings.Version,
-				}))
-			}
+			_ = env.RemoteQueue().Put(ctx, j) // suppress error, because duplicate IDs are expected
 		}
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
