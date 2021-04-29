@@ -47,7 +47,7 @@ func makeCheckBlockedTasksJob() *checkBlockedTasksJob {
 func NewCheckBlockedTasksJob(distroId string, taskIDs []string) amboy.Job {
 	job := makeCheckBlockedTasksJob()
 	job.TaskIDs = taskIDs
-	job.SetID(fmt.Sprintf("%s:%s:%s", checkBlockedTasks, distroId, time.Now().Hour()))
+	job.SetID(fmt.Sprintf("%s:%s:%s", checkBlockedTasks, distroId, time.Now().Round(time.Hour).String()))
 	return job
 }
 
