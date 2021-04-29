@@ -37,7 +37,7 @@ type Version struct {
 	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
-
+	IsActive            bool                 `bson:"is_active" json:"is_active,omitempty"`
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
 	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
 	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag,omitempty"`
@@ -106,11 +106,12 @@ func (v *Version) LastSuccessful() (*Version, error) {
 	return lastGreen, nil
 }
 
-func (self *Version) UpdateBuildVariants() error {
+func (self *Version) UpdateBuildVariantsAndActivation() error {
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: self.Id},
 		bson.M{
 			"$set": bson.M{
+				VersionIsActiveKey:      true,
 				VersionBuildVariantsKey: self.BuildVariants,
 			},
 		},
@@ -419,6 +420,8 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	}
 	return res, nil
 }
+
+func VersionByProjectIdAndVariantTasks(projectId string)
 
 type VersionsByCreateTime []Version
 
