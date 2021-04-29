@@ -3,12 +3,11 @@ package units
 import (
 	"context"
 	"fmt"
-
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
-	"gopkg.in/mgo.v2/bson"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -44,11 +43,11 @@ func makeCheckBlockedTasksJob() *checkBlockedTasksJob {
 
 // NewCheckBlockedTasksJob creates a job to run repotracker against a repository.
 // The code creating this job is responsible for verifying that the project
-// should track push events
+// should track push events. We want to limit this job to once an hour for each distro.
 func NewCheckBlockedTasksJob(distroId string, taskIDs []string) amboy.Job {
 	job := makeCheckBlockedTasksJob()
 	job.TaskIDs = taskIDs
-	job.SetID(fmt.Sprintf("%s:%s:%s", checkBlockedTasks, distroId, bson.NewObjectId().Hex()))
+	job.SetID(fmt.Sprintf("%s:%s:%s", checkBlockedTasks, distroId, time.Now().Hour()))
 	return job
 }
 
