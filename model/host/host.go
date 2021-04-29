@@ -49,9 +49,7 @@ type Host struct {
 
 	// True if the app server has done all necessary host setup work (although
 	// the host may need to do additional provisioning before it is running).
-	Provisioned bool `bson:"provisioned" json:"provisioned"`
-	// kim: TODO: delete this field
-	// ProvisionAttempts int       `bson:"priv_attempts" json:"provision_attempts"`
+	Provisioned   bool      `bson:"provisioned" json:"provisioned"`
 	ProvisionTime time.Time `bson:"prov_time,omitempty" json:"prov_time,omitempty"`
 
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
@@ -1435,20 +1433,18 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 		// If adding or removing fields here, make sure that all callers will work
 		// correctly after the change. Any fields defined here but not set by the
 		// caller will insert the zero value into the document
-		DNSKey:            h.Host,
-		UserKey:           h.User,
-		UserHostKey:       h.UserHost,
-		DistroKey:         h.Distro,
-		StartedByKey:      h.StartedBy,
-		ExpirationTimeKey: h.ExpirationTime,
-		ProviderKey:       h.Provider,
-		TagKey:            h.Tag,
-		InstanceTypeKey:   h.InstanceType,
-		ZoneKey:           h.Zone,
-		ProjectKey:        h.Project,
-		ProvisionedKey:    h.Provisioned,
-		// kim: TODO: delete
-		// ProvisionAttemptsKey: h.ProvisionAttempts,
+		DNSKey:              h.Host,
+		UserKey:             h.User,
+		UserHostKey:         h.UserHost,
+		DistroKey:           h.Distro,
+		StartedByKey:        h.StartedBy,
+		ExpirationTimeKey:   h.ExpirationTime,
+		ProviderKey:         h.Provider,
+		TagKey:              h.Tag,
+		InstanceTypeKey:     h.InstanceType,
+		ZoneKey:             h.Zone,
+		ProjectKey:          h.Project,
+		ProvisionedKey:      h.Provisioned,
 		ProvisionOptionsKey: h.ProvisionOptions,
 		StatusKey:           h.Status,
 		StartTimeKey:        h.StartTime,

@@ -800,8 +800,6 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			return hosts[i].StartTime.Before(hosts[j].StartTime)
 		})
 
-		// kim: TODO: delete
-		// attemptsUsed := 0
 		jobsSubmitted := 0
 		collisions := 0
 		catcher := grip.NewBasicCatcher()
@@ -820,15 +818,13 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 				}
 			}
 
-			err := queue.Put(ctx, NewHostSetupJob(env, &h, utility.RoundPartOfMinute(0).Format(TSFormat)))
+			err := queue.Put(ctx, NewSetupHostJob(env, &h, utility.RoundPartOfMinute(0).Format(TSFormat)))
 			if amboy.IsDuplicateJobError(err) || amboy.IsDuplicateJobScopeError(err) {
 				collisions++
 				continue
 			}
 			catcher.Add(err)
 
-			// kim: TODO: delete
-			// attemptsUsed += h.ProvisionAttempts
 			jobsSubmitted++
 		}
 
@@ -836,10 +832,8 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			"provisioning_hosts": len(hosts),
 			"throttle":           hostInitSettings.ProvisioningThrottle,
 			"jobs_submitted":     jobsSubmitted,
-			// kim: TODO: delete
-			// "total_attempts":     attemptsUsed,
-			"duplicates_seen": collisions,
-			"message":         "host provisioning setup",
+			"duplicates_seen":    collisions,
+			"message":            "host provisioning setup",
 		})
 
 		catcher.Add(queue.Put(ctx, NewCloudHostReadyJob(env, utility.RoundPartOfMinute(30).Format(TSFormat))))

@@ -231,7 +231,7 @@ func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) erro
 			return errors.Wrap(err, "marking host as provisioning")
 		}
 
-		setupJob := NewHostSetupJob(j.env, h, utility.RoundPartOfMinute(0).Format(TSFormat))
+		setupJob := NewSetupHostJob(j.env, h, utility.RoundPartOfMinute(0).Format(TSFormat))
 		if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), setupJob); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message":          "could not enqueue host setup job",

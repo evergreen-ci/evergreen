@@ -858,21 +858,6 @@ func TestUpsert(t *testing.T) {
 				So(host.Host, ShouldEqual, "host2")
 
 			})
-
-		// kim: TODO: delete
-		// Convey("Upserting a host with new ID should set priv_atttempts", func() {
-		//     So(host.Insert(), ShouldBeNil)
-		//     So(host.Remove(), ShouldBeNil)
-		//     host.Id = "s-12345"
-		//     _, err := host.Upsert()
-		//     So(err, ShouldBeNil)
-		//
-		//     out := bson.M{}
-		//     So(db.FindOneQ(Collection, db.Query(bson.M{}), &out), ShouldBeNil)
-		//     // val, ok := out[ProvisionAttemptsKey]
-		//     So(ok, ShouldBeTrue)
-		//     So(val, ShouldEqual, 0)
-		// })
 		Convey("Upserting a host that does not need its provisioning changed unsets the field", func() {
 			So(host.Insert(), ShouldBeNil)
 			_, err := host.Upsert()
