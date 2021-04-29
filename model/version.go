@@ -421,8 +421,6 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	return res, nil
 }
 
-func VersionByProjectIdAndVariantTasks(projectId string)
-
 type VersionsByCreateTime []Version
 
 func (v VersionsByCreateTime) Len() int {
