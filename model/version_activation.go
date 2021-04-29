@@ -148,7 +148,8 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	// If any variants/tasks were activated, update the stored version so that we don't
 	// attempt to activate them again
 	if hasActivated {
-		return true, v.UpdateBuildVariantsAndActivation()
+		v.UpdateActivation()
+		return true, v.UpdateBuildVariants()
 	}
 	return false, nil
 

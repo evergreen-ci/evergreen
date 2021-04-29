@@ -75,11 +75,13 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 
 		version, err := VersionFindOneId(tasksToActivate[0].Version)
-		if err != nil || version == nil {
-			return errors.Wrapf(err, "can't find associated version")
-		}
-		err = version.UpdateActivation()
 		if err != nil {
+			return errors.Wrapf(err, "error find associated version")
+		}
+		if version == nil {
+			return errors.Errorf("could not find associated version")
+		}
+		if err = version.UpdateActivation(); err != nil {
 			return errors.Wrapf(err, "Error marking version as activated")
 		}
 

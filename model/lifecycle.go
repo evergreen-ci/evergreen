@@ -1809,10 +1809,13 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		}
 	}
 	if batchTimeInfo.hasAnyBatchTimeTasks() {
-		grip.Error(message.WrapError(v.UpdateBuildVariantsAndActivation(), message.Fields{
+		grip.Error(message.WrapError(v.UpdateBuildVariants(), message.Fields{
 			"message": "unable to add batchtime tasks",
 			"version": v.Id,
 		}))
+	}
+	if err = v.UpdateActivation(); err != nil {
+		return nil, errors.Wrap(err, "can't set version activation to true")
 	}
 
 	return taskIds, nil
