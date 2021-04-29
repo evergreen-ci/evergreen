@@ -455,6 +455,39 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.CheckBlockedTasksDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "CheckBlockedTasks job is disabled",
+				"impact":  "new tasks are not enqueued",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		catcher := grip.NewBasicCatcher()
+		// find all active distros
+		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		catcher.Add(err)
+
+		ts := utility.RoundPartOfMinute(0)
+		for _, d := range distros {
+			catcher.Add(queue.Put(ctx, NewCheckBlockedTasksJob(d.Id, ts)))
+		}
+		return catcher.Resolve()
+	}
+}
+
 func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
