@@ -119,6 +119,17 @@ func (self *Version) UpdateBuildVariantsAndActivation() error {
 	)
 }
 
+func (self *Version) UpdateActivation() error {
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionIsActiveKey: true,
+			},
+		},
+	)
+}
+
 func (self *Version) Insert() error {
 	return db.Insert(VersionCollection, self)
 }
