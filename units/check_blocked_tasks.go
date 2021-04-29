@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+
 	"github.com/pkg/errors"
 
 	"github.com/evergreen-ci/evergreen"
@@ -62,16 +66,22 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error getting alias task queue for distro '%s'", j.DistroId))
 	}
 	taskIds := []string{}
-	for _, item := range queue.Queue {
-		if !item.IsDispatched && len(item.Dependencies) > 0 {
-			taskIds = append(taskIds, item.Id)
+	if queue != nil {
+		for _, item := range queue.Queue {
+			if !item.IsDispatched && len(item.Dependencies) > 0 {
+				taskIds = append(taskIds, item.Id)
+			}
 		}
 	}
-	for _, item := range aliasQueue.Queue {
-		if !item.IsDispatched && len(item.Dependencies) > 0 {
-			taskIds = append(taskIds, item.Id)
+
+	if aliasQueue != nil {
+		for _, item := range aliasQueue.Queue {
+			if !item.IsDispatched && len(item.Dependencies) > 0 {
+				taskIds = append(taskIds, item.Id)
+			}
 		}
 	}
+
 	if len(taskIds) == 0 {
 		return
 	}
@@ -84,6 +94,55 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 
 	dependencyCache := map[string]task.Task{}
 	for _, t := range tasksToCheck {
-		j.AddError(model.CheckUnmarkedBlockingTasks(&t, dependencyCache))
+		j.AddError(checkUnmarkedBlockingTasks(&t, dependencyCache))
 	}
+}
+
+func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) error {
+	catcher := grip.NewBasicCatcher()
+
+	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
+	if err != nil {
+		return errors.Wrapf(err, "error checking if dependencies met for task '%s'", t.Id)
+	}
+	if dependenciesMet {
+		return nil
+	}
+
+	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
+	catcher.Add(errors.Wrap(err, "can't get blocking tasks"))
+	if err == nil {
+		for _, task := range blockingTasks {
+			catcher.Add(errors.Wrapf(model.UpdateBlockedDependencies(&task), "can't update blocked dependencies for '%s'", task.Id))
+		}
+	}
+
+	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
+	catcher.Add(errors.Wrap(err, "can't get blocked status"))
+	if err == nil && len(blockingDeactivatedTasks) > 0 {
+		var deactivatedDependencies []task.Task
+		deactivatedDependencies, err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher")
+		catcher.Add(err)
+		if err == nil {
+			catcher.Add(build.SetManyCachedTasksActivated(deactivatedDependencies, false))
+		}
+	}
+
+	// also update the display task status in case it is out of date
+	if t.IsPartOfDisplay() {
+		parent, err := t.GetDisplayTask()
+		catcher.Add(err)
+		if parent != nil {
+			catcher.Add(model.UpdateDisplayTask(parent))
+		}
+	}
+
+	grip.DebugWhen(len(blockingTasks)+len(blockingDeactivatedTasks) > 0, message.Fields{
+		"message":                            "checked unmarked blocking tasks",
+		"blocking_tasks_updated":             len(blockingTasks),
+		"blocking_deactivated_tasks_updated": len(blockingDeactivatedTasks),
+		"exec_task":                          t.IsPartOfDisplay(),
+		"source":                             checkBlockedTasks,
+	})
+	return catcher.Resolve()
 }

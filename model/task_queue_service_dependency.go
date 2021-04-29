@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -455,16 +454,6 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		if !dependenciesMet {
-			grip.Warning(message.WrapError(CheckUnmarkedBlockingTasks(nextTaskFromDB, dependencyCaches), message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "nextTaskGroupTask",
-				"operation":  "CheckUnmarkedBlockingTasks",
-				"message":    "error checking dependencies for task",
-				"outcome":    "skip and continue",
-				"task":       nextTaskQueueItem.Id,
-				"distro_id":  d.distroID,
-			}))
-
 			continue
 		}
 
@@ -477,52 +466,4 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 	}
 
 	return nil
-}
-
-func CheckUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) error {
-	catcher := grip.NewBasicCatcher()
-
-	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
-	if err != nil {
-		return errors.Wrapf(err, "error checking if dependencies met for task '%s'", t.Id)
-	}
-	if dependenciesMet {
-		return nil
-	}
-
-	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
-	catcher.Add(errors.Wrap(err, "can't get blocking tasks"))
-	if err == nil {
-		for _, task := range blockingTasks {
-			catcher.Add(errors.Wrapf(UpdateBlockedDependencies(&task), "can't update blocked dependencies for '%s'", task.Id))
-		}
-	}
-
-	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
-	catcher.Add(errors.Wrap(err, "can't get blocked status"))
-	if err == nil && len(blockingDeactivatedTasks) > 0 {
-		var deactivatedDependencies []task.Task
-		deactivatedDependencies, err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher")
-		catcher.Add(err)
-		if err == nil {
-			catcher.Add(build.SetManyCachedTasksActivated(deactivatedDependencies, false))
-		}
-	}
-
-	// also update the display task status in case it is out of date
-	if t.IsPartOfDisplay() {
-		parent, err := t.GetDisplayTask()
-		catcher.Add(err)
-		if parent != nil {
-			catcher.Add(UpdateDisplayTask(parent))
-		}
-	}
-
-	grip.DebugWhen(len(blockingTasks)+len(blockingDeactivatedTasks) > 0, message.Fields{
-		"message":                            "checked unmarked blocking tasks",
-		"blocking_tasks_updated":             len(blockingTasks),
-		"blocking_deactivated_tasks_updated": len(blockingDeactivatedTasks),
-		"exec_task":                          t.IsPartOfDisplay(),
-	})
-	return catcher.Resolve()
 }
