@@ -324,6 +324,9 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			return errors.Wrap(err, "problem building container image")
 		}
 		if !ready {
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				NeedsRetry: utility.TruePtr(),
+			})
 			return nil
 		}
 	}
