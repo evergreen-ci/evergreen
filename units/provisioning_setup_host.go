@@ -98,11 +98,12 @@ func (j *setupHostJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	if j.host.Status == evergreen.HostRunning || j.host.Provisioned {
+	if j.host.Status != evergreen.HostProvisioning || j.host.Provisioned {
 		grip.Info(message.Fields{
 			"job":     j.ID(),
 			"host_id": j.host.Id,
-			"message": "skipping setup because host is already set up",
+			"distro":  j.host.Distro.Id,
+			"message": "skipping setup because host is no longer provisioning",
 		})
 		return
 	}
@@ -152,7 +153,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 			"current_attempt": j.RetryInfo().CurrentAttempt,
 		}))
 
-		if j.shouldRetryProvisioning() {
+		if j.canRetryProvisioning() {
 			grip.Info(message.Fields{
 				"current_attempt": j.RetryInfo().CurrentAttempt,
 				"host_id":         j.host.Id,
@@ -586,7 +587,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	return errors.Wrap(err, "could not fetch remote task data")
 }
 
-func (j *setupHostJob) shouldRetryProvisioning() bool {
+func (j *setupHostJob) canRetryProvisioning() bool {
 	return j.RetryInfo().GetRemainingAttempts() > 0 && j.host.Status == evergreen.HostProvisioning && !j.host.Provisioned
 }
 
