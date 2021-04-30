@@ -38,11 +38,10 @@ func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
 func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
 
 type LoginCache struct {
-	Token          string    `bson:"token"`
-	TTL            time.Time `bson:"ttl"`
-	AccessToken    string    `bson:"access_token,omitempty"`
-	RefreshToken   string    `bson:"refresh_token,omitempty"`
-	ReauthAttempts int       `bson:"reauth_attempts,omitempty"`
+	Token        string    `bson:"token,omitempty"`
+	TTL          time.Time `bson:"ttl,omitempty"`
+	AccessToken  string    `bson:"access_token,omitempty"`
+	RefreshToken string    `bson:"refresh_token,omitempty"`
 }
 
 type GithubUser struct {
@@ -359,27 +358,6 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 		}
 	}
 	return false
-}
-
-// IncReauthAttempts increases the number of attempted reauths for this user.
-func (u *DBUser) IncReauthAttempts() error {
-	info, err := db.FindAndModify(
-		Collection,
-		bson.M{IdKey: u.Id},
-		nil,
-		adb.Change{
-			Update: bson.M{
-				"$inc": bson.M{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheReauthAttemptsKey): 1},
-			},
-			ReturnNew: true,
-		}, u)
-	if err != nil {
-		return errors.Wrap(err, "could not increment reauth attempts")
-	}
-	if info.Updated != 1 {
-		return errors.Errorf("could not find user '%s' to update", u.Id)
-	}
-	return nil
 }
 
 func (u *DBUser) DeleteAllRoles() error {
