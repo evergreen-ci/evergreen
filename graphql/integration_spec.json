@@ -1887,6 +1887,15 @@
         "periodic_builds": [],
         "triggers": []
       }
+    ],
+    "versions": [
+      {
+        "_id": "version",
+        "activated": false,
+        "create_time": {
+          "$date": "2018-01-11T00:01:36.796Z"
+        }
+      }
     ]
   },
   "tests": [
