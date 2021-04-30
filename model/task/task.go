@@ -578,7 +578,7 @@ func (t *Task) RefreshBlockedDependencies(depCache map[string]Task) ([]Task, err
 	return blockedDeps, nil
 }
 
-func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]string, error) {
+func (t *Task) BlockedOnDeactivatedOrBlockedDependency(depCache map[string]Task) ([]string, error) {
 	_, err := t.populateDependencyTaskCache(depCache)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -598,7 +598,7 @@ func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]strin
 			depTask = *foundTask
 			depCache[depTask.Id] = depTask
 		}
-		if !depTask.IsFinished() && !depTask.Activated {
+		if !depTask.IsFinished() && (!depTask.Activated || depTask.Blocked()) {
 			blockingDeps = append(blockingDeps, depTask.Id)
 		}
 	}

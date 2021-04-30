@@ -149,7 +149,7 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 		}
 	}
 
-	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
+	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedOrBlockedDependency(dependencyCaches)
 	catcher.Add(errors.Wrap(err, "can't get blocked status"))
 	if err == nil && len(blockingDeactivatedTasks) > 0 {
 		var deactivatedDependencies []task.Task

@@ -466,13 +466,15 @@ type APISyncAtEndOptions struct {
 }
 
 type APIDependency struct {
-	TaskId string `bson:"_id" json:"id"`
-	Status string `bson:"status" json:"status"`
+	TaskId       string `bson:"_id" json:"id"`
+	Status       string `bson:"status" json:"status"`
+	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 }
 
 func (ad *APIDependency) BuildFromService(dep task.Dependency) {
 	ad.TaskId = dep.TaskId
 	ad.Status = dep.Status
+	ad.Unattainable = dep.Unattainable
 }
 
 func (ad *APIDependency) ToService() (interface{}, error) {

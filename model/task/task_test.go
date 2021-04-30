@@ -304,7 +304,7 @@ func TestRefreshBlockedDependencies(t *testing.T) {
 	}
 }
 
-func TestBlockedOnDeactivatedDependency(t *testing.T) {
+func TestBlockedOnDeactivatedOrBlockedDependency(t *testing.T) {
 	taskId := "t1"
 	taskDoc := &Task{
 		Id: taskId,
@@ -313,6 +313,7 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 		{Id: depTaskIds[0].TaskId, Status: evergreen.TaskUndispatched, Activated: true},
 		{Id: depTaskIds[1].TaskId, Status: evergreen.TaskSucceeded, Activated: false},
 		{Id: depTaskIds[2].TaskId, Status: evergreen.TaskUndispatched, Activated: false},
+		{Id: depTaskIds[3].TaskId, Status: evergreen.TaskUndispatched, Activated: true, DependsOn: []Dependency{{TaskId: depTaskIds[2].TaskId, Unattainable: true}}},
 	}
 	require.NoError(t, db.Clear(Collection))
 	for _, depTask := range depTasks {
@@ -326,7 +327,7 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[0].TaskId},
 		}
-		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedOrBlockedDependency(map[string]Task{})
 		require.NoError(t, err)
 		assert.Empty(t, blockingTasks)
 	})
@@ -334,15 +335,23 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[1].TaskId},
 		}
-		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedOrBlockedDependency(map[string]Task{})
 		require.NoError(t, err)
 		assert.Empty(t, blockingTasks)
 	})
-	t.Run("Blocked", func(t *testing.T) {
+	t.Run("Deactivated", func(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[2].TaskId},
 		}
-		blockingTasks, err := taskDoc.BlockedOnDeactivatedDependency(map[string]Task{})
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedOrBlockedDependency(map[string]Task{})
+		require.NoError(t, err)
+		assert.Len(t, blockingTasks, 1)
+	})
+	t.Run("Blocked", func(t *testing.T) {
+		taskDoc.DependsOn = []Dependency{
+			{TaskId: depTaskIds[3].TaskId},
+		}
+		blockingTasks, err := taskDoc.BlockedOnDeactivatedOrBlockedDependency(map[string]Task{})
 		require.NoError(t, err)
 		assert.Len(t, blockingTasks, 1)
 	})
