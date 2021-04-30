@@ -54,6 +54,7 @@ type RestTask struct {
 	MinQueuePos         int                   `json:"min_queue_pos"`
 	PatchNumber         int                   `json:"patch_number,omitempty"`
 	PatchId             string                `json:"patch_id,omitempty"`
+	ModulePaths         map[string]string     `json:"module_paths,omitempty"`
 
 	// Artifacts and binaries
 	Files []taskFile `json:"files"`
@@ -122,6 +123,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.Aborted = srcTask.Aborted
 	destTask.TimeTaken = srcTask.TimeTaken
 	destTask.ExpectedDuration = srcTask.ExpectedDuration
+	destTask.ModulePaths = srcTask.Details.Modules.Prefixes
 
 	var err error
 	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(destTask.Id)

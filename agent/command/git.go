@@ -486,7 +486,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 			continue
 		}
 
-		moduleBase := filepath.ToSlash(filepath.Join(module.Prefix, module.Name))
+		moduleBase := filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
 
 		var revision string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
@@ -761,7 +761,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 				continue
 			}
 
-			dir = filepath.Join(c.Directory, module.Prefix, module.Name)
+			dir = filepath.Join(c.Directory, expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name)
 		}
 
 		if len(patchPart.PatchSet.Patch) == 0 {

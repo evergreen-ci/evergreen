@@ -34,8 +34,8 @@ type HeartbeatResponse struct {
 	Abort bool `json:"abort,omitempty"`
 }
 
-// TaskEndDetail contains data sent from the agent to the
-// API server after each task run.
+// TaskEndDetail contains data sent from the agent to the API server after each task run.
+// This should be used to store data relating to what happened when the task ran
 type TaskEndDetail struct {
 	Status          string          `bson:"status,omitempty" json:"status,omitempty"`
 	Message         string          `bson:"message,omitempty" json:"message,omitempty"`
@@ -46,6 +46,7 @@ type TaskEndDetail struct {
 	TimeoutDuration time.Duration   `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty"`
 	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
 	Logs            *TaskLogs       `bson:"-" json:"logs,omitempty"`
+	Modules         ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
 }
 
 type OOMTrackerInfo struct {
@@ -62,6 +63,10 @@ type TaskLogs struct {
 type LogInfo struct {
 	Command string `bson:"command" json:"command"`
 	URL     string `bson:"url" json:"url"`
+}
+
+type ModuleCloneInfo struct {
+	Prefixes map[string]string `bson:"prefixes,omitempty" json:"prefixes,omitempty"`
 }
 
 type TaskEndDetails struct {
