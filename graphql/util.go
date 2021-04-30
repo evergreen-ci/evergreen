@@ -290,26 +290,8 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
 	}
 
-	grip.InfoWhen(len(patchUpdateReq.Tasks) > 0 || len(patchUpdateReq.Variants) > 0, message.Fields{
-		"source":     "ui_update_patch",
-		"message":    "legacy structure is being used",
-		"update_req": patchUpdateReq,
-		"patch_id":   p.Id.Hex(),
-		"version":    p.Version,
-	})
-
-	tasks := model.TaskVariantPairs{}
-	if len(patchUpdateReq.VariantsTasks) > 0 {
-		tasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
-	} else {
-		for _, v := range patchUpdateReq.Variants {
-			for _, t := range patchUpdateReq.Tasks {
-				if project.FindTaskForVariant(t, v) != nil {
-					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{Variant: v, TaskName: t})
-				}
-			}
-		}
-	}
+	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
+	tasks := model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
 
 	tasks.ExecTasks, err = model.IncludeDependencies(project, tasks.ExecTasks, p.GetRequester())
 	grip.Warning(message.WrapError(err, message.Fields{
@@ -405,6 +387,25 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 	}
 }
 
+func addDisplayTasksToPatchReq(req *PatchVariantsTasksRequest, p model.Project) {
+	for i, vt := range req.VariantsTasks {
+		bv := p.FindBuildVariant(vt.Variant)
+		if bv == nil {
+			continue
+		}
+		for i := len(vt.Tasks) - 1; i >= 0; i-- {
+			task := vt.Tasks[i]
+			displayTask := bv.GetDisplayTask(task)
+			if displayTask == nil {
+				continue
+			}
+			vt.Tasks = append(vt.Tasks[:i], vt.Tasks[i+1:]...)
+			vt.DisplayTasks = append(vt.DisplayTasks, *displayTask)
+		}
+		req.VariantsTasks[i] = vt
+	}
+}
+
 type VariantsAndTasksFromProject struct {
 	Variants map[string]model.BuildVariant
 	Tasks    []struct{ Name string }
@@ -468,6 +469,9 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 		for _, taskUnit := range buildVariant.Tasks {
 			projTasks = append(projTasks, taskUnit.Name)
 		}
+		for _, displayTask := range buildVariant.DisplayTasks {
+			projTasks = append(projTasks, displayTask.Name)
+		}
 		sort.SliceStable(projTasks, func(i, j int) bool {
 			return projTasks[i] < projTasks[j]
 		})
@@ -477,23 +481,15 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 	sort.SliceStable(variants, func(i, j int) bool {
 		return variants[i].DisplayName < variants[j].DisplayName
 	})
-	// convert tasks to UI data structure
-	tasks := []string{}
-	for _, task := range patchProjectVariantsAndTasks.Tasks {
-		tasks = append(tasks, task.Name)
-	}
 
 	patchProject := PatchProject{
 		Variants: variants,
-		Tasks:    tasks,
 	}
 	return &patchProject, nil
 }
 
 type PatchVariantsTasksRequest struct {
 	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
-	Variants      []string             `json:"variants"`                 // old format
-	Tasks         []string             `json:"tasks"`                    // old format
 	Description   string               `json:"description"`
 }
 
@@ -506,9 +502,8 @@ func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchConfigure) {
 			Tasks:   vt.Tasks,
 		}
 		for _, displayTask := range vt.DisplayTasks {
-			dt := patch.DisplayTask{}
-			dt.Name = displayTask.Name
-			dt.ExecTasks = displayTask.ExecTasks
+			// note that the UI does not pass ExecTasks, which tells the back-end model figure out the right execution tasks
+			dt := patch.DisplayTask{Name: displayTask.Name}
 			variantTasks.DisplayTasks = append(variantTasks.DisplayTasks, dt)
 		}
 		p.VariantsTasks = append(p.VariantsTasks, variantTasks)
