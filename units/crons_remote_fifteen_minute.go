@@ -51,6 +51,7 @@ func (j *cronsRemoteFifteenMinuteJob) Run(ctx context.Context) {
 		PopulateHostStatJobs(30),
 		PopulatePeriodicBuilds(),
 		PopulateReauthorizeUserJobs(j.env),
+		PopulateCheckUnmarkedBlockedTasks(),
 	}
 
 	queue := j.env.RemoteQueue()

@@ -319,8 +319,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 
 func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection))
-	//createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
-	//revision model.Revision, tag model.GitTag)
+
 	tag := model.GitTag{
 		Tag:    "release",
 		Pusher: "release-bot",
@@ -337,7 +336,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: utility.TruePtr(),
 	}
-	v, err := s.h.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
+	v, err := s.h.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag, "")
 	s.NoError(err)
 	s.NotNil(v)
 }

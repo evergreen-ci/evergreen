@@ -455,6 +455,39 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.CheckBlockedTasksDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "CheckBlockedTasks job is disabled",
+				"impact":  "new tasks are not enqueued",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		catcher := grip.NewBasicCatcher()
+		// find all active distros
+		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		catcher.Add(err)
+
+		ts := utility.RoundPartOfMinute(0)
+		for _, d := range distros {
+			catcher.Add(queue.Put(ctx, NewCheckBlockedTasksJob(d.Id, ts)))
+		}
+		return catcher.Resolve()
+	}
+}
+
 func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
@@ -845,9 +878,9 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-// PopulateHostJasperRestartJobs enqueues the jobs to restart the Jasper service
+// PopulateHostRestartJasperJobs enqueues the jobs to restart the Jasper service
 // on the host.
-func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulateHostRestartJasperJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -863,22 +896,11 @@ func PopulateHostJasperRestartJobs(env evergreen.Environment) amboy.QueueOperati
 			return nil
 		}
 
-		if err = host.UpdateAll(host.NeedsReprovisioningLocked(time.Now()), bson.M{"$unset": bson.M{
-			host.ReprovisioningLockedKey: false,
-		}}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":   "problem updating hosts with elapsed last communication time",
-				"operation": "reprovisioning hosts",
-				"impact":    "hosts cannot be reprovisioned",
-			}))
-			return errors.WithStack(err)
-		}
-
-		hosts, err := host.FindByNeedsJasperRestart()
+		hosts, err := host.FindByNeedsToRestartJasper()
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "Jasper service restart",
-				"cron":      jasperRestartJobName,
+				"cron":      restartJasperJobName,
 				"impact":    "existing hosts will not have their Jasper services restarted",
 			}))
 			return errors.Wrap(err, "problem finding hosts that need their Jasper service restarted")
@@ -909,17 +931,6 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 				"mode":    "degraded",
 			})
 			return nil
-		}
-
-		if err = host.UpdateAll(host.NeedsReprovisioningLocked(time.Now()), bson.M{"$unset": bson.M{
-			host.ReprovisioningLockedKey: false,
-		}}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":   "problem updating hosts with elapsed last communication time",
-				"operation": "reprovisioning hosts",
-				"impact":    "hosts cannot be reprovisioned",
-			}))
-			return errors.WithStack(err)
 		}
 
 		hosts, err := host.FindByShouldConvertProvisioning()
