@@ -112,7 +112,7 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 		j.AddError(err)
 		numTasksModified += numModified
 		if numTasksModified > 0 {
-			numChecksThatUpdatedTasks += 1
+			numChecksThatUpdatedTasks++
 		}
 	}
 	grip.Debug(message.Fields{
@@ -126,6 +126,7 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 		"num_updating_checks": numChecksThatUpdatedTasks,
 		"job":                 j.ID(),
 		"source":              checkBlockedTasks,
+		"distro":              j.DistroId,
 	})
 }
 
