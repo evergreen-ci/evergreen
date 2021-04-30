@@ -286,6 +286,7 @@ func MockConfig() *evergreen.Settings {
 			AgentStartDisabled:            true,
 			RepotrackerDisabled:           true,
 			SchedulerDisabled:             true,
+			CheckBlockedTasksDisabled:     true,
 			GithubPRTestingDisabled:       true,
 			CLIUpdatesDisabled:            true,
 			EventProcessingDisabled:       true,

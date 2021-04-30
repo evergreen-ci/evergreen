@@ -295,7 +295,12 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			}
 		}
 
-		moduleBase := filepath.Join(cloneDir, module.Prefix, module.Name)
+		modulePrefix := module.Prefix
+		if task.ModulePaths != nil && task.ModulePaths[module.Name] != "" {
+			modulePrefix = task.ModulePaths[module.Name]
+		}
+
+		moduleBase := filepath.Join(cloneDir, modulePrefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
 		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {

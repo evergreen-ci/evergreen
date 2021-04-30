@@ -135,7 +135,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
 		// Run the spawn host setup script in a separate job to avoid forcing
 		// this job to wait for task data to be loaded.
-		j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, 0)))
+		j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host)))
 	}
 
 	j.finishJob()

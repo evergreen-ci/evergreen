@@ -455,6 +455,39 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.CheckBlockedTasksDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "CheckBlockedTasks job is disabled",
+				"impact":  "new tasks are not enqueued",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		catcher := grip.NewBasicCatcher()
+		// find all active distros
+		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		catcher.Add(err)
+
+		ts := utility.RoundPartOfMinute(0)
+		for _, d := range distros {
+			catcher.Add(queue.Put(ctx, NewCheckBlockedTasksJob(d.Id, ts)))
+		}
+		return catcher.Resolve()
+	}
+}
+
 func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
@@ -1162,7 +1195,7 @@ func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		if !env.UserManagerInfo().CanReauthorize {
 			return nil
@@ -1174,8 +1207,8 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		}
 		if flags.BackgroundReauthDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "background reauth is disabled",
-				"impact":  "users will reauth on page loads after periodic auth expiration",
+				"message": "background user reauth is disabled",
+				"impact":  "users will need to manually log in again once their login session expires",
 				"mode":    "degraded",
 			})
 			return nil
@@ -1185,7 +1218,7 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		if reauthAfter == 0 {
 			reauthAfter = defaultBackgroundReauth
 		}
-		users, err := user.FindNeedsReauthorization(reauthAfter, maxReauthAttempts)
+		users, err := user.FindNeedsReauthorization(reauthAfter)
 		if err != nil {
 			return err
 		}
@@ -1193,7 +1226,7 @@ func PopulateReauthorizationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(0).Format(TSFormat)
 		for _, user := range users {
-			catcher.Wrap(queue.Put(ctx, NewReauthorizationJob(env, &user, ts)), "could not enqueue jobs to reauthorize users")
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewReauthorizeUserJob(env, &user, ts)), "user %s", user.Id)
 		}
 
 		return catcher.Resolve()

@@ -488,7 +488,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
 			// Asynchronously run the task data setup script, since the task
 			// data setup script must wait for all task data to be loaded.
-			j.AddError(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostSetupScriptJob(j.env, j.host, 0)))
+			j.AddError(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostSetupScriptJob(j.env, j.host)))
 		}
 	}
 

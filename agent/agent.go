@@ -565,7 +565,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		description = tc.getCurrentCommand().DisplayName()
 		cmdType = tc.getCurrentCommand().Type()
 	}
-	return &apimodels.TaskEndDetail{
+	detail := &apimodels.TaskEndDetail{
 		Description:     description,
 		Type:            cmdType,
 		TimedOut:        tc.hadTimedOut(),
@@ -576,6 +576,10 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		Message:         message,
 		Logs:            tc.logs,
 	}
+	if tc.taskConfig != nil {
+		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
+	}
+	return detail
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
