@@ -66,7 +66,10 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error getting alias task queue for distro '%s'", j.DistroId))
 	}
 	taskIds := []string{}
+	lenQueue := -1
+	lenAliasQueue := -1
 	if queue != nil {
+		lenQueue = len(queue.Queue)
 		for _, item := range queue.Queue {
 			if !item.IsDispatched && len(item.Dependencies) > 0 {
 				taskIds = append(taskIds, item.Id)
@@ -75,6 +78,7 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	}
 
 	if aliasQueue != nil {
+		lenAliasQueue = len(aliasQueue.Queue)
 		for _, item := range aliasQueue.Queue {
 			if !item.IsDispatched && len(item.Dependencies) > 0 {
 				taskIds = append(taskIds, item.Id)
@@ -83,6 +87,14 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	}
 
 	if len(taskIds) == 0 {
+		grip.Debug(message.Fields{
+			"message":         "no task IDs found for distro",
+			"len_queue":       lenQueue,
+			"len_alias_queue": lenAliasQueue,
+			"distro":          j.DistroId,
+			"job":             j.ID(),
+			"source":          checkBlockedTasks,
+		})
 		return
 	}
 
@@ -93,20 +105,40 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	}
 
 	dependencyCache := map[string]task.Task{}
+	numTasksModified := 0
+	numChecksThatUpdatedTasks := 0
 	for _, t := range tasksToCheck {
-		j.AddError(checkUnmarkedBlockingTasks(&t, dependencyCache))
+		numModified, err := checkUnmarkedBlockingTasks(&t, dependencyCache)
+		j.AddError(err)
+		numTasksModified += numModified
+		if numTasksModified > 0 {
+			numChecksThatUpdatedTasks++
+		}
 	}
+	grip.Debug(message.Fields{
+		"message":             "finished check blocked tasks job",
+		"len_queue":           lenQueue,
+		"len_alias_queue":     lenAliasQueue,
+		"len_tasks":           len(tasksToCheck),
+		"len_task_ids":        len(taskIds),
+		"task_ids":            taskIds,
+		"num_tasks_modified":  numTasksModified,
+		"num_updating_checks": numChecksThatUpdatedTasks,
+		"job":                 j.ID(),
+		"source":              checkBlockedTasks,
+		"distro":              j.DistroId,
+	})
 }
 
-func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) error {
+func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) (int, error) {
 	catcher := grip.NewBasicCatcher()
 
 	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
 	if err != nil {
-		return errors.Wrapf(err, "error checking if dependencies met for task '%s'", t.Id)
+		return 0, errors.Wrapf(err, "error checking if dependencies met for task '%s'", t.Id)
 	}
 	if dependenciesMet {
-		return nil
+		return 0, nil
 	}
 
 	blockingTasks, err := t.RefreshBlockedDependencies(dependencyCaches)
@@ -137,12 +169,13 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 		}
 	}
 
-	grip.DebugWhen(len(blockingTasks)+len(blockingDeactivatedTasks) > 0, message.Fields{
+	numModified := len(blockingTasks) + len(blockingDeactivatedTasks)
+	grip.DebugWhen(numModified > 0, message.Fields{
 		"message":                            "checked unmarked blocking tasks",
 		"blocking_tasks_updated":             len(blockingTasks),
 		"blocking_deactivated_tasks_updated": len(blockingDeactivatedTasks),
 		"exec_task":                          t.IsPartOfDisplay(),
 		"source":                             checkBlockedTasks,
 	})
-	return catcher.Resolve()
+	return numModified, catcher.Resolve()
 }
