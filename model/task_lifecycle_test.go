@@ -48,6 +48,7 @@ func TestSetActiveState(t *testing.T) {
 			Activated:     false,
 			BuildId:       b.Id,
 			DistroId:      "arch",
+			Version:       "version",
 		}
 		b.Tasks = []build.TaskCache{{Id: testTask.Id}}
 
@@ -145,7 +146,7 @@ func TestSetActiveState(t *testing.T) {
 		})
 	})
 	Convey("With one task has tasks it depends on", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
 			"Error clearing task and build collections")
 		displayName := "testName"
 		userName := "testUser"
@@ -153,19 +154,24 @@ func TestSetActiveState(t *testing.T) {
 		taskId := "t1"
 		buildId := "b1"
 		distroId := "d1"
-
+		v := &Version{
+			Id: "version",
+		}
 		dep1 := &task.Task{
 			Id:            "t2",
 			ScheduledTime: testTime,
 			BuildId:       buildId,
 			DistroId:      distroId,
+			Version:       "version",
 		}
 		dep2 := &task.Task{
 			Id:            "t3",
 			ScheduledTime: testTime,
 			BuildId:       buildId,
 			DistroId:      distroId,
+			Version:       "version",
 		}
+		So(v.Insert(), ShouldBeNil)
 		So(dep1.Insert(), ShouldBeNil)
 		So(dep2.Insert(), ShouldBeNil)
 
@@ -185,6 +191,7 @@ func TestSetActiveState(t *testing.T) {
 					Status: evergreen.TaskSucceeded,
 				},
 			},
+			Version: "version",
 		}
 
 		b := &build.Build{
@@ -229,7 +236,7 @@ func TestSetActiveState(t *testing.T) {
 	})
 
 	Convey("with a task that is part of a display task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
 			"Error clearing task and build collections")
 		b := &build.Build{
 			Id: "displayBuild",
@@ -246,6 +253,7 @@ func TestSetActiveState(t *testing.T) {
 			DisplayOnly:    true,
 			ExecutionTasks: []string{"execTask"},
 			DistroId:       "arch",
+			Version:        "version",
 		}
 		So(dt.Insert(), ShouldBeNil)
 		t1 := &task.Task{
@@ -253,6 +261,7 @@ func TestSetActiveState(t *testing.T) {
 			Activated: false,
 			BuildId:   b.Id,
 			Status:    evergreen.TaskUndispatched,
+			Version:   "version",
 		}
 		So(t1.Insert(), ShouldBeNil)
 		Convey("that should not restart", func() {
