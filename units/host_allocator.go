@@ -247,28 +247,30 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
-	// make sure to calculate maxhostsTerminate with totalRunning - MinimumHosts (from HAS
-
-	killableHosts := int(float32(len(upHosts)) * (1 - hostQueueRatio))
-
-	if (len(upHosts) - killableHosts) < distro.HostAllocatorSettings.MinimumHosts {
-		killableHosts = len(upHosts) - distro.HostAllocatorSettings.MinimumHosts
-	}
 	lowRatioThresh := float32(.25)
-	lowCountFloor := 5
-	if hostQueueRatio > 0 && hostQueueRatio < lowRatioThresh && killableHosts > lowCountFloor {
+	if hostQueueRatio > 0 && hostQueueRatio < lowRatioThresh {
 
-		bleedInfo := BleedInfo{
-			DistroID:         distro.Id,
-			BleedCountTarget: killableHosts,
-		}
-		queue := j.env.RemoteQueue()
-		err := queue.Put(ctx, NewHostBleedJob(j.env, bleedInfo, utility.RoundPartOfHour(1).Format(TSFormat)))
-		if err != nil {
-			j.AddError(errors.Wrap(err, "Error bleeding hosts"))
-			return
-		}
+		killableHosts := int(float32(len(upHosts)) * (1 - hostQueueRatio))
+		newCapTarget := len(upHosts) - killableHosts
 
+		if newCapTarget < distro.HostAllocatorSettings.MinimumHosts {
+			newCapTarget = distro.HostAllocatorSettings.MinimumHosts
+		}
+		lowCountFloor := 5
+		if killableHosts > lowCountFloor {
+
+			bleedInfo := BleedInfo{
+				DistroID:     distro.Id,
+				NewCapTarget: newCapTarget,
+			}
+			queue := j.env.RemoteQueue()
+			err := queue.Put(ctx, NewHostBleedJob(j.env, bleedInfo, utility.RoundPartOfHour(1).Format(TSFormat)))
+			if err != nil {
+				j.AddError(errors.Wrap(err, "Error bleeding hosts"))
+				return
+			}
+
+		}
 	}
 
 	grip.Info(message.Fields{

@@ -259,7 +259,7 @@ func CountStartedTaskHostsForDistro(distroID string) (int, error) {
 	return num, errors.Wrapf(err, "problem finding started hosts for '%s'", distroID)
 }
 
-// IdleHostsForDistroID, given a distroID, returns a slice of all idle hosts in that distro
+// IdleHostsWithDistroID, given a distroID, returns a slice of all idle hosts in that distro
 func IdleHostsWithDistroID(distroID string) ([]Host, error) {
 	q := idleHostsQuery(distroID)
 	idleHosts, err := Find(db.Query(q))
