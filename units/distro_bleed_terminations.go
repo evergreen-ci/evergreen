@@ -87,6 +87,10 @@ func (j *hostBleedJob) Run(ctx context.Context) {
 
 	// get currently existing hosts, in case some hosts have already been terminated elsewhere
 	existingHostCount, err := host.CountRunningHosts(j.BleedInfo.DistroID)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "database error getting existing hosts by Distro.Id"))
+		return
+	}
 	idleHosts, err := host.IdleHostsWithDistroID(j.BleedInfo.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "database error getting idle hosts by Distro.Id"))
