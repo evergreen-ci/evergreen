@@ -16,14 +16,14 @@ import (
 )
 
 type TaskQueueItemDispatcher interface {
-	FindNextTask(string, TaskSpec) (*TaskQueueItem, []string, error) // optionally returns a list of tasks to check dependencies for
+	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 	Refresh(string) error
-	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, []string, error)
+	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 }
 
 type CachedDispatcher interface {
 	Refresh() error
-	FindNextTask(TaskSpec) (*TaskQueueItem, []string)
+	FindNextTask(TaskSpec) *TaskQueueItem
 	Type() string
 	CreatedAt() time.Time
 }
@@ -50,27 +50,25 @@ func NewTaskDispatchAliasService(ttl time.Duration) TaskQueueItemDispatcher {
 	}
 }
 
-func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, []string, error) {
+func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	item, dependencies := distroDispatchService.FindNextTask(spec)
-	return item, dependencies, nil
+	return distroDispatchService.FindNextTask(spec), nil
 }
 
-func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, []string, error) {
+func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	if err := distroDispatchService.Refresh(); err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	item, dependencies := distroDispatchService.FindNextTask(spec)
-	return item, dependencies, nil
+	return distroDispatchService.FindNextTask(spec), nil
 }
 
 func (s *taskDispatchService) Refresh(distroID string) error {
@@ -274,13 +272,13 @@ func (d *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
-func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
+func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	if len(d.units) == 0 && len(d.order) > 0 {
 		d.order = []string{}
-		return nil, nil
+		return nil
 	}
 
 	var unit schedulableUnit
@@ -291,7 +289,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem,
 		unit, ok = d.units[compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)]
 		if ok {
 			if next = d.nextTaskGroupTask(unit); next != nil {
-				return next, nil
+				return next
 			}
 		}
 		// If the task group is not present in the schedulableUnit map, then all its tasks are considered dispatched.
@@ -327,7 +325,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem,
 					"schedulableunit_num_tasks":     len(unit.tasks),
 				})
 
-				return nil, nil
+				return nil
 			}
 
 			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contains a single element.
@@ -342,7 +340,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem,
 					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				}))
-				return nil, nil
+				return nil
 			}
 			if nextTaskFromDB == nil {
 				grip.Warning(message.Fields{
@@ -352,7 +350,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem,
 					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				})
-				return nil, nil
+				return nil
 			}
 
 			var dependenciesMet bool
@@ -373,7 +371,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem,
 				continue
 			}
 
-			return &unit.tasks[0], nil
+			return &unit.tasks[0]
 		}
 
 		if unit.runningHosts < unit.maxHosts {
@@ -397,20 +395,20 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) (*TaskQueueItem,
 					"taskspec_project":              spec.Project,
 					"taskspec_version":              spec.Version,
 				}))
-				return nil, nil
+				return nil
 			}
 			unit.runningHosts = numHosts
 			d.units[schedulableUnitID] = unit
 
 			if unit.runningHosts < unit.maxHosts {
 				if next = d.nextTaskGroupTask(unit); next != nil {
-					return next, nil
+					return next
 				}
 			}
 		}
 	}
 
-	return nil, nil
+	return nil
 }
 
 func compositeGroupID(group, variant, project, version string) string {
@@ -425,7 +423,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		// (c) if it belongs to a task group bound to a single host - it's not blocked by a task within the task group that has finished, but did not succeed.
 		// (d) it never previously ran on another host.
 		// (e) all of its dependencies are satisfied.
-		if nextTaskQueueItem.IsDispatched == true {
+		if nextTaskQueueItem.IsDispatched {
 			continue
 		}
 

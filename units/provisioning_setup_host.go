@@ -536,7 +536,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
 			// Don't wait on setup script to finish, particularly for hosts waiting on task data.
-			j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, 0)))
+			j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host)))
 		}
 	}
 

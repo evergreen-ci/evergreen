@@ -1593,20 +1593,13 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
 func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project,
-	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, []string, error) {
+	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, projectRef *ProjectRef, generatedBy string) ([]string, []string, error) {
 
-	taskIdTables, err := getTaskIdTables(v, p, tasks)
+	taskIdTables, err := getTaskIdTables(v, p, tasks, projectRef.Identifier)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to make task ID table")
 	}
 
-	projectRef, err := FindOneProjectRef(p.Identifier)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "unable to find project ref")
-	}
-	if projectRef == nil {
-		return nil, nil, errors.Errorf("project '%s' not found", p.Identifier)
-	}
 	newBuildIds := make([]string, 0)
 	newTaskIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
@@ -1735,7 +1728,7 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project, pairs TaskVariantPairs,
-	syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, error) {
+	syncAtEndOpts patch.SyncAtEndOptions, projectIdentifier string, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
 		return nil, nil
 	}
@@ -1749,7 +1742,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		return nil, err
 	}
 
-	taskIdTables, err := getTaskIdTables(v, p, pairs)
+	taskIdTables, err := getTaskIdTables(v, p, pairs, projectIdentifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get table of task IDs")
 	}
@@ -1821,9 +1814,9 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 	return taskIds, nil
 }
 
-func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs) (TaskIdConfig, error) {
+func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs, projectName string) (TaskIdConfig, error) {
 	// The table should include only new and existing tasks
-	taskIdTable := NewPatchTaskIdTable(p, v, newPairs)
+	taskIdTable := NewPatchTaskIdTable(p, v, newPairs, projectName)
 	existingTasks, err := task.FindAll(task.ByVersion(v.Id).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "can't get existing task ids")

@@ -12,8 +12,6 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -27,9 +25,8 @@ func init() {
 }
 
 type hostSetupScriptJob struct {
-	HostID         string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	job.Base       `bson:"job_base" json:"job_base" yaml:"job_base"`
-	CurrentAttempt int `bson:"current_attempt" json:"current_attempt" yaml:"current_attempt"`
+	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 
 	host *host.Host
 	env  evergreen.Environment
@@ -48,32 +45,30 @@ func makeHostSetupScriptJob() *hostSetupScriptJob {
 	return j
 }
 
-// NewHostSetupScriptJob creates a job that executes the setup script after task data is loaded onto the host.
-func NewHostSetupScriptJob(env evergreen.Environment, h *host.Host, attempt int) amboy.Job {
+// NewHostSetupScriptJob creates a job that executes the spawn host's setup
+// script after task data is loaded onto the host.
+func NewHostSetupScriptJob(env evergreen.Environment, h *host.Host) amboy.Job {
 	j := makeHostSetupScriptJob()
 	j.env = env
 	j.host = h
 	j.HostID = h.Id
-	j.CurrentAttempt = attempt
 	j.SetPriority(1)
-	ts := utility.RoundPartOfHour(2).Format(TSFormat)
-	j.SetID(fmt.Sprintf("%s.%s.%s.%d", hostSetupScriptJobName, j.HostID, ts, j.CurrentAttempt))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostSetupScriptJobName, h.Id)})
+	j.SetShouldApplyScopesOnEnqueue(true)
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(setupScriptRetryLimit),
+	})
+	j.SetID(fmt.Sprintf("%s.%s", hostSetupScriptJobName, j.HostID))
 	return j
 }
 
 func (j *hostSetupScriptJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+
 	defer func() {
-		if j.HasErrors() {
-			if err := j.tryRequeue(ctx); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "could not enqueue spawn host setup script job",
-					"host_id": j.host.Id,
-					"distro":  j.host.Distro.Id,
-					"job":     j.ID(),
-				}))
-				j.AddError(err)
-			}
+		if j.HasErrors() && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+			event.LogHostScriptExecuteFailed(j.HostID, j.Error())
 		}
 	}()
 
@@ -85,11 +80,11 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 		var err error
 		j.host, err = host.FindOneByIdOrTag(j.HostID)
 		if err != nil {
-			j.AddError(err)
+			j.AddRetryableError(err)
 			return
 		}
 		if j.host == nil {
-			j.AddError(fmt.Errorf("could not find host '%s' for job '%s'", j.HostID, j.ID()))
+			j.AddRetryableError(fmt.Errorf("could not find host '%s' for job '%s'", j.HostID, j.ID()))
 			return
 		}
 		if j.host.ProvisionOptions == nil || j.host.ProvisionOptions.SetupScript == "" {
@@ -100,37 +95,14 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 
 	if j.host.ProvisionOptions.TaskId != "" {
 		if err := j.host.CheckTaskDataFetched(ctx, j.env); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "failed to check for task data",
-				"task":    j.host.ProvisionOptions.TaskId,
-				"user":    j.host.StartedBy,
-				"host_id": j.host.Id,
-				"job":     j.ID(),
-			}))
-			j.AddError(err)
+			j.AddRetryableError(errors.Wrap(err, "checking if task data is fetched yet"))
 			return
 		}
 	}
 
-	// Do not add an error if the setup script fails because there's no
-	// guarantee that it's been written to be idempotent.
-	grip.Error(message.WrapError(runSpawnHostSetupScript(ctx, j.env, j.host), message.Fields{
-		"message":      "failed to run setup script",
-		"task":         j.host.ProvisionOptions.TaskId,
-		"setup_script": j.host.ProvisionOptions.SetupScript,
-		"user":         j.host.StartedBy,
-		"host_id":      j.host.Id,
-		"job":          j.ID(),
-	}))
-}
-
-func (j *hostSetupScriptJob) tryRequeue(ctx context.Context) error {
-	if j.CurrentAttempt >= setupScriptRetryLimit {
-		event.LogHostScriptExecuteFailed(j.HostID, j.Error())
-		return errors.Errorf("exceeded max retries for setup script (%d)", setupScriptRetryLimit)
-	}
-	return j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, j.CurrentAttempt+1))
-
+	// Do not retry after the setup script executes and fails because there's no
+	// guarantee that the script is idempotent.
+	j.AddError(errors.Wrap(runSpawnHostSetupScript(ctx, j.env, j.host), "executing spawn host setup script"))
 }
 
 func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h *host.Host) error {

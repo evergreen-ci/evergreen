@@ -175,14 +175,14 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     run_on:
-      - archlinux-large
+      - archlinux-new-large
     tasks:
       - ".test"
 
   - name: report
     display_name: Reporting
     run_on:
-      - archlinux-large
+      - archlinux-new-large
     expansions:
       GO_BIN_PATH: /opt/golang/go1.13/bin/go
       GOROOT: /opt/golang/go1.13

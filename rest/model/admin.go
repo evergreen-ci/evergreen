@@ -1717,6 +1717,7 @@ type APIServiceFlags struct {
 	AgentStartDisabled            bool `json:"agent_start_disabled"`
 	RepotrackerDisabled           bool `json:"repotracker_disabled"`
 	SchedulerDisabled             bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled     bool `json:"check_blocked_tasks_disabled"`
 	GithubPRTestingDisabled       bool `json:"github_pr_testing_disabled"`
 	CLIUpdatesDisabled            bool `json:"cli_updates_disabled"`
 	BackgroundStatsDisabled       bool `json:"background_stats_disabled"`
@@ -1978,6 +1979,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
 		as.SchedulerDisabled = v.SchedulerDisabled
+		as.CheckBlockedTasksDisabled = v.CheckBlockedTasksDisabled
 		as.GithubPRTestingDisabled = v.GithubPRTestingDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
 		as.EventProcessingDisabled = v.EventProcessingDisabled
@@ -2015,6 +2017,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		AgentStartDisabled:            as.AgentStartDisabled,
 		RepotrackerDisabled:           as.RepotrackerDisabled,
 		SchedulerDisabled:             as.SchedulerDisabled,
+		CheckBlockedTasksDisabled:     as.CheckBlockedTasksDisabled,
 		GithubPRTestingDisabled:       as.GithubPRTestingDisabled,
 		CLIUpdatesDisabled:            as.CLIUpdatesDisabled,
 		EventProcessingDisabled:       as.EventProcessingDisabled,

@@ -33,7 +33,9 @@ const (
 	GithubAPIStatusMajor = "major"
 	GithubAPIStatusGood  = "good"
 
-	Github502Error = "502 Server Error"
+	Github502Error   = "502 Server Error"
+	commitObjectType = "commit"
+	tagObjectType    = "tag"
 )
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
@@ -139,7 +141,6 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 	httpClient := getGithubClient(oauthToken)
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
-
 	options := github.CommitsListOptions{
 		SHA: ref,
 		ListOptions: github.ListOptions{
@@ -457,12 +458,62 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
-	grip.Debugf("GitHub API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if err = json.Unmarshal(respBody, &githubResponse); err != nil {
 		return nil, APIUnmarshalError{string(respBody), err.Error()}
 	}
 	return
+}
+
+// GetTaggedCommitFromGithub gets the commit SHA for the given tag name.
+func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag string) (string, error) {
+	client := getGithubClient(oauthToken)
+	defer utility.PutHTTPClient(client)
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
+	resp, err := client.Get(url)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get tag information from Github")
+	}
+	if resp == nil {
+		return "", errors.New("invalid github response")
+	}
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", ResponseReadError{err.Error()}
+	}
+	tagResp := github.Tag{}
+	if err = json.Unmarshal(respBody, &tagResp); err != nil {
+		return "", APIUnmarshalError{string(respBody), err.Error()}
+	}
+
+	var sha string
+	var annotatedTagResp *github.Tag
+	tagSha := tagResp.GetObject().GetSHA()
+	switch tagResp.GetObject().GetType() {
+	case commitObjectType:
+		// lightweight tags are pointers to the commit itself
+		sha = tagSha
+	case tagObjectType:
+		githubClient := github.NewClient(client)
+		annotatedTagResp, _, err = githubClient.Git.GetTag(ctx, owner, repo, tagSha)
+		if err != nil {
+			return "", errors.Wrapf(err, "error getting tag '%s' with SHA '%s'", tag, tagSha)
+		}
+		sha = annotatedTagResp.GetObject().GetSHA()
+	default:
+		return "", errors.Errorf("unrecognized object type '%s'", tagResp.GetObject().GetType())
+	}
+
+	if tagSha == "" {
+		return "", errors.New("empty SHA from Github")
+	}
+
+	return sha, nil
 }
 
 func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthToken string) bool {

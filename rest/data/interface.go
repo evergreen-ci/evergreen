@@ -45,6 +45,7 @@ type Connector interface {
 
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
+	FindTaskByIdAndExecution(string, int) (*task.Task, error)
 	FindTaskWithinTimePeriod(time.Time, time.Time, string, []string) ([]task.Task, error)
 	FindOldTasksByIDWithDisplayTasks(string) ([]task.Task, error)
 	FindTasksByIds([]string) ([]task.Task, error)

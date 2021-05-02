@@ -355,7 +355,7 @@ func (q *depGraphOrderedLocal) jobDispatch(ctx context.Context, orderedJobs []gr
 		q.mutex.Unlock()
 
 		if job.Dependency().State() == dependency.Passed {
-			grip.Error(message.WrapError(q.Complete(ctx, job), message.Fields{
+			grip.Warning(message.WrapError(q.Complete(ctx, job), message.Fields{
 				"message":  "could not mark job complete",
 				"job_id":   job.ID(),
 				"queue_id": q.ID(),
@@ -406,7 +406,7 @@ func (q *depGraphOrderedLocal) jobDispatch(ctx context.Context, orderedJobs []gr
 				// all dependencies have passed, we can try to dispatch the job.
 
 				if job.Dependency().State() == dependency.Passed {
-					grip.Error(message.WrapError(q.Complete(ctx, job), message.Fields{
+					grip.Warning(message.WrapError(q.Complete(ctx, job), message.Fields{
 						"message":  "could not mark job complete",
 						"job_id":   job.ID(),
 						"queue_id": q.ID(),

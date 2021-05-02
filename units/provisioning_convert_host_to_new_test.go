@@ -41,7 +41,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			require.True(t, ok)
 			convertJob.Run(ctx)
 
-			assert.False(t, convertJob.HasErrors())
+			assert.True(t, convertJob.RetryInfo().NeedsRetry)
 			assert.Empty(t, mgr.Procs)
 		},
 		"NoopsIfHostIsNotProvisioningOrRunning": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {

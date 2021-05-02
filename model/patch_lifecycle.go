@@ -91,15 +91,17 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	_, _, err := addNewBuilds(ctx, batchTimeTasksAndVariants{}, patchVersion, project, tasks, p.SyncAtEndOpts, "")
+func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
+	tasks TaskVariantPairs, pRef *ProjectRef) error {
+	_, _, err := addNewBuilds(ctx, batchTimeTasksAndVariants{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
-	_, err := addNewTasks(ctx, batchTimeTasksAndVariants{}, patchVersion, project, pairs, p.SyncAtEndOpts, "")
+func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
+	pairs TaskVariantPairs, projectIdentifier string) error {
+	_, err := addNewTasks(ctx, batchTimeTasksAndVariants{}, patchVersion, project, pairs, p.SyncAtEndOpts, projectIdentifier, "")
 	return errors.Wrap(err, "can't add new tasks")
 }
 
@@ -346,7 +348,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
 		return nil, errors.Errorf("No builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
 	}
-	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
+	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
 	variantsProcessed := map[string]bool{}
 
 	createTime, err := getTaskCreateTime(p.Project, patchVersion)

@@ -183,7 +183,7 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 
 		if dbHost != nil && provisionChange != dbHost.NeedsReprovision {
 			switch provisionChange {
-			case host.ReprovisionJasperRestart:
+			case host.ReprovisionRestartJasper:
 				event.LogHostJasperRestarting(staticHost.Id, evergreen.User)
 			case host.ReprovisionToLegacy, host.ReprovisionToNew:
 				event.LogHostConvertingProvisioning(staticHost.Id, staticHost.Distro.BootstrapSettings.Method, evergreen.User)
@@ -221,7 +221,7 @@ func needsReprovisioning(d distro.Distro, h *host.Host) host.ReprovisionType {
 			return h.NeedsReprovision
 		}
 		if !d.LegacyBootstrap() {
-			if h.NeedsReprovision == host.ReprovisionToNew || h.NeedsReprovision == host.ReprovisionJasperRestart {
+			if h.NeedsReprovision == host.ReprovisionToNew || h.NeedsReprovision == host.ReprovisionRestartJasper {
 				return h.NeedsReprovision
 			}
 		}
