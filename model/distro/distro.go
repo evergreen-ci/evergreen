@@ -214,6 +214,7 @@ type HostAllocatorSettings struct {
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
 	RoundingRule           string        `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
 	FeedbackRule           string        `bson:"feedback_rule" json:"feedback_rule" mapstructure:"feedback_rule"`
+	HostsOverallocatedRule string        `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
 	FutureHostFraction     float64       `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
 }
@@ -621,6 +622,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
 		RoundingRule:           has.RoundingRule,
 		FeedbackRule:           has.FeedbackRule,
+		HostsOverallocatedRule: has.HostsOverallocatedRule,
 		FutureHostFraction:     has.FutureHostFraction,
 	}
 
@@ -641,6 +643,9 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	}
 	if resolved.FeedbackRule == evergreen.HostAllocatorUseDefaultFeedback {
 		resolved.FeedbackRule = config.HostAllocatorFeedbackRule
+	}
+	if resolved.HostsOverallocatedRule == evergreen.HostsOverallocatedUseDefault {
+		resolved.HostsOverallocatedRule = config.HostsOverallocatedRule
 	}
 	if resolved.FutureHostFraction == 0 {
 		resolved.FutureHostFraction = config.FutureHostFraction

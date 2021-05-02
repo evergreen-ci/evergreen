@@ -296,6 +296,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 			AcceptableHostIdleTime: 0,
 			RoundingRule:           evergreen.HostAllocatorRoundDefault,
 			FeedbackRule:           evergreen.HostAllocatorUseDefaultFeedback,
+			HostsOverallocatedRule: evergreen.HostsOverallocatedUseDefault,
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
@@ -303,6 +304,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
 		HostAllocatorRoundingRule:     evergreen.HostAllocatorRoundDown,
 		HostAllocatorFeedbackRule:     evergreen.HostAllocatorNoFeedback,
+		HostsOverallocatedRule:        evergreen.HostsOverallocatedIgnore,
 		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
@@ -326,6 +328,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	assert.Equal(t, 10, resolved0.MaximumHosts)
 	assert.Equal(t, evergreen.HostAllocatorRoundDown, resolved0.RoundingRule)
 	assert.Equal(t, evergreen.HostAllocatorNoFeedback, resolved0.FeedbackRule)
+	assert.Equal(t, evergreen.HostsOverallocatedIgnore, resolved0.HostsOverallocatedRule)
 	// Fallback to the SchedulerConfig.AcceptableHostIdleTimeSeconds as HostAllocatorSettings.AcceptableHostIdleTime is equal to 0.
 	assert.Equal(t, time.Duration(123)*time.Second, resolved0.AcceptableHostIdleTime)
 
@@ -339,6 +342,11 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	resolved0, err = d0.GetResolvedHostAllocatorSettings(settings0)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostAllocatorWaitsOverThreshFeedback, resolved0.FeedbackRule)
+
+	d0.HostAllocatorSettings.HostsOverallocatedRule = evergreen.HostsOverallocatedTerminate
+	resolved0, err = d0.GetResolvedHostAllocatorSettings(settings0)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.HostsOverallocatedTerminate, resolved0.HostsOverallocatedRule)
 }
 
 func TestGetResolvedPlannerSettings(t *testing.T) {

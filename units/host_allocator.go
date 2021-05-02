@@ -248,7 +248,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
 	lowRatioThresh := float32(.25)
-	if hostQueueRatio > 0 && hostQueueRatio < lowRatioThresh {
+	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
+	if terminateExcess && hostQueueRatio > 0 && hostQueueRatio < lowRatioThresh {
 
 		killableHosts := int(float32(len(upHosts)) * (1 - hostQueueRatio))
 		newCapTarget := len(upHosts) - killableHosts

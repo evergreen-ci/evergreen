@@ -14,6 +14,7 @@ type SchedulerConfig struct {
 	HostAllocator                 string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
 	HostAllocatorRoundingRule     string  `bson:"host_allocator_rounding_rule" json:"host_allocator_rounding_rule" mapstructure:"host_allocator_rounding_rule"`
 	HostAllocatorFeedbackRule     string  `bson:"host_allocator_feedback_rule" json:"host_allocator_feedback_rule" mapstructure:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule        string  `bson:"hosts_overallocated_feedback_rule" json:"hosts_overallocated_feedback_rule" mapstructure:"hosts_overallocated_feedback_rule"`
 	FutureHostFraction            float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
 	Planner                       string  `bson:"planner" json:"planner" mapstructure:"planner"`
@@ -62,6 +63,7 @@ func (c *SchedulerConfig) Set() error {
 			"host_allocator":                    c.HostAllocator,
 			"host_allocator_rounding_rule":      c.HostAllocatorRoundingRule,
 			"host_allocator_feedback_rule":      c.HostAllocatorFeedbackRule,
+			"hosts_overallocated_rule":          c.HostsOverallocatedRule,
 			"free_host_fraction":                c.FutureHostFraction,
 			"cache_duration_seconds":            c.CacheDurationSeconds,
 			"planner":                           c.Planner,
@@ -117,6 +119,14 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	if !utility.StringSliceContains(ValidDefaultHostAllocatorFeedbackRules, c.HostAllocatorFeedbackRule) {
 		return errors.Errorf("supported host allocator feedback rules are %s; %s is not supported",
 			ValidHostAllocatorFeedbackRules, c.HostAllocatorFeedbackRule)
+	}
+	if c.HostsOverallocatedRule == "" {
+		c.HostsOverallocatedRule = HostsOverallocatedIgnore
+	}
+
+	if !utility.StringSliceContains(ValidDefaultHostsOverallocatedRules, c.HostsOverallocatedRule) {
+		return errors.Errorf("supported hosts overallocation handling rules are %s; %s is not supported",
+			ValidHostsOverallocatedRules, c.HostsOverallocatedRule)
 	}
 
 	if c.FutureHostFraction < 0 || c.FutureHostFraction > 1 {

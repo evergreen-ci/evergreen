@@ -219,6 +219,10 @@ const (
 	HostAllocatorNoFeedback              = "no-feedback"
 	HostAllocatorUseDefaultFeedback      = ""
 
+	HostsOverallocatedTerminate  = "terminate-hosts-when-overallocated"
+	HostsOverallocatedIgnore     = "no-terminations-when-overallocated"
+	HostsOverallocatedUseDefault = ""
+
 	// CommitQueueAlias and GithubPRAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
 	CommitQueueAlias  = "__commit_queue"
 	GithubPRAlias     = "__github"
@@ -570,6 +574,17 @@ var (
 	ValidDefaultHostAllocatorFeedbackRules = []string{
 		HostAllocatorWaitsOverThreshFeedback,
 		HostAllocatorNoFeedback,
+	}
+
+	ValidHostsOverallocatedRules = []string{
+		HostsOverallocatedUseDefault,
+		HostsOverallocatedIgnore,
+		HostsOverallocatedTerminate,
+	}
+
+	ValidDefaultHostsOverallocatedRules = []string{
+		HostsOverallocatedIgnore,
+		HostsOverallocatedTerminate,
 	}
 
 	// constant arrays for db update logic

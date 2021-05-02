@@ -33,7 +33,9 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 		CanClearTokens                         bool
 		ValidDefaultHostAllocatorRoundingRules []string
 		ValidDefaultHostAllocatorFeedbackRules []string
-	}{uis.GetCommonViewData(w, r, true, true), uis.env.UserManagerInfo().CanClearTokens, evergreen.ValidDefaultHostAllocatorRoundingRules, evergreen.ValidDefaultHostAllocatorFeedbackRules}
+		ValidDefaultHostsOverallocatedRules    []string
+	}{uis.GetCommonViewData(w, r, true, true), uis.env.UserManagerInfo().CanClearTokens, evergreen.ValidDefaultHostAllocatorRoundingRules, evergreen.ValidDefaultHostAllocatorFeedbackRules, evergreen.ValidDefaultHostsOverallocatedRules}
+
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 

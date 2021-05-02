@@ -10,6 +10,7 @@
   window.architectures = {{.ArchDisplayNames}}
   window.validHostAllocatorRoundingRules = {{.ValidHostAllocatorRoundingRules}}
   window.validHostAllocatorFeedbackRules = {{.ValidHostAllocatorFeedbackRules}}
+  window.validHostsOverallocatedRules = {{.ValidHostsOverallocatedRules}}
 </script>
 {{end}}
 {{define "title"}}
@@ -128,6 +129,18 @@ Evergreen - Distros
                 </button>
                 <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
                   <li required name="hostAllocatorSettingsFeedbackRule" ng-click="form.$setDirty();activeDistro.host_allocator_settings.feedback_rule = rule" ng-repeat="rule in validHostAllocatorFeedbackRules"
+                    role="presentation"><a role="menuitem" tabindex="-1">[[rule]]</a></li>
+                </ul>
+            </div>
+
+            <div class="dropdown">
+              <span class="distro-menu-title">Host Overallocation Rule:</span>
+                <button style="margin-left:5px;" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true"
+                  ng-disabled="readOnly">
+                  <strong class="distro-menu-item">[[ activeDistro.host_allocator_settings.hosts_overallocated_rule ]]<span class="fa fa-caret-down"></span></strong>
+                </button>
+                <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
+                  <li required name="hostsOverallocatedRule" ng-click="form.$setDirty();activeDistro.host_allocator_settings.hosts_overallocated_rule = rule" ng-repeat="rule in validHostsOverallocatedRules"
                     role="presentation"><a role="menuitem" tabindex="-1">[[rule]]</a></li>
                 </ul>
             </div>
