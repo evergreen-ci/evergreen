@@ -59,7 +59,7 @@ func TestSetActiveState(t *testing.T) {
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 		So(v.Insert(), ShouldBeNil)
-		Convey("activating the task should set the task state to active", func() {
+		Convey("activating the task should set the task state to active and mark the version as activated", func() {
 			So(SetActiveState(testTask, "randomUser", true), ShouldBeNil)
 			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -70,7 +70,9 @@ func TestSetActiveState(t *testing.T) {
 			testBuild, err = build.FindOneId(b.Id)
 			So(err, ShouldBeNil)
 			So(testBuild.Tasks[0].Activated, ShouldBeTrue)
-
+			version, err := VersionFindOneId(testTask.Version)
+			So(err, ShouldBeNil)
+			So(version.Activated, ShouldBeTrue)
 			Convey("deactivating an active task as a normal user should deactivate the task", func() {
 				So(SetActiveState(testTask, userName, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
