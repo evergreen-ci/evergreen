@@ -130,9 +130,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		if j.host.Status != evergreen.HostRunning {
 			return
 		}
-		// kim: TODO: add convenience method to check how many attempts are
-		// remaining.
-		if j.RetryInfo().CurrentAttempt+1 < j.RetryInfo().GetMaxAttempts() {
+		if j.RetryInfo().GetRemainingAttempts() > 0 {
 			return
 		}
 
@@ -301,13 +299,3 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 
 	return logs, nil
 }
-
-// kim: TODO: delete
-// func (j *agentDeployJob) checkNoRetries() (bool, error) {
-//     stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
-//     if err != nil {
-//         return false, errors.Wrap(err, "could not get recent agent deploy statuses")
-//     }
-//
-//     return stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries, nil
-// }

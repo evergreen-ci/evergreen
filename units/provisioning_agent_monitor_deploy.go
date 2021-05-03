@@ -126,9 +126,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		if j.host.Status != evergreen.HostRunning {
 			return
 		}
-		// kim: TODO: add convenience method to check how many attempts are
-		// remaining.
-		if j.RetryInfo().CurrentAttempt+1 < j.RetryInfo().GetMaxAttempts() {
+		if j.RetryInfo().GetRemainingAttempts() > 0 {
 			return
 		}
 		var externallyTerminated bool
@@ -179,18 +177,6 @@ func (j *agentMonitorDeployJob) hostDown() bool {
 func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) error {
 	return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, reason), "error terminating host %s", j.host.Id)
 }
-
-// kim: TODO: delete
-// // checkNoRetries checks if the job has exhausted the maximum allowed attempts
-// // to deploy the agent monitor.
-// func (j *agentMonitorDeployJob) checkNoRetries() (bool, error) {
-//     stat, err := event.GetRecentAgentMonitorDeployStatuses(j.host.Id, agentMonitorPutRetries)
-//     if err != nil {
-//         return false, errors.Wrap(err, "could not get recent agent monitor deploy statuses")
-//     }
-//
-//     return stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentMonitorPutRetries, nil
-// }
 
 // checkAgentMonitor returns whether or not the agent monitor is already
 // running.
