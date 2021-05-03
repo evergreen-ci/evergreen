@@ -150,7 +150,7 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	if hasActivated {
 		if err := v.UpdateActivation(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"operation": "version-activation",
+				"operation": "project-activation",
 				"message":   "problem activating version",
 				"version":   v.Id,
 			}))

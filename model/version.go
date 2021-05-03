@@ -123,6 +123,7 @@ func (self *Version) UpdateActivation() error {
 	if self.Activated {
 		return nil
 	}
+	self.Activated = true
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: self.Id},
 		bson.M{
