@@ -99,10 +99,10 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 	drawdownTarget := existingHostCount - j.DrawdownInfo.NewCapTarget
 
 	for i := 0; i < len(idleHosts); i++ {
-		j.AddError(j.checkAndTerminateHost(ctx, &idleHosts[i], &drawdownTarget))
-		if drawdownTarget == 0 {
+		if drawdownTarget <= 0 {
 			break
 		}
+		j.AddError(j.checkAndTerminateHost(ctx, &idleHosts[i], &drawdownTarget))
 	}
 
 	grip.Info(message.Fields{

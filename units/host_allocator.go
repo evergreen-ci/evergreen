@@ -296,5 +296,4 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"instance":                     j.ID(),
 		"runner":                       scheduler.RunnerName,
 	})
-	// at some point here we have to set drawdownTarget, and also need persistence to know when to do so
 }
