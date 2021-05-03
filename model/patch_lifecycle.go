@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -322,6 +323,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,
 		Parameters:          p.Parameters,
+		Activated:           utility.TruePtr(),
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 

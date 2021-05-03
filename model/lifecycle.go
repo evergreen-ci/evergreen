@@ -1807,6 +1807,9 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 			"version": v.Id,
 		}))
 	}
+	if err = v.SetActivated(); err != nil {
+		return nil, errors.Wrap(err, "can't set version activation to true")
+	}
 
 	return taskIds, nil
 }

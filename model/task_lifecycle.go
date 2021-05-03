@@ -42,6 +42,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	}
 
 	if active {
+
 		// if the task is being activated and it doesn't override its dependencies
 		// activate the task's dependencies as well
 		tasksToActivate := []task.Task{}
@@ -71,6 +72,17 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 				"message": "task is missing distro id",
 				"task_id": t.Id,
 			})
+		}
+
+		version, err := VersionFindOneId(t.Version)
+		if err != nil {
+			return errors.Wrapf(err, "error find associated version")
+		}
+		if version == nil {
+			return errors.Errorf("could not find associated version : `%s`", t.Version)
+		}
+		if err = version.SetActivated(); err != nil {
+			return errors.Wrapf(err, "Error marking version as activated")
 		}
 
 		// If the task was not activated by step back, and either the caller is not evergreen
