@@ -40,8 +40,8 @@ type Version struct {
 	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
-	// We use a bool ptr in order to determine whether or not this field was set before it was introduced
-	Activated *bool `bson:"activated" json:"activated,omitempty"`
+	// We use a bool ptr in order to to distinguish the unset value from the default value
+	Activated *bool `bson:"activated,omitempty" json:"activated,omitempty"`
 
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
 	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
@@ -127,7 +127,7 @@ func (self *Version) UpdateActivation() error {
 	if utility.FromBoolPtr(self.Activated) {
 		return nil
 	}
-	self.Activated = utility.ToBoolPtr(true)
+	self.Activated = utility.TruePtr()
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: self.Id},
 		bson.M{
