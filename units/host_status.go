@@ -195,7 +195,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 			return errors.Wrap(err, "problem doing initial setup")
 		}
 		catcher := grip.NewBasicCatcher()
-		catcher.Wrapf(j.setNextState(h), "transitioning host state")
+		catcher.Wrapf(j.setNextState(ctx, &h), "transitioning host state")
 		if h.UserHost && h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewUserDataDoneJob(j.env, h.Id, utility.RoundPartOfHour(1))), "enqueueing job to check when user data is done")
 		}
@@ -214,7 +214,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 	return nil
 }
 
-func (j *cloudHostReadyJob) setNextState(h host.Host) error {
+func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) error {
 	switch h.Distro.BootstrapSettings.Method {
 	case distro.BootstrapMethodUserData:
 		// From the app server's perspective, it is done provisioning a user
@@ -226,7 +226,22 @@ func (j *cloudHostReadyJob) setNextState(h host.Host) error {
 		// can just set it as running.
 		return errors.Wrap(h.MarkAsProvisioned(), "marking host as running")
 	default:
-		return errors.Wrap(h.SetProvisioning(), "marking host as provisioning")
+		// All other host types must be manually provisioned by the app server.
+		if err := h.SetProvisioning(); err != nil {
+			return errors.Wrap(err, "marking host as provisioning")
+		}
+
+		setupJob := NewSetupHostJob(j.env, h, utility.RoundPartOfMinute(0).Format(TSFormat))
+		if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), setupJob); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":          "could not enqueue host setup job",
+				"host_id":          h.Id,
+				"job_id":           j.ID(),
+				"enqueue_job_type": setupJob.Type(),
+			}))
+		}
+
+		return nil
 	}
 }
 

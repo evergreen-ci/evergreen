@@ -858,20 +858,6 @@ func TestUpsert(t *testing.T) {
 				So(host.Host, ShouldEqual, "host2")
 
 			})
-
-		Convey("Upserting a host with new ID should set priv_atttempts", func() {
-			So(host.Insert(), ShouldBeNil)
-			So(host.Remove(), ShouldBeNil)
-			host.Id = "s-12345"
-			_, err := host.Upsert()
-			So(err, ShouldBeNil)
-
-			out := bson.M{}
-			So(db.FindOneQ(Collection, db.Query(bson.M{}), &out), ShouldBeNil)
-			val, ok := out[ProvisionAttemptsKey]
-			So(ok, ShouldBeTrue)
-			So(val, ShouldEqual, 0)
-		})
 		Convey("Upserting a host that does not need its provisioning changed unsets the field", func() {
 			So(host.Insert(), ShouldBeNil)
 			_, err := host.Upsert()
@@ -3292,7 +3278,7 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(Collection))
 
-	hosts := []Host{
+	for _, h := range []Host{
 		{
 			Id:          "host1",
 			Status:      evergreen.HostRunning,
@@ -3307,39 +3293,18 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 			Status: evergreen.HostProvisioning,
 		},
 		{
-			Id:                "host4",
-			ProvisionAttempts: 3,
-			Status:            evergreen.HostProvisioning,
+			Id:               "host4",
+			Status:           evergreen.HostProvisioning,
+			NeedsReprovision: ReprovisionToNew,
 		},
-	}
-	for i := range hosts {
-		assert.NoError(hosts[i].Insert())
+	} {
+		assert.NoError(h.Insert())
 	}
 
-	hosts, err := FindByProvisioningAttempt(1)
+	hosts, err := FindByProvisioning()
 	require.NoError(err)
 	require.Len(hosts, 1)
 	assert.Equal("host3", hosts[0].Id)
-
-	require.NoError(db.ClearCollections(Collection))
-	require.NoError(db.Insert(Collection, bson.M{
-		"_id":    "host5",
-		"status": evergreen.HostProvisioning,
-	}))
-	hosts, err = FindByProvisioningAttempt(1)
-	assert.NoError(err)
-	assert.Empty(hosts)
-
-	require.NoError(db.Clear(Collection))
-	h := &Host{
-		Id:               "host6",
-		Status:           evergreen.HostProvisioning,
-		NeedsReprovision: ReprovisionToNew,
-	}
-	require.NoError(h.Insert())
-	hosts, err = FindByProvisioningAttempt(1)
-	assert.NoError(err)
-	assert.Empty(hosts)
 }
 
 func TestCountContainersRunningAtTime(t *testing.T) {

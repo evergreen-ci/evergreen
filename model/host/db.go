@@ -70,7 +70,6 @@ var (
 	ZoneKey                            = bsonutil.MustHaveTag(Host{}, "Zone")
 	ProjectKey                         = bsonutil.MustHaveTag(Host{}, "Project")
 	ProvisionOptionsKey                = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
-	ProvisionAttemptsKey               = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
 	TaskCountKey                       = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                       = bsonutil.MustHaveTag(Host{}, "StartTime")
 	AgentStartTimeKey                  = bsonutil.MustHaveTag(Host{}, "AgentStartTime")
@@ -459,14 +458,13 @@ func Provisioning() db.Q {
 	return db.Query(bson.M{StatusKey: evergreen.HostProvisioning})
 }
 
-// FindByFirstProvisioningAttempt finds all hosts that have not yet attempted
-// provisioning.
-func FindByProvisioningAttempt(attempt int) ([]Host, error) {
+// FindByProvisioning finds all hosts that are not yet provisioned by the app
+// server.
+func FindByProvisioning() ([]Host, error) {
 	return Find(db.Query(bson.M{
-		ProvisionAttemptsKey: bson.M{"$lte": attempt},
-		StatusKey:            evergreen.HostProvisioning,
-		NeedsReprovisionKey:  bson.M{"$exists": false},
-		ProvisionedKey:       false,
+		StatusKey:           evergreen.HostProvisioning,
+		NeedsReprovisionKey: bson.M{"$exists": false},
+		ProvisionedKey:      false,
 	}))
 }
 

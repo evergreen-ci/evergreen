@@ -819,7 +819,7 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			hostInitSettings = env.Settings().HostInit
 		}
 
-		hosts, err := host.FindByProvisioningAttempt(provisionRetryLimit)
+		hosts, err := host.FindByProvisioning()
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background host provisioning",
 			"cron":      setupHostJobName,
@@ -833,14 +833,13 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			return hosts[i].StartTime.Before(hosts[j].StartTime)
 		})
 
-		attemptsUsed := 0
 		jobsSubmitted := 0
 		collisions := 0
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
 			if !h.IsContainer() {
 				if time.Since(h.StartTime) < 40*time.Second {
-					// emperically no hosts are
+					// empirically no hosts are
 					// ready in less than 40
 					// seconds, so it doesn't seem
 					// worth trying.
@@ -852,14 +851,13 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 				}
 			}
 
-			err := queue.Put(ctx, NewHostSetupJob(env, &h))
-			if amboy.IsDuplicateJobError(err) {
+			err := queue.Put(ctx, NewSetupHostJob(env, &h, utility.RoundPartOfMinute(0).Format(TSFormat)))
+			if amboy.IsDuplicateJobError(err) || amboy.IsDuplicateJobScopeError(err) {
 				collisions++
 				continue
 			}
 			catcher.Add(err)
 
-			attemptsUsed += h.ProvisionAttempts
 			jobsSubmitted++
 		}
 
@@ -867,7 +865,6 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 			"provisioning_hosts": len(hosts),
 			"throttle":           hostInitSettings.ProvisioningThrottle,
 			"jobs_submitted":     jobsSubmitted,
-			"total_attempts":     attemptsUsed,
 			"duplicates_seen":    collisions,
 			"message":            "host provisioning setup",
 		})
