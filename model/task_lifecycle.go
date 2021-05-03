@@ -79,7 +79,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			return errors.Wrapf(err, "error find associated version")
 		}
 		if version == nil {
-			return errors.Errorf(fmt.Sprintf("could not find associated version : `%s`", t.Version))
+			return errors.Errorf("could not find associated version : `%s`", t.Version)
 		}
 		if err = version.UpdateActivation(); err != nil {
 			return errors.Wrapf(err, "Error marking version as activated")
