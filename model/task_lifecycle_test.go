@@ -72,7 +72,7 @@ func TestSetActiveState(t *testing.T) {
 			So(testBuild.Tasks[0].Activated, ShouldBeTrue)
 			version, err := VersionFindOneId(testTask.Version)
 			So(err, ShouldBeNil)
-			So(version.Activated, ShouldBeTrue)
+			So(utility.FromBoolPtr(version.Activated), ShouldBeTrue)
 			Convey("deactivating an active task as a normal user should deactivate the task", func() {
 				So(SetActiveState(testTask, userName, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))

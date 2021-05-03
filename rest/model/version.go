@@ -59,7 +59,7 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	apiVersion.Project = utility.ToStringPtr(v.Identifier)
 	apiVersion.Requester = utility.ToStringPtr(v.Requester)
 	apiVersion.Errors = utility.ToStringPtrSlice(v.Errors)
-	apiVersion.Activated = utility.ToBoolPtr(v.Activated)
+	apiVersion.Activated = v.Activated
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
@@ -710,6 +711,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	projectInfo.IntermediateProject.Id = v.Id
 	projectInfo.IntermediateProject.CreateTime = v.CreateTime
 	v.Ignored = ignore
+	v.Activated = utility.ToBoolPtr(false)
 
 	// validate the project
 	verrs := validator.CheckProjectSyntax(projectInfo.Project)
