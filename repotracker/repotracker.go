@@ -711,7 +711,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	projectInfo.IntermediateProject.Id = v.Id
 	projectInfo.IntermediateProject.CreateTime = v.CreateTime
 	v.Ignored = ignore
-	v.Activated = utility.ToBoolPtr(false)
+	v.Activated = utility.FalsePtr()
 
 	// validate the project
 	verrs := validator.CheckProjectSyntax(projectInfo.Project)

@@ -123,7 +123,7 @@ func (self *Version) UpdateBuildVariants() error {
 	)
 }
 
-func (self *Version) UpdateActivation() error {
+func (self *Version) SetActivated() error {
 	if utility.FromBoolPtr(self.Activated) {
 		return nil
 	}
