@@ -52,6 +52,7 @@ func makeCheckBlockedTasksJob() *checkBlockedTasksJob {
 // should track push events. We want to limit this job to once an hour for each distro.
 func NewCheckBlockedTasksJob(distroId string, ts time.Time) amboy.Job {
 	job := makeCheckBlockedTasksJob()
+	job.DistroId = distroId
 	job.SetID(fmt.Sprintf("%s:%s:%s", checkBlockedTasks, distroId, ts))
 	return job
 }
