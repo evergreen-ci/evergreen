@@ -15,18 +15,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func numHostsTerminated(ctx context.Context, env evergreen.Environment, bleedInfo BleedInfo, t *testing.T) (int, []string) {
+func numHostsTerminated(ctx context.Context, env evergreen.Environment, drawdownInfo DrawdownInfo, t *testing.T) (int, []string) {
 	queue := queue.NewAdaptiveOrderedLocalQueue(3, 1024)
 	require.NoError(t, queue.Start(ctx))
 	defer queue.Runner().Close(ctx)
 
-	require.NoError(t, queue.Put(ctx, NewHostBleedJob(env, bleedInfo, utility.RoundPartOfHour(1).Format(TSFormat))))
+	require.NoError(t, queue.Put(ctx, NewHostDrawdownJob(env, drawdownInfo, utility.RoundPartOfHour(1).Format(TSFormat))))
 
 	amboy.WaitInterval(ctx, queue, 50*time.Millisecond)
 	out := []string{}
 	num := 0
 	for j := range queue.Results(ctx) {
-		if ij, ok := j.(*hostBleedJob); ok {
+		if ij, ok := j.(*hostDrawdownJob); ok {
 			num += ij.Terminated
 			out = append(out, ij.TerminatedHosts...)
 		}
@@ -111,12 +111,12 @@ func TestTerminatingHosts(t *testing.T) {
 		// If we encounter missing distros, we decommission hosts from those
 		// distros.
 
-		bleedInfo := BleedInfo{
+		drawdownInfo := DrawdownInfo{
 			DistroID:     "distro1",
 			NewCapTarget: 3,
 		}
 		// 3 idle hosts, 2 need to be terminated to reach NewCapTarget
-		num, hosts := numHostsTerminated(ctx, env, bleedInfo, t)
+		num, hosts := numHostsTerminated(ctx, env, drawdownInfo, t)
 		assert.Equal(t, 2, num)
 
 		assert.Contains(t, hosts, "h3")

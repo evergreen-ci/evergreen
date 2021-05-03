@@ -18,24 +18,24 @@ import (
 )
 
 const (
-	hostBleedJobName = "host-bleedoff"
+	hostDrawdownJobName = "host-drawdown"
 
-	// if we need to bleed hosts, we want to catch as many hosts as we can that are between jobs
-	idleTimeBleedCutoff = 5 * time.Second
+	// if we need to drawdown hosts, we want to catch as many hosts as we can that are between jobs
+	idleTimeDrawdownCutoff = 5 * time.Second
 )
 
 func init() {
-	registry.AddJobType(hostBleedJobName, func() amboy.Job {
-		return makeHostBleedJob()
+	registry.AddJobType(hostDrawdownJobName, func() amboy.Job {
+		return makeHostDrawdownJob()
 	})
 }
 
-type BleedInfo struct {
+type DrawdownInfo struct {
 	DistroID     string
 	NewCapTarget int
 }
 
-type hostBleedJob struct {
+type hostDrawdownJob struct {
 	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
 	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
 	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
@@ -44,14 +44,14 @@ type hostBleedJob struct {
 	settings *evergreen.Settings
 	host     *host.Host
 
-	BleedInfo BleedInfo
+	DrawdownInfo DrawdownInfo
 }
 
-func makeHostBleedJob() *hostBleedJob {
-	j := &hostBleedJob{
+func makeHostDrawdownJob() *hostDrawdownJob {
+	j := &hostDrawdownJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    hostBleedJobName,
+				Name:    hostDrawdownJobName,
 				Version: 0,
 			},
 		},
@@ -62,15 +62,15 @@ func makeHostBleedJob() *hostBleedJob {
 	return j
 }
 
-func NewHostBleedJob(env evergreen.Environment, bleedInfo BleedInfo, id string) amboy.Job {
-	j := makeHostBleedJob()
-	j.BleedInfo = bleedInfo
+func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, id string) amboy.Job {
+	j := makeHostDrawdownJob()
+	j.DrawdownInfo = drawdownInfo
 	j.env = env
-	j.SetID(fmt.Sprintf("%s.%s", hostBleedJobName, id))
+	j.SetID(fmt.Sprintf("%s.%s", hostDrawdownJobName, id))
 	return j
 }
 
-func (j *hostBleedJob) Run(ctx context.Context) {
+func (j *hostDrawdownJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if j.env == nil {
@@ -86,36 +86,36 @@ func (j *hostBleedJob) Run(ctx context.Context) {
 	}
 
 	// get currently existing hosts, in case some hosts have already been terminated elsewhere
-	existingHostCount, err := host.CountRunningHosts(j.BleedInfo.DistroID)
+	existingHostCount, err := host.CountRunningHosts(j.DrawdownInfo.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "database error getting existing hosts by Distro.Id"))
 		return
 	}
-	idleHosts, err := host.IdleHostsWithDistroID(j.BleedInfo.DistroID)
+	idleHosts, err := host.IdleHostsWithDistroID(j.DrawdownInfo.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "database error getting idle hosts by Distro.Id"))
 		return
 	}
-	bleedTarget := existingHostCount - j.BleedInfo.NewCapTarget
+	drawdownTarget := existingHostCount - j.DrawdownInfo.NewCapTarget
 
 	for i := 0; i < len(idleHosts); i++ {
-		j.AddError(j.checkAndTerminateHost(ctx, &idleHosts[i], &bleedTarget))
-		if bleedTarget == 0 {
+		j.AddError(j.checkAndTerminateHost(ctx, &idleHosts[i], &drawdownTarget))
+		if drawdownTarget == 0 {
 			break
 		}
 	}
 
 	grip.Info(message.Fields{
 		"id":                   j.ID(),
-		"job_type":             hostBleedJobName,
-		"distro_id":            j.BleedInfo.DistroID,
+		"job_type":             hostDrawdownJobName,
+		"distro_id":            j.DrawdownInfo.DistroID,
 		"num_idle_hosts":       len(idleHosts),
 		"num_terminated_hosts": j.Terminated,
 		"terminated_hosts":     j.TerminatedHosts,
 	})
 }
 
-func (j *hostBleedJob) checkAndTerminateHost(ctx context.Context, h *host.Host, bleedTarget *int) error {
+func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Host, drawdownTarget *int) error {
 	if !h.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
@@ -165,14 +165,14 @@ func (j *hostBleedJob) checkAndTerminateHost(ctx context.Context, h *host.Host, 
 		return nil
 	}
 
-	idleThreshold := idleTimeBleedCutoff
+	idleThreshold := idleTimeDrawdownCutoff
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleTaskGroupHostCutoff
 	}
 
 	if idleTime > idleThreshold {
 		terminateReason := fmt.Sprintf("host is being terminated due to temporary overallocation of hosts")
-		(*bleedTarget)--
+		(*drawdownTarget)--
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
 		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, terminateReason))

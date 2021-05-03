@@ -260,14 +260,14 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		lowCountFloor := 5
 		if killableHosts > lowCountFloor {
 
-			bleedInfo := BleedInfo{
+			drawdownInfo := DrawdownInfo{
 				DistroID:     distro.Id,
 				NewCapTarget: newCapTarget,
 			}
 			queue := j.env.RemoteQueue()
-			err := queue.Put(ctx, NewHostBleedJob(j.env, bleedInfo, utility.RoundPartOfHour(1).Format(TSFormat)))
+			err := queue.Put(ctx, NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfHour(1).Format(TSFormat)))
 			if err != nil {
-				j.AddError(errors.Wrap(err, "Error bleeding hosts"))
+				j.AddError(errors.Wrap(err, "Error drawdowning hosts"))
 				return
 			}
 
@@ -296,5 +296,5 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"instance":                     j.ID(),
 		"runner":                       scheduler.RunnerName,
 	})
-	// at some point here we have to set bleedTarget, and also need persistence to know when to do so
+	// at some point here we have to set drawdownTarget, and also need persistence to know when to do so
 }
