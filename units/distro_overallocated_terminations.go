@@ -121,11 +121,13 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 	}
 
 	if idleTime > idleThreshold {
-		terminateReason := fmt.Sprintf("host is being terminated due to temporary overallocation of hosts")
 		(*drawdownTarget)--
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
-		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, terminateReason))
+		if err = j.host.SetDecommissioned(evergreen.User, "host decommissioned due to overallocation"); err != nil {
+			return errors.Wrapf(err, "problem decommissioning host %s", h.Id)
+		}
+		return nil
 	}
 	return nil
 }
