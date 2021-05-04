@@ -164,7 +164,12 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	j.AddRetryableError(j.startAgentMonitor(ctx, settings))
+	if err := j.startAgentMonitor(ctx, settings); err != nil {
+		j.AddRetryableError(err)
+		return
+	}
+
+	j.AddError(j.host.SetNeedsNewAgentMonitor(false))
 }
 
 // hostDown checks if the host is down.
