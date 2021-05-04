@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -36,25 +35,22 @@ type DrawdownInfo struct {
 }
 
 type hostDrawdownJob struct {
-	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
-	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
-	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
-
-	env      evergreen.Environment
-	settings *evergreen.Settings
-	host     *host.Host
+	idleHostJob
 
 	DrawdownInfo DrawdownInfo
 }
 
 func makeHostDrawdownJob() *hostDrawdownJob {
 	j := &hostDrawdownJob{
-		Base: job.Base{
-			JobType: amboy.JobType{
-				Name:    hostDrawdownJobName,
-				Version: 0,
+		idleHostJob{
+			Base: job.Base{
+				JobType: amboy.JobType{
+					Name:    hostDrawdownJobName,
+					Version: 0,
+				},
 			},
 		},
+		DrawdownInfo{},
 	}
 	j.SetDependency(dependency.NewAlways())
 	j.SetPriority(2)
@@ -81,10 +77,6 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		j.settings = j.env.Settings()
 	}
 
-	if j.HasErrors() {
-		return
-	}
-
 	// get currently existing hosts, in case some hosts have already been terminated elsewhere
 	existingHostCount, err := host.CountRunningHosts(j.DrawdownInfo.DistroID)
 	if err != nil {
@@ -98,11 +90,11 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 	}
 	drawdownTarget := existingHostCount - j.DrawdownInfo.NewCapTarget
 
-	for i := 0; i < len(idleHosts); i++ {
+	for _, idleHost := range idleHosts {
 		if drawdownTarget <= 0 {
 			break
 		}
-		j.AddError(j.checkAndTerminateHost(ctx, &idleHosts[i], &drawdownTarget))
+		j.AddError(j.checkAndTerminateHost(ctx, &idleHost, &drawdownTarget))
 	}
 
 	grip.Info(message.Fields{
@@ -116,53 +108,11 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 }
 
 func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Host, drawdownTarget *int) error {
-	if !h.IsEphemeral() {
-		grip.Notice(message.Fields{
-			"job":      j.ID(),
-			"host_id":  h.Id,
-			"job_type": j.Type().Name,
-			"status":   h.Status,
-			"provider": h.Distro.Provider,
-			"message":  "host termination for a non-ephemeral distro",
-			"cause":    "programmer error",
-		})
-		return errors.New("attempted to terminate non-ephemeral host")
-	}
 
-	// ask the host how long it has been idle
-	idleTime := h.IdleTime()
+	_, idleTime, err := j.getTimesFromHost(ctx, h)
 
-	// if the communication time is > 10 mins then there may not be an agent on the host.
-	communicationTime := h.GetElapsedCommunicationTime()
-
-	// get a cloud manager for the host
-	mgrOpts, err := cloud.GetManagerOptions(h.Distro)
 	if err != nil {
-		return errors.Wrapf(err, "can't get ManagerOpts for host '%s'", h.Id)
-	}
-	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		return errors.Wrapf(err, "error getting cloud manager for host %v", h.Id)
-	}
-
-	// ask how long until the next payment for the host
-	tilNextPayment := manager.TimeTilNextPayment(h)
-
-	if tilNextPayment > maxTimeTilNextPayment {
-		return nil
-	}
-
-	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
-		grip.Notice(message.Fields{
-			"op":                j.Type().Name,
-			"id":                j.ID(),
-			"message":           "not flagging idle host, waiting for an agent",
-			"host_id":           h.Id,
-			"distro":            h.Distro.Id,
-			"idle":              idleTime.String(),
-			"last_communicated": communicationTime.String(),
-		})
-		return nil
+		return errors.Wrapf(err, "error getting communication and idle time from '%s'", h.Id)
 	}
 
 	idleThreshold := idleTimeDrawdownCutoff
