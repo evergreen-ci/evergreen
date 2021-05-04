@@ -596,7 +596,6 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		// 3x / minute
 		ts := utility.RoundPartOfMinute(15).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 
@@ -605,44 +604,12 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		// uses setting the NeedsNewAgent field to false to prevent other jobs from running
 		// concurrently. If we didn't set one or the other of those fields, then
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewAgentDeployJob(env, h, ts)))
+			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewAgentDeployJob(env, h, ts)))
 		}
 
 		return catcher.Resolve()
 	}
 
-}
-
-// PopulateGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
-func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(_ context.Context, _ amboy.Queue) error {
-		ctx := context.Background()
-		var q amboy.Queue
-		var ok bool
-		var err error
-
-		catcher := grip.NewBasicCatcher()
-		tasks, err := task.GenerateNotRun()
-		if err != nil {
-			return errors.Wrap(err, "problem getting tasks that need generators run")
-		}
-
-		versions := map[string]amboy.Queue{}
-
-		ts := utility.RoundPartOfHour(1).Format(TSFormat)
-		group := env.RemoteQueueGroup()
-		for _, t := range tasks {
-			if q, ok = versions[t.Version]; !ok {
-				q, err = group.Get(ctx, t.Version)
-				if err != nil {
-					return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
-				}
-				versions[t.Version] = q
-			}
-			catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Id, ts)))
-		}
-		return catcher.Resolve()
-	}
 }
 
 // PopulateAgentMonitorDeployJobs enqueues the jobs to deploy the agent monitor
@@ -691,17 +658,48 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 			return errors.WithStack(err)
 		}
 
-		// 3x / minute
-		ts := utility.RoundPartOfMinute(20).Format(TSFormat)
+		ts := utility.RoundPartOfMinute(15).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewAgentMonitorDeployJob(env, h, ts)))
+			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewAgentMonitorDeployJob(env, h, ts)))
 		}
 
 		return catcher.Resolve()
 	}
 
+}
+
+// PopulateGenerateTasksJobs populates generate.tasks jobs for tasks that have started running their generate.tasks command.
+func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(_ context.Context, _ amboy.Queue) error {
+		ctx := context.Background()
+		var q amboy.Queue
+		var ok bool
+		var err error
+
+		catcher := grip.NewBasicCatcher()
+		tasks, err := task.GenerateNotRun()
+		if err != nil {
+			return errors.Wrap(err, "problem getting tasks that need generators run")
+		}
+
+		versions := map[string]amboy.Queue{}
+
+		ts := utility.RoundPartOfHour(1).Format(TSFormat)
+		group := env.RemoteQueueGroup()
+		for _, t := range tasks {
+			if q, ok = versions[t.Version]; !ok {
+				q, err = group.Get(ctx, t.Version)
+				if err != nil {
+					return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
+				}
+				versions[t.Version] = q
+			}
+			catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Id, ts)))
+		}
+		return catcher.Resolve()
+	}
 }
 
 func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOperation {
