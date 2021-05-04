@@ -231,7 +231,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		timeToEmptyNoSpawns = time.Duration(0)
 	} else {
 		hostsAvailNoSpawns := hostsAvail - correctedHostsSpawned
-		maxHours := 2532000
+		const maxHours = 2532000
 		if hostsAvail <= 0 {
 			timeToEmpty = time.Duration(maxHours) * time.Hour
 			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
@@ -247,7 +247,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
-	lowRatioThresh := float32(.25)
+	const lowRatioThresh = float32(.25)
 	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
 	if terminateExcess && hostQueueRatio > 0 && hostQueueRatio < lowRatioThresh {
 
@@ -257,7 +257,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		if newCapTarget < distro.HostAllocatorSettings.MinimumHosts {
 			newCapTarget = distro.HostAllocatorSettings.MinimumHosts
 		}
-		lowCountFloor := 5
+		const lowCountFloor = 5
 		if killableHosts > lowCountFloor {
 
 			drawdownInfo := DrawdownInfo{
