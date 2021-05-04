@@ -66,23 +66,17 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error getting alias task queue for distro '%s'", j.DistroId))
 	}
 	taskIds := []string{}
-	lenQueue := -1
-	lenAliasQueue := -1
-	if queue != nil {
-		lenQueue = len(queue.Queue)
-		for _, item := range queue.Queue {
-			if !item.IsDispatched && len(item.Dependencies) > 0 {
-				taskIds = append(taskIds, item.Id)
-			}
+	lenQueue := len(queue.Queue)
+	for _, item := range queue.Queue {
+		if !item.IsDispatched && len(item.Dependencies) > 0 {
+			taskIds = append(taskIds, item.Id)
 		}
 	}
 
-	if aliasQueue != nil {
-		lenAliasQueue = len(aliasQueue.Queue)
-		for _, item := range aliasQueue.Queue {
-			if !item.IsDispatched && len(item.Dependencies) > 0 {
-				taskIds = append(taskIds, item.Id)
-			}
+	lenAliasQueue := len(aliasQueue.Queue)
+	for _, item := range aliasQueue.Queue {
+		if !item.IsDispatched && len(item.Dependencies) > 0 {
+			taskIds = append(taskIds, item.Id)
 		}
 	}
 
