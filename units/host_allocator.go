@@ -249,7 +249,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	const lowRatioThresh = float32(.25)
 	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
-	if terminateExcess && hostQueueRatio > 0 && hostQueueRatio < lowRatioThresh {
+	if terminateExcess && hostQueueRatio < lowRatioThresh {
 
 		killableHosts := int(float32(len(upHosts)) * (1 - hostQueueRatio))
 		newCapTarget := len(upHosts) - killableHosts
