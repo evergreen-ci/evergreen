@@ -144,7 +144,6 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
 			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
 		}
-		return
 	}()
 
 	if err := j.startAgentOnHost(ctx, settings); err != nil {
