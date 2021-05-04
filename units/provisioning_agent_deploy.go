@@ -152,7 +152,10 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		} else {
 			j.AddError(err)
 		}
+		return
 	}
+
+	j.AddError(j.host.SetNeedsNewAgent(false))
 }
 
 func (j *agentDeployJob) getHostMessage() message.Fields {
