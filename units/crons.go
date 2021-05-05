@@ -976,9 +976,9 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 
 		ts := utility.RoundPartOfHour(parts).Format(TSFormat)
 		catcher := grip.NewBasicCatcher()
-		catcher.Add(queue.Put(ctx, NewSpawnhostExpirationWarningsJob(ts)))
-		catcher.Add(queue.Put(ctx, NewVolumeExpirationWarningsJob(ts)))
-		return catcher.Resolve()
+		catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewSpawnhostExpirationWarningsJob(ts)))
+		catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewVolumeExpirationWarningsJob(ts)))
+		return errors.Wrap(catcher.Resolve(), "populating periodic notifications")
 	}
 }
 
@@ -1029,14 +1029,14 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 		for _, h := range hosts {
 			hostIds = append(hostIds, h.Id)
 			ts := utility.RoundPartOfHour(0).Format(TSFormat)
-			catcher.Add(queue.Put(ctx, NewSpawnhostExpirationCheckJob(ts, &h)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewSpawnhostExpirationCheckJob(ts, &h)), "host '%s'", h.Id)
 		}
 		grip.Info(message.Fields{
-			"message": "expending spawn host expiration times",
+			"message": "extending spawn host expiration times",
 			"hosts":   hostIds,
 		})
 
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "populating check spawn host expiration jobs")
 	}
 }
 
@@ -1050,10 +1050,10 @@ func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(0).Format(TSFormat)
 		for i := range volumes {
-			catcher.Add(queue.Put(ctx, NewVolumeExpirationCheckJob(ts, &volumes[i], evergreen.ProviderNameEc2OnDemand)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewVolumeExpirationCheckJob(ts, &volumes[i], evergreen.ProviderNameEc2OnDemand)), "volume '%s'", volumes[i].ID)
 		}
 
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "populating check volume expiration jobs")
 	}
 }
 
@@ -1067,10 +1067,10 @@ func PopulateVolumeExpirationJob() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		for _, v := range volumes {
 			ts := utility.RoundPartOfHour(0).Format(TSFormat)
-			catcher.Add(queue.Put(ctx, NewVolumeDeletionJob(ts, &v)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewVolumeDeletionJob(ts, &v)), "volume '%s'", v.ID)
 		}
 
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "populating expire volume jobs")
 	}
 }
 
