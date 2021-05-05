@@ -306,9 +306,9 @@ func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
 
 		// Create oldestImageJob when images take up too much disk space
 		for _, p := range parents {
-			catcher.Add(queue.Put(ctx, NewOldestImageRemovalJob(&p, evergreen.ProviderNameDocker, ts)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewOldestImageRemovalJob(&p, evergreen.ProviderNameDocker, ts)), "parent host '%s'", p.Id)
 		}
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "populating remove oldest image jobs")
 	}
 }
 

@@ -59,7 +59,9 @@ func NewOldestImageRemovalJob(h *host.Host, providerName, id string) amboy.Job {
 	j.Provider = providerName
 	j.HostID = h.Id
 
-	j.SetID(fmt.Sprintf("%s.%s", oldestImageRemovalJobName, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", oldestImageRemovalJobName, h.Id, id))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", oldestImageRemovalJobName, h.Id)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 	return j
 }
 
