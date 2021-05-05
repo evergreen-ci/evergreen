@@ -372,10 +372,10 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 
 		for _, d := range distros {
-			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostAllocatorJob(d.Id, ts)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostAllocatorJob(d.Id, ts)), "distro '%s'", d.Id)
 		}
 
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "populating host allocator jobs")
 	}
 }
 
