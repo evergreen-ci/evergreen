@@ -2531,15 +2531,15 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 }
 
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) ([]*MainlineCommit, error) {
-	opts := model.GetVersionsOptions{}
-	opts.IncludeBuilds = true
-	opts.Requester = evergreen.RepotrackerVersionRequester
-	versions, err := model.GetVersionsWithOptions(options.ProjectID, opts)
+	opts := model.MainlineCommitVersionOptions{}
+	if len(options.Variants) > 0 {
+		opts.ByBuildVariants = options.Variants
+	}
+	versions, err := model.GetMainlineCommitVersionsWithOptions(options.ProjectID, opts)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	var mainlineCommits []*MainlineCommit
-	var apiVersions []*restModel.APIVersion
 
 	for _, v := range versions {
 		apiVersion := restModel.APIVersion{}
@@ -2547,15 +2547,31 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service: %s", err.Error()))
 		}
-		defaultSort := []task.TasksSortOrder{
-			{Key: task.DisplayNameKey, Order: 1},
-		}
-		tasks, _, err := r.sc.FindTasksByVersion(v.Id, []string{}, []string{}, "", "", 0, 0, []string{}, defaultSort)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", v.Id, err.Error()))
-		}
-		if !task.AnyActiveTasks(tasks) {
-			mainlineCommit := MainlineCommit{}
+
+		mainlineCommit := MainlineCommit{}
+
+		// If we try to access a version that does not have the Activated flag we must manually verify it
+		// If it does we can avoid querying a versions tasks
+		if v.Activated == nil {
+			defaultSort := []task.TasksSortOrder{
+				{Key: task.DisplayNameKey, Order: 1},
+			}
+			tasks, _, err := r.sc.FindTasksByVersion(v.Id, []string{}, []string{}, "", "", 0, 0, []string{}, defaultSort)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", v.Id, err.Error()))
+			}
+			if !task.AnyActiveTasks(tasks) {
+				versionMeta := VersionMeta{
+					ID:         v.Id,
+					CreateTime: v.CreateTime,
+					Author:     v.Author,
+					Message:    v.Message,
+				}
+				mainlineCommit.VersionMeta = &versionMeta
+			} else {
+				mainlineCommit.Version = &apiVersion
+			}
+		} else if !utility.FromBoolPtr(v.Activated) {
 			versionMeta := VersionMeta{
 				ID:         v.Id,
 				CreateTime: v.CreateTime,
@@ -2564,9 +2580,11 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			}
 			mainlineCommit.VersionMeta = &versionMeta
 			mainlineCommits = append(mainlineCommits, &mainlineCommit)
+		} else {
+			mainlineCommit.Version = &apiVersion
 		}
+		mainlineCommits = append(mainlineCommits, &mainlineCommit)
 
-		apiVersions = append(apiVersions, &apiVersion)
 	}
 	return mainlineCommits, nil
 }
