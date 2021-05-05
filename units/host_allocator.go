@@ -230,14 +230,15 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		timeToEmpty = time.Duration(0)
 		timeToEmptyNoSpawns = time.Duration(0)
 	} else {
+		// this is roughly the maximum value of hours we can set a time.Duration to
+		const maxPossibleHours = 2532000
 		hostsAvailNoSpawns := hostsAvail - correctedHostsSpawned
-		const maxHours = 2532000
 		if hostsAvail <= 0 {
-			timeToEmpty = time.Duration(maxHours) * time.Hour
-			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
+			timeToEmpty = time.Duration(maxPossibleHours) * time.Hour
+			timeToEmptyNoSpawns = time.Duration(maxPossibleHours) * time.Hour
 		} else if hostsAvailNoSpawns <= 0 {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
-			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
+			timeToEmptyNoSpawns = time.Duration(maxPossibleHours) * time.Hour
 		} else {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
 			timeToEmptyNoSpawns = scheduledDuration / time.Duration(hostsAvailNoSpawns)
@@ -247,6 +248,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
+	// rough value that should correspond to situations where a queue will be empty very soon
 	const lowRatioThresh = float32(.25)
 	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
 	if terminateExcess && hostQueueRatio < lowRatioThresh && len(upHosts) > 0 {
@@ -263,6 +265,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		if newCapTarget < distro.HostAllocatorSettings.MinimumHosts {
 			newCapTarget = distro.HostAllocatorSettings.MinimumHosts
 		}
+		// rough value to prevent killing hosts on low-volume distros
 		const lowCountFloor = 5
 		if killableHosts > lowCountFloor {
 
