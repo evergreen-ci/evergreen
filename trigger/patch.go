@@ -270,6 +270,10 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	if err := api.BuildFromService(*t.patch); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
+	projectName := t.patch.Project
+	if api.ProjectIdentifier != nil {
+		projectName = utility.FromStringPtr(api.ProjectIdentifier)
+	}
 
 	data := commonTemplateData{
 		ID:                t.patch.Id.Hex(),
@@ -278,7 +282,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		DisplayName:       t.patch.Id.Hex(),
 		Description:       t.patch.Description,
 		Object:            event.ObjectPatch,
-		Project:           t.patch.Project,
+		Project:           projectName,
 		URL:               versionLink(t.uiConfig.Url, t.patch.Version, true),
 		PastTenseStatus:   t.data.Status,
 		apiModel:          &api,
