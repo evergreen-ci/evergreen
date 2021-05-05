@@ -46,6 +46,7 @@ func (*HostConnectorSuite) hosts() []host.Host {
 			Status:         evergreen.HostRunning,
 			ExpirationTime: time.Now().Add(time.Hour),
 			Secret:         "abcdef",
+			IP:             "ip1",
 		}, {
 			Id:        "host2",
 			StartedBy: "user2",
@@ -55,16 +56,19 @@ func (*HostConnectorSuite) hosts() []host.Host {
 			},
 			Status:         evergreen.HostTerminated,
 			ExpirationTime: time.Now().Add(time.Hour),
+			IP:             "ip2",
 		}, {
 			Id:             "host3",
 			StartedBy:      "user3",
 			Status:         evergreen.HostTerminated,
 			ExpirationTime: time.Now().Add(time.Hour),
+			IP:             "ip3",
 		}, {
 			Id:             "host4",
 			StartedBy:      "user4",
 			Status:         evergreen.HostTerminated,
 			ExpirationTime: time.Now().Add(time.Hour),
+			IP:             "ip4",
 		}, {
 			Id:        "host5",
 			StartedBy: evergreen.User,
@@ -73,6 +77,7 @@ func (*HostConnectorSuite) hosts() []host.Host {
 				Id:      "distro5",
 				Aliases: []string{"alias125"},
 			},
+			IP: "ip5",
 		},
 	}
 }
@@ -205,6 +210,28 @@ func (s *HostConnectorSuite) TestFindByIdLast() {
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
 	h, ok := s.conn.FindHostById("nonexistent")
+	s.NoError(ok)
+	s.Nil(h)
+}
+
+func (s *HostConnectorSuite) TestFindByIPFirst() {
+	h, ok := s.conn.FindHostByIP("ip1")
+	s.NoError(ok)
+	s.NotNil(h)
+	s.Equal("host1", h.Id)
+	s.Equal("ip1", h.IP)
+}
+
+func (s *HostConnectorSuite) TestFindByIPLast() {
+	h, ok := s.conn.FindHostByIP("ip2")
+	s.NoError(ok)
+	s.NotNil(h)
+	s.Equal("host2", h.Id)
+	s.Equal("ip2", h.IP)
+}
+
+func (s *HostConnectorSuite) TestFindByIPFail() {
+	h, ok := s.conn.FindHostByIP("nonexistent")
 	s.NoError(ok)
 	s.Nil(h)
 }
