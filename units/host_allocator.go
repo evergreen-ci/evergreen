@@ -274,7 +274,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 				NewCapTarget: newCapTarget,
 			}
 			queue := j.env.RemoteQueue()
-			err := queue.Put(ctx, NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfHour(1).Format(TSFormat)))
+			err := queue.Put(ctx, NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
 			if err != nil {
 				grip.ErrorWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), errors.Wrap(err, "Error drawing down hosts"))
 				return
