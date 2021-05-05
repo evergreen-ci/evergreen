@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -1520,6 +1520,7 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 
 	yamlToCompare, err := yaml.Marshal(pp)
 	assert.NoError(t, err)
+	//fmt.Println(string(yamlToCompare))
 	assert.NoError(t, pp.TryUpsert())
 
 	newPP, err := ParserProjectFindOneById(pp.Id)
