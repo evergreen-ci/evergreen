@@ -231,7 +231,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	if terminateReason != "" {
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
-		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, terminateReason))
+		return amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, h, false, terminateReason))
 	}
 	return nil
 }
