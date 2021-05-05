@@ -448,43 +448,10 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(ctx, NewDistroSchedulerJob(env, d.Id, ts)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewDistroSchedulerJob(env, d.Id, ts)), "distro '%s'", d.Id)
 		}
 
-		return catcher.Resolve()
-	}
-}
-
-func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		if flags.CheckBlockedTasksDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "CheckBlockedTasks job is disabled",
-				"impact":  "new tasks are not enqueued",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		config, err := evergreen.GetConfig()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		catcher := grip.NewBasicCatcher()
-		// find all active distros
-		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
-		catcher.Add(err)
-
-		ts := utility.RoundPartOfMinute(0)
-		for _, d := range distros {
-			catcher.Add(queue.Put(ctx, NewCheckBlockedTasksJob(d.Id, ts)))
-		}
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "populating distro scheduler jobs")
 	}
 }
 
@@ -534,9 +501,42 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 				continue
 			}
 
-			catcher.Add(queue.Put(ctx, NewDistroAliasSchedulerJob(d.Id, ts)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewDistroAliasSchedulerJob(d.Id, ts)), "distro 's'", d.Id)
 		}
 
+		return errors.Wrap(catcher.Resolve(), "populating distro alias scheduler jobs")
+	}
+}
+
+func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.CheckBlockedTasksDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "CheckBlockedTasks job is disabled",
+				"impact":  "new tasks are not enqueued",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		catcher := grip.NewBasicCatcher()
+		// find all active distros
+		distros, err := distro.Find(distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		catcher.Add(err)
+
+		ts := utility.RoundPartOfMinute(0)
+		for _, d := range distros {
+			catcher.Add(queue.Put(ctx, NewCheckBlockedTasksJob(d.Id, ts)))
+		}
 		return catcher.Resolve()
 	}
 }
