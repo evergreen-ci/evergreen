@@ -8,11 +8,10 @@ import (
 )
 
 type CedarConfig struct {
-	BaseURL  string `bson:"base_url" json:"base_url" yaml:"base_url"`
-	RPCPort  string `bson:"rpc_port" json:"rpc_port" yaml:"rpc_port"`
-	User     string `bson:"user" json:"user" yaml:"user"`
-	Password string `bson:"password" json:"password" yaml:"password"`
-	APIKey   string `bson:"api_key" json:"api_key" yaml:"api_key"`
+	BaseURL string `bson:"base_url" json:"base_url" yaml:"base_url"`
+	RPCPort string `bson:"rpc_port" json:"rpc_port" yaml:"rpc_port"`
+	User    string `bson:"user" json:"user" yaml:"user"`
+	APIKey  string `bson:"api_key" json:"api_key" yaml:"api_key"`
 }
 
 func (*CedarConfig) SectionId() string { return "cedar" }
@@ -48,7 +47,6 @@ func (c *CedarConfig) Set() error {
 			"base_url": c.BaseURL,
 			"rpc_port": c.RPCPort,
 			"user":     c.User,
-			"password": c.Password,
 			"api_key":  c.APIKey,
 		},
 	}, options.Update().SetUpsert(true))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -31,17 +32,35 @@ type DialOptions struct {
 	// KeyFile is the name of the file with the key certificate for TLS. If
 	// specified, CAFile and CrtFile must also be specified. (Optional)
 	KeyFile string
+	// Username is the username of the API user. If specified, APIKey must
+	// also be specified. (Optional)
+	Username string
+	// APIKey is the API key for user authentication. If specified,
+	// Username must also be specified. (Optional)
+	APIKey string
+	// APIUserHeader is the metadata key for the requester's username. This
+	// must be specified if Username and APIKey are specified. (Optional)
+	APIUserHeader string
+	// APIKeyHeader is the metadata key for the requester's API key. This
+	// must be specified if Username and APIKey are specified. (Optional)
+	APIKeyHeader string
 }
 
 func (opts *DialOptions) validate() error {
-	if opts.Address == "" {
-		return errors.New("must provide rpc address")
-	}
-	if opts.TLSConf == nil && (opts.CAFile == "") != (opts.CrtFile == "") != (opts.KeyFile == "") {
-		return errors.New("must provide all or none of the required certificate filenames")
-	}
+	catcher := grip.NewBasicCatcher()
 
-	return nil
+	catcher.AddWhen(opts.Address == "", errors.New("must provide rpc address"))
+	catcher.AddWhen(
+		((opts.CAFile == "") != (opts.CrtFile == "")) || ((opts.CAFile == "") != (opts.KeyFile == "")),
+		errors.New("must provide all or none of the required certificate filenames"),
+	)
+	catcher.AddWhen((opts.Username == "") != (opts.APIKey == ""), errors.New("must provide both a username and API key or neither"))
+	catcher.AddWhen(
+		(opts.Username != "" || opts.APIKey != "") && (opts.APIUserHeader == "" || opts.APIKeyHeader == ""),
+		errors.New("must provide an API user header and key header when providing a username and API key"),
+	)
+
+	return catcher.Resolve()
 }
 
 func (opts *DialOptions) getOpts() ([]grpc.DialOption, error) {
@@ -64,11 +83,23 @@ func (opts *DialOptions) getOpts() ([]grpc.DialOption, error) {
 		var err error
 		tlsConf, err = GetClientTLSConfigFromFiles(opts.CAFile, opts.CrtFile, opts.KeyFile)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem getting client TLS config")
+			return nil, errors.Wrap(err, "getting client TLS config")
 		}
 	}
 	if tlsConf != nil {
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+	} else {
+		dialOpts = append(dialOpts, grpc.WithInsecure())
+	}
+
+	if opts.Username != "" {
+		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(&userAuth{
+			username:   opts.Username,
+			apiKey:     opts.APIKey,
+			userHeader: opts.APIUserHeader,
+			keyHeader:  opts.APIKeyHeader,
+			tls:        tlsConf != nil,
+		}))
 	}
 
 	return dialOpts, nil
@@ -78,9 +109,25 @@ func (opts *DialOptions) getOpts() ([]grpc.DialOption, error) {
 func Dial(ctx context.Context, opts DialOptions) (*grpc.ClientConn, error) {
 	dialOpts, err := opts.getOpts()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting gRPC dial options")
+		return nil, errors.Wrap(err, "getting gRPC dial options")
 	}
 
 	conn, err := grpc.DialContext(ctx, opts.Address, dialOpts...)
-	return conn, errors.Wrap(err, "problem dialing rpc")
+	return conn, errors.Wrap(err, "dialing rpc")
+}
+
+type userAuth struct {
+	username   string
+	apiKey     string
+	userHeader string
+	keyHeader  string
+	tls        bool
+}
+
+func (a *userAuth) RequireTransportSecurity() bool { return a.tls }
+func (a *userAuth) GetRequestMetadata(ctx context.Context, in ...string) (map[string]string, error) {
+	return map[string]string{
+		a.userHeader: a.username,
+		a.keyHeader:  a.apiKey,
+	}, nil
 }
