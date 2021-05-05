@@ -34,8 +34,6 @@ func init() {
 type hostAllocatorJob struct {
 	DistroID string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-
-	env evergreen.Environment
 }
 
 func makeHostAllocatorJob() *hostAllocatorJob {
@@ -53,21 +51,18 @@ func makeHostAllocatorJob() *hostAllocatorJob {
 	return job
 }
 
-func NewHostAllocatorJob(env evergreen.Environment, distroID string, timestamp time.Time) amboy.Job {
-	job := makeHostAllocatorJob()
-	job.DistroID = distroID
-	job.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
-	job.env = env
+func NewHostAllocatorJob(distroID string, timestamp time.Time) amboy.Job {
+	j := makeHostAllocatorJob()
+	j.DistroID = distroID
+	j.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
+	j.SetScopes([]string{"%s.%s", hostAllocatorJobName, distroID})
+	j.SetShouldApplyScopesOnEnqueue(true)
 
-	return job
+	return j
 }
 
 func (j *hostAllocatorJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
 
 	config, err := evergreen.GetConfig()
 	if err != nil {
