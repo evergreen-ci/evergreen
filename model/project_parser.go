@@ -143,7 +143,8 @@ func (pp *ParserProject) MarshalYAML() (interface{}, error) {
 		}
 	}
 
-	return pp, nil
+	// returning a pointer causes MarshalYAML to get stuck in infinite recursion
+	return *pp, nil
 }
 
 type displayTask struct {

@@ -1464,8 +1464,8 @@ tasks:
   - command: myCommand
     params:
       env:
-        ${MY_KEY}: my-value
-        ${MY_NUMS}: [1,2,3]
+        key: ${my_value}
+        list_key: [1,2,3]
     loggers:
       system:
        - type: commandLogger
@@ -1520,7 +1520,6 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 
 	yamlToCompare, err := yaml.Marshal(pp)
 	assert.NoError(t, err)
-	//fmt.Println(string(yamlToCompare))
 	assert.NoError(t, pp.TryUpsert())
 
 	newPP, err := ParserProjectFindOneById(pp.Id)
