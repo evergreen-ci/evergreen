@@ -50,8 +50,9 @@ func NewDistroSchedulerJob(env evergreen.Environment, distroID string, ts time.T
 	j := makeDistroSchedulerJob()
 	j.DistroID = distroID
 	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerJobName, distroID, ts.Format(TSFormat)))
+	j.SetScopes([]string{"%s.%s", schedulerJobName, distroID})
+	j.SetShouldApplyScopesOnEnqueue(true)
 
-	j.env = env
 	return j
 }
 
@@ -72,10 +73,6 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 			"job_type": j.Type().Name,
 		})
 		return
-	}
-
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
 	}
 
 	settings, err := evergreen.GetConfig()
