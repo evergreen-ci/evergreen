@@ -109,11 +109,12 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 
 func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Host, drawdownTarget *int) error {
 
-	_, idleTime, err := j.getTimesFromHost(ctx, h)
-
-	if err != nil {
-		return errors.Wrapf(err, "error getting communication and idle time from '%s'", h.Id)
+	exitEarly, err := j.checkTerminationExemptions(ctx, h)
+	if exitEarly {
+		return err
 	}
+
+	idleTime := h.IdleTime()
 
 	idleThreshold := idleTimeDrawdownCutoff
 	if h.RunningTaskGroup != "" {

@@ -167,11 +167,13 @@ func (j *idleHostJob) Run(ctx context.Context) {
 
 func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) error {
 
-	communicationTime, idleTime, err := j.getTimesFromHost(ctx, h)
-
-	if err != nil {
-		return errors.Wrapf(err, "error getting communication and idle time from '%s'", h.Id)
+	exitEarly, err := j.checkTerminationExemptions(ctx, h)
+	if exitEarly {
+		return err
 	}
+
+	idleTime := h.IdleTime()
+	communicationTime := h.GetElapsedCommunicationTime()
 
 	idleThreshold := idleTimeCutoff
 	if h.RunningTaskGroup != "" {
@@ -194,7 +196,9 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	return nil
 }
 
-func (j *idleHostJob) getTimesFromHost(ctx context.Context, h *host.Host) (time.Duration, time.Duration, error) {
+//checkTerminationExemptions checks if some conditions apply where we shouldn't terminate an idle host,
+//and returns true if some exemption applies
+func (j *idleHostJob) checkTerminationExemptions(ctx context.Context, h *host.Host) (bool, error) {
 	if !h.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
@@ -205,7 +209,7 @@ func (j *idleHostJob) getTimesFromHost(ctx context.Context, h *host.Host) (time.
 			"message":  "host termination for a non-ephemeral distro",
 			"cause":    "programmer error",
 		})
-		return 0, 0, errors.New("attempted to terminate non-ephemeral host")
+		return true, fmt.Errorf("attempted to terminate non-ephemeral host '%s'", h.Id)
 	}
 
 	// ask the host how long it has been idle
@@ -224,25 +228,25 @@ func (j *idleHostJob) getTimesFromHost(ctx context.Context, h *host.Host) (time.
 			"idle":              idleTime.String(),
 			"last_communicated": communicationTime.String(),
 		})
-		return 0, 0, nil
+		return true, nil
 	}
 
 	// get a cloud manager for the host
 	mgrOpts, err := cloud.GetManagerOptions(h.Distro)
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "can't get ManagerOpts for host '%s'", h.Id)
+		return true, errors.Wrapf(err, "can't get ManagerOpts for host '%s'", h.Id)
 	}
 	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "error getting cloud manager for host %v", h.Id)
+		return true, errors.Wrapf(err, "error getting cloud manager for host %v", h.Id)
 	}
 
 	// ask how long until the next payment for the host
 	tilNextPayment := manager.TimeTilNextPayment(h)
 
 	if tilNextPayment > maxTimeTilNextPayment {
-		return 0, 0, nil
+		return true, nil
 	}
 
-	return communicationTime, idleTime, nil
+	return false, nil
 }
