@@ -1115,11 +1115,11 @@ func PopulatePeriodicBuilds() amboy.QueueOperation {
 			for _, definition := range project.PeriodicBuilds {
 				// schedule the job if we want it to start before the next time this cron runs
 				if time.Now().Add(15 * time.Minute).After(definition.NextRunTime) {
-					catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Id, definition.ID)))
+					catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPeriodicBuildJob(project.Id, definition.ID)), "project '%s' with periodic build definition '%s'", project.Id, definition.ID)
 				}
 			}
 		}
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "populating periodic build jobs")
 	}
 }
 
@@ -1136,7 +1136,7 @@ func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 		for _, h := range hosts {
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewUserDataDoneJob(env, h.Id, ts)), "host '%s'", h.Id)
 		}
-		return catcher.Resolve()
+		return errors.Wrap(catcher.Resolve(), "populating check user data done jobs")
 	}
 }
 
