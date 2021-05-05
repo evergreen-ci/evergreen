@@ -3465,8 +3465,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	updates := StatusChanges{}
-	assert.NoError(t, MarkEnd(&task1, "test", time.Now(), detail, false, &updates))
+	assert.NoError(t, MarkEnd(&task1, "test", time.Now(), detail, false))
 	newTask, err := task.FindOneId(task1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, newTask.Status)
