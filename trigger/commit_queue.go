@@ -3,9 +3,8 @@ package trigger
 import (
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -96,7 +95,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 	}
 	projectName := t.patch.Project
 	identifier, err := model.GetIdentifierForProject(t.patch.Project)
-	if err != nil && identifier != "" {
+	if err == nil && identifier != "" {
 		projectName = identifier
 	}
 	data := commonTemplateData{
