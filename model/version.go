@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -38,6 +39,10 @@ type Version struct {
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
 
+	// This stores whether or not a version has tasks which were activated.
+	// We use a bool ptr in order to to distinguish the unset value from the default value
+	Activated *bool `bson:"activated,omitempty" json:"activated,omitempty"`
+
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
 	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
 	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag,omitempty"`
@@ -59,6 +64,7 @@ type Version struct {
 
 	// child patches will store the id of the parent patch
 	ParentPatchID string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
+
 	// version errors - this is used to keep track of any errors that were
 	// encountered in the process of creating a version. If there are no errors
 	// this field is omitted in the database
@@ -117,8 +123,40 @@ func (self *Version) UpdateBuildVariants() error {
 	)
 }
 
+func (self *Version) SetActivated() error {
+	if utility.FromBoolPtr(self.Activated) {
+		return nil
+	}
+	self.Activated = utility.TruePtr()
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionActivatedKey: true,
+			},
+		},
+	)
+}
+
 func (self *Version) Insert() error {
 	return db.Insert(VersionCollection, self)
+}
+
+func (v *Version) IsChild() bool {
+	return v.ParentPatchID != ""
+}
+
+func (v *Version) GetParentVersion() (*Version, error) {
+	if v.ParentPatchID == "" {
+		return nil, errors.Errorf("Version '%v's ParentPatchID is nil", v.Id)
+	}
+	parentVersion, err := VersionFindOne(VersionById(v.ParentPatchID))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	} else if parentVersion == nil {
+		return nil, errors.Errorf("Version '%v' not found", v.ParentPatchID)
+	}
+	return parentVersion, nil
 }
 
 func (v *Version) AddSatisfiedTrigger(definitionID string) error {

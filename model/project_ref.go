@@ -1475,11 +1475,31 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	return nil
 }
 
-func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, user string, token string) bool {
-	if utility.StringSliceContains(p.GitTagAuthorizedUsers, user) {
+func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser string, token string) bool {
+	if utility.StringSliceContains(p.GitTagAuthorizedUsers, githubUser) {
 		return true
 	}
-	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, user, token)
+	// check if user has permissions with mana before asking github about the teams
+	u, err := user.FindByGithubName(githubUser)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error checking if user is authorized for git tag",
+			"source":  "github hook",
+		}))
+	}
+	if u != nil {
+		hasPermission := u.HasPermission(gimlet.PermissionOpts{
+			Resource:      p.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionGitTagVersions,
+			RequiredLevel: evergreen.GitTagVersionsCreate.Value,
+		})
+		if hasPermission {
+			return true
+		}
+	}
+
+	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token)
 }
 
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands

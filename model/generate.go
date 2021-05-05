@@ -258,13 +258,20 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		}
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
+	projectRef, err := FindOneProjectRef(p.Identifier)
+	if err != nil {
+		return errors.Wrap(err, "unable to find project ref")
+	}
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", p.Identifier)
+	}
 
-	tasksInExistingBuilds, err := addNewTasks(ctx, batchTimeInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, g.TaskID)
+	tasksInExistingBuilds, err := addNewTasks(ctx, batchTimeInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, projectRef.Identifier, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := addNewBuilds(ctx, batchTimeInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, g.TaskID)
+	_, tasksInNewBuilds, err := addNewBuilds(ctx, batchTimeInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, projectRef, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}

@@ -132,7 +132,7 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 
 func GetRestartJasperCallback(ctx context.Context, env evergreen.Environment, username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
-		modifyErr := h.SetNeedsJasperRestart(username)
+		modifyErr := h.SetNeedsToRestartJasper(username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}

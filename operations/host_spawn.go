@@ -80,6 +80,7 @@ func hostCreate() cli.Command {
 				Usage: "name of a json or yaml file containing the spawn host params",
 			},
 		},
+		Before: requireStringFlag(keyFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			distro := c.String(distroFlagName)

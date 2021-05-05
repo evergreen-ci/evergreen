@@ -197,10 +197,10 @@ func TestGenerateTasks(t *testing.T) {
 		require.NoError(d.Insert())
 	}
 	require.NoError(sampleTask.Insert())
-	projectRef := model.ProjectRef{Id: "mci"}
+	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
 	require.NoError(projectRef.Insert())
 
-	j := NewGenerateTasksJob("sample_task", "1")
+	j := NewGenerateTasksJob(sampleTask)
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 	tasks := []task.Task{}
@@ -250,7 +250,7 @@ func TestGenerateTasks(t *testing.T) {
 
 	b, err := build.FindOneId("sample_build_id")
 	assert.NoError(err)
-	assert.Equal("mci_race_detector_display_my_display_task__01_01_01_00_00_00", b.Tasks[0].Id)
+	assert.Equal("mci_identifier_race_detector_display_my_display_task__01_01_01_00_00_00", b.Tasks[0].Id)
 }
 
 func TestParseProjects(t *testing.T) {
@@ -356,7 +356,7 @@ buildvariants:
 	projectRef := model.ProjectRef{Id: "mci"}
 	require.NoError(projectRef.Insert())
 
-	j := NewGenerateTasksJob("generator", "1")
+	j := NewGenerateTasksJob(sampleTask)
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 
@@ -386,7 +386,7 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	}
 	require.NoError(t, sampleTask.Insert())
 
-	j := NewGenerateTasksJob(sampleTask.Id, "1")
+	j := NewGenerateTasksJob(sampleTask)
 	j.Run(context.Background())
 	assert.Error(t, j.Error())
 	dbTask, err := task.FindOneId(sampleTask.Id)

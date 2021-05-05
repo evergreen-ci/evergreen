@@ -942,6 +942,21 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
+	tasks, _, err := r.sc.FindTasksByVersion(id, failedAndAbortedStatuses, []string{}, "", "", 0, 0, []string{task.DisplayStatusKey}, []task.TasksSortOrder{})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+	}
+	statuses := getAllTaskStatuses(tasks)
+
+	// If theres an aborted task we should set the patch status to aborted if there are no other failures
+	if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
+		if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
+			abortedStatus := evergreen.TaskAborted
+			patch.Status = &abortedStatus
+		}
+	}
+
 	return patch, nil
 }
 

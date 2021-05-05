@@ -31,15 +31,19 @@ var (
 
 func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection),
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection),
 			"Error clearing task and build collections")
 		var err error
 
 		displayName := "testName"
 		userName := "testUser"
 		testTime := time.Now()
+		v := &Version{
+			Id: "version",
+		}
 		b := &build.Build{
-			Id: "buildtest",
+			Id:      "buildtest",
+			Version: "version",
 		}
 		testTask := &task.Task{
 			Id:            "testone",
@@ -48,13 +52,14 @@ func TestSetActiveState(t *testing.T) {
 			Activated:     false,
 			BuildId:       b.Id,
 			DistroId:      "arch",
+			Version:       "version",
 		}
 		b.Tasks = []build.TaskCache{{Id: testTask.Id}}
 
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
-
-		Convey("activating the task should set the task state to active", func() {
+		So(v.Insert(), ShouldBeNil)
+		Convey("activating the task should set the task state to active and mark the version as activated", func() {
 			So(SetActiveState(testTask, "randomUser", true), ShouldBeNil)
 			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -65,7 +70,9 @@ func TestSetActiveState(t *testing.T) {
 			testBuild, err = build.FindOneId(b.Id)
 			So(err, ShouldBeNil)
 			So(testBuild.Tasks[0].Activated, ShouldBeTrue)
-
+			version, err := VersionFindOneId(testTask.Version)
+			So(err, ShouldBeNil)
+			So(utility.FromBoolPtr(version.Activated), ShouldBeTrue)
 			Convey("deactivating an active task as a normal user should deactivate the task", func() {
 				So(SetActiveState(testTask, userName, false), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
@@ -145,7 +152,7 @@ func TestSetActiveState(t *testing.T) {
 		})
 	})
 	Convey("With one task has tasks it depends on", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
 			"Error clearing task and build collections")
 		displayName := "testName"
 		userName := "testUser"
@@ -153,19 +160,25 @@ func TestSetActiveState(t *testing.T) {
 		taskId := "t1"
 		buildId := "b1"
 		distroId := "d1"
-
+		v := &Version{
+			Id:     "version",
+			Status: evergreen.VersionStarted,
+		}
 		dep1 := &task.Task{
 			Id:            "t2",
 			ScheduledTime: testTime,
 			BuildId:       buildId,
 			DistroId:      distroId,
+			Version:       "version",
 		}
 		dep2 := &task.Task{
 			Id:            "t3",
 			ScheduledTime: testTime,
 			BuildId:       buildId,
 			DistroId:      distroId,
+			Version:       "version",
 		}
+		So(v.Insert(), ShouldBeNil)
 		So(dep1.Insert(), ShouldBeNil)
 		So(dep2.Insert(), ShouldBeNil)
 
@@ -185,6 +198,7 @@ func TestSetActiveState(t *testing.T) {
 					Status: evergreen.TaskSucceeded,
 				},
 			},
+			Version: "version",
 		}
 
 		b := &build.Build{
@@ -236,6 +250,7 @@ func TestSetActiveState(t *testing.T) {
 			Tasks: []build.TaskCache{
 				{Id: "displayTask", Activated: false, Status: evergreen.TaskUndispatched},
 			},
+			Version: "version",
 		}
 		So(b.Insert(), ShouldBeNil)
 		dt := &task.Task{
@@ -246,6 +261,7 @@ func TestSetActiveState(t *testing.T) {
 			DisplayOnly:    true,
 			ExecutionTasks: []string{"execTask"},
 			DistroId:       "arch",
+			Version:        "version",
 		}
 		So(dt.Insert(), ShouldBeNil)
 		t1 := &task.Task{
@@ -253,6 +269,7 @@ func TestSetActiveState(t *testing.T) {
 			Activated: false,
 			BuildId:   b.Id,
 			Status:    evergreen.TaskUndispatched,
+			Version:   "version",
 		}
 		So(t1.Insert(), ShouldBeNil)
 		Convey("that should not restart", func() {
@@ -290,7 +307,8 @@ func TestActivatePreviousTask(t *testing.T) {
 		// create two tasks
 		displayName := "testTask"
 		b := &build.Build{
-			Id: "testBuild",
+			Id:      "testBuild",
+			Version: "version",
 		}
 		previousTask := &task.Task{
 			Id:                  "one",
@@ -300,6 +318,7 @@ func TestActivatePreviousTask(t *testing.T) {
 			Activated:           false,
 			BuildId:             b.Id,
 			DistroId:            "arch",
+			Version:             "version",
 		}
 		currentTask := &task.Task{
 			Id:                  "two",
@@ -310,6 +329,7 @@ func TestActivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			BuildId:             b.Id,
 			DistroId:            "arch",
+			Version:             "version",
 		}
 		tc := []build.TaskCache{
 			{
@@ -2349,6 +2369,16 @@ func TestStepback(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
 		"Error clearing task and build collections")
+
+	v1 := &Version{
+		Id: "v1",
+	}
+	v2 := &Version{
+		Id: "v2",
+	}
+	v3 := &Version{
+		Id: "v3",
+	}
 	b1 := &build.Build{
 		Id:        "build1",
 		Status:    evergreen.BuildStarted,
@@ -2379,6 +2409,7 @@ func TestStepback(t *testing.T) {
 		Status:              evergreen.TaskSucceeded,
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v1",
 	}
 	t2 := &task.Task{
 		Id:                  "t2",
@@ -2392,6 +2423,7 @@ func TestStepback(t *testing.T) {
 		Status:              evergreen.TaskInactive,
 		RevisionOrderNumber: 2,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v2",
 	}
 	t3 := &task.Task{
 		Id:                  "t3",
@@ -2405,6 +2437,7 @@ func TestStepback(t *testing.T) {
 		Status:              evergreen.TaskFailed,
 		RevisionOrderNumber: 3,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v3",
 	}
 	dt1 := &task.Task{
 		Id:                  "dt1",
@@ -2420,6 +2453,7 @@ func TestStepback(t *testing.T) {
 		DisplayOnly:         true,
 		ExecutionTasks:      []string{"et1"},
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v1",
 	}
 	dt2 := &task.Task{
 		Id:                  "dt2",
@@ -2435,6 +2469,7 @@ func TestStepback(t *testing.T) {
 		DisplayOnly:         true,
 		ExecutionTasks:      []string{"et2"},
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v2",
 	}
 	dt3 := &task.Task{
 		Id:                  "dt3",
@@ -2450,6 +2485,7 @@ func TestStepback(t *testing.T) {
 		DisplayOnly:         true,
 		ExecutionTasks:      []string{"et3"},
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v3",
 	}
 	et1 := &task.Task{
 		Id:                  "et1",
@@ -2527,7 +2563,9 @@ func TestStepback(t *testing.T) {
 	assert.NoError(dt1.Insert())
 	assert.NoError(dt2.Insert())
 	assert.NoError(dt3.Insert())
-
+	assert.NoError(v1.Insert())
+	assert.NoError(v2.Insert())
+	assert.NoError(v3.Insert())
 	// test stepping back a regular task
 	assert.NoError(doStepback(t3))
 	dbTask, err := task.FindOne(task.ById(t2.Id))

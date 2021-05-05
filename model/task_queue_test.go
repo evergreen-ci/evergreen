@@ -538,7 +538,7 @@ func TestFindDistroTaskQueue(t *testing.T) {
 		},
 	}
 	taskQueueItems := []TaskQueueItem{
-		{Id: "a"},
+		{Id: "a", Dependencies: []string{"b"}},
 		{Id: "b"},
 		{Id: "c"},
 		{Id: "d"},
@@ -556,6 +556,7 @@ func TestFindDistroTaskQueue(t *testing.T) {
 	assert.Equal(distroID, taskQueueOut.Distro)
 	assert.Len(taskQueueOut.Queue, 8)
 	assert.Equal(taskQueueOut.DistroQueueInfo.Length, 8)
+	assert.Len(taskQueueOut.Queue[0].Dependencies, 1)
 	assert.Len(taskQueueOut.DistroQueueInfo.TaskGroupInfos, 1)
 	assert.Equal(taskQueueOut.DistroQueueInfo.TaskGroupInfos[0].Name, "taskGroupInfo1")
 	assert.Equal(taskQueueOut.DistroQueueInfo.TaskGroupInfos[0].Count, 8)

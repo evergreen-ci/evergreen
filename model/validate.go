@@ -42,8 +42,7 @@ func ValidateTask(taskId string, checkSecret bool, r *http.Request) (*task.Task,
 	if checkSecret {
 		secret := r.Header.Get(evergreen.TaskSecretHeader)
 		if secret != t.Secret {
-			return nil, http.StatusConflict, errors.Errorf("Wrong secret sent for task %s: Expected %s but got %s",
-				taskId, t.Secret, secret)
+			return nil, http.StatusConflict, errors.Errorf("Wrong secret sent for task '%s'", taskId)
 		}
 	}
 	return t, http.StatusOK, nil
