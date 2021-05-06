@@ -55,7 +55,7 @@ func NewHostAllocatorJob(distroID string, timestamp time.Time) amboy.Job {
 	j := makeHostAllocatorJob()
 	j.DistroID = distroID
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
-	j.SetScopes([]string{"%s.%s", hostAllocatorJobName, distroID})
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostAllocatorJobName, distroID)})
 	j.SetShouldApplyScopesOnEnqueue(true)
 
 	return j
