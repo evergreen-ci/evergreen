@@ -426,6 +426,7 @@ type PatchTasks {
   count: Int!
 }
 
+# TODO: Rename this to a more generic name in THIS PR
 type PatchBuildVariant {
   variant: String!
   displayName: String!
