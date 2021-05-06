@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
@@ -302,10 +303,14 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 			Retries:     10,
 		}
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
+		catcher.Wrap(err, "creating cedar grpc client connection without TLS")
+
+		healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
+		_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
 		if err == nil {
 			return nil
 		}
-		catcher.Add(errors.Wrap(err, "creating cedar grpc client connection without TLS"))
+		catcher.Wrap(err, "checking health without TLS")
 
 		// Try again, this time with TLS.
 		dialOpts.TLS = true
@@ -313,7 +318,7 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 		if err == nil {
 			return nil
 		}
-		catcher.Add(errors.Wrap(err, "creating cedar grpc client connection with TLS"))
+		catcher.Wrap(err, "creating cedar grpc client connection with TLS")
 
 		return catcher.Resolve()
 	}
