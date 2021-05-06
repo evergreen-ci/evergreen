@@ -824,7 +824,7 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, []string{}, []string{}, []string{}, "", 0, 0, []string{task.DisplayStatusKey}, defaultSort)
+	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, []string{}, []string{}, []string{}, []string{}, 0, 0, []string{task.DisplayStatusKey}, defaultSort)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
@@ -943,7 +943,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-	tasks, _, err := r.sc.FindTasksByVersion(id, failedAndAbortedStatuses, []string{}, []string{}, "", 0, 0, []string{task.DisplayStatusKey}, []task.TasksSortOrder{})
+	tasks, _, err := r.sc.FindTasksByVersion(id, failedAndAbortedStatuses, []string{}, []string{}, []string{}, 0, 0, []string{task.DisplayStatusKey}, []task.TasksSortOrder{})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
 	}
@@ -1151,7 +1151,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
-	tasks, count, err := r.sc.FindTasksByVersion(patchID, statuses, baseStatuses, []string{variantParam}, taskNameParam, pageParam, limitParam, []string{}, taskSorts)
+	tasks, count, err := r.sc.FindTasksByVersion(patchID, statuses, baseStatuses, []string{variantParam}, []string{taskNameParam}, pageParam, limitParam, []string{}, taskSorts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
@@ -2520,7 +2520,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			defaultSort := []task.TasksSortOrder{
 				{Key: task.DisplayNameKey, Order: 1},
 			}
-			tasks, _, err := r.sc.FindTasksByVersion(v.Id, []string{}, []string{}, []string{}, "", 0, 0, []string{}, defaultSort)
+			tasks, _, err := r.sc.FindTasksByVersion(v.Id, []string{}, []string{}, []string{}, []string{}, 0, 0, []string{}, defaultSort)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", v.Id, err.Error()))
 			}

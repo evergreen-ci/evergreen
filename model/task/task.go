@@ -2702,7 +2702,7 @@ type TasksSortOrder struct {
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variants []string, taskName string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
+func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variants []string, taskNames []string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
 	var match bson.M = bson.M{}
 
 	// Allow searching by either variant name or variant display
@@ -2716,8 +2716,9 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			},
 		}
 	}
-	if len(taskName) > 0 {
-		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
+	if len(taskNames) > 0 {
+		taskNamesAsRegex := strings.Join(taskNames[:], "|")
+		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	match[VersionKey] = versionID
 	const tempParentKey = "_parent"
@@ -2799,9 +2800,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		})
 	}
 	countPipeline := []bson.M{}
-	for _, stage := range pipeline {
-		countPipeline = append(countPipeline, stage)
-	}
+	countPipeline = append(countPipeline, pipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	sortFields := bson.D{}
