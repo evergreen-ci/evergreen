@@ -297,7 +297,6 @@ func MockConfig() *evergreen.Settings {
 			GithubStatusAPIDisabled:       true,
 			BackgroundReauthDisabled:      true,
 			AmboyRemoteManagementDisabled: true,
-			AmboyRetriesDisabled:          true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

@@ -31,7 +31,6 @@ type ServiceFlags struct {
 	BackgroundReauthDisabled      bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled     bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	AmboyRemoteManagementDisabled bool `bson:"amboy_remote_management_disabled" json:"amboy_remote_management_disabled"`
-	AmboyRetriesDisabled          bool `bson:"amboy_retries_disabled" json:"amboy_retries_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -99,7 +98,6 @@ func (c *ServiceFlags) Set() error {
 			backgroundCleanupDisabledKey:     c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:      c.BackgroundReauthDisabled,
 			amboyRemoteManagementDisabledKey: c.AmboyRemoteManagementDisabled,
-			amboyRetriesDisabledKey:          c.AmboyRetriesDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 
