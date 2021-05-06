@@ -22,7 +22,6 @@ func TestCedar(t *testing.T) {
 	conf.Cedar.BaseURL = "cedar.mongodb.com"
 	conf.Cedar.RPCPort = "7070"
 	conf.Cedar.User = "user"
-	conf.Cedar.Password = "pass"
 	conf.Cedar.APIKey = "api_key"
 	queue := evergreen.GetEnvironment().LocalQueue()
 	as, err := NewAPIServer(evergreen.GetEnvironment(), queue)
@@ -58,6 +57,5 @@ func TestCedar(t *testing.T) {
 	assert.Equal(t, "cedar.mongodb.com", cc.BaseURL)
 	assert.Equal(t, "7070", cc.RPCPort)
 	assert.Equal(t, "user", cc.Username)
-	assert.Equal(t, "pass", cc.Password)
 	assert.Equal(t, "api_key", cc.APIKey)
 }

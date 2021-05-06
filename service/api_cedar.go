@@ -12,7 +12,6 @@ func (as *APIServer) Cedar(w http.ResponseWriter, r *http.Request) {
 		BaseURL:  as.Settings.Cedar.BaseURL,
 		RPCPort:  as.Settings.Cedar.RPCPort,
 		Username: as.Settings.Cedar.User,
-		Password: as.Settings.Cedar.Password,
 		APIKey:   as.Settings.Cedar.APIKey,
 	})
 }

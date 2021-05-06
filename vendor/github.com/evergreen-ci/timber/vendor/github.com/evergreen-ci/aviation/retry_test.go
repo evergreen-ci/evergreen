@@ -67,7 +67,7 @@ func TestMakeUnaryClientInterceptor(t *testing.T) {
 			expectedMaxTime:  1000 * time.Millisecond,
 		},
 		{
-			name: "RetrySucess",
+			name: "RetrySuccess",
 			grpcCodes: []codes.Code{
 				codes.Unknown,
 				codes.ResourceExhausted,

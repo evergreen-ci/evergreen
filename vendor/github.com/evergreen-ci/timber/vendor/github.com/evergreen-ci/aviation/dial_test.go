@@ -39,6 +39,45 @@ func TestDial(t *testing.T) {
 			hasErr: true,
 		},
 		{
+			name: "MissingCA",
+			opts: DialOptions{
+				Address: "rpcAddress",
+				Retries: 10,
+				CrtFile: filepath.Join("testdata", "user.crt"),
+				KeyFile: filepath.Join("testdata", "user.key"),
+			},
+			hasErr: true,
+		},
+		{
+			name: "UsernameAndAPIKeyNoAPIUserHeader",
+			opts: DialOptions{
+				Address:      "rpcAddress",
+				Username:     "username",
+				APIKey:       "apikey",
+				APIKeyHeader: "api-key",
+			},
+			hasErr: true,
+		},
+		{
+			name: "UsernameAndAPIKeyNoAPIKeyHeader",
+			opts: DialOptions{
+				Address:       "rpcAddress",
+				Username:      "username",
+				APIKey:        "apikey",
+				APIUserHeader: "api-user",
+			},
+			hasErr: true,
+		},
+		{
+			name: "UsernameAndAPIKeyNoHeaders",
+			opts: DialOptions{
+				Address:  "rpcAddress",
+				Username: "username",
+				APIKey:   "apikey",
+			},
+			hasErr: true,
+		},
+		{
 			name: "CertFiles",
 			opts: DialOptions{
 				Address: "rpcAddress",
@@ -53,6 +92,36 @@ func TestDial(t *testing.T) {
 			opts: DialOptions{
 				Address: "rpcAddress",
 				TLSConf: tlsConf,
+			},
+			expectedOpts: 1,
+		},
+		{
+			name: "UsernameAndAPIKeyWithTLS",
+			opts: DialOptions{
+				Address:       "rpcAddress",
+				TLSConf:       tlsConf,
+				Username:      "username",
+				APIKey:        "apikey",
+				APIUserHeader: "api-user",
+				APIKeyHeader:  "api-key",
+			},
+			expectedOpts: 2,
+		},
+		{
+			name: "UsernameAndAPIKeyNoTLS",
+			opts: DialOptions{
+				Address:       "rpcAddress",
+				Username:      "username",
+				APIKey:        "apikey",
+				APIUserHeader: "api-user",
+				APIKeyHeader:  "api-key",
+			},
+			expectedOpts: 2,
+		},
+		{
+			name: "NoAuth",
+			opts: DialOptions{
+				Address: "rpcAddress",
 			},
 			expectedOpts: 1,
 		},
