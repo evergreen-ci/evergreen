@@ -970,7 +970,7 @@ type Note {
 type IssueLink {
   issueKey: String
   url: String
-  source: Source!
+  source: Source
   jiraTicket: JiraTicket
 }
 
