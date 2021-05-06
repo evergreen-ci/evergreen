@@ -604,7 +604,10 @@ func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) er
 	h.IP = gimlet.GetVars(r)["ip_address"]
 
 	if h.IP == "" {
-		return errors.New("missing ip_address to query by")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "ip_address cannot be empty",
+		}
 	}
 
 	return nil
@@ -613,7 +616,7 @@ func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) er
 func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
 	host, err := h.sc.FindHostByIpAddress(h.IP)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error fetching host information by ip_address"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error fetching host information for '%s'", h.IP))
 	}
 	if host == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
