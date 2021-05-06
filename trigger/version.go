@@ -105,13 +105,17 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	if err := api.BuildFromService(t.version); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
+	projectName := t.version.Identifier
+	if api.ProjectIdentifier != nil {
+		projectName = utility.FromStringPtr(api.ProjectIdentifier)
+	}
 	data := commonTemplateData{
 		ID:                t.version.Id,
 		EventID:           t.event.ID,
 		SubscriptionID:    sub.ID,
 		DisplayName:       t.version.Id,
 		Object:            event.ObjectVersion,
-		Project:           t.version.Identifier,
+		Project:           projectName,
 		URL:               versionLink(t.uiConfig.Url, t.version.Id, evergreen.IsPatchRequester(t.version.Requester)),
 		PastTenseStatus:   t.data.Status,
 		apiModel:          &api,

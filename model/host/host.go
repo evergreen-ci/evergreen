@@ -1328,34 +1328,12 @@ func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
 	return nil
 }
 
-// SetNeedsNewAgentAtomically sets the "needs new agent" flag on the host atomically.
-func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
-	err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentKey: !needsAgent},
-		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
-	if err != nil {
-		return err
-	}
-	h.NeedsNewAgent = needsAgent
-	return nil
-}
-
 // SetNeedsNewAgentMonitor sets the "needs new agent monitor" flag on the host
 // to indicate that the host needs to have the agent monitor deployed.
 func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
 	err := UpdateOne(bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}})
 	if err != nil {
-		return err
-	}
-	h.NeedsNewAgentMonitor = needsAgentMonitor
-	return nil
-}
-
-// SetNeedsNewAgentMonitorAtomically is the same as SetNeedsNewAgentMonitor but
-// performs an atomic update on the host in the database.
-func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
-	if err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentMonitorKey: !needsAgentMonitor},
-		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}}); err != nil {
 		return err
 	}
 	h.NeedsNewAgentMonitor = needsAgentMonitor

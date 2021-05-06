@@ -48,7 +48,9 @@ func makeVolumeExpirationCheckJob() *volumeExpirationCheckJob {
 
 func NewVolumeExpirationCheckJob(ts string, v *host.Volume, provider string) amboy.Job {
 	j := makeVolumeExpirationCheckJob()
-	j.SetID(fmt.Sprintf("%s.%s", volumeExpirationCheckName, ts))
+	j.SetID(fmt.Sprintf("%s.%s.%s", volumeExpirationCheckName, v.ID, ts))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", volumeExpirationCheckName, v.ID)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 	j.VolumeID = v.ID
 	j.Provider = provider
 

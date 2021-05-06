@@ -644,7 +644,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	// legacy routes.
 	app.Route().Version(2).Route("/agent/setup").Wrap(checkHost).Handler(as.agentSetup).Get()
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
-	app.Route().Version(2).Route("/agent/buildlogger_info").Wrap(checkHost).Handler(as.Cedar).Get()
 	app.Route().Version(2).Route("/agent/cedar_config").Wrap(checkHost).Handler(as.Cedar).Get()
 	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/start").Wrap(checkTaskSecret, checkHost).Handler(as.StartTask).Post()

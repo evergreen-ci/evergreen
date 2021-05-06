@@ -282,6 +282,10 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 	if err := api.BuildFromService(*t.build); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
+	projectName := t.build.Project
+	if api.ProjectIdentifier != nil {
+		projectName = utility.FromStringPtr(api.ProjectIdentifier)
+	}
 
 	data := commonTemplateData{
 		ID:              t.build.Id,
@@ -289,7 +293,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		SubscriptionID:  sub.ID,
 		DisplayName:     t.build.DisplayName,
 		Object:          event.ObjectBuild,
-		Project:         t.build.Project,
+		Project:         projectName,
 		URL:             buildLink(t.uiConfig.Url, t.build.Id, evergreen.IsPatchRequester(t.build.Requester)),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,

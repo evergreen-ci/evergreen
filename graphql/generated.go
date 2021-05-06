@@ -5677,7 +5677,7 @@ type Note {
 type IssueLink {
   issueKey: String
   url: String
-  source: Source!
+  source: Source
   jiraTicket: JiraTicket
 }
 
@@ -11322,14 +11322,11 @@ func (ec *executionContext) _IssueLink_source(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.APISource)
 	fc.Result = res
-	return ec.marshalNSource2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx, field.Selections, res)
+	return ec.marshalOSource2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _IssueLink_jiraTicket(ctx context.Context, field graphql.CollectedField, obj *model.APIIssueLink) (ret graphql.Marshaler) {
@@ -26425,9 +26422,6 @@ func (ec *executionContext) _IssueLink(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._IssueLink_url(ctx, field, obj)
 		case "source":
 			out.Values[i] = ec._IssueLink_source(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "jiraTicket":
 			out.Values[i] = ec._IssueLink_jiraTicket(ctx, field, obj)
 		default:
@@ -32799,6 +32793,17 @@ func (ec *executionContext) unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreen�
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOSource2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx context.Context, sel ast.SelectionSet, v model.APISource) graphql.Marshaler {
+	return ec._Source(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOSource2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISource(ctx context.Context, sel ast.SelectionSet, v *model.APISource) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Source(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOSpawnHostInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostInput(ctx context.Context, v interface{}) (SpawnHostInput, error) {

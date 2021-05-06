@@ -52,37 +52,32 @@ func makeCheckBlockedTasksJob() *checkBlockedTasksJob {
 // should track push events. We want to limit this job to once an hour for each distro.
 func NewCheckBlockedTasksJob(distroId string, ts time.Time) amboy.Job {
 	job := makeCheckBlockedTasksJob()
+	job.DistroId = distroId
 	job.SetID(fmt.Sprintf("%s:%s:%s", checkBlockedTasks, distroId, ts))
 	return job
 }
 
 func (j *checkBlockedTasksJob) Run(ctx context.Context) {
-	queue, err := model.LoadTaskQueue(j.DistroId)
+	queue, err := model.FindDistroTaskQueue(j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting task queue for distro '%s'", j.DistroId))
 	}
-	aliasQueue, err := model.LoadDistroAliasTaskQueue(j.DistroId)
+	aliasQueue, err := model.FindDistroAliasTaskQueue(j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting alias task queue for distro '%s'", j.DistroId))
 	}
 	taskIds := []string{}
-	lenQueue := -1
-	lenAliasQueue := -1
-	if queue != nil {
-		lenQueue = len(queue.Queue)
-		for _, item := range queue.Queue {
-			if !item.IsDispatched && len(item.Dependencies) > 0 {
-				taskIds = append(taskIds, item.Id)
-			}
+	lenQueue := len(queue.Queue)
+	for _, item := range queue.Queue {
+		if !item.IsDispatched && len(item.Dependencies) > 0 {
+			taskIds = append(taskIds, item.Id)
 		}
 	}
 
-	if aliasQueue != nil {
-		lenAliasQueue = len(aliasQueue.Queue)
-		for _, item := range aliasQueue.Queue {
-			if !item.IsDispatched && len(item.Dependencies) > 0 {
-				taskIds = append(taskIds, item.Id)
-			}
+	lenAliasQueue := len(aliasQueue.Queue)
+	for _, item := range aliasQueue.Queue {
+		if !item.IsDispatched && len(item.Dependencies) > 0 {
+			taskIds = append(taskIds, item.Id)
 		}
 	}
 

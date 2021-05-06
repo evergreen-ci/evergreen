@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
@@ -154,17 +155,17 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, td TaskData, c
 
 	exec, senders, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making agent logger")
+		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
 	task, senders, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making task logger")
+		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
 	system, senders, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making system logger")
+		return nil, errors.Wrap(err, "making system logger")
 	}
 	underlying = append(underlying, senders...)
 
@@ -200,7 +201,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 		case model.FileLogSender:
 			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error creating file logger")
+				return nil, nil, errors.Wrap(err, "creating file logger")
 			}
 
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
@@ -212,7 +213,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error creating splunk logger")
+				return nil, nil, errors.Wrap(err, "creating splunk logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender = send.NewBufferedSender(newAnnotatedWrapper(td.ID, prefix, sender), bufferDuration, bufferSize)
@@ -226,7 +227,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error creating logkeeper logger")
+				return nil, nil, errors.Wrap(err, "creating logkeeper logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
@@ -245,11 +246,11 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 		case model.BuildloggerLogSender:
 			tk, err := c.GetTask(ctx, td)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error setting up buildlogger sender")
+				return nil, nil, errors.Wrap(err, "setting up buildlogger sender")
 			}
 
 			if err = c.createCedarGRPCConn(ctx); err != nil {
-				return nil, nil, errors.Wrap(err, "error setting up cedar grpc connection")
+				return nil, nil, errors.Wrap(err, "setting up cedar grpc connection")
 			}
 
 			timberOpts := &buildlogger.LoggerOptions{
@@ -268,7 +269,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = buildlogger.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error creating buildlogger logger")
+				return nil, nil, errors.Wrap(err, "creating buildlogger logger")
 			}
 		default:
 			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
@@ -288,21 +289,38 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 	if c.cedarGRPCClient == nil {
 		cc, err := c.GetCedarConfig(ctx)
 		if err != nil {
-			return errors.Wrap(err, "error setting up buildlogger sender")
+			return errors.Wrap(err, "getting cedar config")
 		}
 
+		// TODO (EVG-14557): Remove TLS dial option fallback once cedar
+		// gRPC is on api auth.
+		catcher := grip.NewBasicCatcher()
 		dialOpts := timber.DialCedarOptions{
 			BaseAddress: cc.BaseURL,
 			RPCPort:     cc.RPCPort,
 			Username:    cc.Username,
-			Password:    cc.Password,
 			APIKey:      cc.APIKey,
 			Retries:     10,
 		}
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
-		if err != nil {
-			return errors.Wrap(err, "error creating cedar grpc client connection")
+		catcher.Wrap(err, "creating cedar grpc client connection without TLS")
+
+		healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
+		_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
+		if err == nil {
+			return nil
 		}
+		catcher.Wrap(err, "checking health without TLS")
+
+		// Try again, this time with TLS.
+		dialOpts.TLS = true
+		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
+		if err == nil {
+			return nil
+		}
+		catcher.Wrap(err, "creating cedar grpc client connection with TLS")
+
+		return catcher.Resolve()
 	}
 
 	return nil

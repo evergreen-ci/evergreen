@@ -27,8 +27,6 @@ func init() {
 type distroSchedulerJob struct {
 	DistroID string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
-
-	env evergreen.Environment
 }
 
 func makeDistroSchedulerJob() *distroSchedulerJob {
@@ -50,8 +48,9 @@ func NewDistroSchedulerJob(env evergreen.Environment, distroID string, ts time.T
 	j := makeDistroSchedulerJob()
 	j.DistroID = distroID
 	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerJobName, distroID, ts.Format(TSFormat)))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", schedulerJobName, distroID)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 
-	j.env = env
 	return j
 }
 
@@ -72,10 +71,6 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 			"job_type": j.Type().Name,
 		})
 		return
-	}
-
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
 	}
 
 	settings, err := evergreen.GetConfig()

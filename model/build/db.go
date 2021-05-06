@@ -39,6 +39,7 @@ var (
 	RequesterKey           = bsonutil.MustHaveTag(Build{}, "Requester")
 	PredictedMakespanKey   = bsonutil.MustHaveTag(Build{}, "PredictedMakespan")
 	ActualMakespanKey      = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
+	IsGithubCheckKey       = bsonutil.MustHaveTag(Build{}, "IsGithubCheck")
 
 	// bson fields for the task caches
 	TaskCacheIdKey            = bsonutil.MustHaveTag(TaskCache{}, "Id")

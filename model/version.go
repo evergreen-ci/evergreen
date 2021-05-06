@@ -8,10 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -37,6 +37,10 @@ type Version struct {
 	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+
+	// This stores whether or not a version has tasks which were activated.
+	// We use a bool ptr in order to to distinguish the unset value from the default value
+	Activated *bool `bson:"activated,omitempty" json:"activated,omitempty"`
 
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
 	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
@@ -118,6 +122,21 @@ func (self *Version) UpdateBuildVariants() error {
 	)
 }
 
+func (self *Version) SetActivated() error {
+	if utility.FromBoolPtr(self.Activated) {
+		return nil
+	}
+	self.Activated = utility.TruePtr()
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionActivatedKey: true,
+			},
+		},
+	)
+}
+
 func (self *Version) Insert() error {
 	return db.Insert(VersionCollection, self)
 }
@@ -148,12 +167,11 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 }
 
 func (v *Version) UpdateStatus(newStatus string) error {
-	if v == nil {
-		return errors.New("version is nil")
-	}
 	if v.Status == newStatus {
 		return nil
 	}
+
+	v.Status = newStatus
 	update := bson.M{
 		"$set": bson.M{
 			VersionStatusKey: newStatus,
@@ -163,8 +181,7 @@ func (v *Version) UpdateStatus(newStatus string) error {
 	if err != nil {
 		return err
 	}
-	v.Status = newStatus
-	event.LogVersionStateChangeEvent(v.Id, newStatus)
+
 	return nil
 }
 
@@ -181,6 +198,18 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
+}
+
+func (v *Version) MarkFinished(status string, finishTime time.Time) error {
+	v.Status = status
+	v.FinishTime = finishTime
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: v.Id},
+		bson.M{"$set": bson.M{
+			VersionFinishTimeKey: finishTime,
+			VersionStatusKey:     status,
+		}},
+	)
 }
 
 func GetVersionForCommitQueueItem(cq *commitqueue.CommitQueue, issue string) (*Version, error) {

@@ -192,7 +192,14 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 	}
 
 	// return success on duplicate job errors so AWS won't keep retrying
-	_ = aws.queue.Put(ctx, units.NewHostTerminationJob(aws.env, h, true, "got interruption warning"))
+	terminationJob := units.NewHostTerminationJob(aws.env, h, true, "got interruption warning")
+	if err := amboy.EnqueueUniqueJob(ctx, aws.queue, terminationJob); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":          "could not enqueue host termination job",
+			"host_id":          h.Id,
+			"enqueue_job_type": terminationJob.Type(),
+		}))
+	}
 
 	return nil
 }
