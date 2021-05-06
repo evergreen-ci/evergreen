@@ -15,7 +15,6 @@ tasks:
     - command: git.get_project
       params:
         directory: src
-      params:
         working_dir: src
         script: echo "kano"
 buildvariants:
