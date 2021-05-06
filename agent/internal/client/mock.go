@@ -264,7 +264,6 @@ func (c *Mock) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, erro
 		BaseURL:  "base_url",
 		RPCPort:  "1000",
 		Username: "user",
-		Password: "password",
 		APIKey:   "api_key",
 	}, nil
 }

@@ -118,7 +118,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 
 			terminateJob := NewHostTerminationJob(j.env, j.host, true, "failed to mount volume")
 			terminateJob.SetPriority(100)
-			j.AddError(j.env.RemoteQueue().Put(ctx, terminateJob))
+			j.AddError(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminateJob))
 
 			return
 		}

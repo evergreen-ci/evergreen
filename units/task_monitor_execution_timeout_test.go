@@ -52,21 +52,26 @@ func TestCleanupTask(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.OldCollection), "error clearing old tasks collection")
 			require.NoError(t, db.ClearCollections(model.VersionCollection), "error clearing versions collection")
 
-			Convey("the task should be reset", func() {
+			vID := "v1"
+			bID := "b1"
+			tID := "t1"
+			hID := "h1"
 
+			Convey("the task should be reset", func() {
 				newTask := &task.Task{
-					Id:       "t1",
+					Id:       tID,
 					Status:   "started",
-					HostId:   "h1",
-					BuildId:  "b1",
+					HostId:   hID,
+					BuildId:  bID,
 					Project:  "proj",
 					Restarts: 1,
+					Version:  vID,
 				}
 				require.NoError(t, newTask.Insert(), "error inserting task")
 
 				host := &host.Host{
-					Id:          "h1",
-					RunningTask: "t1",
+					Id:          hID,
+					RunningTask: tID,
 					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
 					Status:      evergreen.HostRunning,
 				}
@@ -76,14 +81,14 @@ func TestCleanupTask(t *testing.T) {
 				})
 
 				b := &build.Build{
-					Id:      "b1",
-					Tasks:   []build.TaskCache{{Id: "t1"}},
-					Version: "v1",
+					Id:      bID,
+					Tasks:   []build.TaskCache{{Id: tID}},
+					Version: vID,
 				}
 				So(b.Insert(), ShouldBeNil)
 
 				v := &model.Version{
-					Id: "v1",
+					Id: vID,
 				}
 				So(v.Insert(), ShouldBeNil)
 
@@ -91,7 +96,7 @@ func TestCleanupTask(t *testing.T) {
 				So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
 
 				// refresh the task - it should be reset
-				newTask, err := task.FindOne(task.ById("t1"))
+				newTask, err := task.FindOne(task.ById(tID))
 				So(err, ShouldBeNil)
 				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(newTask.Restarts, ShouldEqual, 2)
@@ -100,7 +105,7 @@ func TestCleanupTask(t *testing.T) {
 					dt := &task.Task{
 						Id:             "dt",
 						Status:         evergreen.TaskStarted,
-						HostId:         "h1",
+						HostId:         hID,
 						BuildId:        "b2",
 						Project:        "proj",
 						Restarts:       0,
@@ -110,17 +115,19 @@ func TestCleanupTask(t *testing.T) {
 					et1 := &task.Task{
 						Id:        "et1",
 						Status:    evergreen.TaskStarted,
-						HostId:    "h1",
+						HostId:    hID,
 						BuildId:   "b2",
 						Project:   "proj",
 						Restarts:  0,
 						Requester: evergreen.PatchVersionRequester,
 						Activated: true,
+						Version:   vID,
 					}
 					et2 := &task.Task{
 						Id:        "et2",
 						Status:    evergreen.TaskStarted,
 						Activated: true,
+						Version:   vID,
 					}
 					So(dt.Insert(), ShouldBeNil)
 					So(et1.Insert(), ShouldBeNil)
@@ -128,7 +135,7 @@ func TestCleanupTask(t *testing.T) {
 					b := &build.Build{
 						Id:      "b2",
 						Tasks:   []build.TaskCache{{Id: "dt"}},
-						Version: "v1",
+						Version: vID,
 					}
 					So(b.Insert(), ShouldBeNil)
 
@@ -151,18 +158,19 @@ func TestCleanupTask(t *testing.T) {
 				require.NoError(t, db.ClearCollections(model.VersionCollection), "error clearing versions collection")
 
 				newTask := &task.Task{
-					Id:       "t1",
+					Id:       tID,
 					Status:   "started",
-					HostId:   "h1",
-					BuildId:  "b1",
+					HostId:   hID,
+					BuildId:  bID,
 					Project:  "proj",
 					Restarts: 1,
+					Version:  vID,
 				}
 				require.NoError(t, newTask.Insert(), "error inserting task")
 
 				h := &host.Host{
-					Id:          "h1",
-					RunningTask: "t1",
+					Id:          hID,
+					RunningTask: tID,
 					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
 					Provider:    evergreen.ProviderNameMock,
 					StartedBy:   evergreen.User,
@@ -171,13 +179,13 @@ func TestCleanupTask(t *testing.T) {
 				So(h.Insert(), ShouldBeNil)
 
 				build := &build.Build{
-					Id:      "b1",
-					Tasks:   []build.TaskCache{{Id: "t1"}},
-					Version: "v1",
+					Id:      bID,
+					Tasks:   []build.TaskCache{{Id: tID}},
+					Version: vID,
 				}
 				So(build.Insert(), ShouldBeNil)
 
-				v := &model.Version{Id: "v1"}
+				v := &model.Version{Id: vID}
 				So(v.Insert(), ShouldBeNil)
 
 				Convey("a running host should have its running task cleared", func() {
@@ -191,7 +199,7 @@ func TestCleanupTask(t *testing.T) {
 					// refresh the host, make sure its running task field has
 					// been reset
 					var err error
-					h, err = host.FindOne(host.ById("h1"))
+					h, err = host.FindOne(host.ById(hID))
 					So(err, ShouldBeNil)
 					So(h.RunningTask, ShouldEqual, "")
 
@@ -206,7 +214,7 @@ func TestCleanupTask(t *testing.T) {
 					So(amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), ShouldBeTrue)
 
 					var err error
-					h, err = host.FindOneId("h1")
+					h, err = host.FindOneId(hID)
 					So(err, ShouldBeNil)
 					So(h.RunningTask, ShouldEqual, "")
 					So(h.Status, ShouldEqual, evergreen.HostTerminated)
