@@ -194,18 +194,16 @@ func (s *HostConnectorSuite) TearDownSuite() {
 	}
 }
 
-func (s *HostConnectorSuite) TestFindByIdFirst() {
-	h, ok := s.conn.FindHostById("host1")
+func (s *HostConnectorSuite) TestFindById() {
+	h1, ok := s.conn.FindHostById("host1")
 	s.NoError(ok)
-	s.NotNil(h)
-	s.Equal("host1", h.Id)
-}
+	s.NotNil(h1)
+	s.Equal("host1", h1.Id)
 
-func (s *HostConnectorSuite) TestFindByIdLast() {
-	h, ok := s.conn.FindHostById("host2")
+	h2, ok := s.conn.FindHostById("host2")
 	s.NoError(ok)
-	s.NotNil(h)
-	s.Equal("host2", h.Id)
+	s.NotNil(h2)
+	s.Equal("host2", h2.Id)
 }
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
@@ -214,24 +212,22 @@ func (s *HostConnectorSuite) TestFindByIdFail() {
 	s.Nil(h)
 }
 
-func (s *HostConnectorSuite) TestFindByIPFirst() {
-	h, ok := s.conn.FindHostByIP("ip1")
+func (s *HostConnectorSuite) TestFindByIP() {
+	h1, ok := s.conn.FindHostByIpAddress("ip1")
 	s.NoError(ok)
-	s.NotNil(h)
-	s.Equal("host1", h.Id)
-	s.Equal("ip1", h.IP)
-}
+	s.NotNil(h1)
+	s.Equal("host1", h1.Id)
+	s.Equal("ip1", h1.IP)
 
-func (s *HostConnectorSuite) TestFindByIPLast() {
-	h, ok := s.conn.FindHostByIP("ip2")
+	h2, ok := s.conn.FindHostByIpAddress("ip2")
 	s.NoError(ok)
-	s.NotNil(h)
-	s.Equal("host2", h.Id)
-	s.Equal("ip2", h.IP)
+	s.NotNil(h2)
+	s.Equal("host2", h2.Id)
+	s.Equal("ip2", h2.IP)
 }
 
 func (s *HostConnectorSuite) TestFindByIPFail() {
-	h, ok := s.conn.FindHostByIP("nonexistent")
+	h, ok := s.conn.FindHostByIpAddress("nonexistent")
 	s.NoError(ok)
 	s.Nil(h)
 }

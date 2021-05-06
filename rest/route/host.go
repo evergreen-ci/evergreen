@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 
 	"github.com/evergreen-ci/evergreen"
@@ -576,4 +577,55 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 		Content: script,
 	}
 	return gimlet.NewJSONResponse(apiOpts)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/hosts/ip_address/{ip_address}
+
+type hostIpAddressGetHandler struct {
+	IP   string
+	Host *host.Host
+	sc   data.Connector
+}
+
+func makeGetHostByIpAddress(sc data.Connector) gimlet.RouteHandler {
+	return &hostIpAddressGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *hostIpAddressGetHandler) Factory() gimlet.RouteHandler {
+	return &hostIpAddressGetHandler{
+		sc: h.sc,
+	}
+}
+func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.IP = gimlet.GetVars(r)["ip_address"]
+
+	if h.IP == "" {
+		return errors.New("missing ip_address to query by")
+	}
+
+	return nil
+}
+
+func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
+	host, err := h.sc.FindHostByIpAddress(h.IP)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error fetching host information by ip_address"))
+	}
+	if host == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host with ip address '%s' not found", h.IP),
+		})
+	}
+
+	hostModel := &model.APIHost{}
+	if err = hostModel.BuildFromService(*host); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from host.Host to model.APIHost"))
+	}
+
+	return gimlet.NewJSONResponse(hostModel)
 }

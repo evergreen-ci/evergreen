@@ -69,7 +69,8 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 	return h, nil
 }
 
-func (hc *DBHostConnector) FindHostByIP(ip string) (*host.Host, error) {
+// FindHostByIP queries the database for the host with ip matching the ip address
+func (hc *DBHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
 	h, err := host.FindOne(host.ByIP(ip))
 	if err != nil {
 		return nil, err
@@ -362,7 +363,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 	return nil, nil
 }
 
-func (hc *MockHostConnector) FindHostByIP(ip string) (*host.Host, error) {
+func (hc *MockHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
 	for _, h := range hc.CachedHosts {
 		if h.IP == ip {
 			return &h, nil
