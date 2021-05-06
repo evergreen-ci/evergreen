@@ -529,13 +529,13 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-func GenerateBuildVariants(ctx context.Context, sc data.Connector, versionId string) ([]*PatchBuildVariant, error) {
+func GenerateBuildVariants(ctx context.Context, sc data.Connector, versionId string, searchVariants []string, searchTasks []string) ([]*PatchBuildVariant, error) {
 	var variantDisplayName map[string]string = map[string]string{}
 	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	tasks, _, err := sc.FindTasksByVersion(versionId, []string{}, []string{}, []string{}, []string{}, 0, 0, []string{}, defaultSort)
+	tasks, _, err := sc.FindTasksByVersion(versionId, []string{}, []string{}, searchVariants, searchTasks, 0, 0, []string{}, defaultSort)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err))
 	}

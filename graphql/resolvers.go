@@ -1495,7 +1495,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
 	}
-	return GenerateBuildVariants(ctx, r.sc, *patch.Id)
+	return GenerateBuildVariants(ctx, r.sc, *patch.Id, []string{}, []string{})
 }
 
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
@@ -2548,7 +2548,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			mainlineCommit.Version = &apiVersion
 		}
 		if mainlineCommit.Version != nil {
-			_, err := GenerateBuildVariants(ctx, r.sc, *mainlineCommit.Version.Id)
+			_, err := GenerateBuildVariants(ctx, r.sc, *mainlineCommit.Version.Id, []string{}, []string{})
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching build variants: %s ", err))
 			}
@@ -2564,7 +2564,7 @@ type versionResolver struct{ *Resolver }
 
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion) ([]*PatchBuildVariant, error) {
 
-	return GenerateBuildVariants(ctx, r.sc, *v.Id)
+	return GenerateBuildVariants(ctx, r.sc, *v.Id, []string{}, []string{})
 }
 
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
