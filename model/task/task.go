@@ -2702,18 +2702,19 @@ type TasksSortOrder struct {
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variant string, taskName string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
+func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variants []string, taskName string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
 	var match bson.M = bson.M{}
 
 	// Allow searching by either variant name or variant display
-	if variant != "" {
+	if len(variants) > 0 {
+		variantsAsRegex := strings.Join(variants[:], "|")
+
 		match = bson.M{
 			"$or": []bson.M{
-				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variant, "$options": "i"}},
-				bson.M{BuildVariantKey: bson.M{"$regex": variant, "$options": "i"}},
+				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 			},
 		}
-
 	}
 	if len(taskName) > 0 {
 		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
@@ -2723,7 +2724,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
-	if variant != "" {
+	if len(variants) > 0 {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	pipeline = append(pipeline,
@@ -2780,7 +2781,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		}...,
 	)
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if variant == "" {
+	if len(variants) == 0 {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	if len(statuses) > 0 {
