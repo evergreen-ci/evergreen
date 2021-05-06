@@ -529,6 +529,43 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
+func GenerateBuildVariants(ctx context.Context, sc data.Connector, versionId string) ([]*PatchBuildVariant, error) {
+	var variantDisplayName map[string]string = map[string]string{}
+	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
+	}
+	tasks, _, err := sc.FindTasksByVersion(versionId, []string{}, []string{}, "", "", 0, 0, []string{}, defaultSort)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err))
+	}
+	for _, task := range tasks {
+		apiTask := restModel.APITask{}
+		err := apiTask.BuildFromService(&task)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", task.Id))
+		}
+		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
+		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &apiTask)
+
+	}
+
+	result := []*PatchBuildVariant{}
+	for variant, tasks := range tasksByVariant {
+		pbv := PatchBuildVariant{
+			Variant:     variant,
+			DisplayName: variantDisplayName[variant],
+			Tasks:       tasks,
+		}
+		result = append(result, &pbv)
+	}
+	// sort variants by name
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].DisplayName < result[j].DisplayName
+	})
+	return result, nil
+}
+
 type VersionModificationAction string
 
 const (

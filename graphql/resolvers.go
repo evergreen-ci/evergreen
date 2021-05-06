@@ -1372,7 +1372,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	filteredEvents := []event.EventLogEntry{}
 	foundScheduled := false
 	for i := 0; i < len(loggedEvents); i++ {
-		if foundScheduled == false || loggedEvents[i].EventType != event.TaskScheduled {
+		if !foundScheduled || loggedEvents[i].EventType != event.TaskScheduled {
 			filteredEvents = append(filteredEvents, loggedEvents[i])
 		}
 		if loggedEvents[i].EventType == event.TaskScheduled {
@@ -1495,43 +1495,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
 	}
-	var variantDisplayName map[string]string = map[string]string{}
-	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
-	for _, variant := range patch.Variants {
-		tasksByVariant[*variant] = []*restModel.APITask{}
-	}
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	tasks, _, err := r.sc.FindTasksByVersion(patchID, []string{}, []string{}, "", "", 0, 0, []string{}, defaultSort)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", patchID, err))
-	}
-	for _, task := range tasks {
-		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&task)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", task.Id))
-		}
-		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
-		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &apiTask)
-
-	}
-
-	result := []*PatchBuildVariant{}
-	for variant, tasks := range tasksByVariant {
-		pbv := PatchBuildVariant{
-			Variant:     variant,
-			DisplayName: variantDisplayName[variant],
-			Tasks:       tasks,
-		}
-		result = append(result, &pbv)
-	}
-	// sort variants by name
-	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].DisplayName < result[j].DisplayName
-	})
-	return result, nil
+	return GenerateBuildVariants(ctx, r.sc, *patch.Id)
 }
 
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
@@ -1813,7 +1777,7 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 
 func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
 	if len(taskIds) == 0 {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("`taskIds` array is empty. You must provide at least one task id"))
+		return nil, InputValidationError.Send(ctx, "`taskIds` array is empty. You must provide at least one task id")
 	}
 	modifications := VersionModifications{
 		Action:  Restart,
@@ -2583,49 +2547,24 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		} else {
 			mainlineCommit.Version = &apiVersion
 		}
+		if mainlineCommit.Version != nil {
+			_, err := GenerateBuildVariants(ctx, r.sc, *mainlineCommit.Version.Id)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching build variants: %s ", err))
+			}
+		}
 		mainlineCommits = append(mainlineCommits, &mainlineCommit)
 
 	}
+
 	return mainlineCommits, nil
 }
 
 type versionResolver struct{ *Resolver }
 
-func (r *versionResolver) BuildVariants(ctx context.Context, version *restModel.APIVersion) ([]*PatchBuildVariant, error) {
-	var variantDisplayName map[string]string = map[string]string{}
-	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	tasks, _, err := r.sc.FindTasksByVersion(*version.Id, []string{}, []string{}, "", "", 0, 0, []string{}, defaultSort)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", *version.Id, err))
-	}
-	for _, task := range tasks {
-		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&task)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", task.Id))
-		}
-		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
-		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &apiTask)
+func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion) ([]*PatchBuildVariant, error) {
 
-	}
-
-	result := []*PatchBuildVariant{}
-	for variant, tasks := range tasksByVariant {
-		pbv := PatchBuildVariant{
-			Variant:     variant,
-			DisplayName: variantDisplayName[variant],
-			Tasks:       tasks,
-		}
-		result = append(result, &pbv)
-	}
-	// sort variants by name
-	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].DisplayName < result[j].DisplayName
-	})
-	return result, nil
+	return GenerateBuildVariants(ctx, r.sc, *v.Id)
 }
 
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
