@@ -347,6 +347,48 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
+type MainlineCommitVersionOptions struct {
+	Limit           int      `json:"limit"`
+	Skip            int      `json:"skip"`
+	ByBuildVariants []string `json:"by_build_variants"`
+	ByTasks         []string `json:"by_tasks"`
+	ByStatus        string   `json:"by_status"`
+}
+
+func GetMainlineCommitVersionsWithOptions(projectName string, opts MainlineCommitVersionOptions) ([]Version, error) {
+	projectId, err := GetIdForProject(projectName)
+	if err != nil {
+		return nil, err
+	}
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+	}
+	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+
+	if len(opts.ByBuildVariants) > 0 {
+		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = bson.M{"$in": opts.ByBuildVariants}
+	}
+	if len(opts.ByTasks) > 0 {
+	}
+
+	limit := defaultVersionLimit
+	if opts.Limit != 0 {
+		limit = opts.Limit
+	}
+	pipeline = append(pipeline, bson.M{"$limit": limit})
+
+	res := []Version{}
+
+	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+		return nil, errors.Wrapf(err, "error aggregating versions and builds")
+	}
+	if len(res) == 0 {
+		return res, nil
+	}
+	return res, nil
+}
+
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
