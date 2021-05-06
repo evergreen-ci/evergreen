@@ -11,23 +11,19 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
-	generateTasksJobName        = "generate-tasks"
-	generateTasksJobMaxAttempts = 3
+	generateTasksJobName = "generate-tasks"
 )
 
 func init() {
@@ -53,17 +49,11 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(t task.Task) amboy.Job {
+func NewGenerateTasksJob(id string, ts string) amboy.Job {
 	j := makeGenerateTaskJob()
-	j.TaskID = t.Id
+	j.TaskID = id
 
-	j.SetID(fmt.Sprintf("%s-%s", generateTasksJobName, t.Id))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", generateTasksJobName, t.Version)})
-	j.SetShouldApplyScopesOnEnqueue(true)
-	j.UpdateRetryInfo(amboy.JobRetryOptions{
-		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(generateTasksJobMaxAttempts),
-	})
+	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, id, ts))
 	return j
 }
 
@@ -260,23 +250,13 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	t, err := task.FindOneId(j.TaskID)
 	if err != nil {
-		j.AddRetryableError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
+		j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
 		return
 	}
 	if t == nil {
-		j.AddRetryableError(errors.Errorf("task %s does not exist", j.TaskID))
+		j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
 		return
 	}
-
-	defer func() {
-		pErr := recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("executing job '%s'", j.ID()))
-		if pErr == nil {
-			return
-		}
-
-		j.AddRetryableError(pErr)
-		j.logError(pErr, level.Alert, t)
-	}()
 
 	err = j.generate(ctx, t)
 	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
@@ -307,29 +287,13 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}))
 
 	if err != nil && !shouldNoop {
-		j.AddRetryableError(err)
-		j.logError(err, level.Error, t)
+		j.AddError(err)
 		j.AddError(task.MarkGeneratedTasksErr(j.TaskID, err))
 		return
 	}
 	if !shouldNoop {
 		j.AddError(task.MarkGeneratedTasks(j.TaskID))
 	}
-}
-
-func (j *generateTasksJob) logError(err error, l level.Priority, t *task.Task) {
-	ri := j.RetryInfo()
-	msg := message.Fields{
-		"message":       "generate.tasks error",
-		"operation":     generateTasksJobName,
-		"task":          t.Id,
-		"attempt":       ri.CurrentAttempt,
-		"version":       t.Version,
-		"attempts_left": ri.GetRemainingAttempts(),
-		"job":           j.ID(),
-		"error":         fmt.Sprintf("%+v", err),
-	}
-	grip.Log(l, msg)
 }
 
 func parseProjectsAsString(jsonStrings []string) ([]model.GeneratedProject, error) {
