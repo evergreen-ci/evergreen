@@ -529,46 +529,6 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-// ConvertDBTasksToGqlTasks converts tasks to task result objects
-func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
-	var taskResults []*TaskResult
-	for _, t := range tasks {
-		baseStatus := t.BaseTask.Status
-		result := TaskResult{
-			ID:           t.Id,
-			DisplayName:  t.DisplayName,
-			Version:      t.Version,
-			Status:       t.GetDisplayStatus(),
-			BuildVariant: t.BuildVariant,
-			Blocked:      t.Blocked(),
-			Aborted:      t.Aborted,
-			BaseStatus:   &baseStatus,
-			BaseTask: &BaseTaskResult{
-				ID:     t.BaseTask.Id,
-				Status: t.BaseTask.Status,
-			},
-			BuildVariantDisplayName: t.BuildVariantDisplayName,
-		}
-		if len(t.ExecutionTasksFull) > 0 {
-			ets := []*restModel.APITask{}
-			for _, et := range t.ExecutionTasksFull {
-				at := restModel.APITask{}
-				if err := at.BuildFromService(&et); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message": "unable to convert APITask",
-					}))
-					continue
-				}
-				ets = append(ets, &at)
-			}
-			result.ExecutionTasksFull = ets
-		}
-
-		taskResults = append(taskResults, &result)
-	}
-	return taskResults
-}
-
 type VersionModificationAction string
 
 const (
