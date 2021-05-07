@@ -1491,7 +1491,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers, SystemLogs: systemLogPointers}, nil
 }
 
-func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) ([]*PatchBuildVariant, error) {
+func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) ([]*GroupedBuildVariant, error) {
 	patch, err := r.sc.FindPatchById(patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
@@ -2558,7 +2558,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 type versionResolver struct{ *Resolver }
 
-func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion) ([]*PatchBuildVariant, error) {
+func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion) ([]*GroupedBuildVariant, error) {
 	// Get the parent field paramaters this only works in the context of the mainline commits resolver
 	resolverCtx := graphql.GetFieldContext(ctx)
 	parentArgs := resolverCtx.Parent.Parent.Parent.Args

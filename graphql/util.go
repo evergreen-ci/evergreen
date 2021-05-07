@@ -529,7 +529,7 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-func GenerateBuildVariants(ctx context.Context, sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*PatchBuildVariant, error) {
+func GenerateBuildVariants(ctx context.Context, sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName map[string]string = map[string]string{}
 	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
@@ -550,9 +550,9 @@ func GenerateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 
 	}
 
-	result := []*PatchBuildVariant{}
+	result := []*GroupedBuildVariant{}
 	for variant, tasks := range tasksByVariant {
-		pbv := PatchBuildVariant{
+		pbv := GroupedBuildVariant{
 			Variant:     variant,
 			DisplayName: variantDisplayName[variant],
 			Tasks:       tasks,

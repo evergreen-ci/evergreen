@@ -35,7 +35,7 @@ type Query {
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
-  patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
+  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   spruceConfig: SpruceConfig
@@ -159,7 +159,7 @@ type Version {
   message: String!
   status: String!
   order: Int!
-  buildVariants: [PatchBuildVariant]
+  buildVariants: [GroupedBuildVariant]
 }
 
 input MainlineCommitsOptions {
@@ -426,21 +426,12 @@ type PatchTasks {
   count: Int!
 }
 
-# TODO: Rename this to a more generic name in THIS PR
-type PatchBuildVariant {
+type GroupedBuildVariant {
   variant: String!
   displayName: String!
   tasks: [Task]
 }
 
-type PatchBuildVariantTask {
-  id: ID!
-  execution: Int!
-  displayName: String!
-  name: String!
-  status: String!
-  baseStatus: String
-}
 
 type TaskFiles {
   fileCount: Int!

@@ -63,6 +63,12 @@ type EditSpawnHostInput struct {
 	ServicePassword     *string     `json:"servicePassword"`
 }
 
+type GroupedBuildVariant struct {
+	Variant     string           `json:"variant"`
+	DisplayName string           `json:"displayName"`
+	Tasks       []*model.APITask `json:"tasks"`
+}
+
 type GroupedFiles struct {
 	TaskName *string          `json:"taskName"`
 	Files    []*model.APIFile `json:"files"`
@@ -96,21 +102,6 @@ type MainlineCommitsOptions struct {
 	Statuses  []string `json:"statuses"`
 	Limit     *int     `json:"limit"`
 	Page      *int     `json:"page"`
-}
-
-type PatchBuildVariant struct {
-	Variant     string           `json:"variant"`
-	DisplayName string           `json:"displayName"`
-	Tasks       []*model.APITask `json:"tasks"`
-}
-
-type PatchBuildVariantTask struct {
-	ID          string  `json:"id"`
-	Execution   int     `json:"execution"`
-	DisplayName string  `json:"displayName"`
-	Name        string  `json:"name"`
-	Status      string  `json:"status"`
-	BaseStatus  *string `json:"baseStatus"`
 }
 
 type PatchConfigure struct {
