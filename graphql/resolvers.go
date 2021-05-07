@@ -1496,7 +1496,7 @@ func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
 	}
-	return GenerateBuildVariants(ctx, r.sc, *patch.Id, []string{}, []string{})
+	return GenerateBuildVariants(ctx, r.sc, *patch.Id, []string{}, []string{}, []string{})
 }
 
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
@@ -2548,12 +2548,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		} else {
 			mainlineCommit.Version = &apiVersion
 		}
-		if mainlineCommit.Version != nil {
-			_, err := GenerateBuildVariants(ctx, r.sc, *mainlineCommit.Version.Id, []string{}, []string{})
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching build variants: %s ", err))
-			}
-		}
+
 		mainlineCommits = append(mainlineCommits, &mainlineCommit)
 
 	}
@@ -2564,18 +2559,23 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 type versionResolver struct{ *Resolver }
 
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion) ([]*PatchBuildVariant, error) {
+	// Get the parent field paramaters this only works in the context of the mainline commits resolver
 	resolverCtx := graphql.GetFieldContext(ctx)
 	parentArgs := resolverCtx.Parent.Parent.Parent.Args
 	options := parentArgs["options"].(MainlineCommitsOptions)
 	variants := []string{}
 	tasks := []string{}
+	statuses := []string{}
 	if options.Variants != nil {
 		variants = options.Variants
 	}
 	if options.Tasks != nil {
 		tasks = options.Tasks
 	}
-	return GenerateBuildVariants(ctx, r.sc, *v.Id, variants, tasks)
+	if options.Statuses != nil {
+		statuses = options.Statuses
+	}
+	return GenerateBuildVariants(ctx, r.sc, *v.Id, variants, tasks, statuses)
 }
 
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
