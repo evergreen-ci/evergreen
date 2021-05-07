@@ -2544,7 +2544,6 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				Message:    v.Message,
 			}
 			mainlineCommit.VersionMeta = &versionMeta
-			mainlineCommits = append(mainlineCommits, &mainlineCommit)
 		} else {
 			mainlineCommit.Version = &apiVersion
 		}
