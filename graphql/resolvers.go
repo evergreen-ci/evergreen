@@ -2558,7 +2558,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 type versionResolver struct{ *Resolver }
 
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion) ([]*GroupedBuildVariant, error) {
-	// Get the parent field paramaters this only works in the context of the mainline commits resolver
+	// Get the parent field parameters this only works in the context of the mainline commits resolver
 	resolverCtx := graphql.GetFieldContext(ctx)
 	parentArgs := resolverCtx.Parent.Parent.Parent.Args
 	options := parentArgs["options"].(MainlineCommitsOptions)
