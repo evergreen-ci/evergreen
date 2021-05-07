@@ -585,11 +585,10 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL  *string `json:"base_url"`
-	RPCPort  *string `json:"rpc_port"`
-	User     *string `json:"user"`
-	Password *string `json:"password"`
-	APIKey   *string `json:"api_key"`
+	BaseURL *string `json:"base_url"`
+	RPCPort *string `json:"rpc_port"`
+	User    *string `json:"user"`
+	APIKey  *string `json:"api_key"`
 }
 
 func (a *APICedarConfig) BuildFromService(h interface{}) error {
@@ -598,7 +597,6 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 		a.BaseURL = utility.ToStringPtr(v.BaseURL)
 		a.RPCPort = utility.ToStringPtr(v.RPCPort)
 		a.User = utility.ToStringPtr(v.User)
-		a.Password = utility.ToStringPtr(v.Password)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -608,11 +606,10 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 
 func (a *APICedarConfig) ToService() (interface{}, error) {
 	return evergreen.CedarConfig{
-		BaseURL:  utility.FromStringPtr(a.BaseURL),
-		RPCPort:  utility.FromStringPtr(a.RPCPort),
-		User:     utility.FromStringPtr(a.User),
-		Password: utility.FromStringPtr(a.Password),
-		APIKey:   utility.FromStringPtr(a.APIKey),
+		BaseURL: utility.FromStringPtr(a.BaseURL),
+		RPCPort: utility.FromStringPtr(a.RPCPort),
+		User:    utility.FromStringPtr(a.User),
+		APIKey:  utility.FromStringPtr(a.APIKey),
 	}, nil
 }
 
@@ -1720,6 +1717,7 @@ type APIServiceFlags struct {
 	AgentStartDisabled            bool `json:"agent_start_disabled"`
 	RepotrackerDisabled           bool `json:"repotracker_disabled"`
 	SchedulerDisabled             bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled     bool `json:"check_blocked_tasks_disabled"`
 	GithubPRTestingDisabled       bool `json:"github_pr_testing_disabled"`
 	CLIUpdatesDisabled            bool `json:"cli_updates_disabled"`
 	BackgroundStatsDisabled       bool `json:"background_stats_disabled"`
@@ -1981,6 +1979,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
 		as.SchedulerDisabled = v.SchedulerDisabled
+		as.CheckBlockedTasksDisabled = v.CheckBlockedTasksDisabled
 		as.GithubPRTestingDisabled = v.GithubPRTestingDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
 		as.EventProcessingDisabled = v.EventProcessingDisabled
@@ -2018,6 +2017,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		AgentStartDisabled:            as.AgentStartDisabled,
 		RepotrackerDisabled:           as.RepotrackerDisabled,
 		SchedulerDisabled:             as.SchedulerDisabled,
+		CheckBlockedTasksDisabled:     as.CheckBlockedTasksDisabled,
 		GithubPRTestingDisabled:       as.GithubPRTestingDisabled,
 		CLIUpdatesDisabled:            as.CLIUpdatesDisabled,
 		EventProcessingDisabled:       as.EventProcessingDisabled,

@@ -45,9 +45,8 @@ type idleHostJob struct {
 	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
 	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
 
-	env      evergreen.Environment
-	settings *evergreen.Settings
-	host     *host.Host
+	env  evergreen.Environment
+	host *host.Host
 }
 
 func makeIdleHostJob() *idleHostJob {
@@ -77,10 +76,6 @@ func (j *idleHostJob) Run(ctx context.Context) {
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
-	}
-
-	if j.settings == nil {
-		j.settings = j.env.Settings()
 	}
 
 	if j.HasErrors() {
@@ -191,8 +186,9 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	if terminateReason != "" {
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
-		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, terminateReason))
+		return amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, h, false, terminateReason))
 	}
+
 	return nil
 }
 
@@ -209,7 +205,7 @@ func (j *idleHostJob) checkTerminationExemptions(ctx context.Context, h *host.Ho
 			"message":  "host termination for a non-ephemeral distro",
 			"cause":    "programmer error",
 		})
-		return true, fmt.Errorf("attempted to terminate non-ephemeral host '%s'", h.Id)
+		return true, errors.Errorf("attempted to terminate non-ephemeral host '%s'", h.Id)
 	}
 
 	// ask the host how long it has been idle

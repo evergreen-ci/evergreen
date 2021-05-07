@@ -144,11 +144,16 @@ func mergeCommand() cli.Command {
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+			ref := c.String(refFlagName)
+			commits := c.String(commitsFlagName)
+			if commits != "" {
+				ref = ""
+			}
 
 			params := mergeParams{
 				project:     c.String(projectFlagName),
-				ref:         c.String(refFlagName),
-				commits:     c.String(commitsFlagName),
+				ref:         ref,
+				commits:     commits,
 				id:          c.String(resumeFlagName),
 				pause:       c.Bool(pauseFlagName),
 				skipConfirm: c.Bool(yesFlagName),

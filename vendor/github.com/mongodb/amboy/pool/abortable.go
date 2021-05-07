@@ -135,7 +135,7 @@ func (p *abortablePool) worker(bctx context.Context) {
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				grip.Error(message.WrapError(p.queue.Complete(bctx, job), message.Fields{
+				grip.Warning(message.WrapError(p.queue.Complete(bctx, job), message.Fields{
 					"message":  "could not mark job complete",
 					"job_id":   job.ID(),
 					"queue_id": p.queue.ID(),

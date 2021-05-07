@@ -148,6 +148,13 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	// If any variants/tasks were activated, update the stored version so that we don't
 	// attempt to activate them again
 	if hasActivated {
+		if err := v.SetActivated(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "project-activation",
+				"message":   "problem activating version",
+				"version":   v.Id,
+			}))
+		}
 		return true, v.UpdateBuildVariants()
 	}
 	return false, nil

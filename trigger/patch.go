@@ -118,45 +118,66 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 		}
 	}
 
-	if sub.Subscriber.Type == event.GithubPullRequestSubscriberType {
-		target, ok := sub.Subscriber.Target.(*event.GithubPullRequestSubscriber)
-		if !ok {
-			return nil, errors.Errorf("target '%s' didn't not have expected type", sub.Subscriber.Target)
-		}
-		subType := target.Type
+	isReady, err := t.waitOnChildrenOrSiblings(sub)
+	if err != nil {
+		return nil, err
+	}
+	if !isReady {
+		return nil, nil
+	}
 
-		if t.patch.IsParent() || (t.patch.IsChild() && subType == event.WaitOnChild) {
-			// get the children or siblings to wait on
-			childrenOrSiblings, parentPatch, err := t.patch.GetPatchFamily()
-			if err != nil {
-				return nil, errors.Wrap(err, "error getting child or sibling patches")
-			}
+	return t.generate(sub)
+}
 
-			// make sure the parent is done, if not, wait for the parent
-			if t.patch.IsChild() {
-				if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
-					return nil, nil
-				}
-			}
-			childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
-			if err != nil {
-				return nil, errors.Wrap(err, "error getting child or sibling information")
-			}
-			if !evergreen.IsFinishedPatchStatus(childrenStatus) {
-				return nil, nil
-			}
+func (t *patchTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (bool, error) {
+	if sub.Subscriber.Type != event.GithubPullRequestSubscriberType {
+		return true, nil
+	}
+	target, ok := sub.Subscriber.Target.(*event.GithubPullRequestSubscriber)
+	if !ok {
+		return false, errors.Errorf("target '%s' didn't not have expected type", sub.Subscriber.Target)
+	}
+	subType := target.Type
 
-			if childrenStatus == evergreen.PatchFailed {
-				t.data.Status = evergreen.PatchFailed
-			}
+	// notifications are only delayed if the patch is either a parent, or a child that is of subType event.WaitOnChild.
+	// we don't always wait on siblings when it is a childpatch, since childpatches need to let github know when they
+	// are done running so their status can be displayed to the user as they finish
+	if !(t.patch.IsParent() || (t.patch.IsChild() && subType == event.WaitOnChild)) {
+		return true, nil
+	}
+	isReady := false
+	// get the children or siblings to wait on
+	childrenOrSiblings, parentPatch, err := t.patch.GetPatchFamily()
+	if err != nil {
+		return isReady, errors.Wrap(err, "error getting child or sibling patches")
+	}
 
-			if t.patch.IsChild() {
-				// we want the subscription to be on the parent. now that the children are done, the parent can be considered done.
-				t.patch = parentPatch
-			}
+	// make sure the parent is done, if not, wait for the parent
+	if t.patch.IsChild() {
+		if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
+			return isReady, nil
 		}
 	}
-	return t.generate(sub)
+	childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
+	if err != nil {
+		return isReady, errors.Wrap(err, "error getting child or sibling information")
+	}
+	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
+		return isReady, nil
+	}
+	isReady = true
+
+	if childrenStatus == evergreen.PatchFailed {
+		t.data.Status = evergreen.PatchFailed
+	}
+
+	if t.patch.IsChild() {
+		// we want the subscription to be on the parent
+		// now that the children are done, the parent can be considered done.
+		t.patch = parentPatch
+	}
+	return isReady, nil
+
 }
 
 func (t *patchTriggers) patchFailure(sub *event.Subscription) (*notification.Notification, error) {
@@ -175,7 +196,7 @@ func getChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 			return "", errors.Wrapf(err, "error getting tasks for child patch '%s'", childPatch)
 		}
 		if childPatchDoc == nil {
-			return "", errors.Wrapf(err, "child patch '%s' not found", childPatch)
+			return "", errors.Errorf("child patch '%s' not found", childPatch)
 		}
 		if childPatchDoc.Status == evergreen.PatchFailed {
 			childrenStatus = evergreen.PatchFailed
@@ -249,6 +270,10 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	if err := api.BuildFromService(*t.patch); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
+	projectName := t.patch.Project
+	if api.ProjectIdentifier != nil {
+		projectName = utility.FromStringPtr(api.ProjectIdentifier)
+	}
 
 	data := commonTemplateData{
 		ID:                t.patch.Id.Hex(),
@@ -257,7 +282,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		DisplayName:       t.patch.Id.Hex(),
 		Description:       t.patch.Description,
 		Object:            event.ObjectPatch,
-		Project:           t.patch.Project,
+		Project:           projectName,
 		URL:               versionLink(t.uiConfig.Url, t.patch.Version, true),
 		PastTenseStatus:   t.data.Status,
 		apiModel:          &api,

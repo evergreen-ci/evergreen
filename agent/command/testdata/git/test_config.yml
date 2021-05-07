@@ -6,25 +6,25 @@ enabled: true
 batch_time: 180
 
 tasks:
-    - name: testtask1
-      commands:
-        - command: git.get_project
-          params:
-            directory: src
-            token: ${github}
+  - name: testtask1
+    commands:
+      - command: git.get_project
+        params:
+          directory: src
+          token: ${github}
 
 modules:
-- name: sample
-  repo: https://github.com/evergreen-ci/sample.git
-  ref: cf46076567e4949f9fc68e0634139d4ac495c89b
-  prefix: module
+  - name: sample
+    repo: https://github.com/evergreen-ci/sample.git
+    ref: cf46076567e4949f9fc68e0634139d4ac495c89b
+    prefix: ${prefixpath}/module
 
 buildvariants:
-- name: linux-64
-  display_name: Linux 64-bit
-  modules:
-    - sample
-  test_flags: --continue-on-failure
-  expansions:
-    blah: "blah"
-  push: true
+  - name: linux-64
+    display_name: Linux 64-bit
+    modules:
+      - sample
+    test_flags: --continue-on-failure
+    expansions:
+      blah: "blah"
+    push: true

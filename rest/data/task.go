@@ -37,6 +37,20 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return t, nil
 }
 
+func (tc *DBTaskConnector) FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
+	t, err := task.FindOneIdAndExecution(taskId, execution)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id '%s' not found", taskId),
+		}
+	}
+	return t, nil
+}
+
 func (tc *DBTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
 	project string, statuses []string) ([]task.Task, error) {
 	id, err := model.GetIdForProject(project)
@@ -259,7 +273,15 @@ func (mtc *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return nil, mtc.StoredError
 }
 
-// FindTasksBytaskId
+func (mtc *MockTaskConnector) FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
+	for _, t := range mtc.CachedTasks {
+		if t.Id == taskId && t.Execution == execution {
+			return &t, mtc.StoredError
+		}
+	}
+	return nil, mtc.StoredError
+}
+
 func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId, status string, limit int) ([]task.Task, error) {
 	if mtc.StoredError != nil {
 		return []task.Task{}, mtc.StoredError

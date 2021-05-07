@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -92,6 +93,11 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 	if t.patch.Version != "" {
 		url = fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version)
 	}
+	projectName := t.patch.Project
+	identifier, err := model.GetIdentifierForProject(t.patch.Project)
+	if err == nil && identifier != "" {
+		projectName = identifier
+	}
 	data := commonTemplateData{
 		ID:              t.patch.Id.Hex(),
 		EventID:         t.event.ID,
@@ -99,7 +105,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 		DisplayName:     t.patch.Id.Hex(),
 		Description:     text,
 		Object:          "merge",
-		Project:         t.patch.Project,
+		Project:         projectName,
 		URL:             url,
 		PastTenseStatus: t.data.Status,
 	}

@@ -32,6 +32,7 @@ func TestCloudStatusJob(t *testing.T) {
 			Distro: distro.Distro{
 				Provider:             evergreen.ProviderNameMock,
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", "region-1"))},
+				Setup:                "echo foo",
 			},
 		},
 		{
@@ -41,6 +42,7 @@ func TestCloudStatusJob(t *testing.T) {
 			Distro: distro.Distro{
 				Provider:             evergreen.ProviderNameMock,
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", "region-2"))},
+				Setup:                "echo foo",
 			},
 		},
 		{
@@ -81,8 +83,11 @@ func TestCloudStatusJob(t *testing.T) {
 		mockState.Set(h.Id, cloud.MockInstance{DNSName: "dns_name"})
 	}
 
-	j := NewCloudHostReadyJob(&mock.Environment{}, "id")
-	j.Run(context.Background())
+	ctx := context.Background()
+	env := &mock.Environment{}
+	require.NoError(env.Configure(ctx))
+	j := NewCloudHostReadyJob(env, "id")
+	j.Run(ctx)
 	assert.NoError(j.Error())
 
 	hosts, err := host.Find(db.Query(bson.M{}))

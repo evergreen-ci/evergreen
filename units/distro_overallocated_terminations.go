@@ -63,19 +63,12 @@ func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, id
 	j.DrawdownInfo = drawdownInfo
 	j.env = env
 	j.SetID(fmt.Sprintf("%s.%s", hostDrawdownJobName, id))
+	j.SetScopes([]string{"%s.%s", hostDrawdownJobName, id})
 	return j
 }
 
 func (j *hostDrawdownJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-
-	if j.settings == nil {
-		j.settings = j.env.Settings()
-	}
 
 	// get currently existing hosts, in case some hosts have already been terminated elsewhere
 	existingHostCount, err := host.CountRunningHosts(j.DrawdownInfo.DistroID)
@@ -110,7 +103,7 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Host, drawdownTarget *int) error {
 
 	exitEarly, err := j.checkTerminationExemptions(ctx, h)
-	if exitEarly {
+	if exitEarly || err != nil {
 		return err
 	}
 

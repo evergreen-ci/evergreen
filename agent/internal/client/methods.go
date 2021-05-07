@@ -364,7 +364,7 @@ func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 // creates it if it doesn't exist.
 func (c *communicatorImpl) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 	if err := c.createCedarGRPCConn(ctx); err != nil {
-		return nil, errors.Wrap(err, "error setting up cedar grpc connection")
+		return nil, errors.Wrap(err, "setting up cedar grpc connection")
 	}
 	return c.cedarGRPCClient, nil
 }

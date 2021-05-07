@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
@@ -170,12 +169,6 @@ func buildAmboyQueueMessage(ctx context.Context, msg string, manager management.
 	catcher.Add(err)
 	if stale != nil {
 		r["stale"] = stale
-	}
-
-	recentErrors, err := manager.RecentErrors(ctx, time.Minute, management.StatsOnly)
-	catcher.Add(err)
-	if recentErrors != nil {
-		r["errors"] = recentErrors
 	}
 
 	return r, catcher.Resolve()

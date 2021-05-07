@@ -268,6 +268,16 @@ var TaskFailureStatuses []string = []string{
 	TaskSystemTimedOut,
 }
 
+var TaskUnstartedStatuses []string = []string{
+	TaskInactive,
+	TaskUnstarted,
+	TaskUndispatched,
+}
+
+func IsUnstartedTaskStatus(status string) bool {
+	return utility.StringSliceContains(TaskUnstartedStatuses, status)
+}
+
 func IsFinishedTaskStatus(status string) bool {
 	if status == TaskSucceeded ||
 		IsFailedTaskStatus(status) {
@@ -283,6 +293,29 @@ func IsFailedTaskStatus(status string) bool {
 
 func IsFinishedPatchStatus(status string) bool {
 	return status == PatchFailed || status == PatchSucceeded
+}
+
+func IsFinishedBuildStatus(status string) bool {
+	return status == BuildFailed || status == BuildSucceeded
+}
+
+func IsFinishedVersionStatus(status string) bool {
+	return status == VersionFailed || status == VersionSucceeded
+}
+
+func VersionStatusToPatchStatus(versionStatus string) (string, error) {
+	switch versionStatus {
+	case VersionCreated:
+		return PatchCreated, nil
+	case VersionStarted:
+		return PatchStarted, nil
+	case VersionFailed:
+		return PatchFailed, nil
+	case VersionSucceeded:
+		return PatchSucceeded, nil
+	default:
+		return "", errors.New("unknown version status")
+	}
 }
 
 // evergreen package names
@@ -677,6 +710,7 @@ var (
 	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
+	PermissionGitTagVersions   = "project_git_tags"
 	PermissionTasks            = "project_tasks"
 	PermissionAnnotations      = "project_task_annotations"
 	PermissionPatches          = "project_patches"
@@ -714,6 +748,14 @@ var (
 	}
 	ProjectSettingsNone = PermissionLevel{
 		Description: "No project settings permissions",
+		Value:       0,
+	}
+	GitTagVersionsCreate = PermissionLevel{
+		Description: "Create versions with git tags",
+		Value:       10,
+	}
+	GitTagVersionsNone = PermissionLevel{
+		Description: "Not able to create versions with git tags",
 		Value:       0,
 	}
 	AnnotationsModify = PermissionLevel{
@@ -801,6 +843,8 @@ func GetDisplayNameForPermissionKey(permissionKey string) string {
 		return "Task Annotations"
 	case PermissionPatches:
 		return "Patches"
+	case PermissionGitTagVersions:
+		return "Git Tag Versions"
 	case PermissionLogs:
 		return "Logs"
 	case PermissionDistroSettings:
@@ -839,6 +883,11 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 			PatchSubmit,
 			PatchNone,
 		}
+	case PermissionGitTagVersions:
+		return []PermissionLevel{
+			GitTagVersionsCreate,
+			GitTagVersionsNone,
+		}
 	case PermissionLogs:
 		return []PermissionLevel{
 			LogsView,
@@ -870,6 +919,7 @@ var ProjectPermissions = []string{
 	PermissionTasks,
 	PermissionAnnotations,
 	PermissionPatches,
+	PermissionGitTagVersions,
 	PermissionLogs,
 }
 

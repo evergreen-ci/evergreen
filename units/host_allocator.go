@@ -55,20 +55,18 @@ func makeHostAllocatorJob() *hostAllocatorJob {
 }
 
 func NewHostAllocatorJob(env evergreen.Environment, distroID string, timestamp time.Time) amboy.Job {
-	job := makeHostAllocatorJob()
-	job.DistroID = distroID
-	job.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
-	job.env = env
+	j := makeHostAllocatorJob()
+	j.DistroID = distroID
+	j.env = env
+	j.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
+	j.SetScopes([]string{"%s.%s", hostAllocatorJobName, distroID})
+	j.SetShouldApplyScopesOnEnqueue(true)
 
-	return job
+	return j
 }
 
 func (j *hostAllocatorJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
 
 	config, err := evergreen.GetConfig()
 	if err != nil {
@@ -273,10 +271,9 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 				DistroID:     distro.Id,
 				NewCapTarget: newCapTarget,
 			}
-			queue := j.env.RemoteQueue()
-			err := queue.Put(ctx, NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
+			err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
 			if err != nil {
-				grip.ErrorWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), errors.Wrap(err, "Error drawing down hosts"))
+				grip.Error(errors.Wrap(err, "Error drawing down hosts"))
 				return
 			}
 
