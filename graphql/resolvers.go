@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -2563,8 +2564,18 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 type versionResolver struct{ *Resolver }
 
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion) ([]*PatchBuildVariant, error) {
-
-	return GenerateBuildVariants(ctx, r.sc, *v.Id, []string{}, []string{})
+	resolverCtx := graphql.GetFieldContext(ctx)
+	parentArgs := resolverCtx.Parent.Parent.Parent.Args
+	options := parentArgs["options"].(MainlineCommitsOptions)
+	variants := []string{}
+	tasks := []string{}
+	if options.Variants != nil {
+		variants = options.Variants
+	}
+	if options.Tasks != nil {
+		tasks = options.Tasks
+	}
+	return GenerateBuildVariants(ctx, r.sc, *v.Id, variants, tasks)
 }
 
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
