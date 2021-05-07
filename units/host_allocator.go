@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/scheduler"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -34,6 +35,8 @@ func init() {
 type hostAllocatorJob struct {
 	DistroID string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+
+	env evergreen.Environment
 }
 
 func makeHostAllocatorJob() *hostAllocatorJob {
@@ -51,11 +54,12 @@ func makeHostAllocatorJob() *hostAllocatorJob {
 	return job
 }
 
-func NewHostAllocatorJob(distroID string, timestamp time.Time) amboy.Job {
+func NewHostAllocatorJob(env evergreen.Environment, distroID string, timestamp time.Time) amboy.Job {
 	j := makeHostAllocatorJob()
 	j.DistroID = distroID
+	j.env = env
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
-	j.SetScopes([]string{"%s.%s", hostAllocatorJobName, distroID})
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostAllocatorJobName, distroID)})
 	j.SetShouldApplyScopesOnEnqueue(true)
 
 	return j
@@ -224,14 +228,15 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		timeToEmpty = time.Duration(0)
 		timeToEmptyNoSpawns = time.Duration(0)
 	} else {
+		// this is roughly the maximum value of hours we can set a time.Duration to
+		const maxPossibleHours = 2532000
 		hostsAvailNoSpawns := hostsAvail - correctedHostsSpawned
-		maxHours := 2532000
 		if hostsAvail <= 0 {
-			timeToEmpty = time.Duration(maxHours) * time.Hour
-			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
+			timeToEmpty = time.Duration(maxPossibleHours) * time.Hour
+			timeToEmptyNoSpawns = time.Duration(maxPossibleHours) * time.Hour
 		} else if hostsAvailNoSpawns <= 0 {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
-			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
+			timeToEmptyNoSpawns = time.Duration(maxPossibleHours) * time.Hour
 		} else {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
 			timeToEmptyNoSpawns = scheduledDuration / time.Duration(hostsAvailNoSpawns)
@@ -240,6 +245,40 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
+
+	// rough value that should correspond to situations where a queue will be empty very soon
+	const lowRatioThresh = float32(.25)
+	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
+	if terminateExcess && hostQueueRatio < lowRatioThresh && len(upHosts) > 0 {
+
+		var killableHosts, newCapTarget int
+		if hostQueueRatio == 0 {
+			killableHosts = len(upHosts)
+			newCapTarget = 0
+		} else {
+			killableHosts = int(float32(len(upHosts)) * (1 - hostQueueRatio))
+			newCapTarget = len(upHosts) - killableHosts
+		}
+
+		if newCapTarget < distro.HostAllocatorSettings.MinimumHosts {
+			newCapTarget = distro.HostAllocatorSettings.MinimumHosts
+		}
+		// rough value to prevent killing hosts on low-volume distros
+		const lowCountFloor = 5
+		if killableHosts > lowCountFloor {
+
+			drawdownInfo := DrawdownInfo{
+				DistroID:     distro.Id,
+				NewCapTarget: newCapTarget,
+			}
+			err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
+			if err != nil {
+				grip.Error(errors.Wrap(err, "Error drawing down hosts"))
+				return
+			}
+
+		}
+	}
 
 	grip.Info(message.Fields{
 		"message":                      "distro-scheduler-report",

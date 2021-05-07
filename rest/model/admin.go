@@ -1646,6 +1646,7 @@ type APISchedulerConfig struct {
 	HostAllocator                 *string `json:"host_allocator"`
 	HostAllocatorRoundingRule     *string `json:"host_allocator_rounding_rule"`
 	HostAllocatorFeedbackRule     *string `json:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule        *string `json:"hosts_overallocated_rule"`
 	FutureHostFraction            float64 `json:"free_host_fraction"`
 	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
 	Planner                       *string `json:"planner"`
@@ -1666,6 +1667,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.TaskFinder = utility.ToStringPtr(v.TaskFinder)
 		a.HostAllocator = utility.ToStringPtr(v.HostAllocator)
 		a.HostAllocatorFeedbackRule = utility.ToStringPtr(v.HostAllocatorFeedbackRule)
+		a.HostsOverallocatedRule = utility.ToStringPtr(v.HostsOverallocatedRule)
 		a.FutureHostFraction = v.FutureHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
 		a.Planner = utility.ToStringPtr(v.Planner)
@@ -1689,6 +1691,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		TaskFinder:                    utility.FromStringPtr(a.TaskFinder),
 		HostAllocator:                 utility.FromStringPtr(a.HostAllocator),
 		HostAllocatorFeedbackRule:     utility.FromStringPtr(a.HostAllocatorFeedbackRule),
+		HostsOverallocatedRule:        utility.FromStringPtr(a.HostsOverallocatedRule),
 		FutureHostFraction:            a.FutureHostFraction,
 		CacheDurationSeconds:          a.CacheDurationSeconds,
 		Planner:                       utility.FromStringPtr(a.Planner),

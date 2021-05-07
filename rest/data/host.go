@@ -69,6 +69,16 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 	return h, nil
 }
 
+// FindHostByIP queries the database for the host with ip matching the ip address
+func (hc *DBHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
+	h, err := host.FindOne(host.ByIP(ip))
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
+}
+
 func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
 	return findHostByIdWithOwner(dbc, hostID, user)
 }
@@ -347,6 +357,15 @@ func (hc *MockHostConnector) FindHostsByIdOnly(id, status, user string, limit in
 func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 	for _, h := range hc.CachedHosts {
 		if h.Id == id {
+			return &h, nil
+		}
+	}
+	return nil, nil
+}
+
+func (hc *MockHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
+	for _, h := range hc.CachedHosts {
+		if h.IP == ip {
 			return &h, nil
 		}
 	}
