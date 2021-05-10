@@ -529,7 +529,8 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-func GenerateBuildVariants(ctx context.Context, sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
+// Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
+func generateBuildVariants(ctx context.Context, sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName map[string]string = map[string]string{}
 	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
@@ -537,16 +538,16 @@ func GenerateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 	}
 	tasks, _, err := sc.FindTasksByVersion(versionId, statuses, []string{}, searchVariants, searchTasks, 0, 0, []string{}, defaultSort)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err.Error()))
 	}
-	for _, task := range tasks {
+	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&task)
+		err := apiTask.BuildFromService(&t)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", task.Id))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
 		}
-		variantDisplayName[task.BuildVariant] = task.BuildVariantDisplayName
-		tasksByVariant[task.BuildVariant] = append(tasksByVariant[task.BuildVariant], &apiTask)
+		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
+		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
 
 	}
 
