@@ -357,11 +357,8 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 }
 
 type MainlineCommitVersionOptions struct {
-	Limit           int      `json:"limit"`
-	Skip            int      `json:"skip"`
-	ByBuildVariants []string `json:"by_build_variants"`
-	ByTasks         []string `json:"by_tasks"`
-	ByStatus        string   `json:"by_status"`
+	Limit int `json:"limit"`
+	Skip  int `json:"skip"`
 }
 
 func GetMainlineCommitVersionsWithOptions(projectName string, opts MainlineCommitVersionOptions) ([]Version, error) {
@@ -374,12 +371,6 @@ func GetMainlineCommitVersionsWithOptions(projectName string, opts MainlineCommi
 	}
 	pipeline := []bson.M{bson.M{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
-
-	if len(opts.ByBuildVariants) > 0 {
-		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = bson.M{"$in": opts.ByBuildVariants}
-	}
-	if len(opts.ByTasks) > 0 {
-	}
 
 	limit := defaultVersionLimit
 	if opts.Limit != 0 {
