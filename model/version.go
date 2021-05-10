@@ -138,7 +138,7 @@ func (self *Version) SetActivated() error {
 }
 
 func (self *Version) SetNotActivated() error {
-	if !utility.FromBoolPtr(self.Activated) {
+	if utility.FromBoolPtr(self.Activated) {
 		return nil
 	}
 	self.Activated = utility.FalsePtr()

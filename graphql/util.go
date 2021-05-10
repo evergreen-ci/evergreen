@@ -536,7 +536,17 @@ func generateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	tasks, _, err := sc.FindTasksByVersion(versionId, statuses, []string{}, searchVariants, searchTasks, 0, 0, []string{}, defaultSort)
+	opts := data.TaskFilterOptions{
+		Statuses:        []string{},
+		BaseStatuses:    []string{},
+		Variants:        []string{},
+		TaskNames:       []string{},
+		Page:            0,
+		Limit:           0,
+		FieldsToProject: []string{},
+		Sorts:           defaultSort,
+	}
+	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err.Error()))
 	}

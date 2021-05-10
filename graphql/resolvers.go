@@ -824,7 +824,17 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, []string{}, []string{}, []string{}, []string{}, 0, 0, []string{task.DisplayStatusKey}, defaultSort)
+	opts := data.TaskFilterOptions{
+		Statuses:        []string{},
+		BaseStatuses:    []string{},
+		Variants:        []string{},
+		TaskNames:       []string{},
+		Page:            0,
+		Limit:           0,
+		FieldsToProject: []string{},
+		Sorts:           defaultSort,
+	}
+	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
@@ -943,7 +953,17 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-	tasks, _, err := r.sc.FindTasksByVersion(id, failedAndAbortedStatuses, []string{}, []string{}, []string{}, 0, 0, []string{task.DisplayStatusKey}, []task.TasksSortOrder{})
+	opts := data.TaskFilterOptions{
+		Statuses:        failedAndAbortedStatuses,
+		BaseStatuses:    []string{},
+		Variants:        []string{},
+		TaskNames:       []string{},
+		Page:            0,
+		Limit:           0,
+		FieldsToProject: []string{task.DisplayStatusKey},
+		Sorts:           []task.TasksSortOrder{},
+	}
+	tasks, _, err := r.sc.FindTasksByVersion(id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
 	}
@@ -1151,7 +1171,17 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
-	tasks, count, err := r.sc.FindTasksByVersion(patchID, statuses, baseStatuses, []string{variantParam}, []string{taskNameParam}, pageParam, limitParam, []string{}, taskSorts)
+	opts := data.TaskFilterOptions{
+		Statuses:        statuses,
+		BaseStatuses:    baseStatuses,
+		Variants:        []string{variantParam},
+		TaskNames:       []string{taskNameParam},
+		Page:            pageParam,
+		Limit:           limitParam,
+		FieldsToProject: []string{},
+		Sorts:           taskSorts,
+	}
+	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
@@ -2512,12 +2542,22 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		mainlineCommit := MainlineCommit{}
 
 		// If we try to access a version that does not have the Activated flag we must manually verify it
-		// If it does we can avoid querying a versions tasks
+		// After we verify if a version is activated we cache that field so subsequent queries are faster.
 		if v.Activated == nil {
 			defaultSort := []task.TasksSortOrder{
 				{Key: task.DisplayNameKey, Order: 1},
 			}
-			tasks, _, err := r.sc.FindTasksByVersion(v.Id, []string{}, []string{}, []string{}, []string{}, 0, 0, []string{}, defaultSort)
+			opts := data.TaskFilterOptions{
+				Statuses:        []string{},
+				BaseStatuses:    []string{},
+				Variants:        []string{},
+				TaskNames:       []string{},
+				Page:            0,
+				Limit:           0,
+				FieldsToProject: []string{},
+				Sorts:           defaultSort,
+			}
+			tasks, _, err := r.sc.FindTasksByVersion(v.Id, opts)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", v.Id, err.Error()))
 			}

@@ -240,10 +240,21 @@ func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest,
 	return mfest, nil
 }
 
+type TaskFilterOptions struct {
+	Statuses        []string
+	BaseStatuses    []string
+	Variants        []string
+	TaskNames       []string
+	Page            int
+	Limit           int
+	FieldsToProject []string
+	Sorts           []task.TasksSortOrder
+}
+
 // FindTasksByVersion gets all tasks for a specific version
 // Results can be filtered by task name, variant name and status in addition to being paginated and limited
-func (tc *DBTaskConnector) FindTasksByVersion(versionID string, statuses []string, baseStatuses []string, variants []string, taskNames []string, page, limit int, fieldsToProject []string, sorts []task.TasksSortOrder) ([]task.Task, int, error) {
-	tasks, total, err := task.GetTasksByVersion(versionID, sorts, statuses, baseStatuses, variants, taskNames, page, limit, fieldsToProject)
+func (tc *DBTaskConnector) FindTasksByVersion(versionID string, opts TaskFilterOptions) ([]task.Task, int, error) {
+	tasks, total, err := task.GetTasksByVersion(versionID, opts.Sorts, opts.Statuses, opts.BaseStatuses, opts.Variants, opts.TaskNames, opts.Page, opts.Limit, opts.FieldsToProject)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -433,6 +444,6 @@ func (tc *MockTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifes
 	return nil, errors.Errorf("task '%s' not found", taskId)
 }
 
-func (tc *MockTaskConnector) FindTasksByVersion(string, []string, []string, []string, []string, int, int, []string, []task.TasksSortOrder) ([]task.Task, int, error) {
+func (tc *MockTaskConnector) FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error) {
 	return nil, 0, nil
 }
