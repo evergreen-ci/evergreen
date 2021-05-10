@@ -38,6 +38,12 @@ type BuildBaron struct {
 	BuildBaronConfigured bool                         `json:"buildBaronConfigured"`
 }
 
+type BuildVariantOptions struct {
+	Variants []string `json:"variants"`
+	Tasks    []string `json:"tasks"`
+	Statuses []string `json:"statuses"`
+}
+
 type Dependency struct {
 	Name           string         `json:"name"`
 	MetStatus      MetStatus      `json:"metStatus"`

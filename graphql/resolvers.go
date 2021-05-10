@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -2557,11 +2556,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 type versionResolver struct{ *Resolver }
 
-func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion) ([]*GroupedBuildVariant, error) {
-	// Get the parent field parameters this only works in the context of the mainline commits resolver
-	resolverCtx := graphql.GetFieldContext(ctx)
-	parentArgs := resolverCtx.Parent.Parent.Parent.Args
-	options := parentArgs["options"].(MainlineCommitsOptions)
+func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	variants := []string{}
 	tasks := []string{}
 	statuses := []string{}

@@ -159,9 +159,14 @@ type Version {
   message: String!
   status: String!
   order: Int!
-  buildVariants: [GroupedBuildVariant]
+  buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
 }
 
+input BuildVariantOptions {
+  variants: [String!]
+  tasks: [String!]
+  statuses: [String!]
+}
 input MainlineCommitsOptions {
   projectID: String! 
   variants: [String!]

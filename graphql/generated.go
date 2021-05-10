@@ -764,7 +764,7 @@ type ComplexityRoot struct {
 
 	Version struct {
 		Author        func(childComplexity int) int
-		BuildVariants func(childComplexity int) int
+		BuildVariants func(childComplexity int, options *BuildVariantOptions) int
 		CreateTime    func(childComplexity int) int
 		FinishTime    func(childComplexity int) int
 		Id            func(childComplexity int) int
@@ -958,7 +958,7 @@ type UserResolver interface {
 	Patches(ctx context.Context, obj *model.APIDBUser, patchesInput PatchesInput) (*Patches, error)
 }
 type VersionResolver interface {
-	BuildVariants(ctx context.Context, obj *model.APIVersion) ([]*GroupedBuildVariant, error)
+	BuildVariants(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -4568,7 +4568,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Version.BuildVariants(childComplexity), true
+		args, err := ec.field_Version_buildVariants_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.BuildVariants(childComplexity, args["options"].(*BuildVariantOptions)), true
 
 	case "Version.createTime":
 		if e.complexity.Version.CreateTime == nil {
@@ -4970,9 +4975,14 @@ type Version {
   message: String!
   status: String!
   order: Int!
-  buildVariants: [GroupedBuildVariant]
+  buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
 }
 
+input BuildVariantOptions {
+  variants: [String!]
+  tasks: [String!]
+  statuses: [String!]
+}
 input MainlineCommitsOptions {
   projectID: String! 
   variants: [String!]
@@ -7095,6 +7105,20 @@ func (ec *executionContext) field_User_patches_args(ctx context.Context, rawArgs
 		}
 	}
 	args["patchesInput"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Version_buildVariants_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *BuildVariantOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		arg0, err = ec.unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
 	return args, nil
 }
 
@@ -23354,9 +23378,16 @@ func (ec *executionContext) _Version_buildVariants(ctx context.Context, field gr
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Version_buildVariants_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Version().BuildVariants(rctx, obj)
+		return ec.resolvers.Version().BuildVariants(rctx, obj, args["options"].(*BuildVariantOptions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -24990,6 +25021,36 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 // endregion **************************** field.gotpl *****************************
 
 // region    **************************** input.gotpl *****************************
+
+func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Context, obj interface{}) (BuildVariantOptions, error) {
+	var it BuildVariantOptions
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "variants":
+			var err error
+			it.Variants, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "tasks":
+			var err error
+			it.Tasks, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "statuses":
+			var err error
+			it.Statuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
 
 func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
 	var it DisplayTask
@@ -32866,6 +32927,18 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
+}
+
+func (ec *executionContext) unmarshalOBuildVariantOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx context.Context, v interface{}) (BuildVariantOptions, error) {
+	return ec.unmarshalInputBuildVariantOptions(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx context.Context, v interface{}) (*BuildVariantOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOBuildVariantOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalOClientBinary2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinaryᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIClientBinary) graphql.Marshaler {
