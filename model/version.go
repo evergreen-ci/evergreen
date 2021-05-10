@@ -137,6 +137,21 @@ func (self *Version) SetActivated() error {
 	)
 }
 
+func (self *Version) SetNotActivated() error {
+	if !utility.FromBoolPtr(self.Activated) {
+		return nil
+	}
+	self.Activated = utility.FalsePtr()
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionActivatedKey: false,
+			},
+		},
+	)
+}
+
 func (self *Version) Insert() error {
 	return db.Insert(VersionCollection, self)
 }
@@ -381,11 +396,9 @@ func GetMainlineCommitVersionsWithOptions(projectName string, opts MainlineCommi
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrapf(err, "error aggregating versions and builds")
+		return nil, errors.Wrapf(err, "error aggregating versions")
 	}
-	if len(res) == 0 {
-		return res, nil
-	}
+
 	return res, nil
 }
 

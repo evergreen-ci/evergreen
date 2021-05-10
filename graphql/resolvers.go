@@ -2522,13 +2522,10 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", v.Id, err.Error()))
 			}
 			if !task.AnyActiveTasks(tasks) {
-				versionMeta := VersionMeta{
-					ID:         v.Id,
-					CreateTime: v.CreateTime,
-					Author:     v.Author,
-					Message:    v.Message,
+				err = v.SetNotActivated()
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating version activated status for %s, %s", v.Id, err.Error()))
 				}
-				mainlineCommit.VersionMeta = &versionMeta
 			} else {
 				err = v.SetActivated()
 				if err != nil {
@@ -2536,14 +2533,16 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				}
 				mainlineCommit.Version = &apiVersion
 			}
-		} else if !utility.FromBoolPtr(v.Activated) {
-			versionMeta := VersionMeta{
+		}
+
+		if !utility.FromBoolPtr(v.Activated) {
+			versionMetadata := VersionMetadata{
 				ID:         v.Id,
 				CreateTime: v.CreateTime,
 				Author:     v.Author,
 				Message:    v.Message,
 			}
-			mainlineCommit.VersionMeta = &versionMeta
+			mainlineCommit.VersionMetadata = &versionMetadata
 		} else {
 			mainlineCommit.Version = &apiVersion
 		}

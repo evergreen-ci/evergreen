@@ -97,8 +97,8 @@ type HostsResponse struct {
 }
 
 type MainlineCommit struct {
-	Version     *model.APIVersion `json:"version"`
-	VersionMeta *VersionMeta      `json:"versionMeta"`
+	Version         *model.APIVersion `json:"version"`
+	VersionMetadata *VersionMetadata  `json:"versionMetadata"`
 }
 
 type MainlineCommitsOptions struct {
@@ -260,7 +260,7 @@ type VariantTasks struct {
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
 }
 
-type VersionMeta struct {
+type VersionMetadata struct {
 	ID         string    `json:"id"`
 	CreateTime time.Time `json:"createTime"`
 	Author     string    `json:"author"`

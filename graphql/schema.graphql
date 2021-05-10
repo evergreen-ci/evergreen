@@ -140,10 +140,10 @@ type Mutation {
 # Returns either a version or versionMeta for rolled up commits
 type MainlineCommit {
   version: Version
-  versionMeta: VersionMeta
+  versionMetadata: VersionMetadata
 }
 
-type VersionMeta {
+type VersionMetadata {
   id: String!
   createTime: Time!
   author: String!
