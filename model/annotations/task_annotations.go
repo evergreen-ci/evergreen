@@ -5,6 +5,8 @@ import (
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -57,6 +59,60 @@ func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
 		res = append(res, a)
 	}
 	return res
+}
+
+func SetPatchKnownOrUnknown(t *task.Task, taskId string) error {
+	known, err := IsKnown(t, taskId)
+
+	if known {
+		err := patchDoc.SetIsKnown(true)
+		if err != nil {
+			return errors.Wrapf(err, "error setting isKnown for '%s'", patchDoc.Id)
+		}
+	} else {
+		err := patchDoc.SetIsKnown(false)
+		if err != nil {
+			return errors.Wrapf(err, "error setting isKnown for '%s'", patchDoc.Id)
+		}
+	}
+
+	return nil
+}
+
+func IsKnown(t *task.Task, taskId string) (bool, *patch.Patch, error) {
+	allAnnotations, err := FindByTaskId(taskId)
+	if err != nil {
+		return false, nil, errors.Wrapf(err, "error finding task annotation")
+	}
+	if allAnnotations == nil {
+		return false, nil, nil
+	}
+	if t == nil {
+		t, err := task.FindOne(task.ById(taskId))
+		if err != nil {
+			return false, nil, errors.Wrapf(err, "error finding task")
+		}
+		if t == nil {
+			return false, nil, errors.New("task is empty")
+		}
+	}
+
+	patchDoc, err := patch.FindOne(patch.ByVersion(t.Version))
+	if err != nil {
+		return false, patchDoc, errors.Wrapf(err, "error finding patch")
+	}
+	if patchDoc == nil {
+		return false, patchDoc, errors.New("patch is empty")
+	}
+
+	// get the annotation for the latest execution
+	latestAnnotation := GetLatestExecutions(allAnnotations)
+
+	if len(latestAnnotation[0].Issues) > 0 {
+		return true, patchDoc, nil
+	}
+
+	return false, patchDoc, nil
 }
 
 func MoveIssueToSuspectedIssue(taskId string, taskExecution int, issue IssueLink, username string) error {

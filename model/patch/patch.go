@@ -144,6 +144,7 @@ type Patch struct {
 	Author          string                 `bson:"author"`
 	Version         string                 `bson:"version"`
 	Status          string                 `bson:"status"`
+	KnownIssue      bool                   `bson:"known_issue"`
 	CreateTime      time.Time              `bson:"create_time"`
 	StartTime       time.Time              `bson:"start_time"`
 	FinishTime      time.Time              `bson:"finish_time"`
@@ -318,6 +319,18 @@ func (p *Patch) SetParameters(parameters []Parameter) error {
 		bson.M{
 			"$set": bson.M{
 				ParametersKey: parameters,
+			},
+		},
+	)
+}
+
+func (p *Patch) SetIsKnown(isKnown bool) error {
+	p.KnownIssue = isKnown
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				KnownIssueKey: isKnown,
 			},
 		},
 	)

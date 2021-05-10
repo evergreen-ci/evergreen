@@ -29,6 +29,7 @@ var (
 	NumberKey           = bsonutil.MustHaveTag(Patch{}, "PatchNumber")
 	VersionKey          = bsonutil.MustHaveTag(Patch{}, "Version")
 	StatusKey           = bsonutil.MustHaveTag(Patch{}, "Status")
+	KnownIssueKey       = bsonutil.MustHaveTag(Patch{}, "KnownIssue")
 	CreateTimeKey       = bsonutil.MustHaveTag(Patch{}, "CreateTime")
 	StartTimeKey        = bsonutil.MustHaveTag(Patch{}, "StartTime")
 	FinishTimeKey       = bsonutil.MustHaveTag(Patch{}, "FinishTime")

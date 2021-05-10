@@ -27,6 +27,7 @@ type APIPatch struct {
 	Author                  *string           `json:"author"`
 	Version                 *string           `json:"version"`
 	Status                  *string           `json:"status"`
+	KnownIssue              bool              `bson:"known_issue"`
 	CreateTime              *time.Time        `json:"create_time"`
 	StartTime               *time.Time        `json:"start_time"`
 	FinishTime              *time.Time        `json:"finish_time"`
@@ -95,6 +96,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Author = utility.ToStringPtr(v.Author)
 	apiPatch.Version = utility.ToStringPtr(v.Version)
 	apiPatch.Status = utility.ToStringPtr(v.Status)
+	apiPatch.KnownIssue = v.KnownIssue
 	apiPatch.CreateTime = ToTimePtr(v.CreateTime)
 	apiPatch.StartTime = ToTimePtr(v.StartTime)
 	apiPatch.FinishTime = ToTimePtr(v.FinishTime)
@@ -226,6 +228,7 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 	res.Author = utility.FromStringPtr(apiPatch.Author)
 	res.Version = utility.FromStringPtr(apiPatch.Version)
 	res.Status = utility.FromStringPtr(apiPatch.Status)
+	res.KnownIssue = apiPatch.KnownIssue
 	res.Alias = utility.FromStringPtr(apiPatch.Alias)
 	res.Activated = apiPatch.Activated
 	res.CreateTime, err = FromTimePtr(apiPatch.CreateTime)

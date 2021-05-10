@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -307,6 +308,35 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 	return RestartVersion(versionId, taskIds, abortInProgress, caller)
 }
 
+func SetVersionIsKnown(versionId string) error {
+	p, err := patch.FindOne(patch.ByVersion(versionId))
+	if err != nil {
+		return errors.Wrapf(err, "error finding patch")
+	}
+	if p == nil {
+		return errors.New("patch is empty")
+	}
+	err = p.SetIsKnown(false)
+	if err != nil {
+		return errors.Wrapf(err, "error setting isKnown for '%s'", versionId)
+	}
+
+	tasks, err := task.Find(task.ByVersion(versionId))
+	for _, task := range tasks {
+		known, patchDoc, err := annotations.IsKnown(&task, task.Id)
+		if err != nil {
+			return errors.Wrapf(err, "error checking if patch '%s' has a known failure", patchDoc.Id)
+		}
+		if known {
+			err := patchDoc.SetIsKnown(true)
+			if err != nil {
+				return errors.Wrapf(err, "error setting isKnown for '%s'", patchDoc.Id)
+			}
+		}
+	}
+	return nil
+}
+
 // RestartVersion restarts completed tasks associated with a given versionId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
@@ -408,6 +438,11 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	version, err := VersionFindOneId(versionId)
 	if err != nil {
 		return errors.Wrap(err, "unable to find version")
+	}
+	// if a task is restarted, we need to recheck if the patch is still a "known failure" for the current execution of tasks
+	err = SetVersionIsKnown(versionId)
+	if err != nil {
+		return errors.Wrapf(err, "error setting isKnown for '%s'", versionId)
 	}
 	return errors.Wrap(version.UpdateStatus(evergreen.VersionStarted), "unable to change version status")
 }

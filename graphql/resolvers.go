@@ -1947,10 +1947,16 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 		if err := annotations.MoveIssueToSuspectedIssue(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
 		}
+		if err := annotations.SetPatchKnownOrUnknown(nil, taskID); err != nil {
+			return false, InputValidationError.Send(ctx, fmt.Sprintf("error setting known failure for patch: %s", err.Error()))
+		}
 		return true, nil
 	} else {
 		if err := annotations.MoveSuspectedIssueToIssue(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
+		}
+		if err := annotations.SetPatchKnownOrUnknown(nil, taskID); err != nil {
+			return false, InputValidationError.Send(ctx, fmt.Sprintf("error setting known failure for patch: %s", err.Error()))
 		}
 		return true, nil
 	}
@@ -1968,6 +1974,9 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 	if isIssue {
 		if err := annotations.AddIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
+		}
+		if err := annotations.SetPatchKnownOrUnknown(nil, taskID); err != nil {
+			return false, InputValidationError.Send(ctx, fmt.Sprintf("error setting known failure for patch: %s", err.Error()))
 		}
 		return true, nil
 	} else {
@@ -1987,10 +1996,16 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 		if err := annotations.RemoveIssueFromAnnotation(taskID, execution, *issue); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete issue: %s", err.Error()))
 		}
+		if err := annotations.SetPatchKnownOrUnknown(nil, taskID); err != nil {
+			return false, InputValidationError.Send(ctx, fmt.Sprintf("error setting known failure for patch: %s", err.Error()))
+		}
 		return true, nil
 	} else {
 		if err := annotations.RemoveSuspectedIssueFromAnnotation(taskID, execution, *issue); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete suspected issue: %s", err.Error()))
+		}
+		if err := annotations.SetPatchKnownOrUnknown(nil, taskID); err != nil {
+			return false, InputValidationError.Send(ctx, fmt.Sprintf("error setting known failure for patch: %s", err.Error()))
 		}
 		return true, nil
 	}
