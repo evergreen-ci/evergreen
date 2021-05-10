@@ -4985,9 +4985,6 @@ input BuildVariantOptions {
 }
 input MainlineCommitsOptions {
   projectID: String! 
-  variants: [String!]
-  tasks: [String!]
-  statuses: [String!]
   limit: Int = 7
   page: Int = 0
 }
@@ -25221,24 +25218,6 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 		case "projectID":
 			var err error
 			it.ProjectID, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "variants":
-			var err error
-			it.Variants, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "tasks":
-			var err error
-			it.Tasks, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "statuses":
-			var err error
-			it.Statuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}

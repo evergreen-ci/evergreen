@@ -169,9 +169,6 @@ input BuildVariantOptions {
 }
 input MainlineCommitsOptions {
   projectID: String! 
-  variants: [String!]
-  tasks: [String!]
-  statuses: [String!]
   limit: Int = 7
   page: Int = 0
 }

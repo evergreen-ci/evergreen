@@ -102,12 +102,9 @@ type MainlineCommit struct {
 }
 
 type MainlineCommitsOptions struct {
-	ProjectID string   `json:"projectID"`
-	Variants  []string `json:"variants"`
-	Tasks     []string `json:"tasks"`
-	Statuses  []string `json:"statuses"`
-	Limit     *int     `json:"limit"`
-	Page      *int     `json:"page"`
+	ProjectID string `json:"projectID"`
+	Limit     *int   `json:"limit"`
+	Page      *int   `json:"page"`
 }
 
 type PatchConfigure struct {

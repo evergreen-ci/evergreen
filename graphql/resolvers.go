@@ -2496,9 +2496,6 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) ([]*MainlineCommit, error) {
 	opts := model.MainlineCommitVersionOptions{}
-	if len(options.Variants) > 0 {
-		opts.ByBuildVariants = options.Variants
-	}
 	versions, err := model.GetMainlineCommitVersionsWithOptions(options.ProjectID, opts)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
