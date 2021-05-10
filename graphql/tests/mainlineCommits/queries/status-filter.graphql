@@ -1,12 +1,13 @@
 {
     mainlineCommits(options: {
         projectID: "evergreen"
-        statuses: ["failed"]
     }){
         version {
             id
             author
-            buildVariants {
+            buildVariants(options: {
+                statuses: ["failed"]
+            }) {
                 variant
                 displayName
                 tasks {

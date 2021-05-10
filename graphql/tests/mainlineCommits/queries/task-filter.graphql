@@ -1,12 +1,13 @@
 {
     mainlineCommits(options: {
         projectID: "evergreen"
-        tasks: ["some task"]
     }){
         version {
             id
             author
-            buildVariants {
+            buildVariants(options: {
+                tasks: ["some task"]
+            }) {
                 variant
                 displayName
                 tasks {

@@ -5,7 +5,7 @@
         version {
             id
             author
-            buildVariants {
+            buildVariants(options: {}) {
                 variant
                 displayName
                 tasks {
