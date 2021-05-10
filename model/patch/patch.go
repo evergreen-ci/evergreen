@@ -682,6 +682,23 @@ func (p *Patch) IsParent() bool {
 	return len(p.Triggers.ChildPatches) > 0
 }
 
+func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
+	if !p.IsChild() {
+		return -1, nil
+	}
+	if parentPatch == nil {
+		return -1, errors.New(fmt.Sprintf("parent patch does not exist"))
+	}
+	siblings := parentPatch.Triggers.ChildPatches
+
+	for index, patch := range siblings {
+		if p.Id.Hex() == patch {
+			return index, nil
+		}
+	}
+	return -1, nil
+}
+
 func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	var childrenOrSiblings []string
 	var parentPatch *Patch
