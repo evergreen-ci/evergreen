@@ -203,6 +203,7 @@ func getFunctionName(commandInfo model.PluginCommandConf) string {
 // requested when the task completes.
 func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
 	if tc.taskModel == nil {
+		tc.logger.Task().Error("Error running task sync.")
 		return nil
 	}
 	if !tc.taskModel.SyncAtEndOpts.Enabled {
