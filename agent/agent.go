@@ -642,7 +642,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 // runEndTaskSync runs task sync if it was requested for the end of this task.
 func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	if tc.taskModel == nil {
-		tc.logger.Task().Error("Error running task sync.")
+		tc.logger.Task().Error("Task model not found for running task sync.")
 		return
 	}
 	start := time.Now()
