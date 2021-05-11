@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/shlex"
@@ -1371,6 +1372,45 @@ Examples:
 				return errors.Wrap(err, "could not build rsync command")
 			}
 			return cmd.Run(ctx)
+		},
+	}
+}
+
+func hostFindWithIpAddress() cli.Command {
+	const (
+		ipAddressFlagName = "ip-address"
+	)
+	return cli.Command{
+		Name:  "find-by-ip-address",
+		Usage: "find host using ip address",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(ipAddressFlagName, "ip"),
+				Usage: "ip address used to find host",
+			},
+		),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			ipAddress := c.String(ipAddressFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.setupRestCommunicator(ctx)
+			defer client.Close()
+
+			sc := &data.DBHostConnector{}
+			host, err := sc.FindHostByIpAddress(ipAddress)
+			if err != nil {
+				fmt.Println("error")
+			}
+
+			fmt.Printf("https://evergreen.mongodb.com/host/%s", host.Id)
+			return nil
 		},
 	}
 }
