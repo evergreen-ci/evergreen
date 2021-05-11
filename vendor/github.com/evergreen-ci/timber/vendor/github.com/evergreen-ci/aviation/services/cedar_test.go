@@ -38,6 +38,17 @@ func TestDialCedarOptionsValidate(t *testing.T) {
 		}
 		assert.Error(t, opts.validate())
 	})
+	t.Run("TLSAuthAndInsecure", func(t *testing.T) {
+		opts := &DialCedarOptions{
+			BaseAddress: "base",
+			Username:    "username",
+			APIKey:      "apiKey",
+			TLSAuth:     true,
+			Insecure:    true,
+			Retries:     10,
+		}
+		assert.Error(t, opts.validate())
+	})
 	t.Run("DefaultBaseAddressAndClient", func(t *testing.T) {
 		opts := &DialCedarOptions{
 			Username: "username",
@@ -74,7 +85,7 @@ func TestDialCedar(t *testing.T) {
 		opts := &DialCedarOptions{
 			Username: username,
 			APIKey:   apiKey,
-			TLS:      true,
+			TLSAuth:  true,
 			Retries:  10,
 		}
 		conn, err := DialCedar(ctx, http.DefaultClient, opts)
@@ -88,7 +99,7 @@ func TestDialCedar(t *testing.T) {
 			RPCPort:     "7070",
 			Username:    username,
 			APIKey:      apiKey,
-			TLS:         true,
+			TLSAuth:     true,
 		}
 		conn, err := DialCedar(ctx, http.DefaultClient, opts)
 		assert.Error(t, err)
@@ -98,7 +109,7 @@ func TestDialCedar(t *testing.T) {
 		opts := &DialCedarOptions{
 			Username: "bad_user",
 			APIKey:   "bad_key",
-			TLS:      true,
+			TLSAuth:  true,
 			Retries:  10,
 		}
 		conn, err := DialCedar(ctx, http.DefaultClient, opts)
