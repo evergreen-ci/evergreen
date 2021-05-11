@@ -134,7 +134,7 @@
         "data": {
           "patch": {
             "project": {
-              "tasks": ["compile", "test", "lint", "coverage", "e2e_test"],
+              "tasks": [],
               "variants": [
                 {
                   "name": "ubuntu1604",

@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 )
@@ -140,4 +142,26 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 			assert.Equal(t, test.expectedCount, count)
 		})
 	}
+}
+
+func TestAddDisplayTasksToPatchReq(t *testing.T) {
+	p := model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				DisplayTasks: []patch.DisplayTask{
+					{Name: "dt1", ExecTasks: []string{"1", "2"}},
+					{Name: "dt2", ExecTasks: []string{"3", "4"}},
+				}},
+		},
+	}
+	req := PatchVariantsTasksRequest{
+		VariantsTasks: []patch.VariantTasks{
+			{Variant: "bv", Tasks: []string{"t1", "dt1", "dt2"}},
+		},
+	}
+	addDisplayTasksToPatchReq(&req, p)
+	assert.Len(t, req.VariantsTasks[0].Tasks, 1)
+	assert.Equal(t, "t1", req.VariantsTasks[0].Tasks[0])
+	assert.Len(t, req.VariantsTasks[0].DisplayTasks, 2)
 }

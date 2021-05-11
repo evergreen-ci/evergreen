@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -121,6 +121,15 @@ func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
 
 	return BuildVariantTaskUnit{}, errors.Errorf("could not find task %s in build variant %s",
 		name, b.Name)
+}
+
+func (b BuildVariant) GetDisplayTask(name string) *patch.DisplayTask {
+	for _, dt := range b.DisplayTasks {
+		if dt.Name == name {
+			return &dt
+		}
+	}
+	return nil
 }
 
 type BuildVariants []BuildVariant

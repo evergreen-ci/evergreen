@@ -303,14 +303,16 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 			Retries:     10,
 		}
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
-		catcher.Wrap(err, "creating cedar grpc client connection without TLS")
-
-		healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
-		_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
-		if err == nil {
-			return nil
+		if err != nil {
+			catcher.Wrap(err, "creating cedar grpc client connection without TLS")
+		} else {
+			healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
+			_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
+			if err == nil {
+				return nil
+			}
+			catcher.Wrap(err, "checking health without TLS")
 		}
-		catcher.Wrap(err, "checking health without TLS")
 
 		// Try again, this time with TLS.
 		dialOpts.TLS = true

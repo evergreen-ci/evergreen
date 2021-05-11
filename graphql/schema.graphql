@@ -526,6 +526,7 @@ type Volume {
 
 type PatchProject {
   variants: [ProjectBuildVariant!]!
+  # note the tasks field is deprecated and can be removed whenever
   tasks: [String!]!
 }
 type ProjectBuildVariant {
