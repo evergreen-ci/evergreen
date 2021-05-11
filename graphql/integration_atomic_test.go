@@ -172,6 +172,16 @@ func makeTestsInDirectory(t *testing.T, state *atomicGraphQLState) func(t *testi
 				require.NoError(t, err)
 				b, err := ioutil.ReadAll(resp.Body)
 				require.NoError(t, err)
+
+				// Remove apollo tracing data from test responses
+				var bJSON map[string]json.RawMessage
+				err = json.Unmarshal(b, &bJSON)
+				require.NoError(t, err)
+
+				delete(bJSON, "extensions")
+				b, err = json.Marshal(bJSON)
+				require.NoError(t, err)
+
 				pass := assert.JSONEq(t, string(testCase.Result), string(b), "test failure, more details below (whitespace will not line up)")
 				if !pass {
 					var actual bytes.Buffer
