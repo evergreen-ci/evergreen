@@ -141,9 +141,13 @@ type Mutation {
 # nextPage represents the last activated order number returned
 type MainlineCommits {
   nextPageOrderNumber: Int
-  versions: [Version!]!
+  versions: [MainlineCommitVersion!]!
 }
 
+type MainlineCommitVersion {
+  version: Version
+  rolledUpVersions: [Version!]
+}
 type Version {
   id: String!
   createTime: Time!

@@ -2564,9 +2564,9 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		return versions[i].RevisionOrderNumber > versions[j].RevisionOrderNumber
 	})
 	var mainlineCommits MainlineCommits
-	activatedCount := 0
+	activatedVersionCount := 0
 	for _, v := range versions {
-		if activatedCount == *options.Limit {
+		if activatedVersionCount == *options.Limit {
 			break
 		}
 		apiVersion := restModel.APIVersion{}
@@ -2607,12 +2607,25 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				}
 			}
 		}
-		if utility.FromBoolPtr(v.Activated) {
-			activatedCount++
-			mainlineCommits.NextPageOrderNumber = &v.RevisionOrderNumber
-		}
+		mainlineCommitVersion := MainlineCommitVersion{}
 
-		mainlineCommits.Versions = append(mainlineCommits.Versions, &apiVersion)
+		if utility.FromBoolPtr(v.Activated) {
+			activatedVersionCount++
+			mainlineCommits.NextPageOrderNumber = &v.RevisionOrderNumber
+			mainlineCommitVersion.Version = &apiVersion
+			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+		} else {
+			if len(mainlineCommits.Versions) > 0 {
+				lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
+				if lastMainlineCommit.RolledUpVersions != nil {
+					lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
+				}
+			} else {
+				mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
+				mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+			}
+
+		}
 
 	}
 

@@ -96,9 +96,14 @@ type HostsResponse struct {
 	Hosts              []*model.APIHost `json:"hosts"`
 }
 
+type MainlineCommitVersion struct {
+	Version          *model.APIVersion   `json:"version"`
+	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions"`
+}
+
 type MainlineCommits struct {
-	NextPageOrderNumber *int                `json:"nextPageOrderNumber"`
-	Versions            []*model.APIVersion `json:"versions"`
+	NextPageOrderNumber *int                     `json:"nextPageOrderNumber"`
+	Versions            []*MainlineCommitVersion `json:"versions"`
 }
 
 type MainlineCommitsOptions struct {
