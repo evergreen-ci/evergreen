@@ -396,13 +396,7 @@ func GetMainlineCommitVersionsWithOptions(projectName string, opts MainlineCommi
 		limit = opts.Limit
 	}
 
-	// We only want limit of activated versions but there could be much more not activated versions
-	if opts.Activated {
-		pipeline = append(pipeline, bson.M{"$limit": limit})
-	} else {
-		pipeline = append(pipeline, bson.M{"$limit": defaultVersionLimit})
-
-	}
+	pipeline = append(pipeline, bson.M{"$limit": limit})
 
 	res := []Version{}
 
