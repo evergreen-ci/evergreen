@@ -2524,22 +2524,56 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
-func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) ([]*MainlineCommit, error) {
-	opts := model.MainlineCommitVersionOptions{}
-	versions, err := model.GetMainlineCommitVersionsWithOptions(options.ProjectID, opts)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
-	var mainlineCommits []*MainlineCommit
+// Will return an array of activated and unactivated versions
+func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error) {
 
+	opts := model.MainlineCommitVersionOptions{
+		Activated:       true,
+		SkipOrderNumber: 0,
+		Limit:           0,
+	}
+	if options.Limit != nil {
+		opts.Limit = *options.Limit
+	}
+	if options.SkipOrderNumber != nil {
+		opts.SkipOrderNumber = *options.SkipOrderNumber
+	}
+
+	activatedVersions, err := model.GetMainlineCommitVersionsWithOptions(options.ProjectID, opts)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions %s", err.Error()))
+	}
+	opts = model.MainlineCommitVersionOptions{
+		Activated:       false,
+		SkipOrderNumber: 0,
+		Limit:           0,
+	}
+	if options.Limit != nil {
+		opts.Limit = *options.Limit
+	}
+	if options.SkipOrderNumber != nil {
+		opts.SkipOrderNumber = *options.SkipOrderNumber
+	}
+
+	unactivatedVersions, err := model.GetMainlineCommitVersionsWithOptions(options.ProjectID, opts)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting unactivated versions %s", err.Error()))
+	}
+	versions := append(activatedVersions, unactivatedVersions...)
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i].RevisionOrderNumber > versions[j].RevisionOrderNumber
+	})
+	var mainlineCommits MainlineCommits
+	activatedCount := 0
 	for _, v := range versions {
+		if activatedCount == *options.Limit {
+			break
+		}
 		apiVersion := restModel.APIVersion{}
 		err = apiVersion.BuildFromService(&v)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service: %s", err.Error()))
 		}
-
-		mainlineCommit := MainlineCommit{}
 
 		// If we try to access a version that does not have the Activated flag we must manually verify it
 		// After we verify if a version is activated we cache that field so subsequent queries are faster.
@@ -2571,32 +2605,27 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating version activated status for %s, %s", v.Id, err.Error()))
 				}
-				mainlineCommit.Version = &apiVersion
 			}
 		}
-
-		if !utility.FromBoolPtr(v.Activated) {
-			versionMetadata := VersionMetadata{
-				ID:         v.Id,
-				CreateTime: v.CreateTime,
-				Author:     v.Author,
-				Message:    v.Message,
-			}
-			mainlineCommit.VersionMetadata = &versionMetadata
-		} else {
-			mainlineCommit.Version = &apiVersion
+		if utility.FromBoolPtr(v.Activated) {
+			activatedCount++
+			mainlineCommits.NextPageOrderNumber = &v.RevisionOrderNumber
 		}
 
-		mainlineCommits = append(mainlineCommits, &mainlineCommit)
+		mainlineCommits.Versions = append(mainlineCommits.Versions, &apiVersion)
 
 	}
 
-	return mainlineCommits, nil
+	return &mainlineCommits, nil
 }
 
 type versionResolver struct{ *Resolver }
 
+// Returns grouped build variants for a version. Will not return build variants for unactivated versions
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error) {
+	if !utility.FromBoolPtr(v.Activated) {
+		return nil, nil
+	}
 	variants := []string{}
 	tasks := []string{}
 	statuses := []string{}

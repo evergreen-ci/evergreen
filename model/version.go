@@ -372,8 +372,9 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 }
 
 type MainlineCommitVersionOptions struct {
-	Limit int `json:"limit"`
-	Skip  int `json:"skip"`
+	Limit           int  `json:"limit"`
+	SkipOrderNumber int  `json:"skipOrderNumber"`
+	Activated       bool `json:"activated"`
 }
 
 func GetMainlineCommitVersionsWithOptions(projectName string, opts MainlineCommitVersionOptions) ([]Version, error) {
@@ -383,15 +384,25 @@ func GetMainlineCommitVersionsWithOptions(projectName string, opts MainlineCommi
 	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,
+		VersionActivatedKey:  opts.Activated,
+	}
+	if opts.SkipOrderNumber != 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.SkipOrderNumber}
 	}
 	pipeline := []bson.M{bson.M{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
-
 	limit := defaultVersionLimit
 	if opts.Limit != 0 {
 		limit = opts.Limit
 	}
-	pipeline = append(pipeline, bson.M{"$limit": limit})
+
+	// We only want limit of activated versions but there could be much more not activated versions
+	if opts.Activated {
+		pipeline = append(pipeline, bson.M{"$limit": limit})
+	} else {
+		pipeline = append(pipeline, bson.M{"$limit": defaultVersionLimit})
+
+	}
 
 	res := []Version{}
 

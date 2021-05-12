@@ -96,15 +96,15 @@ type HostsResponse struct {
 	Hosts              []*model.APIHost `json:"hosts"`
 }
 
-type MainlineCommit struct {
-	Version         *model.APIVersion `json:"version"`
-	VersionMetadata *VersionMetadata  `json:"versionMetadata"`
+type MainlineCommits struct {
+	NextPageOrderNumber *int                `json:"nextPageOrderNumber"`
+	Versions            []*model.APIVersion `json:"versions"`
 }
 
 type MainlineCommitsOptions struct {
-	ProjectID string `json:"projectID"`
-	Limit     *int   `json:"limit"`
-	Page      *int   `json:"page"`
+	ProjectID       string `json:"projectID"`
+	Limit           *int   `json:"limit"`
+	SkipOrderNumber *int   `json:"skipOrderNumber"`
 }
 
 type PatchConfigure struct {
@@ -258,13 +258,6 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
-}
-
-type VersionMetadata struct {
-	ID         string    `json:"id"`
-	CreateTime time.Time `json:"createTime"`
-	Author     string    `json:"author"`
-	Message    string    `json:"message"`
 }
 
 type VolumeHost struct {

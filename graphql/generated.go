@@ -303,9 +303,9 @@ type ComplexityRoot struct {
 		Version   func(childComplexity int) int
 	}
 
-	MainlineCommit struct {
-		Version         func(childComplexity int) int
-		VersionMetadata func(childComplexity int) int
+	MainlineCommits struct {
+		NextPageOrderNumber func(childComplexity int) int
+		Versions            func(childComplexity int) int
 	}
 
 	Module struct {
@@ -763,23 +763,21 @@ type ComplexityRoot struct {
 	}
 
 	Version struct {
+		Activated     func(childComplexity int) int
 		Author        func(childComplexity int) int
+		Branch        func(childComplexity int) int
 		BuildVariants func(childComplexity int, options *BuildVariantOptions) int
 		CreateTime    func(childComplexity int) int
 		FinishTime    func(childComplexity int) int
 		Id            func(childComplexity int) int
 		Message       func(childComplexity int) int
 		Order         func(childComplexity int) int
+		Project       func(childComplexity int) int
+		Repo          func(childComplexity int) int
+		Requester     func(childComplexity int) int
 		Revision      func(childComplexity int) int
 		StartTime     func(childComplexity int) int
 		Status        func(childComplexity int) int
-	}
-
-	VersionMetadata struct {
-		Author     func(childComplexity int) int
-		CreateTime func(childComplexity int) int
-		ID         func(childComplexity int) int
-		Message    func(childComplexity int) int
 	}
 
 	Volume struct {
@@ -901,7 +899,7 @@ type QueryResolver interface {
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
-	MainlineCommits(ctx context.Context, options MainlineCommitsOptions) ([]*MainlineCommit, error)
+	MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error)
 }
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
@@ -2008,19 +2006,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.LogMessage.Version(childComplexity), true
 
-	case "MainlineCommit.version":
-		if e.complexity.MainlineCommit.Version == nil {
+	case "MainlineCommits.nextPageOrderNumber":
+		if e.complexity.MainlineCommits.NextPageOrderNumber == nil {
 			break
 		}
 
-		return e.complexity.MainlineCommit.Version(childComplexity), true
+		return e.complexity.MainlineCommits.NextPageOrderNumber(childComplexity), true
 
-	case "MainlineCommit.versionMetadata":
-		if e.complexity.MainlineCommit.VersionMetadata == nil {
+	case "MainlineCommits.versions":
+		if e.complexity.MainlineCommits.Versions == nil {
 			break
 		}
 
-		return e.complexity.MainlineCommit.VersionMetadata(childComplexity), true
+		return e.complexity.MainlineCommits.Versions(childComplexity), true
 
 	case "Module.issue":
 		if e.complexity.Module.Issue == nil {
@@ -4556,12 +4554,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.VariantTask.Tasks(childComplexity), true
 
+	case "Version.activated":
+		if e.complexity.Version.Activated == nil {
+			break
+		}
+
+		return e.complexity.Version.Activated(childComplexity), true
+
 	case "Version.author":
 		if e.complexity.Version.Author == nil {
 			break
 		}
 
 		return e.complexity.Version.Author(childComplexity), true
+
+	case "Version.branch":
+		if e.complexity.Version.Branch == nil {
+			break
+		}
+
+		return e.complexity.Version.Branch(childComplexity), true
 
 	case "Version.buildVariants":
 		if e.complexity.Version.BuildVariants == nil {
@@ -4610,6 +4622,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.Order(childComplexity), true
 
+	case "Version.project":
+		if e.complexity.Version.Project == nil {
+			break
+		}
+
+		return e.complexity.Version.Project(childComplexity), true
+
+	case "Version.repo":
+		if e.complexity.Version.Repo == nil {
+			break
+		}
+
+		return e.complexity.Version.Repo(childComplexity), true
+
+	case "Version.requester":
+		if e.complexity.Version.Requester == nil {
+			break
+		}
+
+		return e.complexity.Version.Requester(childComplexity), true
+
 	case "Version.revision":
 		if e.complexity.Version.Revision == nil {
 			break
@@ -4630,34 +4663,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.Status(childComplexity), true
-
-	case "VersionMetadata.author":
-		if e.complexity.VersionMetadata.Author == nil {
-			break
-		}
-
-		return e.complexity.VersionMetadata.Author(childComplexity), true
-
-	case "VersionMetadata.createTime":
-		if e.complexity.VersionMetadata.CreateTime == nil {
-			break
-		}
-
-		return e.complexity.VersionMetadata.CreateTime(childComplexity), true
-
-	case "VersionMetadata.id":
-		if e.complexity.VersionMetadata.ID == nil {
-			break
-		}
-
-		return e.complexity.VersionMetadata.ID(childComplexity), true
-
-	case "VersionMetadata.message":
-		if e.complexity.VersionMetadata.Message == nil {
-			break
-		}
-
-		return e.complexity.VersionMetadata.Message(childComplexity), true
 
 	case "Volume.availabilityZone":
 		if e.complexity.Volume.AvailabilityZone == nil {
@@ -4886,7 +4891,7 @@ var sources = []*ast.Source{
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  mainlineCommits(options: MainlineCommitsOptions!): [MainlineCommit!]!
+  mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -4953,28 +4958,28 @@ type Mutation {
   clearMySubscriptions: Int!
 }
 
-# Returns either a version or versionMeta for rolled up commits
-type MainlineCommit {
-  version: Version
-  versionMetadata: VersionMetadata
+# Array of activated and unactivated versions
+# nextPage represents the last activated order number returned
+type MainlineCommits {
+  nextPageOrderNumber: Int
+  versions: [Version!]!
 }
 
-type VersionMetadata {
-  id: String!
-  createTime: Time!
-  author: String!
-  message: String!
-}
 type Version {
   id: String!
   createTime: Time!
-  startTime: Time!
-  finishTime: Time!
+  startTime: Time
+  finishTime: Time
+  message: String!
   revision: String!
   author: String!
-  message: String!
   status: String!
   order: Int!
+  repo: String!
+  project: String!
+  branch: String!
+  requester: String!
+  activated: Boolean
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
 }
 
@@ -4986,7 +4991,7 @@ input BuildVariantOptions {
 input MainlineCommitsOptions {
   projectID: String! 
   limit: Int = 7
-  page: Int = 0
+  skipOrderNumber: Int = 0
 }
 enum SpawnHostStatusActions {
   START
@@ -5342,6 +5347,7 @@ type Volume {
 
 type PatchProject {
   variants: [ProjectBuildVariant!]!
+  # note the tasks field is deprecated and can be removed whenever
   tasks: [String!]!
 }
 type ProjectBuildVariant {
@@ -11946,7 +11952,7 @@ func (ec *executionContext) _LogMessage_version(ctx context.Context, field graph
 	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _MainlineCommit_version(ctx context.Context, field graphql.CollectedField, obj *MainlineCommit) (ret graphql.Marshaler) {
+func (ec *executionContext) _MainlineCommits_nextPageOrderNumber(ctx context.Context, field graphql.CollectedField, obj *MainlineCommits) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -11954,7 +11960,7 @@ func (ec *executionContext) _MainlineCommit_version(ctx context.Context, field g
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "MainlineCommit",
+		Object:   "MainlineCommits",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -11963,7 +11969,7 @@ func (ec *executionContext) _MainlineCommit_version(ctx context.Context, field g
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Version, nil
+		return obj.NextPageOrderNumber, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11972,12 +11978,12 @@ func (ec *executionContext) _MainlineCommit_version(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.APIVersion)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _MainlineCommit_versionMetadata(ctx context.Context, field graphql.CollectedField, obj *MainlineCommit) (ret graphql.Marshaler) {
+func (ec *executionContext) _MainlineCommits_versions(ctx context.Context, field graphql.CollectedField, obj *MainlineCommits) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -11985,7 +11991,7 @@ func (ec *executionContext) _MainlineCommit_versionMetadata(ctx context.Context,
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "MainlineCommit",
+		Object:   "MainlineCommits",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -11994,18 +12000,21 @@ func (ec *executionContext) _MainlineCommit_versionMetadata(ctx context.Context,
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.VersionMetadata, nil
+		return obj.Versions, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*VersionMetadata)
+	res := resTmp.([]*model.APIVersion)
 	fc.Result = res
-	return ec.marshalOVersionMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVersionMetadata(ctx, field.Selections, res)
+	return ec.marshalNVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Module_module(ctx context.Context, field graphql.CollectedField, obj *model.APIModule) (ret graphql.Marshaler) {
@@ -17007,14 +17016,11 @@ func (ec *executionContext) _Query_mainlineCommits(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.([]*MainlineCommit)
+	res := resTmp.(*MainlineCommits)
 	fc.Result = res
-	return ec.marshalNMainlineCommit2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommitᚄ(ctx, field.Selections, res)
+	return ec.marshalOMainlineCommits2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommits(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -23146,14 +23152,11 @@ func (ec *executionContext) _Version_startTime(ctx context.Context, field graphq
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Version_finishTime(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
@@ -23180,14 +23183,45 @@ func (ec *executionContext) _Version_finishTime(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Version_message(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Version",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
 		if !graphql.HasFieldError(ctx, fc) {
 			ec.Errorf(ctx, "must not be null")
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*time.Time)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Version_revision(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
@@ -23242,40 +23276,6 @@ func (ec *executionContext) _Version_author(ctx context.Context, field graphql.C
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Author, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Version_message(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Version",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Message, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23360,6 +23360,173 @@ func (ec *executionContext) _Version_order(ctx context.Context, field graphql.Co
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_repo(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Version",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Repo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Version_project(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Version",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Project, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Version_branch(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Version",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Branch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Version_requester(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Version",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Requester, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Version_activated(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Version",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Activated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Version_buildVariants(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -23396,142 +23563,6 @@ func (ec *executionContext) _Version_buildVariants(ctx context.Context, field gr
 	res := resTmp.([]*GroupedBuildVariant)
 	fc.Result = res
 	return ec.marshalOGroupedBuildVariant2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedBuildVariant(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _VersionMetadata_id(ctx context.Context, field graphql.CollectedField, obj *VersionMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "VersionMetadata",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _VersionMetadata_createTime(ctx context.Context, field graphql.CollectedField, obj *VersionMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "VersionMetadata",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CreateTime, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _VersionMetadata_author(ctx context.Context, field graphql.CollectedField, obj *VersionMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "VersionMetadata",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Author, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _VersionMetadata_message(ctx context.Context, field graphql.CollectedField, obj *VersionMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "VersionMetadata",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Message, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Volume_id(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
@@ -25227,9 +25258,9 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 			if err != nil {
 				return it, err
 			}
-		case "page":
+		case "skipOrderNumber":
 			var err error
-			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			it.SkipOrderNumber, err = ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27200,21 +27231,24 @@ func (ec *executionContext) _LogMessage(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
-var mainlineCommitImplementors = []string{"MainlineCommit"}
+var mainlineCommitsImplementors = []string{"MainlineCommits"}
 
-func (ec *executionContext) _MainlineCommit(ctx context.Context, sel ast.SelectionSet, obj *MainlineCommit) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, mainlineCommitImplementors)
+func (ec *executionContext) _MainlineCommits(ctx context.Context, sel ast.SelectionSet, obj *MainlineCommits) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mainlineCommitsImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("MainlineCommit")
-		case "version":
-			out.Values[i] = ec._MainlineCommit_version(ctx, field, obj)
-		case "versionMetadata":
-			out.Values[i] = ec._MainlineCommit_versionMetadata(ctx, field, obj)
+			out.Values[i] = graphql.MarshalString("MainlineCommits")
+		case "nextPageOrderNumber":
+			out.Values[i] = ec._MainlineCommits_nextPageOrderNumber(ctx, field, obj)
+		case "versions":
+			out.Values[i] = ec._MainlineCommits_versions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -28594,9 +28628,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_mainlineCommits(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		case "__type":
@@ -30142,11 +30173,10 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "startTime":
 			out.Values[i] = ec._Version_startTime(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "finishTime":
 			out.Values[i] = ec._Version_finishTime(ctx, field, obj)
+		case "message":
+			out.Values[i] = ec._Version_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
@@ -30160,11 +30190,6 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "message":
-			out.Values[i] = ec._Version_message(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "status":
 			out.Values[i] = ec._Version_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -30175,6 +30200,28 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "repo":
+			out.Values[i] = ec._Version_repo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "project":
+			out.Values[i] = ec._Version_project(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "branch":
+			out.Values[i] = ec._Version_branch(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "requester":
+			out.Values[i] = ec._Version_requester(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "activated":
+			out.Values[i] = ec._Version_activated(ctx, field, obj)
 		case "buildVariants":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -30186,48 +30233,6 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				res = ec._Version_buildVariants(ctx, field, obj)
 				return res
 			})
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var versionMetadataImplementors = []string{"VersionMetadata"}
-
-func (ec *executionContext) _VersionMetadata(ctx context.Context, sel ast.SelectionSet, obj *VersionMetadata) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, versionMetadataImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("VersionMetadata")
-		case "id":
-			out.Values[i] = ec._VersionMetadata_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "createTime":
-			out.Values[i] = ec._VersionMetadata_createTime(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "author":
-			out.Values[i] = ec._VersionMetadata_author(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "message":
-			out.Values[i] = ec._VersionMetadata_message(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -31429,57 +31434,6 @@ func (ec *executionContext) marshalNLogMessage2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._LogMessage(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNMainlineCommit2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommit(ctx context.Context, sel ast.SelectionSet, v MainlineCommit) graphql.Marshaler {
-	return ec._MainlineCommit(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNMainlineCommit2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommitᚄ(ctx context.Context, sel ast.SelectionSet, v []*MainlineCommit) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNMainlineCommit2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommit(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalNMainlineCommit2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommit(ctx context.Context, sel ast.SelectionSet, v *MainlineCommit) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._MainlineCommit(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNMainlineCommitsOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommitsOptions(ctx context.Context, v interface{}) (MainlineCommitsOptions, error) {
 	return ec.unmarshalInputMainlineCommitsOptions(ctx, v)
 }
@@ -32549,6 +32503,57 @@ func (ec *executionContext) unmarshalNVariantTasks2ᚖgithubᚗcomᚋevergreen�
 	return &res, err
 }
 
+func (ec *executionContext) marshalNVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx context.Context, sel ast.SelectionSet, v model.APIVersion) graphql.Marshaler {
+	return ec._Version(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIVersion) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx context.Context, sel ast.SelectionSet, v *model.APIVersion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Version(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNVolume2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx context.Context, sel ast.SelectionSet, v model.APIVolume) graphql.Marshaler {
 	return ec._Volume(ctx, sel, &v)
 }
@@ -33419,6 +33424,17 @@ func (ec *executionContext) marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._JiraTicket(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOMainlineCommits2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommits(ctx context.Context, sel ast.SelectionSet, v MainlineCommits) graphql.Marshaler {
+	return ec._MainlineCommits(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOMainlineCommits2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommits(ctx context.Context, sel ast.SelectionSet, v *MainlineCommits) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MainlineCommits(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOModule2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModuleᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIModule) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -33972,28 +33988,6 @@ func (ec *executionContext) unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergr
 
 func (ec *executionContext) marshalOVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {
 	return ec._VariantTask(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx context.Context, sel ast.SelectionSet, v model.APIVersion) graphql.Marshaler {
-	return ec._Version(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx context.Context, sel ast.SelectionSet, v *model.APIVersion) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Version(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOVersionMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVersionMetadata(ctx context.Context, sel ast.SelectionSet, v VersionMetadata) graphql.Marshaler {
-	return ec._VersionMetadata(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOVersionMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVersionMetadata(ctx context.Context, sel ast.SelectionSet, v *VersionMetadata) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._VersionMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOVolume2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx context.Context, sel ast.SelectionSet, v model.APIVolume) graphql.Marshaler {

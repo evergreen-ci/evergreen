@@ -70,7 +70,7 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  mainlineCommits(options: MainlineCommitsOptions!): [MainlineCommit!]!
+  mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -137,28 +137,28 @@ type Mutation {
   clearMySubscriptions: Int!
 }
 
-# Returns either a version or versionMeta for rolled up commits
-type MainlineCommit {
-  version: Version
-  versionMetadata: VersionMetadata
+# Array of activated and unactivated versions
+# nextPage represents the last activated order number returned
+type MainlineCommits {
+  nextPageOrderNumber: Int
+  versions: [Version!]!
 }
 
-type VersionMetadata {
-  id: String!
-  createTime: Time!
-  author: String!
-  message: String!
-}
 type Version {
   id: String!
   createTime: Time!
-  startTime: Time!
-  finishTime: Time!
+  startTime: Time
+  finishTime: Time
+  message: String!
   revision: String!
   author: String!
-  message: String!
   status: String!
   order: Int!
+  repo: String!
+  project: String!
+  branch: String!
+  requester: String!
+  activated: Boolean
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
 }
 
@@ -170,7 +170,7 @@ input BuildVariantOptions {
 input MainlineCommitsOptions {
   projectID: String! 
   limit: Int = 7
-  page: Int = 0
+  skipOrderNumber: Int = 0
 }
 enum SpawnHostStatusActions {
   START
