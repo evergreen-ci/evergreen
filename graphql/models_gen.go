@@ -118,7 +118,6 @@ type PatchMetadata struct {
 
 type PatchProject struct {
 	Variants []*ProjectBuildVariant `json:"variants"`
-	Tasks    []string               `json:"tasks"`
 }
 
 type PatchTasks struct {

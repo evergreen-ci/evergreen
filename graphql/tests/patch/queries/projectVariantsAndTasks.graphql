@@ -1,7 +1,6 @@
 {
   patch(id: "5e94c8213e8e8651bee37561") {
     project {
-      tasks
       variants {
         name
         displayName
