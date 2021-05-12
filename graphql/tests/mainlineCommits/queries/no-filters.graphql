@@ -2,7 +2,8 @@
     mainlineCommits(options: {
         projectID: "evergreen"
     }){
-        version {
+        versions {
+            version {
             id
             author
             buildVariants(options: {}) {
@@ -14,10 +15,12 @@
                     status
                 }
             }
-        }
-        versionMeta {
+            }
+                    rolledUpVersions {
             id
-            author
+            activated
         }
+        }
+
     }
 }

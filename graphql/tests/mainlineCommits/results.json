@@ -4,65 +4,69 @@
          "query_file":"no-filters.graphql",
          "result":{
             "data":{
-               "mainlineCommits":[
-                  {
-                     "version":{
-                        "id":"evergreen_version1",
-                        "author":"mohamed.khelif",
-                        "buildVariants":[
+               "mainlineCommits":{
+                  "versions":[
+                     {
+                        "version":null,
+                        "rolledUpVersions":[
                            {
-                              "variant":"enterprise-ubuntu1604-64",
-                              "displayName":"Ubuntu 16.04",
-                              "tasks":[
-                                 {
-                                    "id":"task_2",
-                                    "displayName":"Some Other Task",
-                                    "status":"success"
-                                 },
-                                 {
-                                    "id":"task_1",
-                                    "displayName":"Some Task",
-                                    "status":"success"
-                                 }
-                              ]
+                              "id":"evergreen_version3",
+                              "activated":false
                            }
                         ]
                      },
-                     "versionMeta":null
-                  },
-                  {
-                     "version":{
-                        "id":"evergreen_version2",
-                        "author":"mohamed.khelif",
-                        "buildVariants":[
-                           {
-                              "variant":"enterprise-ubuntu1604-64",
-                              "displayName":"Ubuntu 16.04",
-                              "tasks":[
-                                 {
-                                    "id":"task_4",
-                                    "displayName":"Some Other Task",
-                                    "status":"success"
-                                 },
-                                 {
-                                    "id":"task_3",
-                                    "displayName":"Some Task",
-                                    "status":"failed"
-                                 }
-                              ]
-                           }
-                        ]
+                     {
+                        "version":{
+                           "id":"evergreen_version2",
+                           "author":"mohamed.khelif",
+                           "buildVariants":[
+                              {
+                                 "variant":"enterprise-ubuntu1604-64",
+                                 "displayName":"Ubuntu 16.04",
+                                 "tasks":[
+                                    {
+                                       "id":"task_4",
+                                       "displayName":"Some Other Task",
+                                       "status":"success"
+                                    },
+                                    {
+                                       "id":"task_3",
+                                       "displayName":"Some Task",
+                                       "status":"failed"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions":null
                      },
-                     "versionMeta":null
-                  },
-                  {
-                     "version":null,
-                     "versionMeta":{
-                        "id":"evergreen_version3",
-                        "author":"mohamed.khelif"
+                     {
+                        "version":{
+                           "id":"evergreen_version1",
+                           "author":"mohamed.khelif",
+                           "buildVariants":[
+                              {
+                                 "variant":"enterprise-ubuntu1604-64",
+                                 "displayName":"Ubuntu 16.04",
+                                 "tasks":[
+                                    {
+                                       "id":"task_2",
+                                       "displayName":"Some Other Task",
+                                       "status":"success"
+                                    },
+                                    {
+                                       "id":"task_1",
+                                       "displayName":"Some Task",
+                                       "status":"success"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions":null
                      }
-                  }
-               ]
+                  ]
+               }
             }
          }
       },
@@ -70,111 +74,59 @@
          "query_file":"task-filter.graphql",
          "result":{
             "data":{
-               "mainlineCommits":[
-                  {
-                     "version":{
-                        "id":"evergreen_version1",
-                        "author":"mohamed.khelif",
-                        "buildVariants":[
+               "mainlineCommits":{
+                  "versions":[
+                     {
+                        "version":null,
+                        "rolledUpVersions":[
                            {
-                              "variant":"enterprise-ubuntu1604-64",
-                              "displayName":"Ubuntu 16.04",
-                              "tasks":[
-                                 {
-                                    "id":"task_1",
-                                    "displayName":"Some Task",
-                                    "status":"success"
-                                 }
-                              ]
+                              "id":"evergreen_version3",
+                              "activated":false
                            }
                         ]
                      },
-                     "versionMeta":null
-                  },
-                  {
-                     "version":{
-                        "id":"evergreen_version2",
-                        "author":"mohamed.khelif",
-                        "buildVariants":[
-                           {
-                              "variant":"enterprise-ubuntu1604-64",
-                              "displayName":"Ubuntu 16.04",
-                              "tasks":[
-                                 {
-                                    "id":"task_3",
-                                    "displayName":"Some Task",
-                                    "status":"failed"
-                                 }
-                              ]
-                           }
-                        ]
+                     {
+                        "version":{
+                           "id":"evergreen_version2",
+                           "author":"mohamed.khelif",
+                           "buildVariants":[
+                              {
+                                 "variant":"enterprise-ubuntu1604-64",
+                                 "displayName":"Ubuntu 16.04",
+                                 "tasks":[
+                                    {
+                                       "id":"task_3",
+                                       "displayName":"Some Task",
+                                       "status":"failed"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions":null
                      },
-                     "versionMeta":null
-                  },
-                  {
-                     "version":null,
-                     "versionMeta":{
-                        "id":"evergreen_version3",
-                        "author":"mohamed.khelif"
+                     {
+                        "version":{
+                           "id":"evergreen_version1",
+                           "author":"mohamed.khelif",
+                           "buildVariants":[
+                              {
+                                 "variant":"enterprise-ubuntu1604-64",
+                                 "displayName":"Ubuntu 16.04",
+                                 "tasks":[
+                                    {
+                                       "id":"task_1",
+                                       "displayName":"Some Task",
+                                       "status":"success"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions":null
                      }
-                  }
-               ]
-            }
-         }
-      },
-      {
-         "query_file":"task-filter.graphql",
-         "result":{
-            "data":{
-               "mainlineCommits":[
-                  {
-                     "version":{
-                        "id":"evergreen_version1",
-                        "author":"mohamed.khelif",
-                        "buildVariants":[
-                           {
-                              "variant":"enterprise-ubuntu1604-64",
-                              "displayName":"Ubuntu 16.04",
-                              "tasks":[
-                                 {
-                                    "id":"task_1",
-                                    "displayName":"Some Task",
-                                    "status":"success"
-                                 }
-                              ]
-                           }
-                        ]
-                     },
-                     "versionMeta":null
-                  },
-                  {
-                     "version":{
-                        "id":"evergreen_version2",
-                        "author":"mohamed.khelif",
-                        "buildVariants":[
-                           {
-                              "variant":"enterprise-ubuntu1604-64",
-                              "displayName":"Ubuntu 16.04",
-                              "tasks":[
-                                 {
-                                    "id":"task_3",
-                                    "displayName":"Some Task",
-                                    "status":"failed"
-                                 }
-                              ]
-                           }
-                        ]
-                     },
-                     "versionMeta":null
-                  },
-                  {
-                     "version":null,
-                     "versionMeta":{
-                        "id":"evergreen_version3",
-                        "author":"mohamed.khelif"
-                     }
-                  }
-               ]
+                  ]
+               }
             }
          }
       },
@@ -182,45 +134,49 @@
          "query_file":"status-filter.graphql",
          "result":{
             "data":{
-               "mainlineCommits":[
-                  {
-                     "version":{
-                        "id":"evergreen_version1",
-                        "author":"mohamed.khelif",
-                        "buildVariants":[
-                           
-                        ]
-                     },
-                     "versionMeta":null
-                  },
-                  {
-                     "version":{
-                        "id":"evergreen_version2",
-                        "author":"mohamed.khelif",
-                        "buildVariants":[
+               "mainlineCommits":{
+                  "versions":[
+                     {
+                        "version":null,
+                        "rolledUpVersions":[
                            {
-                              "variant":"enterprise-ubuntu1604-64",
-                              "displayName":"Ubuntu 16.04",
-                              "tasks":[
-                                 {
-                                    "id":"task_3",
-                                    "displayName":"Some Task",
-                                    "status":"failed"
-                                 }
-                              ]
+                              "id":"evergreen_version3",
+                              "activated":false
                            }
                         ]
                      },
-                     "versionMeta":null
-                  },
-                  {
-                     "version":null,
-                     "versionMeta":{
-                        "id":"evergreen_version3",
-                        "author":"mohamed.khelif"
+                     {
+                        "version":{
+                           "id":"evergreen_version2",
+                           "author":"mohamed.khelif",
+                           "buildVariants":[
+                              {
+                                 "variant":"enterprise-ubuntu1604-64",
+                                 "displayName":"Ubuntu 16.04",
+                                 "tasks":[
+                                    {
+                                       "id":"task_3",
+                                       "displayName":"Some Task",
+                                       "status":"failed"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions":null
+                     },
+                     {
+                        "version":{
+                           "id":"evergreen_version1",
+                           "author":"mohamed.khelif",
+                           "buildVariants":[
+                              
+                           ]
+                        },
+                        "rolledUpVersions":null
                      }
-                  }
-               ]
+                  ]
+               }
             }
          }
       }

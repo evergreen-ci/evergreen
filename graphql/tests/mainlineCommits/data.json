@@ -7,7 +7,8 @@
       "r": "gitter_request",
       "activated": true,
       "author": "mohamed.khelif",
-      "status": "success"
+      "status": "success",
+      "order": 1
     },
                 {
       "_id": "evergreen_version2",
@@ -16,7 +17,8 @@
       "r": "gitter_request",
       "activated": true,
       "author": "mohamed.khelif",
-      "status": "success"
+      "status": "success",
+      "order": 2
     },
                     {
       "_id": "evergreen_version3",
@@ -25,7 +27,8 @@
       "r": "gitter_request",
       "activated": false,
       "author": "mohamed.khelif",
-      "status": "created"
+      "status": "created",
+      "order": 3
     }
     ],
     "tasks" : [
