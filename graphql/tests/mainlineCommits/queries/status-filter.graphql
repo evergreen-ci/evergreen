@@ -1,27 +1,23 @@
 {
-    mainlineCommits(options: {
-        projectID: "evergreen"
-    }){
-        versions {
-            version {
+  mainlineCommits(options: { projectID: "evergreen" }) {
+    versions {
+      version {
+        id
+        author
+        buildVariants(options: { statuses: ["failed"] }) {
+          variant
+          displayName
+          tasks {
             id
-            author
-            buildVariants(options: {
-                statuses: ["failed"]
-            }) {
-                variant
-                displayName
-                tasks {
-                    id
-                    displayName
-                    status
-                }
-            }
-            }
-            rolledUpVersions {
-            id
-            activated
+            displayName
+            status
+          }
         }
-        }
+      }
+      rolledUpVersions {
+        id
+        activated
+      }
     }
+  }
 }
