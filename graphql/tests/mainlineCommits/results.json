@@ -179,6 +179,80 @@
                }
             }
          }
+      },
+      {
+         "query_file":"pagination.graphql",
+         "result":{
+            "data":{
+               "page1":{
+                  "versions":[
+                     {
+                        "version":null,
+                        "rolledUpVersions":[
+                           {
+                              "id":"evergreen_version3",
+                              "activated":false
+                           }
+                        ]
+                     },
+                     {
+                        "version":{
+                           "id":"evergreen_version2",
+                           "author":"mohamed.khelif",
+                           "buildVariants":[
+                              {
+                                 "variant":"enterprise-ubuntu1604-64",
+                                 "displayName":"Ubuntu 16.04",
+                                 "tasks":[
+                                    {
+                                       "id":"task_4",
+                                       "displayName":"Some Other Task",
+                                       "status":"success"
+                                    },
+                                    {
+                                       "id":"task_3",
+                                       "displayName":"Some Task",
+                                       "status":"failed"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions":null
+                     }
+                  ]
+               },
+               "page2":{
+                  "versions":[
+                     {
+                        "version":{
+                           "id":"evergreen_version1",
+                           "author":"mohamed.khelif",
+                           "buildVariants":[
+                              {
+                                 "variant":"enterprise-ubuntu1604-64",
+                                 "displayName":"Ubuntu 16.04",
+                                 "tasks":[
+                                    {
+                                       "id":"task_2",
+                                       "displayName":"Some Other Task",
+                                       "status":"success"
+                                    },
+                                    {
+                                       "id":"task_1",
+                                       "displayName":"Some Task",
+                                       "status":"success"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions":null
+                     }
+                  ]
+               }
+            }
+         }
       }
    ]
 }
