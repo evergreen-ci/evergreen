@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -360,13 +359,11 @@ func (t *patchTriggers) generate(sub *event.Subscription) (*notification.Notific
 }
 
 func (t *patchTriggers) getGithubContext() (string, error) {
-	pRef, err := model.FindOneProjectRef(t.patch.Project)
-	if err != nil {
-		return "", errors.Wrap(err, "unable to find project ref")
+	projectIdentifier, err := model.GetIdentifierForProject(t.patch.Project)
+	if err != nil { // default to ID
+		projectIdentifier = t.patch.Project
 	}
-	if pRef == nil {
-		return "", errors.Errorf("project '%s' not found", t.patch.Project)
-	}
+
 	parentPatch, err := patch.FindOneId(t.patch.Triggers.ParentPatch)
 	if err != nil {
 		return "", errors.Wrap(err, "can't get parent patch")
@@ -380,9 +377,9 @@ func (t *patchTriggers) getGithubContext() (string, error) {
 	}
 	var githubContext string
 	if patchIndex == 0 || patchIndex == -1 {
-		githubContext = fmt.Sprintf("evergreen/%s", pRef.Identifier)
+		githubContext = fmt.Sprintf("evergreen/%s", projectIdentifier)
 	} else {
-		githubContext = fmt.Sprintf("evergreen/%s/%s", pRef.Identifier, strconv.Itoa(patchIndex))
+		githubContext = fmt.Sprintf("evergreen/%s/%d", projectIdentifier, patchIndex)
 	}
 	return githubContext, nil
 }
