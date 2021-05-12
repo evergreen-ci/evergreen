@@ -58,6 +58,7 @@ func (b *Base) MarkComplete() {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
+	b.status.InProgress = false
 	b.status.Completed = true
 }
 

@@ -597,30 +597,42 @@ func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
 	return nil
 }
 
-func (d *mongoDriver) getAtomicQuery(jobName string, modCount int) bson.M {
+func (d *mongoDriver) getAtomicQuery(jobName string, stat amboy.JobStatusInfo) bson.M {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	owner := d.instanceID
 	timeoutTs := time.Now().Add(-d.LockTimeout())
 
+	// The lock can be acquired if the modification time is unset (i.e. it's
+	// unowned) or older than the lock timeout (i.e. the lock is stale),
+	// regardless of what the other data is.
+	unownedOrStaleLock := bson.M{"status.mod_ts": bson.M{"$lte": timeoutTs}}
+
+	// The lock is actively owned by this in-memory instance of the queue if
+	// owner and modification count match.
+	//
+	// The modification count is +1 in the case that we're looking to update the
+	// job and its modification count (in the Complete case, it does not update
+	// the modification count).
+	activeOwnedLock := bson.M{
+		"status.owner":     owner,
+		"status.mod_count": bson.M{"$in": []int{stat.ModificationCount, stat.ModificationCount - 1}},
+		"status.mod_ts":    bson.M{"$gt": timeoutTs},
+	}
+
+	// If we're trying to update the status to in progress or maintain that it
+	// is in progress, this is only allowed if the job is not already marked
+	// complete.
+	if stat.InProgress {
+		unownedOrStaleLock["status.completed"] = false
+		activeOwnedLock["status.completed"] = false
+	}
+
 	return bson.M{
 		"_id": jobName,
 		"$or": []bson.M{
-			// owner and modcount should match, which
-			// means there's an active lock but we own it.
-			//
-			// The modcount is +1 in the case that we're
-			// looking to update and update the modcount
-			// (rather than just save, as in the Complete
-			// case).
-			{
-				"status.owner":     owner,
-				"status.mod_count": bson.M{"$in": []int{modCount, modCount - 1}},
-				"status.mod_ts":    bson.M{"$gt": timeoutTs},
-			},
-			// modtime is older than the lock timeout,
-			// regardless of what the other data is,
-			{"status.mod_ts": bson.M{"$lte": timeoutTs}},
+			unownedOrStaleLock,
+			activeOwnedLock,
 		},
 	}
 }
@@ -803,7 +815,20 @@ func (d *mongoDriver) prepareInterchange(j amboy.Job) (*registry.JobInterchange,
 func (d *mongoDriver) doUpdate(ctx context.Context, ji *registry.JobInterchange) error {
 	d.addMetadata(ji)
 
-	query := d.getAtomicQuery(ji.Name, ji.Status.ModificationCount)
+	if ji.Status.InProgress && ji.Status.Completed {
+		err := errors.New("job was found both in progress and complete")
+		grip.Error(message.WrapError(err, (message.Fields{
+			"message":     "programmer error: a job should not be saved as both in progress and complete - manually changing in progress to false",
+			"jira_ticket": "EVG-14605",
+			"job_id":      ji.Name,
+			"service":     "amboy.queue.mdb",
+			"driver_id":   d.ID(),
+		})))
+		ji.Status.InProgress = false
+	}
+
+	query := d.getAtomicQuery(ji.Name, ji.Status)
+
 	res, err := d.getCollection().ReplaceOne(ctx, query, ji)
 	if err != nil {
 		if d.isMongoDupScope(err) {

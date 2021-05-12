@@ -213,6 +213,7 @@ func pingJobLock(ctx context.Context, q amboy.Queue, j amboy.Job) error {
 		case <-ticker.C:
 			status := j.Status()
 			status.InProgress = true
+			status.Completed = false
 			j.SetStatus(status)
 
 			if err := j.Lock(q.ID(), q.Info().LockTimeout); err != nil {
