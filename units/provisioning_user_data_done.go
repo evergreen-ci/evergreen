@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -78,6 +79,12 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		j.AddRetryableError(err)
 		return
 	}
+
+	defer func() {
+		if !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
+			event.LogHostProvisionFailed(j.host.Id, j.Error().Error())
+		}
+	}()
 
 	if j.host.Status != evergreen.HostStarting {
 		j.UpdateRetryInfo(amboy.JobRetryOptions{
