@@ -30,7 +30,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Agent manages the data necessary to run tasks on a host.
+// Agent manages the data necessary to run tasks on a host.asdf
 type Agent struct {
 	comm          client.Communicator
 	jasper        jasper.Manager
