@@ -539,15 +539,7 @@ func (q *remoteBase) monitorStaleRetryingJobs(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			if q.opts.retryable.Disabled() {
-				continue
-			}
-
 			for j := range q.driver.RetryableJobs(ctx, retryableJobStaleRetrying) {
-				if q.opts.retryable.Disabled() {
-					break
-				}
-
 				grip.Error(message.WrapError(q.retryHandler.Put(ctx, j), message.Fields{
 					"message":  "could not enqueue stale retrying job",
 					"service":  "amboy.queue.mdb",
