@@ -75,16 +75,16 @@ func NewUserDataDoneJob(env evergreen.Environment, hostID string, ts time.Time) 
 func (j *userDataDoneJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	defer func() {
+		if j.HasErrors() && !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
+			event.LogHostProvisionFailed(j.HostID, j.Error().Error())
+		}
+	}()
+
 	if err := j.populateIfUnset(); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
-
-	defer func() {
-		if !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
-			event.LogHostProvisionFailed(j.host.Id, j.Error().Error())
-		}
-	}()
 
 	if j.host.Status != evergreen.HostStarting {
 		j.UpdateRetryInfo(amboy.JobRetryOptions{
