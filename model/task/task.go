@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -2739,6 +2740,37 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			{
 				"$match": bson.M{
 					tempParentKey: []interface{}{},
+				},
+			},
+			// get any annotation that has at least one issue
+			{
+				"$lookup": bson.M{
+					"from": annotations.Collection,
+					"let":  bson.M{"task_annotation_id": "$task_id", "task_annotation_execution": "$execution"},
+					"pipeline": []bson.M{
+						{
+							"$match": bson.M{
+								"$expr": bson.M{
+									"$and": []bson.M{
+										{
+											"$eq": []string{"$task_id", "$$task_annotation_id"},
+										},
+										{
+											"$eq": []string{"$execution", "$$task_annotation_execution"},
+										},
+										{"$or": []bson.M{
+											{
+												annotations.IssuesKey: bson.M{"$gt": []interface{}{"$" + annotations.IssuesKey, 0}},
+											},
+
+											{
+												annotations.IssuesKey: bson.M{"$ne": []interface{}{"$" + annotations.IssuesKey, bson.TypeNull}},
+											},
+										}},
+									},
+								},
+							}}},
+					"as": "annotation_doc",
 				},
 			},
 

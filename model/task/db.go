@@ -147,6 +147,12 @@ var (
 			"branches": []bson.M{
 				{
 					"case": bson.M{
+						"$ne": []interface{}{"$annotation_doc", bson.TypeNull},
+					},
+					"then": evergreen.TaskKnownIssue,
+				},
+				{
+					"case": bson.M{
 						"$eq": []interface{}{"$" + AbortedKey, true},
 					},
 					"then": evergreen.TaskAborted,

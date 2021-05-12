@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -79,6 +80,25 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
 		s.Equal(task.Execution, i)
 	}
+}
+
+func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
+	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection, annotations.Collection))
+	testTask1 := &task.Task{
+		Id:        "task_1",
+		Execution: 0,
+		Version:   "version_1",
+	}
+	s.NoError(testTask1.Insert())
+
+	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "chaya.malik"}}
+
+	a := annotations.TaskAnnotation{TaskId: "task_1", TaskExecution: 0, Issues: []annotations.IssueLink{issue}}
+	s.NoError(a.Upsert())
+
+	task, _, err := s.ctx.FindTasksByVersion("version_1", nil, nil, "", "", 0, 0, nil, nil)
+	s.NoError(err)
+	s.Equal(task[0].DisplayStatus, "known-issue")
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
