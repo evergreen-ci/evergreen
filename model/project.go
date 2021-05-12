@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 const (

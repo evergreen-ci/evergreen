@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/shrub"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 // Generate creates a cli.Command to use the Jasper metabuild system.
