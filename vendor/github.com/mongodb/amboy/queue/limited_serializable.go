@@ -698,10 +698,6 @@ func (q *limitedSizeSerializableLocal) monitorStaleRetryingJobs(ctx context.Cont
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			if q.opts.Retryable.Disabled() {
-				timer.Reset(monitorInterval)
-				continue
-			}
 			q.handleStaleRetryingJobs(ctx)
 			timer.Reset(monitorInterval)
 		}
@@ -712,9 +708,6 @@ func (q *limitedSizeSerializableLocal) handleStaleRetryingJobs(ctx context.Conte
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	for _, j := range q.storage {
-		if q.opts.Retryable.Disabled() {
-			return
-		}
 		if !j.RetryInfo().ShouldRetry() {
 			continue
 		}

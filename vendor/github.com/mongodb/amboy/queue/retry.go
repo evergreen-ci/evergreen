@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -18,12 +17,6 @@ import (
 // RetryableQueueOptions represent common options to configure an
 // amboy.RetryableQueue.
 type RetryableQueueOptions struct {
-	// Disabled is a function that determines whether or not retrying is
-	// disabled. If it returns true, jobs will not automatically retry. This
-	// allows retrying jobs to be toggled dynamically during runtime. By
-	// default, it will never be disabled. This setting always takes precedence
-	// over RetryHandler.Disabled.
-	Disabled func() bool
 	// RetryHandler are options to configure how retryable jobs are handled.
 	RetryHandler amboy.RetryHandlerOptions
 	// StaleRetryingMonitorInterval is how often a queue periodically checks for
@@ -37,10 +30,6 @@ func (opts *RetryableQueueOptions) Validate() error {
 	if opts.StaleRetryingMonitorInterval == 0 {
 		opts.StaleRetryingMonitorInterval = defaultStaleRetryingMonitorInterval
 	}
-	if opts.Disabled == nil {
-		opts.Disabled = func() bool { return false }
-	}
-	opts.RetryHandler.Disabled = opts.Disabled
 	catcher.Wrap(opts.RetryHandler.Validate(), "invalid retry handler options")
 	return catcher.Resolve()
 }
@@ -163,14 +152,6 @@ func (rh *BasicRetryHandler) put(ctx context.Context, j amboy.Job) error {
 	default:
 		if rh.opts.IsUnlimitedMaxCapacity() {
 			rh.pendingOverflow = append(rh.pendingOverflow, j)
-			grip.Info(message.Fields{
-				"message":     "put job in retry handler's overflow queue",
-				"job_id":      j.ID(),
-				"job_attempt": j.RetryInfo().CurrentAttempt,
-				"num_pending": len(rh.pending) + len(rh.pendingOverflow),
-				"queue_id":    rh.queue.ID(),
-				"service":     "amboy.queue.retry",
-			})
 			return nil
 		}
 
@@ -178,14 +159,6 @@ func (rh *BasicRetryHandler) put(ctx context.Context, j amboy.Job) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case rh.pending <- j:
-			grip.Info(message.Fields{
-				"message":     "put job in retry handler's queue",
-				"job_id":      j.ID(),
-				"job_attempt": j.RetryInfo().CurrentAttempt,
-				"num_pending": len(rh.pending) + len(rh.pendingOverflow),
-				"queue_id":    rh.queue.ID(),
-				"service":     "amboy.queue.retry",
-			})
 			return nil
 		}
 	}
@@ -269,26 +242,8 @@ func (rh *BasicRetryHandler) waitForJob(ctx context.Context) {
 				}
 			}()
 
-			rh.mu.RLock()
-			grip.Info(message.Fields{
-				"message":     "retrying job",
-				"job_id":      j.ID(),
-				"job_attempt": j.RetryInfo().CurrentAttempt,
-				"num_pending": len(rh.pending) + len(rh.pendingOverflow),
-				"queue_id":    rh.queue.ID(),
-				"service":     "amboy.queue.retry",
-			})
-			rh.mu.RUnlock()
-			startAt := time.Now()
-
 			if err := rh.handleJob(ctx, j); err != nil && ctx.Err() == nil {
-				var l level.Priority
-				if rh.opts.Disabled() {
-					l = level.Info
-				} else {
-					l = level.Error
-				}
-				grip.Log(l, message.WrapError(err, message.Fields{
+				grip.Error(message.WrapError(err, message.Fields{
 					"message":  "could not retry job",
 					"queue_id": rh.queue.ID(),
 					"job_id":   j.ID(),
@@ -307,18 +262,6 @@ func (rh *BasicRetryHandler) waitForJob(ctx context.Context) {
 					}))
 				}
 			}
-
-			rh.mu.RLock()
-			grip.Info(message.Fields{
-				"message":     "finished retrying job",
-				"job_id":      j.ID(),
-				"job_attempt": j.RetryInfo().CurrentAttempt,
-				"num_pending": len(rh.pending) + len(rh.pendingOverflow),
-				"queue_id":    rh.queue.ID(),
-				"duration":    time.Since(startAt).String(),
-				"service":     "amboy.queue.retry",
-			})
-			rh.mu.RUnlock()
 		}
 	}
 }
@@ -345,7 +288,7 @@ func (rh *BasicRetryHandler) completeRetrying(ctx context.Context, j amboy.Job) 
 					return errors.Wrapf(catcher.Resolve(), "giving up after attempt %d", attempt)
 				}
 
-				grip.Info(message.WrapError(err, message.Fields{
+				grip.Error(message.WrapError(err, message.Fields{
 					"message":  "failed to mark retrying job as completed",
 					"attempt":  attempt,
 					"job_id":   j.ID(),
@@ -374,11 +317,6 @@ func (rh *BasicRetryHandler) handleJob(ctx context.Context, j amboy.Job) error {
 		Start: utility.ToTimePtr(time.Now()),
 	})
 	for i := 1; i <= rh.opts.MaxRetryAttempts; i++ {
-		if rh.opts.Disabled() {
-			catcher.Errorf("giving up after %s (%d attempts) due to retries being disabled", time.Since(startAt).String(), i-1)
-			return catcher.Resolve()
-		}
-
 		if time.Since(startAt) > rh.opts.MaxRetryTime {
 			catcher.Errorf("giving up after %s (%d attempts) due to exceeding maximum allowed retry time", rh.opts.MaxRetryTime.String(), i-1)
 			return catcher.Resolve()
@@ -390,8 +328,8 @@ func (rh *BasicRetryHandler) handleJob(ctx context.Context, j amboy.Job) error {
 		case <-timer.C:
 			canRetry, err := rh.tryEnqueueJob(ctx, j)
 			if err != nil {
-				catcher.Wrapf(err, "enqueue retry job attempt %d", i)
-				grip.Info(message.WrapError(err, message.Fields{
+				catcher.Wrapf(err, "enqueueing retrying job attempt %d", i)
+				grip.Error(message.WrapError(err, message.Fields{
 					"message":        "failed to enqueue job retry",
 					"job_id":         j.ID(),
 					"queue_id":       rh.queue.ID(),

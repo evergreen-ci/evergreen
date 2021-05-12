@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -143,8 +143,7 @@ func (pp *ParserProject) MarshalYAML() (interface{}, error) {
 		}
 	}
 
-	// returning a pointer causes MarshalYAML to get stuck in infinite recursion
-	return *pp, nil
+	return pp, nil
 }
 
 type displayTask struct {
