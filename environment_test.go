@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -39,6 +41,29 @@ func (s *EnvironmentSuite) SetupTest() {
 	s.env = &envState{
 		senders: map[SenderKey]send.Sender{},
 	}
+}
+
+func (s *EnvironmentSuite) TestInitDB() {
+
+	db := &DBSettings{
+		Url: "mongodb://localhost:27017",
+		DB:  "mci_test",
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	localEnv := s.env
+	envAuth := os.Getenv(MongodbAuthFile)
+	if envAuth != "" {
+		db.AuthFile = envAuth
+	}
+	grip.Warning(message.Fields{
+		"message":         "TODO: DELETE",
+		"db":              db.DB,
+		"envAuth":         envAuth,
+		"MongodbAuthFile": MongodbAuthFile,
+	})
+	err := localEnv.initDB(ctx, *db)
+	s.NoError(err)
 }
 
 func (s *EnvironmentSuite) TestLoadingConfig() {

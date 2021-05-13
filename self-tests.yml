@@ -201,6 +201,7 @@ functions:
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
       binary: make
       args: ["${make_args|}", "${target}"]
+      add_expansions_to_env: true
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
@@ -265,6 +266,37 @@ functions:
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen/
         command: make init-rs
+  setup-mongodb-auth:
+    - command: subprocess.exec
+      type: setup
+      params:
+        env:
+          MONGODB_URL: ${mongodb_url}
+          DECOMPRESS: ${decompress}
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen/
+        command: make get-mongodb
+    - command: subprocess.exec
+      type: setup
+      params:
+        background: true
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen/
+        command: make start-mongod-auth
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        command: make check-mongod
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen/
+        command: make init-rs
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen/
+        command: make init-auth
+
   setup-docker-host:
     - command: host.create
       type: setup
@@ -573,6 +605,20 @@ tasks:
     commands:
       - func: get-project
       - func: verify-agent-version-update
+  - name: test-db-auth
+    tags: ["db", "test"]
+    commands:
+      - func: get-project
+      - func: run-make
+        vars:
+          target: get-go-imports
+      - func: setup-credentials
+      - func: setup-mongodb-auth
+      - func: run-make
+        vars:
+          target: "test-evergreen"
+          RUN_TEST: "TestEnvironmentSuite/TestInitDB"
+          MONGO_CREDS_FILE: ${workdir}/gopath/src/github.com/evergreen-ci/evergreen/test_auth.yml
 
 task_groups:
   - name: dist-and-upload-clis
