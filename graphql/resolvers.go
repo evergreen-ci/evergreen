@@ -2452,28 +2452,77 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 }
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	i, err := obj.ToService()
+	ticket := "EVG-14623"
+	grip.Warning(message.WrapError(err, message.Fields{
+				"message":           "1",
+				"ticket":           ticket,
+				"task": 			*obj.Id,
+			}))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
+	grip.Warning(message.WrapError(err, message.Fields{
+				"message":           "2",
+				"ticket":           ticket,
+				"task": 			*obj.Id,
+			}))
 	t, ok := i.(*task.Task)
+	grip.Warning(message.WrapError(err, message.Fields{
+				"message":           "3",
+				"ticket":           ticket,
+				"task": 			*obj.Id,
+			}))
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
+	grip.Warning(message.WrapError(err, message.Fields{
+				"message":           "4",
+				"ticket":           ticket,
+				"task": 			*obj.Id,
+			}))
 	if len(t.ExecutionTasks) == 0 {
 		return nil, nil
 	}
+	grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "5",
+			"ticket":           ticket,
+			"task": 			*obj.Id,
+	}))
 	executionTasks := []*restModel.APITask{}
 	for _, execTaskID := range t.ExecutionTasks {
 		execT, err := task.FindByIdExecution(execTaskID, &t.Execution)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "6",
+			"ticket":           ticket,
+			"task": 			*obj.Id,
+			"execTask": execTaskID,
+		}))
 		if err != nil || execT == nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
 		}
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "7",
+			"ticket":           ticket,
+			"task": 			*obj.Id,
+			"execTask": execTaskID,
+		}))
 		apiTask := &restModel.APITask{}
 		err = apiTask.BuildFromService(execT)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "8",
+			"ticket":           ticket,
+			"task": 			*obj.Id,
+			"execTask": execTaskID,
+		}))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
 		}
-		executionTasks = append(executionTasks, apiTask)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "9",
+			"ticket":           ticket,
+			"task": 			*obj.Id,
+			"execTask": execTaskID,
+		}))
 	}
 
 	return executionTasks, nil
