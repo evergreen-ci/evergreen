@@ -261,7 +261,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 	}
 
 	if output, err = j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
-		event.LogProvisionFailed(j.host.Id, output)
+		event.LogHostProvisionFailed(j.host.Id, output)
 
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error running setup script",
