@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -56,12 +54,6 @@ func (s *EnvironmentSuite) TestInitDB() {
 	if envAuth != "" {
 		db.AuthFile = envAuth
 	}
-	grip.Warning(message.Fields{
-		"message":         "TODO: DELETE",
-		"db":              db.DB,
-		"envAuth":         envAuth,
-		"MongodbAuthFile": MongodbAuthFile,
-	})
 	err := localEnv.initDB(ctx, *db)
 	s.NoError(err)
 }
