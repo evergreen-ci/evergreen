@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -30,7 +31,8 @@ type DialCedarOptions struct {
 	RPCPort     string
 	Username    string
 	APIKey      string
-	TLS         bool
+	TLSAuth     bool
+	Insecure    bool
 	Retries     int
 }
 
@@ -42,8 +44,9 @@ func (opts *DialCedarOptions) validate() error {
 		opts.RPCPort = "7070"
 	}
 
-	catcher.AddWhen(opts.Username == "" || opts.APIKey == "", errors.New("must provide username and API key"))
-	catcher.AddWhen(opts.RPCPort == "", errors.New("must provide the RPC port"))
+	catcher.NewWhen(opts.Username == "" || opts.APIKey == "", "must provide username and API key")
+	catcher.NewWhen(opts.RPCPort == "", "must provide the RPC port")
+	catcher.NewWhen(opts.TLSAuth && opts.Insecure, "cannot use TLS auth over an insecure connection")
 
 	return catcher.Resolve()
 }
@@ -60,15 +63,14 @@ func DialCedar(ctx context.Context, client *http.Client, opts *DialCedarOptions)
 		return nil, errors.Wrap(err, "invalid dial cedar options")
 	}
 
-	httpAddress := "https://" + opts.BaseAddress
-
-	creds := &userCredentials{
-		Username: opts.Username,
-		apiKey:   opts.APIKey,
-	}
-
 	var tlsConf *tls.Config
-	if opts.TLS {
+	if opts.TLSAuth {
+		httpAddress := "https://" + opts.BaseAddress
+		creds := &userCredentials{
+			Username: opts.Username,
+			apiKey:   opts.APIKey,
+		}
+
 		ca, err := makeCedarCertRequest(ctx, client, http.MethodGet, httpAddress+"/rest/v1/admin/ca", nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting cedar root cert")
@@ -86,6 +88,12 @@ func DialCedar(ctx context.Context, client *http.Client, opts *DialCedarOptions)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating TLS config")
 		}
+	} else if !opts.Insecure {
+		certPool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting system cert pool")
+		}
+		tlsConf = &tls.Config{RootCAs: certPool}
 	}
 
 	return aviation.Dial(ctx, aviation.DialOptions{

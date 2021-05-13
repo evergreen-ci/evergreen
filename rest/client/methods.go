@@ -1524,13 +1524,13 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context, hostI
 	}
 	r, err := c.createRequest(info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create request")
+		return nil, errors.Wrap(err, "creating request")
 	}
 	r.Header.Add(evergreen.HostHeader, hostID)
 	r.Header.Add(evergreen.HostSecretHeader, hostSecret)
-	resp, err := c.doRequest(ctx, r)
+	resp, err := utility.RetryRequest(ctx, r, c.maxAttempts, c.timeoutStart, c.timeoutMax)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not make request")
+		return nil, utility.RespErrorf(resp, "making request")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

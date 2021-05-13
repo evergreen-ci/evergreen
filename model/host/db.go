@@ -570,6 +570,11 @@ func ById(id string) db.Q {
 	return db.Query(bson.D{{Key: IdKey, Value: id}})
 }
 
+// ByIP produces a query that returns a host with the given ip address.
+func ByIP(ip string) db.Q {
+	return db.Query(bson.M{IPKey: ip})
+}
+
 // ByDistroIDOrAliasesRunning returns a query that returns all hosts with
 // matching distro IDs or aliases.
 func ByDistroIDsOrAliasesRunning(distroNames ...string) bson.M {

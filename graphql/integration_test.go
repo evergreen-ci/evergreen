@@ -90,6 +90,16 @@ func (s *graphQLSuite) TestQueries() {
 			require.NoError(t, err)
 			b, err := ioutil.ReadAll(resp.Body)
 			require.NoError(t, err)
+
+			// Remove apollo tracing data from test responses
+			var bJSON map[string]json.RawMessage
+			err = json.Unmarshal(b, &bJSON)
+			require.NoError(t, err)
+
+			delete(bJSON, "extensions")
+			b, err = json.Marshal(bJSON)
+			require.NoError(t, err)
+
 			assert.JSONEq(t, string(testCase.Result), string(b), fmt.Sprintf("expected %s but got %s", string(testCase.Result), string(b)))
 		}
 

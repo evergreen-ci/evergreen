@@ -90,6 +90,12 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.HasErrors() {
+			// Static hosts should be quarantined if they've run out of attempts
+			// to restart jasper.
+			if j.RetryInfo().GetRemainingAttempts() == 0 && j.host.Provider == evergreen.ProviderNameStatic {
+				j.AddError(j.host.SetStatusAtomically(evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to reprovision"))
+			}
+
 			event.LogHostJasperRestartError(j.host.Id, j.Error())
 		}
 	}()

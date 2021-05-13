@@ -293,7 +293,7 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 		}
 
 		// TODO (EVG-14557): Remove TLS dial option fallback once cedar
-		// gRPC is on api auth.
+		// gRPC is on API auth.
 		catcher := grip.NewBasicCatcher()
 		dialOpts := timber.DialCedarOptions{
 			BaseAddress: cc.BaseURL,
@@ -303,22 +303,24 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 			Retries:     10,
 		}
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
-		catcher.Wrap(err, "creating cedar grpc client connection without TLS")
-
-		healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
-		_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
-		if err == nil {
-			return nil
+		if err != nil {
+			catcher.Wrap(err, "creating cedar grpc client connection with API auth.")
+		} else {
+			healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
+			_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
+			if err == nil {
+				return nil
+			}
+			catcher.Wrap(err, "checking cedar grpc health with API auth")
 		}
-		catcher.Wrap(err, "checking health without TLS")
 
-		// Try again, this time with TLS.
-		dialOpts.TLS = true
+		// Try again, this time with TLS auth.
+		dialOpts.TLSAuth = true
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
 		if err == nil {
 			return nil
 		}
-		catcher.Wrap(err, "creating cedar grpc client connection with TLS")
+		catcher.Wrap(err, "creating cedar grpc client connection with TLS auth")
 
 		return catcher.Resolve()
 	}

@@ -456,11 +456,6 @@ type RetryHandlerOptions struct {
 	// default maximum capacity. If MaxCapacity is -1, it will have unlimited
 	// capacity.
 	MaxCapacity int
-	// Disabled is a function that allows users to dynamically determine whether
-	// or not the retry handler should run. If it returns true, the retry
-	// handler will not automatically handle retrying jobs. By default, this
-	// will always return false.
-	Disabled func() bool
 }
 
 // Validate checks that all retry handler options are valid.
@@ -484,9 +479,6 @@ func (opts *RetryHandlerOptions) Validate() error {
 	}
 	if opts.MaxCapacity == 0 {
 		opts.MaxCapacity = 4096
-	}
-	if opts.Disabled == nil {
-		opts.Disabled = func() bool { return false }
 	}
 	return nil
 }

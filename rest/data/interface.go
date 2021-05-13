@@ -149,6 +149,8 @@ type Connector interface {
 
 	FindHostById(string) (*host.Host, error)
 
+	FindHostByIpAddress(string) (*host.Host, error)
+
 	// FindHostByIdWithOwner finds a host with given host ID that was
 	// started by the given user. If the given user is a super-user,
 	// the host will also be returned regardless of who the host was

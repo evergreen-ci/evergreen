@@ -123,6 +123,15 @@ func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
 		name, b.Name)
 }
 
+func (b BuildVariant) GetDisplayTask(name string) *patch.DisplayTask {
+	for _, dt := range b.DisplayTasks {
+		if dt.Name == name {
+			return &dt
+		}
+	}
+	return nil
+}
+
 type BuildVariants []BuildVariant
 
 func (b BuildVariants) Len() int           { return len(b) }
