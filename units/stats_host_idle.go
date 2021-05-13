@@ -175,6 +175,7 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(idleTime time.Duration) mes
 		msg["startup_secs"] = j.task.StartTime.Sub(j.host.CreationTime).Seconds()
 	}
 
+	// The below conditional was entered into twice in 7 days when I checked
 	if j.host.Status == evergreen.HostTerminated {
 		msg["total_uptime_secs"] = j.host.TerminationTime.Sub(j.host.CreationTime).Seconds()
 		if runsTasks {
