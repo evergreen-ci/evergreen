@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/shlex"
@@ -1400,11 +1399,10 @@ func hostFindWithIpAddress() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
-			sc := &data.DBHostConnector{}
-			host, err := sc.FindHostByIpAddress(ipAddress)
+			host, err := client.FindHostByIpAddress(ipAddress)
 			if err != nil {
 				fmt.Println("error")
 			}

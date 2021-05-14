@@ -66,6 +66,7 @@ type Communicator interface {
 	GetVolumesByUser(context.Context) ([]restmodel.APIVolume, error)
 	StartHostProcesses(context.Context, []string, string, int) ([]restmodel.APIHostProcess, error)
 	GetHostProcessOutput(context.Context, []restmodel.APIHostProcess, int) ([]restmodel.APIHostProcess, error)
+	FindHostByIpAddress(string) (*host.Host, error)
 
 	// Fetch list of distributions evergreen can spawn
 	GetDistrosList(context.Context) ([]restmodel.APIDistro, error)

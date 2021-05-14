@@ -1571,3 +1571,13 @@ func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, use
 
 	return results.Order, results.Logic, nil
 }
+
+// FindHostByIP queries the database for the host with ip matching the ip address
+func (c *communicatorImpl) FindHostByIpAddress(ip string) (*host.Host, error) {
+	h, err := host.FindOne(host.ByIP(ip))
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
+}
