@@ -138,7 +138,7 @@ func (self *Version) SetActivated() error {
 }
 
 func (self *Version) SetNotActivated() error {
-	if utility.FromBoolPtr(self.Activated) {
+	if self.Activated != nil {
 		return nil
 	}
 	self.Activated = utility.FalsePtr()
@@ -372,16 +372,13 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 }
 
 type MainlineCommitVersionOptions struct {
-	Limit           int  `json:"limit"`
-	SkipOrderNumber int  `json:"skipOrderNumber"`
-	Activated       bool `json:"activated"`
+	Limit           int
+	SkipOrderNumber int
+	Activated       bool
 }
 
-func GetMainlineCommitVersionsWithOptions(projectName string, opts MainlineCommitVersionOptions) ([]Version, error) {
-	projectId, err := GetIdForProject(projectName)
-	if err != nil {
-		return nil, err
-	}
+func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
+
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionActivatedKey:  opts.Activated,
