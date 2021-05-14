@@ -241,7 +241,7 @@ type ActivationStatus struct {
 }
 
 func (s *ActivationStatus) ShouldActivate(now time.Time) bool {
-	return !s.Activated && now.After(s.ActivateAt) && !s.ActivateAt.IsZero()
+	return !s.Activated && now.After(s.ActivateAt) && !s.ActivateAt.IsZero() && !utility.IsZeroTime(s.ActivateAt)
 }
 
 // VersionMetadata is used to pass information about upstream versions to downstream version creation

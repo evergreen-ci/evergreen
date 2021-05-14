@@ -994,6 +994,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			TaskCreateTime:      v.CreateTime,
 			GithubChecksAliases: aliasesMatchingVariant,
 		}
+
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -1044,7 +1045,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		grip.Debug(message.Fields{
-			"message":            "activating build",
+			"message":            "created build",
 			"name":               buildvariant.Name,
 			"project":            projectInfo.Ref.Id,
 			"project_identifier": projectInfo.Ref.Identifier,
@@ -1158,11 +1159,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrapf(err, "error committing transaction for version '%s'", v.Id)
 		}
 		grip.Info(message.Fields{
-			"message": "successfully created version",
-			"version": v.Id,
-			"hash":    v.Revision,
-			"project": v.Identifier,
-			"runner":  RunnerName,
+			"message":         "successfully created version",
+			"version":         v.Id,
+			"hash":            v.Revision,
+			"project":         v.Identifier,
+			"tasks_to_create": tasksToCreate,
+			"runner":          RunnerName,
 		})
 		return nil
 	}

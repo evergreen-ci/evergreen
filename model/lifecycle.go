@@ -778,6 +778,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			RunOn:            in.RunOn,
 			ExecTimeoutSecs:  in.ExecTimeoutSecs,
 			Stepback:         in.Stepback,
+			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
 		}
 		bvt.Populate(taskMap[t])
@@ -929,6 +930,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			continue
 		}
 		execTaskIds := []string{}
+		displayTaskActivated := false
 		for _, et := range dt.ExecTasks {
 			execTaskId := execTable.GetId(b.BuildVariant, et)
 			if execTaskId == "" {
@@ -944,8 +946,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				continue
 			}
 			execTaskIds = append(execTaskIds, execTaskId)
+			if execTask, ok := taskMap[execTaskId]; ok && execTask.Activated {
+				displayTaskActivated = true
+			}
 		}
-		newDisplayTask, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime)
+		newDisplayTask, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime, displayTaskActivated)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed to create display task %s", id)
 		}
@@ -1237,8 +1242,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 
 	activatedTime := utility.ZeroTime
-	activate := b.Activated && activateTask
-	if activate {
+	if activateTask {
 		activatedTime = time.Now()
 	}
 
@@ -1273,7 +1277,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		DispatchTime:        utility.ZeroTime, // Unix epoch 0, not Go's time.Time{})
 		LastHeartbeat:       utility.ZeroTime,
 		Status:              evergreen.TaskUndispatched,
-		Activated:           activate,
+		Activated:           activateTask,
 		ActivatedTime:       activatedTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Requester:           v.Requester,
@@ -1301,11 +1305,11 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	return t, nil
 }
 
-func createDisplayTask(id string, displayName string, execTasks []string,
-	bv *BuildVariant, b *build.Build, v *Version, p *Project, createTime time.Time) (*task.Task, error) {
+func createDisplayTask(id string, displayName string, execTasks []string, bv *BuildVariant, b *build.Build,
+	v *Version, p *Project, createTime time.Time, displayTaskActivated bool) (*task.Task, error) {
 
 	activatedTime := utility.ZeroTime
-	if b.Activated {
+	if displayTaskActivated {
 		activatedTime = time.Now()
 	}
 
@@ -1327,7 +1331,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		IngestTime:          time.Now(),
 		StartTime:           utility.ZeroTime,
 		FinishTime:          utility.ZeroTime,
-		Activated:           b.Activated,
+		Activated:           displayTaskActivated,
 		ActivatedTime:       activatedTime,
 		DispatchTime:        utility.ZeroTime,
 		ScheduledTime:       utility.ZeroTime,
@@ -1631,6 +1635,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 
 	taskIds := []string{}
 	for _, b := range builds {
+		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build
 		tasksInBuild, err := task.Find(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey, task.ActivatedKey))
 		if err != nil {
@@ -1646,14 +1651,16 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 			info := taskInfo{id: t.Id, activated: t.Activated}
 			existingTasksIndex[t.DisplayName] = info
 		}
-		b.Activated = true
+		projectBV := p.FindBuildVariant(b.BuildVariant)
+		b.Activated = utility.FromBoolTPtr(projectBV.Activate) // activate unless explicitly set otherwise
+
 		// build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
 		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
 			if info, ok := existingTasksIndex[taskname]; ok {
-				// update task activation for dependencies that already exist, regardless of batchtime
-				if !info.activated {
+				// if activating build, update task activation for dependencies that already exist, regardless of batchtime
+				if b.Activated && !info.activated {
 					if err = SetActiveStateById(info.id, evergreen.User, true); err != nil {
 						return nil, errors.Wrapf(err, "problem updating active state for existing task '%s'", info.id)
 					}
@@ -1681,6 +1688,15 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 
 		for _, t := range tasks {
 			taskIds = append(taskIds, t.Id)
+			if t.Activated {
+				b.Activated = true
+			}
+		}
+		// update build activation status if tasks have since been activated
+		if !wasActivated && b.Activated {
+			if err := build.UpdateActivation([]string{b.Id}, true, evergreen.DefaultTaskActivator); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if batchTimeInfo.hasAnyBatchTimeTasks() {

@@ -110,6 +110,8 @@ type BuildVariantTaskUnit struct {
 	// If CronBatchTime is not empty, then override the project settings with cron syntax,
 	// with BatchTime and CronBatchTime being mutually exclusive.
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
+	// If Activate is set to false, then we don't initially activate the task.
+	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -242,6 +244,9 @@ type BuildVariant struct {
 	// If CronBatchTime is not empty, then override the project settings with cron syntax,
 	// with BatchTime and CronBatchTime being mutually exclusive.
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
+
+	// If Activate is set to false, then we don't initially activate the build variant.
+	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
@@ -1148,7 +1153,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 }
 
 func (bvt *BuildVariantTaskUnit) HasBatchTime() bool {
-	return bvt.CronBatchTime != "" || bvt.BatchTime != nil
+	return bvt.CronBatchTime != "" || bvt.BatchTime != nil || bvt.Activate != nil
 }
 
 func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit {
