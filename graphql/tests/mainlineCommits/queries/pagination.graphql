@@ -21,7 +21,7 @@
     }
   }
   page2: mainlineCommits(
-    options: { projectID: "evergreen", limit: 1, skipOrderNumber: 2 }
+    options: { projectID: "evergreen", limit: 1, skipOrderNumber: 5 }
   ) {
     versions {
       version {

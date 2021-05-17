@@ -29,6 +29,26 @@
       "author": "mohamed.khelif",
       "status": "created",
       "order": 3
+    },
+                        {
+      "_id": "evergreen_version4",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "identifier": "evergreen",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "mohamed.khelif",
+      "status": "created",
+      "order": 4
+    },
+                        {
+      "_id": "evergreen_version5",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "identifier": "evergreen",
+      "r": "gitter_request",
+      "activated": true,
+      "author": "mohamed.khelif",
+      "status": "created",
+      "order": 5
     }
     ],
     "tasks" : [
@@ -70,6 +90,16 @@
             "build_variant" : "enterprise-ubuntu1604-64",
             "build_id": "evergreen_version2_build"
 
+        },
+                        {
+            "_id": "task_5",
+            "version": "evergreen_version5",
+            "status": "success",
+            "display_name": "Some Other Task",
+            "activated": true,
+            "build_variant" : "enterprise-ubuntu1604-64",
+            "build_id": "evergreen_version5_build"
+
         }
     ],
     "project_ref": [
@@ -86,6 +116,11 @@
         },
                 {
             "_id": "evergreen_version2_build",
+            "build_variant": "enterprise-ubuntu1604-64",
+            "display_name": "Ubuntu 16.04"
+        },
+                        {
+            "_id": "evergreen_version5_build",
             "build_variant": "enterprise-ubuntu1604-64",
             "display_name": "Ubuntu 16.04"
         }
