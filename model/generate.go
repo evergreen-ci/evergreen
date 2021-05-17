@@ -212,7 +212,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// Otherwise activate ones that are not setting batchtime and are not set to false.
 	var batchTimeInfo specificActivationInfo
 	if !evergreen.IsPatchRequester(v.Requester) && evergreen.ShouldConsiderDifferentActivations(v.Requester) {
-		batchTimeInfo = g.findTasksAndVariantsWithDifferentActivations()
+		batchTimeInfo = g.findTasksAndVariantsWithSpecificActivations()
 	}
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
@@ -300,7 +300,7 @@ func (b *specificActivationInfo) variantHasSpecificActivation(variant string) bo
 	return utility.StringSliceContains(b.variants, variant)
 }
 
-func (b *specificActivationInfo) GetTasks(variant string) []string {
+func (b *specificActivationInfo) getTasks(variant string) []string {
 	return b.tasks[variant]
 }
 
@@ -314,7 +314,7 @@ func (b *specificActivationInfo) tasksWithoutSpecificActivation(taskNames []stri
 	return tasksWithoutSpecificActivation
 }
 
-func (g *GeneratedProject) findTasksAndVariantsWithDifferentActivations() specificActivationInfo {
+func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations() specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
 		if bv.BatchTime != nil || bv.CronBatchTime != "" || bv.Activate != nil {

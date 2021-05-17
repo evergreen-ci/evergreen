@@ -1513,7 +1513,7 @@ func addNewBuilds(ctx context.Context, batchTimeInfo specificActivationInfo, v *
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !batchTimeInfo.variantHasSpecificActivation(pair.Variant)
-		tasksWithBatchtime := batchTimeInfo.GetTasks(pair.Variant)
+		tasksWithBatchtime := batchTimeInfo.getTasks(pair.Variant)
 		buildArgs := BuildCreateArgs{
 			Project:            *p,
 			Version:            *v,
@@ -1681,7 +1681,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo specificActivationInfo, v *V
 		if len(tasksToAdd) == 0 && len(displayTasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
 		}
-		batchTimeTasks := batchTimeInfo.GetTasks(b.BuildVariant)
+		batchTimeTasks := batchTimeInfo.getTasks(b.BuildVariant)
 		// Add the new set of tasks to the build.
 		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, batchTimeTasks, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, taskIdTables)
 		if err != nil {
