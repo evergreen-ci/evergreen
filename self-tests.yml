@@ -201,6 +201,34 @@ functions:
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
       binary: make
       args: ["${make_args|}", "${target}"]
+      env:
+        AWS_KEY: ${aws_key}
+        AWS_SECRET: ${aws_secret}
+        DEBUG_ENABLED: ${debug}
+        DISABLE_COVERAGE: ${disable_coverage}
+        DOCKER_HOST: ${docker_host}
+        EVERGREEN_ALL: "true"
+        GOARCH: ${goarch}
+        GO_BIN_PATH: ${gobin}
+        GOOS: ${goos}
+        GOPATH: ${workdir}/gopath
+        GOROOT: ${goroot}
+        KARMA_REPORTER: junit
+        NODE_BIN_PATH: ${nodebin}
+        RACE_DETECTOR: ${race_detector}
+        SETTINGS_OVERRIDE: creds.yml
+        SMOKE_TEST_FILE: ${smoke_test_file}
+        TEST_TIMEOUT: ${test_timeout}
+        TZ: ${tz}
+        VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
+        VENDOR_REVISION: ${trigger_revision}
+        XC_BUILD: ${xc_build}
+  run-make-auth:
+    command: subprocess.exec
+    params:
+      working_dir: gopath/src/github.com/evergreen-ci/evergreen
+      binary: make
+      args: ["${make_args|}", "${target}"]
       add_expansions_to_env: true
       env:
         AWS_KEY: ${aws_key}
@@ -224,6 +252,7 @@ functions:
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
         VENDOR_REVISION: ${trigger_revision}
         XC_BUILD: ${xc_build}
+
   setup-credentials:
     command: subprocess.exec
     type: setup
@@ -606,7 +635,6 @@ tasks:
       - func: get-project
       - func: verify-agent-version-update
   - name: test-db-auth
-    tags: ["db", "test"]
     commands:
       - func: get-project
       - func: run-make
@@ -614,7 +642,7 @@ tasks:
           target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb-auth
-      - func: run-make
+      - func: run-make-auth
         vars:
           target: "test-evergreen"
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
@@ -653,6 +681,7 @@ buildvariants:
       - name: "verify-agent-version-update"
       - name: "docker-cleanup"
       - name: test-cloud
+      - name: test-db-auth
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)
@@ -671,6 +700,7 @@ buildvariants:
       - name: "dist-staging"
       - name: ".smoke"
       - name: ".test"
+      - name: test-db-auth
 
   - name: race-detector
     display_name: Race Detector
@@ -685,6 +715,7 @@ buildvariants:
       test_timeout: 15m
     tasks:
       - name: ".test"
+      - name: test-db-auth
 
   - name: lint
     display_name: Lint
