@@ -2623,6 +2623,36 @@ type versionResolver struct{ *Resolver }
 
 // Returns grouped build variants for a version. Will not return build variants for unactivated versions
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error) {
+	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
+	if v.Activated == nil {
+		defaultSort := []task.TasksSortOrder{
+			{Key: task.DisplayNameKey, Order: 1},
+		}
+		opts := data.TaskFilterOptions{
+			Sorts: defaultSort,
+		}
+		tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", *v.Id, err.Error()))
+		}
+		version, err := model.VersionFindOne(model.VersionById(*v.Id))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching version: %s : %s", *v.Id, err.Error()))
+		}
+		if !task.AnyActiveTasks(tasks) {
+			err = version.SetNotActivated()
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating version activated status for %s, %s", *v.Id, err.Error()))
+			}
+		} else {
+			err = version.SetActivated()
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating version activated status for %s, %s", *v.Id, err.Error()))
+			}
+		}
+		v.Activated = version.Activated
+	}
+
 	if !utility.FromBoolPtr(v.Activated) {
 		return nil, nil
 	}
