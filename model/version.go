@@ -139,7 +139,7 @@ func (self *Version) SetActivated() error {
 }
 
 func (self *Version) SetNotActivated() error {
-	if self.Activated != nil {
+	if !utility.FromBoolPtr(self.Activated) {
 		return nil
 	}
 	self.Activated = utility.FalsePtr()
