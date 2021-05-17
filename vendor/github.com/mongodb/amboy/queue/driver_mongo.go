@@ -24,18 +24,20 @@ import (
 
 type mongoDriver struct {
 	client     *mongo.Client
+	ownsClient bool
 	name       string
 	opts       MongoDBOptions
 	instanceID string
 	mu         sync.RWMutex
-	canceler   context.CancelFunc
+	cancel     context.CancelFunc
+	closed     bool
 	dispatcher Dispatcher
 }
 
 // NewMongoDriver constructs a MongoDB backed queue driver
 // implementation using the go.mongodb.org/mongo-driver as the
 // database interface.
-func newMongoDriver(name string, opts MongoDBOptions) (remoteQueueDriver, error) {
+func newMongoDriver(name string, opts MongoDBOptions) (*mongoDriver, error) {
 	host, _ := os.Hostname() // nolint
 
 	if err := opts.Validate(); err != nil {
@@ -49,36 +51,32 @@ func newMongoDriver(name string, opts MongoDBOptions) (remoteQueueDriver, error)
 	}, nil
 }
 
-// openNewMongoDriver constructs and opens a new MongoDB driver instance
-// using the specified session. It is equivalent to calling
-// NewMongoDriver() and calling driver.Open().
-func openNewMongoDriver(ctx context.Context, name string, opts MongoDBOptions, client *mongo.Client) (remoteQueueDriver, error) {
+// openNewMongoDriver constructs and opens a new MongoDB driver instance using
+// the specified client. The returned driver does not take ownership of the
+// lifetime of the client.
+func openNewMongoDriver(ctx context.Context, name string, opts MongoDBOptions, client *mongo.Client) (*mongoDriver, error) {
 	d, err := newMongoDriver(name, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create driver")
 	}
-	md, ok := d.(*mongoDriver)
-	if !ok {
-		return nil, errors.New("amboy programmer error: incorrect constructor")
-	}
 
-	if err := md.start(ctx, client); err != nil {
+	if err := d.start(ctx, clientStartOptions{client: client}); err != nil {
 		return nil, errors.Wrap(err, "problem starting driver")
 	}
 
 	return d, nil
 }
 
-// newMongoGroupDriver is similar to the MongoDriver, except it
-// prefixes job ids with a prefix and adds the group field to the
-// documents in the database which makes it possible to manage
-// distinct queues with a single MongoDB collection.
-func newMongoGroupDriver(name string, opts MongoDBOptions, group string) (remoteQueueDriver, error) {
+// newMongoGroupDriver is similar to newMongoDriver, except it prefixes job ids
+// with a prefix and adds the group field to the documents in the database which
+// makes it possible to manage distinct queues with a single MongoDB collection.
+func newMongoGroupDriver(name string, opts MongoDBOptions, group string) (*mongoDriver, error) {
 	host, _ := os.Hostname() // nolint
 
 	if err := opts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid mongo driver options")
 	}
+
 	opts.UseGroups = true
 	opts.GroupName = group
 
@@ -89,24 +87,20 @@ func newMongoGroupDriver(name string, opts MongoDBOptions, group string) (remote
 	}, nil
 }
 
-// OpenNewMongoGroupDriver constructs and opens a new MongoDB driver instance
-// using the specified session. It is equivalent to calling
-// NewMongoGroupDriver() and calling driver.Open().
-func openNewMongoGroupDriver(ctx context.Context, name string, opts MongoDBOptions, group string, client *mongo.Client) (remoteQueueDriver, error) {
+// openNewMongoGroupDriver constructs and opens a new MongoDB driver instance
+// using the specified client. The returned driver does not take ownership of
+// the lifetime of the client.
+func openNewMongoGroupDriver(ctx context.Context, name string, opts MongoDBOptions, group string, client *mongo.Client) (*mongoDriver, error) {
 	d, err := newMongoGroupDriver(name, opts, group)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create driver")
-	}
-	md, ok := d.(*mongoDriver)
-	if !ok {
-		return nil, errors.New("amboy programmer error: incorrect constructor")
 	}
 
 	opts.UseGroups = true
 	opts.GroupName = group
 
-	if err := md.start(ctx, client); err != nil {
-		return nil, errors.Wrap(err, "problem starting driver")
+	if err := d.start(ctx, clientStartOptions{client: client}); err != nil {
+		return nil, errors.Wrap(err, "starting driver")
 	}
 
 	return d, nil
@@ -119,43 +113,61 @@ func (d *mongoDriver) ID() string {
 	return d.instanceID
 }
 
+// Open opens a new owned connection for the driver. If a connection has already
+// been previously established for the driver, this is a no-op.
 func (d *mongoDriver) Open(ctx context.Context) error {
-	if d.canceler != nil {
+	d.mu.RLock()
+	if d.cancel != nil {
+		d.mu.RUnlock()
 		return nil
 	}
+	d.mu.RUnlock()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(d.opts.URI))
 	if err != nil {
-		return errors.Wrapf(err, "problem opening connection to mongodb at '%s", d.opts.URI)
+		return errors.Wrapf(err, "opening connection to mongodb at '%s", d.opts.URI)
 	}
 
-	return errors.Wrap(d.start(ctx, client), "problem starting driver")
+	return errors.Wrap(d.start(ctx, clientStartOptions{
+		client:     client,
+		ownsClient: true,
+	}), "starting driver")
 }
 
-func (d *mongoDriver) start(ctx context.Context, client *mongo.Client) error {
-	dCtx, cancel := context.WithCancel(ctx)
-	d.canceler = cancel
+type clientStartOptions struct {
+	client     *mongo.Client
+	ownsClient bool
+}
+
+func (d *mongoDriver) start(ctx context.Context, opts clientStartOptions) error {
+	if opts.client == nil {
+		return errors.New("cannot start the mongo driver without a client")
+	}
 
 	d.mu.Lock()
-	d.client = client
+	dCtx, cancel := context.WithCancel(ctx)
+	d.cancel = cancel
+
+	d.client = opts.client
+	d.ownsClient = opts.ownsClient
 	d.mu.Unlock()
 
 	startAt := time.Now()
 	go func() {
 		<-dCtx.Done()
 		grip.Info(message.Fields{
-			"message":  "closing session for mongodb driver",
-			"id":       d.instanceID,
-			"uptime":   time.Since(startAt),
-			"span":     time.Since(startAt).String(),
-			"service":  "amboy.queue.mdb",
-			"is_group": d.opts.UseGroups,
-			"group":    d.opts.GroupName,
+			"message":   "closing session for mongodb driver",
+			"driver_id": d.instanceID,
+			"uptime":    time.Since(startAt),
+			"span":      time.Since(startAt).String(),
+			"service":   "amboy.queue.mdb",
+			"is_group":  d.opts.UseGroups,
+			"group":     d.opts.GroupName,
 		})
 	}()
 
 	if err := d.setupDB(ctx); err != nil {
-		return errors.Wrap(err, "problem setting up database")
+		return errors.Wrap(err, "setting up database")
 	}
 
 	return nil
@@ -181,7 +193,7 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 
 	if len(indexes) > 0 {
 		_, err := d.getCollection().Indexes().CreateMany(ctx, indexes)
-		return errors.Wrap(err, "problem building indexes")
+		return errors.Wrap(err, "building indexes")
 	}
 
 	return nil
@@ -393,10 +405,29 @@ func (d *mongoDriver) reportingIndexes() []mongo.IndexModel {
 	return indexes
 }
 
-func (d *mongoDriver) Close() {
-	if d.canceler != nil {
-		d.canceler()
+// Close closes the resources for the driver. If it initialized a new client, it
+// is disconnected.
+func (d *mongoDriver) Close(ctx context.Context) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.closed {
+		return nil
 	}
+
+	d.closed = true
+
+	if d.cancel != nil {
+		d.cancel()
+		d.cancel = nil
+
+	}
+
+	if d.ownsClient {
+		return d.client.Disconnect(ctx)
+	}
+
+	return nil
 }
 
 func buildCompoundID(n, id string) string { return fmt.Sprintf("%s.%s", n, id) }
@@ -473,17 +504,16 @@ func (d *mongoDriver) Get(ctx context.Context, name string) (amboy.Job, error) {
 	}
 	res := d.getCollection().FindOne(ctx, d.getIDQuery(name), options.FindOne().SetSort(byRetryAttempt))
 	if err := res.Err(); err != nil {
-		return nil, errors.Wrapf(err, "GET problem fetching '%s'", name)
+		return nil, errors.Wrap(err, "finding job")
 	}
 
 	if err := res.Decode(j); err != nil {
-		return nil, errors.Wrapf(err, "GET problem decoding '%s'", name)
+		return nil, errors.Wrap(err, "decoding job document into interchange job")
 	}
 
 	output, err := j.Resolve(d.opts.Format)
 	if err != nil {
-		return nil, errors.Wrapf(err,
-			"GET problem converting '%s' to job object", name)
+		return nil, errors.Wrap(err, "converting interchange job to in-memory job")
 	}
 
 	return output, nil
@@ -524,12 +554,12 @@ func (d *mongoDriver) GetAttempt(ctx context.Context, id string, attempt int) (a
 
 	ji := &registry.JobInterchange{}
 	if err := res.Decode(ji); err != nil {
-		return nil, errors.Wrap(err, "decoding job")
+		return nil, errors.Wrap(err, "decoding job document into interchange job")
 	}
 
 	j, err := ji.Resolve(d.opts.Format)
 	if err != nil {
-		return nil, errors.Wrap(err, "converting serialized job format to in-memory job")
+		return nil, errors.Wrap(err, "converting interchange job to in-memory job")
 	}
 
 	return j, nil
@@ -553,7 +583,7 @@ func (d *mongoDriver) GetAllAttempts(ctx context.Context, id string) ([]amboy.Jo
 
 	jobInts := []registry.JobInterchange{}
 	if err := cursor.All(ctx, &jobInts); err != nil {
-		return nil, errors.Wrap(err, "decoding job")
+		return nil, errors.Wrap(err, "decoding job document into interchange job")
 	}
 	if len(jobInts) == 0 {
 		return nil, amboy.NewJobNotFoundError("no such job found")
@@ -563,7 +593,7 @@ func (d *mongoDriver) GetAllAttempts(ctx context.Context, id string) ([]amboy.Jo
 	for i, ji := range jobInts {
 		j, err := ji.Resolve(d.opts.Format)
 		if err != nil {
-			return nil, errors.Wrap(err, "converting serialized job format to in-memory job")
+			return nil, errors.Wrap(err, "converting interchange job to in-memory job")
 		}
 		jobs[len(jobs)-i-1] = j
 	}
@@ -574,7 +604,7 @@ func (d *mongoDriver) GetAllAttempts(ctx context.Context, id string) ([]amboy.Jo
 func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
 	ji, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
-		return errors.Wrap(err, "problem converting job to interchange format")
+		return errors.Wrap(err, "converting in-memory job to interchange job")
 	}
 
 	if j.ShouldApplyScopesOnEnqueue() {
@@ -591,7 +621,7 @@ func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
 			return amboy.NewDuplicateJobErrorf("job '%s' already exists", j.ID())
 		}
 
-		return errors.Wrapf(err, "problem saving new job %s", j.ID())
+		return errors.Wrapf(err, "inserting new job '%s'", j.ID())
 	}
 
 	return nil
@@ -807,7 +837,7 @@ func (d *mongoDriver) prepareInterchange(j amboy.Job) (*registry.JobInterchange,
 
 	ji, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem converting job to interchange format")
+		return nil, errors.Wrap(err, "converting in-memory job to interchange job")
 	}
 	return ji, nil
 }
@@ -819,10 +849,10 @@ func (d *mongoDriver) doUpdate(ctx context.Context, ji *registry.JobInterchange)
 		err := errors.New("job was found both in progress and complete")
 		grip.Error(message.WrapError(err, (message.Fields{
 			"message":     "programmer error: a job should not be saved as both in progress and complete - manually changing in progress to false",
-			"jira_ticket": "EVG-14605",
+			"jira_ticket": "EVG-14609",
 			"job_id":      ji.Name,
 			"service":     "amboy.queue.mdb",
-			"driver_id":   d.ID(),
+			"driver_id":   d.instanceID,
 		})))
 		ji.Status.InProgress = false
 	}
@@ -834,7 +864,7 @@ func (d *mongoDriver) doUpdate(ctx context.Context, ji *registry.JobInterchange)
 		if d.isMongoDupScope(err) {
 			return amboy.NewDuplicateJobScopeErrorf("job scopes '%s' conflict", ji.Scopes)
 		}
-		return errors.Wrapf(err, "problem saving document %s: %+v", ji.Name, res)
+		return errors.Wrapf(err, "saving job '%s': %+v", ji.Name, res)
 	}
 
 	if res.MatchedCount == 0 {
@@ -853,7 +883,7 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 					"message":   "failed while getting jobs from the DB",
 					"operation": "job iterator",
 					"service":   "amboy.queue.mdb",
-					"driver_id": d.ID(),
+					"driver_id": d.instanceID,
 				}))
 			}
 			close(output)
@@ -864,12 +894,12 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 		iter, err := d.getCollection().Find(ctx, q, options.Find().SetSort(bson.M{"status.mod_ts": -1}))
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
-				"id":        d.instanceID,
+				"message":   "problem with query",
+				"driver_id": d.instanceID,
 				"service":   "amboy.queue.mdb",
 				"is_group":  d.opts.UseGroups,
 				"group":     d.opts.GroupName,
 				"operation": "job iterator",
-				"message":   "problem with query",
 			}))
 			return
 		}
@@ -877,12 +907,12 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 			ji := &registry.JobInterchange{}
 			if err = iter.Decode(ji); err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
-					"id":        d.instanceID,
+					"message":   "problem decoding job document into interchange job",
+					"driver_id": d.instanceID,
 					"service":   "amboy.queue.mdb",
 					"is_group":  d.opts.UseGroups,
 					"group":     d.opts.GroupName,
 					"operation": "job iterator",
-					"message":   "problem reading job from cursor",
 				}))
 
 				continue
@@ -892,12 +922,12 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 			j, err = ji.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
-					"id":        d.instanceID,
+					"message":   "problem converting interchange job to in-memory job",
+					"driver_id": d.instanceID,
 					"service":   "amboy.queue.mdb",
 					"operation": "job iterator",
 					"is_group":  d.opts.UseGroups,
 					"group":     d.opts.GroupName,
-					"message":   "problem converting job obj",
 				}))
 				continue
 			}
@@ -910,7 +940,7 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 		}
 
 		grip.Error(message.WrapError(iter.Err(), message.Fields{
-			"id":        d.instanceID,
+			"driver_id": d.instanceID,
 			"service":   "amboy.queue.mdb",
 			"is_group":  d.opts.UseGroups,
 			"group":     d.opts.GroupName,
@@ -932,7 +962,7 @@ func (d *mongoDriver) RetryableJobs(ctx context.Context, filter retryableJobFilt
 					"message":   "failed while getting retryable jobs from the DB",
 					"operation": "retryable job iterator",
 					"service":   "amboy.queue.mdb",
-					"driver_id": d.ID(),
+					"driver_id": d.instanceID,
 				}))
 			}
 			close(jobs)
@@ -958,12 +988,12 @@ func (d *mongoDriver) RetryableJobs(ctx context.Context, filter retryableJobFilt
 		iter, err := d.getCollection().Find(ctx, q, options.Find().SetSort(bson.M{"status.mod_ts": -1}))
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
-				"id":        d.instanceID,
+				"message":   "problem with query",
+				"driver_id": d.instanceID,
 				"service":   "amboy.queue.mdb",
 				"is_group":  d.opts.UseGroups,
 				"group":     d.opts.GroupName,
 				"operation": "retryable job iterator",
-				"message":   "problem with query",
 			}))
 			return
 		}
@@ -971,12 +1001,12 @@ func (d *mongoDriver) RetryableJobs(ctx context.Context, filter retryableJobFilt
 			ji := &registry.JobInterchange{}
 			if err = iter.Decode(ji); err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
-					"id":        d.instanceID,
+					"message":   "problem decoding job document into job interchange",
+					"driver_id": d.instanceID,
 					"service":   "amboy.queue.mdb",
 					"is_group":  d.opts.UseGroups,
 					"group":     d.opts.GroupName,
 					"operation": "retryable job iterator",
-					"message":   "problem reading job from cursor",
 				}))
 				continue
 			}
@@ -985,12 +1015,12 @@ func (d *mongoDriver) RetryableJobs(ctx context.Context, filter retryableJobFilt
 			j, err = ji.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
-					"id":        d.instanceID,
+					"message":   "converting interchange job to in-memory job",
+					"driver_id": d.instanceID,
 					"service":   "amboy.queue.mdb",
 					"operation": "retryable job iterator",
 					"is_group":  d.opts.UseGroups,
 					"group":     d.opts.GroupName,
-					"message":   "problem converting job object",
 				}))
 				continue
 			}
@@ -1003,7 +1033,7 @@ func (d *mongoDriver) RetryableJobs(ctx context.Context, filter retryableJobFilt
 		}
 
 		grip.Error(message.WrapError(iter.Err(), message.Fields{
-			"id":        d.instanceID,
+			"driver_id": d.instanceID,
 			"service":   "amboy.queue.mdb",
 			"is_group":  d.opts.UseGroups,
 			"group":     d.opts.GroupName,
@@ -1039,10 +1069,10 @@ func (d *mongoDriver) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
 			})
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
-				"id":        d.instanceID,
+				"message":   "problem with query",
+				"driver_id": d.instanceID,
 				"service":   "amboy.queue.mdb",
 				"operation": "job info iterator",
-				"message":   "problem with query",
 				"is_group":  d.opts.UseGroups,
 				"group":     d.opts.GroupName,
 			}))
@@ -1053,10 +1083,10 @@ func (d *mongoDriver) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
 			ji := &registry.JobInterchange{}
 			if err := iter.Decode(ji); err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
-					"id":        d.instanceID,
+					"message":   "problem decoding job document into interchange job",
+					"driver_id": d.instanceID,
 					"service":   "amboy.queue.mdb",
 					"operation": "job info iterator",
-					"message":   "problem converting job obj",
 					"is_group":  d.opts.UseGroups,
 					"group":     d.opts.GroupName,
 				}))
@@ -1139,7 +1169,7 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 				"misses":        misses,
 				"dispatched":    job != nil,
 				"message":       "slow job dispatching operation",
-				"id":            d.instanceID,
+				"driver_id":     d.instanceID,
 				"is_group":      d.opts.UseGroups,
 				"group":         d.opts.GroupName,
 			})
@@ -1163,10 +1193,10 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 			iter, err := d.getCollection().Find(ctx, qd, opts)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
-					"id":            d.instanceID,
+					"message":       "problem finding next jobs",
+					"driver_id":     d.instanceID,
 					"service":       "amboy.queue.mdb",
 					"operation":     "retrieving next job",
-					"message":       "problem generating query",
 					"is_group":      d.opts.UseGroups,
 					"group":         d.opts.GroupName,
 					"duration_secs": time.Since(startAt).Seconds(),
@@ -1182,9 +1212,9 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 					d.dispatcher.Release(ctx, job)
 				}
 				grip.Warning(message.WrapError(err, message.Fields{
-					"id":            d.instanceID,
-					"service":       "amboy.queue.mdb",
 					"message":       "problem reported by iterator",
+					"driver_id":     d.instanceID,
+					"service":       "amboy.queue.mdb",
 					"operation":     "retrieving next job",
 					"is_group":      d.opts.UseGroups,
 					"group":         d.opts.GroupName,
@@ -1198,9 +1228,9 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 					d.dispatcher.Release(ctx, job)
 				}
 				grip.Warning(message.WrapError(err, message.Fields{
-					"id":        d.instanceID,
-					"service":   "amboy.queue.mdb",
 					"message":   "problem closing iterator",
+					"driver_id": d.instanceID,
+					"service":   "amboy.queue.mdb",
 					"operation": "retrieving next job",
 					"is_group":  d.opts.UseGroups,
 					"group":     d.opts.GroupName,
@@ -1237,10 +1267,10 @@ func (d *mongoDriver) tryDispatchJob(ctx context.Context, iter *mongo.Cursor, st
 		ji := &registry.JobInterchange{}
 		if err := iter.Decode(ji); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
-				"id":            d.instanceID,
+				"message":       "problem decoding job document into interchange job",
+				"driver_id":     d.instanceID,
 				"service":       "amboy.queue.mdb",
-				"operation":     "converting next job",
-				"message":       "problem reading document from cursor",
+				"operation":     "next job",
 				"is_group":      d.opts.UseGroups,
 				"group":         d.opts.GroupName,
 				"duration_secs": time.Since(startAt).Seconds(),
@@ -1252,10 +1282,10 @@ func (d *mongoDriver) tryDispatchJob(ctx context.Context, iter *mongo.Cursor, st
 		j, err := ji.Resolve(d.opts.Format)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
-				"id":            d.instanceID,
+				"message":       "problem converting interchange job into in-memory job",
+				"driver_id":     d.instanceID,
 				"service":       "amboy.queue.mdb",
-				"operation":     "converting document",
-				"message":       "problem converting job from intermediate form",
+				"operation":     "next job",
 				"is_group":      d.opts.UseGroups,
 				"group":         d.opts.GroupName,
 				"duration_secs": time.Since(startAt).Seconds(),
@@ -1267,11 +1297,11 @@ func (d *mongoDriver) tryDispatchJob(ctx context.Context, iter *mongo.Cursor, st
 		if j.TimeInfo().IsStale() {
 			res, err := d.getCollection().DeleteOne(ctx, bson.M{"_id": ji.Name})
 			msg := message.Fields{
-				"id":            d.instanceID,
+				"message":       "found stale job",
+				"driver_id":     d.instanceID,
 				"service":       "amboy.queue.mdb",
 				"num_deleted":   res.DeletedCount,
-				"message":       "found stale job",
-				"operation":     "job staleness check",
+				"operation":     "next job",
 				"job_id":        j.ID(),
 				"job_type":      j.Type().Name,
 				"is_group":      d.opts.UseGroups,
@@ -1296,7 +1326,7 @@ func (d *mongoDriver) tryDispatchJob(ctx context.Context, iter *mongo.Cursor, st
 			dispatchInfo.misses++
 			grip.DebugWhen(isDispatchable(j.Status(), lockTimeout) && !d.isMongoDupScope(err),
 				message.WrapError(err, message.Fields{
-					"id":            d.instanceID,
+					"driver_id":     d.instanceID,
 					"service":       "amboy.queue.mdb",
 					"operation":     "dispatch job",
 					"job_id":        j.ID(),
@@ -1364,7 +1394,7 @@ func (d *mongoDriver) Stats(ctx context.Context) amboy.QueueStats {
 	c, err := coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
-			"id":         d.instanceID,
+			"driver_id":  d.instanceID,
 			"service":    "amboy.queue.mdb",
 			"collection": coll.Name(),
 			"is_group":   d.opts.UseGroups,
@@ -1384,7 +1414,7 @@ func (d *mongoDriver) Stats(ctx context.Context) amboy.QueueStats {
 	}{}
 	if err := c.All(ctx, &statusGroups); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
-			"id":         d.instanceID,
+			"driver_id":  d.instanceID,
 			"service":    "amboy.queue.mdb",
 			"collection": coll.Name(),
 			"is_group":   d.opts.UseGroups,
@@ -1420,7 +1450,7 @@ func (d *mongoDriver) Stats(ctx context.Context) amboy.QueueStats {
 		total, err = coll.EstimatedDocumentCount(ctx)
 	}
 	grip.Warning(message.WrapError(err, message.Fields{
-		"id":         d.instanceID,
+		"driver_id":  d.instanceID,
 		"service":    "amboy.queue.mdb",
 		"collection": coll.Name(),
 		"operation":  "queue stats",

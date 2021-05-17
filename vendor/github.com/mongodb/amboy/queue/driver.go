@@ -13,7 +13,7 @@ import (
 type remoteQueueDriver interface {
 	ID() string
 	Open(context.Context) error
-	Close()
+	Close(context.Context) error
 
 	// Get finds a job by job ID. For retryable jobs, this returns the latest
 	// job attempt.
