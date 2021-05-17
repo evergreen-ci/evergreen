@@ -447,7 +447,7 @@ tasks:
     tags: ["db", "test"]
     name: test-db
   - <<: *run-go-test-suite-with-docker
-    tags: ["db"]
+    tags: ["db", "test"]
     name: test-cloud
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -652,25 +652,6 @@ buildvariants:
       - name: "js-test"
       - name: "verify-agent-version-update"
       - name: "docker-cleanup"
-      - name: test-cloud
-
-  - name: ubuntu1604-docker
-    display_name: Ubuntu 16.04 (Docker)
-    run_on:
-      - ubuntu1604-container
-    expansions:
-      goos: linux
-      goarch: amd64
-      gobin: /opt/golang/go1.13/bin/go
-      goroot: /opt/golang/go1.13
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
-      test_timeout: 15m
-      nodebin: /opt/node/bin
-    tasks:
-      - name: "dist"
-      - name: "dist-staging"
-      - name: ".smoke"
-      - name: ".test"
 
   - name: race-detector
     display_name: Race Detector
