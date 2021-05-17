@@ -2583,24 +2583,37 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 		mainlineCommitVersion := MainlineCommitVersion{}
 
+		// If a version is activated we append it directly to our returned list of mainlineCommits
+		// If a version is not activated we roll up all the unactivated versions that are sequentially near each other
+		// into a single MainlineCommitVersion and then append it to our returned list
 		if utility.FromBoolPtr(v.Activated) {
 			activatedVersionCount++
 			mainlineCommits.NextPageOrderNumber = &v.RevisionOrderNumber
 			mainlineCommitVersion.Version = &apiVersion
-			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+
 		} else {
+			// If we have any versions already we should check the most recent one first otherwise create a new one
 			if len(mainlineCommits.Versions) > 0 {
 				lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
+
+				// If the previous mainlineCommit contains rolled up unactivated versions append the latest RolledUp unactivated version
 				if lastMainlineCommit.RolledUpVersions != nil {
 					lastMainlineCommit.RolledUpVersions = append(lastMainlineCommit.RolledUpVersions, &apiVersion)
+				} else {
+					mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
 				}
+
 			} else {
 				mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
-				mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+
 			}
 
 		}
 
+		// Only add a mainlineCommit if a new one was added and its not a modified existing RolledUpVersion
+		if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
+			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+		}
 	}
 
 	return &mainlineCommits, nil
