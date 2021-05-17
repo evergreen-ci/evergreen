@@ -532,14 +532,10 @@ func generateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:        statuses,
-		BaseStatuses:    []string{},
-		Variants:        searchVariants,
-		TaskNames:       searchTasks,
-		Page:            0,
-		Limit:           0,
-		FieldsToProject: []string{},
-		Sorts:           defaultSort,
+		Statuses:  statuses,
+		Variants:  searchVariants,
+		TaskNames: searchTasks,
+		Sorts:     defaultSort,
 	}
 	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
 	if err != nil {
