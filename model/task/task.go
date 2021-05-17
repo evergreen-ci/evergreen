@@ -2707,7 +2707,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 
 	// Allow searching by either variant name or variant display
 	if len(variants) > 0 {
-		variantsAsRegex := strings.Join(variants[:], "|")
+		variantsAsRegex := strings.Join(variants, "|")
 
 		match = bson.M{
 			"$or": []bson.M{
@@ -2717,7 +2717,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		}
 	}
 	if len(taskNames) > 0 {
-		taskNamesAsRegex := strings.Join(taskNames[:], "|")
+		taskNamesAsRegex := strings.Join(taskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	match[VersionKey] = versionID
