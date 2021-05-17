@@ -1572,7 +1572,7 @@ func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, use
 	return results.Order, results.Logic, nil
 }
 
-// FindHostByIP queries the database for the host with ip matching the ip address
+// FindHostByIpAddress queries the database for the host with ip matching the ip address
 func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (*model.APIHost, error) {
 	info := requestInfo{
 		method: http.MethodGet,
@@ -1594,7 +1594,7 @@ func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (
 
 	host := &model.APIHost{}
 	if err = utility.ReadJSON(resp.Body, host); err != nil {
-		return nil, errors.Wrap(err, "can't read response as APIHost slice")
+		return nil, errors.Wrap(err, "can't read response as APIHost")
 	}
 	return host, nil
 }
