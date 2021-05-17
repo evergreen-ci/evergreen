@@ -540,18 +540,14 @@ func TestRetryableQueueImplementations(t *testing.T) {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
 	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, client.Disconnect(ctx))
+	}()
 
 	driver, err := openNewMongoDriver(ctx, newDriverID(), opts, client)
 	require.NoError(t, err)
-
-	require.NoError(t, driver.Open(ctx))
-	defer driver.Close()
-
-	mDriver, ok := driver.(*mongoDriver)
-	require.True(t, ok)
-
 	defer func() {
-		require.NoError(t, client.Disconnect(ctx))
+		assert.NoError(t, driver.Close(ctx))
 	}()
 
 	const queueSize = 16
@@ -730,9 +726,9 @@ func TestRetryableQueueImplementations(t *testing.T) {
 					tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
 					defer tcancel()
 
-					require.NoError(t, mDriver.getCollection().Database().Drop(tctx))
+					require.NoError(t, driver.getCollection().Database().Drop(tctx))
 					defer func() {
-						require.NoError(t, mDriver.getCollection().Database().Drop(tctx))
+						require.NoError(t, driver.getCollection().Database().Drop(tctx))
 					}()
 
 					const size = 128
@@ -756,15 +752,17 @@ func TestRetryHandlerQueueIntegration(t *testing.T) {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
 	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, client.Disconnect(ctx))
+	}()
 
 	driver, err := openNewMongoDriver(ctx, newDriverID(), opts, client)
 	require.NoError(t, err)
 
 	require.NoError(t, driver.Open(ctx))
-	defer driver.Close()
-
-	mDriver, ok := driver.(*mongoDriver)
-	require.True(t, ok)
+	defer func() {
+		assert.NoError(t, driver.Close(ctx))
+	}()
 
 	for rhName, makeRetryHandler := range map[string]func(q amboy.RetryableQueue, opts amboy.RetryHandlerOptions) (amboy.RetryHandler, error){
 		"Basic": func(q amboy.RetryableQueue, opts amboy.RetryHandlerOptions) (amboy.RetryHandler, error) {
@@ -1210,9 +1208,9 @@ func TestRetryHandlerQueueIntegration(t *testing.T) {
 							tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
 							defer tcancel()
 
-							require.NoError(t, mDriver.getCollection().Database().Drop(tctx))
+							require.NoError(t, driver.getCollection().Database().Drop(tctx))
 							defer func() {
-								assert.NoError(t, mDriver.getCollection().Database().Drop(tctx))
+								assert.NoError(t, driver.getCollection().Database().Drop(tctx))
 							}()
 
 							makeQueueAndRetryHandler := func(opts amboy.RetryHandlerOptions) (amboy.RetryableQueue, amboy.RetryHandler, error) {

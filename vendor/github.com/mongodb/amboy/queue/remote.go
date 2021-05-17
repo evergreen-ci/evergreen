@@ -47,10 +47,9 @@ func (opts *MongoDBQueueCreationOptions) Validate() error {
 }
 
 func (opts *MongoDBQueueCreationOptions) build(ctx context.Context) (amboy.RetryableQueue, error) {
-	var driver remoteQueueDriver
-	var err error
 
 	var q remoteQueue
+	var err error
 	qOpts := remoteOptions{
 		numWorkers: opts.Size,
 		retryable:  opts.Retryable,
@@ -65,6 +64,7 @@ func (opts *MongoDBQueueCreationOptions) build(ctx context.Context) (amboy.Retry
 		}
 	}
 
+	var driver remoteQueueDriver
 	if opts.Client == nil {
 		if opts.MDB.UseGroups {
 			driver, err = newMongoGroupDriver(opts.Name, opts.MDB, opts.MDB.GroupName)
