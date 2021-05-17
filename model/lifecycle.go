@@ -1652,7 +1652,9 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 			existingTasksIndex[t.DisplayName] = info
 		}
 		projectBV := p.FindBuildVariant(b.BuildVariant)
-		b.Activated = utility.FromBoolTPtr(projectBV.Activate) // activate unless explicitly set otherwise
+		if projectBV != nil {
+			b.Activated = utility.FromBoolTPtr(projectBV.Activate) // activate unless explicitly set otherwise
+		}
 
 		// build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist

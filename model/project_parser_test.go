@@ -262,17 +262,17 @@ buildvariants:
 	})
 }
 
-func TestIntermediateProjectWithActivated(t *testing.T) {
+func TestIntermediateProjectWithActivate(t *testing.T) {
 	yml := `
 tasks:
 - name: "t1"
 buildvariants:
 - name: "v1"
-  activated: false 
+  activate: false 
   run_on: "distro1"
   tasks: 
   - name: "t1"
-    activated: true
+    activate: true
 `
 	p, err := createIntermediateProject([]byte(yml))
 	assert.NoError(t, err)
