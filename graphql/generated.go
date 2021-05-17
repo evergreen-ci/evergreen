@@ -429,7 +429,6 @@ type ComplexityRoot struct {
 	}
 
 	PatchProject struct {
-		Tasks    func(childComplexity int) int
 		Variants func(childComplexity int) int
 	}
 
@@ -2803,13 +2802,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchMetadata.PatchID(childComplexity), true
-
-	case "PatchProject.tasks":
-		if e.complexity.PatchProject.Tasks == nil {
-			break
-		}
-
-		return e.complexity.PatchProject.Tasks(childComplexity), true
 
 	case "PatchProject.variants":
 		if e.complexity.PatchProject.Variants == nil {
@@ -5370,8 +5362,6 @@ type Volume {
 
 type PatchProject {
   variants: [ProjectBuildVariant!]!
-  # note the tasks field is deprecated and can be removed whenever
-  tasks: [String!]!
 }
 type ProjectBuildVariant {
   name: String!
@@ -15187,40 +15177,6 @@ func (ec *executionContext) _PatchProject_variants(ctx context.Context, field gr
 	res := resTmp.([]*ProjectBuildVariant)
 	fc.Result = res
 	return ec.marshalNProjectBuildVariant2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectBuildVariantᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchProject_tasks(ctx context.Context, field graphql.CollectedField, obj *PatchProject) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchProject",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Tasks, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTasks_tasks(ctx context.Context, field graphql.CollectedField, obj *PatchTasks) (ret graphql.Marshaler) {
@@ -28039,11 +27995,6 @@ func (ec *executionContext) _PatchProject(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("PatchProject")
 		case "variants":
 			out.Values[i] = ec._PatchProject_variants(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "tasks":
-			out.Values[i] = ec._PatchProject_tasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

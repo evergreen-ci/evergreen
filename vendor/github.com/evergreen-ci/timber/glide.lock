@@ -4,7 +4,7 @@ imports:
 - name: github.com/mongodb/grip
   version: 7b77abce30e2f707b37c8321f192e5a83c597e7f
 - name: github.com/evergreen-ci/aviation
-  version: b634ff5022510cb61f124e2c14d6c00aced7f133
+  version: 9f9de6fb75dc417fae0c62b815164407bb8e78a5
 - name: go.mongodb.org/mongo-driver
   version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 - name: github.com/evergreen-ci/utility
@@ -35,4 +35,4 @@ imports:
 - name: github.com/golang/protobuf
   version: c823c79ea1570fb5ff454033735a8e68575d1d0f
 - name: github.com/evergreen-ci/juniper
-  version: 6b29c7c57acb542f9dd9e08cc155fa65ff3d00ac
+  version: 5073cb7711610abd618fb98fb65cada479f7efe6

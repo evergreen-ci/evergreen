@@ -413,7 +413,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 	err := j.runHostSetup(ctx, settings)
 	if err != nil {
-		event.LogProvisionFailed(j.host.Id, "")
+		event.LogHostProvisionFailed(j.host.Id, "")
 		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 			"operation":       "setting host unprovisioned",
 			"current_attempt": j.RetryInfo().CurrentAttempt,
@@ -464,7 +464,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrapf(err, "running distro setup script on remote host: %s", logs)
 			catcher.Wrap(j.host.SetUnprovisioned(), "setting host unprovisioned after distro setup script failed")
-			event.LogProvisionFailed(j.host.Id, logs)
+			event.LogHostProvisionFailed(j.host.Id, logs)
 			return catcher.Resolve()
 		}
 

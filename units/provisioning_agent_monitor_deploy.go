@@ -151,6 +151,13 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 	if alive {
+		grip.Info(message.Fields{
+			"message":   "not deploying a new agent monitor because it is still alive",
+			"host_id":   j.host.Id,
+			"distro_id": j.host.Distro.Id,
+			"job_id":    j.ID(),
+		})
+		j.AddRetryableError(j.host.SetNeedsNewAgentMonitor(false))
 		return
 	}
 
