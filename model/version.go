@@ -381,8 +381,13 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 
 	match := bson.M{
 		VersionIdentifierKey: projectId,
-		VersionActivatedKey:  opts.Activated,
 	}
+	if opts.Activated {
+		match[VersionActivatedKey] = opts.Activated
+	} else {
+		match[VersionActivatedKey] = bson.M{"$in": bson.A{false, nil}}
+	}
+
 	if opts.SkipOrderNumber != 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.SkipOrderNumber}
 	}
