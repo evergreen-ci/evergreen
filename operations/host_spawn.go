@@ -1378,26 +1378,20 @@ Examples:
 func hostFindBy() cli.Command {
 	const (
 		ipAddressFlagName = "ip-address"
-		legacyFlagName    = "legacy"
 	)
 	return cli.Command{
 		Name:  "get-host",
-		Usage: "look up existing hosts",
+		Usage: "get link to existing hosts",
 		Flags: addHostFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(ipAddressFlagName, "ip"),
 				Usage: "ip address used to find host",
-			},
-			cli.BoolFlag{
-				Name:  legacyFlagName,
-				Usage: "returns host link in spruce",
 			},
 		),
 		Before: requireAtLeastOneFlag(ipAddressFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			ipAddress := c.String(ipAddressFlagName)
-			legacy := c.Bool(legacyFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -1417,15 +1411,14 @@ func hostFindBy() cli.Command {
 				return errors.Errorf("Host with ip address '%s' not found", ipAddress)
 			}
 
-			link := fmt.Sprintf("https://spruce.mongodb.com/host/%s", utility.FromStringPtr(host.Id))
-			if legacy {
-				link = fmt.Sprintf("https://evergreen.mongodb.com/host/%s", utility.FromStringPtr(host.Id))
-			}
+			hostId := utility.FromStringPtr(host.Id)
+			hostUser := utility.FromStringPtr(host.User)
+			link := fmt.Sprintf(conf.UIServerHost+"/host/%s", hostId)
 			fmt.Printf(`
 	     ID : %s
 	   Link : %s
 	   User : %s
-`, *host.Id, link, *host.User)
+`, hostId, link, hostUser)
 			return nil
 		},
 	}

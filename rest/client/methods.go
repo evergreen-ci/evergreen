@@ -1581,8 +1581,7 @@ func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "error sending request to find host by ip address")
-		return nil, err
+		return nil, errors.Wrapf(err, "error sending request to find host by ip address")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
