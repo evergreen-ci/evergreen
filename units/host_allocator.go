@@ -68,7 +68,9 @@ func NewHostAllocatorJob(env evergreen.Environment, distroID string, timestamp t
 func (j *hostAllocatorJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	j.env = evergreen.GetEnvironment()
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	config, err := evergreen.GetConfig()
 	if err != nil {
