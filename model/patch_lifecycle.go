@@ -94,7 +94,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
 	tasks TaskVariantPairs, pRef *ProjectRef) error {
-	_, _, err := addNewBuilds(ctx, batchTimeTasksAndVariants{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
+	_, _, err := addNewBuilds(ctx, specificActivationInfo{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 
@@ -102,7 +102,7 @@ func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Ver
 // within the set of already existing builds.
 func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
 	pairs TaskVariantPairs, projectIdentifier string) error {
-	_, err := addNewTasks(ctx, batchTimeTasksAndVariants{}, patchVersion, project, pairs, p.SyncAtEndOpts, projectIdentifier, "")
+	_, err := addNewTasks(ctx, specificActivationInfo{}, patchVersion, project, pairs, p.SyncAtEndOpts, projectIdentifier, "")
 	return errors.Wrap(err, "can't add new tasks")
 }
 

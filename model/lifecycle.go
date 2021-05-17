@@ -1478,7 +1478,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
-func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project,
+func addNewBuilds(ctx context.Context, batchTimeInfo specificActivationInfo, v *Version, p *Project,
 	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, projectRef *ProjectRef, generatedBy string) ([]string, []string, error) {
 
 	taskIdTables, err := getTaskIdTables(v, p, tasks, projectRef.Identifier)
@@ -1512,8 +1512,8 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
-		activateVariant := !batchTimeInfo.variantHasBatchTime(pair.Variant)
-		tasksWithBatchtime := batchTimeInfo.batchTimeTasks(pair.Variant)
+		activateVariant := !batchTimeInfo.variantHasSpecificActivation(pair.Variant)
+		tasksWithBatchtime := batchTimeInfo.GetTasks(pair.Variant)
 		buildArgs := BuildCreateArgs{
 			Project:            *p,
 			Version:            *v,
@@ -1613,7 +1613,7 @@ func addNewBuilds(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, 
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v *Version, p *Project, pairs TaskVariantPairs,
+func addNewTasks(ctx context.Context, batchTimeInfo specificActivationInfo, v *Version, p *Project, pairs TaskVariantPairs,
 	syncAtEndOpts patch.SyncAtEndOptions, projectIdentifier string, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
 		return nil, nil
@@ -1681,7 +1681,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 		if len(tasksToAdd) == 0 && len(displayTasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
 		}
-		batchTimeTasks := batchTimeInfo.batchTimeTasks(b.BuildVariant)
+		batchTimeTasks := batchTimeInfo.GetTasks(b.BuildVariant)
 		// Add the new set of tasks to the build.
 		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, batchTimeTasks, generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, taskIdTables)
 		if err != nil {
@@ -1701,7 +1701,7 @@ func addNewTasks(ctx context.Context, batchTimeInfo batchTimeTasksAndVariants, v
 			}
 		}
 	}
-	if batchTimeInfo.hasAnyBatchTimeTasks() {
+	if batchTimeInfo.hasTasks() {
 		grip.Error(message.WrapError(v.UpdateBuildVariants(), message.Fields{
 			"message": "unable to add batchtime tasks",
 			"version": v.Id,
