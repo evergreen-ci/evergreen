@@ -2516,9 +2516,13 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
 	}
+	limit := model.DefaultMainlineCommitVersionLimit
+	if utility.FromIntPtr(options.Limit) != 0 {
+		limit = utility.FromIntPtr(options.Limit)
+	}
 	opts := model.MainlineCommitVersionOptions{
 		Activated:       true,
-		Limit:           utility.FromIntPtr(options.Limit),
+		Limit:           limit,
 		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
 	}
 
@@ -2543,7 +2547,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	var mainlineCommits MainlineCommits
 	activatedVersionCount := 0
 	for _, v := range versions {
-		if activatedVersionCount == *options.Limit {
+		if activatedVersionCount == limit {
 			break
 		}
 		apiVersion := restModel.APIVersion{}

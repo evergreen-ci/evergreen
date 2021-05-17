@@ -88,7 +88,8 @@ func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
 
 const (
-	defaultVersionLimit = 20
+	defaultVersionLimit               = 20
+	DefaultMainlineCommitVersionLimit = 7
 )
 
 type GetVersionsOptions struct {
