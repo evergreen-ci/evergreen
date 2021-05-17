@@ -2609,19 +2609,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	if !utility.FromBoolPtr(v.Activated) {
 		return nil, nil
 	}
-	variants := []string{}
-	tasks := []string{}
-	statuses := []string{}
-	if options.Variants != nil {
-		variants = options.Variants
-	}
-	if options.Tasks != nil {
-		tasks = options.Tasks
-	}
-	if options.Statuses != nil {
-		statuses = options.Statuses
-	}
-	return generateBuildVariants(ctx, r.sc, *v.Id, variants, tasks, statuses)
+	return generateBuildVariants(ctx, r.sc, *v.Id, options.Variants, options.Tasks, options.Statuses)
 }
 
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
