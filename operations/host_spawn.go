@@ -1378,6 +1378,7 @@ Examples:
 func hostFindWithIpAddress() cli.Command {
 	const (
 		ipAddressFlagName = "ip-address"
+		spruceFlagName    = "spruce"
 	)
 	return cli.Command{
 		Name:  "find-by-ip-address",
@@ -1387,10 +1388,15 @@ func hostFindWithIpAddress() cli.Command {
 				Name:  joinFlagNames(ipAddressFlagName, "ip"),
 				Usage: "ip address used to find host",
 			},
+			cli.BoolFlag{
+				Name:  spruceFlagName,
+				Usage: "returns host link in spruce",
+			},
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			ipAddress := c.String(ipAddressFlagName)
+			spruce := c.Bool(spruceFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -1402,12 +1408,23 @@ func hostFindWithIpAddress() cli.Command {
 			client := conf.getRestCommunicator(ctx)
 			defer client.Close()
 
-			host, err := client.FindHostByIpAddress(ipAddress)
+			host, err := client.FindHostByIpAddress(ctx, ipAddress)
 			if err != nil {
-				fmt.Println("error")
+				return errors.Wrapf(err, "failed to fetch host with ip address '%s'", ipAddress)
+			}
+			if host == nil {
+				return errors.New(fmt.Sprintf("Host with ip address '%s' not found", ipAddress))
 			}
 
-			fmt.Printf("https://evergreen.mongodb.com/host/%s", host.Id)
+			link := fmt.Sprintf("https://evergreen.mongodb.com/host/%s", *host.Id)
+			if spruce {
+				link = fmt.Sprintf("https://spruce.mongodb.com/host/%s", *host.Id)
+			}
+			fmt.Printf(`
+	     ID : %s
+	   Link : %s
+	   User : %s
+`, *host.Id, link, *host.User)
 			return nil
 		},
 	}

@@ -93,7 +93,7 @@ func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
 	return errors.New("(*Mock) ChangeSpawnHostPassword is not implemented")
 }
 
-func (*Mock) FindHostByIpAddress(string) error {
+func (*Mock) FindHostByIpAddress(context.Context, string) error {
 	return errors.New("(*Mock) FindHostByIpAddress is not implemented")
 }
 

@@ -1573,11 +1573,28 @@ func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, use
 }
 
 // FindHostByIP queries the database for the host with ip matching the ip address
-func (c *communicatorImpl) FindHostByIpAddress(ip string) (*host.Host, error) {
-	h, err := host.FindOne(host.ByIP(ip))
-	if err != nil {
-		return nil, err
+func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (*model.APIHost, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("hosts/ip_address/%s", ip),
 	}
 
-	return h, nil
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "error sending request to find host by ip address")
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, utility.RespErrorf(resp, "getting hosts")
+	}
+
+	host := &model.APIHost{}
+	if err = utility.ReadJSON(resp.Body, host); err != nil {
+		return nil, errors.Wrap(err, "can't read response as APIHost slice")
+	}
+	return host, nil
 }
