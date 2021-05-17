@@ -825,14 +825,7 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:        []string{},
-		BaseStatuses:    []string{},
-		Variants:        []string{},
-		TaskNames:       []string{},
-		Page:            0,
-		Limit:           0,
-		FieldsToProject: []string{},
-		Sorts:           defaultSort,
+		Sorts: defaultSort,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
@@ -955,13 +948,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := data.TaskFilterOptions{
 		Statuses:        failedAndAbortedStatuses,
-		BaseStatuses:    []string{},
-		Variants:        []string{},
-		TaskNames:       []string{},
-		Page:            0,
-		Limit:           0,
 		FieldsToProject: []string{task.DisplayStatusKey},
-		Sorts:           []task.TasksSortOrder{},
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(id, opts)
 	if err != nil {
@@ -1172,14 +1159,13 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 		}
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:        statuses,
-		BaseStatuses:    baseStatuses,
-		Variants:        []string{variantParam},
-		TaskNames:       []string{taskNameParam},
-		Page:            pageParam,
-		Limit:           limitParam,
-		FieldsToProject: []string{},
-		Sorts:           taskSorts,
+		Statuses:     statuses,
+		BaseStatuses: baseStatuses,
+		Variants:     []string{variantParam},
+		TaskNames:    []string{taskNameParam},
+		Page:         pageParam,
+		Limit:        limitParam,
+		Sorts:        taskSorts,
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -2538,7 +2524,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 	activatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions %s", err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
 	}
 
 	opts = model.MainlineCommitVersionOptions{
@@ -2547,7 +2533,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	}
 	unactivatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting unactivated versions %s", err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting unactivated versions: %s", err.Error()))
 	}
 
 	versions := append(activatedVersions, unactivatedVersions...)
@@ -2573,14 +2559,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				{Key: task.DisplayNameKey, Order: 1},
 			}
 			opts := data.TaskFilterOptions{
-				Statuses:        []string{},
-				BaseStatuses:    []string{},
-				Variants:        []string{},
-				TaskNames:       []string{},
-				Page:            0,
-				Limit:           0,
-				FieldsToProject: []string{},
-				Sorts:           defaultSort,
+				Sorts: defaultSort,
 			}
 			tasks, _, err := r.sc.FindTasksByVersion(v.Id, opts)
 			if err != nil {
