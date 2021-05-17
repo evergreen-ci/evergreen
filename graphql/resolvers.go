@@ -2526,39 +2526,30 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 
 // Will return an array of activated and unactivated versions
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error) {
-
+	projectId, err := model.GetIdForProject(options.ProjectID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
+	}
 	opts := model.MainlineCommitVersionOptions{
 		Activated:       true,
-		SkipOrderNumber: 0,
-		Limit:           0,
-	}
-	if options.Limit != nil {
-		opts.Limit = *options.Limit
-	}
-	if options.SkipOrderNumber != nil {
-		opts.SkipOrderNumber = *options.SkipOrderNumber
+		Limit:           utility.FromIntPtr(options.Limit),
+		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
 	}
 
-	activatedVersions, err := model.GetMainlineCommitVersionsWithOptions(options.ProjectID, opts)
+	activatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions %s", err.Error()))
 	}
+
 	opts = model.MainlineCommitVersionOptions{
 		Activated:       false,
-		SkipOrderNumber: 0,
-		Limit:           0,
+		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
 	}
-	if options.Limit != nil {
-		opts.Limit = *options.Limit
-	}
-	if options.SkipOrderNumber != nil {
-		opts.SkipOrderNumber = *options.SkipOrderNumber
-	}
-
-	unactivatedVersions, err := model.GetMainlineCommitVersionsWithOptions(options.ProjectID, opts)
+	unactivatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting unactivated versions %s", err.Error()))
 	}
+
 	versions := append(activatedVersions, unactivatedVersions...)
 	sort.Slice(versions, func(i, j int) bool {
 		return versions[i].RevisionOrderNumber > versions[j].RevisionOrderNumber
