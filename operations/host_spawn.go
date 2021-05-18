@@ -1413,7 +1413,7 @@ func hostFindBy() cli.Command {
 
 			hostId := utility.FromStringPtr(host.Id)
 			hostUser := utility.FromStringPtr(host.User)
-			link := fmt.Sprintf(conf.UIServerHost+"/host/%s", hostId)
+			link := fmt.Sprintf("%s/host/%s", conf.UIServerHost, hostId)
 			fmt.Printf(`
 	     ID : %s
 	   Link : %s
