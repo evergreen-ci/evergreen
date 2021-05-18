@@ -476,7 +476,7 @@ tasks:
     tags: ["db", "test"]
     name: test-db
   - <<: *run-go-test-suite-with-docker
-    tags: ["db", "test"]
+    tags: ["db"]
     name: test-cloud
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -681,6 +681,7 @@ buildvariants:
       - name: "verify-agent-version-update"
       - name: "docker-cleanup"
       - name: test-db-auth
+      - name: test-cloud
 
   - name: race-detector
     display_name: Race Detector

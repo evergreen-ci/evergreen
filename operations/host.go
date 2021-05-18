@@ -21,6 +21,7 @@ func Host() cli.Command {
 			hostSSH(),
 			hostRunCommand(),
 			hostRsync(),
+			hostFindBy(),
 		},
 	}
 }
