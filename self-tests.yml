@@ -652,6 +652,7 @@ buildvariants:
       - name: "js-test"
       - name: "verify-agent-version-update"
       - name: "docker-cleanup"
+      - name: test-cloud
 
   - name: race-detector
     display_name: Race Detector
@@ -666,7 +667,6 @@ buildvariants:
       test_timeout: 15m
     tasks:
       - name: ".test"
-      - name: test-cloud
 
   - name: lint
     display_name: Lint
