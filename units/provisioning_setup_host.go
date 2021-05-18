@@ -185,24 +185,6 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 // that occurs. If the script exits with a non-zero exit code, the error will be
 // non-nil.
 func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Settings) error {
-	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
-		if err := setupJasper(ctx, j.env, settings, j.host); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "could not set up Jasper",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-			return errors.Wrapf(err, "error putting Jasper on host '%s'", j.host.Id)
-		}
-		grip.Info(message.Fields{
-			"message": "successfully fetched Jasper binary and started service",
-			"host_id": j.host.Id,
-			"job":     j.ID(),
-			"distro":  j.host.Distro.Id,
-		})
-	}
-
 	// Do not copy setup scripts to task-spawned hosts
 	if j.host.SpawnOptions.SpawnedByTask {
 		return nil
@@ -410,6 +392,24 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		"distro":  j.host.Distro.Id,
 		"message": "setting up host",
 	})
+
+	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
+		if err := setupJasper(ctx, j.env, settings, j.host); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not set up Jasper",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+			return errors.Wrapf(err, "error putting Jasper on host '%s'", j.host.Id)
+		}
+		grip.Info(message.Fields{
+			"message": "successfully fetched Jasper binary and started service",
+			"host_id": j.host.Id,
+			"job":     j.ID(),
+			"distro":  j.host.Distro.Id,
+		})
+	}
 
 	err := j.runHostSetup(ctx, settings)
 	if err != nil {
