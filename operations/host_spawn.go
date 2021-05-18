@@ -1375,6 +1375,55 @@ Examples:
 	}
 }
 
+func hostFindBy() cli.Command {
+	const (
+		ipAddressFlagName = "ip-address"
+	)
+	return cli.Command{
+		Name:  "get-host",
+		Usage: "get link to existing hosts",
+		Flags: addHostFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(ipAddressFlagName, "ip"),
+				Usage: "ip address used to find host",
+			},
+		),
+		Before: requireAtLeastOneFlag(ipAddressFlagName),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().Parent().String(confFlagName)
+			ipAddress := c.String(ipAddressFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSettings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			host, err := client.FindHostByIpAddress(ctx, ipAddress)
+			if err != nil {
+				return errors.Wrapf(err, "failed to fetch host with ip address '%s'", ipAddress)
+			}
+			if host == nil {
+				return errors.Errorf("Host with ip address '%s' not found", ipAddress)
+			}
+
+			hostId := utility.FromStringPtr(host.Id)
+			hostUser := utility.FromStringPtr(host.User)
+			link := fmt.Sprintf("%s/host/%s", conf.UIServerHost, hostId)
+			fmt.Printf(`
+	     ID : %s
+	   Link : %s
+	   User : %s
+`, hostId, link, hostUser)
+			return nil
+		},
+	}
+}
+
 // splitRsyncBinaryParams splits parameters to the rsync binary using shell
 // parsing rules.
 func splitRsyncBinaryParams(params ...string) ([]string, error) {
