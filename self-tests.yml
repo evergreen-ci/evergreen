@@ -447,7 +447,7 @@ tasks:
     tags: ["db", "test"]
     name: test-db
   - <<: *run-go-test-suite-with-docker
-    tags: ["db", "test"]
+    tags: ["db"]
     name: test-cloud
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -666,6 +666,7 @@ buildvariants:
       test_timeout: 15m
     tasks:
       - name: ".test"
+      - name: test-cloud
 
   - name: lint
     display_name: Lint
