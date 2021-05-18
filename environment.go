@@ -501,7 +501,6 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(e.localQueue == nil, "local queue is not defined")
 	catcher.NewWhen(e.notificationsQueue == nil, "notification queue is not defined")
-	catcher.NewWhen(e.notificationsQueue == nil, "notification queue is not defined")
 
 	if e.localQueue != nil {
 		catcher.Add(e.localQueue.Start(ctx))

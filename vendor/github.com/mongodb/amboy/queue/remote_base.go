@@ -39,6 +39,7 @@ type remoteBase struct {
 	dispatched   map[string]struct{}
 	runner       amboy.Runner
 	retryHandler amboy.RetryHandler
+	cancel       context.CancelFunc
 	mutex        sync.RWMutex
 }
 
@@ -446,6 +447,8 @@ func (q *remoteBase) Start(ctx context.Context) error {
 		return errors.New("cannot start queue with an uninitialized runner")
 	}
 
+	ctx, q.cancel = context.WithCancel(ctx)
+
 	err := q.runner.Start(ctx)
 	if err != nil {
 		return errors.Wrap(err, "problem starting runner in remote queue")
@@ -470,7 +473,26 @@ func (q *remoteBase) Start(ctx context.Context) error {
 	return nil
 }
 
+// Close closes all resources owned by the queue and stops any further
+// processing of the queue's work.
 func (q *remoteBase) Close(ctx context.Context) {
+	if q.cancel != nil {
+		q.cancel()
+	}
+	if q.dispatcher != nil {
+		grip.Warning(message.WrapError(q.dispatcher.Close(ctx), message.Fields{
+			"message":  "dispatcher closed with errors",
+			"service":  "amboy.queue.mdb",
+			"queue_id": q.ID(),
+		}))
+	}
+	if q.driver != nil {
+		grip.Warning(message.WrapError(q.driver.Close(ctx), message.Fields{
+			"message":  "driver closed with errors",
+			"service":  "amboy.queue.mdb",
+			"queue_id": q.ID(),
+		}))
+	}
 	if r := q.Runner(); r != nil {
 		r.Close(ctx)
 	}
