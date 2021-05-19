@@ -526,6 +526,11 @@ func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthTok
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
+	grip.Info(message.Fields{
+		"ticket":  "EVG-14603",
+		"message": "number of teams in IsUserInGithubTeam",
+		"teams":   len(teams),
+	})
 	for _, team := range teams {
 		//suppress error because it's not informative
 		membership, _, _ := client.Teams.GetTeamMembershipBySlug(ctx, org, team, user)
