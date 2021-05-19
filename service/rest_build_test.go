@@ -47,6 +47,7 @@ func TestGetBuildInfo(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		err = modelutil.CreateTestLocalConfig(buildTestConfig, "project_test", "")
+		So(err, ShouldBeNil)
 
 		task := task.Task{
 			Id:          "some-task-id",
