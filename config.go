@@ -551,13 +551,33 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-func (s *Settings) GetGithubOauthString() (string, error) {
+func (s *Settings) GetGithubOauthString() ([]string, error) {
+	var tokens []string
+	var token_name string
+	token_it := 1
+	token_limit := 9
+
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
-		return token, nil
+		tokens = append(tokens, token)
+	} else {
+		return nil, errors.New("no github token in settings")
 	}
 
-	return "", errors.New("no github token in settings")
+	for {
+		token_name = fmt.Sprintf("github_alt%d", token_it)
+		token, ok := s.Credentials[token_name]
+		if ok && token != "" {
+			tokens = append(tokens, token)
+			token_it++
+			if token_limit > token_it {
+				break
+			}
+		} else {
+			break
+		}
+	}
+	return tokens, nil
 }
 
 func (s *Settings) GetGithubOauthToken() (string, error) {
@@ -565,17 +585,31 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 		return "", errors.New("not defined")
 	}
 
-	oauthString, err := s.GetGithubOauthString()
+	oauthStrings, err := s.GetGithubOauthString()
 	if err != nil {
 		return "", err
 	}
+	timeSeed := time.Now().Nanosecond()
+	for i, oauthString := range oauthStrings {
+		randomOffset := timeSeed + i
+		if randomOffset%len(oauthStrings) == 0 {
+			splitToken, err := splitToken(oauthString)
+			if err != nil {
+				err = errors.Wrapf(err, "problem with github_alt#%d", i)
+			}
+			return splitToken, err
+		}
+	}
+	return splitToken(oauthStrings[0]) // should always be "github" token
+}
+
+func splitToken(oauthString string) (string, error) {
 	splitToken := strings.Split(oauthString, " ")
 	if len(splitToken) != 2 || splitToken[0] != "token" {
 		return "", errors.New("token format was invalid, expected 'token [token]'")
 	}
 	return splitToken[1], nil
 }
-
 func GetServiceFlags() (*ServiceFlags, error) {
 	flags := &ServiceFlags{}
 	if err := flags.Get(GetEnvironment()); err != nil {
