@@ -211,7 +211,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// For patches and versions triggered by users, activate all builds.
 	// Otherwise activate ones that are not setting batchtime and are not set to false.
 	var batchTimeInfo specificActivationInfo
-	if !evergreen.IsPatchRequester(v.Requester) && evergreen.ShouldConsiderDifferentActivations(v.Requester) {
+	if evergreen.ShouldConsiderDifferentActivations(v.Requester) {
 		batchTimeInfo = g.findTasksAndVariantsWithSpecificActivations()
 	}
 	newTVPairs := TaskVariantPairs{}

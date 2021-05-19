@@ -673,7 +673,7 @@ func IsGitTagRequester(requester string) bool {
 }
 
 func ShouldConsiderDifferentActivations(requester string) bool {
-	return requester != AdHocRequester && requester != GitTagRequester
+	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
 
 // Permissions-related constants
