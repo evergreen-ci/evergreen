@@ -350,7 +350,7 @@ func (c *communicatorImpl) getAWSCACerts(ctx context.Context) ([]byte, error) {
 		return nil, errors.Wrap(err, "getting setup data")
 	}
 
-	// We are hardcoding this magic object in s3 because these certificates
+	// We are hardcoding this magic object in S3 because these certificates
 	// are not set to expire for another 20 years. Also, we are hopeful
 	// that this Windows system cert issue will go away in future versions
 	// of Go.
