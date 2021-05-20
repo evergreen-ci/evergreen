@@ -551,7 +551,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-func (s *Settings) GetGithubOauthString() ([]string, error) {
+func (s *Settings) GetGithubOauthStrings() ([]string, error) {
 	var tokens []string
 	var token_name string
 
@@ -580,22 +580,23 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 		return "", errors.New("not defined")
 	}
 
-	oauthStrings, err := s.GetGithubOauthString()
+	oauthStrings, err := s.GetGithubOauthStrings()
 	if err != nil {
 		return "", err
 	}
 	timeSeed := time.Now().Nanosecond()
-	for i, oauthString := range oauthStrings {
-		randomOffset := timeSeed + i
-		if randomOffset%len(oauthStrings) == 0 {
-			splitToken, err := splitToken(oauthString)
-			if err != nil {
-				err = errors.Wrapf(err, "problem with github_alt#%d", i)
-			}
-			return splitToken, err
+	randomStartIdx := timeSeed % len(oauthStrings)
+	var oauthString string
+	for i := range oauthStrings {
+		oauthString = oauthStrings[randomStartIdx+i]
+		splitToken, err := splitToken(oauthString)
+		if err != nil {
+			grip.Error(errors.Wrapf(err, "problem with github_alt%d", i))
+		} else {
+			return splitToken, nil
 		}
 	}
-	return splitToken(oauthStrings[0]) // should always be "github" token
+	return "", errors.New("all github tokens are malformatted. Proper format is github:token <token> or github_alt#:token <token>")
 }
 
 func splitToken(oauthString string) (string, error) {
