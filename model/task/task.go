@@ -2760,7 +2760,11 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 											"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
 										},
 										{
-											"$gt": []interface{}{"$" + annotations.IssuesKey, 0},
+											"$ne": []interface{}{
+												bson.M{
+													"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+												}, 0,
+											},
 										},
 									},
 								},
@@ -2806,12 +2810,10 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			},
 		}...,
 	)
-
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if variant == "" {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
-
 	if len(statuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{

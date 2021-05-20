@@ -101,15 +101,26 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 		Version:   "version_no_annotation",
 		Status:    evergreen.TaskFailed,
 	}
+	task_with_empty_issues := &task.Task{
+		Id:        "task_with_empty_issues",
+		Execution: 0,
+		Version:   "version_with_empty_issues",
+		Status:    evergreen.TaskFailed,
+	}
 	s.NoError(task_known.Insert())
 	s.NoError(task_not_known.Insert())
 	s.NoError(task_no_annotation.Insert())
+	s.NoError(task_with_empty_issues.Insert())
+
 	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "chaya.malik"}}
 
 	a_with_issue := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 0, Issues: []annotations.IssueLink{issue}}
 	a_with__suspected_issue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_with_empty_issues := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, Issues: []annotations.IssueLink{}, SuspectedIssues: []annotations.IssueLink{issue}}
+
 	s.NoError(a_with_issue.Upsert())
 	s.NoError(a_with__suspected_issue.Upsert())
+	s.NoError(a_with_empty_issues.Upsert())
 
 	task, _, err := s.ctx.FindTasksByVersion("version_known", nil, nil, "", "", 0, 0, nil, nil)
 	s.NoError(err)
@@ -122,6 +133,11 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 
 	// test with no annotation document
 	task, _, err = s.ctx.FindTasksByVersion("version_no_annotation", nil, nil, "", "", 0, 0, nil, nil)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+
+	// test with empty issues
+	task, _, err = s.ctx.FindTasksByVersion("version_with_empty_issues", nil, nil, "", "", 0, 0, nil, nil)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
 
