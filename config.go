@@ -554,25 +554,20 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 func (s *Settings) GetGithubOauthString() ([]string, error) {
 	var tokens []string
 	var token_name string
-	token_it := 1
-	token_limit := 9
 
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
+		// we want to make sure tokens[0] is always the default token
 		tokens = append(tokens, token)
 	} else {
-		return nil, errors.New("no github token in settings")
+		return nil, errors.New("no 'github' token in settings")
 	}
 
-	for {
-		token_name = fmt.Sprintf("github_alt%d", token_it)
+	for i := 1; i < 10; i++ {
+		token_name = fmt.Sprintf("github_alt%d", i)
 		token, ok := s.Credentials[token_name]
 		if ok && token != "" {
 			tokens = append(tokens, token)
-			token_it++
-			if token_limit > token_it {
-				break
-			}
 		} else {
 			break
 		}
