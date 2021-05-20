@@ -147,7 +147,11 @@ var (
 			"branches": []bson.M{
 				{
 					"case": bson.M{
-						"$ne": []interface{}{"$annotation_doc", bson.TypeNull},
+						"$ne": []interface{}{
+							bson.M{
+								"$size": bson.M{"$ifNull": []interface{}{"$annotation_doc", []bson.M{}}},
+							}, 0,
+						},
 					},
 					"then": evergreen.TaskKnownIssue,
 				},

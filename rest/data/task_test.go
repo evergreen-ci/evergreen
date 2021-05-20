@@ -84,21 +84,47 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection, annotations.Collection))
-	testTask1 := &task.Task{
-		Id:        "task_1",
+	task_known := &task.Task{
+		Id:        "task_known",
 		Execution: 0,
-		Version:   "version_1",
+		Version:   "version_known",
 	}
-	s.NoError(testTask1.Insert())
-
+	task_not_known := &task.Task{
+		Id:        "task_not_known",
+		Execution: 0,
+		Version:   "version_not_known",
+		Status:    evergreen.TaskFailed,
+	}
+	task_no_annotation := &task.Task{
+		Id:        "task_no_annotation",
+		Execution: 0,
+		Version:   "version_no_annotation",
+		Status:    evergreen.TaskFailed,
+	}
+	s.NoError(task_known.Insert())
+	s.NoError(task_not_known.Insert())
+	s.NoError(task_no_annotation.Insert())
 	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "chaya.malik"}}
 
-	a := annotations.TaskAnnotation{TaskId: "task_1", TaskExecution: 0, Issues: []annotations.IssueLink{issue}}
-	s.NoError(a.Upsert())
+	a_with_issue := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 0, Issues: []annotations.IssueLink{issue}}
+	a_with__suspected_issue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	s.NoError(a_with_issue.Upsert())
+	s.NoError(a_with__suspected_issue.Upsert())
 
-	task, _, err := s.ctx.FindTasksByVersion("version_1", nil, nil, "", "", 0, 0, nil, nil)
+	task, _, err := s.ctx.FindTasksByVersion("version_known", nil, nil, "", "", 0, 0, nil, nil)
 	s.NoError(err)
-	s.Equal(task[0].DisplayStatus, "known-issue")
+	s.Equal(evergreen.TaskKnownIssue, task[0].DisplayStatus)
+
+	// test with empty issues list
+	task, _, err = s.ctx.FindTasksByVersion("version_not_known", nil, nil, "", "", 0, 0, nil, nil)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+
+	// test with no annotation document
+	task, _, err = s.ctx.FindTasksByVersion("version_no_annotation", nil, nil, "", "", 0, 0, nil, nil)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {

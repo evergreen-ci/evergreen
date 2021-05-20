@@ -56,8 +56,9 @@ var (
 )
 
 type Task struct {
-	Id     string `bson:"_id" json:"id"`
-	Secret string `bson:"secret" json:"secret"`
+	Id     string                       `bson:"_id" json:"id"`
+	Secret string                       `bson:"secret" json:"secret"`
+	Ann    []annotations.TaskAnnotation `bson:"annotation_doc" json:"annotation_doc"`
 
 	// time information for task
 	// create - the creation time for the task, derived from the commit time or the patch creation time.
@@ -2746,27 +2747,21 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			{
 				"$lookup": bson.M{
 					"from": annotations.Collection,
-					"let":  bson.M{"task_annotation_id": "$task_id", "task_annotation_execution": "$execution"},
+					"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
 					"pipeline": []bson.M{
 						{
 							"$match": bson.M{
 								"$expr": bson.M{
 									"$and": []bson.M{
 										{
-											"$eq": []string{"$task_id", "$$task_annotation_id"},
+											"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
 										},
 										{
-											"$eq": []string{"$execution", "$$task_annotation_execution"},
+											"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
 										},
-										{"$or": []bson.M{
-											{
-												annotations.IssuesKey: bson.M{"$gt": []interface{}{"$" + annotations.IssuesKey, 0}},
-											},
-
-											{
-												annotations.IssuesKey: bson.M{"$ne": []interface{}{"$" + annotations.IssuesKey, bson.TypeNull}},
-											},
-										}},
+										{
+											"$gt": []interface{}{"$" + annotations.IssuesKey, 0},
+										},
 									},
 								},
 							}}},
@@ -2811,10 +2806,12 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			},
 		}...,
 	)
+
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if variant == "" {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
+
 	if len(statuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
