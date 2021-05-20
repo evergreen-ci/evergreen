@@ -309,7 +309,7 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 		if runtime.GOOS == "windows" {
 			cas, err := c.getAWSCACerts(ctx)
 			if err != nil {
-				return errors.Wrap(err, "getting AWS root CA certs for cedar gRPC client conn on windows")
+				return errors.Wrap(err, "getting AWS root CA certs for cedar gRPC client connections on Windows")
 			}
 			dialOpts.CACerts = [][]byte{cas}
 		}
@@ -339,10 +339,10 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 	return nil
 }
 
-// getAWSCACerts fetches AWS's root CA certificates stored in s3. This is a
-// workaround for the fact that Go cannot access window's system certifacte
-// pool (which would have these certificates).
-// TODO: If and when the windows system cert issue is fixed, we can get rid of
+// getAWSCACerts fetches AWS's root CA certificates stored in S3. This is a
+// workaround for the fact that Go cannot access the system certificate pool on
+// Windows (which would have these certificates).
+// TODO: If and when the Windows system cert issue is fixed, we can get rid of
 // this workaround. See https://github.com/golang/go/issues/16736.
 func (c *communicatorImpl) getAWSCACerts(ctx context.Context) ([]byte, error) {
 	setupData, err := c.GetAgentSetupData(ctx)
@@ -352,7 +352,7 @@ func (c *communicatorImpl) getAWSCACerts(ctx context.Context) ([]byte, error) {
 
 	// We are hardcoding this magic object in s3 because these certificates
 	// are not set to expire for another 20 years. Also, we are hopeful
-	// that this windows system cert issue will go away in future versions
+	// that this Windows system cert issue will go away in future versions
 	// of Go.
 	bucket, err := pail.NewS3Bucket(pail.S3Options{
 		Name:        "boxes.10gen.com",
