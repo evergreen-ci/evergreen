@@ -238,6 +238,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			DependsOn:    []task.Dependency{},
 			DisplayName:  "task_two",
 		}).Insert()
+		So(err, ShouldBeNil)
 
 		err = (&artifact.Entry{
 			TaskId:          "rest_task_test_id1",

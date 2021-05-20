@@ -76,7 +76,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
-		if j.HasErrors() && !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
+		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
 			event.LogHostProvisionFailed(j.HostID, j.Error().Error())
 		}
 	}()
