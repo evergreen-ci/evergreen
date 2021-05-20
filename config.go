@@ -591,7 +591,9 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 		oauthString = oauthStrings[randomStartIdx+i]
 		splitToken, err := splitToken(oauthString)
 		if err != nil {
-			grip.Error(errors.Wrapf(err, "problem with github_alt%d", i))
+			grip.Error(message.Fields{
+				"error":   err,
+				"message": fmt.Sprintf("problem with github_alt%d", i)})
 		} else {
 			return splitToken, nil
 		}
