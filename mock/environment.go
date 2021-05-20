@@ -71,7 +71,7 @@ func (e *Environment) Configure(ctx context.Context) error {
 
 	e.InternalSender = send.MakeInternalLogger()
 
-	jpm, err := jasper.NewSynchronizedManager(true)
+	jpm, err := jasper.NewSynchronizedManager(false)
 	if err != nil {
 		return errors.WithStack(err)
 	}
