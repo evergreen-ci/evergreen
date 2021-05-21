@@ -637,7 +637,7 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Wrap(err, "problem making merge patch")
 	}
 
-	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
+	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), PatchId: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
 
 	return errors.Wrap(err, "can't enqueue item")
 }
@@ -819,7 +819,7 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 	if err = newPatch.Insert(); err != nil {
 		return errors.Wrap(err, "error inserting patch")
 	}
-	if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
+	if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), PatchId: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
 		return errors.Wrap(err, "error enqueuing item")
 	}
 	return nil
