@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -57,6 +58,7 @@ type gitFetchProject struct {
 	CommitterEmail string `mapstructure:"committer_email"`
 
 	githubClient *github.Client
+	httpClient   *http.Client
 	base
 }
 
@@ -308,7 +310,7 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, owner, repo
 			return false, errors.New("Pull request is not mergeable. This likely means a merge conflict was just introduced")
 		}
 		return false, nil
-	}, 10, time.Second, time.Second)
+	}, 8, time.Second, 15*time.Second) // Retry roughly after 1, 2, 4, 8, 15, 15, and 15 seconds, or 1 minute
 
 	return mergeSHA, err
 }
@@ -351,6 +353,8 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	httpClient := utility.GetOAuth2HTTPClient(projectToken)
+	defer utility.PutHTTPClient(httpClient)
 	err := util.Retry(
 		ctx,
 		func() (bool, error) {
@@ -389,9 +393,7 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		return errors.Wrap(err, "failed to get method of cloning and token")
 	}
 	if c.githubClient == nil {
-		httpClient := utility.GetOAuth2HTTPClient(projectToken)
-		defer utility.PutHTTPClient(httpClient)
-		c.githubClient = github.NewClient(httpClient)
+		c.githubClient = github.NewClient(c.httpClient)
 	}
 	opts := cloneOpts{
 		method:             projectMethod,
