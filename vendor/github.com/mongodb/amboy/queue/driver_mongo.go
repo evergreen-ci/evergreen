@@ -1314,7 +1314,8 @@ func (d *mongoDriver) tryDispatchJob(ctx context.Context, iter *mongo.Cursor, st
 		}
 
 		lockTimeout := d.LockTimeout()
-		if !isDispatchable(j.Status(), lockTimeout) {
+		dispatchable := isDispatchable(j.Status(), lockTimeout)
+		if !dispatchable {
 			dispatchInfo.skips++
 			continue
 		} else if d.isOtherJobHoldingScopes(ctx, j) {
@@ -1324,8 +1325,9 @@ func (d *mongoDriver) tryDispatchJob(ctx context.Context, iter *mongo.Cursor, st
 
 		if err = d.dispatcher.Dispatch(ctx, j); err != nil {
 			dispatchInfo.misses++
-			grip.DebugWhen(isDispatchable(j.Status(), lockTimeout) && !d.isMongoDupScope(err),
+			grip.DebugWhen(dispatchable && !d.isMongoDupScope(err),
 				message.WrapError(err, message.Fields{
+					"message":       "failed to dispatch job, possibly due to lock contention",
 					"driver_id":     d.instanceID,
 					"service":       "amboy.queue.mdb",
 					"operation":     "dispatch job",
