@@ -434,7 +434,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
 		}
 		if err = p.SetActivated(sessCtx, patchVersion.Id); err != nil {
-			return nil, errors.WithStack(err)
+			return nil, errors.Wrapf(err, "eror activating patch '%s'", patchVersion.Id)
 		}
 		return nil, err
 	}
