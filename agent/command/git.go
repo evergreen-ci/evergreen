@@ -254,7 +254,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 			// proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
 			// will make it check.
 			// https://docs.github.com/en/rest/guides/getting-started-with-the-git-database-api#checking-mergeability-of-pull-requests
-			commitToTest, err = c.waitForMergeableCheck(ctx, opts.owner, opts.repo, conf.GithubPatchData.PRNumber)
+			commitToTest, err = c.waitForMergeableCheck(ctx, logger, opts.owner, opts.repo, conf.GithubPatchData.PRNumber)
 			if err != nil {
 				logger.Task().Error(errors.Wrap(err, "error checking if pull request is mergeable"))
 				commitToTest = conf.GithubPatchData.HeadHash
@@ -290,7 +290,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, owner, repo string, prNum int) (string, error) {
+func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger client.LoggerProducer, owner, repo string, prNum int) (string, error) {
 	var mergeSHA string
 	err := util.Retry(ctx, func() (bool, error) {
 		pr, _, err := c.githubClient.PullRequests.Get(ctx, owner, repo, prNum)
@@ -298,6 +298,7 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, owner, repo
 			return false, errors.Wrap(err, "error getting pull request data from Github")
 		}
 		if pr.Mergeable == nil {
+			logger.Execution().Info("Mergeable check not ready")
 			return true, nil
 		}
 		if *pr.Mergeable {
@@ -353,12 +354,24 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	var err error
+	// expand the github parameters before running the task
+	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+		return errors.Wrap(err, "error expanding github parameters")
+	}
+
+	var projectMethod string
+	var projectToken string
+	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
+	if err != nil {
+		return errors.Wrap(err, "failed to get method of cloning and token")
+	}
 	httpClient := utility.GetOAuth2HTTPClient(projectToken)
 	defer utility.PutHTTPClient(httpClient)
-	err := util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			err := c.executeLoop(ctx, comm, logger, conf)
+			err := c.executeLoop(ctx, comm, logger, conf, projectMethod, projectToken)
 			if err != nil {
 				return true, err
 			}
@@ -377,21 +390,8 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
-func (c *gitFetchProject) executeLoop(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-
+func (c *gitFetchProject) executeLoop(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, projectMethod, projectToken string) error {
 	var err error
-	// expand the github parameters before running the task
-	if err = util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "error expanding github parameters")
-	}
-
-	var projectMethod string
-	var projectToken string
-	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
-	if err != nil {
-		return errors.Wrap(err, "failed to get method of cloning and token")
-	}
 	if c.githubClient == nil {
 		c.githubClient = github.NewClient(c.httpClient)
 	}
