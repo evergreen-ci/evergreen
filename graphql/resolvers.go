@@ -2466,15 +2466,24 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	executionTasks := []*restModel.APITask{}
 	for _, execTaskID := range t.ExecutionTasks {
 		execT, err := task.FindByIdExecution(execTaskID, &t.Execution)
-		if err != nil || execT == nil {
+		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
 		}
-		apiTask := &restModel.APITask{}
-		err = apiTask.BuildFromService(execT)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
+		if execT != nil {
+			apiTask := &restModel.APITask{}
+			if err = apiTask.BuildFromService(execT); err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
+			}
+			executionTasks = append(executionTasks, apiTask)
+		} else {
+			grip.Warning(message.Fields{
+				"function":  "ExecutionTasksFull",
+				"message":   "execution task from db not found",
+				"task_id":   execTaskID,
+				"execution": t.Execution,
+			})
 		}
-		executionTasks = append(executionTasks, apiTask)
+
 	}
 
 	return executionTasks, nil
