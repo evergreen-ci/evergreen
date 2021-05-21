@@ -650,6 +650,10 @@ buildvariants:
   - name: failing_test
   - name: timeout_test`
 	require.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": serviceModel.VersionCollection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": serviceModel.ParserProjectCollection})
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
 	require.NoError(t, settings.Set())
