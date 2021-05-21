@@ -30,8 +30,8 @@ functions:
     params:
       working_dir: gopath/src/github.com/evergreen-ci/gimlet
       binary: make
-      args: ["${make_args|}", "${target}"]
-      add_expansions_to_env: true
+      args: ["${target}"]
+      include_expansions_in_env: ["DISABLE_COVERAGE", "GO_BIN_PATH", "GOROOT", "RACE_DETECTOR", "TEST_TIMEOUT"]
       env:
         GOPATH: ${workdir}/gopath
   setup-mongodb:
@@ -118,7 +118,6 @@ tasks:
       - func: run-make
         vars:
           target: "coverage-html"
-          make_args: "-k"
 
   - <<: *run-build
     tags: ["test"]
@@ -132,38 +131,38 @@ buildvariants:
     display_name: Race Detector (Arch Linux)
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.13/bin/go
-      GOROOT: /opt/golang/go1.13
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      GOROOT: /opt/golang/go1.16
       RACE_DETECTOR: true
       TEST_TIMEOUT: 15m
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.13.tgz
     run_on:
-      - ubuntu1604-test
+      - archlinux-new-small
     tasks:
       - name: ".test"
 
   - name: coverage
     display_name: Coverage
     run_on:
-      - ubuntu1604-test
+      - ubuntu1804-small
     expansions:
-      GO_BIN_PATH: /opt/golang/go1.13/bin/go
-      GOROOT: /opt/golang/go1.13
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      GOROOT: /opt/golang/go1.16
       TEST_TIMEOUT: 15m
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz
     tasks:
       - name: ".report"
         stepback: false
 
-  - name: ubuntu1604
-    display_name: Ubuntu 16.04
+  - name: ubuntu
+    display_name: Ubuntu 18.04
     expansions:
-      GO_BIN_PATH: /opt/golang/go1.9/bin/go
-      GOROOT: /opt/golang/go1.9
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      GOROOT: /opt/golang/go1.16
       DISABLE_COVERAGE: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz
     run_on:
-      - ubuntu1604-test
+      - ubuntu1804-small
     tasks:
       - ".test"
 
@@ -171,8 +170,8 @@ buildvariants:
     display_name: macOS
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.13/bin/go
-      GOROOT: /opt/golang/go1.13
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      GOROOT: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     run_on:
       - macos-1014
