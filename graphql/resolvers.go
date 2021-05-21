@@ -1559,6 +1559,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		} else if utility.FromStringPtr(item.PatchId) != "" {
 			patchId = utility.FromStringPtr(item.PatchId)
 		}
+
 		if patchId != "" {
 			p, err := r.sc.FindPatchById(patchId)
 			if err != nil {
