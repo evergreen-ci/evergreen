@@ -49,6 +49,17 @@ func TestDialCedarOptionsValidate(t *testing.T) {
 		}
 		assert.Error(t, opts.validate())
 	})
+	t.Run("CACertsInsecure", func(t *testing.T) {
+		opts := &DialCedarOptions{
+			BaseAddress: "base",
+			Username:    "username",
+			APIKey:      "apiKey",
+			CACerts:     [][]byte{[]byte("cert")},
+			Insecure:    true,
+			Retries:     10,
+		}
+		assert.Error(t, opts.validate())
+	})
 	t.Run("DefaultBaseAddressAndClient", func(t *testing.T) {
 		opts := &DialCedarOptions{
 			Username: "username",
