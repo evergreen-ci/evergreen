@@ -190,6 +190,9 @@ func (b *Build) UpdateGithubCheckStatus(status string) error {
 }
 
 func (b *Build) SetIsGithubCheck() error {
+	if b.IsGithubCheck {
+		return nil
+	}
 	b.IsGithubCheck = true
 	return UpdateOne(
 		bson.M{IdKey: b.Id},

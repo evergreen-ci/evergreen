@@ -262,6 +262,26 @@ buildvariants:
 	})
 }
 
+func TestIntermediateProjectWithActivate(t *testing.T) {
+	yml := `
+tasks:
+- name: "t1"
+buildvariants:
+- name: "v1"
+  activate: false 
+  run_on: "distro1"
+  tasks: 
+  - name: "t1"
+    activate: true
+`
+	p, err := createIntermediateProject([]byte(yml))
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+	bv := p.BuildVariants[0]
+	assert.False(t, utility.FromBoolTPtr(bv.Activate))
+	assert.True(t, utility.FromBoolPtr(bv.Tasks[0].Activate))
+}
+
 func TestTranslateTasks(t *testing.T) {
 	parserProject := &ParserProject{
 		BuildVariants: []parserBV{{
