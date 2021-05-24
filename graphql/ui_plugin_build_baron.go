@@ -51,17 +51,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	queue := env.RemoteQueue()
-	buildBaronProjects := BbGetConfig(settings)
-
-	//if there is a custom web-hook, use that
-	bbProject, ok := buildBaronProjects[t.Project]
-	if !ok {
-		// project may be stored under the identifier rather than the ID
-		identifier, err := model.GetIdentifierForProject(t.Project)
-		if err == nil && identifier != "" {
-			bbProject, ok = buildBaronProjects[identifier]
-		}
-	}
+	bbProject, ok := BbProjectForTask(settings, t.Project)
 	if !ok {
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
@@ -89,16 +79,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 }
 
 func IsWebhookConfigured(t *task.Task) bool {
-	buildBaronProjects := BbGetConfig(evergreen.GetEnvironment().Settings())
-	bbProject, ok := buildBaronProjects[t.Project]
-	if !ok {
-		// project may be stored under the identifier rather than the ID
-		identifier, err := model.GetIdentifierForProject(t.Project)
-		if err == nil && identifier != "" {
-			bbProject, ok = buildBaronProjects[identifier]
-		}
-	}
-
+	bbProject, _ := BbProjectForTask(evergreen.GetEnvironment().Settings(), t.Project)
 	webHook := bbProject.TaskAnnotationSettings.FileTicketWebHook
 	return webHook.Endpoint != ""
 }
@@ -212,15 +193,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 		return nil, bbConfig, err
 	}
 	settings := evergreen.GetEnvironment().Settings()
-	buildBaronProjects := BbGetConfig(settings)
-	bbProj, ok := buildBaronProjects[t.Project]
-	if !ok {
-		// project may be stored under the identifier rather than the ID
-		identifier, err := model.GetIdentifierForProject(t.Project)
-		if err == nil && identifier != "" {
-			bbProj, ok = buildBaronProjects[identifier]
-		}
-	}
+	bbProj, ok := BbProjectForTask(settings, t.Project)
 	if !ok {
 		// build baron project not found, meaning it's not configured for
 		// either regular build baron or for a custom ticket filing webhook
@@ -278,6 +251,20 @@ func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronPr
 	}
 
 	return projects
+}
+
+func BbProjectForTask(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
+	buildBaronProjects := BbGetConfig(settings)
+	//if there is a custom web-hook, use that
+	bbProject, ok := buildBaronProjects[projectId]
+	if !ok {
+		// project may be stored under the identifier rather than the ID
+		identifier, err := model.GetIdentifierForProject(projectId)
+		if err == nil && identifier != "" {
+			bbProject, ok = buildBaronProjects[identifier]
+		}
+	}
+	return bbProject, ok
 }
 
 func BbGetTask(taskId string, executionString string) (*task.Task, error) {
