@@ -2608,7 +2608,7 @@ func TestValidateTaskSyncCommands(t *testing.T) {
 				},
 			},
 		}
-		assert.Empty(t, validateTaskSyncCommands(p))
+		assert.Empty(t, validateTaskSyncCommands(p, false))
 	})
 	t.Run("TaskWithMultipleS3PushCallsFails", func(t *testing.T) {
 		p := &model.Project{
@@ -2636,7 +2636,7 @@ func TestValidateTaskSyncCommands(t *testing.T) {
 				},
 			},
 		}
-		assert.NotEmpty(t, validateTaskSyncCommands(p))
+		assert.NotEmpty(t, validateTaskSyncCommands(p, false))
 	})
 }
 
@@ -4357,7 +4357,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				bvsToTasksWithCmds, err := bvsWithTasksThatCallCommand(&testCase.project, cmd)
+				bvsToTasksWithCmds, _, err := bvsWithTasksThatCallCommand(&testCase.project, cmd)
 				require.NoError(t, err)
 				assert.Len(t, bvsToTasksWithCmds, len(testCase.expectedBVsToTasksWithCmds))
 				for bv, expectedTasks := range testCase.expectedBVsToTasksWithCmds {
@@ -4428,7 +4428,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				_, err := bvsWithTasksThatCallCommand(&project, cmd)
+				_, _, err := bvsWithTasksThatCallCommand(&project, cmd)
 				assert.Error(t, err)
 			})
 		}
