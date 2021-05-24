@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -53,8 +54,19 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	buildBaronProjects := BbGetConfig(settings)
 
 	//if there is a custom web-hook, use that
-	annotationSettings := buildBaronProjects[t.Project].TaskAnnotationSettings
-	webHook := annotationSettings.FileTicketWebHook
+	bbProject, ok := buildBaronProjects[t.Project]
+	if !ok {
+		// project may be stored under the identifier rather than the ID
+		identifier, err := model.GetIdentifierForProject(t.Project)
+		if err == nil && identifier != "" {
+			bbProject, ok = buildBaronProjects[identifier]
+		}
+	}
+	if !ok {
+		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
+	}
+
+	webHook := bbProject.TaskAnnotationSettings.FileTicketWebHook
 	if webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
@@ -62,7 +74,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	}
 
 	//if there is no custom web-hook, use the build baron
-	n, err := makeNotification(settings, buildBaronProjects[t.Project].TicketCreateProject, t)
+	n, err := makeNotification(settings, bbProject.TicketCreateProject, t)
 	if err != nil {
 		return taskNotFound, err
 	}
@@ -78,7 +90,16 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 
 func IsWebhookConfigured(t *task.Task) bool {
 	buildBaronProjects := BbGetConfig(evergreen.GetEnvironment().Settings())
-	webHook := buildBaronProjects[t.Project].TaskAnnotationSettings.FileTicketWebHook
+	bbProject, ok := buildBaronProjects[t.Project]
+	if !ok {
+		// project may be stored under the identifier rather than the ID
+		identifier, err := model.GetIdentifierForProject(t.Project)
+		if err == nil && identifier != "" {
+			bbProject, ok = buildBaronProjects[identifier]
+		}
+	}
+
+	webHook := bbProject.TaskAnnotationSettings.FileTicketWebHook
 	return webHook.Endpoint != ""
 }
 
@@ -193,7 +214,13 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	settings := evergreen.GetEnvironment().Settings()
 	buildBaronProjects := BbGetConfig(settings)
 	bbProj, ok := buildBaronProjects[t.Project]
-
+	if !ok {
+		// project may be stored under the identifier rather than the ID
+		identifier, err := model.GetIdentifierForProject(t.Project)
+		if err == nil && identifier != "" {
+			bbProj, ok = buildBaronProjects[identifier]
+		}
+	}
 	if !ok {
 		// build baron project not found, meaning it's not configured for
 		// either regular build baron or for a custom ticket filing webhook
