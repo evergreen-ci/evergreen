@@ -38,6 +38,7 @@ const (
 	activeFlagName            = "active"
 	refFlagName               = "ref"
 	quietFlagName             = "quiet"
+	longFlagName              = "long"
 	dirFlagName               = "dir"
 	uncommittedChangesFlag    = "uncommitted"
 	preserveCommitsFlag       = "preserve-commits"

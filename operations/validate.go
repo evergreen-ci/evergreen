@@ -20,13 +20,16 @@ func Validate() cli.Command {
 		Flags: addPathFlag(cli.BoolFlag{
 			Name:  joinFlagNames(quietFlagName, "q"),
 			Usage: "suppress warnings",
-		},
-		),
+		}, cli.BoolFlag{
+			Name:  joinFlagNames(longFlagName, "l"),
+			Usage: "include long validation checks",
+		}),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
+			long := c.Bool(longFlagName)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -55,29 +58,25 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac, quiet)
+			return validateFile(path, ac, quiet, long)
 		},
 	}
 }
 
-func validateFile(path string, ac *legacyClient, quiet bool) error {
+func validateFile(path string, ac *legacyClient, quiet, includeLong bool) error {
 	confFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrap(err, "problem reading file")
 	}
 
-	projErrors, err := ac.ValidateLocalConfig(confFile)
+	projErrors, err := ac.ValidateLocalConfig(confFile, quiet, includeLong)
 	if err != nil {
 		return nil
-	}
-
-	if quiet { // only return errors
-		projErrors = projErrors.AtLevel(validator.Error)
 	}
 
 	if len(projErrors) != 0 {
