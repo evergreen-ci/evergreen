@@ -56,9 +56,8 @@ var (
 )
 
 type Task struct {
-	Id     string                       `bson:"_id" json:"id"`
-	Secret string                       `bson:"secret" json:"secret"`
-	Ann    []annotations.TaskAnnotation `bson:"annotation_doc" json:"annotation_doc"`
+	Id     string `bson:"_id" json:"id"`
+	Secret string `bson:"secret" json:"secret"`
 
 	// time information for task
 	// create - the creation time for the task, derived from the commit time or the patch creation time.
