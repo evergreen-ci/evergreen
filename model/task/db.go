@@ -149,7 +149,7 @@ var (
 					"case": bson.M{
 						"$ne": []interface{}{
 							bson.M{
-								"$size": bson.M{"$ifNull": []interface{}{"$annotation_doc", []bson.M{}}},
+								"$size": bson.M{"$ifNull": []interface{}{"$annotation_docs", []bson.M{}}},
 							}, 0,
 						},
 					},

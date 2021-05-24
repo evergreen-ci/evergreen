@@ -2768,7 +2768,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 									},
 								},
 							}}},
-					"as": "annotation_doc",
+					"as": "annotation_docs",
 				},
 			},
 

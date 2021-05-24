@@ -84,9 +84,9 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection, annotations.Collection))
-	task_known := &task.Task{
+	task_known_2 := &task.Task{
 		Id:        "task_known",
-		Execution: 0,
+		Execution: 2,
 		Version:   "version_known",
 	}
 	task_not_known := &task.Task{
@@ -107,18 +107,23 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 		Version:   "version_with_empty_issues",
 		Status:    evergreen.TaskFailed,
 	}
-	s.NoError(task_known.Insert())
+	s.NoError(task_known_2.Insert())
 	s.NoError(task_not_known.Insert())
 	s.NoError(task_no_annotation.Insert())
 	s.NoError(task_with_empty_issues.Insert())
 
 	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "chaya.malik"}}
 
-	a_with_issue := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 0, Issues: []annotations.IssueLink{issue}}
+	a_execution_0 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_execution_1 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 1, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_execution_2 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 2, Issues: []annotations.IssueLink{issue}}
+
 	a_with__suspected_issue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
 	a_with_empty_issues := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, Issues: []annotations.IssueLink{}, SuspectedIssues: []annotations.IssueLink{issue}}
 
-	s.NoError(a_with_issue.Upsert())
+	s.NoError(a_execution_0.Upsert())
+	s.NoError(a_execution_1.Upsert())
+	s.NoError(a_execution_2.Upsert())
 	s.NoError(a_with__suspected_issue.Upsert())
 	s.NoError(a_with_empty_issues.Upsert())
 
