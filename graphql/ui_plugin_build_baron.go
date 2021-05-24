@@ -51,7 +51,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	queue := env.RemoteQueue()
-	bbProject, ok := BbProjectForTask(settings, t.Project)
+	bbProject, ok := BbGetProject(settings, t.Project)
 	if !ok {
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
@@ -79,7 +79,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 }
 
 func IsWebhookConfigured(t *task.Task) bool {
-	bbProject, _ := BbProjectForTask(evergreen.GetEnvironment().Settings(), t.Project)
+	bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), t.Project)
 	webHook := bbProject.TaskAnnotationSettings.FileTicketWebHook
 	return webHook.Endpoint != ""
 }
@@ -193,7 +193,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 		return nil, bbConfig, err
 	}
 	settings := evergreen.GetEnvironment().Settings()
-	bbProj, ok := BbProjectForTask(settings, t.Project)
+	bbProj, ok := BbGetProject(settings, t.Project)
 	if !ok {
 		// build baron project not found, meaning it's not configured for
 		// either regular build baron or for a custom ticket filing webhook
@@ -253,9 +253,8 @@ func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronPr
 	return projects
 }
 
-func BbProjectForTask(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
+func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
 	buildBaronProjects := BbGetConfig(settings)
-	//if there is a custom web-hook, use that
 	bbProject, ok := buildBaronProjects[projectId]
 	if !ok {
 		// project may be stored under the identifier rather than the ID
