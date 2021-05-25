@@ -158,12 +158,6 @@ func ValidationErrorsToString(ves ValidationErrors) string {
 	return s.String()
 }
 
-type validatorInput struct {
-	p           *model.Project `json:"project"`
-	includeLong bool           `json:"bool"`
-	quiet       bool           `json:"bool"`
-}
-
 // getDistros creates a slice of all distro IDs and aliases.
 func getDistros() (ids []string, aliases []string, err error) {
 	return getDistrosForProject("")
