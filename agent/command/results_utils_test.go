@@ -112,6 +112,7 @@ func TestSendTestResults(t *testing.T) {
 			"Succeeds": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
+				assert.Equal(t, srv.Close.TestResultsRecordId, conf.CedarTestResultsID)
 				checkRecord(t, srv)
 				checkResults(t, srv)
 				assert.NotZero(t, srv.Close.TestResultsRecordId)
@@ -121,6 +122,7 @@ func TestSendTestResults(t *testing.T) {
 				results.Results[0].DisplayTestName = ""
 				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
+				assert.Equal(t, srv.Close.TestResultsRecordId, conf.CedarTestResultsID)
 				checkRecord(t, srv)
 				checkResults(t, srv)
 				assert.NotZero(t, srv.Close.TestResultsRecordId)
@@ -131,6 +133,7 @@ func TestSendTestResults(t *testing.T) {
 				results.Results[0].LogTestName = ""
 				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
+				assert.Equal(t, srv.Close.TestResultsRecordId, conf.CedarTestResultsID)
 				checkRecord(t, srv)
 				checkResults(t, srv)
 				assert.NotZero(t, srv.Close.TestResultsRecordId)
@@ -161,6 +164,7 @@ func TestSendTestResults(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
+				conf.CedarTestResultsID = ""
 				srv := setupCedarServer(ctx, t, comm)
 				testCase(ctx, t, srv.TestResults, comm)
 			})
