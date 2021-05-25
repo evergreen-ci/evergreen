@@ -540,8 +540,9 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	input := validator.ValidationInput{}
 	if err := json.Unmarshal(bytes, &input); err != nil {
-		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading into validation input: %v", err))
-		return
+		// try the legacy structure
+		input.ProjectYaml = bytes
+		input.IncludeLong = true // this is legacy behavior
 	}
 
 	project := &model.Project{}
