@@ -1,0 +1,23 @@
+{
+  mainlineCommits(options: { projectID: "evergreen" }) {
+    versions {
+      version {
+        id
+        author
+        buildVariants(options: {}) {
+          variant
+          displayName
+          tasks {
+            id
+            displayName
+            status
+          }
+        }
+      }
+      rolledUpVersions {
+        id
+        activated
+      }
+    }
+  }
+}

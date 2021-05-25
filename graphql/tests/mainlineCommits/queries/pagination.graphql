@@ -1,0 +1,46 @@
+{
+  page1: mainlineCommits(options: { projectID: "evergreen", limit: 1 }) {
+    versions {
+      version {
+        id
+        author
+        buildVariants(options: {}) {
+          variant
+          displayName
+          tasks {
+            id
+            displayName
+            status
+          }
+        }
+      }
+      rolledUpVersions {
+        id
+        activated
+      }
+    }
+  }
+  page2: mainlineCommits(
+    options: { projectID: "evergreen", limit: 1, skipOrderNumber: 5 }
+  ) {
+    versions {
+      version {
+        id
+        author
+        buildVariants(options: {}) {
+          variant
+          displayName
+          tasks {
+            id
+            displayName
+            status
+          }
+        }
+      }
+      rolledUpVersions {
+        id
+        activated
+      }
+    }
+  }
+}

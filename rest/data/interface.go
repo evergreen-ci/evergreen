@@ -132,7 +132,7 @@ type Connector interface {
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
 	FindTestsByTaskIdFilterSortPaginate(string, string, []string, string, int, int, int, int) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
-	FindTasksByVersion(string, []string, []string, string, string, int, int, []string, []task.TasksSortOrder) ([]task.Task, int, error)
+	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
 	//FindUserByGithubName is a method to find a user given their Github name, if configured.
