@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -531,7 +532,7 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	body := util.NewRequestReader(r)
 	defer body.Close()
-	yamlBytes, err := ioutil.ReadAll(body)
+	bytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading request body: %v", err))
 		return
@@ -539,13 +540,23 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	project := &model.Project{}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
-		validationErr.Message = err.Error()
-		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
-		return
+	if _, err = model.LoadProjectInto(bytes, "", project); err != nil {
+		// try the new validation input format before erroring
+		input := validator.ValidationInput{}
+		if err2 := json.Unmarshal(bytes, &input); err2 != nil {
+			// return original error, since the format is likely not ValidationInput
+			validationErr.Message = err.Error()
+			gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
+			return
+		}
+		if _, err = model.LoadProjectInto(input.ProjectYaml, "", project); err != nil {
+			validationErr.Message = err.Error()
+			gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
+			return
+		}
 	}
 
-	errs := validator.CheckYamlStrict(yamlBytes)
+	errs := validator.CheckYamlStrict(bytes)
 	errs = append(errs, validator.CheckProjectSyntax(project)...)
 	errs = append(errs, validator.CheckProjectSemantics(project)...)
 	if len(errs) > 0 {
