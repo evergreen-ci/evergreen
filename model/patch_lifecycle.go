@@ -94,7 +94,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
 	tasks TaskVariantPairs, pRef *ProjectRef) error {
-	_, _, err := addNewBuilds(ctx, batchTimeTasksAndVariants{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
+	_, _, err := addNewBuilds(ctx, specificActivationInfo{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 
@@ -102,7 +102,7 @@ func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Ver
 // within the set of already existing builds.
 func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
 	pairs TaskVariantPairs, projectIdentifier string) error {
-	_, err := addNewTasks(ctx, batchTimeTasksAndVariants{}, patchVersion, project, pairs, p.SyncAtEndOpts, projectIdentifier, "")
+	_, err := addNewTasks(ctx, specificActivationInfo{}, patchVersion, project, pairs, p.SyncAtEndOpts, projectIdentifier, "")
 	return errors.Wrap(err, "can't add new tasks")
 }
 
@@ -419,19 +419,22 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
 		db := evergreen.GetEnvironment().DB()
-		_, err = db.Collection(VersionCollection).InsertOne(ctx, patchVersion)
+		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error inserting version '%s'", patchVersion.Id)
 		}
-		_, err = db.Collection(ParserProjectCollection).InsertOne(ctx, intermediateProject)
+		_, err = db.Collection(ParserProjectCollection).InsertOne(sessCtx, intermediateProject)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error inserting parser project for version '%s'", patchVersion.Id)
 		}
-		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
+		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
 			return nil, errors.Wrapf(err, "error inserting builds for version '%s'", patchVersion.Id)
 		}
-		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
+		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
 			return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
+		}
+		if err = p.SetActivated(sessCtx, patchVersion.Id); err != nil {
+			return nil, errors.Wrapf(err, "eror activating patch '%s'", patchVersion.Id)
 		}
 		return nil, err
 	}
@@ -439,9 +442,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	_, err = session.WithTransaction(ctx, txFunc)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to finalize patch")
-	}
-	if err = p.SetActivated(patchVersion.Id); err != nil {
-		return nil, errors.WithStack(err)
 	}
 
 	if p.IsParent() {

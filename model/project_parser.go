@@ -317,6 +317,8 @@ type parserBV struct {
 	Tasks         parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
 	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	// If Activate is set to false, then we don't initially activate the build variant.
+	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -385,6 +387,8 @@ type parserBVTaskUnit struct {
 	// If CronBatchTime is not empty, then override the project settings with cron syntax,
 	// with BatchTime and CronBatchTime being mutually exclusive.
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
+	// If Activate is set to false, then we don't initially activate the task.
+	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -736,6 +740,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Push:          pbv.Push,
 			BatchTime:     pbv.BatchTime,
 			CronBatchTime: pbv.CronBatchTime,
+			Activate:      pbv.Activate,
 			Stepback:      pbv.Stepback,
 			RunOn:         pbv.RunOn,
 			Tags:          pbv.Tags,
@@ -941,6 +946,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CommitQueueMerge: bvt.CommitQueueMerge,
 		CronBatchTime:    bvt.CronBatchTime,
 		BatchTime:        bvt.BatchTime,
+		Activate:         bvt.Activate,
 	}
 	if res.Priority == 0 {
 		res.Priority = pt.Priority

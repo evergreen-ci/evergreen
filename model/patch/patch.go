@@ -560,10 +560,10 @@ func (p *Patch) ConfigChanged(remotePath string) bool {
 }
 
 // SetActivated sets the patch to activated in the db
-func (p *Patch) SetActivated(versionId string) error {
+func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 	p.Version = versionId
 	p.Activated = true
-	return UpdateOne(
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -572,6 +572,7 @@ func (p *Patch) SetActivated(versionId string) error {
 			},
 		},
 	)
+	return err
 }
 
 // SetActivation sets the patch to the desired activation state without

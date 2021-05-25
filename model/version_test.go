@@ -400,3 +400,87 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.Equal(t, versions[0].Id, "your_version")
 	assert.Equal(t, versions[1].Id, "another_version")
 }
+
+func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	start := time.Now()
+	p := ProjectRef{
+		Id:         "my_project",
+		Identifier: "my_ident",
+	}
+	assert.NoError(t, p.Insert())
+	v := Version{
+		Id:                  "my_version",
+		Identifier:          "my_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 10,
+		CreateTime:          start,
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "your_version",
+		Identifier:          "my_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 9,
+		CreateTime:          start.Add(-1 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "another_version",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 8,
+		Identifier:          "my_project",
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.FalsePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "yet_another_version",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 7,
+		Identifier:          "my_project",
+		CreateTime:          start.Add(-2 * time.Minute),
+	}
+	assert.NoError(t, v.Insert())
+	opts := MainlineCommitVersionOptions{
+		Limit:     4,
+		Activated: true,
+	}
+	versions, err := GetMainlineCommitVersionsWithOptions(p.Id, opts)
+	assert.NoError(t, err)
+	assert.Len(t, versions, 2)
+	assert.EqualValues(t, "my_version", versions[0].Id)
+
+	opts = MainlineCommitVersionOptions{
+		Limit:           4,
+		Activated:       true,
+		SkipOrderNumber: 10,
+	}
+	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
+	assert.NoError(t, err)
+	assert.Len(t, versions, 1)
+	assert.EqualValues(t, "your_version", versions[0].Id)
+
+	opts = MainlineCommitVersionOptions{
+		Limit:     4,
+		Activated: false,
+	}
+	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
+	assert.NoError(t, err)
+	assert.Len(t, versions, 2)
+	assert.EqualValues(t, "another_version", versions[0].Id)
+	assert.EqualValues(t, "yet_another_version", versions[1].Id)
+
+	opts = MainlineCommitVersionOptions{
+		Limit:           4,
+		Activated:       false,
+		SkipOrderNumber: 8,
+	}
+	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
+	assert.NoError(t, err)
+	assert.Len(t, versions, 1)
+	assert.EqualValues(t, "yet_another_version", versions[0].Id)
+
+}
