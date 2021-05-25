@@ -22,7 +22,7 @@ func Validate() cli.Command {
 			Usage: "suppress warnings",
 		}, cli.BoolFlag{
 			Name:  joinFlagNames(longFlagName, "l"),
-			Usage: "include long validation checks",
+			Usage: "include long validation checks (only applies if the check is over some threshhold, in which case a warning is issued)",
 		}),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
