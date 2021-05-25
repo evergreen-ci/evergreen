@@ -2996,21 +2996,27 @@ func addStatusColorSort(key string) bson.M {
 						},
 						{
 							"case": bson.M{
+								"$in": []interface{}{"$" + key, []string{evergreen.TaskKnownIssue}},
+							},
+							"then": 2,
+						},
+						{
+							"case": bson.M{
 								"$eq": []string{"$" + key, evergreen.TaskSetupFailed},
 							},
-							"then": 2, // lavender
+							"then": 3, // lavender
 						},
 						{
 							"case": bson.M{
 								"$in": []interface{}{"$" + key, []string{evergreen.TaskSystemFailed, evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut}},
 							},
-							"then": 3, // purple
+							"then": 4, // purple
 						},
 						{
 							"case": bson.M{
 								"$in": []interface{}{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
 							},
-							"then": 4, // yellow
+							"then": 5, // yellow
 						},
 						{
 							"case": bson.M{
