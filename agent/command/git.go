@@ -56,7 +56,6 @@ type gitFetchProject struct {
 	CommitterName  string `mapstructure:"committer_name"`
 	CommitterEmail string `mapstructure:"committer_email"`
 
-	githubClient *github.Client
 	base
 }
 
@@ -252,7 +251,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 			// proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
 			// will make it check.
 			// https://docs.github.com/en/rest/guides/getting-started-with-the-git-database-api#checking-mergeability-of-pull-requests
-			commitToTest, err = c.waitForMergeableCheck(ctx, opts.owner, opts.repo, conf.GithubPatchData.PRNumber)
+			commitToTest, err = c.waitForMergeableCheck(ctx, logger, opts, conf.GithubPatchData.PRNumber)
 			if err != nil {
 				logger.Task().Error(errors.Wrap(err, "error checking if pull request is mergeable"))
 				commitToTest = conf.GithubPatchData.HeadHash
@@ -288,14 +287,18 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, owner, repo string, prNum int) (string, error) {
+func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger client.LoggerProducer, opts cloneOpts, prNum int) (string, error) {
 	var mergeSHA string
+	httpClient := utility.GetOAuth2HTTPClient(opts.token)
+	defer utility.PutHTTPClient(httpClient)
+	githubClient := github.NewClient(httpClient)
 	err := util.Retry(ctx, func() (bool, error) {
-		pr, _, err := c.githubClient.PullRequests.Get(ctx, owner, repo, prNum)
+		pr, _, err := githubClient.PullRequests.Get(ctx, opts.owner, opts.repo, prNum)
 		if err != nil {
 			return false, errors.Wrap(err, "error getting pull request data from Github")
 		}
 		if pr.Mergeable == nil {
+			logger.Execution().Info("Mergeable check not ready")
 			return true, nil
 		}
 		if *pr.Mergeable {
@@ -308,7 +311,7 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, owner, repo
 			return false, errors.New("Pull request is not mergeable. This likely means a merge conflict was just introduced")
 		}
 		return false, nil
-	}, 10, time.Second, time.Second)
+	}, 8, time.Second, 15*time.Second) // Retry roughly after 1, 2, 4, 8, 15, 15, 15, seconds, or 1 minute
 
 	return mergeSHA, err
 }
@@ -387,11 +390,6 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get method of cloning and token")
-	}
-	if c.githubClient == nil {
-		httpClient := utility.GetOAuth2HTTPClient(projectToken)
-		defer utility.PutHTTPClient(httpClient)
-		c.githubClient = github.NewClient(httpClient)
 	}
 	opts := cloneOpts{
 		method:             projectMethod,

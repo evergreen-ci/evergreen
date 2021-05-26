@@ -98,16 +98,18 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 		return errors.Wrap(err, "getting this task's display task info")
 	}
 
-	id, err := client.CreateRecord(ctx, makeCedarTestResultsRecord(conf, displayTaskInfo))
-	if err != nil {
-		return errors.Wrap(err, "creating test results record")
+	if conf.CedarTestResultsID == "" {
+		conf.CedarTestResultsID, err = client.CreateRecord(ctx, makeCedarTestResultsRecord(conf, displayTaskInfo))
+		if err != nil {
+			return errors.Wrap(err, "creating test results record")
+		}
 	}
 
-	if err = client.AddResults(ctx, makeCedarTestResults(id, conf.Task, results)); err != nil {
+	if err = client.AddResults(ctx, makeCedarTestResults(conf.CedarTestResultsID, conf.Task, results)); err != nil {
 		return errors.Wrap(err, "adding test results")
 	}
 
-	if err = client.CloseRecord(ctx, id); err != nil {
+	if err = client.CloseRecord(ctx, conf.CedarTestResultsID); err != nil {
 		return errors.Wrap(err, "closing test results record")
 	}
 

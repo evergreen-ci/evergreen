@@ -1056,6 +1056,11 @@ func TestValidateBVBatchTimes(t *testing.T) {
 
 	p.BuildVariants[0].Tasks[0].BatchTime = nil
 	assert.Len(t, validateBVBatchTimes(p), 0)
+
+	// warning if activated to true with batchtime
+	p.BuildVariants[0].Activate = utility.TruePtr()
+	assert.Len(t, validateBVBatchTimes(p), 1)
+
 }
 
 func TestValidateBVsContainTasks(t *testing.T) {

@@ -94,6 +94,9 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
 					enabled := len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
+					if !enabled {
+						enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
+					}
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil

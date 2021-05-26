@@ -208,10 +208,11 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 			p.BuildVariants[i].Tasks[j].Priority = t.Priority
 		}
 	}
-	// for patches and versions triggered by users, activate all builds. Otherwise activate ones that are not setting batchtime.
-	var batchTimeInfo batchTimeTasksAndVariants
-	if !evergreen.IsPatchRequester(v.Requester) && evergreen.ShouldConsiderBatchtime(v.Requester) {
-		batchTimeInfo = g.findTasksAndVariantsWithBatchTime()
+	// For patches and versions triggered by users, activate all builds.
+	// Otherwise activate ones that are not setting batchtime and are not set to false.
+	var batchTimeInfo specificActivationInfo
+	if evergreen.ShouldConsiderDifferentActivations(v.Requester) {
+		batchTimeInfo = g.findTasksAndVariantsWithSpecificActivations()
 	}
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
@@ -283,46 +284,46 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	return nil
 }
 
-type batchTimeTasksAndVariants struct {
-	tasks    map[string][]string // tasks by variant that have batchtime
-	variants []string            // variants that have batchtime
+type specificActivationInfo struct {
+	tasks    map[string][]string // tasks by variant that have batchtime or activate specified
+	variants []string            // variants that have batchtime or activate specified
 }
 
-func newBatchTimeTasksAndVariants() batchTimeTasksAndVariants {
-	return batchTimeTasksAndVariants{
+func newSpecificActivationInfo() specificActivationInfo {
+	return specificActivationInfo{
 		tasks:    map[string][]string{},
 		variants: []string{},
 	}
 }
 
-func (b *batchTimeTasksAndVariants) variantHasBatchTime(variant string) bool {
+func (b *specificActivationInfo) variantHasSpecificActivation(variant string) bool {
 	return utility.StringSliceContains(b.variants, variant)
 }
 
-func (b *batchTimeTasksAndVariants) batchTimeTasks(variant string) []string {
+func (b *specificActivationInfo) getTasks(variant string) []string {
 	return b.tasks[variant]
 }
 
-func (b *batchTimeTasksAndVariants) hasAnyBatchTimeTasks() bool {
+func (b *specificActivationInfo) hasTasks() bool {
 	return len(b.tasks) > 0
 }
 
 // given some list of tasks, returns the tasks that don't have batchtime
-func (b *batchTimeTasksAndVariants) tasksWithoutBatchTime(taskNames []string, variant string) []string {
-	tasksWithoutBatchTime, _ := utility.StringSliceSymmetricDifference(taskNames, b.tasks[variant])
-	return tasksWithoutBatchTime
+func (b *specificActivationInfo) tasksWithoutSpecificActivation(taskNames []string, variant string) []string {
+	tasksWithoutSpecificActivation, _ := utility.StringSliceSymmetricDifference(taskNames, b.tasks[variant])
+	return tasksWithoutSpecificActivation
 }
 
-func (g *GeneratedProject) findTasksAndVariantsWithBatchTime() batchTimeTasksAndVariants {
-	res := newBatchTimeTasksAndVariants()
+func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations() specificActivationInfo {
+	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
-		if bv.BatchTime != nil || bv.CronBatchTime != "" {
+		if bv.BatchTime != nil || bv.CronBatchTime != "" || bv.Activate != nil {
 			res.variants = append(res.variants, bv.name())
 		}
 		// regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
-			if bvt.BatchTime != nil || bvt.CronBatchTime != "" {
+			if bvt.BatchTime != nil || bvt.CronBatchTime != "" || bvt.Activate != nil {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			}
 		}

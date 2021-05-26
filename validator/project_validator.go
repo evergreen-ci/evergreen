@@ -91,6 +91,12 @@ func (v ValidationErrors) AtLevel(level ValidationErrorLevel) ValidationErrors {
 	return errs
 }
 
+type ValidationInput struct {
+	ProjectYaml []byte `json:"project_yaml" yaml:"project_yaml"`
+	Quiet       bool   `json:"quiet" yaml:"quiet"`
+	IncludeLong bool   `json:"include_long" yaml:"include_long"`
+}
+
 // Functions used to validate the syntax of a project configuration file.
 var projectSyntaxValidators = []projectValidator{
 	ensureHasNecessaryBVFields,
@@ -815,6 +821,15 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 	for _, buildVariant := range project.BuildVariants {
 		// check task batchtimes first
 		for _, t := range buildVariant.Tasks {
+			// setting explicitly to true with batchtime will use batchtime
+			if utility.FromBoolPtr(t.Activate) && (t.CronBatchTime != "" || t.BatchTime != nil) {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("task '%s' for variant '%s' activation ignored since batchtime specified",
+							t.Name, buildVariant.Name),
+						Level: Warning,
+					})
+			}
 			if t.CronBatchTime == "" {
 				continue
 			}
@@ -837,6 +852,13 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 			}
 		}
 
+		if utility.FromBoolPtr(buildVariant.Activate) && (buildVariant.CronBatchTime != "" || buildVariant.BatchTime != nil) {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("variant '%s' activation ignored since batchtime specified", buildVariant.Name),
+					Level:   Warning,
+				})
+		}
 		if buildVariant.CronBatchTime == "" {
 			continue
 		}

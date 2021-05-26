@@ -38,8 +38,8 @@ func DoProjectActivation(id string) (bool, error) {
 func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	hasActivated := false
 	now := time.Now()
-	for i, bv := range v.BuildVariants {
 
+	for i, bv := range v.BuildVariants {
 		// if there are batchtime tasks, consider if these should/shouldn't be activated, regardless of build
 		ignoreTasks := []string{}
 		readyTasks := []string{}
@@ -59,7 +59,6 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 		if !isElapsedBuild && len(readyTasks) == 0 {
 			grip.Debug(message.Fields{
 				"message":          "not activating build",
-				"ready_tasks":      readyTasks,
 				"ignore_tasks":     ignoreTasks,
 				"is_elapsed_build": isElapsedBuild,
 				"build_variant":    bv.BuildId,
@@ -85,9 +84,6 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 				"project":       v.Identifier,
 				"elapsed_build": isElapsedBuild,
 			})
-			// Go copies the slice value, we want to modify the actual value
-			v.BuildVariants[i].Activated = true
-			v.BuildVariants[i].ActivateAt = now
 
 			// Don't need to set the version in here since we do it ourselves in a single update
 			if err := build.UpdateActivation([]string{bv.BuildId}, true, evergreen.DefaultTaskActivator); err != nil {
@@ -101,8 +97,8 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 				continue
 			}
 		}
-		// if it's an elapsed build, update all tasks for the build, minus batch time tasks that aren't ready
-		// if it's elapsed tasks, update only those tasks
+		// If it's an elapsed build, update all tasks for the build, minus batch time tasks that aren't ready.
+		// If it's elapsed tasks, update only those tasks.
 		if isElapsedBuild {
 			grip.Info(message.Fields{
 				"message":      "activating tasks for build",
@@ -112,6 +108,11 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 				"project":      v.Identifier,
 				"ignore_tasks": ignoreTasks,
 			})
+
+			// only update build variant activation in the version if we activated the whole variant
+			v.BuildVariants[i].Activated = true
+			v.BuildVariants[i].ActivateAt = now
+
 			if err := setTaskActivationForBuilds([]string{bv.BuildId}, true, ignoreTasks, evergreen.DefaultTaskActivator); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"operation": "project-activation",
