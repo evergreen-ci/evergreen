@@ -46,6 +46,8 @@ const (
 	//  1. a task is not scheduled to run (when Task.Activated == false)
 	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
+	TaskWillRun      = "will-run"
+	TaskWillNotRun   = "will-not-run"
 
 	// TaskStarted indicates a task is running on an agent
 	TaskStarted = "started"

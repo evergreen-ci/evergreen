@@ -194,6 +194,42 @@ var (
 					},
 					"then": evergreen.TaskTimedOut,
 				},
+				// A task will run if it is activated and does not have any blocking deps
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+							{"$eq": []interface{}{"$" + ActivatedKey, true}},
+							{
+								"$or": []bson.M{
+									{DependsOnKey: 0},
+									{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), false}},
+									{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), nil}},
+								},
+							},
+						},
+					},
+					"then": evergreen.TaskWillRun,
+				},
+				// A task will not run if it is not activated
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []interface{}{"$" + ActivatedKey, false}},
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+						},
+					},
+					"then": evergreen.TaskWillNotRun,
+				},
+				// A task will be blocked if it has dependencies that are not attainable
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
+						},
+					},
+					"then": evergreen.TaskStatusBlocked,
+				},
 			},
 			"default": "$" + StatusKey,
 		},
