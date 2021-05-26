@@ -414,7 +414,7 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
-// GET /tasks/{task_id}/set_has_cedar_results
+// POST /tasks/{task_id}/set_has_cedar_results
 
 type taskSetHasCedarResultsHandler struct {
 	taskID string
