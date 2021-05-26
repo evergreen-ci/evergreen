@@ -10,4 +10,4 @@
   < add description of how you tested it >
 
 ### Spruce PR 
-  < link to aspruce PR if applicable >
+  < link to a spruce PR if applicable >
