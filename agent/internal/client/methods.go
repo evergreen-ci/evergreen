@@ -559,7 +559,7 @@ func (c *communicatorImpl) SetHasCedarResults(ctx context.Context, taskData Task
 		taskData: &taskData,
 		version:  apiVersion2,
 	}
-	info.path = fmt.Sprintf("tasks/%s/set_has_cedar_results?failed=%s", taskData.ID, failed)
+	info.path = fmt.Sprintf("tasks/%s/set_has_cedar_results?failed=%v", taskData.ID, failed)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return utility.RespErrorf(resp, "failed to set HasCedarResults for task %s: %s", taskData.ID, err.Error())
