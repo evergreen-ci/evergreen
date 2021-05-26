@@ -1001,7 +1001,7 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 
 func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 	if !hasCedarResults && failedResults {
-		errors.New("cannot set CedarResultsFailed to true when HasCedarResults is false")
+		return errors.New("cannot set CedarResultsFailed to true when HasCedarResults is false")
 	}
 
 	t.HasCedarResults = hasCedarResults
