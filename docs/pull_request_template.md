@@ -7,7 +7,4 @@
  < add screenshots of visible changes >
 
 ### Testing 
-  < add description of how you tested it >
-
-### Spruce PR 
-  < link to a spruce PR if applicable >
+  < add a description of how you tested it >
