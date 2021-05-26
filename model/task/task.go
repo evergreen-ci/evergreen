@@ -75,16 +75,17 @@ type Task struct {
 	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
 	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 
-	Version           string              `bson:"version" json:"version,omitempty"`
-	Project           string              `bson:"branch" json:"branch,omitempty"`
-	Revision          string              `bson:"gitspec" json:"gitspec"`
-	Priority          int64               `bson:"priority" json:"priority"`
-	TaskGroup         string              `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
-	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
-	HasCedarResults   bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	Version            string              `bson:"version" json:"version,omitempty"`
+	Project            string              `bson:"branch" json:"branch,omitempty"`
+	Revision           string              `bson:"gitspec" json:"gitspec"`
+	Priority           int64               `bson:"priority" json:"priority"`
+	TaskGroup          string              `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts  int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder     int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
+	Logs               *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
+	MustHaveResults    bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	HasCedarResults    bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	CedarResultsFailed bool                `bson:"cedar_results_failed,omitempty" json:"cedar_results_failed,omitempty"`
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
@@ -648,14 +649,18 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	return true, nil
 }
 
-// HasFailedTests iterates through a tasks' tests and returns true if
-// that task had any failed tests.
+// HasFailedTests returns true if the task had any failed tests.
 func (t *Task) HasFailedTests() bool {
 	for _, test := range t.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			return true
 		}
 	}
+
+	if t.HasCedarResults && t.CedarResultsFailed {
+		return true
+	}
+
 	return false
 }
 
@@ -994,16 +999,26 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
-func (t *Task) SetHasCedarResults(hasCedarResults bool) error {
+func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
+	if !hasCedarResults && failedResults {
+		errors.New("cannot set CedarResultsFailed to true when HasCedarResults is false")
+	}
+
 	t.HasCedarResults = hasCedarResults
+	set := bson.M{
+		HasCedarResultsKey: hasCedarResults,
+	}
+	if failedResults {
+		t.CedarResultsFailed = true
+		set[CedarResultsFailedKey] = true
+	}
+
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
-			"$set": bson.M{
-				HasCedarResultsKey: hasCedarResults,
-			},
+			"$set": set,
 		},
 	)
 }
