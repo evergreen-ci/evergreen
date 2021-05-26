@@ -2332,7 +2332,26 @@ func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITas
 }
 
 func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (string, error) {
-	return *obj.DisplayStatus, nil
+	updatedStatus := *obj.DisplayStatus
+	if updatedStatus == evergreen.TaskUndispatched {
+		i, err := obj.ToService()
+		if err != nil {
+			return updatedStatus, nil
+		}
+		t, ok := i.(*task.Task)
+		if !ok {
+			return updatedStatus, nil
+		}
+		// Lets return blocked as a status https://jira.mongodb.org/browse/EVG-14039 will evaluate whether or not it should remain as a status
+		if t.Blocked() {
+			return evergreen.TaskStatusBlocked, nil
+		} else if t.Activated {
+			return evergreen.TaskWillRun, nil
+		} else {
+			return evergreen.TaskWillNotRun, nil
+		}
+	}
+	return updatedStatus, nil
 }
 
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
