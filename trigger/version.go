@@ -301,10 +301,10 @@ func (t *versionTriggers) waitOnChildrenOrSiblings() (bool, error) {
 	isReady := false
 	patchDoc, err := patch.FindOne(patch.ByVersion(t.version.Id))
 	if err != nil {
-		return isReady, errors.Wrapf(err, "error getting patchDoc '%s'", t.version.Id)
+		return isReady, errors.Wrapf(err, "error getting patch '%s'", t.version.Id)
 	}
 	if patchDoc == nil {
-		return isReady, errors.Errorf("patchDoc '%s' not found", t.version.Id)
+		return isReady, errors.Errorf("patch '%s' not found", t.version.Id)
 	}
 
 	// don't wait on children or siblings if the patch is a regular patch
@@ -341,10 +341,10 @@ func (t *versionTriggers) waitOnChildrenOrSiblings() (bool, error) {
 	if t.version.IsChild() {
 		parentVersion, err := t.version.GetParentVersion()
 		if err != nil {
-			return isReady, errors.Wrap(err, "error getting parentVersion")
+			return isReady, errors.Wrap(err, "error getting parent version")
 		}
 		if parentVersion == nil {
-			return isReady, errors.Errorf("parentVersion not found for '%s'", t.version.Id)
+			return isReady, errors.Errorf("parent version not found for '%s'", t.version.Id)
 		}
 		t.version = parentVersion
 
