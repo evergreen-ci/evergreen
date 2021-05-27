@@ -30,6 +30,7 @@ type TaskConfig struct {
 	Timeout              *Timeout
 	TaskSync             evergreen.S3Credentials
 	ModulePaths          map[string]string
+	CedarTestResultsID   string
 
 	mu sync.RWMutex
 }

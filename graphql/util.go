@@ -524,44 +524,48 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-// ConvertDBTasksToGqlTasks converts tasks to task result objects
-func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
-	var taskResults []*TaskResult
-	for _, t := range tasks {
-		baseStatus := t.BaseTask.Status
-		result := TaskResult{
-			ID:           t.Id,
-			DisplayName:  t.DisplayName,
-			Version:      t.Version,
-			Status:       t.GetDisplayStatus(),
-			BuildVariant: t.BuildVariant,
-			Blocked:      t.Blocked(),
-			Aborted:      t.Aborted,
-			BaseStatus:   &baseStatus,
-			BaseTask: &BaseTaskResult{
-				ID:     t.BaseTask.Id,
-				Status: t.BaseTask.Status,
-			},
-			BuildVariantDisplayName: t.BuildVariantDisplayName,
-		}
-		if len(t.ExecutionTasksFull) > 0 {
-			ets := []*restModel.APITask{}
-			for _, et := range t.ExecutionTasksFull {
-				at := restModel.APITask{}
-				if err := at.BuildFromService(&et); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message": "unable to convert APITask",
-					}))
-					continue
-				}
-				ets = append(ets, &at)
-			}
-			result.ExecutionTasksFull = ets
-		}
-
-		taskResults = append(taskResults, &result)
+// Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
+func generateBuildVariants(ctx context.Context, sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
+	var variantDisplayName map[string]string = map[string]string{}
+	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
 	}
-	return taskResults
+	opts := data.TaskFilterOptions{
+		Statuses:  statuses,
+		Variants:  searchVariants,
+		TaskNames: searchTasks,
+		Sorts:     defaultSort,
+	}
+	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err.Error()))
+	}
+	for _, t := range tasks {
+		apiTask := restModel.APITask{}
+		err := apiTask.BuildFromService(&t)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
+		}
+		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
+		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
+
+	}
+
+	result := []*GroupedBuildVariant{}
+	for variant, tasks := range tasksByVariant {
+		pbv := GroupedBuildVariant{
+			Variant:     variant,
+			DisplayName: variantDisplayName[variant],
+			Tasks:       tasks,
+		}
+		result = append(result, &pbv)
+	}
+	// sort variants by name
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].DisplayName < result[j].DisplayName
+	})
+	return result, nil
 }
 
 type VersionModificationAction string

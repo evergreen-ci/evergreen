@@ -183,3 +183,5 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
   SpawnHostConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
+  Version:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIVersion

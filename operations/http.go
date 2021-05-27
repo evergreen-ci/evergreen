@@ -141,8 +141,19 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 }
 
 // ValidateLocalConfig validates the local project config with the server
-func (ac *legacyClient) ValidateLocalConfig(data []byte) (validator.ValidationErrors, error) {
-	resp, err := ac.post("validate", bytes.NewBuffer(data))
+func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet, includeLong bool) (validator.ValidationErrors, error) {
+	input := validator.ValidationInput{
+		ProjectYaml: data,
+		Quiet:       quiet,
+		IncludeLong: includeLong,
+	}
+	rPipe, wPipe := io.Pipe()
+	encoder := json.NewEncoder(wPipe)
+	go func() {
+		grip.Warning(encoder.Encode(input))
+		grip.Warning(wPipe.Close())
+	}()
+	resp, err := ac.post("validate", rPipe)
 	if err != nil {
 		return nil, err
 	}

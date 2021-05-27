@@ -88,7 +88,8 @@ func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
 
 const (
-	defaultVersionLimit = 20
+	defaultVersionLimit               = 20
+	DefaultMainlineCommitVersionLimit = 7
 )
 
 type GetVersionsOptions struct {
@@ -132,6 +133,21 @@ func (self *Version) SetActivated() error {
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey: true,
+			},
+		},
+	)
+}
+
+func (self *Version) SetNotActivated() error {
+	if !utility.FromBoolTPtr(self.Activated) {
+		return nil
+	}
+	self.Activated = utility.FalsePtr()
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionActivatedKey: false,
 			},
 		},
 	)
@@ -354,6 +370,44 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	}
 
 	return versions, nil
+}
+
+type MainlineCommitVersionOptions struct {
+	Limit           int
+	SkipOrderNumber int
+	Activated       bool
+}
+
+func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
+
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+	}
+	if opts.Activated {
+		match[VersionActivatedKey] = opts.Activated
+	} else {
+		match[VersionActivatedKey] = bson.M{"$in": bson.A{false, nil}}
+	}
+
+	if opts.SkipOrderNumber != 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.SkipOrderNumber}
+	}
+	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+	limit := defaultVersionLimit
+	if opts.Limit != 0 {
+		limit = opts.Limit
+	}
+
+	pipeline = append(pipeline, bson.M{"$limit": limit})
+
+	res := []Version{}
+
+	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+		return nil, errors.Wrapf(err, "error aggregating versions")
+	}
+
+	return res, nil
 }
 
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
