@@ -999,6 +999,13 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
+// SetHasCedarResults sets the HasCedarResults field of the task to
+// hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
+// true. An error is returned if hasCedarResults is false and failedResults is
+// true as this is an invalid state. Note that if failedResults is false,
+// nothing is set. This is because in cases where separate calls to attach test
+// results are made, only one call needs to have a test failure for the
+// CedarResultsFailed to be set to true.
 func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 	if !hasCedarResults && failedResults {
 		return errors.New("cannot set CedarResultsFailed to true when HasCedarResults is false")
