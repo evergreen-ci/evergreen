@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -254,33 +255,35 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	const lowRatioThresh = float32(.25)
 	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
 	if terminateExcess && hostQueueRatio < lowRatioThresh && len(upHosts) > 0 {
+		distroIsNotByHour := !cloud.UsesHourlyBilling(&upHosts[0].Distro)
+		if distroIsNotByHour {
 
-		var killableHosts, newCapTarget int
-		if hostQueueRatio == 0 {
-			killableHosts = len(upHosts)
-			newCapTarget = 0
-		} else {
-			killableHosts = int(float32(len(upHosts)) * (1 - hostQueueRatio))
-			newCapTarget = len(upHosts) - killableHosts
-		}
-
-		if newCapTarget < distro.HostAllocatorSettings.MinimumHosts {
-			newCapTarget = distro.HostAllocatorSettings.MinimumHosts
-		}
-		// rough value to prevent killing hosts on low-volume distros
-		const lowCountFloor = 5
-		if killableHosts > lowCountFloor {
-
-			drawdownInfo := DrawdownInfo{
-				DistroID:     distro.Id,
-				NewCapTarget: newCapTarget,
-			}
-			err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
-			if err != nil {
-				grip.Error(errors.Wrap(err, "Error drawing down hosts"))
-				return
+			var killableHosts, newCapTarget int
+			if hostQueueRatio == 0 {
+				killableHosts = len(upHosts)
+				newCapTarget = 0
+			} else {
+				killableHosts = int(float32(len(upHosts)) * (1 - hostQueueRatio))
+				newCapTarget = len(upHosts) - killableHosts
 			}
 
+			if newCapTarget < distro.HostAllocatorSettings.MinimumHosts {
+				newCapTarget = distro.HostAllocatorSettings.MinimumHosts
+			}
+			// rough value to prevent killing hosts on low-volume distros
+			const lowCountFloor = 0
+			if killableHosts > lowCountFloor {
+
+				drawdownInfo := DrawdownInfo{
+					DistroID:     distro.Id,
+					NewCapTarget: newCapTarget,
+				}
+				err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
+				if err != nil {
+					grip.Error(errors.Wrap(err, "Error drawing down hosts"))
+				}
+
+			}
 		}
 	}
 

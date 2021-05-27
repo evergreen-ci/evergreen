@@ -162,7 +162,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 
 func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) error {
 
-	exitEarly, err := j.checkTerminationExemptions(ctx, h)
+	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly {
 		return err
 	}
@@ -194,12 +194,12 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 
 //checkTerminationExemptions checks if some conditions apply where we shouldn't terminate an idle host,
 //and returns true if some exemption applies
-func (j *idleHostJob) checkTerminationExemptions(ctx context.Context, h *host.Host) (bool, error) {
+func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen.Environment, jobName string, jid string) (bool, error) {
 	if !h.IsEphemeral() {
 		grip.Notice(message.Fields{
-			"job":      j.ID(),
+			"job":      jid,
 			"host_id":  h.Id,
-			"job_type": j.Type().Name,
+			"job_type": jobName,
 			"status":   h.Status,
 			"provider": h.Distro.Provider,
 			"message":  "host termination for a non-ephemeral distro",
@@ -216,8 +216,8 @@ func (j *idleHostJob) checkTerminationExemptions(ctx context.Context, h *host.Ho
 
 	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
 		grip.Notice(message.Fields{
-			"op":                j.Type().Name,
-			"id":                j.ID(),
+			"op":                jobName,
+			"id":                jid,
 			"message":           "not flagging idle host, waiting for an agent",
 			"host_id":           h.Id,
 			"distro":            h.Distro.Id,
@@ -232,7 +232,7 @@ func (j *idleHostJob) checkTerminationExemptions(ctx context.Context, h *host.Ho
 	if err != nil {
 		return true, errors.Wrapf(err, "can't get ManagerOpts for host '%s'", h.Id)
 	}
-	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
+	manager, err := cloud.GetManager(ctx, env, mgrOpts)
 	if err != nil {
 		return true, errors.Wrapf(err, "error getting cloud manager for host %v", h.Id)
 	}
