@@ -245,6 +245,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	id = projectRef.Id
 	origProjectRef := *projectRef
 
+	// TODO: should this use pointer booleans? otherwise the copy isn't quite right for repo projects
 	responseRef := struct {
 		Id                      string                         `json:"id"`
 		Identifier              string                         `json:"identifier"`
