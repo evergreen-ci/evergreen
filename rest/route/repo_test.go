@@ -254,6 +254,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 		Branch:     "main",
 		Enabled:    utility.TruePtr(),
 		Restricted: utility.TruePtr(),
+		Admins:     []string{"branch1_admin"},
 	}
 	branchProject := &dbModel.ProjectRef{
 		Id:         "branch2",
@@ -262,6 +263,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 		Repo:       "repo",
 		Branch:     "main",
 		Enabled:    utility.TruePtr(),
+		Admins:     []string{"branch2_admin", "the amazing Annie"},
 	}
 	assert.NoError(t, independentProject.Insert())
 	assert.NoError(t, branchProject.Insert())
@@ -273,7 +275,11 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	}
 	assert.NoError(t, hook.Insert())
 
-	u := &user.DBUser{Id: "the amazing Annie"}
+	u := &user.DBUser{Id: "branch1_admin"}
+	assert.NoError(t, u.Insert())
+	u = &user.DBUser{Id: "branch2_admin"}
+	assert.NoError(t, u.Insert())
+	u = &user.DBUser{Id: "the amazing Annie"}
 	assert.NoError(t, u.Insert())
 	ctx := gimlet.AttachUser(context.Background(), u)
 
@@ -325,7 +331,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	repoId := ""
 	for _, branch := range pRefs {
 		if branch.Id == "branch1" {
-			assert.True(t, branch.IsRestricted(), fmt.Sprintf("branch %s should be restricted", branch.Id))
+			assert.True(t, branch.IsRestricted(), fmt.Sprintf("branch '%s' should be restricted", branch.Id))
 		} else {
 			assert.False(t, branch.IsRestricted(), fmt.Sprintf("branch '%s' shouldn't be restricted", branch.Id))
 			assert.NotEmpty(t, branch.RepoRefId)
@@ -339,6 +345,11 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	unrestrictedScope, err = rm.GetScope(ctx, evergreen.UnrestrictedProjectsScope)
 	assert.NoError(t, err)
 	assert.Equal(t, unrestrictedScope.Resources, []string{"branch2"})
+	// branch admin that didn't turn on repo settings should still have view access
+	u, err = user.FindOneById("branch2_admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.Contains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
 
 	repoRef, err := dbModel.FindOneRepoRef(repoId)
 	assert.NoError(t, err)
@@ -387,6 +398,11 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
 	assert.Empty(t, scope.Resources)
+	// branch user should no longer be able to see repo settings, since it's restricted
+	u, err = user.FindOneById("branch2_admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.NotContains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
 
 	// test that setting branch explicitly not-restricted impacts that branch, even though it's using repo settings
 	body = bytes.NewBuffer([]byte(`{"restricted": false, "use_repo_settings": true}`))
@@ -421,6 +437,11 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
 	assert.Equal(t, scope.Resources, []string{"branch1"})
+	// verify that setting branch unrestricted doesn't give view settings to restricted repo
+	u, err = user.FindOneById("branch1_admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.NotContains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
 
 	// test that setting branch to null uses the repo default (which is restricted)
 	body = bytes.NewBuffer([]byte(`{"restricted": null}`))
@@ -453,4 +474,23 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
 	assert.Empty(t, scope.Resources)
+
+	// test that setting repo back to not restricted gives the branch admins view access again
+	body = bytes.NewBuffer([]byte(`{"restricted": false}`))
+	req, _ = http.NewRequest("PATCH", fmt.Sprintf("rest/v2/repos/%s", repoId), body)
+	req = gimlet.SetURLVars(req, map[string]string{"repo_id": repoId})
+
+	assert.NoError(t, repoHandler.Parse(ctx, req))
+	resp = repoHandler.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, resp.Status(), http.StatusOK)
+	u, err = user.FindOneById("branch1_admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.Contains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
+	// verify that setting branch unrestricted doesn't give view settings to restricted repo
+	u, err = user.FindOneById("branch2_admin")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.Contains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -235,6 +236,7 @@ func removeViewRepoPermissionsFromBranchAdmins(repoRefID string, admins []string
 func (r *RepoRef) MakeRestricted(branchProjects []ProjectRef) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
+	branchOnlyAdmins := []string{}
 	// if the branch project is now restricted, remove it from the unrestricted scope
 	for _, p := range branchProjects {
 		if !p.IsRestricted() {
@@ -249,14 +251,19 @@ func (r *RepoRef) MakeRestricted(branchProjects []ProjectRef) error {
 		if err := rm.AddResourceToScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
 			return errors.Wrapf(err, "error adding resource '%s' to restricted projects scope")
 		}
+
+		// get branch admins that aren't repo admins and remove view repo permissions
+		_, adminsToModify := utility.StringSliceSymmetricDifference(r.Admins, p.Admins)
+		branchOnlyAdmins = append(branchOnlyAdmins, adminsToModify...)
 	}
-	return nil
+	branchOnlyAdmins = utility.UniqueStrings(branchOnlyAdmins)
+	return removeViewRepoPermissionsFromBranchAdmins(r.Id, branchOnlyAdmins)
 }
 
 func (r *RepoRef) MakeUnrestricted(branchProjects []ProjectRef) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
-
+	branchOnlyAdmins := []string{}
 	// if the branch project is now unrestricted, add it to the unrestricted scopes
 	for _, p := range branchProjects {
 		if p.IsRestricted() {
@@ -271,9 +278,12 @@ func (r *RepoRef) MakeUnrestricted(branchProjects []ProjectRef) error {
 		if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
 			return errors.Wrapf(err, "error adding resource '%s' to unrestricted projects scope")
 		}
+		// get branch admins that aren't repo admins and remove add repo permissions
+		_, adminsToModify := utility.StringSliceSymmetricDifference(r.Admins, p.Admins)
+		branchOnlyAdmins = append(branchOnlyAdmins, adminsToModify...)
 	}
-
-	return nil
+	branchOnlyAdmins = utility.UniqueStrings(branchOnlyAdmins)
+	return addViewRepoPermissionsToBranchAdmins(r.Id, branchOnlyAdmins)
 }
 
 func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
