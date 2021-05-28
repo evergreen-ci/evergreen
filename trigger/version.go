@@ -174,7 +174,7 @@ func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification
 		return nil, nil
 	}
 
-	isReady, err := t.waitOnChildrenOrSiblings(sub)
+	isReady, err := t.waitOnChildrenOrSiblings()
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 		return nil, nil
 	}
 
-	isReady, err := t.waitOnChildrenOrSiblings(sub)
+	isReady, err := t.waitOnChildrenOrSiblings()
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification
 		return nil, nil
 	}
 
-	isReady, err := t.waitOnChildrenOrSiblings(sub)
+	isReady, err := t.waitOnChildrenOrSiblings()
 	if err != nil {
 		return nil, err
 	}
@@ -293,14 +293,18 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 	return nil, nil
 }
 
-func (t *versionTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (bool, error) {
+func (t *versionTriggers) waitOnChildrenOrSiblings() (bool, error) {
+	// only patches have to wait on children/siblings
+	if !evergreen.IsPatchRequester(t.version.Requester) {
+		return true, nil
+	}
 	isReady := false
 	patchDoc, err := patch.FindOne(patch.ByVersion(t.version.Id))
 	if err != nil {
-		return isReady, errors.Wrapf(err, "error getting patchDoc '%s'", t.version.Id)
+		return isReady, errors.Wrapf(err, "error getting patch '%s'", t.version.Id)
 	}
 	if patchDoc == nil {
-		return isReady, errors.Errorf("patchDoc '%s' not found for ", t.version.Id)
+		return isReady, errors.Errorf("patch '%s' not found", t.version.Id)
 	}
 
 	// don't wait on children or siblings if the patch is a regular patch
@@ -337,10 +341,10 @@ func (t *versionTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (boo
 	if t.version.IsChild() {
 		parentVersion, err := t.version.GetParentVersion()
 		if err != nil {
-			return isReady, errors.Wrap(err, "error getting parentVersion")
+			return isReady, errors.Wrap(err, "error getting parent version")
 		}
 		if parentVersion == nil {
-			return isReady, errors.Errorf("parentVersion not found for '%s'", t.version.Id)
+			return isReady, errors.Errorf("parent version not found for '%s'", t.version.Id)
 		}
 		t.version = parentVersion
 
