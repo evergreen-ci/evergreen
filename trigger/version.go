@@ -334,7 +334,7 @@ func (t *versionTriggers) waitOnChildrenOrSiblings() (bool, error) {
 		return isReady, nil
 	}
 	isReady = true
-	if childrenStatus == evergreen.PatchFailed {
+	if childrenStatus == evergreen.PatchFailed || (patchDoc.IsChild() && parentPatch.Status == evergreen.PatchFailed) {
 		t.data.Status = evergreen.PatchFailed
 	}
 
