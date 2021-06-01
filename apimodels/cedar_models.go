@@ -8,6 +8,5 @@ type CedarConfig struct {
 }
 
 type CedarTestResultsTaskInfo struct {
-	TaskID string `json:"task_id"`
-	Failed bool   `json:"failed"`
+	Failed bool `json:"failed"`
 }
