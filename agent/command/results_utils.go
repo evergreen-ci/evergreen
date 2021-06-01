@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -105,7 +106,8 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 		}
 	}
 
-	if err = client.AddResults(ctx, makeCedarTestResults(conf.CedarTestResultsID, conf.Task, results)); err != nil {
+	cedarResults, failed := makeCedarTestResults(conf.CedarTestResultsID, conf.Task, results)
+	if err = client.AddResults(ctx, cedarResults); err != nil {
 		return errors.Wrap(err, "adding test results")
 	}
 
@@ -113,7 +115,7 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 		return errors.Wrap(err, "closing test results record")
 	}
 
-	if err = comm.SetHasCedarResults(ctx, td); err != nil {
+	if err = comm.SetHasCedarResults(ctx, td, failed); err != nil {
 		return errors.Wrap(err, "problem setting HasCedarResults flag in task")
 	}
 
@@ -169,8 +171,9 @@ func makeCedarTestResultsRecord(conf *internal.TaskConfig, displayTaskInfo *apim
 	}
 }
 
-func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResults) testresults.Results {
+func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResults) (testresults.Results, bool) {
 	rs := testresults.Results{ID: id}
+	failed := false
 	for _, r := range results.Results {
 		if r.DisplayTestName == "" {
 			r.DisplayTestName = r.TestFile
@@ -189,6 +192,11 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 			TestStarted:     time.Unix(int64(r.StartTime), 0),
 			TestEnded:       time.Unix(int64(r.EndTime), 0),
 		})
+
+		if r.Status == evergreen.TestFailedStatus {
+			failed = true
+		}
 	}
-	return rs
+
+	return rs, failed
 }

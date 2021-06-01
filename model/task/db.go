@@ -73,6 +73,7 @@ var (
 	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 	HasCedarResultsKey          = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
+	CedarResultsFailedKey       = bsonutil.MustHaveTag(Task{}, "CedarResultsFailed")
 	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
