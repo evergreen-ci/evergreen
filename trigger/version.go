@@ -312,29 +312,13 @@ func (t *versionTriggers) waitOnChildrenOrSiblings() (bool, error) {
 		return true, nil
 	}
 
-	// get the children or siblings to wait on
-	childrenOrSiblings, parentPatch, err := patchDoc.GetPatchFamily()
+	// get the collective status
+	isReady, _, isFailingStatus, err := checkPatchStatus(patchDoc)
 	if err != nil {
-		return isReady, errors.Wrap(err, "error getting child or sibling patches")
+		return false, errors.Wrapf(err, "error getting patch status for '%s'", patchDoc.Id)
 	}
 
-	// make sure the parent is done, if not, wait for the parent
-	if t.version.IsChild() {
-		if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
-			return isReady, nil
-		}
-	}
-
-	childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
-	if err != nil {
-		return isReady, errors.Wrap(err, "error getting child or sibling information")
-	}
-	//make sure the children or siblings are done before sending the notification
-	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
-		return isReady, nil
-	}
-	isReady = true
-	if childrenStatus == evergreen.PatchFailed {
+	if isFailingStatus {
 		t.data.Status = evergreen.PatchFailed
 	}
 
