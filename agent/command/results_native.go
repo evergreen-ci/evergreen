@@ -105,7 +105,7 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskCon
 				// test names.
 				testLogs.Name = utility.RandomString()
 			} else {
-				testlogs.Name = res.TestFile
+				testLogs.Name = res.TestFile
 			}
 
 			logId, err := sendTestLog(ctx, comm, conf, testLogs)
