@@ -189,7 +189,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 					assert.NotEmpty(r.TestName)
 					assert.NotEmpty(r.DisplayTestName)
 					assert.NotEmpty(r.LogTestName)
-					assert.NotEqual(r.TestName, r.LogTestName)
+					assert.NotEqual(r.DisplayTestName, r.LogTestName)
 					assert.NotEmpty(r.Status)
 				}
 			}
