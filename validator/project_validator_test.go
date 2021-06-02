@@ -1931,6 +1931,33 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				ShouldEqual, 1)
 		})
 		Convey("no error should be thrown if the buildvariant does not "+
+			"have a run_on field specified but the task definition has a "+
+			"distro field specified", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "import",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "silhouettes",
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "silhouettes",
+						RunOn: []string{
+							"echoes",
+						},
+					},
+				},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldResemble, ValidationErrors{})
+		})
+		Convey("no error should be thrown if the buildvariant does not "+
 			"have a run_on field specified but all tasks within it have a "+
 			"distro field specified", func() {
 			project := &model.Project{
