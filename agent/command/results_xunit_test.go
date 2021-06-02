@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/model"
@@ -189,7 +190,9 @@ func TestXUnitParseAndUpload(t *testing.T) {
 					assert.NotEmpty(r.TestName)
 					assert.NotEmpty(r.DisplayTestName)
 					assert.NotEmpty(r.LogTestName)
-					assert.NotEqual(r.DisplayTestName, r.LogTestName)
+					if r.Status != evergreen.TestSucceededStatus {
+						assert.NotEqual(r.DisplayTestName, r.LogTestName)
+					}
 					assert.NotEmpty(r.Status)
 				}
 			}
