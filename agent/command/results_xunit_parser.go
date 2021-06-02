@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -91,7 +93,7 @@ func parseXMLResults(reader io.Reader) ([]testSuite, error) {
 // mci task.TestResult and model.TestLog. Logs are only
 // generated if the test case did not succeed (this is part of
 // the xunit xml file design)
-func (tc testCase) toModelTestResultAndLog(t *task.Task) (task.TestResult, *model.TestLog) {
+func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (task.TestResult, *model.TestLog) {
 
 	res := task.TestResult{}
 	var log *model.TestLog
@@ -126,12 +128,20 @@ func (tc testCase) toModelTestResultAndLog(t *task.Task) (task.TestResult, *mode
 	}
 
 	if log != nil {
-		log.Name = res.TestFile
-		log.Task = t.Id
-		log.TaskExecution = t.Execution
+		if conf.ProjectRef.IsCedarTestResultsEnabled() {
+			// When sending test logs to cedar we need to use a
+			// unique string since there may be duplicate file
+			// names if there are duplicate test names.
+			log.Name = utility.RandomString()
+		} else {
+			log.Name = res.TestFile
+		}
+		log.Task = conf.Task.Id
+		log.TaskExecution = conf.Task.Execution
 
 		// update the URL of the result to the expected log URL
 		res.URL = log.URL()
+		res.LogTestName = log.Name
 	}
 
 	return res, log
