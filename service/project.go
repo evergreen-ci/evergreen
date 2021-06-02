@@ -759,9 +759,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	if origProjectRef.Restricted != projectRef.Restricted {
 		if projectRef.IsRestricted() {
-			err = projectRef.MakeRestricted(ctx)
+			err = projectRef.MakeRestricted()
 		} else {
-			err = projectRef.MakeUnrestricted(ctx)
+			err = projectRef.MakeUnrestricted()
 		}
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
