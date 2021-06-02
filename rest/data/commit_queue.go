@@ -292,6 +292,9 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	if err != nil {
 		return false, errors.Wrap(err, "call to Github API failed")
 	}
+	if !inOrg {
+		return false, nil
+	}
 
 	// Has repository merge permission
 	// See: https://help.github.com/articles/repository-permission-levels-for-an-organization/
@@ -304,7 +307,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	mergePermissions := []string{"admin", "write"}
 	hasPermission := utility.StringSliceContains(mergePermissions, permission)
 
-	return inOrg && hasPermission, nil
+	return hasPermission, nil
 }
 
 func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
@@ -421,7 +424,8 @@ func (pc *DBCommitQueueConnector) GetAdditionalPatches(patchId string) ([]string
 }
 
 type MockCommitQueueConnector struct {
-	Queue map[string][]restModel.APICommitQueueItem
+	Queue           map[string][]restModel.APICommitQueueItem
+	UserPermissions map[UserRepoInfo]string // map user to permission level in lieu of the Github API
 }
 
 func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
@@ -505,8 +509,24 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return count, nil
 }
 
-func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error) {
-	return true, nil
+func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
+	_, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
+	}
+
+	requiredOrganization := settings.GithubPRCreatorOrg
+	if requiredOrganization == "" {
+		return false, errors.New("no GitHub PR creator organization configured")
+	}
+
+	permission, ok := pc.UserPermissions[args]
+	if !ok {
+		return false, nil
+	}
+	mergePermissions := []string{"admin", "write"}
+	hasPermission := utility.StringSliceContains(mergePermissions, permission)
+	return hasPermission, nil
 }
 
 func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
