@@ -315,7 +315,7 @@ func (t *versionTriggers) waitOnChildrenOrSiblings() (bool, error) {
 	// get the collective status
 	isReady, _, isFailingStatus, err := checkPatchStatus(patchDoc)
 	if err != nil {
-		return false, errors.Errorf("error getting patch status for '%s'", patchDoc.Id)
+		return false, errors.Wrapf(err, "error getting patch status for '%s'", patchDoc.Id)
 	}
 
 	if isFailingStatus {

@@ -148,7 +148,7 @@ func (t *patchTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (bool,
 	// get the children or siblings to wait on
 	isReady, parentPatch, isFailingStatus, err := checkPatchStatus(t.patch)
 	if err != nil {
-		return false, errors.Errorf("error getting patch status for '%s'", t.patch.Id)
+		return false, errors.Wrapf(err, "error getting patch status for '%s'", t.patch.Id)
 	}
 
 	if isFailingStatus {
@@ -161,7 +161,6 @@ func (t *patchTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (bool,
 		t.patch = parentPatch
 	}
 	return isReady, nil
-
 }
 
 func checkPatchStatus(p *patch.Patch) (bool, *patch.Patch, bool, error) {
