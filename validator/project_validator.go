@@ -415,7 +415,6 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 	}
 
 	for _, buildVariant := range project.BuildVariants {
-		hasTaskWithoutDistro := false
 		if buildVariant.Name == "" {
 			errs = append(errs,
 				ValidationError{
@@ -433,6 +432,18 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 				},
 			)
 		}
+		bvHasValidDistro := false
+		for _, runOn := range buildVariant.RunOn {
+			if runOn != "" {
+				bvHasValidDistro = true
+				break
+			}
+		}
+		if bvHasValidDistro { // don't need to check if tasks have run_on defined since we have a variant default
+			continue
+		}
+
+		hasTaskWithoutDistro := false
 		for _, task := range buildVariant.Tasks {
 			taskHasValidDistro := false
 			for _, d := range task.RunOn {
@@ -442,18 +453,24 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 				}
 			}
 			if !taskHasValidDistro {
+				// check for a default in the task definition
+				pt := project.FindProjectTask(task.Name)
+				if pt != nil {
+					for _, d := range pt.RunOn {
+						if d != "" {
+							taskHasValidDistro = true
+							break
+						}
+					}
+				}
+			}
+			if !taskHasValidDistro {
 				hasTaskWithoutDistro = true
 				break
 			}
 		}
-		bvHasValidDistro := false
-		for _, runOn := range buildVariant.RunOn {
-			if runOn != "" {
-				bvHasValidDistro = true
-				break
-			}
-		}
-		if hasTaskWithoutDistro && !bvHasValidDistro {
+
+		if hasTaskWithoutDistro {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%s' in project '%s' "+

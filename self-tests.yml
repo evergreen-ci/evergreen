@@ -391,6 +391,7 @@ tasks:
   - <<: *run-build
     name: dist-staging
     patch_only: true
+    run_on: archlinux-new-small
 
   - <<: *run-smoke-test
     name: smoke-test-task
