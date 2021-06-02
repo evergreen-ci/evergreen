@@ -982,6 +982,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
 			expansions.Put("github_author", p.GithubPatchData.Author)
+			expansions.Put("github_merge_commit", p.GithubPatchData.MergeCommitSHA)
 		}
 	} else {
 		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
