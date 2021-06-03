@@ -405,6 +405,13 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			h.newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
+	for i := range h.newProjectRef.PatchTriggerAliases {
+		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
+		catcher.Add(err)
+	}
+	for i, buildDef := range h.newProjectRef.PeriodicBuilds {
+		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
+	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
@@ -420,7 +427,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			MergeBaseRevision: "",
 		}
 	}
-	// TODO: check this logic
+
 	if h.originalProject.Restricted != h.newProjectRef.Restricted {
 		if h.newProjectRef.IsRestricted() {
 			err = h.newProjectRef.MakeRestricted(ctx)
