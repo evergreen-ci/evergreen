@@ -1636,7 +1636,7 @@ func (p *Project) CommandsRunOnBV(cmds []PluginCommandConf, cmd, bv string) []Pl
 	for _, c := range cmds {
 		if c.Function != "" {
 			f, ok := p.Functions[c.Function]
-			if !ok {
+			if !ok || f == nil {
 				continue
 			}
 			for _, funcCmd := range f.List() {
