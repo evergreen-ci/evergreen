@@ -83,7 +83,7 @@ func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
 	t.GenerateFile = utility.ToStringPtr(triggerDef.GenerateFile)
 	t.Command = utility.ToStringPtr(triggerDef.Command)
 	t.Alias = utility.ToStringPtr(triggerDef.Alias)
-	t.DateCutoff = t.DateCutoff
+	t.DateCutoff = triggerDef.DateCutoff
 	return nil
 }
 
