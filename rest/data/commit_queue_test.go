@@ -164,24 +164,28 @@ func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 }
 
 func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
-	s.ctx = &DBConnector{}
-	ctx := context.Background()
-
-	args := UserRepoInfo{
+	args1 := UserRepoInfo{
 		Username: "evrg-bot-webhook",
 		Owner:    "evergreen-ci",
 		Repo:     "evergreen",
 	}
-	authorized, err := s.ctx.IsAuthorizedToPatchAndMerge(ctx, s.settings, args)
-	s.NoError(err)
-	s.True(authorized)
-
-	args = UserRepoInfo{
+	args2 := UserRepoInfo{
 		Username: "octocat",
 		Owner:    "evergreen-ci",
 		Repo:     "evergreen",
 	}
-	authorized, err = s.ctx.IsAuthorizedToPatchAndMerge(ctx, s.settings, args)
+	c := &MockCommitQueueConnector{
+		UserPermissions: map[UserRepoInfo]string{
+			args1: "admin",
+			args2: "read",
+		},
+	}
+	ctx := context.Background()
+	authorized, err := c.IsAuthorizedToPatchAndMerge(ctx, s.settings, args1)
+	s.NoError(err)
+	s.True(authorized)
+
+	authorized, err = c.IsAuthorizedToPatchAndMerge(ctx, s.settings, args2)
 	s.NoError(err)
 	s.False(authorized)
 }

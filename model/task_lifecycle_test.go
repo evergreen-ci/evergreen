@@ -941,6 +941,68 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
 		})
 
+		Convey("task should fail if there are failed test results in cedar", func() {
+			reset()
+			testTask.HasCedarResults = true
+			testTask.CedarResultsFailed = true
+
+			detail.Status = evergreen.TaskSucceeded
+			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+
+			v, err := VersionFindOneId(v.Id)
+			So(err, ShouldBeNil)
+			So(v.Status, ShouldEqual, evergreen.VersionFailed)
+
+			b, err := build.FindOneId(b.Id)
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildFailed)
+
+			taskData, err := task.FindOne(task.ById(testTask.Id))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
+		})
+
+		Convey("task should not fail if there are no failed test results in cedar", func() {
+			reset()
+			testTask.HasCedarResults = true
+
+			detail.Status = evergreen.TaskSucceeded
+			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+
+			v, err := VersionFindOneId(v.Id)
+			So(err, ShouldBeNil)
+			So(v.Status, ShouldEqual, evergreen.VersionSucceeded)
+
+			b, err := build.FindOneId(b.Id)
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
+
+			taskData, err := task.FindOne(task.ById(testTask.Id))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+		})
+
+		Convey("task should not fail if there are failed test results in cedar but no test results in cedar (inconsistent state)", func() {
+			reset()
+			testTask.HasCedarResults = false
+			testTask.CedarResultsFailed = true
+
+			detail.Status = evergreen.TaskSucceeded
+			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+
+			v, err := VersionFindOneId(v.Id)
+			So(err, ShouldBeNil)
+			So(v.Status, ShouldEqual, evergreen.VersionSucceeded)
+
+			b, err := build.FindOneId(b.Id)
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
+
+			taskData, err := task.FindOne(task.ById(testTask.Id))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+		})
+
 		Convey("incomplete versions report updates", func() {
 			reset()
 			b2 := &build.Build{

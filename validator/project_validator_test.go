@@ -1931,6 +1931,33 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				ShouldEqual, 1)
 		})
 		Convey("no error should be thrown if the buildvariant does not "+
+			"have a run_on field specified but the task definition has a "+
+			"distro field specified", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "import",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "silhouettes",
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "silhouettes",
+						RunOn: []string{
+							"echoes",
+						},
+					},
+				},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldResemble, ValidationErrors{})
+		})
+		Convey("no error should be thrown if the buildvariant does not "+
 			"have a run_on field specified but all tasks within it have a "+
 			"distro field specified", func() {
 			project := &model.Project{
@@ -2164,7 +2191,7 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	syntaxErrs := CheckProjectSyntax(&proj)
+	syntaxErrs := CheckProjectSyntax(&proj, false)
 	assert.Len(syntaxErrs, 0)
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.Len(semanticErrs, 0)
@@ -2196,7 +2223,7 @@ buildvariants:
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
-	syntaxErrs := CheckProjectSyntax(&proj)
+	syntaxErrs := CheckProjectSyntax(&proj, false)
 	assert.Len(syntaxErrs, 0)
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.Len(semanticErrs, 0)
@@ -2259,7 +2286,7 @@ buildvariants:
 	assert.Len(tg.Tasks, 1)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("not_in_a_task_group", proj.Tasks[1].DependsOn[0].Name)
-	syntaxErrs := CheckProjectSyntax(&proj)
+	syntaxErrs := CheckProjectSyntax(&proj, false)
 	assert.Len(syntaxErrs, 1)
 	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", syntaxErrs[0].Error())
 	semanticErrs := CheckProjectSemantics(&proj)
@@ -2307,7 +2334,7 @@ buildvariants:
 	proj.BuildVariants[0].DisplayTasks[0].ExecTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecTasks,
 		"display_three")
 
-	syntaxErrs := CheckProjectSyntax(&proj)
+	syntaxErrs := CheckProjectSyntax(&proj, false)
 	assert.Len(syntaxErrs, 1)
 	assert.Equal(syntaxErrs[0].Level, Error)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
@@ -2537,7 +2564,7 @@ buildvariants:
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
-	errs := CheckProjectSyntax(&proj)
+	errs := CheckProjectSyntax(&proj, false)
 	assert.Len(errs, 1, "one warning was found")
 	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 
@@ -2613,7 +2640,7 @@ func TestValidateTaskSyncCommands(t *testing.T) {
 				},
 			},
 		}
-		assert.Empty(t, validateTaskSyncCommands(p))
+		assert.Empty(t, validateTaskSyncCommands(p, false))
 	})
 	t.Run("TaskWithMultipleS3PushCallsFails", func(t *testing.T) {
 		p := &model.Project{
@@ -2641,7 +2668,7 @@ func TestValidateTaskSyncCommands(t *testing.T) {
 				},
 			},
 		}
-		assert.NotEmpty(t, validateTaskSyncCommands(p))
+		assert.NotEmpty(t, validateTaskSyncCommands(p, false))
 	})
 }
 
@@ -4362,7 +4389,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				bvsToTasksWithCmds, err := bvsWithTasksThatCallCommand(&testCase.project, cmd)
+				bvsToTasksWithCmds, _, err := bvsWithTasksThatCallCommand(&testCase.project, cmd)
 				require.NoError(t, err)
 				assert.Len(t, bvsToTasksWithCmds, len(testCase.expectedBVsToTasksWithCmds))
 				for bv, expectedTasks := range testCase.expectedBVsToTasksWithCmds {
@@ -4433,7 +4460,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				_, err := bvsWithTasksThatCallCommand(&project, cmd)
+				_, _, err := bvsWithTasksThatCallCommand(&project, cmd)
 				assert.Error(t, err)
 			})
 		}

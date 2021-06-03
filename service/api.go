@@ -538,28 +538,28 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	project := &model.Project{}
-	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(bytes, "", project); err != nil {
-		// try the new validation input format before erroring
-		input := validator.ValidationInput{}
-		if err2 := json.Unmarshal(bytes, &input); err2 != nil {
-			// return original error, since the format is likely not ValidationInput
-			validationErr.Message = err.Error()
-			gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
-			return
-		}
-		if _, err = model.LoadProjectInto(input.ProjectYaml, "", project); err != nil {
-			validationErr.Message = err.Error()
-			gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
-			return
-		}
+	input := validator.ValidationInput{}
+	if err := json.Unmarshal(bytes, &input); err != nil {
+		// try the legacy structure
+		input.ProjectYaml = bytes
+		input.IncludeLong = true // this is legacy behavior
 	}
 
-	errs := validator.CheckYamlStrict(bytes)
-	errs = append(errs, validator.CheckProjectSyntax(project)...)
+	project := &model.Project{}
+	validationErr := validator.ValidationError{}
+	if _, err = model.LoadProjectInto(input.ProjectYaml, "", project); err != nil {
+		validationErr.Message = err.Error()
+		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
+		return
+	}
+
+	errs := validator.CheckYamlStrict(input.ProjectYaml)
+	errs = append(errs, validator.CheckProjectSyntax(project, input.IncludeLong)...)
 	errs = append(errs, validator.CheckProjectSemantics(project)...)
 	if len(errs) > 0 {
+		if input.Quiet {
+			errs = errs.AtLevel(validator.Error)
+		}
 		gimlet.WriteJSONError(w, errs)
 		return
 	}

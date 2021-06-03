@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -212,13 +213,16 @@ func TestXMLToModelConversion(t *testing.T) {
 		res, err := parseXMLResults(file)
 		So(err, ShouldBeNil)
 		So(len(res), ShouldBeGreaterThan, 0)
-		testTask := &task.Task{Id: "TEST", Execution: 5}
+		conf := &internal.TaskConfig{
+			ProjectRef: &model.ProjectRef{},
+			Task:       &task.Task{Id: "TEST", Execution: 5},
+		}
 
 		Convey("when converting the results to model struct", func() {
 			tests := []task.TestResult{}
 			logs := []*model.TestLog{}
 			for _, testCase := range res[0].TestCases {
-				test, log := testCase.toModelTestResultAndLog(testTask)
+				test, log := testCase.toModelTestResultAndLog(conf)
 				if log != nil {
 					logs = append(logs, log)
 				}

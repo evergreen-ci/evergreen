@@ -25,15 +25,19 @@ type projectValidator func(*model.Project) ValidationErrors
 
 type projectSettingsValidator func(*model.Project, *model.ProjectRef) ValidationErrors
 
+// bool indicates if we should still run the validator if the project is complex
+type longValidator func(*model.Project, bool) ValidationErrors
+
 type ValidationErrorLevel int64
 
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	unauthorizedCharacters     = "|"
-	EC2HostCreateTotalLimit    = 1000
-	DockerHostCreateTotalLimit = 200
-	HostCreateLimitPerTask     = 3
+	unauthorizedCharacters                  = "|"
+	EC2HostCreateTotalLimit                 = 1000
+	DockerHostCreateTotalLimit              = 200
+	HostCreateLimitPerTask                  = 3
+	maxTaskSyncCommandsForDependenciesCheck = 300 // this should take about one second
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -120,7 +124,6 @@ var projectSyntaxValidators = []projectValidator{
 	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
-	validateTaskSyncCommands,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -132,6 +135,11 @@ var projectSemanticValidators = []projectValidator{
 
 var projectSettingsValidators = []projectSettingsValidator{
 	validateTaskSyncSettings,
+}
+
+// These validators have the potential to be very long, and may not be fully run unless specified.
+var longSyntaxValidators = []longValidator{
+	validateTaskSyncCommands,
 }
 
 func (vr ValidationError) Error() string {
@@ -197,11 +205,15 @@ func CheckProjectSemantics(project *model.Project) ValidationErrors {
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectSyntax(project *model.Project) ValidationErrors {
+func CheckProjectSyntax(project *model.Project, includeLong bool) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectSyntaxValidator := range projectSyntaxValidators {
 		validationErrs = append(validationErrs,
 			projectSyntaxValidator(project)...)
+	}
+	for _, longSyntaxValidator := range longSyntaxValidators {
+		validationErrs = append(validationErrs,
+			longSyntaxValidator(project, includeLong)...)
 	}
 
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
@@ -245,7 +257,7 @@ func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
 // verify that the project configuration semantics and configuration syntax is valid
 func CheckProjectConfigurationIsValid(project *model.Project, pref *model.ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
-	syntaxErrs := CheckProjectSyntax(project)
+	syntaxErrs := CheckProjectSyntax(project, false)
 	if len(syntaxErrs) != 0 {
 		if errs := syntaxErrs.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains syntax errors: %s", ValidationErrorsToString(errs))
@@ -403,7 +415,6 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 	}
 
 	for _, buildVariant := range project.BuildVariants {
-		hasTaskWithoutDistro := false
 		if buildVariant.Name == "" {
 			errs = append(errs,
 				ValidationError{
@@ -421,6 +432,18 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 				},
 			)
 		}
+		bvHasValidDistro := false
+		for _, runOn := range buildVariant.RunOn {
+			if runOn != "" {
+				bvHasValidDistro = true
+				break
+			}
+		}
+		if bvHasValidDistro { // don't need to check if tasks have run_on defined since we have a variant default
+			continue
+		}
+
+		hasTaskWithoutDistro := false
 		for _, task := range buildVariant.Tasks {
 			taskHasValidDistro := false
 			for _, d := range task.RunOn {
@@ -430,18 +453,24 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 				}
 			}
 			if !taskHasValidDistro {
+				// check for a default in the task definition
+				pt := project.FindProjectTask(task.Name)
+				if pt != nil {
+					for _, d := range pt.RunOn {
+						if d != "" {
+							taskHasValidDistro = true
+							break
+						}
+					}
+				}
+			}
+			if !taskHasValidDistro {
 				hasTaskWithoutDistro = true
 				break
 			}
 		}
-		bvHasValidDistro := false
-		for _, runOn := range buildVariant.RunOn {
-			if runOn != "" {
-				bvHasValidDistro = true
-				break
-			}
-		}
-		if hasTaskWithoutDistro && !bvHasValidDistro {
+
+		if hasTaskWithoutDistro {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%s' in project '%s' "+
@@ -1477,10 +1506,11 @@ func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) Validatio
 
 // bvsWithTasksThatCallCommand creates a mapping from build variants to tasks
 // that run the given command cmd, including the list of matching commands for
-// each task.
-func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[string][]model.PluginCommandConf, error) {
+// each task. Returns the total number of commands in the map.
+func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[string][]model.PluginCommandConf, int, error) {
 	// build variant -> tasks that run cmd -> all matching commands
 	bvToTasksWithCmds := map[string]map[string][]model.PluginCommandConf{}
+	numCmds := 0
 	catcher := grip.NewBasicCatcher()
 
 	// addCmdsForTaskInBV adds commands that run for a task in a build variant
@@ -1493,6 +1523,7 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 			bvToTasksWithCmds[bv] = map[string][]model.PluginCommandConf{}
 		}
 		bvToTasksWithCmds[bv][taskUnit] = append(bvToTasksWithCmds[bv][taskUnit], cmds...)
+		numCmds += len(cmds)
 	}
 
 	for _, bv := range p.BuildVariants {
@@ -1550,21 +1581,22 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 			}
 		}
 	}
-	return bvToTasksWithCmds, catcher.Resolve()
+	return bvToTasksWithCmds, numCmds, catcher.Resolve()
 }
 
 // validateTaskSyncCommands validates project's task sync commands.  In
 // particular, s3.push should be called at most once per task and s3.pull should
 // refer to a valid task running s3.push.  It does not check that the project
-// settings allow task syncing - see validateTaskSyncSettings.
-func validateTaskSyncCommands(p *model.Project) ValidationErrors {
+// settings allow task syncing - see validateTaskSyncSettings. If run long isn't set,
+// we don't validate dependencies if there are too many commands.
+func validateTaskSyncCommands(p *model.Project, runLong bool) ValidationErrors {
 	errs := ValidationErrors{}
 
 	// A task should not call s3.push multiple times.
 	s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName)
 	errs = append(errs, validateTimesCalledPerTask(p, s3PushCalls, evergreen.S3PushCommandName, 1, Warning)...)
 
-	bvToTaskCmds, err := bvsWithTasksThatCallCommand(p, evergreen.S3PullCommandName)
+	bvToTaskCmds, numCmds, err := bvsWithTasksThatCallCommand(p, evergreen.S3PullCommandName)
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Level:   Error,
@@ -1572,7 +1604,17 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 		})
 	}
 
-	tvToTaskUnit := tvToTaskUnit(p)
+	checkDependencies := numCmds <= maxTaskSyncCommandsForDependenciesCheck || runLong
+	if !checkDependencies {
+		errs = append(errs, ValidationError{
+			Level:   Warning,
+			Message: fmt.Sprintf("too many commands using '%s' to check dependencies by default", evergreen.S3PullCommandName),
+		})
+	}
+	var taskDefMapping map[model.TVPair]model.BuildVariantTaskUnit
+	if checkDependencies {
+		taskDefMapping = tvToTaskUnit(p)
+	}
 	for bv, taskCmds := range bvToTaskCmds {
 		for task, cmds := range taskCmds {
 			for _, cmd := range cmds {
@@ -1598,14 +1640,17 @@ func validateTaskSyncCommands(p *model.Project) ValidationErrors {
 				// first, ensure that this task for this build variant has a
 				// dependency on the referenced task and build variant.
 				s3PushTaskNode := model.TVPair{TaskName: s3PushTaskName, Variant: s3PushBVName}
-				s3PullTaskNode := model.TVPair{TaskName: task, Variant: bv}
-				if err := validateTVDependsOnTV(s3PullTaskNode, s3PushTaskNode, tvToTaskUnit); err != nil {
-					errs = append(errs, ValidationError{
-						Level: Error,
-						Message: fmt.Sprintf("problem validating that task running command '%s' depends on task running command '%s': %s",
-							evergreen.S3PullCommandName, evergreen.S3PushCommandName, err.Error()),
-					})
+				if checkDependencies {
+					s3PullTaskNode := model.TVPair{TaskName: task, Variant: bv}
+					if err := validateTVDependsOnTV(s3PullTaskNode, s3PushTaskNode, taskDefMapping); err != nil {
+						errs = append(errs, ValidationError{
+							Level: Error,
+							Message: fmt.Sprintf("problem validating that task running command '%s' depends on task running command '%s': %s",
+								evergreen.S3PullCommandName, evergreen.S3PushCommandName, err.Error()),
+						})
+					}
 				}
+
 				// Find the task referenced by s3.pull and ensure that it exists
 				// and calls s3.push.
 				cmds, err := p.CommandsRunOnTV(s3PushTaskNode, evergreen.S3PushCommandName)

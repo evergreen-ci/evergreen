@@ -145,29 +145,13 @@ func (t *patchTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (bool,
 	if !(t.patch.IsParent() || (t.patch.IsChild() && subType == event.WaitOnChild)) {
 		return true, nil
 	}
-	isReady := false
 	// get the children or siblings to wait on
-	childrenOrSiblings, parentPatch, err := t.patch.GetPatchFamily()
+	isReady, parentPatch, isFailingStatus, err := checkPatchStatus(t.patch)
 	if err != nil {
-		return isReady, errors.Wrap(err, "error getting child or sibling patches")
+		return false, errors.Wrapf(err, "error getting patch status for '%s'", t.patch.Id)
 	}
 
-	// make sure the parent is done, if not, wait for the parent
-	if t.patch.IsChild() {
-		if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
-			return isReady, nil
-		}
-	}
-	childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
-	if err != nil {
-		return isReady, errors.Wrap(err, "error getting child or sibling information")
-	}
-	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
-		return isReady, nil
-	}
-	isReady = true
-
-	if childrenStatus == evergreen.PatchFailed {
+	if isFailingStatus {
 		t.data.Status = evergreen.PatchFailed
 	}
 
@@ -177,6 +161,35 @@ func (t *patchTriggers) waitOnChildrenOrSiblings(sub *event.Subscription) (bool,
 		t.patch = parentPatch
 	}
 	return isReady, nil
+}
+
+func checkPatchStatus(p *patch.Patch) (bool, *patch.Patch, bool, error) {
+	isReady := false
+	childrenOrSiblings, parentPatch, err := p.GetPatchFamily()
+	if err != nil {
+		return isReady, nil, false, errors.Wrap(err, "error getting child or sibling patches")
+	}
+
+	// make sure the parent is done, if not, wait for the parent
+	if p.IsChild() {
+		if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
+			return isReady, nil, false, nil
+		}
+	}
+	childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
+	if err != nil {
+		return isReady, nil, false, errors.Wrap(err, "error getting child or sibling information")
+	}
+	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
+		return isReady, nil, false, nil
+	}
+	isReady = true
+
+	isFailingStatus := false
+	if childrenStatus == evergreen.PatchFailed || (p.IsChild() && parentPatch.Status == evergreen.PatchFailed) {
+		isFailingStatus = true
+	}
+	return isReady, parentPatch, isFailingStatus, err
 
 }
 

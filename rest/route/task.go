@@ -414,10 +414,11 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
-// GET /tasks/{task_id}/set_has_cedar_results
+// POST /tasks/{task_id}/set_has_cedar_results
 
 type taskSetHasCedarResultsHandler struct {
 	taskID string
+	info   apimodels.CedarTestResultsTaskInfo
 	sc     data.Connector
 }
 
@@ -435,6 +436,11 @@ func (rh *taskSetHasCedarResultsHandler) Factory() gimlet.RouteHandler {
 
 func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Request) error {
 	rh.taskID = gimlet.GetVars(r)["task_id"]
+
+	if err := gimlet.GetJSON(r.Body, &rh.info); err != nil {
+		return errors.Wrap(err, "unmarshaling the request body")
+	}
+
 	return nil
 }
 
@@ -444,7 +450,7 @@ func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
 	}
 
-	if err = t.SetHasCedarResults(true); err != nil {
+	if err = t.SetHasCedarResults(true, rh.info.Failed); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "failed to set HasCedarResults flag for task with ID '%s'", rh.taskID))
 	}
 	return gimlet.NewTextResponse("HasCedarResults flag set in task")
