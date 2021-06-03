@@ -12,7 +12,6 @@
             "userVoice": "https://uservoice.com",
             "cache_templates": false,
             "csrf_key": "",
-            "expire_domain": "",
             "help_url": "",
             "login_domain": "",
             "uiv2_url": ""
