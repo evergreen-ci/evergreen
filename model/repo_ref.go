@@ -273,10 +273,10 @@ func (r *RepoRef) MakeUnrestricted(branchProjects []ProjectRef) error {
 			return errors.Wrapf(err, "error adding resource '%s' to unrestricted branches scope", p.Id)
 		}
 		if err := rm.RemoveResourceFromScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
-			return errors.Wrapf(err, "error removing resource '%s' from restricted projects scope")
+			return errors.Wrapf(err, "error removing resource '%s' from restricted projects scope", p.Id)
 		}
 		if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
-			return errors.Wrapf(err, "error adding resource '%s' to unrestricted projects scope")
+			return errors.Wrapf(err, "error adding resource '%s' to unrestricted projects scope", p.Id)
 		}
 		// get branch admins that aren't repo admins and remove add repo permissions
 		_, adminsToModify := utility.StringSliceSymmetricDifference(r.Admins, p.Admins)
