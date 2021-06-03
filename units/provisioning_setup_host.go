@@ -180,11 +180,8 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	return nil
 }
 
-// runHostSetup transfers the specified setup script for an individual host.
-// Returns the output from running the script remotely, as well as any error
-// that occurs. If the script exits with a non-zero exit code, the error will be
-// non-nil.
-func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Settings) error {
+// copySetupScript transfers the distro setup script to a host.
+func (j *setupHostJob) copySetupScript(ctx context.Context, settings *evergreen.Settings) error {
 	// Do not copy setup scripts to task-spawned hosts
 	if j.host.SpawnOptions.SpawnedByTask {
 		return nil
@@ -411,22 +408,12 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		})
 	}
 
-	err := j.runHostSetup(ctx, settings)
-	if err != nil {
-		event.LogHostProvisionFailed(j.host.Id, "")
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation":       "setting host unprovisioned",
-			"current_attempt": j.RetryInfo().CurrentAttempt,
-			"distro":          j.host.Distro.Id,
-			"job":             j.ID(),
-			"host_id":         j.host.Id,
-		}))
-
+	if err := j.copySetupScript(ctx, settings); err != nil {
 		return errors.Wrapf(err, "error initializing host %s", j.host.Id)
 	}
 
 	if j.host.IsVirtualWorkstation {
-		if err = attachVolume(ctx, j.env, j.host); err != nil {
+		if err := attachVolume(ctx, j.env, j.host); err != nil {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(err, "attaching volume")
 			if err := j.host.SetUnprovisioned(); err != nil {
@@ -447,10 +434,10 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	// If this is a spawn host
 	if j.host.ProvisionOptions != nil && j.host.UserHost {
 		grip.Infof("Uploading client binary to host %s", j.host.Id)
-		if err = j.setupSpawnHost(ctx, settings); err != nil {
+		if err := j.setupSpawnHost(ctx, settings); err != nil {
 			catcher := grip.NewBasicCatcher()
-			catcher.Wrapf(err, "setting up spawn host")
-			catcher.Wrapf(j.host.SetUnprovisioned(), "setting host unprovisioned after spawn host setup failed")
+			catcher.Wrap(err, "setting up spawn host")
+			catcher.Wrap(j.host.SetUnprovisioned(), "setting host unprovisioned after spawn host setup failed")
 			return catcher.Resolve()
 		}
 
