@@ -693,21 +693,21 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 		return "", errors.New("hash is missing from pull request commit list")
 	}
 
-	commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
-	if err != nil {
-		return "", err
-	}
-	if commit == nil {
-		return "", errors.New("couldn't find commit")
-	}
-	if len(commit.Parents) == 0 {
+	// commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// if commit == nil {
+	// 	return "", errors.New("couldn't find commit")
+	// }
+	if len(commits[0].Parents) == 0 {
 		return "", errors.New("can't find pull request branch point")
 	}
-	if commit.Parents[0].SHA == nil {
+	if commits[0].Parents[0].SHA == nil {
 		return "", errors.New("parent hash is missing")
 	}
 
-	return *commit.Parents[0].SHA, nil
+	return *commits[0].Parents[0].SHA, nil
 }
 
 func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, PRNumber int) (*github.PullRequest, error) {
