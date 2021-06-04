@@ -26,6 +26,7 @@ type AmboyConfig struct {
 	GroupTTLMinutes                       int              `bson:"group_ttl" json:"group_ttl" yaml:"group_ttl"`
 	RequireRemotePriority                 bool             `bson:"require_remote_priority" json:"require_remote_priority" yaml:"require_remote_priority"`
 	LockTimeoutMinutes                    int              `bson:"lock_timeout_minutes" json:"lock_timeout_minutes" yaml:"lock_timeout_minutes"`
+	SampleSize                            int              `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
 	Retry                                 AmboyRetryConfig `bson:"retry" json:"retry" yaml:"retry"`
 }
 
@@ -48,11 +49,12 @@ var (
 	amboyPoolSizeRemoteKey                        = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeRemote")
 	amboyLocalStorageKey                          = bsonutil.MustHaveTag(AmboyConfig{}, "LocalStorage")
 	amboyGroupDefaultWorkersKey                   = bsonutil.MustHaveTag(AmboyConfig{}, "GroupDefaultWorkers")
-	amboyGroupBackgroundCreateFrequengyMinutesKey = bsonutil.MustHaveTag(AmboyConfig{}, "GroupBackgroundCreateFrequencyMinutes")
+	amboyGroupBackgroundCreateFrequencyMinutesKey = bsonutil.MustHaveTag(AmboyConfig{}, "GroupBackgroundCreateFrequencyMinutes")
 	amboyGroupPruneFrequencyMinutesKey            = bsonutil.MustHaveTag(AmboyConfig{}, "GroupPruneFrequencyMinutes")
 	amboyGroupTTLMinutesKey                       = bsonutil.MustHaveTag(AmboyConfig{}, "GroupTTLMinutes")
 	amboyRequireRemotePriorityKey                 = bsonutil.MustHaveTag(AmboyConfig{}, "RequireRemotePriority")
 	amboyLockTimeoutMinutesKey                    = bsonutil.MustHaveTag(AmboyConfig{}, "LockTimeoutMinutes")
+	amboySampleSizeKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SampleSize")
 	amboyRetryKey                                 = bsonutil.MustHaveTag(AmboyConfig{}, "Retry")
 )
 
@@ -93,11 +95,12 @@ func (c *AmboyConfig) Set() error {
 			amboyPoolSizeRemoteKey:      c.PoolSizeRemote,
 			amboyLocalStorageKey:        c.LocalStorage,
 			amboyGroupDefaultWorkersKey: c.GroupDefaultWorkers,
-			amboyGroupBackgroundCreateFrequengyMinutesKey: c.GroupBackgroundCreateFrequencyMinutes,
+			amboyGroupBackgroundCreateFrequencyMinutesKey: c.GroupBackgroundCreateFrequencyMinutes,
 			amboyGroupPruneFrequencyMinutesKey:            c.GroupPruneFrequencyMinutes,
 			amboyGroupTTLMinutesKey:                       c.GroupTTLMinutes,
 			amboyRequireRemotePriorityKey:                 c.RequireRemotePriority,
 			amboyLockTimeoutMinutesKey:                    c.LockTimeoutMinutes,
+			amboySampleSizeKey:                            c.SampleSize,
 			amboyRetryKey:                                 c.Retry,
 		},
 	}, options.Update().SetUpsert(true))
