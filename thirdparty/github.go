@@ -690,7 +690,7 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 		return "", errors.New("No commits received from github")
 	}
 	if commits[0].SHA == nil {
-		return "", errors.New("hash is missing from pull request commit list")
+		return "", errors.New("hash is missing from PR commit list")
 	}
 
 	// commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
