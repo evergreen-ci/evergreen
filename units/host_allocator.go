@@ -256,9 +256,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
 	if terminateExcess && hostQueueRatio < lowRatioThresh && len(upHosts) > 0 {
 		distroIsByHour := cloud.UsesHourlyBilling(&upHosts[0].Distro)
-		if distroIsByHour {
-			return
-		} else {
+		if !distroIsByHour {
 			j.setTargetAndTerminate(ctx, len(upHosts), hostQueueRatio, distro)
 		}
 	}
@@ -287,14 +285,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	})
 }
 
-func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, lenUpHosts int, hostQueueRatio float32, distro *distro.Distro) {
+func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts int, hostQueueRatio float32, distro *distro.Distro) {
 	var killableHosts, newCapTarget int
 	if hostQueueRatio == 0 {
-		killableHosts = lenUpHosts
-		newCapTarget = 0
+		killableHosts = numUpHosts
 	} else {
-		killableHosts = int(float32(lenUpHosts) * (1 - hostQueueRatio))
-		newCapTarget = lenUpHosts - killableHosts
+		killableHosts = int(float32(numUpHosts) * (1 - hostQueueRatio))
+		newCapTarget = numUpHosts - killableHosts
 	}
 
 	if newCapTarget < distro.HostAllocatorSettings.MinimumHosts {
@@ -310,7 +307,7 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, lenUpHosts
 		}
 		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
 		if err != nil {
-			grip.Error(errors.Wrap(err, "Error drawing down hosts"))
+			grip.Error(message.WrapError(err, message.Fields{"message": "Error drawing down hosts"}))
 		}
 
 	}
