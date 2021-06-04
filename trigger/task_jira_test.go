@@ -295,6 +295,7 @@ func TestJIRADescription(t *testing.T) {
 				So(d, ShouldContainSubstring, url.PathEscape(taskId))
 				So(d, ShouldContainSubstring, hostId)
 				So(d, ShouldContainSubstring, projectId)
+				print(d)
 				So(d, ShouldContainSubstring, "http://evergreen.ui/task_log_raw/t1%21/0?type=T")
 			})
 			Convey("and the failed tasks should be listed with links", func() {
