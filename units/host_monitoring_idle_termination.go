@@ -194,12 +194,12 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 
 //checkTerminationExemptions checks if some conditions apply where we shouldn't terminate an idle host,
 //and returns true if some exemption applies
-func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen.Environment, jobName string, jid string) (bool, error) {
+func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen.Environment, jobType string, jid string) (bool, error) {
 	if !h.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      jid,
 			"host_id":  h.Id,
-			"job_type": jobName,
+			"job_type": jobType,
 			"status":   h.Status,
 			"provider": h.Distro.Provider,
 			"message":  "host termination for a non-ephemeral distro",
@@ -216,7 +216,7 @@ func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen
 
 	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
 		grip.Notice(message.Fields{
-			"op":                jobName,
+			"op":                jobType,
 			"id":                jid,
 			"message":           "not flagging idle host, waiting for an agent",
 			"host_id":           h.Id,

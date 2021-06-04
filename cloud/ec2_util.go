@@ -242,6 +242,8 @@ func timeTilNextEC2Payment(h *host.Host) time.Duration {
 	return time.Second
 }
 
+// UsesHourlyBilling checks if a distro name to see if it is billed hourly,
+// and returns true if so (for example, most linux distros are by-the-minute
 func UsesHourlyBilling(d *distro.Distro) bool {
 	if !strings.Contains(d.Arch, "linux") {
 		// windows or osx

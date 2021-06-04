@@ -91,13 +91,12 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		}
 		err = j.checkAndTerminateHost(ctx, &idleHost, &drawdownTarget)
 		if err != nil {
-			grip.Error(message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"id":             j.ID(),
 				"distro_id":      j.DrawdownInfo.DistroID,
 				"idle_host_list": idleHosts,
-				"err":            err,
 				"message":        "terminate host drawdown error",
-			})
+			}))
 		}
 	}
 
