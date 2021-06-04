@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -150,34 +151,45 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 
-	newScope := gimlet.Scope{
-		ID:          GetRepoScope(r.Id),
-		Resources:   []string{r.Id},
-		Name:        r.Id,
-		Type:        evergreen.ProjectResourceType,
-		ParentScope: evergreen.UnrestrictedProjectsScope,
+	adminScope := gimlet.Scope{
+		ID:        GetRepoAdminScope(r.Id),
+		Resources: []string{r.Id},
+		Name:      r.Id,
+		Type:      evergreen.ProjectResourceType,
 	}
-	if err := rm.AddScope(newScope); err != nil {
+	if err := rm.AddScope(adminScope); err != nil {
 		return errors.Wrapf(err, "error adding scope for repo project '%s'", r.Id)
 	}
 
+	// will be used to request permissions at the repo level
+	unrestrictedBranchesScope := gimlet.Scope{
+		ID:        GetUnrestrictedBranchProjectsScope(r.Id),
+		Resources: []string{}, // will add resources by project
+		Type:      evergreen.ProjectResourceType,
+	}
 	newAdminRole := gimlet.Role{
 		ID:          GetRepoAdminRole(r.Id),
-		Scope:       newScope.ID,
+		Scope:       adminScope.ID,
 		Permissions: adminPermissions,
 	}
+	if err := rm.AddScope(unrestrictedBranchesScope); err != nil {
+		return errors.Wrapf(err, "error adding scope for repo project '%s'", r.Id)
+	}
 	// Create view role for project branch admins
-	newViewRole := gimlet.Role{
-		ID:    GetViewRepoRole(r.Id),
-		Scope: newScope.ID,
-		Permissions: gimlet.Permissions{
-			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
-		},
+	if !r.IsRestricted() {
+		newViewRole := gimlet.Role{
+			ID:    GetViewRepoRole(r.Id),
+			Scope: adminScope.ID,
+			Permissions: gimlet.Permissions{
+				evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
+			},
+		}
+
+		if err := rm.UpdateRole(newViewRole); err != nil {
+			return errors.Wrapf(err, "error adding view role for repo project '%s'", r.Id)
+		}
 	}
 
-	if err := rm.UpdateRole(newViewRole); err != nil {
-		return errors.Wrapf(err, "error adding view role for repo project '%s'", r.Id)
-	}
 	if err := rm.UpdateRole(newAdminRole); err != nil {
 		return errors.Wrapf(err, "error adding admin role for repo project '%s'", r.Id)
 	}
@@ -203,6 +215,75 @@ func addViewRepoPermissionsToBranchAdmins(repoRefID string, admins []string) err
 		}
 	}
 	return nil
+}
+
+// this uses the view repo role specifically, so if the user has this permission through mana then it stays
+func removeViewRepoPermissionsFromBranchAdmins(repoRefID string, admins []string) error {
+	catcher := grip.NewBasicCatcher()
+	viewRole := GetViewRepoRole(repoRefID)
+	for _, admin := range admins {
+		adminUser, err := user.FindOneById(admin)
+		// ignore errors finding user, since project lists may be outdated
+		if err == nil && adminUser != nil {
+			if err = adminUser.RemoveRole(viewRole); err != nil {
+				catcher.Wrapf(err, "error removing role '%s' from user '%s'", viewRole, admin)
+			}
+		}
+	}
+	return nil
+}
+
+func (r *RepoRef) MakeRestricted(branchProjects []ProjectRef) error {
+	rm := evergreen.GetEnvironment().RoleManager()
+	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
+	branchOnlyAdmins := []string{}
+	// if the branch project is now restricted, remove it from the unrestricted scope
+	for _, p := range branchProjects {
+		if !p.IsRestricted() {
+			continue
+		}
+		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
+			return errors.Wrapf(err, "error removing resource '%s' from unrestricted branches scope", p.Id)
+		}
+		if err := rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+			return errors.Wrapf(err, "error removing resource '%s' from unrestricted projects scope", p.Id)
+		}
+		if err := rm.AddResourceToScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
+			return errors.Wrapf(err, "error adding resource '%s' to restricted projects scope", p.Id)
+		}
+
+		// get branch admins that aren't repo admins and remove view repo permissions
+		_, adminsToModify := utility.StringSliceSymmetricDifference(r.Admins, p.Admins)
+		branchOnlyAdmins = append(branchOnlyAdmins, adminsToModify...)
+	}
+	branchOnlyAdmins = utility.UniqueStrings(branchOnlyAdmins)
+	return removeViewRepoPermissionsFromBranchAdmins(r.Id, branchOnlyAdmins)
+}
+
+func (r *RepoRef) MakeUnrestricted(branchProjects []ProjectRef) error {
+	rm := evergreen.GetEnvironment().RoleManager()
+	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
+	branchOnlyAdmins := []string{}
+	// if the branch project is now unrestricted, add it to the unrestricted scopes
+	for _, p := range branchProjects {
+		if p.IsRestricted() {
+			continue
+		}
+		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
+			return errors.Wrapf(err, "error adding resource '%s' to unrestricted branches scope", p.Id)
+		}
+		if err := rm.RemoveResourceFromScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
+			return errors.Wrapf(err, "error removing resource '%s' from restricted projects scope", p.Id)
+		}
+		if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+			return errors.Wrapf(err, "error adding resource '%s' to unrestricted projects scope", p.Id)
+		}
+		// get branch admins that aren't repo admins and remove add repo permissions
+		_, adminsToModify := utility.StringSliceSymmetricDifference(r.Admins, p.Admins)
+		branchOnlyAdmins = append(branchOnlyAdmins, adminsToModify...)
+	}
+	branchOnlyAdmins = utility.UniqueStrings(branchOnlyAdmins)
+	return addViewRepoPermissionsToBranchAdmins(r.Id, branchOnlyAdmins)
 }
 
 func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
@@ -250,8 +331,14 @@ func addAdminToRepo(repoId, admin string) error {
 	)
 }
 
-func GetRepoScope(repoId string) string {
-	return fmt.Sprintf("repo_%s", repoId)
+// GetUnrestrictedBranchProjectsScope returns the scope ID that includes the unrestricted branches for this project.
+func GetUnrestrictedBranchProjectsScope(repoId string) string {
+	return fmt.Sprintf("unrestricted_branches_%s", repoId)
+}
+
+// GetRepoAdminScope returns the scope ID that includes all branch projects, regardless of restricted/unrestricted.
+func GetRepoAdminScope(repoId string) string {
+	return fmt.Sprintf("admin_repo_%s", repoId)
 }
 
 func GetRepoAdminRole(repoId string) string {
