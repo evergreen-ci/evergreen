@@ -1,3 +1,6 @@
+{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf"] }
+{ "_id" : "unrestricted_projects", "name" : "unrestricted projects", "type" : "project", "parent" : "all_projects", "resources": ["logkeeper", "evergreen", "sys-perf"] }
+{ "_id" : "restricted_projects", "name" : "restricted projects", "type" : "project", "parent" : "all_projects", "resources": [] }
 { "_id" : "logkeeper", "name" : "logkeeper project", "type" : "project", "resources" : [ "logkeeper" ] }
 { "_id" : "evergreen", "name" : "evergreen project", "type" : "project", "resources" : [ "evergreen" ] }
 { "_id" : "sys-perf", "name" : "sys-perf project", "type" : "project", "resources" : [ "sys-perf" ] }

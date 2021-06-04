@@ -12,18 +12,17 @@ import (
 
 // UIConfig holds relevant settings for the UI server.
 type UIConfig struct {
-	Url                     string   `bson:"url" json:"url" yaml:"url"`
-	HelpUrl                 string   `bson:"help_url" json:"help_url" yaml:"helpurl"`
-	UIv2Url                 string   `bson:"uiv2_url" json:"uiv2_url" yaml:"uiv2_url"`
-	HttpListenAddr          string   `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
-	Secret                  string   `bson:"secret" json:"secret" yaml:"secret"`                           // Secret to encrypt session storage
-	DefaultProject          string   `bson:"default_project" json:"default_project" yaml:"defaultproject"` // Default project to assume when none specified
-	CacheTemplates          bool     `bson:"cache_templates" json:"cache_templates" yaml:"cachetemplates"` // Cache results of template compilation
-	CsrfKey                 string   `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`                      // 32-byte key used to generate tokens that validate UI requests
-	CORSOrigins             []string `bson:"cors_origins" json:"cors_origins" yaml:"cors_origins"`         // allowed request origins for some UI Routes
-	LoginDomain             string   `bson:"login_domain" json:"login_domain" yaml:"login_domain"`         // domain for the login cookie (defaults to domain of app)
-	ExpireLoginCookieDomain string   `bson:"expire_domain" json:"expire_domain" yaml:"expire_domain"`      // expire login token for this domain when the user logs in
-	UserVoice               string   `bson:"userVoice" json:"userVoice" yaml:"userVoice"`
+	Url            string   `bson:"url" json:"url" yaml:"url"`
+	HelpUrl        string   `bson:"help_url" json:"help_url" yaml:"helpurl"`
+	UIv2Url        string   `bson:"uiv2_url" json:"uiv2_url" yaml:"uiv2_url"`
+	HttpListenAddr string   `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
+	Secret         string   `bson:"secret" json:"secret" yaml:"secret"`                           // Secret to encrypt session storage
+	DefaultProject string   `bson:"default_project" json:"default_project" yaml:"defaultproject"` // Default project to assume when none specified
+	CacheTemplates bool     `bson:"cache_templates" json:"cache_templates" yaml:"cachetemplates"` // Cache results of template compilation
+	CsrfKey        string   `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`                      // 32-byte key used to generate tokens that validate UI requests
+	CORSOrigins    []string `bson:"cors_origins" json:"cors_origins" yaml:"cors_origins"`         // allowed request origins for some UI Routes
+	LoginDomain    string   `bson:"login_domain" json:"login_domain" yaml:"login_domain"`         // domain for the login cookie (defaults to domain of app)
+	UserVoice      string   `bson:"userVoice" json:"userVoice" yaml:"userVoice"`
 }
 
 func (c *UIConfig) SectionId() string { return "ui" }
@@ -65,7 +64,6 @@ func (c *UIConfig) Set() error {
 			"csrf_key":         c.CsrfKey,
 			"cors_origins":     c.CORSOrigins,
 			"login_domain":     c.LoginDomain,
-			"expire_domain":    c.ExpireLoginCookieDomain,
 			"userVoice":        c.UserVoice,
 		},
 	}, options.Update().SetUpsert(true))

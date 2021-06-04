@@ -177,7 +177,8 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// update admins
 	adminsToDelete := utility.FromStringPtrSlice(h.apiNewRepoRef.DeleteAdmins)
-	allAdmins := utility.UniqueStrings(append(h.originalRepo.Admins, h.newRepoRef.Admins...))  // get original and new admin
+	adminsToAdd := h.newRepoRef.Admins
+	allAdmins := utility.UniqueStrings(append(h.originalRepo.Admins, adminsToAdd...))          // get original and new admin
 	h.newRepoRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete) // add users that are in allAdmins and not in adminsToDelete
 
 	usersToDelete := utility.FromStringPtrSlice(h.apiNewRepoRef.DeleteGitTagAuthorizedUsers)
@@ -192,12 +193,24 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	if err = h.validateBranchesForRepo(ctx, h.newRepoRef, repoAliases); err != nil {
+	// get every project that uses the repo, and merge them
+	branchProjects, err := dbModel.FindMergedProjectRefsForRepo(h.newRepoRef)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error finding branch projects for repo"))
+	}
+	if err = h.validateBranchesForRepo(ctx, h.newRepoRef, branchProjects, repoAliases); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	if h.originalRepo.Restricted != h.newRepoRef.Restricted {
-		// TODO: handle in EVG-13986
+		if h.newRepoRef.IsRestricted() {
+			err = h.newRepoRef.MakeRestricted(branchProjects)
+		} else {
+			err = h.newRepoRef.MakeUnrestricted(branchProjects)
+		}
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
 	}
 
 	// complete all updates
@@ -211,7 +224,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.repoName))
 	}
 
-	if err = h.sc.UpdateAdminRoles(&h.newRepoRef.ProjectRef, h.newRepoRef.Admins, adminsToDelete); err != nil {
+	if err = h.newRepoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.repoName))
 	}
 	for i := range h.apiNewRepoRef.Subscriptions {
@@ -251,18 +264,13 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	return responder
 }
 
-func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepoRef *dbModel.RepoRef, aliases []model.APIProjectAlias) error {
+func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepoRef *dbModel.RepoRef, mergedRepos []dbModel.ProjectRef, aliases []model.APIProjectAlias) error {
 	hasHook, err := h.sc.EnableWebhooks(ctx, &newRepoRef.ProjectRef)
 	if err != nil {
 		return errors.Wrapf(err, "error enabling webhooks for repo '%s'", h.repoName)
 	}
 
 	catcher := grip.NewBasicCatcher()
-	// get every project that uses the repo, and merge them
-	pRefs, err := dbModel.FindMergedProjectRefsForRepo(newRepoRef)
-	if err != nil {
-		return errors.Wrapf(err, "error finding branch projects for repo")
-	}
 
 	// If we're enabling commit queue testing PR testing, verify that only one enabled project ref per branch has true or nil set.
 	// If anything that uses webhooks is enabled, ensure that webhooks are configured.
@@ -272,7 +280,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 		gitTagIds      []string
 		githubCheckIds []string
 	}{}
-	for _, p := range pRefs {
+	for _, p := range mergedRepos {
 		if !p.IsEnabled() {
 			continue
 		}
