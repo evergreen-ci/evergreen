@@ -305,7 +305,7 @@ func (u *DBUser) AddRole(role string) error {
 		return nil
 	}
 	update := bson.M{
-		"$push": bson.M{RolesKey: role},
+		"$addToSet": bson.M{RolesKey: role},
 	}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
 		return err

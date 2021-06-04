@@ -688,6 +688,7 @@ const (
 
 	AllProjectsScope          = "all_projects"
 	UnrestrictedProjectsScope = "unrestricted_projects"
+	RestrictedProjectsScope   = "restricted_projects"
 	AllDistrosScope           = "all_distros"
 )
 
