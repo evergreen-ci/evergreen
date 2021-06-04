@@ -83,19 +83,12 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "database error getting idle hosts by Distro.Id"))
 		return
 	}
-	grip.Debug(message.Fields{
-		"id":             j.ID(),
-		"job_type":       hostDrawdownJobName,
-		"distro_id":      j.DrawdownInfo.DistroID,
-		"idle_host_list": idleHosts,
-	})
 	drawdownTarget := existingHostCount - j.DrawdownInfo.NewCapTarget
 
 	for _, idleHost := range idleHosts {
 		if drawdownTarget <= 0 {
 			break
 		}
-		//j.AddError(j.checkAndTerminateHost(ctx, &idleHost, &drawdownTarget))
 		err = j.checkAndTerminateHost(ctx, &idleHost, &drawdownTarget)
 		if err != nil {
 			grip.Error(message.Fields{
