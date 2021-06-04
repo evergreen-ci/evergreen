@@ -38,6 +38,12 @@ type BuildBaron struct {
 	BuildBaronConfigured bool                         `json:"buildBaronConfigured"`
 }
 
+type BuildVariantOptions struct {
+	Variants []string `json:"variants"`
+	Tasks    []string `json:"tasks"`
+	Statuses []string `json:"statuses"`
+}
+
 type Dependency struct {
 	Name           string         `json:"name"`
 	MetStatus      MetStatus      `json:"metStatus"`
@@ -63,6 +69,12 @@ type EditSpawnHostInput struct {
 	ServicePassword     *string     `json:"servicePassword"`
 }
 
+type GroupedBuildVariant struct {
+	Variant     string           `json:"variant"`
+	DisplayName string           `json:"displayName"`
+	Tasks       []*model.APITask `json:"tasks"`
+}
+
 type GroupedFiles struct {
 	TaskName *string          `json:"taskName"`
 	Files    []*model.APIFile `json:"files"`
@@ -84,19 +96,20 @@ type HostsResponse struct {
 	Hosts              []*model.APIHost `json:"hosts"`
 }
 
-type PatchBuildVariant struct {
-	Variant     string           `json:"variant"`
-	DisplayName string           `json:"displayName"`
-	Tasks       []*model.APITask `json:"tasks"`
+type MainlineCommitVersion struct {
+	Version          *model.APIVersion   `json:"version"`
+	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions"`
 }
 
-type PatchBuildVariantTask struct {
-	ID          string  `json:"id"`
-	Execution   int     `json:"execution"`
-	DisplayName string  `json:"displayName"`
-	Name        string  `json:"name"`
-	Status      string  `json:"status"`
-	BaseStatus  *string `json:"baseStatus"`
+type MainlineCommits struct {
+	NextPageOrderNumber *int                     `json:"nextPageOrderNumber"`
+	Versions            []*MainlineCommitVersion `json:"versions"`
+}
+
+type MainlineCommitsOptions struct {
+	ProjectID       string `json:"projectID"`
+	Limit           *int   `json:"limit"`
+	SkipOrderNumber *int   `json:"skipOrderNumber"`
 }
 
 type PatchConfigure struct {
@@ -118,7 +131,6 @@ type PatchMetadata struct {
 
 type PatchProject struct {
 	Variants []*ProjectBuildVariant `json:"variants"`
-	Tasks    []string               `json:"tasks"`
 }
 
 type PatchTasks struct {

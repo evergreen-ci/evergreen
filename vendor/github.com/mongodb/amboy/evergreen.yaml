@@ -169,8 +169,8 @@ buildvariants:
     display_name: Race Detector
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.13/bin/go
-      GOROOT: /opt/golang/go1.13
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      GOROOT: /opt/golang/go1.16
       RACE_DETECTOR: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
@@ -184,23 +184,23 @@ buildvariants:
     run_on:
       - archlinux-new-large
     expansions:
-      GO_BIN_PATH: /opt/golang/go1.13/bin/go
-      GOROOT: /opt/golang/go1.13
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      GOROOT: /opt/golang/go1.16
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     tasks:
       - name: ".report"
         stepback: false
 
-  - name: ubuntu1604
-    display_name: Ubuntu 16.04
+  - name: ubuntu
+    display_name: Ubuntu 18.04
     run_on:
-      - ubuntu1604-large
+      - ubuntu1804-large
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.9/bin/go
-      GOROOT: /opt/golang/go1.9
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      GOROOT: /opt/golang/go1.16
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz
     tasks:
       - build
       - ".test"
@@ -209,8 +209,8 @@ buildvariants:
     display_name: macOS 10.14
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.13/bin/go
-      GOROOT: /opt/golang/go1.13
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      GOROOT: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
       test_timeout: 15m
     run_on:
@@ -227,8 +227,8 @@ buildvariants:
       - windows-64-vs2017-large
       - windows-64-vs2017-small
     expansions:
-      GO_BIN_PATH: /cygdrive/c/golang/go1.13/bin/go
-      GOROOT: C:/golang/go1.13
+      GO_BIN_PATH: /cygdrive/c/golang/go1.16/bin/go
+      GOROOT: C:/golang/go1.16
       DISABLE_COVERAGE: true
       test_timeout: 15m
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip

@@ -296,6 +296,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	adminsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteAdmins)
+	adminsToAdd := h.newProjectRef.Admins
 	allAdmins := utility.UniqueStrings(append(h.originalProject.Admins, h.newProjectRef.Admins...)) // get original and new admin
 	h.newProjectRef.Admins, _ = utility.StringSliceSymmetricDifference(allAdmins, adminsToDelete)   // add users that are in allAdmins and not in adminsToDelete
 
@@ -405,6 +406,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			h.newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
+	for _, buildDef := range h.newProjectRef.PeriodicBuilds {
+		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition")
+	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
@@ -420,12 +424,12 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			MergeBaseRevision: "",
 		}
 	}
-	// TODO: check this logic
-	if h.originalProject.Restricted != h.newProjectRef.Restricted {
-		if h.newProjectRef.IsRestricted() {
-			err = h.newProjectRef.MakeRestricted(ctx)
+
+	if h.originalProject.Restricted != mergedProjectRef.Restricted {
+		if mergedProjectRef.IsRestricted() {
+			err = mergedProjectRef.MakeRestricted()
 		} else {
-			err = h.originalProject.MakeUnrestricted(ctx)
+			err = mergedProjectRef.MakeUnrestricted()
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
@@ -457,7 +461,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.project))
 	}
 
-	if err = h.sc.UpdateAdminRoles(h.newProjectRef, h.newProjectRef.Admins, adminsToDelete); err != nil {
+	if err = h.sc.UpdateAdminRoles(h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.project))
 	}
 	for i := range h.apiNewProjectRef.Subscriptions {

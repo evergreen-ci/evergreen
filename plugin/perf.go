@@ -53,9 +53,10 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Position:  PageCenter,
 				PanelHTML: template.HTML(panelHTML),
 				DataFunc: func(context UIContext) (interface{}, error) {
+					enabled := utility.StringSliceContains(pp.Projects, context.ProjectRef.Id) || utility.StringSliceContains(pp.Projects, context.ProjectRef.Identifier)
 					return struct {
 						Enabled bool `json:"enabled"`
-					}{utility.StringSliceContains(pp.Projects, context.ProjectRef.Id)}, nil
+					}{Enabled: enabled}, nil
 				},
 			},
 		},

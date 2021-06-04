@@ -121,9 +121,9 @@ imports:
   - name: github.com/mongodb/grip
     version: d883a62b49faf8279c9209d28db88858a103177e
   - name: github.com/mongodb/amboy
-    version: 39b112dd61c55244c9b39d23a4b1008520152962
+    version: cf1e0c27390fd59c0730ed980a253d49bbef7fd4
   - name: github.com/evergreen-ci/gimlet
-    version: 330e9e955820a5e846d9acd67539c2884527486a
+    version: dc2e3602d62b90a5c81b86ff915eddcc345da4d0
   - name: github.com/evergreen-ci/shrub
     version: 005df8abf87f20331677ecfaa19744efb99eb80b
   - name: github.com/evergreen-ci/pail
@@ -133,7 +133,7 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 6760875fa58e0fa5518c992582efa6d807960d6c
   - name: github.com/evergreen-ci/timber
-    version: da5acc233f4fefde093a44c1bd655872f36e825f
+    version: 8b4977542c6a7fee3a3c0f1732d3178dbe36e0aa
   - name: github.com/evergreen-ci/poplar
     version: 098cea7cb6dc183c69a96c882da4e370858c0aa3
   - name: github.com/evergreen-ci/juniper

@@ -134,7 +134,6 @@
         "data": {
           "patch": {
             "project": {
-              "tasks": [],
               "variants": [
                 {
                   "name": "ubuntu1604",

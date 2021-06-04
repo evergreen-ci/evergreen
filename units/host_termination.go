@@ -345,11 +345,15 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 	grip.Info(message.Fields{
-		"message": "host successfully terminated",
-		"host_id": j.host.Id,
-		"distro":  j.host.Distro.Id,
-		"job":     j.ID(),
-		"reason":  j.Reason,
+		"message":           "host successfully terminated",
+		"host_id":           j.host.Id,
+		"distro":            j.host.Distro.Id,
+		"job":               j.ID(),
+		"reason":            j.Reason,
+		"total_idle_secs":   j.host.TotalIdleTime.Seconds(),
+		"total_uptime_secs": j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
+		"termination_time":  j.host.TerminationTime,
+		"creation_time":     j.host.CreationTime,
 	})
 
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {

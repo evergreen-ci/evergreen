@@ -3,11 +3,13 @@ package aviation
 import (
 	"context"
 	"crypto/tls"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 )
 
 // DialOptions describes the options for creating a client connection to a RPC
@@ -23,14 +25,14 @@ type DialOptions struct {
 	// TLSFile nor the certificate files are specified, the connection is
 	// created without TLS. (Optional)
 	TLSConf *tls.Config
-	// CAFile is the name of the file with the CA certificate for TLS. If
-	// specified, CrtFile and KeyFile must also be specified. (Optional)
-	CAFile string
+	// CAFiles are the names of the file with the CA certificates for TLS.
+	// If specified, CrtFile and KeyFile must also be specified. (Optional)
+	CAFiles []string
 	// CrtFile is the name of the file with the user certificate for TLS.
-	// If specified, CAFile and KeyFile must also be specified. (Optional)
+	// If specified, CAFiles and KeyFile must also be specified. (Optional)
 	CrtFile string
 	// KeyFile is the name of the file with the key certificate for TLS. If
-	// specified, CAFile and CrtFile must also be specified. (Optional)
+	// specified, CAFiles and CrtFile must also be specified. (Optional)
 	KeyFile string
 	// Username is the username of the API user. If specified, APIKey must
 	// also be specified. (Optional)
@@ -51,7 +53,7 @@ func (opts *DialOptions) validate() error {
 
 	catcher.AddWhen(opts.Address == "", errors.New("must provide rpc address"))
 	catcher.AddWhen(
-		((opts.CAFile == "") != (opts.CrtFile == "")) || ((opts.CAFile == "") != (opts.KeyFile == "")),
+		((len(opts.CAFiles) == 0) != (opts.CrtFile == "")) || ((len(opts.CAFiles) == 0) != (opts.KeyFile == "")),
 		errors.New("must provide all or none of the required certificate filenames"),
 	)
 	catcher.AddWhen((opts.Username == "") != (opts.APIKey == ""), errors.New("must provide both a username and API key or neither"))
@@ -68,7 +70,16 @@ func (opts *DialOptions) getOpts() ([]grpc.DialOption, error) {
 		return nil, err
 	}
 
-	dialOpts := []grpc.DialOption{}
+	dialOpts := []grpc.DialOption{
+		// TODO (PM-2158): After upgrading Go, we should investiage
+		// whether later versions of grpc fixed the following issue
+		// and, if so, upgrade grpc:
+		// Even though we use the default keep alive time of infinity
+		// (meaning the client should never send a keep alive ping), we
+		// need a large keep alive timeout for longer running grpc
+		// requests and streams. This is likely a bug in the grpc code.
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{Timeout: 1200 * time.Second}),
+	}
 
 	if opts.Retries > 0 {
 		dialOpts = append(
@@ -79,9 +90,9 @@ func (opts *DialOptions) getOpts() ([]grpc.DialOption, error) {
 	}
 
 	tlsConf := opts.TLSConf
-	if tlsConf == nil && opts.CAFile != "" {
+	if tlsConf == nil && len(opts.CAFiles) != 0 {
 		var err error
-		tlsConf, err = GetClientTLSConfigFromFiles(opts.CAFile, opts.CrtFile, opts.KeyFile)
+		tlsConf, err = GetClientTLSConfigFromFiles(opts.CAFiles, opts.CrtFile, opts.KeyFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting client TLS config")
 		}

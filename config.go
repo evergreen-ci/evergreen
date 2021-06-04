@@ -35,7 +35,7 @@ var (
 	ClientVersion = "2021-06-04"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2021-05-12"
+	AgentVersion = "2021-06-02"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -551,13 +551,28 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-func (s *Settings) GetGithubOauthString() (string, error) {
+func (s *Settings) GetGithubOauthStrings() ([]string, error) {
+	var tokens []string
+	var token_name string
+
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
-		return token, nil
+		// we want to make sure tokens[0] is always the default token
+		tokens = append(tokens, token)
+	} else {
+		return nil, errors.New("no 'github' token in settings")
 	}
 
-	return "", errors.New("no github token in settings")
+	for i := 1; i < 10; i++ {
+		token_name = fmt.Sprintf("github_alt%d", i)
+		token, ok := s.Credentials[token_name]
+		if ok && token != "" {
+			tokens = append(tokens, token)
+		} else {
+			break
+		}
+	}
+	return tokens, nil
 }
 
 func (s *Settings) GetGithubOauthToken() (string, error) {
@@ -565,17 +580,34 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 		return "", errors.New("not defined")
 	}
 
-	oauthString, err := s.GetGithubOauthString()
+	oauthStrings, err := s.GetGithubOauthStrings()
 	if err != nil {
 		return "", err
 	}
+	timeSeed := time.Now().Nanosecond()
+	randomStartIdx := timeSeed % len(oauthStrings)
+	var oauthString string
+	for i := range oauthStrings {
+		oauthString = oauthStrings[randomStartIdx+i]
+		splitToken, err := splitToken(oauthString)
+		if err != nil {
+			grip.Error(message.Fields{
+				"error":   err,
+				"message": fmt.Sprintf("problem with github_alt%d", i)})
+		} else {
+			return splitToken, nil
+		}
+	}
+	return "", errors.New("all github tokens are malformatted. Proper format is github:token <token> or github_alt#:token <token>")
+}
+
+func splitToken(oauthString string) (string, error) {
 	splitToken := strings.Split(oauthString, " ")
 	if len(splitToken) != 2 || splitToken[0] != "token" {
 		return "", errors.New("token format was invalid, expected 'token [token]'")
 	}
 	return splitToken[1], nil
 }
-
 func GetServiceFlags() (*ServiceFlags, error) {
 	flags := &ServiceFlags{}
 	if err := flags.Get(GetEnvironment()); err != nil {

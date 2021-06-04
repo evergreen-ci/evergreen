@@ -38,31 +38,34 @@ import (
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
 	// Id is the unmodifiable unique ID for the configuration, used internally.
-	Id                   string              `bson:"_id" json:"id" yaml:"id"`
-	DisplayName          string              `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Enabled              *bool               `bson:"enabled" json:"enabled" yaml:"enabled"`
-	Private              *bool               `bson:"private" json:"private" yaml:"private"`
-	Restricted           *bool               `bson:"restricted" json:"restricted" yaml:"restricted"`
+	Id string `bson:"_id" json:"id" yaml:"id"`
+	// Identifier must be unique, but is modifiable. Used by users.
+	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
+
+	DisplayName          string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
+	Enabled              *bool               `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
+	Private              *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
+	Restricted           *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
 	Owner                string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo                 string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
 	Branch               string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
 	RemotePath           string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	PatchingDisabled     *bool               `bson:"patching_disabled" json:"patching_disabled"`
-	RepotrackerDisabled  *bool               `bson:"repotracker_disabled" json:"repotracker_disabled" yaml:"repotracker_disabled"`
-	DispatchingDisabled  *bool               `bson:"dispatching_disabled" json:"dispatching_disabled" yaml:"dispatching_disabled"`
-	PRTestingEnabled     *bool               `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	GithubChecksEnabled  *bool               `bson:"github_checks_enabled" json:"github_checks_enabled" yaml:"github_checks_enabled"`
+	PatchingDisabled     *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
+	RepotrackerDisabled  *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
+	DispatchingDisabled  *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
+	PRTestingEnabled     *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
+	GithubChecksEnabled  *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
 	BatchTime            int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	DeactivatePrevious   *bool               `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+	DeactivatePrevious   *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
 	DefaultLogger        string              `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	NotifyOnBuildFailure *bool               `bson:"notify_on_failure" json:"notify_on_failure"`
+	NotifyOnBuildFailure *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
 	Triggers             []TriggerDefinition `bson:"triggers" json:"triggers"`
 	// all aliases defined for the project
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
 	// all PatchTriggerAliases applied to github patch intents
 	GithubTriggerAliases    []string                  `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
 	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds" json:"periodic_builds"`
-	CedarTestResultsEnabled *bool                     `bson:"cedar_test_results_enabled" json:"cedar_test_results_enabled" yaml:"cedar_test_results_enabled"`
+	CedarTestResultsEnabled *bool                     `bson:"cedar_test_results_enabled,omitempty" json:"cedar_test_results_enabled,omitempty" yaml:"cedar_test_results_enabled"`
 	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// Admins contain a list of users who are able to access the projects page.
@@ -70,9 +73,6 @@ type ProjectRef struct {
 
 	// SpawnHostScriptPath is a path to a script to optionally be run by users on hosts triggered from tasks.
 	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
-
-	// Identifier must be unique, but is modifiable. Used by users.
-	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
 	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
 	// If a repo is enabled and this is what creates the hook, then TracksPushEvents will be set at the repo level.
@@ -84,7 +84,7 @@ type ProjectRef struct {
 	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
 	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
 	GitTagAuthorizedTeams []string `bson:"git_tag_authorized_teams" json:"git_tag_authorized_teams"`
-	GitTagVersionsEnabled *bool    `bson:"git_tag_versions_enabled" json:"git_tag_versions_enabled"`
+	GitTagVersionsEnabled *bool    `bson:"git_tag_versions_enabled,omitempty" json:"git_tag_versions_enabled,omitempty"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
@@ -92,14 +92,14 @@ type ProjectRef struct {
 
 	// List of regular expressions describing files to ignore when caching historical test results
 	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache" json:"files_ignored_from_cache"`
-	DisabledStatsCache    *bool    `bson:"disabled_stats_cache" json:"disabled_stats_cache"`
+	DisabledStatsCache    *bool    `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
 	// List of commands
 	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden *bool `bson:"hidden" json:"hidden"`
+	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -368,36 +368,37 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 
 func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	if p.RepoRefId == "" {
-		repoRef, err := FindRepoRefByOwnerAndRepo(p.Owner, p.Repo)
+	repoRef, err := FindRepoRefByOwnerAndRepo(p.Owner, p.Repo)
+	if err != nil {
+		return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
+	}
+	if repoRef == nil {
+		repoRef, err = p.createNewRepoRef(user)
 		if err != nil {
-			return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
-		}
-		if repoRef == nil {
-			repoRef, err = p.createNewRepoRef(user)
-			if err != nil {
-				return errors.Wrapf(err, "error creating new repo ref")
-			}
-		}
-		p.RepoRefId = repoRef.Id
-	} else {
-		// if the repo exists, then the scope also exists, so add this project ID to the scope, and give the user repo admin access
-		repoRole := GetRepoAdminRole(p.RepoRefId)
-		if user != nil && !utility.StringSliceContains(user.Roles(), repoRole) {
-			if err := user.AddRole(repoRole); err != nil {
-				return errors.Wrapf(err, "error adding admin role to repo '%s'", user.Username())
-			}
-			if err := addAdminToRepo(p.RepoRefId, user.Username()); err != nil {
-				return errors.Wrapf(err, "error adding user as repo admin")
-			}
-		}
-		if err := rm.AddResourceToScope(GetRepoScope(p.RepoRefId), p.Id); err != nil {
-			return errors.Wrapf(err, "error adding resource to repo '%s' scope", p.RepoRefId)
+			return errors.Wrapf(err, "error creating new repo ref")
 		}
 	}
+	if p.RepoRefId == "" {
+		p.RepoRefId = repoRef.Id
+	}
 
-	return errors.Wrapf(addViewRepoPermissionsToBranchAdmins(p.RepoRefId, p.Admins),
-		"error giving branch '%s' admins view permission for repo '%s'", p.Id, p.RepoRefId)
+	// add the project to the repo admin scope
+	if err := rm.AddResourceToScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
+		return errors.Wrapf(err, "error adding resource to repo '%s' admin scope", p.RepoRefId)
+	}
+	// only give branch admins view access if the repo isn't restricted
+	if !repoRef.IsRestricted() {
+		if err := addViewRepoPermissionsToBranchAdmins(p.RepoRefId, p.Admins); err != nil {
+			return errors.Wrapf(err, "error giving branch '%s' admins view permission for repo '%s'", p.Id, p.RepoRefId)
+		}
+	}
+	// if the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access
+	if !p.IsRestricted() {
+		if err := rm.AddResourceToScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
+			return errors.Wrap(err, "error adding resource to unrestricted branches scope")
+		}
+	}
+	return nil
 }
 
 func (p *ProjectRef) RemoveFromRepoScope() error {
@@ -405,27 +406,34 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 		return nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	return rm.RemoveResourceFromScope(GetRepoScope(p.RepoRefId), p.Id)
+	if !p.IsRestricted() {
+		if err := rm.RemoveResourceFromScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
+			return errors.Wrap(err, "error removing resource from unrestricted branches scope")
+		}
+	}
+	if err := removeViewRepoPermissionsFromBranchAdmins(p.RepoRefId, p.Admins); err != nil {
+		return errors.Wrap(err, "error removing view repo permissions from branch admins")
+	}
+	return errors.Wrapf(rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id),
+		"error removing from repo '%s' admin scope", p.Repo)
 }
 
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	// if the branch is restricted, then it's not accessible to repo admins, so we don't use the repo scope
 	parentScope := evergreen.UnrestrictedProjectsScope
-	if p.UseRepoSettings {
-		parentScope = GetRepoScope(p.RepoRefId)
-	}
 	if p.IsRestricted() {
-		parentScope = evergreen.AllProjectsScope
+		parentScope = evergreen.RestrictedProjectsScope
+	}
+	if err := rm.AddResourceToScope(parentScope, p.Id); err != nil {
+		return errors.Wrapf(err, "unable to add '%s' to the '%s' scope", p.Id, parentScope)
 	}
 
 	// add scope for the branch-level project configurations
 	newScope := gimlet.Scope{
-		ID:          fmt.Sprintf("project_%s", p.Id),
-		Resources:   []string{p.Id},
-		Name:        p.Id,
-		Type:        evergreen.ProjectResourceType,
-		ParentScope: parentScope,
+		ID:        fmt.Sprintf("project_%s", p.Id),
+		Resources: []string{p.Id},
+		Name:      p.Id,
+		Type:      evergreen.ProjectResourceType,
 	}
 	if err := rm.AddScope(newScope); err != nil {
 		return errors.Wrapf(err, "error adding scope for project '%s'", p.Id)
@@ -596,9 +604,6 @@ func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
 
 func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err error) {
 	repoRef = &RepoRef{ProjectRef{
-		Id:      mgobson.NewObjectId().Hex(),
-		Owner:   p.Owner,
-		Repo:    p.Repo,
 		Enabled: utility.TruePtr(),
 		Admins:  []string{},
 	}}
@@ -612,12 +617,21 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
 	setRepoFieldsFromProjects(repoRef, allEnabledProjects)
-	repoRef.Admins = append(repoRef.Admins, u.Username())
+	if !utility.StringSliceContains(repoRef.Admins, u.Username()) {
+		repoRef.Admins = append(repoRef.Admins, u.Username())
+	}
+	// some fields shouldn't be set from projects
+	repoRef.Id = mgobson.NewObjectId().Hex()
+	repoRef.UseRepoSettings = false
+	// set explicitly in case no project is enabled
+	repoRef.Owner = p.Owner
+	repoRef.Repo = p.Repo
 
 	// creates scope and give user admin access to repo
 	if err = repoRef.Add(u); err != nil {
 		return nil, errors.Wrapf(err, "problem adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
+
 	enabledProjectIds := []string{}
 	for _, p := range allEnabledProjects {
 		enabledProjectIds = append(enabledProjectIds, p.Id)
@@ -1284,8 +1298,16 @@ func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Ti
 
 func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Time, error) {
 	defaultRes := time.Now()
+	// if we don't want to activate the build, set batchtime to the zero time
+	if !utility.FromBoolTPtr(variant.Activate) {
+		return utility.ZeroTime, nil
+	}
 	if variant.CronBatchTime != "" {
 		return GetActivationTimeWithCron(time.Now(), variant.CronBatchTime)
+	}
+	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
+	if utility.FromBoolPtr(variant.Activate) && variant.BatchTime == nil {
+		return time.Now(), nil
 	}
 
 	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Id, variant.Name).WithFields(VersionBuildVariantsKey))
@@ -1311,8 +1333,16 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 
 func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
 	defaultRes := time.Now()
+	// if we don't want to activate the task, set batchtime to the zero time
+	if !utility.FromBoolTPtr(t.Activate) {
+		return utility.ZeroTime, nil
+	}
 	if t.CronBatchTime != "" {
 		return GetActivationTimeWithCron(time.Now(), t.CronBatchTime)
+	}
+	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
+	if utility.FromBoolPtr(t.Activate) && t.BatchTime == nil {
+		return time.Now(), nil
 	}
 
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
@@ -1382,37 +1412,43 @@ func RemoveAdminFromProjects(toDelete string) error {
 	return catcher.Resolve()
 }
 
-func (p *ProjectRef) MakeRestricted(ctx context.Context) error {
+func (p *ProjectRef) MakeRestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	// attempt to remove the resource from the repo (which will also remove from its parent)
-	// if the repo scope doesn't exist then we'll remove only from unrestricted
-
-	scopeId := GetRepoScope(p.RepoRefId)
-	scope, err := rm.GetScope(ctx, scopeId)
-	if err != nil {
-		return errors.Wrapf(err, "error looking for repo scope")
+	// remove from the unrestricted branch project scope (if it exists)
+	if p.UseRepoSettings {
+		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
+		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
+			return errors.Wrap(err, "error removing resource from unrestricted branches scope")
+		}
 	}
-	if scope != nil {
-		return errors.Wrap(rm.RemoveResourceFromScope(scopeId, p.Id), "error removing resource from scope")
-	}
-	return errors.Wrapf(rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to remove %s from list of unrestricted projects", p.Id)
 
+	if err := rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+		return errors.Wrapf(err, "unable to remove %s from list of unrestricted projects", p.Id)
+	}
+	if err := rm.AddResourceToScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
+		return errors.Wrapf(err, "unable to add %s to list of restricted projects", p.Id)
+	}
+
+	return nil
 }
 
-func (p *ProjectRef) MakeUnrestricted(ctx context.Context) error {
+func (p *ProjectRef) MakeUnrestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	// attempt to add the resource to the repo (which will also add to its parent)
-	// if the repo scope doesn't exist then we'll add only to unrestricted
+	// remove from the unrestricted branch project scope (if it exists)
+	if p.UseRepoSettings {
+		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
+		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
+			return errors.Wrap(err, "error adding resource to unrestricted branches scope")
+		}
+	}
 
-	scopeId := GetRepoScope(p.RepoRefId)
-	scope, err := rm.GetScope(ctx, scopeId)
-	if err != nil {
-		return errors.Wrapf(err, "error looking for repo scope")
+	if err := rm.RemoveResourceFromScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
+		return errors.Wrapf(err, "unable to remove %s from list of restricted projects", p.Id)
 	}
-	if scope != nil {
-		return errors.Wrap(rm.AddResourceToScope(scopeId, p.Id), "error adding resource to scope")
+	if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+		return errors.Wrapf(err, "unable to add %s to list of unrestricted projects", p.Id)
 	}
-	return errors.Wrapf(rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id), "unable to add %s to list of unrestricted projects", p.Id)
+	return nil
 }
 
 func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {

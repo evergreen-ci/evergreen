@@ -209,7 +209,8 @@ func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Respond
 	if patchEmpty {
 		return gimlet.MakeJSONErrorResponder(errors.New("can't enqueue item, patch is empty"))
 	}
-	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: utility.ToStringPtr(cq.item), Source: utility.ToStringPtr(commitqueue.SourceDiff)}, cq.force)
+	patchId := utility.ToStringPtr(cq.item)
+	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: patchId, PatchId: patchId, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, cq.force)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
 	}

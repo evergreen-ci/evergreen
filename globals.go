@@ -672,8 +672,8 @@ func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
 }
 
-func ShouldConsiderBatchtime(requester string) bool {
-	return requester != AdHocRequester && requester != GitTagRequester
+func ShouldConsiderDifferentActivations(requester string) bool {
+	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
 
 // Permissions-related constants
@@ -688,6 +688,7 @@ const (
 
 	AllProjectsScope          = "all_projects"
 	UnrestrictedProjectsScope = "unrestricted_projects"
+	RestrictedProjectsScope   = "restricted_projects"
 	AllDistrosScope           = "all_distros"
 )
 

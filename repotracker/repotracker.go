@@ -714,7 +714,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	v.Activated = utility.FalsePtr()
 
 	// validate the project
-	verrs := validator.CheckProjectSyntax(projectInfo.Project)
+	verrs := validator.CheckProjectSyntax(projectInfo.Project, true)
 	verrs = append(verrs, validator.CheckProjectSettings(projectInfo.Project, projectInfo.Ref)...)
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have errors in the project.
@@ -994,6 +994,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			TaskCreateTime:      v.CreateTime,
 			GithubChecksAliases: aliasesMatchingVariant,
 		}
+
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -1018,7 +1019,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
-		if metadata.TriggerID == "" && evergreen.ShouldConsiderBatchtime(v.Requester) {
+		if metadata.TriggerID == "" && evergreen.ShouldConsiderDifferentActivations(v.Requester) {
 			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(&buildvariant)
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
@@ -1044,7 +1045,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		grip.Debug(message.Fields{
-			"message":            "activating build",
+			"message":            "created build",
 			"name":               buildvariant.Name,
 			"project":            projectInfo.Ref.Id,
 			"project_identifier": projectInfo.Ref.Identifier,
@@ -1158,11 +1159,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrapf(err, "error committing transaction for version '%s'", v.Id)
 		}
 		grip.Info(message.Fields{
-			"message": "successfully created version",
-			"version": v.Id,
-			"hash":    v.Revision,
-			"project": v.Identifier,
-			"runner":  RunnerName,
+			"message":         "successfully created version",
+			"version":         v.Id,
+			"hash":            v.Revision,
+			"project":         v.Identifier,
+			"tasks_to_create": tasksToCreate,
+			"runner":          RunnerName,
 		})
 		return nil
 	}

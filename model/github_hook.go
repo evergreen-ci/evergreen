@@ -112,9 +112,7 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	resp := &github.Response{}
-	respHook := &github.Hook{}
-	respHook, resp, err = client.Repositories.CreateHook(newCtx, owner, repo, &hookObj)
+	respHook, resp, err := client.Repositories.CreateHook(newCtx, owner, repo, &hookObj)
 	if err != nil {
 		return nil, err
 	}

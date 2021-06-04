@@ -29,7 +29,7 @@ type remoteMongoQueueGroup struct {
 	ttlMap   map[string]time.Time
 }
 
-// MongoDBQueueGroupOptions describe options passed to NewRemoteQueueGroup.
+// MongoDBQueueGroupOptions describe options to create a queue group.
 type MongoDBQueueGroupOptions struct {
 	// Prefix is a string prepended to the queue collections.
 	Prefix string
@@ -47,17 +47,25 @@ type MongoDBQueueGroupOptions struct {
 	// to each queue, based on the queue ID passed to it.
 	WorkerPoolSize func(string) int
 
+	// Retryable represents the options to configure retrying jobs in the queue.
 	Retryable RetryableQueueOptions
 
-	// PruneFrequency is how often Prune runs by default.
+	// PruneFrequency is how often inactive queues are checked to see if they
+	// can be pruned.
 	PruneFrequency time.Duration
 
-	// BackgroundCreateFrequency is how often the background queue
-	// creation runs, in the case that queues may be created in
-	// the background without
+	// BackgroundCreateFrequency is how often active queues can have their
+	// TTLs periodically refreshed in the background. A queue is active as long
+	// as it either still has jobs to complete or the most recently completed
+	// job finished within the TTL. This is useful in case a queue still has
+	// jobs to process but a user does not explicitly access the queue - if the
+	// goal is to ensure a queue is never pruned when it still has jobs to
+	// complete, this should be set to a value lower than the TTL.
 	BackgroundCreateFrequency time.Duration
 
-	// TTL is how old the oldest task in the queue must be for the collection to be pruned.
+	// TTL determines how long a queue is considered active without performing
+	// useful work for being accessed by a user. After the TTL has elapsed, the
+	// queue is allowed to be pruned.
 	TTL time.Duration
 }
 
@@ -146,7 +154,7 @@ func NewMongoDBQueueGroup(ctx context.Context, opts MongoDBQueueGroupOptions, cl
 
 	if opts.PruneFrequency > 0 && opts.TTL > 0 {
 		if err := g.Prune(ctx); err != nil {
-			return nil, errors.Wrap(err, "problem pruning queue")
+			return nil, errors.Wrap(err, "pruning queue")
 		}
 	}
 
@@ -160,7 +168,7 @@ func NewMongoDBQueueGroup(ctx context.Context, opts MongoDBQueueGroupOptions, cl
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					grip.Error(message.WrapError(g.Prune(ctx), "problem pruning remote queue group database"))
+					grip.Error(message.WrapError(g.Prune(ctx), "pruning remote queue group database"))
 				}
 			}
 		}()
@@ -176,7 +184,7 @@ func NewMongoDBQueueGroup(ctx context.Context, opts MongoDBQueueGroupOptions, cl
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					grip.Error(message.WrapError(g.startQueues(ctx), "problem starting queues"))
+					grip.Error(message.WrapError(g.startQueues(ctx), "starting queues"))
 				}
 			}
 		}()
@@ -195,14 +203,14 @@ func (g *remoteMongoQueueGroup) startQueues(ctx context.Context) error {
 
 	colls, err := g.getExistingCollections(ctx, g.client, g.dbOpts.DB, g.opts.Prefix)
 	if err != nil {
-		return errors.Wrap(err, "problem getting existing collections")
+		return errors.Wrap(err, "getting existing collections")
 	}
 
 	catcher := grip.NewBasicCatcher()
 	for _, coll := range colls {
 		q, err := g.startProcessingRemoteQueue(ctx, coll)
 		if err != nil {
-			catcher.Add(errors.Wrap(err, "problem starting queue"))
+			catcher.Add(errors.Wrap(err, "starting queue"))
 		} else {
 			g.queues[g.idFromCollection(coll)] = q
 			g.ttlMap[g.idFromCollection(coll)] = time.Now()
@@ -235,15 +243,23 @@ func (g *remoteMongoQueueGroup) startProcessingRemoteQueue(ctx context.Context, 
 		return nil, errors.Wrap(err, "constructing queue")
 	}
 
-	d, err := openNewMongoDriver(ctx, coll, g.dbOpts, g.client)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem opening driver")
+	var d remoteQueueDriver
+	if g.client != nil {
+		d, err = openNewMongoDriver(ctx, coll, g.dbOpts, g.client)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating and opening driver")
+		}
+	} else {
+		d, err = newMongoDriver(coll, g.dbOpts)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating and opening driver")
+		}
 	}
 	if err := q.SetDriver(d); err != nil {
-		return nil, errors.Wrap(err, "problem setting driver")
+		return nil, errors.Wrap(err, "setting driver")
 	}
 	if err := q.Start(ctx); err != nil {
-		return nil, errors.Wrap(err, "problem starting queue")
+		return nil, errors.Wrap(err, "starting queue")
 	}
 	return q, nil
 }
@@ -251,22 +267,22 @@ func (g *remoteMongoQueueGroup) startProcessingRemoteQueue(ctx context.Context, 
 func (g *remoteMongoQueueGroup) getExistingCollections(ctx context.Context, client *mongo.Client, db, prefix string) ([]string, error) {
 	c, err := client.Database(db).ListCollections(ctx, bson.M{"name": bson.M{"$regex": fmt.Sprintf("^%s.*", prefix)}})
 	if err != nil {
-		return nil, errors.Wrap(err, "problem calling listCollections")
+		return nil, errors.Wrap(err, "calling listCollections")
 	}
 	defer c.Close(ctx)
 	var collections []string
 	for c.Next(ctx) {
 		elem := listCollectionsOutput{}
 		if err := c.Decode(&elem); err != nil {
-			return nil, errors.Wrap(err, "problem parsing listCollections output")
+			return nil, errors.Wrap(err, "parsing listCollections output")
 		}
 		collections = append(collections, elem.Name)
 	}
 	if err := c.Err(); err != nil {
-		return nil, errors.Wrap(err, "problem iterating over list collections cursor")
+		return nil, errors.Wrap(err, "iterating over list collections cursor")
 	}
 	if err := c.Close(ctx); err != nil {
-		return nil, errors.Wrap(err, "problem closing cursor")
+		return nil, errors.Wrap(err, "closing cursor")
 	}
 	return collections, nil
 }
@@ -284,7 +300,7 @@ func (g *remoteMongoQueueGroup) Get(ctx context.Context, id string) (amboy.Queue
 
 	queue, err := g.startProcessingRemoteQueue(ctx, g.collectionFromID(id))
 	if err != nil {
-		return nil, errors.Wrap(err, "problem starting queue")
+		return nil, errors.Wrap(err, "starting queue")
 	}
 	g.queues[id] = queue
 	g.ttlMap[id] = time.Now()
@@ -321,7 +337,7 @@ func (g *remoteMongoQueueGroup) Prune(ctx context.Context) error {
 
 	colls, err := g.getExistingCollections(ctx, g.client, g.dbOpts.DB, g.opts.Prefix)
 	if err != nil {
-		return errors.Wrap(err, "problem getting collections")
+		return errors.Wrap(err, "getting collections")
 	}
 	collsToCheck := []string{}
 	for _, coll := range colls {

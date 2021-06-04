@@ -84,6 +84,13 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 			Queue: map[string][]restModel.APICommitQueueItem{
 				"bth": []restModel.APICommitQueueItem{},
 			},
+			UserPermissions: map[data.UserRepoInfo]string{
+				data.UserRepoInfo{
+					Username: "baxterthehacker",
+					Owner:    "baxterthehacker",
+					Repo:     "public-repo",
+				}: "write",
+			},
 		},
 	}
 
