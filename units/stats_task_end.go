@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
@@ -104,6 +105,9 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	pRef, err := model.FindOneProjectRef(j.task.Project)
+	j.AddError(err)
+
 	msg := message.Fields{
 		"abort":                j.task.Aborted,
 		"activated_by":         j.task.ActivatedBy,
@@ -118,6 +122,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"host_id":              j.host.Id,
 		"priority":             j.task.Priority,
 		"project":              j.task.Project,
+		"project_identifier":   pRef.Identifier,
 		"provider":             j.host.Distro.Provider,
 		"requester":            j.task.Requester,
 		"stat":                 "task-end-stats",
