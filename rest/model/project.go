@@ -90,6 +90,7 @@ func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
 	default:
 		return errors.Errorf("Invalid patch trigger definition of type '%T'", h)
 	}
+	t.ChildProject = utility.ToStringPtr(def.ChildProject)
 	t.Alias = utility.ToStringPtr(def.Alias)
 	t.Status = utility.ToStringPtr(def.Status)
 	t.ParentAsModule = utility.ToStringPtr(def.ParentAsModule)
@@ -108,6 +109,7 @@ func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
 func (t *APIPatchTriggerDefinition) ToService() (interface{}, error) {
 	trigger := patch.PatchTriggerDefinition{}
 
+	trigger.ChildProject = utility.FromStringPtr(t.ChildProject)
 	trigger.Status = utility.FromStringPtr(t.Status)
 	trigger.Alias = utility.FromStringPtr(t.Alias)
 	trigger.ParentAsModule = utility.FromStringPtr(t.ParentAsModule)
@@ -393,6 +395,9 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 
 	// Copy triggers
 	var triggers []model.TriggerDefinition
+	if p.PatchTriggerAliases != nil {
+		triggers = []model.TriggerDefinition{}
+	}
 	for _, t := range p.Triggers {
 		i, err = t.ToService()
 		if err != nil {
@@ -407,6 +412,9 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	projectRef.Triggers = triggers
 
 	var patchTriggers []patch.PatchTriggerDefinition
+	if p.PatchTriggerAliases != nil {
+		patchTriggers = []patch.PatchTriggerDefinition{}
+	}
 	for _, t := range p.PatchTriggerAliases {
 		i, err = t.ToService()
 		if err != nil {
