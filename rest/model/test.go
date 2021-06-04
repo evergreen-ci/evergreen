@@ -101,8 +101,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.StartTime = utility.ToTimePtr(v.Start)
 		at.EndTime = utility.ToTimePtr(v.End)
 		duration := v.End.Sub(v.Start)
-		// Convert from nanosecond to millisecond
-		at.Duration = float64(duration) / float64(time.Second)
+		at.Duration = float64(duration.Milliseconds())
 
 		testName := v.TestName
 		if v.LogTestName != "" {
