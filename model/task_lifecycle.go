@@ -28,6 +28,7 @@ type StatusChanges struct {
 	VersionComplete  bool
 	BuildNewStatus   string
 	BuildComplete    bool
+	TaskComplete     bool
 }
 
 func SetActiveState(t *task.Task, caller string, active bool) error {
