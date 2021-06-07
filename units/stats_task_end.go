@@ -106,6 +106,12 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 
 	pRef, err := model.FindOneProjectRef(j.task.Project)
+	var projectIdentifier string
+	if pRef == nil {
+		projectIdentifier = "not_found"
+	} else {
+		projectIdentifier = pRef.Identifier
+	}
 	j.AddError(err)
 
 	msg := message.Fields{
@@ -122,7 +128,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"host_id":              j.host.Id,
 		"priority":             j.task.Priority,
 		"project":              j.task.Project,
-		"project_identifier":   pRef.Identifier,
+		"project_identifier":   projectIdentifier,
 		"provider":             j.host.Distro.Provider,
 		"requester":            j.task.Requester,
 		"stat":                 "task-end-stats",
