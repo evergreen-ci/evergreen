@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
@@ -130,6 +131,12 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"variant":              j.task.BuildVariant,
 		"version":              j.task.Version,
 	}
+
+	pRef, err := model.FindOneProjectRef(j.task.Project)
+	if pRef != nil {
+		msg["project_identifier"] = pRef.Identifier
+	}
+	j.AddError(err)
 
 	if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
 		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
