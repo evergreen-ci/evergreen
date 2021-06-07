@@ -840,6 +840,7 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 		IdKey:        id,
 		ExecutionKey: execution,
 	})
+	fmt.Println("Making normal query")
 	err := db.FindOneQ(Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
@@ -850,6 +851,53 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 	}
 
 	return task, nil
+}
+
+// FindOneIdAndExecutionWithDisplayStatus is FindOneIdAndExecution with display statuses added
+func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
+	tasks := []Task{}
+	match := bson.M{
+		IdKey: id,
+	}
+	if execution != nil {
+		match[ExecutionKey] = *execution
+	}
+	pipeline := []bson.M{
+		{"$match": match},
+		addDisplayStatus,
+	}
+	if err := Aggregate(pipeline, &tasks); err != nil {
+		return nil, errors.Wrap(err, "Couldnt find task")
+	}
+	if len(tasks) != 0 {
+		t := tasks[0]
+		return &t, nil
+	}
+	return FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id, execution)
+
+}
+
+// FindOneOldNoMergeByIdAndExecutionWithDisplayStatus is a FindOneOldNoMergeByIdAndExecution with display statuses added
+func FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
+	tasks := []Task{}
+	match := bson.M{
+		OldTaskIdKey: id,
+	}
+	if execution != nil {
+		match[ExecutionKey] = *execution
+	}
+	pipeline := []bson.M{
+		{"$match": match},
+		addDisplayStatus,
+	}
+	if err := db.Aggregate(OldCollection, pipeline, &tasks); err != nil {
+		return nil, errors.Wrap(err, "Couldn't find task")
+	}
+	if len(tasks) != 0 {
+		t := tasks[0]
+		return &t, nil
+	}
+	return nil, errors.New("Cant find task")
 }
 
 // FindOneOldNoMerge is a FindOneOld without merging test results.
