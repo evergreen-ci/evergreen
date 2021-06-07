@@ -72,6 +72,10 @@ func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, id
 func (j *hostDrawdownJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
 	// get currently existing hosts, in case some hosts have already been terminated elsewhere
 	existingHostCount, err := host.CountRunningHosts(j.DrawdownInfo.DistroID)
 	if err != nil {
