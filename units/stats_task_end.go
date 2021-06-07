@@ -105,15 +105,6 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	pRef, err := model.FindOneProjectRef(j.task.Project)
-	var projectIdentifier string
-	if pRef == nil {
-		projectIdentifier = "not_found"
-	} else {
-		projectIdentifier = pRef.Identifier
-	}
-	j.AddError(err)
-
 	msg := message.Fields{
 		"abort":                j.task.Aborted,
 		"activated_by":         j.task.ActivatedBy,
@@ -128,7 +119,6 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"host_id":              j.host.Id,
 		"priority":             j.task.Priority,
 		"project":              j.task.Project,
-		"project_identifier":   projectIdentifier,
 		"provider":             j.host.Distro.Provider,
 		"requester":            j.task.Requester,
 		"stat":                 "task-end-stats",
@@ -141,6 +131,12 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"variant":              j.task.BuildVariant,
 		"version":              j.task.Version,
 	}
+
+	pRef, err := model.FindOneProjectRef(j.task.Project)
+	if pRef != nil {
+		msg["project_identifier"] = pRef.Identifier
+	}
+	j.AddError(err)
 
 	if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
 		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
