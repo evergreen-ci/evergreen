@@ -118,6 +118,19 @@ func (j *setupHostJob) Run(ctx context.Context) {
 }
 
 func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {
+	defer func() {
+		if j.host.Status != evergreen.HostRunning && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+			event.LogHostProvisionFailed(j.host.Id, "host has used up all attempts to provision")
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+				"operation":       "setting host unprovisioned",
+				"current_attempt": j.RetryInfo().CurrentAttempt,
+				"distro":          j.host.Distro.Id,
+				"job":             j.ID(),
+				"host_id":         j.host.Id,
+			}))
+		}
+	}()
+
 	grip.Info(message.Fields{
 		"message": "attempting to setup host",
 		"distro":  j.host.Distro.Id,
