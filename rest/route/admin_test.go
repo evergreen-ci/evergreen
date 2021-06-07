@@ -113,6 +113,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, settings.Amboy.GroupPruneFrequencyMinutes)
 	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settings.Amboy.GroupTTLMinutes)
 	s.EqualValues(testSettings.Amboy.LockTimeoutMinutes, settings.Amboy.LockTimeoutMinutes)
+	s.EqualValues(testSettings.Amboy.SampleSize, settings.Amboy.SampleSize)
 	s.EqualValues(testSettings.Amboy.RequireRemotePriority, settings.Amboy.RequireRemotePriority)
 	s.EqualValues(testSettings.Amboy.Retry, settings.Amboy.Retry)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settings.Api.HttpListenAddr)

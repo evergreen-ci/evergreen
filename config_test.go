@@ -254,6 +254,7 @@ func (s *AdminSuite) TestAmboyConfig() {
 		GroupPruneFrequencyMinutes:            60,
 		GroupTTLMinutes:                       70,
 		LockTimeoutMinutes:                    7,
+		SampleSize:                            200,
 	}
 
 	err := config.Set()

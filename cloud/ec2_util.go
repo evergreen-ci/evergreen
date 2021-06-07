@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -229,7 +230,7 @@ func makeTagSpecifications(hostTags []host.Tag) []*ec2.TagSpecification {
 }
 
 func timeTilNextEC2Payment(h *host.Host) time.Duration {
-	if usesHourlyBilling(h) {
+	if UsesHourlyBilling(&h.Distro) {
 		return timeTilNextHourlyPayment(h)
 	}
 
@@ -241,14 +242,16 @@ func timeTilNextEC2Payment(h *host.Host) time.Duration {
 	return time.Second
 }
 
-func usesHourlyBilling(h *host.Host) bool {
-	if !strings.Contains(h.Distro.Arch, "linux") {
+// UsesHourlyBilling checks if a distro name to see if it is billed hourly,
+// and returns true if so (for example, most linux distros are by-the-minute).
+func UsesHourlyBilling(d *distro.Distro) bool {
+	if !strings.Contains(d.Arch, "linux") {
 		// windows or osx
 		return true
 	}
 	// one exception is OK. If we start adding more,
 	// might be time to add some more abstract handling
-	if strings.Contains(h.Distro.Id, "suse") {
+	if strings.Contains(d.Id, "suse") {
 		return true
 	}
 	return false

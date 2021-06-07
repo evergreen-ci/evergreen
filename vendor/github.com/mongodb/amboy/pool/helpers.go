@@ -71,7 +71,7 @@ func executeJob(ctx context.Context, id string, j amboy.Job, q amboy.Queue) {
 	})
 
 	ti := j.TimeInfo()
-	r := message.Fields{
+	msg := message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"duration_secs": ti.Duration().Seconds(),
@@ -82,15 +82,11 @@ func executeJob(ctx context.Context, id string, j amboy.Job, q amboy.Queue) {
 		"pool":          id,
 		"max_time_secs": ti.MaxTime.Seconds(),
 	}
-	err := j.Error()
-	if err != nil {
-		r["error"] = err.Error()
-	}
 
-	if err != nil {
-		grip.Error(r)
+	if err := j.Error(); err != nil {
+		grip.Error(message.WrapError(err, msg))
 	} else {
-		grip.Info(r)
+		grip.Info(msg)
 	}
 }
 
