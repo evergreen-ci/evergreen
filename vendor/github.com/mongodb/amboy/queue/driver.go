@@ -66,9 +66,9 @@ const (
 	retryableJobStaleRetrying retryableJobFilter = "stale-retrying"
 )
 
-// MongoDBOptions is a struct passed to the NewMongo constructor to
-// communicate mgoDriver specific settings about the driver's behavior
-// and operation.
+// MongoDBOptions is a struct passed to the MongoDB driver constructor to
+// communicate MongoDB-specific settings about the driver's behavior and
+// operation.
 type MongoDBOptions struct {
 	URI                      string
 	DB                       string
@@ -87,6 +87,11 @@ type MongoDBOptions struct {
 	TTL time.Duration
 	// LockTimeout overrides the default job lock timeout if set.
 	LockTimeout time.Duration
+	// SampleSize is the number of jobs that the driver will consider from the
+	// next available ones. If it samples from the available jobs, the order of
+	// next jobs are randomized. By default, the driver does not sample from the
+	// next available jobs. SampleSize cannot be used if Priority is true.
+	SampleSize int
 }
 
 // defaultMongoDBURI is the default URI to connect to a MongoDB instance.
@@ -108,6 +113,7 @@ func DefaultMongoDBOptions() MongoDBOptions {
 		WaitInterval:             time.Second,
 		Format:                   amboy.BSON,
 		LockTimeout:              amboy.LockTimeout,
+		SampleSize:               0,
 	}
 }
 
@@ -117,7 +123,9 @@ func (opts *MongoDBOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(opts.URI == "", "must specify connection URI")
 	catcher.NewWhen(opts.DB == "", "must specify database")
-	catcher.NewWhen(opts.LockTimeout < 0, "cannot have negative lock timeout")
+	catcher.NewWhen(opts.SampleSize < 0, "sample rate cannot be negative")
+	catcher.NewWhen(opts.Priority && opts.SampleSize > 0, "cannot sample next jobs when ordering them by priority")
+	catcher.NewWhen(opts.LockTimeout < 0, "lock timeout cannot be negative")
 	if opts.LockTimeout == 0 {
 		opts.LockTimeout = amboy.LockTimeout
 	}

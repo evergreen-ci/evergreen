@@ -346,6 +346,7 @@ type APIAmboyConfig struct {
 	GroupTTLMinutes                       int                 `json:"group_ttl"`
 	RequireRemotePriority                 bool                `json:"require_remote_priority"`
 	LockTimeoutMinutes                    int                 `json:"lock_timeout_minutes"`
+	SampleSize                            int                 `json:"sample_size"`
 	Retry                                 APIAmboyRetryConfig `json:"retry,omitempty"`
 }
 
@@ -364,6 +365,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupTTLMinutes = v.GroupTTLMinutes
 		a.RequireRemotePriority = v.RequireRemotePriority
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
+		a.SampleSize = v.SampleSize
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
 			return errors.Wrap(err, "building Amboy retry settings from service")
 		}
@@ -395,6 +397,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
 		RequireRemotePriority:                 a.RequireRemotePriority,
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
+		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
 	}, nil
 }
@@ -1857,18 +1860,17 @@ func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 }
 
 type APIUIConfig struct {
-	Url                     *string  `json:"url"`
-	HelpUrl                 *string  `json:"help_url"`
-	UIv2Url                 *string  `json:"uiv2_url"`
-	HttpListenAddr          *string  `json:"http_listen_addr"`
-	Secret                  *string  `json:"secret"`
-	DefaultProject          *string  `json:"default_project"`
-	CacheTemplates          bool     `json:"cache_templates"`
-	CsrfKey                 *string  `json:"csrf_key"`
-	CORSOrigins             []string `json:"cors_origins"`
-	LoginDomain             *string  `json:"login_domain"`
-	ExpireLoginCookieDomain *string  `json:"expire_domain"`
-	UserVoice               *string  `json:"userVoice"`
+	Url            *string  `json:"url"`
+	HelpUrl        *string  `json:"help_url"`
+	UIv2Url        *string  `json:"uiv2_url"`
+	HttpListenAddr *string  `json:"http_listen_addr"`
+	Secret         *string  `json:"secret"`
+	DefaultProject *string  `json:"default_project"`
+	CacheTemplates bool     `json:"cache_templates"`
+	CsrfKey        *string  `json:"csrf_key"`
+	CORSOrigins    []string `json:"cors_origins"`
+	LoginDomain    *string  `json:"login_domain"`
+	UserVoice      *string  `json:"userVoice"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1884,7 +1886,6 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CsrfKey = utility.ToStringPtr(v.CsrfKey)
 		a.CORSOrigins = v.CORSOrigins
 		a.LoginDomain = utility.ToStringPtr(v.LoginDomain)
-		a.ExpireLoginCookieDomain = utility.ToStringPtr(v.ExpireLoginCookieDomain)
 		a.UserVoice = utility.ToStringPtr(v.UserVoice)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -1894,18 +1895,17 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 
 func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
-		Url:                     utility.FromStringPtr(a.Url),
-		HelpUrl:                 utility.FromStringPtr(a.HelpUrl),
-		UIv2Url:                 utility.FromStringPtr(a.UIv2Url),
-		HttpListenAddr:          utility.FromStringPtr(a.HttpListenAddr),
-		Secret:                  utility.FromStringPtr(a.Secret),
-		DefaultProject:          utility.FromStringPtr(a.DefaultProject),
-		CacheTemplates:          a.CacheTemplates,
-		CsrfKey:                 utility.FromStringPtr(a.CsrfKey),
-		CORSOrigins:             a.CORSOrigins,
-		LoginDomain:             utility.FromStringPtr(a.LoginDomain),
-		ExpireLoginCookieDomain: utility.FromStringPtr(a.ExpireLoginCookieDomain),
-		UserVoice:               utility.FromStringPtr(a.UserVoice),
+		Url:            utility.FromStringPtr(a.Url),
+		HelpUrl:        utility.FromStringPtr(a.HelpUrl),
+		UIv2Url:        utility.FromStringPtr(a.UIv2Url),
+		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
+		Secret:         utility.FromStringPtr(a.Secret),
+		DefaultProject: utility.FromStringPtr(a.DefaultProject),
+		CacheTemplates: a.CacheTemplates,
+		CsrfKey:        utility.FromStringPtr(a.CsrfKey),
+		CORSOrigins:    a.CORSOrigins,
+		LoginDomain:    utility.FromStringPtr(a.LoginDomain),
+		UserVoice:      utility.FromStringPtr(a.UserVoice),
 	}, nil
 }
 

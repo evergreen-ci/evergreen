@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -30,10 +32,89 @@ type APITriggerDefinition struct {
 	Alias             *string `json:"alias"`
 }
 
+type APIPeriodicBuildDefinition struct {
+	ID            *string    `json:"id"`
+	ConfigFile    *string    `json:"config_file"`
+	IntervalHours *int       `son:"interval_hours"`
+	Alias         *string    `son:"alias,omitempty"`
+	Message       *string    `json:"message,omitempty"`
+	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
+}
+
 type APICommitQueueParams struct {
 	Enabled     *bool   `json:"enabled"`
 	MergeMethod *string `json:"merge_method"`
 	Message     *string `json:"message"`
+}
+
+func (t *APITriggerDefinition) ToService() (interface{}, error) {
+	return model.TriggerDefinition{
+		Project:           utility.FromStringPtr(t.Project),
+		Level:             utility.FromStringPtr(t.Level),
+		DefinitionID:      utility.FromStringPtr(t.DefinitionID),
+		BuildVariantRegex: utility.FromStringPtr(t.BuildVariantRegex),
+		TaskRegex:         utility.FromStringPtr(t.TaskRegex),
+		Status:            utility.FromStringPtr(t.Status),
+		ConfigFile:        utility.FromStringPtr(t.ConfigFile),
+		GenerateFile:      utility.FromStringPtr(t.GenerateFile),
+		Command:           utility.FromStringPtr(t.Command),
+		Alias:             utility.FromStringPtr(t.Alias),
+		DateCutoff:        t.DateCutoff,
+	}, nil
+}
+
+func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
+	var triggerDef model.TriggerDefinition
+	switch h.(type) {
+	case model.TriggerDefinition:
+		triggerDef = h.(model.TriggerDefinition)
+	case *model.PeriodicBuildDefinition:
+		triggerDef = *h.(*model.TriggerDefinition)
+	default:
+		return errors.Errorf("Invalid trigger definition of type '%T'", h)
+	}
+	t.Project = utility.ToStringPtr(triggerDef.Project)
+	t.Level = utility.ToStringPtr(triggerDef.Level)
+	t.DefinitionID = utility.ToStringPtr(triggerDef.DefinitionID)
+	t.BuildVariantRegex = utility.ToStringPtr(triggerDef.BuildVariantRegex)
+	t.TaskRegex = utility.ToStringPtr(triggerDef.TaskRegex)
+	t.Status = utility.ToStringPtr(triggerDef.Status)
+	t.ConfigFile = utility.ToStringPtr(triggerDef.ConfigFile)
+	t.GenerateFile = utility.ToStringPtr(triggerDef.GenerateFile)
+	t.Command = utility.ToStringPtr(triggerDef.Command)
+	t.Alias = utility.ToStringPtr(triggerDef.Alias)
+	t.DateCutoff = triggerDef.DateCutoff
+	return nil
+}
+
+func (bd *APIPeriodicBuildDefinition) ToService() (interface{}, error) {
+	buildDef := model.PeriodicBuildDefinition{}
+	buildDef.ID = utility.FromStringPtr(bd.ID)
+	buildDef.ConfigFile = utility.FromStringPtr(bd.ConfigFile)
+	buildDef.IntervalHours = utility.FromIntPtr(bd.IntervalHours)
+	buildDef.Alias = utility.FromStringPtr(bd.Alias)
+	buildDef.Message = utility.FromStringPtr(bd.Message)
+	buildDef.NextRunTime = utility.FromTimePtr(bd.NextRunTime)
+	return buildDef, nil
+}
+
+func (bd *APIPeriodicBuildDefinition) BuildFromService(h interface{}) error {
+	var params model.PeriodicBuildDefinition
+	switch h.(type) {
+	case model.PeriodicBuildDefinition:
+		params = h.(model.PeriodicBuildDefinition)
+	case *model.PeriodicBuildDefinition:
+		params = *h.(*model.PeriodicBuildDefinition)
+	default:
+		return errors.Errorf("Invalid commit queue params of type '%T'", h)
+	}
+	bd.ID = utility.ToStringPtr(params.ID)
+	bd.ConfigFile = utility.ToStringPtr(params.ConfigFile)
+	bd.IntervalHours = utility.ToIntPtr(params.IntervalHours)
+	bd.Alias = utility.ToStringPtr(params.Alias)
+	bd.Message = utility.ToStringPtr(params.Message)
+	bd.NextRunTime = utility.ToTimePtr(params.NextRunTime)
+	return nil
 }
 
 func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
@@ -173,6 +254,7 @@ type APIProjectRef struct {
 	PRTestingEnabled            *bool                `json:"pr_testing_enabled"`
 	GitTagVersionsEnabled       *bool                `json:"git_tag_versions_enabled"`
 	GithubChecksEnabled         *bool                `json:"github_checks_enabled"`
+	CedarTestResultsEnabled     *bool                `json:"cedar_test_results_enabled"`
 	UseRepoSettings             bool                 `json:"use_repo_settings"`
 	RepoRefId                   *string              `json:"repo_ref_id"`
 	DefaultLogger               *string              `json:"default_logger"`
@@ -191,14 +273,17 @@ type APIProjectRef struct {
 	GitTagAuthorizedTeams       []*string            `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
 	DeleteGitTagAuthorizedTeams []*string            `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
 	NotifyOnBuildFailure        *bool                `json:"notify_on_failure"`
+	Restricted                  *bool                `json:"restricted"`
 
-	Revision            *string                `json:"revision"`
-	Triggers            []APITriggerDefinition `json:"triggers"`
-	Aliases             []APIProjectAlias      `json:"aliases"`
-	Variables           APIProjectVars         `json:"variables"`
-	WorkstationConfig   APIWorkstationConfig   `json:"workstation_config"`
-	Subscriptions       []APISubscription      `json:"subscriptions"`
-	DeleteSubscriptions []*string              `json:"delete_subscriptions,omitempty"`
+	Revision             *string                      `json:"revision"`
+	Triggers             []APITriggerDefinition       `json:"triggers"`
+	GithubTriggerAliases []*string                    `json:"github_trigger_aliases"`
+	Aliases              []APIProjectAlias            `json:"aliases"`
+	Variables            APIProjectVars               `json:"variables"`
+	WorkstationConfig    APIWorkstationConfig         `json:"workstation_config"`
+	Subscriptions        []APISubscription            `json:"subscriptions"`
+	DeleteSubscriptions  []*string                    `json:"delete_subscriptions,omitempty"`
+	PeriodicBuilds       []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -233,6 +318,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		Branch:                utility.FromStringPtr(p.Branch),
 		Enabled:               utility.BoolPtrCopy(p.Enabled),
 		Private:               utility.BoolPtrCopy(p.Private),
+		Restricted:            utility.BoolPtrCopy(p.Restricted),
 		BatchTime:             p.BatchTime,
 		RemotePath:            utility.FromStringPtr(p.RemotePath),
 		Id:                    utility.FromStringPtr(p.Id),
@@ -260,26 +346,42 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		Admins:                utility.FromStringPtrSlice(p.Admins),
 		GitTagAuthorizedUsers: utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
 		GitTagAuthorizedTeams: utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
+		GithubTriggerAliases:  utility.FromStringPtrSlice(p.GithubTriggerAliases),
 	}
 
 	// Copy triggers
-	triggers := []model.TriggerDefinition{}
-	for _, t := range p.Triggers {
-		triggers = append(triggers, model.TriggerDefinition{
-			Project:           utility.FromStringPtr(t.Project),
-			Level:             utility.FromStringPtr(t.Level),
-			DefinitionID:      utility.FromStringPtr(t.DefinitionID),
-			BuildVariantRegex: utility.FromStringPtr(t.BuildVariantRegex),
-			TaskRegex:         utility.FromStringPtr(t.TaskRegex),
-			Status:            utility.FromStringPtr(t.Status),
-			ConfigFile:        utility.FromStringPtr(t.ConfigFile),
-			GenerateFile:      utility.FromStringPtr(t.GenerateFile),
-			Command:           utility.FromStringPtr(t.Command),
-			Alias:             utility.FromStringPtr(t.Alias),
-			DateCutoff:        t.DateCutoff,
-		})
+	if p.Triggers != nil {
+		triggers := []model.TriggerDefinition{}
+		for _, t := range p.Triggers {
+			i, err = t.ToService()
+			if err != nil {
+				return nil, errors.Wrap(err, "cannot convert API trigger definition")
+			}
+			newTrigger, ok := i.(model.TriggerDefinition)
+			if !ok {
+				return nil, errors.Errorf("expected trigger definition but was actually '%T'", i)
+			}
+			triggers = append(triggers, newTrigger)
+		}
+		projectRef.Triggers = triggers
 	}
-	projectRef.Triggers = triggers
+
+	// Copy periodic builds
+	if p.PeriodicBuilds != nil {
+		builds := []model.PeriodicBuildDefinition{}
+		for _, t := range p.Triggers {
+			i, err = t.ToService()
+			if err != nil {
+				return nil, errors.Wrap(err, "cannot convert API periodic build")
+			}
+			newBuild, ok := i.(model.PeriodicBuildDefinition)
+			if !ok {
+				return nil, errors.Errorf("expected periodic build definition but was actually '%T'", i)
+			}
+			builds = append(builds, newBuild)
+		}
+		projectRef.PeriodicBuilds = builds
+	}
 
 	return &projectRef, nil
 }
@@ -316,6 +418,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.Branch = utility.ToStringPtr(projectRef.Branch)
 	p.Enabled = utility.BoolPtrCopy(projectRef.Enabled)
 	p.Private = utility.BoolPtrCopy(projectRef.Private)
+	p.Restricted = utility.BoolPtrCopy(projectRef.Restricted)
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = utility.ToStringPtr(projectRef.RemotePath)
 	p.Id = utility.ToStringPtr(projectRef.Id)
@@ -343,25 +446,33 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.Admins = utility.ToStringPtrSlice(projectRef.Admins)
 	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.GitTagAuthorizedTeams = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
+	p.GithubTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubTriggerAliases)
 
 	// Copy triggers
-	triggers := []APITriggerDefinition{}
-	for _, t := range projectRef.Triggers {
-		triggers = append(triggers, APITriggerDefinition{
-			Project:           utility.ToStringPtr(t.Project),
-			Level:             utility.ToStringPtr(t.Level),
-			DefinitionID:      utility.ToStringPtr(t.DefinitionID),
-			BuildVariantRegex: utility.ToStringPtr(t.BuildVariantRegex),
-			TaskRegex:         utility.ToStringPtr(t.TaskRegex),
-			Status:            utility.ToStringPtr(t.Status),
-			ConfigFile:        utility.ToStringPtr(t.ConfigFile),
-			GenerateFile:      utility.ToStringPtr(t.GenerateFile),
-			Command:           utility.ToStringPtr(t.Command),
-			Alias:             utility.ToStringPtr(t.Alias),
-			DateCutoff:        t.DateCutoff,
-		})
+	if projectRef.Triggers != nil {
+		triggers := []APITriggerDefinition{}
+		for _, t := range projectRef.Triggers {
+			apiTrigger := APITriggerDefinition{}
+			if err := apiTrigger.BuildFromService(t); err != nil {
+				return err
+			}
+			triggers = append(triggers, apiTrigger)
+		}
+		p.Triggers = triggers
 	}
-	p.Triggers = triggers
+
+	// copy periodic builds
+	if projectRef.PeriodicBuilds != nil {
+		periodicBuilds := []APIPeriodicBuildDefinition{}
+		for _, pb := range projectRef.PeriodicBuilds {
+			periodicBuild := APIPeriodicBuildDefinition{}
+			if err := periodicBuild.BuildFromService(pb); err != nil {
+				return err
+			}
+			periodicBuilds = append(periodicBuilds)
+		}
+		p.PeriodicBuilds = periodicBuilds
+	}
 
 	return nil
 }

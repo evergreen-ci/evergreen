@@ -53,7 +53,7 @@ functions:
       working_dir: gopath/src/github.com/mongodb/amboy
       binary: make
       args: ["${make_args}", "${target}"]
-      add_expansions_to_env: true
+      include_expansions_in_env: ["DISABLE_COVERAGE", "GO_BIN_PATH", "GOROOT", "RACE_DETECTOR"]
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
