@@ -105,6 +105,7 @@ func MockConfig() *evergreen.Settings {
 			GroupPruneFrequencyMinutes:            60,
 			GroupTTLMinutes:                       70,
 			LockTimeoutMinutes:                    7,
+			SampleSize:                            500,
 			Retry: evergreen.AmboyRetryConfig{
 				NumWorkers:                          8,
 				MaxCapacity:                         100,

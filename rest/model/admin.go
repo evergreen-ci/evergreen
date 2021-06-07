@@ -346,6 +346,7 @@ type APIAmboyConfig struct {
 	GroupTTLMinutes                       int                 `json:"group_ttl"`
 	RequireRemotePriority                 bool                `json:"require_remote_priority"`
 	LockTimeoutMinutes                    int                 `json:"lock_timeout_minutes"`
+	SampleSize                            int                 `json:"sample_size"`
 	Retry                                 APIAmboyRetryConfig `json:"retry,omitempty"`
 }
 
@@ -364,6 +365,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupTTLMinutes = v.GroupTTLMinutes
 		a.RequireRemotePriority = v.RequireRemotePriority
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
+		a.SampleSize = v.SampleSize
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
 			return errors.Wrap(err, "building Amboy retry settings from service")
 		}
@@ -395,6 +397,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
 		RequireRemotePriority:                 a.RequireRemotePriority,
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
+		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
 	}, nil
 }

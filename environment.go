@@ -376,6 +376,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = false
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
+	opts.SampleSize = e.settings.Amboy.SampleSize
 
 	args := queue.MongoDBQueueCreationOptions{
 		Size:      e.settings.Amboy.PoolSizeRemote,

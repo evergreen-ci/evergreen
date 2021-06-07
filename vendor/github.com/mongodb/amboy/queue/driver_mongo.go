@@ -1117,6 +1117,7 @@ func (d *mongoDriver) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
 	return infos
 }
 
+// getNextQuery returns the query for the next available jobs.
 func (d *mongoDriver) getNextQuery() bson.M {
 	lockTimeout := d.LockTimeout()
 	now := time.Now()
@@ -1147,9 +1148,43 @@ func (d *mongoDriver) getNextQuery() bson.M {
 	return qd
 }
 
+// getNextSampledPipeline returns an aggregation pipeline to query for the next
+// available jobs, with a maximum limit (sampleSize) on the number of jobs
+// considered and returned. Jobs are returned in shuffled random order, and the
+// same job may be returned multiple times.
+func (d *mongoDriver) getNextSampledPipeline(sampleSize int) []bson.M {
+	match := bson.M{"$match": d.getNextQuery()}
+	// $limit is necessary for performance reasons. $sample scans all input
+	// documents to randomly select documents to return. Therefore, without a
+	// limit on the number of jobs to consider, the cost of $sample will become
+	// more expensive with the number of jobs that it must consider.
+	// Source:
+	// https://docs.mongodb.com/manual/reference/operator/aggregation/sample/#behavior
+	limit := bson.M{"$limit": sampleSize}
+	sample := bson.M{"$sample": bson.M{"size": sampleSize}}
+
+	return []bson.M{match, limit, sample}
+}
+
+func (d *mongoDriver) getNextCursor(ctx context.Context) (*mongo.Cursor, error) {
+	if d.opts.SampleSize > 0 && !d.opts.Priority {
+		p := d.getNextSampledPipeline(d.opts.SampleSize)
+		iter, err := d.getCollection().Aggregate(ctx, p)
+		return iter, errors.Wrap(err, "sampling next jobs")
+	}
+
+	opts := options.Find()
+	if d.opts.Priority {
+		opts.SetSort(bson.M{"priority": -1})
+	}
+
+	q := d.getNextQuery()
+	iter, err := d.getCollection().Find(ctx, q, opts)
+	return iter, errors.Wrap(err, "getting next jobs")
+}
+
 func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 	var (
-		qd             bson.M
 		job            amboy.Job
 		misses         int
 		dispatchMisses int
@@ -1175,11 +1210,6 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 			})
 	}()
 
-	opts := options.Find()
-	if d.opts.Priority {
-		opts.SetSort(bson.M{"priority": -1})
-	}
-
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -1189,11 +1219,11 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 			return nil
 		case <-timer.C:
 			misses++
-			qd = d.getNextQuery()
-			iter, err := d.getCollection().Find(ctx, qd, opts)
+
+			iter, err := d.getNextCursor(ctx)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
-					"message":       "problem finding next jobs",
+					"message":       "problem finding jobs ready to dispatch",
 					"driver_id":     d.instanceID,
 					"service":       "amboy.queue.mdb",
 					"operation":     "retrieving next job",
