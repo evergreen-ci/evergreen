@@ -743,3 +743,13 @@ buildvariants:
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
+
+  - name: bynn-test
+    display_name: bynn test
+    run_on:
+      - archlinux
+    display_tasks:
+      - name: display
+      execution_tasks:
+      - "dist"
+      - "coverage"

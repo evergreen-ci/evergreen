@@ -75,16 +75,17 @@ func getTaskLogURL(data *jiraTemplateData) (string, error) {
 	if data.Task == nil {
 		return "", errors.New("task is nil")
 	}
-	if data.Task.ExecutionTasksFull == nil {
-	}
 	id := data.Task.Id
 	execution := data.Task.Execution
 	if len(data.Task.OldTaskId) != 0 {
 		id = data.Task.OldTaskId
 	}
+	grip.Info(message.Fields{
+		"message": "bynn in getTaskLogURL",
+		"id":      id,
+	})
 
 	return taskLogLink(data.UIRoot, id, execution), nil
-	// return strings.Join(data.Task.ExecutionTasks, " ") + " xxxx ", nil
 }
 
 type executionTaskInfo struct {
@@ -108,6 +109,10 @@ func getExecutionTaskLogURLs(data *jiraTemplateData) []executionTaskInfo {
 
 		result = append(result, info)
 	}
+	grip.Info(message.Fields{
+		"message": "bynn in getExecutionTaskLogURLs",
+		"result":  result,
+	})
 
 	return result
 }
