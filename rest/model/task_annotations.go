@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type APITaskAnnotation struct {
@@ -34,10 +34,9 @@ type APISource struct {
 	Requester *string    `bson:"requester,omitempty" json:"requester,omitempty"`
 }
 type APIIssueLink struct {
-	URL        *string                `bson:"url" json:"url"`
-	IssueKey   *string                `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
-	Source     *APISource             `bson:"source,omitempty" json:"source,omitempty"`
-	JiraTicket *thirdparty.JiraTicket `bson:"jira_ticket,omitempty" json:"jira_ticket,omitempty"`
+	URL      *string    `bson:"url" json:"url"`
+	IssueKey *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	Source   *APISource `bson:"source,omitempty" json:"source,omitempty"`
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and
@@ -166,27 +165,28 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.
 	return m
 }
 
-func GetJiraTickets(issueLinks []APIIssueLink) ([]*APIIssueLink, error) {
+func GetJiraTicketFromURL(URL string) (*thirdparty.JiraTicket, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
-	catcher := grip.NewBasicCatcher()
 
-	var res []*APIIssueLink
-	for _, issue := range issueLinks {
-		urlObject, err := url.Parse(*issue.URL)
-		catcher.Wrap(err, "problem parsing the issue url")
-		if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
-			myUrl, err := url.Parse(*issue.URL)
-			if err != nil {
-				log.Fatal(err)
-			}
-			jiraKey := path.Base(myUrl.Path)
-
-			issue.JiraTicket, err = jiraHandler.GetJIRATicket(jiraKey)
-			catcher.Wrap(err, "error getting Jira ticket")
-		}
-		issueToAdd := issue
-		res = append(res, &issueToAdd)
+	urlObject, err := url.Parse(URL)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem parsing the issue url")
 	}
-	return res, catcher.Resolve()
+
+	if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
+		myUrl, err := url.Parse(URL)
+		if err != nil {
+			log.Fatal(err)
+		}
+		jiraKey := path.Base(myUrl.Path)
+
+		jiraTicket, err := jiraHandler.GetJIRATicket(jiraKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting Jira ticket")
+		}
+		return jiraTicket, nil
+	}
+
+	return nil, nil
 }

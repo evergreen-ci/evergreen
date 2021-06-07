@@ -73,6 +73,11 @@ func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
 
+// IssueLink returns IssueLinkResolver implementation.
+func (r *Resolver) IssueLink() IssueLinkResolver {
+	return &issueLinkResolver{r}
+}
+
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
@@ -80,6 +85,7 @@ type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
+type issueLinkResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -2755,16 +2761,9 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	return IsWebhookConfigured(t), nil
 }
 
-func (r *annotationResolver) CreatedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
-	return restModel.GetJiraTickets(obj.CreatedIssues)
-}
+func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIssueLink) (*thirdparty.JiraTicket, error) {
+	return restModel.GetJiraTicketFromURL(*obj.URL)
 
-func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
-	return restModel.GetJiraTickets(obj.Issues)
-}
-
-func (r *annotationResolver) SuspectedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
-	return restModel.GetJiraTickets(obj.SuspectedIssues)
 }
 
 // New injects resources into the resolvers, such as the data connector
