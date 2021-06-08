@@ -25,7 +25,7 @@ func (a *APIApp) Resolve() error {
 	}
 
 	if a.router == nil {
-		a.router = mux.NewRouter().StrictSlash(a.StrictSlash)
+		a.router = mux.NewRouter().StrictSlash(a.StrictSlash).UseEncodedPath()
 	}
 
 	if err := a.attachRoutes(a.router, true); err != nil {

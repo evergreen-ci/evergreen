@@ -96,7 +96,6 @@ func TestDialCedar(t *testing.T) {
 		opts := &DialCedarOptions{
 			Username: username,
 			APIKey:   apiKey,
-			TLSAuth:  true,
 			Retries:  10,
 		}
 		conn, err := DialCedar(ctx, http.DefaultClient, opts)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/timber"
@@ -52,12 +53,12 @@ func (opts *BuildloggerGetOptions) Validate() error {
 // GetLogs returns a ReadCloser with the logs or log metadata requested via
 // HTTP to a cedar service.
 func GetLogs(ctx context.Context, opts BuildloggerGetOptions) (io.ReadCloser, error) {
-	url, err := opts.parse()
+	urlString, err := opts.parse()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem parsing options")
 	}
 
-	resp, err := opts.CedarOpts.DoReq(ctx, url)
+	resp, err := opts.CedarOpts.DoReq(ctx, urlString)
 	if err == nil {
 		if resp.StatusCode == http.StatusOK {
 			return &paginatedReadCloser{
@@ -80,7 +81,7 @@ func (opts *BuildloggerGetOptions) parse() (string, error) {
 	params := fmt.Sprintf(
 		"?execution=%d&proc_name=%s&print_time=%v&print_priority=%v&n=%d&limit=%d&paginate=true",
 		opts.Execution,
-		opts.ProcessName,
+		url.QueryEscape(opts.ProcessName),
 		opts.PrintTime,
 		opts.PrintPriority,
 		opts.Tail,
@@ -93,27 +94,26 @@ func (opts *BuildloggerGetOptions) parse() (string, error) {
 		params += fmt.Sprintf("&end=%s", opts.End.Format(time.RFC3339))
 	}
 	for _, tag := range opts.Tags {
-		params += fmt.Sprintf("&tags=%s", tag)
+		params += fmt.Sprintf("&tags=%s", url.QueryEscape(tag))
 	}
 
-	url := fmt.Sprintf("%s/rest/v1/buildlogger", opts.CedarOpts.BaseURL)
+	urlString := fmt.Sprintf("%s/rest/v1/buildlogger", opts.CedarOpts.BaseURL)
 	if opts.ID != "" {
-		url += fmt.Sprintf("/%s", opts.ID)
+		urlString += fmt.Sprintf("/%s", url.PathEscape(opts.ID))
 	} else if opts.TestName != "" {
-		url += fmt.Sprintf("/test_name/%s/%s", opts.TaskID, opts.TestName)
+		urlString += fmt.Sprintf("/test_name/%s/%s", url.PathEscape(opts.TaskID), url.PathEscape(opts.TestName))
 		if opts.GroupID != "" {
-			url += fmt.Sprintf("/group/%s", opts.GroupID)
+			urlString += fmt.Sprintf("/group/%s", url.PathEscape(opts.GroupID))
 		}
 	} else {
-		url += fmt.Sprintf("/task_id/%s", opts.TaskID)
+		urlString += fmt.Sprintf("/task_id/%s", url.PathEscape(opts.TaskID))
 	}
-
 	if opts.Meta {
-		url += "/meta"
+		urlString += "/meta"
 	}
-	url += params
+	urlString += params
 
-	return url, nil
+	return urlString, nil
 }
 
 type paginatedReadCloser struct {
