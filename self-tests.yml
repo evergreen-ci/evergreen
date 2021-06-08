@@ -748,8 +748,10 @@ buildvariants:
     display_name: bynn test
     run_on:
       - archlinux
+    tasks:
+      - name: ".lint"
     display_tasks:
       - name: display
       execution_tasks:
-      - "dist"
-      - "coverage"
+        - "dist"
+        - "coverage"
