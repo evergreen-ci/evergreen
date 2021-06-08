@@ -97,8 +97,14 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "Problem posting task data")
 	}
 
+	const (
+		pollAttempts      = 1500
+		pollRetryMinDelay = time.Second
+		pollRetryMaxDelay = 15 * time.Second
+	)
+
 	var generateStatus *apimodels.GeneratePollResponse
-	err = util.Retry(
+	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			generateStatus, err = comm.GenerateTasksPoll(ctx, td)
@@ -109,7 +115,11 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 				return false, nil
 			}
 			return true, errors.New("task generation unfinished")
-		}, 1500, time.Second, 15*time.Second)
+		}, utility.RetryOptions{
+			MaxAttempts: pollAttempts,
+			MinDelay:    pollRetryMinDelay,
+			MaxDelay:    pollRetryMaxDelay,
+		})
 	if err != nil {
 		return errors.WithMessage(err, "problem polling for generate tasks job")
 	}
