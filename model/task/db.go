@@ -203,8 +203,7 @@ var (
 							{
 								"$or": []bson.M{
 									{DependsOnKey: 0},
-									{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), false}},
-									{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), nil}},
+									{"$neq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
 								},
 							},
 						},
@@ -840,7 +839,6 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 		IdKey:        id,
 		ExecutionKey: execution,
 	})
-	fmt.Println("Making normal query")
 	err := db.FindOneQ(Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
