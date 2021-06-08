@@ -1895,7 +1895,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
 	}
-	t, err := r.sc.FindTaskById(taskID)
+	t, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
 	}
