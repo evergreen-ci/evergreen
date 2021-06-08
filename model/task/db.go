@@ -204,7 +204,7 @@ var (
 							{
 								"$or": []bson.M{
 									{DependsOnKey: 0},
-									{"$neq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
+									{"$ne": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
 								},
 							},
 						},
