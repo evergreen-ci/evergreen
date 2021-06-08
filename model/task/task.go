@@ -1354,12 +1354,26 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
+// This should reflect the addDisplayStatus aggregation step
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
 	if t.Aborted && t.IsFinished() {
 		return evergreen.TaskAborted
+	}
+	if t.Status == evergreen.TaskUndispatched {
+		if !t.Activated {
+			return evergreen.TaskWillNotRun
+		}
+		dependenciesMet, err := t.DependenciesMet(map[string]Task{})
+		if err != nil {
+			// Return the default undispatched status if we can't determine if dependencies have been met
+			return t.Status
+		}
+		if dependenciesMet {
+			return evergreen.TaskWillRun
+		}
 	}
 	if !t.IsFinished() {
 		return t.Status

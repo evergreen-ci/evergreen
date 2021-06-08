@@ -2190,11 +2190,12 @@ func TestDisplayStatus(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	checkStatuses(t, evergreen.TaskSucceeded, t1)
 	t2 := Task{
-		Id:     "t2",
-		Status: evergreen.TaskUndispatched,
+		Id:        "t2",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
 	}
 	assert.NoError(t, t2.Insert())
-	checkStatuses(t, evergreen.TaskUndispatched, t2)
+	checkStatuses(t, evergreen.TaskWillRun, t2)
 	t3 := Task{
 		Id:     "t3",
 		Status: evergreen.TaskFailed,
@@ -2246,6 +2247,13 @@ func TestDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, t8.Insert())
 	checkStatuses(t, evergreen.TaskStarted, t8)
+	t9 := Task{
+		Id:        "t9",
+		Status:    evergreen.TaskUndispatched,
+		Activated: false,
+	}
+	assert.NoError(t, t9.Insert())
+	checkStatuses(t, evergreen.TaskWillNotRun, t9)
 }
 
 func checkStatuses(t *testing.T, expected string, toCheck Task) {

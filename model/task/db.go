@@ -137,6 +137,7 @@ var (
 	},
 	}
 
+	// This should reflect Task.GetDisplayStatus()
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
 			DisplayStatusKey: displayStatusExpression,
