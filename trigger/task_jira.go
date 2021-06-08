@@ -81,7 +81,7 @@ func getTaskLogURL(data *jiraTemplateData) (string, error) {
 		id = data.Task.OldTaskId
 	}
 	grip.Info(message.Fields{
-		"message": "bynn in getTaskLogURL",
+		"message": "bynnbynn in getTaskLogURL",
 		"id":      id,
 	})
 
@@ -110,7 +110,7 @@ func getExecutionTaskLogURLs(data *jiraTemplateData) []executionTaskInfo {
 		result = append(result, info)
 	}
 	grip.Info(message.Fields{
-		"message": "bynn in getExecutionTaskLogURLs",
+		"message": "bynnbynn in getExecutionTaskLogURLs",
 		"result":  result,
 	})
 
