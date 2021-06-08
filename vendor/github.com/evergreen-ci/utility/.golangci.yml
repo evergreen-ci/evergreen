@@ -1,0 +1,14 @@
+---
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - goimports
+    - govet
+    - ineffassign
+    - misspell
+    - unconvert
+
+linters-settings:
+  govet:
+    check-shadowing: false
