@@ -41,13 +41,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
-    fields:
-      issues:
-        resolver: true
-      suspectedIssues:
-        resolver: true
-      createdIssues:
-        resolver: true
   Note:
     model: github.com/evergreen-ci/evergreen/rest/model.APINote
   IssueLinkInput:
