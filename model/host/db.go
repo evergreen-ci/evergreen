@@ -225,9 +225,11 @@ func startedTaskHostsQuery(distroID string) bson.M {
 
 func idleHostsQuery(distroID string) bson.M {
 	query := bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostRunning,
-		StartedByKey:   evergreen.User,
+		StartedByKey:     evergreen.User,
+		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+		RunningTaskKey:   bson.M{"$exists": false},
+		HasContainersKey: bson.M{"$ne": true},
+		StatusKey:        evergreen.HostRunning,
 	}
 	if distroID != "" {
 		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID

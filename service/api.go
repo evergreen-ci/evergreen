@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -531,24 +532,34 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	body := util.NewRequestReader(r)
 	defer body.Close()
-	yamlBytes, err := ioutil.ReadAll(body)
+	bytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading request body: %v", err))
 		return
 	}
 
+	input := validator.ValidationInput{}
+	if err := json.Unmarshal(bytes, &input); err != nil {
+		// try the legacy structure
+		input.ProjectYaml = bytes
+		input.IncludeLong = true // this is legacy behavior
+	}
+
 	project := &model.Project{}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
+	if _, err = model.LoadProjectInto(input.ProjectYaml, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
 
-	errs := validator.CheckYamlStrict(yamlBytes)
-	errs = append(errs, validator.CheckProjectSyntax(project)...)
+	errs := validator.CheckYamlStrict(input.ProjectYaml)
+	errs = append(errs, validator.CheckProjectSyntax(project, input.IncludeLong)...)
 	errs = append(errs, validator.CheckProjectSemantics(project)...)
 	if len(errs) > 0 {
+		if input.Quiet {
+			errs = errs.AtLevel(validator.Error)
+		}
 		gimlet.WriteJSONError(w, errs)
 		return
 	}

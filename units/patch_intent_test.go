@@ -362,53 +362,6 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().Empty(out)
 }
 
-func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
-	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
-
-	dbUser := user.DBUser{
-		Id: "testuser",
-		Settings: user.UserSettings{
-			GithubUser: user.GithubUser{
-				UID:         1234,
-				LastKnownAs: "somebody",
-			},
-		},
-	}
-	s.NoError(dbUser.Insert())
-	s.user = dbUser.Id
-	patchEvent := testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "evrg-bot-webhook", "title1")
-	intent, err := patch.NewGithubIntent("1", "", patchEvent)
-	tempPatch := intent.NewPatch()
-	s.NoError(err)
-	s.NotNil(intent)
-	s.NoError(intent.Insert())
-
-	j := s.makeJobAndPatch(intent)
-
-	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
-	s.Require().NoError(err)
-	s.Require().NotNil(patchDoc)
-
-	s.verifyPatchDoc(patchDoc, j.PatchID)
-
-	s.True(patchDoc.CreateTime.Equal(tempPatch.CreateTime))
-	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
-	s.Equal("evrg-bot-webhook", patchDoc.GithubPatchData.Author)
-	s.Equal(dbUser.Id, patchDoc.Author)
-
-	repo := strings.Split(s.repo, "/")
-	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
-	s.Equal(repo[1], patchDoc.GithubPatchData.BaseRepo)
-	headRepo := strings.Split(s.headRepo, "/")
-	s.Equal(headRepo[0], patchDoc.GithubPatchData.HeadOwner)
-	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepo)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", patchDoc.Githash)
-
-	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester)
-	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
-	s.verifyGithubSubscriptions(patchDoc)
-}
-
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 	dbUser := user.DBUser{
 		Id: "testuser",
