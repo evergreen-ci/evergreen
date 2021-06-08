@@ -382,6 +382,9 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 
 	match := bson.M{
 		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 	}
 	if opts.Activated {
 		match[VersionActivatedKey] = opts.Activated
