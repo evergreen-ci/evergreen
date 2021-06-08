@@ -1746,7 +1746,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 	childProjectId, err := GetIdForProject(definition.ChildProject)
 	if err != nil {
-		return definition, errors.Wrapf(err, "error finding child project %s", definition.ChildProject)
+		return definition, errors.Wrapf(err, "error finding child project '%s'", definition.ChildProject)
 	}
 
 	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
