@@ -366,7 +366,7 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
       var group_id = '?group_id='
       group_id += (testResult.group_id) ? encodeURIComponent(testResult.group_id) : ""
       var test_name = (testResult.log_test_name) ? testResult.log_test_name : testResult.test_file;
-      url = prefix + encodeURIComponent(testResult.task_id) + '/' + testResult.execution + '/' + ecnodeURIComponent(test_name) + group_id
+      url = prefix + encodeURIComponent(testResult.task_id) + '/' + testResult.execution + '/' + encodeURIComponent(test_name) + group_id
       if (isRaw) {
           url  += '&' + raw;
       } else {
