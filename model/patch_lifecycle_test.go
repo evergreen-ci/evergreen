@@ -32,7 +32,7 @@ var (
 	patchTestConfig = testutil.TestConfig()
 	configFilePath  = "testing/mci.yml"
 	patchedProject  = "mci-config"
-	patchedRevision = "582257a4ca3a9c890959b04d4dd2de5e4d34e9e7"
+	patchedRevision = "3578f10b95fb82183662387048b268c54fac50fb"
 	patchFile       = "testdata/patch2.diff"
 	patchOwner      = "deafgoat"
 	patchRepo       = "config"
