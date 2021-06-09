@@ -2136,6 +2136,22 @@ func TestSetDisabledPriority(t *testing.T) {
 	}
 }
 
+func TestSetHasLegacyResults(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	task := Task{Id: "t1"}
+	assert.NoError(t, task.Insert())
+	assert.NoError(t, task.SetHasLegacyResults(true))
+
+	assert.True(t, utility.FromBoolPtr(task.HasLegacyResults))
+
+	taskFromDb, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.NotNil(t, taskFromDb)
+	assert.NotNil(t, taskFromDb.HasLegacyResults)
+	assert.True(t, utility.FromBoolPtr(taskFromDb.HasLegacyResults))
+}
+
 func TestDisplayStatus(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{

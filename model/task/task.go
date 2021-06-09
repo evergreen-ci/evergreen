@@ -86,7 +86,8 @@ type Task struct {
 	MustHaveResults    bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	HasCedarResults    bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
 	CedarResultsFailed bool                `bson:"cedar_results_failed,omitempty" json:"cedar_results_failed,omitempty"`
-
+	// we use a pointer for HasLegacyResults to verify if this information is cached or we need to look it up
+	HasLegacyResults *bool `bson:"has_legacy_results,omitempty" json:"has_legacy_results,omitempty"`
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -1030,6 +1031,20 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 	)
 }
 
+func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
+	t.HasLegacyResults = utility.ToBoolPtr(hasLegacyResults)
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				HasLegacyResultsKey: t.HasLegacyResults,
+			},
+		},
+	)
+}
+
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true
 func (t *Task) ActivateTask(caller string) ([]Task, error) {
 	t.ActivatedBy = caller
@@ -1343,12 +1358,13 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		},
 		bson.M{
 			"$set": bson.M{
-				FinishTimeKey: finishTime,
-				StatusKey:     detail.Status,
-				TimeTakenKey:  t.TimeTaken,
-				DetailsKey:    t.Details,
-				StartTimeKey:  t.StartTime,
-				LogsKey:       detail.Logs,
+				FinishTimeKey:       finishTime,
+				StatusKey:           detail.Status,
+				TimeTakenKey:        t.TimeTaken,
+				DetailsKey:          t.Details,
+				StartTimeKey:        t.StartTime,
+				LogsKey:             detail.Logs,
+				HasLegacyResultsKey: t.HasLegacyResults,
 			},
 		})
 
@@ -2035,6 +2051,9 @@ func (t *Task) MergeNewTestResults() error {
 			StartTime:       result.StartTime,
 			EndTime:         result.EndTime,
 		})
+	}
+	if t.HasLegacyResults == nil { // cache results so we know if we should call this in the future
+		return t.SetHasLegacyResults(len(newTestResults) > 0)
 	}
 	return nil
 }
