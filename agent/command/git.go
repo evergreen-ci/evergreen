@@ -490,17 +490,12 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		// use submodule revisions based on the main patch. If there is a need in the future,
 		// this could maybe use the most recent submodule revision of all requested patches.
 		// We ignore set-module changes for commit queue, since we should verify HEAD before merging.
-		if p != nil {
-			if conf.Task.Requester == evergreen.MergeTestRequester {
-				revision = module.Branch
-				c.logModuleRevision(logger, revision, moduleName, "commit queue merge")
-			} else {
-				module := p.FindModule(moduleName)
-				if module != nil {
-					revision = module.Githash
-					if revision != "" {
-						c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
-					}
+		if p != nil && conf.Task.Requester != evergreen.MergeTestRequester {
+			module := p.FindModule(moduleName)
+			if module != nil {
+				revision = module.Githash
+				if revision != "" {
+					c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
 				}
 			}
 		}
