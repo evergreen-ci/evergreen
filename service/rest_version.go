@@ -19,7 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
-	yamlv3 "gopkg.in/yaml.v3"
 )
 
 const NumRecentVersions = 10
@@ -285,7 +284,6 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 // specified in the request (we still want this in yaml).
 func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	useLatestParser := r.FormValue("latest_parser") == "true"
 	srcVersion := projCtx.Version
 	if srcVersion == nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "version not found"})
@@ -301,18 +299,10 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if pp != nil && pp.ConfigUpdateNumber >= srcVersion.ConfigUpdateNumber {
-		if useLatestParser {
-			config, err = yamlv3.Marshal(pp)
-			if err != nil {
-				gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project with yaml v3"})
-				return
-			}
-		} else {
-			config, err = yaml.Marshal(pp)
-			if err != nil {
-				gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project with yaml v2"})
-				return
-			}
+		config, err = yaml.Marshal(pp)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+			return
 		}
 	} else {
 		config = []byte(projCtx.Version.Config)
