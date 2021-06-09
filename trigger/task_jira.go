@@ -27,8 +27,7 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
-{{if and (.Task.DisplayOnly) (gt (len .Tests) (0))}}{{range executionTaskLogURLs . }}[Task Logs ({{.Tests}}) | {{.URL}}]
-{{end}}{{else}}[Task Logs | {{taskLogUrl .}}]
+{{{range taskLogURLs . }}[Task Logs ({{.Tests}}) | {{.URL}}]
 {{end}}`
 
 const (
@@ -81,8 +80,12 @@ func getTaskLogURL(data *jiraTemplateData) (string, error) {
 		id = data.Task.OldTaskId
 	}
 	grip.Info(message.Fields{
-		"message": "bynnbynn in getTaskLogURL",
-		"id":      id,
+		"message":    "bynnbynn in getTaskLogURL",
+		"id":         id,
+		"data":       data,
+		"data.Task":  data.Task,
+		"data.Tests": data.Tests,
+		"len tests":  len(data.Tests),
 	})
 
 	return taskLogLink(data.UIRoot, id, execution), nil
