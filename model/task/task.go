@@ -2033,6 +2033,10 @@ func (t *Task) MergeNewTestResults() error {
 	if t.Archived {
 		id = t.OldTaskId
 	}
+	if !evergreen.IsFinishedTaskStatus(t.Status) || t.Status != evergreen.TaskStarted {
+		return nil // task won't have test results
+	}
+
 	newTestResults, err := testresult.FindByTaskIDAndExecution(id, t.Execution)
 	if err != nil {
 		return errors.Wrap(err, "problem finding test results")
