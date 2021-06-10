@@ -514,9 +514,6 @@ tasks:
     tags: ["db", "test"]
     name: test-model-testresult
   - <<: *run-go-test-suite-with-mongodb
-      tags: ["db", "test"]
-      name: test-model-testutil
-  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-user
   - <<: *run-go-test-suite-with-mongodb
