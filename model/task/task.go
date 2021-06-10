@@ -2057,8 +2057,8 @@ func (t *Task) MergeNewTestResults() error {
 		})
 	}
 
-	// store whether or not results exist so we know if we should look them up in the future
-	if t.HasLegacyResults == nil {
+	// Store whether or not results exist so we know if we should look them up in the future.
+	if t.HasLegacyResults == nil && !t.Archived {
 		return t.SetHasLegacyResults(len(newTestResults) > 0)
 	}
 	return nil

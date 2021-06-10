@@ -773,7 +773,7 @@ func FindOne(query db.Q) (*Task, error) {
 		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrap(err, "errors merging new test results")
+		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -953,7 +953,7 @@ func FindOneOld(query db.Q) (*Task, error) {
 		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrap(err, "errors merging new test results")
+		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
 	}
 	return task, err
 }
