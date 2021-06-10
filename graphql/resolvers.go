@@ -820,6 +820,20 @@ func (r *patchResolver) ProjectIdentifier(ctx context.Context, apiPatch *restMod
 	return utility.ToStringPtr(identifier), nil
 }
 
+func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
+	usr, err := user.FindOneById(*obj.Author)
+	if err != nil {
+		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
+	}
+	if usr == nil {
+		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find user from user ID"))
+	} 
+	fmt.Printf("++++++++++++++++++++++++++++++")
+	fmt.Printf(usr.DisplayName())
+	fmt.Printf("++++++++++++++++++++++++++++++")
+	return usr.DisplayName(), nil
+}
+
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
@@ -2184,6 +2198,7 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 	}
 	return &user, nil
 }
+
 
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
 	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(*obj.UserID, patchesInput.PatchName, patchesInput.Statuses, patchesInput.IncludeCommitQueue, patchesInput.Page, patchesInput.Limit)
