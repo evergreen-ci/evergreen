@@ -12,7 +12,6 @@ import (
 func fetchAllProjectConfigs() cli.Command {
 	const (
 		includeDisabledFlagName = "include-disabled"
-		legacyFlagName          = "legacy"
 	)
 
 	return cli.Command{
@@ -23,16 +22,12 @@ func fetchAllProjectConfigs() cli.Command {
 				Name:  includeDisabledFlagName,
 				Usage: "include disabled projects",
 			},
-			cli.BoolFlag{
-				Name:  legacyFlagName,
-				Usage: "uses yaml v2 as opposed to yaml v3",
-			},
 		},
 		Usage:  "download the configuration files of all evergreen projects to the current directory",
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			includeDisabled := c.BoolT(includeDisabledFlagName)
-			useLegacy := c.Bool(legacyFlagName)
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -57,7 +52,7 @@ func fetchAllProjectConfigs() cli.Command {
 			catcher := grip.NewSimpleCatcher()
 			for _, p := range projects {
 				if p.IsEnabled() || includeDisabled {
-					catcher.Add(fetchAndWriteConfig(rc, p.Id, useLegacy))
+					catcher.Add(fetchAndWriteConfig(rc, p.Id, p.Identifier))
 				}
 			}
 
@@ -68,24 +63,24 @@ func fetchAllProjectConfigs() cli.Command {
 
 // fetchAndWriteConfig downloads the most recent config for a project
 // and writes it to "project_name.yml" locally.
-func fetchAndWriteConfig(c *legacyClient, project string, useLegacy bool) error {
-	grip.Infof("Downloading configuration for %s", project)
-	versions, err := c.GetRecentVersions(project)
+func fetchAndWriteConfig(c *legacyClient, projectId, projectName string) error {
+	grip.Infof("Downloading configuration for %s", projectId)
+	versions, err := c.GetRecentVersions(projectId)
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch recent versions for %s", project)
+		return errors.Wrapf(err, "failed to fetch recent versions for %s", projectName)
 	}
 	if len(versions) == 0 {
-		return errors.Errorf("WARNING: project %s has no versions", project)
+		return errors.Errorf("WARNING: project %s has no versions", projectName)
 	}
 
-	config, err := c.GetConfig(versions[0], useLegacy)
+	config, err := c.GetConfig(versions[0])
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch config for project %s, version %s", project, versions[0])
+		return errors.Wrapf(err, "failed to fetch config for project %s, version %s", projectName, versions[0])
 	}
 
-	err = ioutil.WriteFile(project+".yml", config, 0644)
+	err = ioutil.WriteFile(projectName+".yml", config, 0644)
 	if err != nil {
-		return errors.Wrapf(err, "failed to write configuration for project %s", project)
+		return errors.Wrapf(err, "failed to write configuration for project %s", projectName)
 	}
 
 	return nil
