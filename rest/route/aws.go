@@ -183,6 +183,12 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 		return nil
 	}
 
+	grip.Info(message.Fields{
+		"message": "got interruption warning from AWS",
+		"distro":  h.Distro,
+		"host_id": h.Id,
+	})
+
 	if h.Status == evergreen.HostTerminated {
 		return nil
 	}
