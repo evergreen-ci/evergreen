@@ -77,6 +77,8 @@ var (
 	DistroIdKey             = bsonutil.MustHaveTag(TestResult{}, "DistroId")
 	RequesterKey            = bsonutil.MustHaveTag(TestResult{}, "Requester")
 	DisplayNameKey          = bsonutil.MustHaveTag(TestResult{}, "DisplayName")
+	GroupIDKey   		    = bsonutil.MustHaveTag(TestResult{}, "GroupID")
+
 	ExecutionDisplayNameKey = bsonutil.MustHaveTag(TestResult{}, "ExecutionDisplayName")
 	TaskCreateTimeKey       = bsonutil.MustHaveTag(TestResult{}, "TaskCreateTime")
 )
@@ -194,7 +196,7 @@ func TestResultCount(taskIds []string, testName string, statuses []string, execu
 }
 
 // TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
-func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses []string, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
+func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses []string, sortBy, groupId string, sortDir, page, limit, execution int) ([]TestResult, error) {
 	tests := []TestResult{}
 	match := bson.M{
 		TaskIDKey:    bson.M{"$in": taskIds},
@@ -203,7 +205,9 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 	if len(statuses) > 0 {
 		match[StatusKey] = bson.M{"$in": statuses}
 	}
-
+    if groupId != "" {
+        match[GroupIDKey] = groupId
+    }
 	pipeline := []bson.M{
 		{"$match": match},
 	}
@@ -219,11 +223,12 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 		LogIDKey:     1,
 		LineNumKey:   1,
 		ExitCodeKey:  1,
+		GroupIDKey:   1,
 	}
 
 	pipeline = append(pipeline, bson.M{"$project": project})
 
-	if len(testName) > 0 {
+	if testName != "" {
 		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": testName, "$options": "i"}}}
 		pipeline = append(pipeline, matchTestName)
 	}

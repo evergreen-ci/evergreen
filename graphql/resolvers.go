@@ -1188,7 +1188,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	return &patchTasks, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -1233,6 +1233,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 	}
 
+	groupIdParam := ""
+	if groupID != nil {
+		groupIdParam = *groupID
+	}
+
 	if *sortDirection == SortDirectionDesc {
 		sortDir = -1
 	}
@@ -1274,7 +1279,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 				baseTestStatusMap[t.TestFile] = t.Status
 			}
 		}
-		paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, taskExecution)
+		paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, groupIdParam, sortDir, pageParam, limitParam, taskExecution)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}

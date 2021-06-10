@@ -130,7 +130,7 @@ type Connector interface {
 	// a given task. It takes a taskId, testId to start from, test name and status to filter,
 	// limit, and sort to provide additional control over the results.
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
-	FindTestsByTaskIdFilterSortPaginate(string, string, []string, string, int, int, int, int) ([]testresult.TestResult, error)
+	FindTestsByTaskIdFilterSortPaginate(string, string, []string, string, string, int, int, int, int) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
 	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)
 	// FindUserById is a method to find a specific user given its ID.
