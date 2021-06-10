@@ -86,9 +86,9 @@ type Task struct {
 	MustHaveResults    bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	HasCedarResults    bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
 	CedarResultsFailed bool                `bson:"cedar_results_failed,omitempty" json:"cedar_results_failed,omitempty"`
-	// we use a pointer for HasLegacyResults to verify if this information is cached or we need to look it up
+	// we use a pointer for HasLegacyResults to distinguish the default from an intentional "false"
 	HasLegacyResults *bool `bson:"has_legacy_results,omitempty" json:"has_legacy_results,omitempty"`
-	// only relevant if the task is runnin.  the time of the last heartbeat
+	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
 
@@ -2033,7 +2033,7 @@ func (t *Task) MergeNewTestResults() error {
 	if t.Archived {
 		id = t.OldTaskId
 	}
-	if !evergreen.IsFinishedTaskStatus(t.Status) || t.Status != evergreen.TaskStarted {
+	if !evergreen.IsFinishedTaskStatus(t.Status) && t.Status != evergreen.TaskStarted {
 		return nil // task won't have test results
 	}
 
@@ -2056,7 +2056,9 @@ func (t *Task) MergeNewTestResults() error {
 			EndTime:         result.EndTime,
 		})
 	}
-	if t.HasLegacyResults == nil { // cache results so we know if we should call this in the future
+
+	// store whether or not results exist so we know if we should look them up in the future
+	if t.HasLegacyResults == nil {
 		return t.SetHasLegacyResults(len(newTestResults) > 0)
 	}
 	return nil
