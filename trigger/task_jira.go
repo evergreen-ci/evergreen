@@ -41,7 +41,7 @@ var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.Func
 	"taskurl":           getTaskURL,
 	"formatAsTimestamp": formatAsTimestamp,
 	"host":              getHostMetadata,
-	"taskLogUrl":        getTaskLogURL,
+	"taskLogUrls":       getTaskLogURLs,
 	// "executionTaskLogURLs": getExecutionTaskLogURLs,
 }).Parse(descriptionTemplateString))
 
@@ -75,7 +75,7 @@ type taskInfo struct {
 	URL   string
 }
 
-func getTaskLogURL(data *jiraTemplateData) ([]taskInfo, error) {
+func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 	grip.Info(message.Fields{
 		"message":    "bynnbynn in getTaskLogURL",
 		"data":       data,
