@@ -186,7 +186,7 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 	grip.Info(message.Fields{
 		"message":       "got interruption warning from AWS",
 		"distro":        h.Distro.Id,
-		"instance_type": h.InstanceType,
+		"instance_type": h.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValue(),
 		"host_id":       h.Id,
 	})
 
