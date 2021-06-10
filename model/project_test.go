@@ -424,11 +424,11 @@ buildvariants:
 	patchDoc := &patch.Patch{
 		Version: v.Id,
 		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:       42,
-			BaseOwner:      "evergreen-ci",
-			BaseRepo:       "evergreen",
-			Author:         "octocat",
-			MergeCommitSHA: "abc123",
+			PRNumber:  42,
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			Author:    "octocat",
+			HeadHash:  "abc123",
 		},
 	}
 	assert.NoError(patchDoc.Insert())
