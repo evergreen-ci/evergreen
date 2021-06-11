@@ -927,10 +927,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
-	assert.Equal(task.DisplayStatus, evergreen.TaskUndispatched)
-	// assert.NoError(taskDoc.Archive())
-	// taskDoc.Execution += 1
-
+	assert.Equal(task.DisplayStatus, evergreen.TaskUnscheduled)
 }
 func TestFindOldTasksByID(t *testing.T) {
 	assert := assert.New(t)
