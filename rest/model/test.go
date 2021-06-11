@@ -90,7 +90,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.Logs.RawDisplayURL = &dispString
 		}
 
-	    if v.GroupID != "" {
+		if v.GroupID != "" {
 			at.GroupId = utility.ToStringPtr(v.GroupID)
 		}
 	case *apimodels.CedarTestResult:

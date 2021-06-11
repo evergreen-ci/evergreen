@@ -43,7 +43,7 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 			Status:   "Pass",
 			Start:    time.Date(1996, time.August, 31, 12, 5, 10, 0, time.UTC),
 			End:      time.Date(1996, time.August, 31, 12, 5, 11, 0, time.UTC),
-			GroupID:  "llama", 
+			GroupID:  "llama",
 		},
 	}
 
@@ -84,7 +84,7 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 		},
 		{
 			name:            "GroupIdFilter",
-			groupId:         "llama", 
+			groupId:         "llama",
 			expectedResults: testResults[3:4],
 			expectedCount:   1,
 		},
