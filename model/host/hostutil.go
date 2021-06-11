@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -29,7 +30,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const OutputBufferSize = 1000
@@ -921,6 +922,12 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+	const (
+		checkAttempts      = 10
+		checkRetryMinDelay = time.Second
+		checkRetryMaxDelay = 45 * time.Second
+	)
+
 	return h.withTaggedProcs(ctx, env, evergreen.HostFetchTag, func(procs []jasper.Process) error {
 		grip.WarningWhen(len(procs) > 1, message.Fields{
 			"message":   "host is attempting to fetch task data multiple times",
@@ -930,14 +937,18 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 		})
 		catcher := grip.NewBasicCatcher()
 		for _, proc := range procs {
-			err := util.Retry(
+			err := utility.Retry(
 				ctx,
 				func() (bool, error) {
 					if proc.Complete(ctx) {
 						return false, nil
 					}
 					return true, errors.New("fetching task data not finished")
-				}, 10, time.Second, 45*time.Second)
+				}, utility.RetryOptions{
+					MaxAttempts: checkAttempts,
+					MinDelay:    checkRetryMinDelay,
+					MaxDelay:    checkRetryMaxDelay,
+				})
 			// If we see a process that's completed then we can suppress errors from erroneous duplicates.
 			if err == nil {
 				return nil

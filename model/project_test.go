@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -361,6 +361,7 @@ buildvariants:
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
+	assert.False(expansions.Exists("github_commit"))
 	assert.Equal("lie", expansions.Get("cake"))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
@@ -380,6 +381,7 @@ buildvariants:
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
+	assert.False(expansions.Exists("github_commit"))
 	assert.False(expansions.Exists("triggered_by_git_tag"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
@@ -408,7 +410,7 @@ buildvariants:
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 26)
+	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
@@ -416,6 +418,7 @@ buildvariants:
 	assert.True(expansions.Exists("github_repo"))
 	assert.True(expansions.Exists("github_author"))
 	assert.True(expansions.Exists("github_pr_number"))
+	assert.True(expansions.Exists("github_commit"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	patchDoc := &patch.Patch{
@@ -425,18 +428,20 @@ buildvariants:
 			BaseOwner: "evergreen-ci",
 			BaseRepo:  "evergreen",
 			Author:    "octocat",
+			HeadHash:  "abc123",
 		},
 	}
 	assert.NoError(patchDoc.Insert())
 
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 26)
+	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
 	assert.Equal("42", expansions.Get("github_pr_number"))
+	assert.Equal("abc123", expansions.Get("github_commit"))
 	assert.Equal("wut?", expansions.Get("github_org"))
 
 	upstreamTask := task.Task{
@@ -455,7 +460,7 @@ buildvariants:
 	taskDoc.TriggerType = ProjectTriggerLevelTask
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 34)
+	assert.Len(map[string]string(expansions), 35)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))

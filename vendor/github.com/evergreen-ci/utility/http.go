@@ -358,3 +358,12 @@ func RetryRequest(ctx context.Context, r *http.Request, maxAttempts int, minBack
 	}
 	return nil, errors.Errorf("Failed to make request after %d attempts", maxAttempts)
 }
+
+// RetryHTTPDelay returns the function that generates the exponential backoff
+// delay between retried HTTP requests.
+func RetryHTTPDelay(opts RetryOptions) HTTPDelayFunction {
+	backoff := getBackoff(opts)
+	return func(index int, req *http.Request, resp *http.Response, err error) time.Duration {
+		return backoff.ForAttempt(float64(index))
+	}
+}

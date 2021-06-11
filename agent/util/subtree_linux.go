@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -116,7 +116,7 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 	// Retry listing processes until all have successfully exited
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
-	err = util.Retry(
+	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			unkilledPids = []int{}
@@ -128,11 +128,11 @@ func cleanup(key, workingDir string, logger grip.Journaler) error {
 				unkilledPids = append(unkilledPids, pid)
 			}
 			return len(unkilledPids) != 0, nil
-		},
-		cleanupCheckAttempts,
-		cleanupCheckTimeoutMin,
-		cleanupCheckTimeoutMax,
-	)
+		}, utility.RetryOptions{
+			MaxAttempts: cleanupCheckAttempts,
+			MinDelay:    cleanupCheckTimeoutMin,
+			MaxDelay:    cleanupCheckTimeoutMax,
+		})
 	if err != nil {
 		return err
 	}

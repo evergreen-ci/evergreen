@@ -72,6 +72,7 @@ var (
 	GenerateTaskKey             = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	HasLegacyResultsKey         = bsonutil.MustHaveTag(Task{}, "HasLegacyResults")
 	HasCedarResultsKey          = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
 	CedarResultsFailedKey       = bsonutil.MustHaveTag(Task{}, "CedarResultsFailed")
 	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
@@ -808,7 +809,7 @@ func FindOne(query db.Q) (*Task, error) {
 		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrap(err, "errors merging new test results")
+		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -1035,7 +1036,7 @@ func FindOneOld(query db.Q) (*Task, error) {
 		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrap(err, "errors merging new test results")
+		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
 	}
 	return task, err
 }

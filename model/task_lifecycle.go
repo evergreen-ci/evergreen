@@ -476,18 +476,20 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		grip.Warningf("Tried to mark task %s as finished twice", t.Id)
 		return nil
 	}
-	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasCedarResults {
-		// Results not in cedar, check the db.
+	if !t.HasCedarResults { // Results not in cedar, check the db.
 		count, err := testresult.Count(testresult.FilterByTaskIDAndExecution(t.Id, t.Execution))
 		if err != nil {
 			return errors.Wrap(err, "unable to count test results")
 		}
-		if count == 0 {
+		t.HasLegacyResults = utility.ToBoolPtr(count > 0) // cache if we even need to look this up in the future
+
+		if detailsCopy.Status == evergreen.TaskSucceeded && count == 0 && t.MustHaveResults {
 			detailsCopy.Status = evergreen.TaskFailed
 			detailsCopy.Description = evergreen.TaskDescriptionNoResults
 			detailsCopy.Type = evergreen.CommandTypeTest
 		}
 	}
+
 	t.Details = detailsCopy
 	if utility.IsZeroTime(t.StartTime) {
 		grip.Warning(message.Fields{
