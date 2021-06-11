@@ -134,6 +134,7 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 				test.testName,
 				test.statuses,
 				test.sortBy,
+				"",
 				test.sortDir,
 				test.pageParam,
 				test.limitParam,

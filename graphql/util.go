@@ -36,7 +36,7 @@ import (
 )
 
 // FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array
-func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResult, testName string, statuses []string, sortBy string, sortDir int, pageParam int, limitParam int) ([]apimodels.CedarTestResult, int) {
+func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResult, testName string, statuses []string, sortBy, groupId string, sortDir int, pageParam int, limitParam int) ([]apimodels.CedarTestResult, int) {
 	var filteredAndSortedTestResults []apimodels.CedarTestResult
 	for _, testResult := range testResults {
 		match := true

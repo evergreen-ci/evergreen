@@ -1312,7 +1312,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
 		}
 	} else {
-		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(cedarTestResults, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam)
+		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(cedarTestResults, testNameParam, statusesParam, sortBy, groupIdParam, sortDir, pageParam, limitParam)
 		for _, t := range filteredTestResults {
 			apiTest := restModel.APITest{}
 			if err = apiTest.BuildFromService(taskID); err != nil {
