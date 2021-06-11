@@ -174,11 +174,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
 
-	childPatches := make([]*string, 0)
-	for _, cp := range v.Triggers.ChildPatches {
-		childPatches = append(childPatches, utility.ToStringPtr(cp))
-	}
-	apiPatch.ChildPatches = childPatches
+	apiPatch.ChildPatches = utility.ToStringPtrSlice(v.Triggers.ChildPatches)
 
 	downstreamTasks, err := getDownstreamTasks(v)
 	if err != nil {
