@@ -15,7 +15,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
@@ -389,10 +388,16 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 
 	foundVersion := map[string]bool{}
 
+	const (
+		checkVersionAttempts      = 5
+		checkVersionRetryMinDelay = 100 * time.Millisecond
+		checkVersionRetryMaxDelay = 3 * time.Second
+	)
+
 	catcher := grip.NewBasicCatcher()
 
 	// iterate through all projects before retrying. Only retry on errors related to finding the version.
-	err = util.Retry(
+	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			retryCatcher := grip.NewBasicCatcher()
@@ -459,8 +464,11 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				}
 			}
 			return retryCatcher.HasErrors(), retryCatcher.Resolve()
-		}, 5, 100*time.Millisecond, time.Second*3)
-
+		}, utility.RetryOptions{
+			MaxAttempts: checkVersionAttempts,
+			MinDelay:    checkVersionRetryMinDelay,
+			MaxDelay:    checkVersionRetryMaxDelay,
+		})
 	catcher.Add(err)
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "github hook",

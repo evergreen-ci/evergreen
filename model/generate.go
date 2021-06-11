@@ -12,12 +12,12 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 const (
-	maxGeneratedBuildVariants = 100
-	maxGeneratedTasks         = 2000
+	maxGeneratedBuildVariants = 200
+	maxGeneratedTasks         = 25000
 )
 
 // GeneratedProject is a subset of the Project type, and is generated from the

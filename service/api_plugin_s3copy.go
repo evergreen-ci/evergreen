@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	s3CopyRetrySleepTimeSec = 5
-	s3CopyRetryNumRetries   = 5
+	s3CopyRetryMinDelay = 5 * time.Second
+	s3CopyAttempts      = 5
 )
 
 // Takes a request for a task's file to be copied from
@@ -109,7 +109,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = util.Retry(
+	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			copyOpts := pail.CopyOptions{
@@ -129,7 +129,10 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 			grip.Error(err)
 
 			return false, err
-		}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second, 0)
+		}, utility.RetryOptions{
+			MaxAttempts: s3CopyAttempts,
+			MinDelay:    s3CopyRetryMinDelay,
+		})
 
 	if err != nil {
 		grip.Error(errors.Wrap(errors.WithStack(newPushLog.UpdateStatus(model.PushLogFailed)), "updating pushlog status failed"))

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -75,8 +74,8 @@ const (
 	monitorLoggerName = "evergreen.agent.monitor"
 )
 
-func defaultRetryArgs() util.RetryArgs {
-	return util.RetryArgs{
+func agentMonitorDefaultRetryOptions() utility.RetryOptions {
+	return utility.RetryOptions{
 		MaxDelay:    defaultMaxRequestDelay,
 		MaxAttempts: defaultMaxRequestAttempts,
 	}
@@ -179,7 +178,7 @@ func agentMonitor() cli.Command {
 			defer cancel()
 			go handleMonitorSignals(ctx, cancel)
 
-			if err := m.setupJasperConnection(ctx, defaultRetryArgs()); err != nil {
+			if err := m.setupJasperConnection(ctx, agentMonitorDefaultRetryOptions()); err != nil {
 				return errors.Wrap(err, "failed to connect to RPC service")
 			}
 			defer func() {
@@ -274,7 +273,7 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 }
 
 // fetchClient downloads the evergreen client.
-func (m *monitor) fetchClient(ctx context.Context, urls []string, retry util.RetryArgs) error {
+func (m *monitor) fetchClient(ctx context.Context, urls []string, retry utility.RetryOptions) error {
 	var downloaded bool
 	catcher := grip.NewBasicCatcher()
 	for _, url := range urls {
@@ -285,7 +284,7 @@ func (m *monitor) fetchClient(ctx context.Context, urls []string, retry util.Ret
 		}
 
 		var attemptNum int
-		if err := util.RetryWithArgs(ctx, func() (bool, error) {
+		if err := utility.Retry(ctx, func() (bool, error) {
 			if err := m.jasperClient.DownloadFile(ctx, info); err != nil {
 				attemptNum++
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
@@ -308,14 +307,14 @@ func (m *monitor) fetchClient(ctx context.Context, urls []string, retry util.Ret
 
 // setupJasperConnection attempts to connect to the Jasper RPC service running
 // on this host and sets the RPC manager.
-func (m *monitor) setupJasperConnection(ctx context.Context, retry util.RetryArgs) error {
+func (m *monitor) setupJasperConnection(ctx context.Context, retry utility.RetryOptions) error {
 	addrStr := fmt.Sprintf("127.0.0.1:%d", m.jasperPort)
 	serverAddr, err := net.ResolveTCPAddr("tcp", addrStr)
 	if err != nil {
 		return errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", addrStr)
 	}
 
-	if err = util.RetryWithArgs(ctx, func() (bool, error) {
+	if err = utility.Retry(ctx, func() (bool, error) {
 		m.jasperClient, err = remote.NewRPCClientWithFile(ctx, serverAddr, m.credentialsPath)
 		if err != nil {
 			return true, errors.Wrap(err, "could not connect to Jasper RPC service")
@@ -329,7 +328,7 @@ func (m *monitor) setupJasperConnection(ctx context.Context, retry util.RetryArg
 }
 
 // createAgentProcess attempts to start an agent subprocess.
-func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) (jasper.Process, error) {
+func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOptions) (jasper.Process, error) {
 	agentCmdArgs := append([]string{m.clientPath, "agent"}, m.agentArgs...)
 
 	// Copy the monitor's environment to the agent.
@@ -342,7 +341,7 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) 
 	var proc jasper.Process
 	var err error
 
-	if err = util.RetryWithArgs(ctx, func() (bool, error) {
+	if err = utility.Retry(ctx, func() (bool, error) {
 		cmd := m.jasperClient.CreateCommand(ctx).
 			Add([]string{m.shellPath, "-l", "-c", strings.Join(agentCmdArgs, " ")}).
 			Environment(env).
@@ -402,7 +401,7 @@ func waitUntilComplete(ctx context.Context, proc jasper.Process, maxDelay time.D
 
 // runAgent starts the agent with the necessary args and waits for it to
 // terminate.
-func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
+func (m *monitor) runAgent(ctx context.Context, retry utility.RetryOptions) error {
 	proc, err := m.createAgentProcess(ctx, retry)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create agent process")
@@ -417,7 +416,7 @@ func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
 // repeats when the agent terminates.
 func (m *monitor) run(ctx context.Context) {
 	for {
-		if err := util.RetryWithArgs(ctx, func() (bool, error) {
+		if err := utility.Retry(ctx, func() (bool, error) {
 			if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, m.cloudProvider) {
 				if agentutil.SpotHostWillTerminateSoon() {
 					return true, errors.New("spot host terminating soon, not starting a new agent")
@@ -431,7 +430,7 @@ func (m *monitor) run(ctx context.Context) {
 
 			// The evergreen agent runs using a separate binary from the monitor
 			// to allow the agent to be updated.
-			if err := m.fetchClient(ctx, clientURLs, defaultRetryArgs()); err != nil {
+			if err := m.fetchClient(ctx, clientURLs, agentMonitorDefaultRetryOptions()); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":     "could not fetch client",
 					"distro":      m.distroID,
@@ -451,13 +450,13 @@ func (m *monitor) run(ctx context.Context) {
 				"distro":      m.distroID,
 				"jasper_port": m.jasperPort,
 			})
-			if err := m.runAgent(ctx, defaultRetryArgs()); err != nil {
+			if err := m.runAgent(ctx, agentMonitorDefaultRetryOptions()); err != nil {
 				grip.Error(errors.Wrap(err, "error occurred while running the agent"))
 				return true, err
 			}
 
 			return false, nil
-		}, defaultRetryArgs()); err != nil {
+		}, agentMonitorDefaultRetryOptions()); err != nil {
 			if ctx.Err() != nil {
 				grip.Warning(errors.Wrap(err, "context cancelled while running monitor"))
 				return

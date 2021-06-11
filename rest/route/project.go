@@ -406,6 +406,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			h.newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
+	for i := range h.newProjectRef.PatchTriggerAliases {
+		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
+		catcher.Add(err)
+	}
 	for _, buildDef := range h.newProjectRef.PeriodicBuilds {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition")
 	}

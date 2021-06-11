@@ -30,27 +30,29 @@ func init() {
 }
 
 type DrawdownInfo struct {
-	DistroID     string
-	NewCapTarget int
+	DistroID     string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
+	NewCapTarget int    `bson:"new_cap_target" json:"new_cap_target" yaml:"new_cap_target"`
 }
 
 type hostDrawdownJob struct {
-	idleHostJob
+	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
+	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
+	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
 
-	DrawdownInfo DrawdownInfo
+	env  evergreen.Environment
+	host *host.Host
+
+	DrawdownInfo DrawdownInfo `bson:"drawdowninfo" json:"drawdowninfo" yaml:"drawdowninfo"`
 }
 
 func makeHostDrawdownJob() *hostDrawdownJob {
 	j := &hostDrawdownJob{
-		idleHostJob{
-			Base: job.Base{
-				JobType: amboy.JobType{
-					Name:    hostDrawdownJobName,
-					Version: 0,
-				},
+		Base: job.Base{
+			JobType: amboy.JobType{
+				Name:    hostDrawdownJobName,
+				Version: 0,
 			},
 		},
-		DrawdownInfo{},
 	}
 	j.SetDependency(dependency.NewAlways())
 	j.SetPriority(2)
@@ -70,6 +72,10 @@ func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, id
 func (j *hostDrawdownJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
 	// get currently existing hosts, in case some hosts have already been terminated elsewhere
 	existingHostCount, err := host.CountRunningHosts(j.DrawdownInfo.DistroID)
 	if err != nil {
@@ -87,7 +93,15 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		if drawdownTarget <= 0 {
 			break
 		}
-		j.AddError(j.checkAndTerminateHost(ctx, &idleHost, &drawdownTarget))
+		err = j.checkAndTerminateHost(ctx, &idleHost, &drawdownTarget)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"id":             j.ID(),
+				"distro_id":      j.DrawdownInfo.DistroID,
+				"idle_host_list": idleHosts,
+				"message":        "terminate host drawdown error",
+			}))
+		}
 	}
 
 	grip.Info(message.Fields{
@@ -102,7 +116,7 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 
 func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Host, drawdownTarget *int) error {
 
-	exitEarly, err := j.checkTerminationExemptions(ctx, h)
+	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly || err != nil {
 		return err
 	}

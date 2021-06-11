@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -982,6 +982,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
 			expansions.Put("github_author", p.GithubPatchData.Author)
+			expansions.Put("github_commit", p.GithubPatchData.HeadHash)
 		}
 	} else {
 		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))

@@ -259,7 +259,6 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 
 	err = c.Execute(ctx, comm, logger, conf)
 	s.Error(err)
-	s.Contains(err.Error(), fmt.Sprintf("after %d retries, operation failed", GitFetchProjectRetries))
 }
 
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
