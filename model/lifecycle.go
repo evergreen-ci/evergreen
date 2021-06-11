@@ -48,20 +48,6 @@ type RestartResults struct {
 	ItemsErrored   []string
 }
 
-// cacheFromTask is helper for creating a build.TaskCache from a real Task model.
-func cacheFromTask(t task.Task) build.TaskCache {
-	return build.TaskCache{
-		Id:            t.Id,
-		DisplayName:   t.DisplayName,
-		Status:        t.Status,
-		StatusDetails: t.Details,
-		StartTime:     t.StartTime,
-		TimeTaken:     t.TimeTaken,
-		Activated:     t.Activated,
-		Blocked:       t.Blocked(),
-	}
-}
-
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
@@ -119,7 +105,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 			return errors.Wrap(err, "can't get recursive dependencies")
 		}
 
-		if _, err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+		if err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
 			return errors.Wrap(err, "problem updating tasks for activation")
 		}
 	} else {
@@ -136,14 +122,8 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		if err != nil {
 			return errors.Wrap(err, "can't get tasks to deactivate")
 		}
-		if _, err = task.DeactivateTasks(tasks, caller); err != nil {
+		if err = task.DeactivateTasks(tasks, caller); err != nil {
 			return errors.Wrap(err, "can't deactivate tasks")
-		}
-	}
-
-	for _, buildId := range buildIds {
-		if err := RefreshTasksCache(buildId); err != nil {
-			return errors.Wrapf(err, "can't refresh cache for build '%s'", buildId)
 		}
 	}
 
@@ -219,12 +199,8 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 
 	// negative priority - deactivate the task
 	if priority <= evergreen.DisabledTaskPriority {
-		var deactivatedTasks []task.Task
-		if deactivatedTasks, err = t.DeactivateTask(caller); err != nil {
+		if err = t.DeactivateTask(caller); err != nil {
 			return errors.Wrap(err, "can't deactivate task")
-		}
-		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
-			return errors.Wrap(err, "can't update task cache activation")
 		}
 	}
 
@@ -248,13 +224,9 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for build '%s'", buildId)
 		}
-		var deactivatedTasks []task.Task
-		deactivatedTasks, err = task.DeactivateTasks(tasks, caller)
+		err = task.DeactivateTasks(tasks, caller)
 		if err != nil {
 			return errors.Wrapf(err, "can't deactivate tasks for build '%s'", buildId)
-		}
-		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
-			return errors.Wrap(err, "can't set cached tasks deactivated")
 		}
 	}
 
@@ -279,13 +251,9 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for version '%s'", versionId)
 		}
-		var deactivatedTasks []task.Task
-		deactivatedTasks, err = task.DeactivateTasks(tasks, caller)
+		err = task.DeactivateTasks(tasks, caller)
 		if err != nil {
 			return errors.Wrapf(err, "can't deactivate tasks for version '%s'", versionId)
-		}
-		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
-			return errors.Wrap(err, "can't set cached tasks deactivated")
 		}
 	}
 
@@ -398,10 +366,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			event.LogTaskRestarted(t.Id, t.Execution, caller)
 		}
 	}
-	// TODO figure out a way to coalesce updates for task cache for the same build, so we
-	// only need to do one update per-build instead of one per-task here.
-	// Doesn't seem to be possible as-is because $ can only apply to one array element matched per
-	// document.
 	if err = build.SetBuildStartedForTasks(tasksToRestart, caller); err != nil {
 		return errors.Wrapf(err, "error setting builds started")
 	}
@@ -497,7 +461,7 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, task := range tasks {
 		if task.DisplayTask == nil {
-			cache = append(cache, cacheFromTask(task))
+			cache = append(cache, build.TaskCache{Id: task.Id})
 		}
 	}
 	return cache

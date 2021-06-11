@@ -79,7 +79,7 @@ func (s *VersionConnectorSuite) SetupTest() {
 	}
 
 	builds := []*build.Build{
-		{Id: "build1", Tasks: []build.TaskCache{{Id: "task5"}}},
+		{Id: "build1"},
 	}
 
 	for _, item := range versions {

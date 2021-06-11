@@ -171,10 +171,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
-		if err = model.RefreshTasksCache(projCtx.Build.Id); err != nil {
-			http.Error(w, fmt.Sprintf("problem refreshing tasks cache %v", projCtx.Build.Id), http.StatusInternalServerError)
-			return
-		}
 		if projCtx.Build.Requester == evergreen.MergeTestRequester {
 			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
 			if err != nil {

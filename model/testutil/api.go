@@ -183,11 +183,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Insert the build that contains the tasks
 	build := &build.Build{
-		Id: "testBuildId",
-		Tasks: []build.TaskCache{
-			build.NewTaskCache(taskOne.Id, taskOne.DisplayName, true),
-			build.NewTaskCache(taskTwo.Id, taskTwo.DisplayName, true),
-		},
+		Id:      "testBuildId",
 		Version: v.Id,
 	}
 	if err = build.Insert(); err != nil {

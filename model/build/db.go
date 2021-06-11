@@ -41,15 +41,8 @@ var (
 	ActualMakespanKey      = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
 	IsGithubCheckKey       = bsonutil.MustHaveTag(Build{}, "IsGithubCheck")
 
-	// bson fields for the task caches
-	TaskCacheIdKey            = bsonutil.MustHaveTag(TaskCache{}, "Id")
-	TaskCacheDisplayNameKey   = bsonutil.MustHaveTag(TaskCache{}, "DisplayName")
-	TaskCacheStatusKey        = bsonutil.MustHaveTag(TaskCache{}, "Status")
-	TaskCacheStatusDetailsKey = bsonutil.MustHaveTag(TaskCache{}, "StatusDetails")
-	TaskCacheStartTimeKey     = bsonutil.MustHaveTag(TaskCache{}, "StartTime")
-	TaskCacheTimeTakenKey     = bsonutil.MustHaveTag(TaskCache{}, "TimeTaken")
-	TaskCacheActivatedKey     = bsonutil.MustHaveTag(TaskCache{}, "Activated")
-	TaskCacheBlockedKey       = bsonutil.MustHaveTag(TaskCache{}, "Blocked")
+	// bson fields for the task cache
+	TaskCacheIdKey = bsonutil.MustHaveTag(TaskCache{}, "Id")
 )
 
 var CompletedStatuses = []string{evergreen.BuildSucceeded, evergreen.BuildFailed}
@@ -291,36 +284,18 @@ func FindProjectForBuild(buildID string) (string, error) {
 	return b.Project, nil
 }
 
+// SetBuildStartedForTasks sets tasks' builds status to started and activates them
 func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
-	tasksRestarted := map[string]bool{}
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		toReset := t.Id
-		if t.IsPartOfDisplay() {
-			toReset = t.DisplayTask.Id
-		}
-		if tasksRestarted[toReset] {
-			continue
-		}
-		if err := SetCachedTaskActivated(t.BuildId, toReset, true); err != nil {
-			catcher.Add(errors.Wrap(err, "unable to activate task in build cache"))
-			continue
-		}
-
-		// update the cached version of the task, in its build document
-		if err := ResetCachedTask(t.BuildId, toReset); err != nil {
-			catcher.Add(errors.Wrap(err, "unable to reset task in build cache"))
-		}
-		tasksRestarted[toReset] = true
 		buildIdSet[t.BuildId] = true
 	}
-
-	// reset the build statuses, once per build
 	buildIdList := make([]string, 0, len(buildIdSet))
 	for k := range buildIdSet {
 		buildIdList = append(buildIdList, k)
 	}
+
 	// Set the build status for all the builds containing the tasks that we touched
 	_, err := UpdateAllBuilds(
 		bson.M{IdKey: bson.M{"$in": buildIdList}},

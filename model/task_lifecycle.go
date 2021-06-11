@@ -31,7 +31,6 @@ type StatusChanges struct {
 }
 
 func SetActiveState(t *task.Task, caller string, active bool) error {
-	var modifiedTasks []task.Task
 	originalTasks := []task.Task{*t}
 	if t.DisplayOnly {
 		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
@@ -42,7 +41,6 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	}
 
 	if active {
-
 		// if the task is being activated and it doesn't override its dependencies
 		// activate the task's dependencies as well
 		tasksToActivate := []task.Task{}
@@ -62,7 +60,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			tasksToActivate = append(tasksToActivate, originalTasks...)
 		}
 		var err error
-		modifiedTasks, err = task.ActivateTasks(tasksToActivate, time.Now(), caller)
+		err = task.ActivateTasks(tasksToActivate, time.Now(), caller)
 		if err != nil {
 			return errors.Wrapf(err, "can't activate tasks")
 		}
@@ -94,7 +92,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		// Otherwise, if it was originally activated by evergreen, anything can
 		// deactivate it.
 		var err error
-		modifiedTasks, err = task.DeactivateTasks(originalTasks, caller)
+		err = task.DeactivateTasks(originalTasks, caller)
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}
@@ -133,12 +131,12 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		if err := updateDisplayTaskAndCache(t); err != nil {
-			return err
+		if err := UpdateDisplayTask(t); err != nil {
+			return errors.Wrap(err, "problem updating display task")
 		}
 	}
 
-	return errors.WithStack(build.SetManyCachedTasksActivated(modifiedTasks, active))
+	return nil
 }
 
 func SetActiveStateById(id, user string, active bool) error {
@@ -202,17 +200,7 @@ func resetTask(taskId, caller string, logIDs bool) error {
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
 
-	var activatedTasks []task.Task
-	if activatedTasks, err = t.ActivateTask(caller); err != nil {
-		return errors.WithStack(err)
-	}
-
-	if err = build.SetManyCachedTasksActivated(activatedTasks, true); err != nil {
-		return errors.WithStack(err)
-	}
-
-	// update the cached version of the task, in its build document
-	if err = build.ResetCachedTask(t.BuildId, t.Id); err != nil {
+	if err = t.ActivateTask(caller); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -525,37 +513,12 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
-			return err
-		}
-		if err = build.UpdateCachedTask(t.DisplayTask, t.TimeTaken); err != nil {
-			b, findErr := build.FindOneId(t.BuildId)
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":     "failed to update cached display task",
-				"function":    "MarkEnd",
-				"build_id":    t.DisplayTask.BuildId,
-				"task_id":     t.DisplayTask.Id,
-				"status":      t.DisplayTask.Status,
-				"time_taken":  t.TimeTaken,
-				"build_cache": b.Tasks,
-				"find_err":    findErr,
-			}))
+			return errors.Wrap(err, "problem updating display task")
 		}
 		if err = checkResetDisplayTask(t.DisplayTask); err != nil {
 			return errors.Wrap(err, "can't check display task reset")
 		}
 	} else {
-		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detailsCopy.Status, &detailsCopy, t.TimeTaken)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":    "failed to set cached task finished",
-				"function":   "MarkEnd",
-				"build_id":   t.BuildId,
-				"task_id":    t.Id,
-				"status":     detailsCopy.Status,
-				"time_taken": t.TimeTaken,
-			}))
-			return errors.Wrap(err, "error updating build")
-		}
 		if t.IsPartOfSingleHostTaskGroup() {
 			if err = checkResetSingleHostTaskGroup(t, caller); err != nil {
 				return errors.Wrap(err, "problem resetting task group")
@@ -610,12 +573,6 @@ func UpdateBlockedDependencies(t *task.Task) error {
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
 			return errors.Wrapf(err, "error updating blocked dependencies for '%s'", t.Id)
 		}
-
-		if !dependentTask.IsPartOfDisplay() { // execution tasks not cached in build so we should skip
-			if err = build.SetCachedTaskBlocked(dependentTask.BuildId, dependentTask.Id, dependentTask.Blocked()); err != nil {
-				return errors.Wrapf(err, "error marking cached task '%s' as blocked", dependentTask.Id)
-			}
-		}
 	}
 	return nil
 }
@@ -641,12 +598,6 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error
 		}
 		if err = UpdateUnblockedDependencies(&blockedTask, logIDs, caller); err != nil {
 			return errors.WithStack(err)
-		}
-
-		if !blockedTask.IsPartOfDisplay() { // execution tasks not cached in build so we should skip
-			if err = build.SetCachedTaskBlocked(blockedTask.BuildId, blockedTask.Id, blockedTask.Blocked()); err != nil {
-				return errors.Wrap(err, "error setting cached task '%s' as unblocked")
-			}
 		}
 	}
 
@@ -1123,11 +1074,10 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		return updateDisplayTaskAndCache(t)
+		return UpdateDisplayTask(t)
 	}
 
-	// update the cached version of the task, in its build document
-	return build.SetCachedTaskStarted(t.BuildId, t.Id, startTime)
+	return nil
 }
 
 func MarkTaskUndispatched(t *task.Task) error {
@@ -1139,13 +1089,9 @@ func MarkTaskUndispatched(t *task.Task) error {
 	event.LogTaskUndispatched(t.Id, t.Execution, t.HostId)
 
 	if t.IsPartOfDisplay() {
-		return updateDisplayTaskAndCache(t)
+		return UpdateDisplayTask(t)
 	}
 
-	// update the cached version of the task in its related build document
-	if err := build.SetCachedTaskUndispatched(t.BuildId, t.Id); err != nil {
-		return errors.WithStack(err)
-	}
 	return nil
 }
 
@@ -1159,13 +1105,9 @@ func MarkTaskDispatched(t *task.Task, h *host.Host) error {
 	event.LogTaskDispatched(t.Id, t.Execution, h.Id)
 
 	if t.IsPartOfDisplay() {
-		return updateDisplayTaskAndCache(t)
+		return UpdateDisplayTask(t)
 	}
 
-	// update the cached version of the task in its related build document
-	if err := build.SetCachedTaskDispatched(t.BuildId, t.Id); err != nil {
-		return errors.Wrapf(err, "error updating task cache in build %s", t.BuildId)
-	}
 	return nil
 }
 
@@ -1214,28 +1156,6 @@ func MarkTasksReset(taskIds []string) error {
 		catcher.Add(errors.Wrap(UpdateUnblockedDependencies(&t, false, ""), "can't clear cached unattainable dependencies"))
 	}
 	return catcher.Resolve()
-}
-
-func updateDisplayTaskAndCache(t *task.Task) error {
-	err := UpdateDisplayTask(t.DisplayTask)
-	if err != nil {
-		return errors.Wrap(err, "error updating display task")
-	}
-	err = build.UpdateCachedTask(t.DisplayTask, 0)
-	if err != nil {
-		b, findErr := build.FindOneId(t.BuildId)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":      "failed to update cached display task",
-			"function":     "updateDisplayTaskAndCache",
-			"build_id":     t.BuildId,
-			"task_id":      t.Id,
-			"display_task": t.DisplayTask.Id,
-			"status":       t.Status,
-			"build_cache":  b.Tasks,
-			"find_err":     findErr,
-		}))
-	}
-	return nil
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
@@ -1359,11 +1279,6 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 
 	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
-	}
-	if !t.IsPartOfDisplay() {
-		if err = build.UpdateCachedTask(t, 0); err != nil {
-			return errors.Wrap(err, "problem resetting cached task")
-		}
 	}
 
 	// For a single-host task group, block and dequeue later tasks in that group.

@@ -76,18 +76,6 @@ func TestDataConnectorSuite(t *testing.T) {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-
-	b.Tasks = []build.TaskCache{
-		{
-			Id: testTask1.Id,
-		},
-		{
-			Id: testTask2.Id,
-		},
-		{
-			Id: testTask3.Id,
-		},
-	}
 	require.NoError(t, b.Insert(), "error inserting documents")
 	require.NoError(t, v.Insert(), "error inserting documents")
 	require.NoError(t, testTask1.Insert(), "error inserting documents")

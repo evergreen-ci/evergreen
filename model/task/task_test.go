@@ -1943,12 +1943,8 @@ func TestDeactivateDependencies(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t4", "t5"}
-	deactivatedDependencies, err := DeactivateDependencies([]string{"t0"}, "")
+	err := DeactivateDependencies([]string{"t0"}, "")
 	assert.NoError(t, err)
-	assert.Len(t, deactivatedDependencies, 2)
-	for _, dep := range deactivatedDependencies {
-		assert.Contains(t, updatedIDs, dep.Id)
-	}
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
@@ -1983,12 +1979,8 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t3", "t4"}
-	activatedDependencies, err := ActivateDeactivatedDependencies([]string{"t0"}, "")
+	err := ActivateDeactivatedDependencies([]string{"t0"}, "")
 	assert.NoError(t, err)
-	assert.Len(t, activatedDependencies, 2)
-	for _, dep := range activatedDependencies {
-		assert.Contains(t, updatedIDs, dep.Id)
-	}
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
@@ -2047,12 +2039,8 @@ func TestActivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t3", "t4"}
-	activatedTasks, err := ActivateTasks([]Task{tasks[0]}, time.Time{}, "")
+	err := ActivateTasks([]Task{tasks[0]}, time.Time{}, "")
 	assert.NoError(t, err)
-	assert.Len(t, activatedTasks, 3)
-	for _, dep := range activatedTasks {
-		assert.Contains(t, updatedIDs, dep.Id)
-	}
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
@@ -2087,12 +2075,8 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t4", "t5"}
-	deactivatedTasks, err := DeactivateTasks([]Task{tasks[0]}, "")
+	err := DeactivateTasks([]Task{tasks[0]}, "")
 	assert.NoError(t, err)
-	assert.Len(t, deactivatedTasks, 3)
-	for _, dep := range deactivatedTasks {
-		assert.Contains(t, updatedIDs, dep.Id)
-	}
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
@@ -2123,9 +2107,7 @@ func TestSetDisabledPriority(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	deactivatedTasks, err := tasks[0].SetDisabledPriority("")
-	assert.NoError(t, err)
-	assert.Len(t, deactivatedTasks, 1)
+	assert.NoError(t, tasks[0].SetDisabledPriority(""))
 
 	dbTasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)

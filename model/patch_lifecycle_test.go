@@ -672,8 +672,6 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
-	assert.Equal(dbBuild.Tasks[0].DisplayName, "displaytask1")
-	assert.Equal(dbBuild.Tasks[1].DisplayName, "task3")
 
 	assert.NoError(AddNewTasksForPatch(context.Background(), p, v, proj, tasks, ref.Identifier))
 	dbTasks, err := task.FindAll(task.ByBuildId(dbBuild.Id))
@@ -747,8 +745,6 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
-	assert.Equal(dbBuild.Tasks[0].DisplayName, "displaytask1")
-	assert.Equal(dbBuild.Tasks[1].DisplayName, "task3")
 
 	assert.NoError(AddNewTasksForPatch(context.Background(), p, v, proj, tasks, ref.Identifier))
 	dbTasks, err := task.FindAll(task.ByBuildId(dbBuild.Id))
