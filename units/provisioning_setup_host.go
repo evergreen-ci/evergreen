@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	provisionRetryLimit = 15
+	provisionRetryLimit = 40
 	mountRetryLimit     = 10
 	mountSleepDuration  = time.Second * 10
 	setupHostJobName    = "provisioning-setup-host"
@@ -79,6 +79,7 @@ func NewSetupHostJob(env evergreen.Environment, h *host.Host, id string) amboy.J
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(provisionRetryLimit),
+		WaitUntil:   utility.ToTimeDurationPtr(15 * time.Second),
 	})
 	return j
 }
