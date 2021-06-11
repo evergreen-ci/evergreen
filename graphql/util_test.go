@@ -43,6 +43,7 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 			Status:   "Pass",
 			Start:    time.Date(1996, time.August, 31, 12, 5, 10, 0, time.UTC),
 			End:      time.Date(1996, time.August, 31, 12, 5, 11, 0, time.UTC),
+			GroupID:  "llama", 
 		},
 	}
 
@@ -52,6 +53,7 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 		statuses        []string
 		sortBy          string
 		sortDir         int
+		groupId         string
 		pageParam       int
 		limitParam      int
 		expectedResults []apimodels.CedarTestResult
@@ -79,6 +81,12 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 			statuses:        []string{"Fail"},
 			expectedResults: testResults[1:3],
 			expectedCount:   2,
+		},
+		{
+			name:            "GroupIdFilter",
+			groupId:         "llama", 
+			expectedResults: testResults[3:4],
+			expectedCount:   1,
 		},
 		{
 			name:   "SortByDuration",
@@ -134,7 +142,7 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 				test.testName,
 				test.statuses,
 				test.sortBy,
-				"",
+				test.groupId,
 				test.sortDir,
 				test.pageParam,
 				test.limitParam,
