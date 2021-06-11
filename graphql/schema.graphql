@@ -428,7 +428,6 @@ type HostsResponse {
 }
 
 type PatchTasks {
-  projectName: String
   tasks: [Task!]!
   count: Int!
 }
