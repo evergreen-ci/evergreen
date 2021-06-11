@@ -1233,19 +1233,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 	}
 
-	groupIdParam := ""
-	if groupID != nil {
-		groupIdParam = *groupID
-	}
+	groupIdParam := utility.FromStringPtr(groupID)
 
 	if *sortDirection == SortDirectionDesc {
 		sortDir = -1
 	}
 
-	testNameParam := ""
-	if testName != nil {
-		testNameParam = *testName
-	}
+	testNameParam := utility.FromStringPtr(testName)
+
 	pageParam := 0
 	if page != nil {
 		pageParam = *page
