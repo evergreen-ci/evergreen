@@ -3,7 +3,6 @@ package testresult
 import (
 	"context"
 	"time"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -251,6 +250,7 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 	if err != nil {
 		return nil, err
 	}
+
 	return tests, nil
 }
 

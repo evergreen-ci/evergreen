@@ -89,6 +89,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			dispString := fmt.Sprintf("/test_log/%s?text=true", *at.Logs.LogId)
 			at.Logs.RawDisplayURL = &dispString
 		}
+
+	    if v.GroupID != "" {
+			at.GroupId = utility.ToStringPtr(v.GroupID)
+		}
 	case *apimodels.CedarTestResult:
 		at.Id = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution
