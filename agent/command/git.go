@@ -504,42 +504,43 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		moduleBase := filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
 
 		var revision string
-		if conf.Task.Requester == evergreen.MergeTestRequester {
-			revision = module.Branch
-			c.logModuleRevision(logger, revision, moduleName, "commit queue merge")
-		} else {
-			// use submodule revisions based on the main patch. If there is a need in the future,
-			// this could maybe use the most recent submodule revision of all requested patches
-			if p != nil {
-				module := p.FindModule(moduleName)
-				if module != nil {
-					revision = module.Githash
+		// use submodule revisions based on the main patch. If there is a need in the future,
+		// this could maybe use the most recent submodule revision of all requested patches.
+		// We ignore set-module changes for commit queue, since we should verify HEAD before merging.
+		if p != nil {
+			patchModule := p.FindModule(moduleName)
+			if patchModule != nil {
+				if conf.Task.Requester == evergreen.MergeTestRequester {
+					revision = module.Branch
+					c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
+				} else {
+					revision = patchModule.Githash
 					if revision != "" {
 						c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
 					}
 				}
 			}
-			if revision == "" {
-				revision = c.Revisions[moduleName]
-				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
-				}
+		}
+		if revision == "" {
+			revision = c.Revisions[moduleName]
+			if revision != "" {
+				c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
 			}
-			if revision == "" {
-				revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
-				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "from manifest")
-				}
+		}
+		if revision == "" {
+			revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
+			if revision != "" {
+				c.logModuleRevision(logger, revision, moduleName, "from manifest")
 			}
-			// if there is no revision, then use the revision from the module, then branch name
-			if revision == "" {
-				if module.Ref != "" {
-					revision = module.Ref
-					c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
-				} else {
-					revision = module.Branch
-					c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
-				}
+		}
+		// if there is no revision, then use the revision from the module, then branch name
+		if revision == "" {
+			if module.Ref != "" {
+				revision = module.Ref
+				c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
+			} else {
+				revision = module.Branch
+				c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
 			}
 		}
 		var owner, repo string
