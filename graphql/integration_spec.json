@@ -2830,8 +2830,8 @@
             "testResults": [
               {
                 "logs": {
-                  "htmlDisplayURL": null,
-                  "rawDisplayURL": null
+                  "htmlDisplayURL": "https://localhost:8443/test_log//0/apple?group_id=#L126",
+                  "rawDisplayURL": "https://localhost:8443/test_log//0/apple?group_id=&text=true"
                 },
                 "id": "29ef7a20a7798219e191d00e"
               }
