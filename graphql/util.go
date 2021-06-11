@@ -51,7 +51,7 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 			match = false
 		}
 		if groupId != "" && testResult.groupId != groupId {
-			match = false 
+			match = false
 		}
 		if match {
 			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)
