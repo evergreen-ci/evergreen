@@ -828,9 +828,6 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 	if usr == nil {
 		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find user from user ID"))
 	} 
-	fmt.Printf("++++++++++++++++++++++++++++++")
-	fmt.Printf(usr.DisplayName())
-	fmt.Printf("++++++++++++++++++++++++++++++")
 	return usr.DisplayName(), nil
 }
 
