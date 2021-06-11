@@ -52,8 +52,6 @@ imports:
     version: b4936e06046bbecbb94cae9c18127ebe510a2cb9
   - name: gopkg.in/yaml.v2
     version: 7649d4548cb53a614db133b2a8ac1f31859dda8c
-  - name: gopkg.in/yaml.v3
-    version: 496545a6307b2a7d7a710fd516e5e16e8ab62dbc
   - name: gopkg.in/mgo.v2
     version: 60f23985327354fe2d4dde32ba05598bb047a114
   - name: github.com/gophercloud/gophercloud

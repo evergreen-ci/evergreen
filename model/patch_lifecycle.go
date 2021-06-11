@@ -169,6 +169,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
+
 	if _, err := LoadProjectInto(projectFileBytes, projectRef.Id, project); err != nil {
 		return nil, "", errors.WithStack(err)
 	}

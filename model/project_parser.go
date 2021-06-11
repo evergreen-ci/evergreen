@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 const LoadProjectError = "load project error(s)"
