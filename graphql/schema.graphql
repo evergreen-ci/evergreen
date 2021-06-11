@@ -428,6 +428,7 @@ type HostsResponse {
 }
 
 type PatchTasks {
+  projectName: String
   tasks: [Task!]!
   count: Int!
 }
@@ -486,7 +487,7 @@ type Patch {
   status: String!
   variants: [String!]!
   tasks: [String!]!
-  childPatches: [String]
+  childPatches: [ChildPatches]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
@@ -502,6 +503,11 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
+}
+
+type ChildPatches {
+  project: String
+  patchID: String
 }
 
 type Build {
