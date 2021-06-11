@@ -1,12 +1,15 @@
 package service
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/thirdparty"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -19,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v2"
-	yamlv3 "gopkg.in/yaml.v3"
 )
 
 const NumRecentVersions = 10
@@ -294,6 +296,35 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
+	// fetch project from github directly
+	if useLatestParser {
+		settings := restapi.GetSettings()
+		oauthToken, err := settings.GetGithubOauthToken()
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error getting github oauth token"})
+			return
+		}
+		pRef, err := model.FindOneProjectRef(srcVersion.Identifier)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding project ref"})
+			return
+		}
+		if pRef == nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "project ref not found"})
+			return
+		}
+		configFile, err := thirdparty.GetGithubFile(r.Context(), oauthToken, pRef.Owner, pRef.Repo, pRef.RemotePath, "")
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error fetching project file"})
+			return
+		}
+		fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "unable to decode config file"})
+			return
+		}
+		_, err = w.Write(fileContents)
+	}
 	var config []byte
 	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
 	if err != nil {
@@ -301,18 +332,10 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if pp != nil && pp.ConfigUpdateNumber >= srcVersion.ConfigUpdateNumber {
-		if useLatestParser {
-			config, err = yamlv3.Marshal(pp)
-			if err != nil {
-				gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project with yaml v3"})
-				return
-			}
-		} else {
-			config, err = yaml.Marshal(pp)
-			if err != nil {
-				gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project with yaml v2"})
-				return
-			}
+		config, err = yaml.Marshal(pp)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+			return
 		}
 	} else {
 		config = []byte(projCtx.Version.Config)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -25,7 +26,7 @@ func fetchAllProjectConfigs() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  legacyFlagName,
-				Usage: "uses yaml v2 as opposed to yaml v3",
+				Usage: "uses stored yamls and parses with v2",
 			},
 		},
 		Usage:  "download the configuration files of all evergreen projects to the current directory",
@@ -54,38 +55,58 @@ func fetchAllProjectConfigs() cli.Command {
 				return errors.Wrap(err, "can't fetch projects from evergreen")
 			}
 
-			catcher := grip.NewSimpleCatcher()
-			for _, p := range projects {
-				if p.IsEnabled() || includeDisabled {
-					catcher.Add(fetchAndWriteConfig(rc, p.Id, useLegacy))
-				}
-			}
-
-			return catcher.Resolve()
+			return fetchAndWriteConfigs(rc, projects, useLegacy, includeDisabled)
 		},
 	}
 }
 
 // fetchAndWriteConfig downloads the most recent config for a project
 // and writes it to "project_name.yml" locally.
-func fetchAndWriteConfig(c *legacyClient, project string, useLegacy bool) error {
-	grip.Infof("Downloading configuration for %s", project)
-	versions, err := c.GetRecentVersions(project)
-	if err != nil {
-		return errors.Wrapf(err, "failed to fetch recent versions for %s", project)
+func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, useLegacy, includeDisabled bool) error {
+	catcher := grip.NewSimpleCatcher()
+	type projectRepo struct {
+		Owner      string
+		Repo       string
+		Branch     string
+		ConfigFile string
 	}
-	if len(versions) == 0 {
-		return errors.Errorf("WARNING: project %s has no versions", project)
-	}
+	configDownloaded := map[projectRepo]bool{}
+	for _, p := range projects {
+		if p.IsEnabled() || includeDisabled {
+			continue
+		}
+		repo := projectRepo{
+			Owner:      p.Owner,
+			Repo:       p.Repo,
+			Branch:     p.Branch,
+			ConfigFile: p.RemotePath,
+		}
+		if exists := configDownloaded[repo]; exists {
+			grip.Infof("Configuration for project %s already downloaded", p.Identifier)
+			continue
+		}
+		grip.Infof("Downloading configuration for %s", p.Identifier)
+		versions, err := c.GetRecentVersions(p.Id)
+		if err != nil {
+			catcher.Wrapf(err, "failed to fetch recent versions for %s", p.Identifier)
+			continue
+		}
+		if len(versions) == 0 {
+			catcher.Errorf("WARNING: project %s has no versions", p.Identifier)
+			continue
+		}
 
-	config, err := c.GetConfig(versions[0], useLegacy)
-	if err != nil {
-		return errors.Wrapf(err, "failed to fetch config for project %s, version %s", project, versions[0])
-	}
+		config, err := c.GetConfig(versions[0], useLegacy)
+		if err != nil {
+			catcher.Wrapf(err, "failed to fetch config for project %s, version %s", p.Identifier, versions[0])
+			continue
+		}
+		configDownloaded[repo] = true
 
-	err = ioutil.WriteFile(project+".yml", config, 0644)
-	if err != nil {
-		return errors.Wrapf(err, "failed to write configuration for project %s", project)
+		err = ioutil.WriteFile(p.Identifier+".yml", config, 0644)
+		if err != nil {
+			catcher.Wrapf(err, "failed to write configuration for project %s", p.Identifier)
+		}
 	}
 
 	return nil
