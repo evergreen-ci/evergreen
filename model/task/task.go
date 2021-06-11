@@ -1380,11 +1380,12 @@ func (t *Task) GetDisplayStatus() string {
 	}
 	if t.Status == evergreen.TaskUndispatched {
 		if !t.Activated {
-			return evergreen.TaskWillNotRun
+			return evergreen.TaskUnscheduled
 		}
 		dependenciesMet, err := t.DependenciesMet(map[string]Task{})
 		if err != nil {
 			// Return the default undispatched status if we can't determine if dependencies have been met
+			// This will be replaced by Can't run in https://jira.mongodb.org/browse/EVG-13828
 			return t.Status
 		}
 		if dependenciesMet {

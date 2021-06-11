@@ -213,7 +213,7 @@ var (
 					},
 					"then": evergreen.TaskWillRun,
 				},
-				// A task will not run if it is not activated
+				// A task will be unscheduled if it is not activated
 				{
 					"case": bson.M{
 						"$and": []bson.M{
@@ -221,7 +221,7 @@ var (
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
 						},
 					},
-					"then": evergreen.TaskWillNotRun,
+					"then": evergreen.TaskUnscheduled,
 				},
 				// A task will be blocked if it has dependencies that are not attainable
 				{

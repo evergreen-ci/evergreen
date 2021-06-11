@@ -927,7 +927,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
-	assert.Equal(task.DisplayStatus, evergreen.TaskWillNotRun)
+	assert.Equal(task.DisplayStatus, evergreen.TaskUndispatched)
 	// assert.NoError(taskDoc.Archive())
 	// taskDoc.Execution += 1
 
@@ -2270,7 +2270,7 @@ func TestDisplayStatus(t *testing.T) {
 		Activated: false,
 	}
 	assert.NoError(t, t9.Insert())
-	checkStatuses(t, evergreen.TaskWillNotRun, t9)
+	checkStatuses(t, evergreen.TaskUnscheduled, t9)
 }
 
 func checkStatuses(t *testing.T, expected string, toCheck Task) {
