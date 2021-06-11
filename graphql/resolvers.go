@@ -826,6 +826,17 @@ func (r *patchResolver) ProjectIdentifier(ctx context.Context, apiPatch *restMod
 	return utility.ToStringPtr(identifier), nil
 }
 
+func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
+	usr, err := user.FindOneById(*obj.Author)
+	if err != nil {
+		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
+	}
+	if usr == nil {
+		return "", ResourceNotFound.Send(ctx, fmt.Sprint("Could not find user from user ID"))
+	}
+	return usr.DisplayName(), nil
+}
+
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
