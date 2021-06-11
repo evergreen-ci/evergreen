@@ -41,6 +41,7 @@ type APIPatch struct {
 	Parameters              []APIParameter    `json:"parameters"`
 	PatchedConfig           *string           `json:"patched_config"`
 	CanEnqueueToCommitQueue bool              `json:"can_enqueue_to_commit_queue"`
+	ChildPatches            []*string         `json:"child_patches"`
 }
 
 type DownstreamTasks struct {
@@ -172,6 +173,13 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
+
+	childPatches := make([]*string, 0)
+	for _, cp := range v.Triggers.ChildPatches {
+		childPatches = append(childPatches, utility.ToStringPtr(cp))
+	}
+	apiPatch.ChildPatches = childPatches
+
 	downstreamTasks, err := getDownstreamTasks(v)
 	if err != nil {
 		return errors.Wrap(err, "error getting downstream tasks")
