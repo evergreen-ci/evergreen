@@ -215,6 +215,7 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 		TestFileKey:        1,
 		DisplayTestNameKey: 1,
 		GroupIDKey:         1,
+		TaskIDKey:          1,
 		EndTimeKey:         1,
 		StartTimeKey:       1,
 		StatusKey:          1,
