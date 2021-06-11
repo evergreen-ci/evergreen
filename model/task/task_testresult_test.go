@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/stretchr/testify/suite"
@@ -98,6 +99,7 @@ func (s *TaskTestResultSuite) TestNoOldNewTestResults() {
 		Project:    fmt.Sprintf("project-%d", 10),
 		Revision:   fmt.Sprintf("revision-%d", 10),
 		Execution:  3,
+		Status:     evergreen.TaskSucceeded,
 	}
 	err := t.Insert()
 	s.Require().NoError(err)
@@ -150,6 +152,7 @@ func (s *TaskTestResultSuite) TestArchivedTask() {
 		Project:    fmt.Sprintf("project-%d", 20),
 		Revision:   fmt.Sprintf("revision-%d", 20),
 		Execution:  3,
+		Status:     evergreen.TaskFailed,
 	}
 	err := t.Insert()
 	s.NoError(err)
