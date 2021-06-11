@@ -1047,7 +1047,8 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	require.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDoc := Task{
-		Id: "task",
+		Id:     "task",
+		Status: evergreen.TaskSucceeded,
 	}
 	require.NoError(taskDoc.Insert())
 	require.NoError(taskDoc.Archive())
