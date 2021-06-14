@@ -2,7 +2,6 @@ package testresult
 
 import (
 	"context"
-	"time"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -13,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	mgobson "gopkg.in/mgo.v2/bson"
+	"time"
 )
 
 const (
@@ -71,12 +71,12 @@ var (
 	TaskIDKey    = bsonutil.MustHaveTag(TestResult{}, "TaskID")
 	ExecutionKey = bsonutil.MustHaveTag(TestResult{}, "Execution")
 
-	ProjectKey              = bsonutil.MustHaveTag(TestResult{}, "Project")
-	BuildVariantKey         = bsonutil.MustHaveTag(TestResult{}, "BuildVariant")
-	DistroIdKey             = bsonutil.MustHaveTag(TestResult{}, "DistroId")
-	RequesterKey            = bsonutil.MustHaveTag(TestResult{}, "Requester")
-	DisplayNameKey          = bsonutil.MustHaveTag(TestResult{}, "DisplayName")
-	GroupIDKey   		    = bsonutil.MustHaveTag(TestResult{}, "GroupID")
+	ProjectKey      = bsonutil.MustHaveTag(TestResult{}, "Project")
+	BuildVariantKey = bsonutil.MustHaveTag(TestResult{}, "BuildVariant")
+	DistroIdKey     = bsonutil.MustHaveTag(TestResult{}, "DistroId")
+	RequesterKey    = bsonutil.MustHaveTag(TestResult{}, "Requester")
+	DisplayNameKey  = bsonutil.MustHaveTag(TestResult{}, "DisplayName")
+	GroupIDKey      = bsonutil.MustHaveTag(TestResult{}, "GroupID")
 
 	ExecutionDisplayNameKey = bsonutil.MustHaveTag(TestResult{}, "ExecutionDisplayName")
 	TaskCreateTimeKey       = bsonutil.MustHaveTag(TestResult{}, "TaskCreateTime")
@@ -204,9 +204,9 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 	if len(statuses) > 0 {
 		match[StatusKey] = bson.M{"$in": statuses}
 	}
-    if groupId != "" {
-        match[GroupIDKey] = groupId
-    }
+	if groupId != "" {
+		match[GroupIDKey] = groupId
+	}
 	pipeline := []bson.M{
 		{"$match": match},
 	}
