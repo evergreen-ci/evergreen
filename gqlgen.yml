@@ -52,13 +52,25 @@ models:
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:
-      reliesOn:
-        resolver: true
-      patchMetadata:
+      annotation:
         resolver: true
       baseTaskMetadata:
         resolver: true
-      annotation:
+      baseTask:
+        resolver: true
+      baseStatus:
+        resolver: true
+      buildVariantDisplayName:
+        resolver: true
+      canModifyAnnotation:
+        resolver: true
+      estimatedStart:
+        resolver: true
+      executionTasksFull:
+        resolver: true
+      patchMetadata:
+        resolver: true
+      reliesOn:
         resolver: true
       spawnHostLink:
         resolver: true
@@ -67,16 +79,6 @@ models:
       isPerfPluginEnabled:
         resolver: true
       project:
-        resolver: true
-      canModifyAnnotation:
-        resolver: true
-      executionTasksFull:
-        resolver: true
-      buildVariantDisplayName:
-        resolver: true
-      baseTask:
-        resolver: true
-      baseStatus:
         resolver: true
   BaseTaskInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBaseTaskInfo

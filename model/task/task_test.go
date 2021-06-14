@@ -887,6 +887,48 @@ func TestTaskSetResultsFields(t *testing.T) {
 	})
 }
 
+func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection, OldCollection))
+	taskDoc := Task{
+		Id:        "task",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+	}
+	assert.NoError(taskDoc.Insert())
+	task, err := FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	assert.NoError(err)
+	assert.NotNil(task)
+	assert.Equal(task.DisplayStatus, evergreen.TaskWillRun)
+
+	// Should fetch tasks from the old collection
+	assert.NoError(taskDoc.Archive())
+	task, err = FindOneOldNoMergeByIdAndExecution(taskDoc.Id, 0)
+	assert.NoError(err)
+	assert.NotNil(task)
+	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	assert.NoError(err)
+	assert.NotNil(task)
+	assert.Equal(task.OldTaskId, taskDoc.Id)
+
+	// Should fetch recent executions by default
+	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, nil)
+	assert.NoError(err)
+	assert.NotNil(task)
+	assert.Equal(task.Execution, 1)
+	assert.Equal(task.DisplayStatus, evergreen.TaskWillRun)
+
+	taskDoc = Task{
+		Id:        "task2",
+		Status:    evergreen.TaskUndispatched,
+		Activated: false,
+	}
+	assert.NoError(taskDoc.Insert())
+	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	assert.NoError(err)
+	assert.NotNil(task)
+	assert.Equal(task.DisplayStatus, evergreen.TaskUnscheduled)
+}
 func TestFindOldTasksByID(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
@@ -2162,11 +2204,12 @@ func TestDisplayStatus(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	checkStatuses(t, evergreen.TaskSucceeded, t1)
 	t2 := Task{
-		Id:     "t2",
-		Status: evergreen.TaskUndispatched,
+		Id:        "t2",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
 	}
 	assert.NoError(t, t2.Insert())
-	checkStatuses(t, evergreen.TaskUndispatched, t2)
+	checkStatuses(t, evergreen.TaskWillRun, t2)
 	t3 := Task{
 		Id:     "t3",
 		Status: evergreen.TaskFailed,
@@ -2218,6 +2261,13 @@ func TestDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, t8.Insert())
 	checkStatuses(t, evergreen.TaskStarted, t8)
+	t9 := Task{
+		Id:        "t9",
+		Status:    evergreen.TaskUndispatched,
+		Activated: false,
+	}
+	assert.NoError(t, t9.Insert())
+	checkStatuses(t, evergreen.TaskUnscheduled, t9)
 }
 
 func checkStatuses(t *testing.T, expected string, toCheck Task) {
