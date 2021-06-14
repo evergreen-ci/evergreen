@@ -743,20 +743,3 @@ buildvariants:
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
-
-  - name: bynn-test
-    display_name: bynn test
-    run_on:
-      - archlinux-new-small
-      - archlinux-new-large
-    expansions:
-      gobin: /opt/golang/go1.16/bin/go
-      goroot: /opt/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
-      test_timeout: 1m
-    tasks:
-      - name: ".report"
-    display_tasks:
-      - name: display
-        execution_tasks:
-          - ".report"

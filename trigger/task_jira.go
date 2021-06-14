@@ -75,14 +75,6 @@ type taskInfo struct {
 }
 
 func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
-	grip.Info(message.Fields{
-		"message":    "bynnbynn in getTaskLogURL",
-		"data":       data,
-		"data.Task":  data.Task,
-		"data.Tests": data.Tests,
-		"len tests":  len(data.Tests),
-	})
-
 	if data.Task == nil {
 		return nil, errors.New("task is nil")
 	}
@@ -109,19 +101,16 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 		} else {
 			// Task is display only without tests
 			result := make([]taskInfo, 0)
-			for _, execTasks := range data.Task.ExecutionTasksFull {
-				grip.Info(message.Fields{
-					"message":               "bynnbynn in correct condition",
-					"status":                execTasks.Status,
-					"execTasks":             execTasks,
-					"execTasks.Id":          execTasks.Id,
-					"execTasks.displayName": execTasks.DisplayName,
-				})
+			for _, taskName := range data.Task.ExecutionTasks {
+				execTask, err := task.FindOneId(taskName)
+				if err != nil {
+					return nil, err
+				}
 
-				if execTasks.Status == "failed" {
-					id := execTasks.Id
-					execution := execTasks.Execution
-					displayName := execTasks.DisplayName
+				if execTask.Status == "failed" {
+					id := execTask.Id
+					execution := execTask.Execution
+					displayName := execTask.DisplayName
 					info := taskInfo{Tests: displayName, URL: taskLogLink(data.UIRoot, id, execution)}
 					result = append(result, info)
 				}
