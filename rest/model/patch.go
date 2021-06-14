@@ -41,7 +41,7 @@ type APIPatch struct {
 	Parameters              []APIParameter    `json:"parameters"`
 	PatchedConfig           *string           `json:"patched_config"`
 	CanEnqueueToCommitQueue bool              `json:"can_enqueue_to_commit_queue"`
-	ChildPatches            []ChildPatches    `json:"child_patches"`
+	ChildPatches            []ChildPatch      `json:"child_patches"`
 }
 
 type DownstreamTasks struct {
@@ -49,9 +49,9 @@ type DownstreamTasks struct {
 	Tasks   []*string `json:"tasks"`
 }
 
-type ChildPatches struct {
+type ChildPatch struct {
 	Project *string `json:"project"`
-	PatchID *string `json:"patch_ID"`
+	PatchID *string `json:"patch_id"`
 }
 type VariantTask struct {
 	Name  *string   `json:"name"`
@@ -179,7 +179,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
 
-	downstreamTasks, childPatches, err := getChildrenPatchesData(v)
+	downstreamTasks, childPatches, err := getChildPatchesData(v)
 	if err != nil {
 		return errors.Wrap(err, "error getting downstream tasks")
 	}
@@ -197,13 +197,13 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
 
-func getChildrenPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatches, error) {
+func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error) {
 	downstreamTasks := []DownstreamTasks{}
-	childPatches := []ChildPatches{}
+	childPatches := []ChildPatch{}
 	for _, childPatch := range p.Triggers.ChildPatches {
 		childPatchDoc, err := patch.FindOneId(childPatch)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error getting tasks for child patch '%s'", childPatch)
+			return nil, nil, errors.Wrapf(err, "error getting child patch '%s'", childPatch)
 		}
 		if childPatchDoc == nil {
 			continue
@@ -215,7 +215,7 @@ func getChildrenPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatches, e
 			Project: utility.ToStringPtr(childPatchDoc.Project),
 			Tasks:   tasks,
 		}
-		cp := ChildPatches{
+		cp := ChildPatch{
 			Project: utility.ToStringPtr(childPatchDoc.Project),
 			PatchID: utility.ToStringPtr(childPatch),
 		}
