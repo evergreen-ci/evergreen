@@ -142,7 +142,6 @@ func (tc *MockTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName str
 	return 0, nil
 }
 func (tc *MockTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, filter string, statuses []string, sortBy, groupId string, sortDir, page, limit, execution int) ([]testresult.TestResult, error) {
-	//todo
 	return nil, nil
 }
 
