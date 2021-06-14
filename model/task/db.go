@@ -898,7 +898,7 @@ func FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id string, execution *in
 		t := tasks[0]
 		return &t, nil
 	}
-	return nil, errors.New("Cant find task")
+	return nil, errors.New("cant find task")
 }
 
 // FindOneOldNoMerge is a FindOneOld without merging test results.

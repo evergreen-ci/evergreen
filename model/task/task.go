@@ -1370,7 +1370,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
-// This should reflect the addDisplayStatus aggregation step
+// GetDisplayStatus should reflect the statuses assigned during the addDisplayStatus aggregation step
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
