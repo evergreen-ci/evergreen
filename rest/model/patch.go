@@ -198,6 +198,9 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 }
 
 func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error) {
+	if len(p.Triggers.ChildPatches) <= 0 {
+		return nil, nil, nil
+	}
 	downstreamTasks := []DownstreamTasks{}
 	childPatches := []ChildPatch{}
 	for _, childPatch := range p.Triggers.ChildPatches {

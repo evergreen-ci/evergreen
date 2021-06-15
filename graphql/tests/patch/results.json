@@ -28,6 +28,17 @@
       }
     },
     {
+      "query_file": "noChildPatches.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5d7288d91f8c8a403bc34a7d",
+            "childPatches": null
+          }
+        }
+      }
+    },
+    {
       "query_file": "baseVersionId.graphql",
       "result": {
         "data": {
