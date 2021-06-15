@@ -17,8 +17,7 @@ import (
 // IdTimeLayout is used time time.Time.Format() to produce timestamps for our ids.
 const IdTimeLayout = "06_01_02_15_04_05"
 
-// TaskCache represents some duped information about tasks,
-// mainly for ui purposes.
+// TaskCache references the id of a task in the build
 type TaskCache struct {
 	Id string `bson:"id" json:"id"`
 }

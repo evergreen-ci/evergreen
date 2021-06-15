@@ -41,7 +41,6 @@ var (
 	ActualMakespanKey      = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
 	IsGithubCheckKey       = bsonutil.MustHaveTag(Build{}, "IsGithubCheck")
 
-	// bson fields for the task cache
 	TaskCacheIdKey = bsonutil.MustHaveTag(TaskCache{}, "Id")
 )
 
@@ -295,7 +294,6 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	for k := range buildIdSet {
 		buildIdList = append(buildIdList, k)
 	}
-
 	// Set the build status for all the builds containing the tasks that we touched
 	_, err := UpdateAllBuilds(
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
