@@ -79,8 +79,20 @@ func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName strin
 	return count, nil
 }
 
-func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, testName string, statuses []string, sortBy, groupId string, sortDir, page, limit, execution int) ([]testresult.TestResult, error) {
-	t, err := task.FindOneIdNewOrOld(taskId)
+type FindTestsByTaskIdFilterSortPaginateOpts struct {
+	Execution int
+	GroupID   string
+	Limit     int
+	Page      int
+	SortBy    string
+	SortDir   int
+	Statuses  []string
+	TaskID    string
+	TestName  string
+}
+
+func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(opts FindTestsByTaskIdFilterSortPaginateOpts) ([]testresult.TestResult, error) {
+	t, err := task.FindOneIdNewOrOld(opts.TaskID)
 	if err != nil {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -90,17 +102,17 @@ func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, testName 
 	if t == nil {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task not found %s", taskId),
+			Message:    fmt.Sprintf("task not found %s", opts.TaskID),
 		}
 	}
 	var taskIds []string
 	if t.DisplayOnly {
 		taskIds = t.ExecutionTasks
 	} else {
-		taskIds = []string{taskId}
+		taskIds = []string{opts.TaskID}
 	}
 
-	res, err := testresult.TestResultsFilterSortPaginate(taskIds, testName, statuses, sortBy, groupId, sortDir, page, limit, execution)
+	res, err := testresult.TestResultsFilterSortPaginate(taskIds, opts.TestName, opts.Statuses, opts.SortBy, opts.GroupID, opts.SortDir, opts.Page, opts.Limit, opts.Execution)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +153,7 @@ func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testId, testName, status
 func (tc *MockTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	return 0, nil
 }
-func (tc *MockTestConnector) FindTestsByTaskIdFilterSortPaginate(taskId, filter string, statuses []string, sortBy, groupId string, sortDir, page, limit, execution int) ([]testresult.TestResult, error) {
+func (tc *MockTestConnector) FindTestsByTaskIdFilterSortPaginate(opts FindTestsByTaskIdFilterSortPaginateOpts) ([]testresult.TestResult, error) {
 	return nil, nil
 }
 
