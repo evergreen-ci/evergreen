@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -32,21 +33,6 @@ type APITriggerDefinition struct {
 	Alias             *string `json:"alias"`
 }
 
-type APIPeriodicBuildDefinition struct {
-	ID            *string    `json:"id"`
-	ConfigFile    *string    `json:"config_file"`
-	IntervalHours *int       `son:"interval_hours"`
-	Alias         *string    `son:"alias,omitempty"`
-	Message       *string    `json:"message,omitempty"`
-	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
-}
-
-type APICommitQueueParams struct {
-	Enabled     *bool   `json:"enabled"`
-	MergeMethod *string `json:"merge_method"`
-	Message     *string `json:"message"`
-}
-
 func (t *APITriggerDefinition) ToService() (interface{}, error) {
 	return model.TriggerDefinition{
 		Project:           utility.FromStringPtr(t.Project),
@@ -68,7 +54,7 @@ func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
 	switch h.(type) {
 	case model.TriggerDefinition:
 		triggerDef = h.(model.TriggerDefinition)
-	case *model.PeriodicBuildDefinition:
+	case *model.TriggerDefinition:
 		triggerDef = *h.(*model.TriggerDefinition)
 	default:
 		return errors.Errorf("Invalid trigger definition of type '%T'", h)
@@ -85,6 +71,109 @@ func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
 	t.Alias = utility.ToStringPtr(triggerDef.Alias)
 	t.DateCutoff = triggerDef.DateCutoff
 	return nil
+}
+
+type APIPatchTriggerDefinition struct {
+	Alias          *string            `json:"alias"`
+	ChildProject   *string            `json:"child_project"`
+	TaskSpecifiers []APITaskSpecifier `json:"task_specifiers"`
+	Status         *string            `json:"status,omitempty"`
+	ParentAsModule *string            `json:"parent_as_module,omitempty"`
+}
+
+func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
+	var def patch.PatchTriggerDefinition
+	switch h.(type) {
+	case patch.PatchTriggerDefinition:
+		def = h.(patch.PatchTriggerDefinition)
+	case *patch.PatchTriggerDefinition:
+		def = *h.(*patch.PatchTriggerDefinition)
+	default:
+		return errors.Errorf("Invalid patch trigger definition of type '%T'", h)
+	}
+	t.ChildProject = utility.ToStringPtr(def.ChildProject)
+	t.Alias = utility.ToStringPtr(def.Alias)
+	t.Status = utility.ToStringPtr(def.Status)
+	t.ParentAsModule = utility.ToStringPtr(def.ParentAsModule)
+	var specifiers []APITaskSpecifier
+	for _, ts := range t.TaskSpecifiers {
+		specifier := APITaskSpecifier{}
+		if err := specifier.BuildFromService(ts); err != nil {
+			return errors.Wrap(err, "cannot convert task specifier")
+		}
+		specifiers = append(specifiers, specifier)
+	}
+	t.TaskSpecifiers = specifiers
+	return nil
+}
+
+func (t *APIPatchTriggerDefinition) ToService() (interface{}, error) {
+	trigger := patch.PatchTriggerDefinition{}
+
+	trigger.ChildProject = utility.FromStringPtr(t.ChildProject)
+	trigger.Status = utility.FromStringPtr(t.Status)
+	trigger.Alias = utility.FromStringPtr(t.Alias)
+	trigger.ParentAsModule = utility.FromStringPtr(t.ParentAsModule)
+	var specifiers []patch.TaskSpecifier
+	for _, ts := range t.TaskSpecifiers {
+		i, err := ts.ToService()
+		specifier, ok := i.(patch.TaskSpecifier)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot convert API task specifier")
+		}
+		if !ok {
+			return nil, errors.Errorf("expected patch trigger definition but was actually '%T'", i)
+		}
+		specifiers = append(specifiers, specifier)
+	}
+	trigger.TaskSpecifiers = specifiers
+	return trigger, nil
+}
+
+type APITaskSpecifier struct {
+	PatchAlias   *string `json:"patch_alias,omitempty"`
+	TaskRegex    *string `json:"task_regex,omitempty"`
+	VariantRegex *string `json:"variant_regex,omitempty"`
+}
+
+func (ts *APITaskSpecifier) BuildFromService(h interface{}) error {
+	var def patch.TaskSpecifier
+	switch h.(type) {
+	case patch.TaskSpecifier:
+		def = h.(patch.TaskSpecifier)
+	case *patch.TaskSpecifier:
+		def = *h.(*patch.TaskSpecifier)
+	default:
+		return errors.Errorf("Invalid task specifier of type '%T'", h)
+	}
+	ts.PatchAlias = utility.ToStringPtr(def.PatchAlias)
+	ts.TaskRegex = utility.ToStringPtr(def.TaskRegex)
+	ts.VariantRegex = utility.ToStringPtr(def.VariantRegex)
+	return nil
+}
+
+func (t *APITaskSpecifier) ToService() (interface{}, error) {
+	specifier := patch.TaskSpecifier{}
+
+	specifier.PatchAlias = utility.FromStringPtr(t.PatchAlias)
+	specifier.TaskRegex = utility.FromStringPtr(t.TaskRegex)
+	specifier.VariantRegex = utility.FromStringPtr(t.VariantRegex)
+	return specifier, nil
+}
+
+type APIPeriodicBuildDefinition struct {
+	ID            *string    `json:"id"`
+	ConfigFile    *string    `json:"config_file"`
+	IntervalHours *int       `son:"interval_hours"`
+	Alias         *string    `son:"alias,omitempty"`
+	Message       *string    `json:"message,omitempty"`
+	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
+}
+
+type APICommitQueueParams struct {
+	Enabled     *bool   `json:"enabled"`
+	MergeMethod *string `json:"merge_method"`
+	Message     *string `json:"message"`
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() (interface{}, error) {
@@ -274,10 +363,11 @@ type APIProjectRef struct {
 	DeleteGitTagAuthorizedTeams []*string            `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
 	NotifyOnBuildFailure        *bool                `json:"notify_on_failure"`
 	Restricted                  *bool                `json:"restricted"`
+	Revision                    *string              `json:"revision"`
 
-	Revision             *string                      `json:"revision"`
 	Triggers             []APITriggerDefinition       `json:"triggers"`
 	GithubTriggerAliases []*string                    `json:"github_trigger_aliases"`
+	PatchTriggerAliases  []APIPatchTriggerDefinition  `json:"patch_trigger_aliases"`
 	Aliases              []APIProjectAlias            `json:"aliases"`
 	Variables            APIProjectVars               `json:"variables"`
 	WorkstationConfig    APIWorkstationConfig         `json:"workstation_config"`
@@ -383,6 +473,21 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		projectRef.PeriodicBuilds = builds
 	}
 
+	if p.PatchTriggerAliases != nil {
+		patchTriggers := []patch.PatchTriggerDefinition{}
+		for _, t := range p.PatchTriggerAliases {
+			i, err = t.ToService()
+			if err != nil {
+				return nil, errors.Wrap(err, "cannot convert API patch trigger definition")
+			}
+			trigger, ok := i.(patch.PatchTriggerDefinition)
+			if !ok {
+				return nil, errors.Errorf("expected patch trigger definition but was actually '%T'", i)
+			}
+			patchTriggers = append(patchTriggers, trigger)
+		}
+		projectRef.PatchTriggerAliases = patchTriggers
+	}
 	return &projectRef, nil
 }
 
@@ -472,6 +577,18 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 			periodicBuilds = append(periodicBuilds)
 		}
 		p.PeriodicBuilds = periodicBuilds
+	}
+
+	if projectRef.PatchTriggerAliases != nil {
+		patchTriggers := []APIPatchTriggerDefinition{}
+		for _, t := range projectRef.PatchTriggerAliases {
+			trigger := APIPatchTriggerDefinition{}
+			if err := trigger.BuildFromService(t); err != nil {
+				return errors.Wrap(err, "cannot convert trigger definition")
+			}
+			patchTriggers = append(patchTriggers, trigger)
+		}
+		p.PatchTriggerAliases = patchTriggers
 	}
 
 	return nil

@@ -38,7 +38,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 
 	for testName, testCase := range map[string]func(context.Context, *testing.T, *monitor){
 		"FetchClientDownloadsFromURL": func(ctx context.Context, t *testing.T, m *monitor) {
-			require.NoError(t, m.fetchClient(ctx, []string{"https://example.com"}, defaultRetryArgs()))
+			require.NoError(t, m.fetchClient(ctx, []string{"https://example.com"}, agentMonitorDefaultRetryOptions()))
 			fileInfo, err := os.Stat(m.clientPath)
 			require.NoError(t, err)
 			assert.NotZero(t, fileInfo.Size())
@@ -71,7 +71,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 
 			// Monitor should be able to connect without needing credentials when
 			// testing.
-			require.NoError(t, m.setupJasperConnection(tctx, defaultRetryArgs()))
+			require.NoError(t, m.setupJasperConnection(tctx, agentMonitorDefaultRetryOptions()))
 			defer func() {
 				assert.NoError(t, m.jasperClient.CloseConnection())
 			}()

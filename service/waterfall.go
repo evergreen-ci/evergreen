@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -20,6 +21,7 @@ const (
 	waterfallBVFilterParam = "bv_filter"
 	waterfallSkipParam     = "skip"
 	showUpstreamParam      = "upstream"
+	maxTestResultCalls     = 500
 )
 
 // uiStatus determines task status label.
@@ -214,6 +216,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 	// be added
 	var lastRolledUpVersion *waterfallVersion
 
+	numTestResultCalls := 0
 	// loop until we have enough from the db
 	for len(finalVersions) < numVersionElements {
 
@@ -375,14 +378,17 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 		failedAndStartedTasks := []task.Task{}
 		for _, tasks := range tasksByBuild {
-			for i, t := range tasks {
+			for _, t := range tasks {
 				if t.Status == evergreen.TaskFailed || t.Status == evergreen.TaskStarted {
-					if i < 1000/waterfallPerPageLimit { // Prevent cases where the waterfall will not load due to a large number of failed tasks.
+					failedAndStartedTasks = append(failedAndStartedTasks, t)
+					// only call the legacy function if we need to, i.e. we aren't using cedar, we know there are legacy results,
+					// or we don't know because we haven't cached this information yet.
+					if !t.HasCedarResults && utility.FromBoolTPtr(t.HasLegacyResults) && numTestResultCalls < maxTestResultCalls {
 						if err = t.MergeNewTestResults(); err != nil {
 							return versionVariantData{}, errors.Wrap(err, "error merging test results")
 						}
+						numTestResultCalls++
 					}
-					failedAndStartedTasks = append(failedAndStartedTasks, t)
 				}
 			}
 		}

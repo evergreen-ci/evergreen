@@ -292,7 +292,12 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger clie
 	httpClient := utility.GetOAuth2HTTPClient(opts.token)
 	defer utility.PutHTTPClient(httpClient)
 	githubClient := github.NewClient(httpClient)
-	err := util.Retry(ctx, func() (bool, error) {
+	const (
+		getPRAttempts      = 8
+		getPRRetryMinDelay = time.Second
+		getPRRetryMaxDelay = 15 * time.Second
+	)
+	err := utility.Retry(ctx, func() (bool, error) {
 		pr, _, err := githubClient.PullRequests.Get(ctx, opts.owner, opts.repo, prNum)
 		if err != nil {
 			return false, errors.Wrap(err, "error getting pull request data from Github")
@@ -311,7 +316,11 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger clie
 			return false, errors.New("Pull request is not mergeable. This likely means a merge conflict was just introduced")
 		}
 		return false, nil
-	}, 8, time.Second, 15*time.Second) // Retry roughly after 1, 2, 4, 8, 15, 15, 15, seconds, or 1 minute
+	}, utility.RetryOptions{
+		MaxAttempts: getPRAttempts,
+		MinDelay:    getPRRetryMinDelay,
+		MaxDelay:    getPRRetryMaxDelay,
+	}) // Retry roughly after 1, 2, 4, 8, 15, 15, 15, seconds, or 1 minute.
 
 	return mergeSHA, err
 }
@@ -354,7 +363,11 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	err := util.Retry(
+	const (
+		fetchRetryMinDelay = time.Second
+		fetchRetryMaxDelay = 10 * time.Second
+	)
+	err := utility.Retry(
 		ctx,
 		func() (bool, error) {
 			err := c.executeLoop(ctx, comm, logger, conf)
@@ -362,7 +375,11 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 				return true, err
 			}
 			return false, nil
-		}, GitFetchProjectRetries, time.Second, 10*time.Second)
+		}, utility.RetryOptions{
+			MaxAttempts: GitFetchProjectRetries,
+			MinDelay:    fetchRetryMinDelay,
+			MaxDelay:    fetchRetryMaxDelay,
+		})
 	if err != nil {
 		logger.Task().Error(message.WrapError(err, message.Fields{
 			"operation":    "git.get_project",
@@ -487,42 +504,43 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 		moduleBase := filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
 
 		var revision string
-		if conf.Task.Requester == evergreen.MergeTestRequester {
-			revision = module.Branch
-			c.logModuleRevision(logger, revision, moduleName, "commit queue merge")
-		} else {
-			// use submodule revisions based on the main patch. If there is a need in the future,
-			// this could maybe use the most recent submodule revision of all requested patches
-			if p != nil {
-				module := p.FindModule(moduleName)
-				if module != nil {
-					revision = module.Githash
+		// use submodule revisions based on the main patch. If there is a need in the future,
+		// this could maybe use the most recent submodule revision of all requested patches.
+		// We ignore set-module changes for commit queue, since we should verify HEAD before merging.
+		if p != nil {
+			patchModule := p.FindModule(moduleName)
+			if patchModule != nil {
+				if conf.Task.Requester == evergreen.MergeTestRequester {
+					revision = module.Branch
+					c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
+				} else {
+					revision = patchModule.Githash
 					if revision != "" {
 						c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
 					}
 				}
 			}
-			if revision == "" {
-				revision = c.Revisions[moduleName]
-				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
-				}
+		}
+		if revision == "" {
+			revision = c.Revisions[moduleName]
+			if revision != "" {
+				c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
 			}
-			if revision == "" {
-				revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
-				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "from manifest")
-				}
+		}
+		if revision == "" {
+			revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
+			if revision != "" {
+				c.logModuleRevision(logger, revision, moduleName, "from manifest")
 			}
-			// if there is no revision, then use the revision from the module, then branch name
-			if revision == "" {
-				if module.Ref != "" {
-					revision = module.Ref
-					c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
-				} else {
-					revision = module.Branch
-					c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
-				}
+		}
+		// if there is no revision, then use the revision from the module, then branch name
+		if revision == "" {
+			if module.Ref != "" {
+				revision = module.Ref
+				c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
+			} else {
+				revision = module.Branch
+				c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
 			}
 		}
 		var owner, repo string

@@ -1407,8 +1407,10 @@ func RemoveAdminFromProjects(toDelete string) error {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(db.Update(ProjectRefCollection, bson.M{}, projectUpdate))
-	catcher.Add(db.Update(RepoRefCollection, bson.M{}, repoUpdate))
+	_, err := db.UpdateAll(ProjectRefCollection, bson.M{}, projectUpdate)
+	catcher.Add(errors.Wrap(err, "error updating projects"))
+	_, err = db.UpdateAll(RepoRefCollection, bson.M{}, repoUpdate)
+	catcher.Add(errors.Wrap(err, "error updating repos"))
 	return catcher.Resolve()
 }
 
@@ -1694,7 +1696,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		return "", errors.Wrap(err, "error getting project")
 	}
 
-	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, "")
+	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"error fetching spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
@@ -1746,7 +1748,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 	childProjectId, err := GetIdForProject(definition.ChildProject)
 	if err != nil {
-		return definition, errors.Wrapf(err, "error finding child project %s", definition.ChildProject)
+		return definition, errors.Wrapf(err, "error finding child project '%s'", definition.ChildProject)
 	}
 
 	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {

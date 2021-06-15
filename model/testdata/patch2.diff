@@ -2,8 +2,8 @@ diff --git a/%v b/%v
 index 0000000..1111111 100644
 --- a/%v
 +++ b/%v
-@@ -8,11 +8,21 @@ tasks:
-       params:
+@@ -8,11 +8,20 @@ tasks:
+         directory: src
          working_dir: src
          script: echo "lagos"
 +- name: taskTwo
@@ -12,7 +12,6 @@ index 0000000..1111111 100644
 +    - command: git.get_project
 +      params:
 +        directory: src
-+      params:
 +        working_dir: src
 +        script: echo "abuja"
  buildvariants:

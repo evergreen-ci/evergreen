@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"runtime"
 
 	"github.com/evergreen-ci/aviation"
 	"github.com/mongodb/grip"
@@ -90,7 +91,18 @@ func DialCedar(ctx context.Context, client *http.Client, opts *DialCedarOptions)
 			return nil, errors.Wrap(err, "creating TLS config")
 		}
 	} else if !opts.Insecure {
-		cp, err := aviation.GetCACertPool(opts.CACerts...)
+		caCerts := opts.CACerts
+		if runtime.GOOS == "windows" {
+			// Since Windows is complicated, we need to fetch the
+			// AWS CA certs from an S3 bucket. See `getAWSCACerts`
+			// below for more information.
+			cas, err := getAWSCACerts(ctx, client)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting AWS CA certs for windows")
+			}
+			caCerts = append(caCerts, cas)
+		}
+		cp, err := aviation.GetCACertPool(caCerts...)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating CA cert pool")
 		}
@@ -128,20 +140,39 @@ func makeCedarCertRequest(ctx context.Context, client *http.Client, method, url 
 		req.Header.Set(APIKeyHeader, creds.apiKey)
 	}
 
+	return doReq(ctx, client, req)
+}
+
+// getAWSCACerts fetches AWS's root CA certificates stored in S3. This is a
+// workaround for the fact that Go cannot access the system certificate pool on
+// Windows (which would have these certificates).
+// TODO: If and when the Windows system cert issue is fixed, we can get rid of
+// this workaround. See https://github.com/golang/go/issues/16736.
+func getAWSCACerts(ctx context.Context, client *http.Client) ([]byte, error) {
+	// We are hardcoding this magic object in S3 because these certificates
+	// are not set to expire for another 20 years. Also, we are hopeful
+	// that this Windows system cert issue will go away in future versions
+	// of Go.
+	req, err := http.NewRequest(http.MethodGet, "https://s3.amazonaws.com/boxes.10gen.com/build/amazontrust/AmazonRootCA_all.pem", nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating http request")
+	}
+	req = req.WithContext(ctx)
+
+	return doReq(ctx, client, req)
+}
+
+func doReq(ctx context.Context, client *http.Client, req *http.Request) ([]byte, error) {
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating request")
+		return nil, errors.Wrap(err, "sending http request")
 	}
-	defer resp.Body.Close()
 
+	catcher := grip.NewBasicCatcher()
 	out, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading response")
-	}
+	catcher.Wrap(err, "reading http response")
+	catcher.Wrap(resp.Body.Close(), "closing the http response body")
+	catcher.ErrorfWhen(resp.StatusCode != http.StatusOK, "failed request with status code %d", resp.StatusCode)
 
-	if resp.StatusCode != http.StatusOK {
-		return out, errors.Errorf("failed request with status code %d", resp.StatusCode)
-	}
-
-	return out, nil
+	return out, catcher.Resolve()
 }

@@ -1132,6 +1132,53 @@ func TestFindPeriodicProjects(t *testing.T) {
 	assert.Len(t, projects, 2)
 }
 
+func TestRemoveAdminFromProjects(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	pRef := ProjectRef{
+		Id:     "my_project",
+		Admins: []string{"me", "villain"},
+	}
+	pRef2 := ProjectRef{
+		Id:     "your_project",
+		Admins: []string{"you", "villain"},
+	}
+	repoRef := RepoRef{ProjectRef{
+		Id:     "my_repo",
+		Admins: []string{"villain"},
+	}}
+	repoRef2 := RepoRef{ProjectRef{
+		Id:     "your_repo",
+		Admins: []string{"villain"},
+	}}
+
+	assert.NoError(t, pRef.Upsert())
+	assert.NoError(t, pRef2.Upsert())
+	assert.NoError(t, repoRef.Upsert())
+	assert.NoError(t, repoRef2.Upsert())
+
+	assert.NoError(t, RemoveAdminFromProjects("villain"))
+
+	// verify that we carry out multiple updates
+	pRefFromDB, err := FindOneProjectRef(pRef.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, pRefFromDB)
+	assert.NotContains(t, pRefFromDB.Admins, "villain")
+	pRefFromDB, err = FindOneProjectRef(pRef2.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, pRefFromDB)
+	assert.NotContains(t, pRefFromDB.Admins, "villain")
+
+	repoRefFromDB, err := FindOneRepoRef(repoRef.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, repoRefFromDB)
+	assert.NotContains(t, repoRefFromDB.Admins, "villain")
+	repoRefFromDB, err = FindOneRepoRef(repoRef2.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, repoRefFromDB)
+	assert.NotContains(t, repoRefFromDB.Admins, "villain")
+}
+
 func TestPointers(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection))
 	ref := struct {

@@ -369,12 +369,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 					Message:    "cannot enable git tag versions without a version definition",
 				})
 			}
-			if len(mergedProjectRef.GitTagAuthorizedUsers) == 0 && len(mergedProjectRef.GitTagAuthorizedTeams) == 0 {
-				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					StatusCode: http.StatusBadRequest,
-					Message:    "must authorize users or teams to create git tag versions",
-				})
-			}
 		}
 
 		// verify enabling commit queue valid
@@ -405,6 +399,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if trigger.DefinitionID == "" {
 			h.newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
+	}
+	for i := range h.newProjectRef.PatchTriggerAliases {
+		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
+		catcher.Add(err)
 	}
 	for _, buildDef := range h.newProjectRef.PeriodicBuilds {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition")

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -57,71 +58,71 @@ func TestParse(t *testing.T) {
 			CedarOpts: timber.GetOptions{
 				BaseURL: "https://cedar.mongodb.com",
 			},
-			ID: "id",
+			ID: "id/1",
 		}
-		url, err := opts.parse()
+		urlString, err := opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/%s%s", opts.CedarOpts.BaseURL, opts.ID, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/%s%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.ID), getParams(opts)), urlString)
 
 		// meta
 		opts.Meta = true
-		url, err = opts.parse()
+		urlString, err = opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/%s/meta%s", opts.CedarOpts.BaseURL, opts.ID, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/%s/meta%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.ID), getParams(opts)), urlString)
 	})
 	t.Run("TaskID", func(t *testing.T) {
 		opts := BuildloggerGetOptions{
 			CedarOpts: timber.GetOptions{
 				BaseURL: "https://cedar.mongodb.com",
 			},
-			TaskID: "task",
+			TaskID: "task/1",
 		}
-		url, err := opts.parse()
+		urlString, err := opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/task_id/%s%s", opts.CedarOpts.BaseURL, opts.TaskID, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/task_id/%s%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.TaskID), getParams(opts)), urlString)
 
 		// meta
 		opts.Meta = true
-		url, err = opts.parse()
+		urlString, err = opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/task_id/%s/meta%s", opts.CedarOpts.BaseURL, opts.TaskID, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/task_id/%s/meta%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.TaskID), getParams(opts)), urlString)
 	})
 	t.Run("TestName", func(t *testing.T) {
 		opts := BuildloggerGetOptions{
 			CedarOpts: timber.GetOptions{
 				BaseURL: "https://cedar.mongodb.com",
 			},
-			TaskID:   "task",
-			TestName: "test",
+			TaskID:   "task?",
+			TestName: "test/1",
 		}
-		url, err := opts.parse()
+		urlString, err := opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/test_name/%s/%s%s", opts.CedarOpts.BaseURL, opts.TaskID, opts.TestName, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/test_name/%s/%s%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.TaskID), url.PathEscape(opts.TestName), getParams(opts)), urlString)
 
 		// meta
 		opts.Meta = true
-		url, err = opts.parse()
+		urlString, err = opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/test_name/%s/%s/meta%s", opts.CedarOpts.BaseURL, opts.TaskID, opts.TestName, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/test_name/%s/%s/meta%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.TaskID), url.PathEscape(opts.TestName), getParams(opts)), urlString)
 	})
 	t.Run("GroupID", func(t *testing.T) {
 		opts := BuildloggerGetOptions{
 			CedarOpts: timber.GetOptions{
 				BaseURL: "https://cedar.mongodb.com",
 			},
-			TaskID:   "task",
-			TestName: "test",
-			GroupID:  "group",
+			TaskID:   "task?",
+			TestName: "test/?1",
+			GroupID:  "group/group/group",
 		}
-		url, err := opts.parse()
+		urlString, err := opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/test_name/%s/%s/group/%s%s", opts.CedarOpts.BaseURL, opts.TaskID, opts.TestName, opts.GroupID, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/test_name/%s/%s/group/%s%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.TaskID), url.PathEscape(opts.TestName), url.PathEscape(opts.GroupID), getParams(opts)), urlString)
 
 		// meta
 		opts.Meta = true
-		url, err = opts.parse()
+		urlString, err = opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/test_name/%s/%s/group/%s/meta%s", opts.CedarOpts.BaseURL, opts.TaskID, opts.TestName, opts.GroupID, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/test_name/%s/%s/group/%s/meta%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.TaskID), url.PathEscape(opts.TestName), url.PathEscape(opts.GroupID), getParams(opts)), urlString)
 	})
 	t.Run("Parameters", func(t *testing.T) {
 		opts := BuildloggerGetOptions{
@@ -138,15 +139,15 @@ func TestParse(t *testing.T) {
 			Tail:          100,
 			Limit:         1000,
 		}
-		url, err := opts.parse()
+		urlString, err := opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/task_id/%s%s", opts.CedarOpts.BaseURL, opts.TaskID, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/task_id/%s%s", opts.CedarOpts.BaseURL, opts.TaskID, getParams(opts)), urlString)
 
 		// meta
 		opts.Meta = true
-		url, err = opts.parse()
+		urlString, err = opts.parse()
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/task_id/%s/meta%s", opts.CedarOpts.BaseURL, opts.TaskID, getParams(opts)), url)
+		assert.Equal(t, fmt.Sprintf("%s/rest/v1/buildlogger/task_id/%s/meta%s", opts.CedarOpts.BaseURL, opts.TaskID, getParams(opts)), urlString)
 	})
 }
 
@@ -245,7 +246,7 @@ func getParams(opts BuildloggerGetOptions) string {
 	params := fmt.Sprintf(
 		"?execution=%d&proc_name=%s&print_time=%v&print_priority=%v&n=%d&limit=%d&paginate=true",
 		opts.Execution,
-		opts.ProcessName,
+		url.QueryEscape(opts.ProcessName),
 		opts.PrintTime,
 		opts.PrintPriority,
 		opts.Tail,

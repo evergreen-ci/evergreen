@@ -302,8 +302,12 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 }
 
 // GetConfig fetches the config yaml from the API server for a given project ID.
-func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
-	resp, err := ac.get(fmt.Sprintf("versions/%v/config", versionId), nil)
+func (ac *legacyClient) GetConfig(versionId string, shouldFetch bool) ([]byte, error) {
+	path := fmt.Sprintf("versions/%v/config", versionId)
+	if shouldFetch {
+		path = fmt.Sprintf("%s?latest_parser=true", path)
+	}
+	resp, err := ac.get(path, nil)
 	if err != nil {
 		return nil, err
 	}

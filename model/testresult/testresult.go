@@ -58,18 +58,20 @@ type TestResult struct {
 
 var (
 	// BSON fields for the task struct
-	IDKey        = bsonutil.MustHaveTag(TestResult{}, "ID")
-	StatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
-	LineNumKey   = bsonutil.MustHaveTag(TestResult{}, "LineNum")
-	TestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
-	URLKey       = bsonutil.MustHaveTag(TestResult{}, "URL")
-	LogIDKey     = bsonutil.MustHaveTag(TestResult{}, "LogID")
-	URLRawKey    = bsonutil.MustHaveTag(TestResult{}, "URLRaw")
-	ExitCodeKey  = bsonutil.MustHaveTag(TestResult{}, "ExitCode")
-	StartTimeKey = bsonutil.MustHaveTag(TestResult{}, "StartTime")
-	EndTimeKey   = bsonutil.MustHaveTag(TestResult{}, "EndTime")
-	TaskIDKey    = bsonutil.MustHaveTag(TestResult{}, "TaskID")
-	ExecutionKey = bsonutil.MustHaveTag(TestResult{}, "Execution")
+	IDKey              = bsonutil.MustHaveTag(TestResult{}, "ID")
+	StatusKey          = bsonutil.MustHaveTag(TestResult{}, "Status")
+	LineNumKey         = bsonutil.MustHaveTag(TestResult{}, "LineNum")
+	TestFileKey        = bsonutil.MustHaveTag(TestResult{}, "TestFile")
+	DisplayTestNameKey = bsonutil.MustHaveTag(TestResult{}, "DisplayTestName")
+	GroupIDKey         = bsonutil.MustHaveTag(TestResult{}, "GroupID")
+	URLKey             = bsonutil.MustHaveTag(TestResult{}, "URL")
+	LogIDKey           = bsonutil.MustHaveTag(TestResult{}, "LogID")
+	URLRawKey          = bsonutil.MustHaveTag(TestResult{}, "URLRaw")
+	ExitCodeKey        = bsonutil.MustHaveTag(TestResult{}, "ExitCode")
+	StartTimeKey       = bsonutil.MustHaveTag(TestResult{}, "StartTime")
+	EndTimeKey         = bsonutil.MustHaveTag(TestResult{}, "EndTime")
+	TaskIDKey          = bsonutil.MustHaveTag(TestResult{}, "TaskID")
+	ExecutionKey       = bsonutil.MustHaveTag(TestResult{}, "Execution")
 
 	ProjectKey      = bsonutil.MustHaveTag(TestResult{}, "Project")
 	BuildVariantKey = bsonutil.MustHaveTag(TestResult{}, "BuildVariant")
@@ -224,17 +226,19 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	}
 
 	project := bson.M{
-		"duration":   bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
-		TestFileKey:  1,
-		EndTimeKey:   1,
-		StartTimeKey: 1,
-		StatusKey:    1,
-		URLRawKey:    1,
-		URLKey:       1,
-		LogIDKey:     1,
-		LineNumKey:   1,
-		ExitCodeKey:  1,
-		GroupIDKey:   1,
+		"duration":         bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
+		DisplayTestNameKey: 1,
+		EndTimeKey:         1,
+		ExitCodeKey:        1,
+		GroupIDKey:         1,
+		LineNumKey:         1,
+		LogIDKey:           1,
+		StartTimeKey:       1,
+		StatusKey:          1,
+		TaskIDKey:          1,
+		TestFileKey:        1,
+		URLKey:             1,
+		URLRawKey:          1,
 	}
 
 	pipeline = append(pipeline, bson.M{"$project": project})

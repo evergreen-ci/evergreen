@@ -142,20 +142,13 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	}}
 	s.NoError(repoRef.Add(nil))
 
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp)
-	s.NotNil(resp.Data())
-	s.Require().Equal(http.StatusBadRequest, resp.Status())
-	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("must authorize users or teams to create git tag versions", errResp.Message)
-
 	jsonBody = []byte(`{"enabled": true, "use_repo_settings": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "tag": ".*"}]}`)
 	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err = s.rm.Parse(ctx, req)
 	s.NoError(err)
 
-	resp = s.rm.Run(ctx)
+	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status())
@@ -231,13 +224,77 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	s.Len(p.FilesIgnoredFromCache, 0)
 }
 
+func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
+	s.NoError(db.Clear(serviceModel.ProjectRefCollection))
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	h := s.rm.(*projectIDPatchHandler)
+	h.user = &user.DBUser{Id: "me"}
+
+	jsonBody := []byte(`{"patch_trigger_aliases": [{"child_project": "child", "task_specifiers": [ {"task_regex": ".*", "variant_regex": ".*" }]}]}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	s.NoError(s.rm.Parse(ctx, req))
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusBadRequest) // child project doesn't exist yet
+
+	childProject := serviceModel.ProjectRef{
+		Id:         "firstborn",
+		Identifier: "child",
+	}
+	s.NoError(childProject.Insert())
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	p, err := s.sc.FindProjectById("dimoxinil", true)
+	s.NoError(err)
+	s.False(p.PatchTriggerAliases == nil)
+	s.Len(p.PatchTriggerAliases, 1)
+	s.Equal(p.PatchTriggerAliases[0].ChildProject, "firstborn") // saves ID
+
+	jsonBody = []byte(`{"patch_trigger_aliases": []}`) // empty list isn't nil
+	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	s.NoError(s.rm.Parse(ctx, req))
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	p, err = s.sc.FindProjectById("dimoxinil", true)
+	s.NoError(err)
+	s.NotNil(p.PatchTriggerAliases)
+	s.Len(p.PatchTriggerAliases, 0)
+
+	jsonBody = []byte(`{"patch_trigger_aliases": null}`)
+	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	s.NoError(s.rm.Parse(ctx, req))
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	p, err = s.sc.FindProjectById("dimoxinil", true)
+	s.NoError(err)
+	s.Nil(p.PatchTriggerAliases)
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for PUT /rest/v2/projects/{project_id}
 
 type ProjectPutSuite struct {
 	sc *data.MockConnector
-	// data data.MockProjectConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite

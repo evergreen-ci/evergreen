@@ -484,6 +484,7 @@ type Patch {
   githash: String!
   patchNumber: Int!
   author: String!
+  authorDisplayName: String!
   version: String!
   status: String!
   variants: [String!]!
