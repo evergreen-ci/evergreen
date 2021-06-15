@@ -313,7 +313,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "project ref not found"})
 			return
 		}
-		configFile, err := thirdparty.GetGithubFile(r.Context(), oauthToken, pRef.Owner, pRef.Repo, pRef.RemotePath, "")
+		configFile, err := thirdparty.GetGithubFile(r.Context(), oauthToken, pRef.Owner, pRef.Repo, pRef.RemotePath, pRef.Branch)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error fetching project file"})
 			return

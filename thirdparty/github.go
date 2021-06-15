@@ -188,16 +188,16 @@ func parseGithubErrorResponse(resp *github.Response) error {
 }
 
 // GetGithubFile returns a struct that contains the contents of files within
-// a repository as Base64 encoded content.
-func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash string) (*github.RepositoryContent, error) {
+// a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
+func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref string) (*github.RepositoryContent, error) {
 	httpClient := getGithubClient(oauthToken, "GetGithubFile")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	var opt *github.RepositoryContentGetOptions
-	if len(hash) != 0 {
+	if len(ref) != 0 {
 		opt = &github.RepositoryContentGetOptions{
-			Ref: hash,
+			Ref: ref,
 		}
 	}
 
