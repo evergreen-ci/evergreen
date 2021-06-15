@@ -14621,9 +14621,9 @@ func (ec *executionContext) _Patch_childPatches(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*model.ChildPatch)
+	res := resTmp.([]model.ChildPatch)
 	fc.Result = res
-	return ec.marshalOChildPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx, field.Selections, res)
+	return ec.marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -33170,7 +33170,7 @@ func (ec *executionContext) marshalOChildPatch2githubᚗcomᚋevergreenᚑciᚋe
 	return ec._ChildPatch(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOChildPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx context.Context, sel ast.SelectionSet, v []*model.ChildPatch) graphql.Marshaler {
+func (ec *executionContext) marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx context.Context, sel ast.SelectionSet, v []model.ChildPatch) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -33197,7 +33197,7 @@ func (ec *executionContext) marshalOChildPatch2ᚕᚖgithubᚗcomᚋevergreenᚑ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOChildPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx, sel, v[i])
+			ret[i] = ec.marshalOChildPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -33208,13 +33208,6 @@ func (ec *executionContext) marshalOChildPatch2ᚕᚖgithubᚗcomᚋevergreenᚑ
 	}
 	wg.Wait()
 	return ret
-}
-
-func (ec *executionContext) marshalOChildPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx context.Context, sel ast.SelectionSet, v *model.ChildPatch) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ChildPatch(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOClientBinary2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinaryᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIClientBinary) graphql.Marshaler {
