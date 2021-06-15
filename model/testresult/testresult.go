@@ -213,10 +213,10 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 		TaskIDKey:    bson.M{"$in": opts.TaskIDs},
 		ExecutionKey: opts.Execution,
 	}
-	if len(statuses) > 0 {
+	if len(opts.Statuses) > 0 {
 		match[StatusKey] = bson.M{"$in": opts.Statuses}
 	}
-	if groupId != "" {
+	if opts.GroupID != "" {
 		match[GroupIDKey] = opts.GroupID
 	}
 	pipeline := []bson.M{
@@ -239,23 +239,23 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 
 	pipeline = append(pipeline, bson.M{"$project": project})
 
-	if testName != "" {
+	if opts.TestName != "" {
 		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": opts.TestName, "$options": "i"}}}
 		pipeline = append(pipeline, matchTestName)
 	}
 
 	sort := bson.D{}
-	if sortBy != "" {
+	if opts.SortBy != "" {
 		sort = append(sort, primitive.E{Key: opts.SortBy, Value: opts.SortDir})
 	}
 	sort = append(sort, primitive.E{Key: "_id", Value: 1})
 	pipeline = append(pipeline, bson.M{"$sort": sort})
 
-	if page > 0 {
+	if opts.Page > 0 {
 		pipeline = append(pipeline, bson.M{"$skip": opts.Page * opts.Limit})
 	}
 
-	if limit > 0 {
+	if opts.Limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 	}
 	err := db.Aggregate(Collection, pipeline, &tests)
