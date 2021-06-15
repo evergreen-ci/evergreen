@@ -486,7 +486,7 @@ type Patch {
   status: String!
   variants: [String!]!
   tasks: [String!]!
-  childPatches: [ChildPatch]
+  childPatches: [ChildPatch!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String

@@ -5345,7 +5345,7 @@ type Patch {
   status: String!
   variants: [String!]!
   tasks: [String!]!
-  childPatches: [ChildPatch]
+  childPatches: [ChildPatch!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
@@ -14623,7 +14623,7 @@ func (ec *executionContext) _Patch_childPatches(ctx context.Context, field graph
 	}
 	res := resTmp.([]model.ChildPatch)
 	fc.Result = res
-	return ec.marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx, field.Selections, res)
+	return ec.marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatchᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -30879,6 +30879,10 @@ func (ec *executionContext) marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._BuildBaron(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNChildPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx context.Context, sel ast.SelectionSet, v model.ChildPatch) graphql.Marshaler {
+	return ec._ChildPatch(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx context.Context, sel ast.SelectionSet, v model.APIClientBinary) graphql.Marshaler {
 	return ec._ClientBinary(ctx, sel, &v)
 }
@@ -33166,11 +33170,7 @@ func (ec *executionContext) unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋever
 	return &res, err
 }
 
-func (ec *executionContext) marshalOChildPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx context.Context, sel ast.SelectionSet, v model.ChildPatch) graphql.Marshaler {
-	return ec._ChildPatch(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx context.Context, sel ast.SelectionSet, v []model.ChildPatch) graphql.Marshaler {
+func (ec *executionContext) marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatchᚄ(ctx context.Context, sel ast.SelectionSet, v []model.ChildPatch) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -33197,7 +33197,7 @@ func (ec *executionContext) marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑci�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOChildPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx, sel, v[i])
+			ret[i] = ec.marshalNChildPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
