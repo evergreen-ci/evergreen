@@ -27,7 +27,7 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
-{{range taskLogURLs . }}[Task Logs ({{.Tests}}) | {{.URL}}]
+{{range taskLogURLs . }}[Task Logs ({{.DisplayName}}) | {{.URL}}]
 {{end}}`
 
 const (
@@ -70,8 +70,8 @@ func getTaskURL(data *jiraTemplateData) (string, error) {
 }
 
 type taskInfo struct {
-	Tests string
-	URL   string
+	DisplayName string
+	URL         string
 }
 
 func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
@@ -93,7 +93,7 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 				for _, test := range tests {
 					testIDs = append(testIDs, test.Name)
 				}
-				info.Tests = strings.Join(testIDs, " ")
+				info.DisplayName = strings.Join(testIDs, " ")
 
 				result = append(result, info)
 			}
@@ -101,17 +101,17 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 		} else {
 			// Task is display only without tests
 			result := make([]taskInfo, 0)
-			for _, taskName := range data.Task.ExecutionTasks {
-				execTask, err := task.FindOneId(taskName)
-				if err != nil {
-					return nil, err
-				}
+			execTasks, err := task.Find(task.ByIds(data.Task.ExecutionTasks))
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to fetch execution tasks")
+			}
 
-				if execTask.Status == "failed" {
+			for _, execTask := range execTasks {
+				if execTask.Status == evergreen.TaskFailed {
 					id := execTask.Id
 					execution := execTask.Execution
 					displayName := execTask.DisplayName
-					info := taskInfo{Tests: displayName, URL: taskLogLink(data.UIRoot, id, execution)}
+					info := taskInfo{DisplayName: displayName, URL: taskLogLink(data.UIRoot, id, execution)}
 					result = append(result, info)
 				}
 			}
@@ -121,10 +121,11 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 		// Task is not display only
 		id := data.Task.Id
 		execution := data.Task.Execution
+		displayName := data.Task.DisplayName
 		if len(data.Task.OldTaskId) != 0 {
 			id = data.Task.OldTaskId
 		}
-		return []taskInfo{{Tests: "Display", URL: taskLogLink(data.UIRoot, id, execution)}}, nil
+		return []taskInfo{{DisplayName: displayName, URL: taskLogLink(data.UIRoot, id, execution)}}, nil
 	}
 }
 
