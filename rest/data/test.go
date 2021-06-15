@@ -105,14 +105,14 @@ func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(opts FindTestsByT
 			Message:    fmt.Sprintf("task not found %s", opts.TaskID),
 		}
 	}
-	var taskIds []string
+	var taskIDs []string
 	if t.DisplayOnly {
-		taskIds = t.ExecutionTasks
+		taskIDs = t.ExecutionTasks
 	} else {
-		taskIds = []string{opts.TaskID}
+		taskIDs = []string{opts.TaskID}
 	}
 
-	res, err := testresult.TestResultsFilterSortPaginate(taskIds, opts.TestName, opts.Statuses, opts.SortBy, opts.GroupID, opts.SortDir, opts.Page, opts.Limit, opts.Execution)
+	res, err := testresult.TestResultsFilterSortPaginate(TestResultFilterSortPaginateOpts{TaskIDs: taskIDs, TestName: opts.TestName, Statuses: opts.Statuses, SortBy: opts.SortBy, GroupID: opts.GroupID, SortDir: opts.SortDir, Page: opts.Page, Limit: opts.Limit, Execution: opts.Execution})
 	if err != nil {
 		return nil, err
 	}

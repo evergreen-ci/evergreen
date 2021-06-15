@@ -194,18 +194,30 @@ func TestResultCount(taskIds []string, testName string, statuses []string, execu
 	return Count(q)
 }
 
+type TestResultsFilterSortPaginateOpts struct {
+	Execution int
+	GroupID   string
+	Limit     int
+	Page      int
+	SortBy    string
+	SortDir   int
+	Statuses  []string
+	TaskIDs   []string
+	TestName  string
+}
+
 // TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
-func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses []string, sortBy, groupId string, sortDir, page, limit, execution int) ([]TestResult, error) {
+func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]TestResult, error) {
 	tests := []TestResult{}
 	match := bson.M{
-		TaskIDKey:    bson.M{"$in": taskIds},
-		ExecutionKey: execution,
+		TaskIDKey:    bson.M{"$in": opts.TaskIDs},
+		ExecutionKey: opts.Execution,
 	}
 	if len(statuses) > 0 {
-		match[StatusKey] = bson.M{"$in": statuses}
+		match[StatusKey] = bson.M{"$in": opts.Statuses}
 	}
 	if groupId != "" {
-		match[GroupIDKey] = groupId
+		match[GroupIDKey] = opts.GroupID
 	}
 	pipeline := []bson.M{
 		{"$match": match},
@@ -228,23 +240,23 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 	pipeline = append(pipeline, bson.M{"$project": project})
 
 	if testName != "" {
-		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": testName, "$options": "i"}}}
+		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": opts.TestName, "$options": "i"}}}
 		pipeline = append(pipeline, matchTestName)
 	}
 
 	sort := bson.D{}
 	if sortBy != "" {
-		sort = append(sort, primitive.E{Key: sortBy, Value: sortDir})
+		sort = append(sort, primitive.E{Key: opts.SortBy, Value: opts.SortDir})
 	}
 	sort = append(sort, primitive.E{Key: "_id", Value: 1})
 	pipeline = append(pipeline, bson.M{"$sort": sort})
 
 	if page > 0 {
-		pipeline = append(pipeline, bson.M{"$skip": page * limit})
+		pipeline = append(pipeline, bson.M{"$skip": opts.Page * opts.Limit})
 	}
 
 	if limit > 0 {
-		pipeline = append(pipeline, bson.M{"$limit": limit})
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 	}
 	err := db.Aggregate(Collection, pipeline, &tests)
 	if err != nil {
