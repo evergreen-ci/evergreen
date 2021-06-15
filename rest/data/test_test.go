@@ -257,7 +257,7 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 				TestFile:  testObjects[j],
 				EndTime:   float64(j),
 				StartTime: 0,
-				GroupID: fmt.Sprintf("group_%d", i),
+				GroupID:   fmt.Sprintf("group_%d", i),
 			}
 		}
 		assert.NoError(testTask.Insert())
@@ -342,8 +342,8 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 	apiErr, ok := err.(gimlet.ErrorResponse)
 	assert.True(ok)
 	assert.Equal(http.StatusNotFound, apiErr.StatusCode)
-    
-    foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate("task_0", "", []string{"pass", "fail"}, "duration", "group_0", 1, 0, 0, 0)
+
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate("task_0", "", []string{"pass", "fail"}, "duration", "group_0", 1, 0, 0, 0)
 	assert.NoError(err)
 	assert.Len(foundTests, 10)
 
