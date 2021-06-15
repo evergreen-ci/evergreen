@@ -324,10 +324,8 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		_, err = w.Write(fileContents)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "unable to write config file"})
-			return
-		}
+		grip.Warning(errors.Wrap(err, "problem writing response"))
+		return
 	}
 	var config []byte
 	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
