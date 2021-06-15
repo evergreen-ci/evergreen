@@ -364,7 +364,7 @@ func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 // creates it if it doesn't exist.
 func (c *communicatorImpl) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 	if err := c.createCedarGRPCConn(ctx); err != nil {
-		return nil, errors.Wrap(err, "error setting up cedar grpc connection")
+		return nil, errors.Wrap(err, "setting up cedar grpc connection")
 	}
 	return c.cedarGRPCClient, nil
 }
@@ -553,14 +553,14 @@ func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskDat
 
 // SetHasCedarResults sets the HasCedarResults flag to true in the given task
 // in the database.
-func (c *communicatorImpl) SetHasCedarResults(ctx context.Context, taskData TaskData) error {
+func (c *communicatorImpl) SetHasCedarResults(ctx context.Context, taskData TaskData, failed bool) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 		version:  apiVersion2,
 	}
 	info.path = fmt.Sprintf("tasks/%s/set_has_cedar_results", taskData.ID)
-	resp, err := c.retryRequest(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, &apimodels.CedarTestResultsTaskInfo{Failed: failed})
 	if err != nil {
 		return utility.RespErrorf(resp, "failed to set HasCedarResults for task %s: %s", taskData.ID, err.Error())
 	}

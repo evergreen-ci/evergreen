@@ -45,6 +45,7 @@ type Connector interface {
 
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
+	FindTaskByIdAndExecution(string, int) (*task.Task, error)
 	FindTaskWithinTimePeriod(time.Time, time.Time, string, []string) ([]task.Task, error)
 	FindOldTasksByIDWithDisplayTasks(string) ([]task.Task, error)
 	FindTasksByIds([]string) ([]task.Task, error)
@@ -131,7 +132,7 @@ type Connector interface {
 	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
 	FindTestsByTaskIdFilterSortPaginate(string, string, []string, string, int, int, int, int) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
-	FindTasksByVersion(string, []string, []string, string, string, int, int, []string, []task.TasksSortOrder) ([]task.Task, int, error)
+	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
 	//FindUserByGithubName is a method to find a user given their Github name, if configured.
@@ -147,6 +148,8 @@ type Connector interface {
 	FindHostsInRange(restModel.APIHostParams, string) ([]host.Host, error)
 
 	FindHostById(string) (*host.Host, error)
+
+	FindHostByIpAddress(string) (*host.Host, error)
 
 	// FindHostByIdWithOwner finds a host with given host ID that was
 	// started by the given user. If the given user is a super-user,

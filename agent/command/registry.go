@@ -44,6 +44,7 @@ func init() {
 		"keyval.inc":                    keyValIncFactory,
 		"manifest.load":                 manifestLoadFactory,
 		"perf.send":                     perfSendFactory,
+		"downstream_expansions.set":     setExpansionsFactory,
 		"s3.get":                        s3GetFactory,
 		"s3.put":                        s3PutFactory,
 		"s3Copy.copy":                   s3CopyFactory,

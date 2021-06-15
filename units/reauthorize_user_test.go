@@ -11,11 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/anser/bsonutil"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // mockReauthUserManager is a UserManager for testing reauthorization which
@@ -64,7 +64,7 @@ func (*mockReauthUserManager) GetGroupsForUser(string) ([]string, error) {
 	return nil, errors.New("not implemented")
 }
 
-func TestReauthorizationJob(t *testing.T) {
+func TestReauthorizeUserJob(t *testing.T) {
 	needsReauth := func(env *mock.Environment, u *user.DBUser) (bool, error) {
 		dbUser, err := user.FindOneById(u.Username())
 		if err != nil {
@@ -77,7 +77,7 @@ func TestReauthorizationJob(t *testing.T) {
 	}
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
-			j := NewReauthorizationJob(env, u, "test")
+			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
 			needsReauth, err := needsReauth(env, u)
@@ -90,7 +90,7 @@ func TestReauthorizationJob(t *testing.T) {
 			require.NoError(t, err)
 			u, err = user.FindOneById(u.Id)
 			require.NoError(t, err)
-			j := NewReauthorizationJob(env, u, "test")
+			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
 			needsReauth, err := needsReauth(env, u)
@@ -99,11 +99,11 @@ func TestReauthorizationJob(t *testing.T) {
 			assert.False(t, um.attemptedReauth)
 		},
 		"NoopsIfUserLoggedOut": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
-			require.NoError(t, user.ClearLoginCache(u, false))
+			require.NoError(t, user.ClearLoginCache(u))
 			var err error
 			u, err = user.FindOneById(u.Id)
 			require.NoError(t, err)
-			j := NewReauthorizationJob(env, u, "test")
+			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
 			needsReauth, err := needsReauth(env, u)
@@ -113,9 +113,9 @@ func TestReauthorizationJob(t *testing.T) {
 		},
 		"NoopsIfReauthNotSupported": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
 			env.SetUserManagerInfo(evergreen.UserManagerInfo{})
-			j := NewReauthorizationJob(env, u, "test")
+			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
-			assert.NoError(t, j.Error())
+			assert.Error(t, j.Error())
 			needsReauth, err := needsReauth(env, u)
 			assert.NoError(t, err)
 			assert.True(t, needsReauth)
@@ -126,7 +126,7 @@ func TestReauthorizationJob(t *testing.T) {
 			defer func() {
 				assert.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{BackgroundReauthDisabled: false}))
 			}()
-			j := NewReauthorizationJob(env, u, "test")
+			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
 			needsReauth, err := needsReauth(env, u)
@@ -136,45 +136,31 @@ func TestReauthorizationJob(t *testing.T) {
 		},
 		"ErrorsIfReauthFails": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
 			um.failReauth = true
-			j := NewReauthorizationJob(env, u, "test")
+			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
 			assert.Error(t, j.Error())
 			needsReauth, err := needsReauth(env, u)
 			assert.NoError(t, err)
 			assert.True(t, needsReauth)
 			assert.True(t, um.attemptedReauth)
-			assert.Equal(t, 1, u.LoginCache.ReauthAttempts)
+			assert.True(t, j.RetryInfo().NeedsRetry)
 		},
-		"DoesNotRetryIfReauthExceedsMaxAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
+		"LogsOutUserIfUserHitsMaxReauthAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
 			um.failReauth = true
-			require.NoError(t, user.UpdateOne(
-				bson.M{user.IdKey: u.Id},
-				bson.M{"$set": bson.M{bsonutil.GetDottedKeyName(user.LoginCacheKey, user.LoginCacheReauthAttemptsKey): maxReauthAttempts - 1}}),
-			)
-			u.LoginCache.ReauthAttempts = maxReauthAttempts - 1
-
-			j := NewReauthorizationJob(env, u, "test")
+			j := NewReauthorizeUserJob(env, u, "test")
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				CurrentAttempt: utility.ToIntPtr(maxReauthAttempts - 1),
+			})
 			j.Run(ctx)
 			assert.Error(t, j.Error())
 			stillNeedsReauth, err := needsReauth(env, u)
 			assert.NoError(t, err)
-			assert.True(t, stillNeedsReauth)
+			assert.False(t, stillNeedsReauth)
 			assert.True(t, um.attemptedReauth)
 
 			dbUser, err := user.FindOneById(u.Id)
 			assert.NoError(t, err)
-			assert.NotEmpty(t, u.LoginCache.Token)
-			assert.Equal(t, u.LoginCache.Token, dbUser.LoginCache.Token)
-
-			// Once we've exceeded the max allowed attempts, this should no-op.
-			um.attemptedReauth = false
-			j = NewReauthorizationJob(env, dbUser, "test")
-			j.Run(ctx)
-			assert.NoError(t, j.Error())
-			stillNeedsReauth, err = needsReauth(env, u)
-			assert.NoError(t, err)
-			assert.True(t, stillNeedsReauth)
-			assert.False(t, um.attemptedReauth)
+			assert.Zero(t, dbUser.LoginCache)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -191,6 +177,7 @@ func TestReauthorizationJob(t *testing.T) {
 			env.EvergreenSettings.AuthConfig.BackgroundReauthMinutes = 1
 
 			u := &user.DBUser{
+				Id: "me",
 				LoginCache: user.LoginCache{
 					Token: "token",
 					TTL:   time.Now().Add(-time.Hour),

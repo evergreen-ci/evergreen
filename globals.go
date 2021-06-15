@@ -46,6 +46,9 @@ const (
 	//  1. a task is not scheduled to run (when Task.Activated == false)
 	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
+	TaskUnscheduled  = "unscheduled"
+	// TaskWillRun is a subset of TaskUndispatched and is only used in the UI
+	TaskWillRun = "will-run"
 
 	// TaskStarted indicates a task is running on an agent
 	TaskStarted = "started"
@@ -219,6 +222,10 @@ const (
 	HostAllocatorNoFeedback              = "no-feedback"
 	HostAllocatorUseDefaultFeedback      = ""
 
+	HostsOverallocatedTerminate  = "terminate-hosts-when-overallocated"
+	HostsOverallocatedIgnore     = "no-terminations-when-overallocated"
+	HostsOverallocatedUseDefault = ""
+
 	// CommitQueueAlias and GithubPRAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
 	CommitQueueAlias  = "__commit_queue"
 	GithubPRAlias     = "__github"
@@ -264,6 +271,16 @@ var TaskFailureStatuses []string = []string{
 	TaskSystemTimedOut,
 }
 
+var TaskUnstartedStatuses []string = []string{
+	TaskInactive,
+	TaskUnstarted,
+	TaskUndispatched,
+}
+
+func IsUnstartedTaskStatus(status string) bool {
+	return utility.StringSliceContains(TaskUnstartedStatuses, status)
+}
+
 func IsFinishedTaskStatus(status string) bool {
 	if status == TaskSucceeded ||
 		IsFailedTaskStatus(status) {
@@ -279,6 +296,29 @@ func IsFailedTaskStatus(status string) bool {
 
 func IsFinishedPatchStatus(status string) bool {
 	return status == PatchFailed || status == PatchSucceeded
+}
+
+func IsFinishedBuildStatus(status string) bool {
+	return status == BuildFailed || status == BuildSucceeded
+}
+
+func IsFinishedVersionStatus(status string) bool {
+	return status == VersionFailed || status == VersionSucceeded
+}
+
+func VersionStatusToPatchStatus(versionStatus string) (string, error) {
+	switch versionStatus {
+	case VersionCreated:
+		return PatchCreated, nil
+	case VersionStarted:
+		return PatchStarted, nil
+	case VersionFailed:
+		return PatchFailed, nil
+	case VersionSucceeded:
+		return PatchSucceeded, nil
+	default:
+		return "", errors.New("unknown version status")
+	}
 }
 
 // evergreen package names
@@ -572,6 +612,17 @@ var (
 		HostAllocatorNoFeedback,
 	}
 
+	ValidHostsOverallocatedRules = []string{
+		HostsOverallocatedUseDefault,
+		HostsOverallocatedIgnore,
+		HostsOverallocatedTerminate,
+	}
+
+	ValidDefaultHostsOverallocatedRules = []string{
+		HostsOverallocatedIgnore,
+		HostsOverallocatedTerminate,
+	}
+
 	// constant arrays for db update logic
 	AbortableStatuses   = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses   = []string{TaskSucceeded, TaskFailed}
@@ -624,8 +675,8 @@ func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
 }
 
-func ShouldConsiderBatchtime(requester string) bool {
-	return requester != AdHocRequester && requester != GitTagRequester
+func ShouldConsiderDifferentActivations(requester string) bool {
+	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
 
 // Permissions-related constants
@@ -640,6 +691,7 @@ const (
 
 	AllProjectsScope          = "all_projects"
 	UnrestrictedProjectsScope = "unrestricted_projects"
+	RestrictedProjectsScope   = "restricted_projects"
 	AllDistrosScope           = "all_distros"
 )
 
@@ -662,6 +714,7 @@ var (
 	// Project permissions.
 	PermissionProjectSettings  = "project_settings"
 	PermissionProjectVariables = "project_variables"
+	PermissionGitTagVersions   = "project_git_tags"
 	PermissionTasks            = "project_tasks"
 	PermissionAnnotations      = "project_task_annotations"
 	PermissionPatches          = "project_patches"
@@ -699,6 +752,14 @@ var (
 	}
 	ProjectSettingsNone = PermissionLevel{
 		Description: "No project settings permissions",
+		Value:       0,
+	}
+	GitTagVersionsCreate = PermissionLevel{
+		Description: "Create versions with git tags",
+		Value:       10,
+	}
+	GitTagVersionsNone = PermissionLevel{
+		Description: "Not able to create versions with git tags",
 		Value:       0,
 	}
 	AnnotationsModify = PermissionLevel{
@@ -786,6 +847,8 @@ func GetDisplayNameForPermissionKey(permissionKey string) string {
 		return "Task Annotations"
 	case PermissionPatches:
 		return "Patches"
+	case PermissionGitTagVersions:
+		return "Git Tag Versions"
 	case PermissionLogs:
 		return "Logs"
 	case PermissionDistroSettings:
@@ -824,6 +887,11 @@ func GetPermissionLevelsForPermissionKey(permissionKey string) []PermissionLevel
 			PatchSubmit,
 			PatchNone,
 		}
+	case PermissionGitTagVersions:
+		return []PermissionLevel{
+			GitTagVersionsCreate,
+			GitTagVersionsNone,
+		}
 	case PermissionLogs:
 		return []PermissionLevel{
 			LogsView,
@@ -855,6 +923,7 @@ var ProjectPermissions = []string{
 	PermissionTasks,
 	PermissionAnnotations,
 	PermissionPatches,
+	PermissionGitTagVersions,
 	PermissionLogs,
 }
 

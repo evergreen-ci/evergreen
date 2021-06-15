@@ -28,18 +28,19 @@ type fuzzerSettings struct {
 }
 
 type HostAllocatorFuzzerSuite struct {
-	ctx                context.Context
-	distroName         string
-	distro             distro.Distro
-	projectName        string
-	futureHostFraction float64
-	allocator          HostAllocator
-	testData           HostAllocatorData
-	soonToBeFree       float64
-	freeHosts          int
-	settings           fuzzerSettings
-	roundingRule       string
-	feedbackRule       string
+	ctx                    context.Context
+	distroName             string
+	distro                 distro.Distro
+	projectName            string
+	futureHostFraction     float64
+	allocator              HostAllocator
+	testData               HostAllocatorData
+	soonToBeFree           float64
+	freeHosts              int
+	settings               fuzzerSettings
+	roundingRule           string
+	feedbackRule           string
+	hostsOverallocatedRule string
 
 	suite.Suite
 }
@@ -65,6 +66,7 @@ func (s *HostAllocatorFuzzerSuite) SetupSuite() {
 	s.futureHostFraction = .5
 	s.roundingRule = evergreen.HostAllocatorRoundDown
 	s.feedbackRule = evergreen.HostAllocatorNoFeedback
+	s.hostsOverallocatedRule = evergreen.HostsOverallocatedIgnore
 	s.ctx = context.Background()
 	s.settings = fuzzerSettings{
 		taskDurations: []time.Duration{

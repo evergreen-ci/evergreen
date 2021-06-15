@@ -376,6 +376,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	}
 
 	jsonBody, err := json.Marshal(a)
+	require.NoError(t, err)
 	buffer := bytes.NewBuffer(jsonBody)
 
 	r, err := http.NewRequest("PUT", "/task/t1/annotations", buffer)
@@ -563,6 +564,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	}
 
 	jsonBody, err := json.Marshal(ticket)
+	require.NoError(t, err)
 	buffer := bytes.NewBuffer(jsonBody)
 	r, err := http.NewRequest("PUT", "/task/t1/created_ticket?execution=1", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})

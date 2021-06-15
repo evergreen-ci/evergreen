@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	provisionRetryLimit = 15
+	provisionRetryLimit = 40
 	mountRetryLimit     = 10
 	mountSleepDuration  = time.Second * 10
 	setupHostJobName    = "provisioning-setup-host"
@@ -65,16 +65,22 @@ func makeSetupHostJob() *setupHostJob {
 	return j
 }
 
-// NewHostSetupJob creates a job that performs any additional provisioning for
+// NewSetupHostJob creates a job that performs any additional provisioning for
 // a host to prepare it to run.
-func NewHostSetupJob(env evergreen.Environment, h *host.Host) amboy.Job {
+func NewSetupHostJob(env evergreen.Environment, h *host.Host, id string) amboy.Job {
 	j := makeSetupHostJob()
 	j.host = h
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
-	j.SetID(fmt.Sprintf("%s.%s.attempt-%d", setupHostJobName, j.HostID, h.ProvisionAttempts))
+	j.SetID(fmt.Sprintf("%s.%s.%s", setupHostJobName, j.HostID, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", setupHostJobName, j.HostID)})
+	j.SetShouldApplyScopesOnEnqueue(true)
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(provisionRetryLimit),
+		WaitUntil:   utility.ToTimeDurationPtr(15 * time.Second),
+	})
 	return j
 }
 
@@ -93,11 +99,12 @@ func (j *setupHostJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	if j.host.Status == evergreen.HostRunning || j.host.Provisioned {
+	if j.host.Status != evergreen.HostProvisioning || j.host.Provisioned {
 		grip.Info(message.Fields{
 			"job":     j.ID(),
 			"host_id": j.host.Id,
-			"message": "skipping setup because host is already set up",
+			"distro":  j.host.Distro.Id,
+			"message": "skipping setup because host is no longer provisioning",
 		})
 		return
 	}
@@ -106,28 +113,25 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	defer func() {
-		err := j.host.IncProvisionAttempts()
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":           j.ID(),
-			"host_id":       j.host.Id,
-			"attempt_value": j.host.ProvisionAttempts,
-			"distro":        j.host.Distro.Id,
-			"operation":     "increment provisioning errors failed",
-			"cause": []string{
-				"job collision",
-				"host data",
-			},
-		}))
-		j.AddError(errors.Wrap(err, "job collision detected"))
-	}()
-
 	settings := j.env.Settings()
 
 	j.AddError(j.setupHost(ctx, settings))
 }
 
 func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {
+	defer func() {
+		if j.host.Status != evergreen.HostRunning && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+			event.LogHostProvisionFailed(j.host.Id, "host has used up all attempts to provision")
+			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+				"operation":       "setting host unprovisioned",
+				"current_attempt": j.RetryInfo().CurrentAttempt,
+				"distro":          j.host.Distro.Id,
+				"job":             j.ID(),
+				"host_id":         j.host.Id,
+			}))
+		}
+	}()
+
 	grip.Info(message.Fields{
 		"message": "attempting to setup host",
 		"distro":  j.host.Distro.Id,
@@ -152,76 +156,46 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		event.LogHostProvisionError(j.host.Id)
 
 		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
-			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
-				"message":  "could not delete Jasper credentials after failed provision attempt",
-				"host_id":  j.host.Id,
-				"distro":   j.host.Distro.Id,
-				"attempts": j.host.ProvisionAttempts,
-				"job":      j.ID(),
-			}))
+			j.AddError(errors.Wrap(j.host.DeleteJasperCredentials(ctx, j.env), "deleting Jasper credentials after failed provision attempt"))
 		}
 
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "provisioning host encountered error",
-			"job":      j.ID(),
-			"distro":   j.host.Distro.Id,
-			"host_id":  j.host.Id,
-			"attempts": j.host.ProvisionAttempts,
+			"message":         "provisioning host encountered error",
+			"job":             j.ID(),
+			"distro":          j.host.Distro.Id,
+			"host_id":         j.host.Id,
+			"current_attempt": j.RetryInfo().CurrentAttempt,
 		}))
-	}
 
-	// ProvisionHost allows hosts to fail provisioning a few
-	// times during host start up, to account for the fact
-	// that hosts often need extra time to come up.
-	//
-	// In these cases, ProvisionHost returns a nil error but
-	// does not change the host status.
-	if j.host.Status == evergreen.HostProvisioning && !j.host.Provisioned {
-		grip.Info(message.Fields{
-			"attempts": j.host.ProvisionAttempts,
-			"host_id":  j.host.Id,
-			"job":      j.ID(),
-			"message":  "retrying provisioning",
-		})
+		if j.canRetryProvisioning() {
+			grip.Info(message.Fields{
+				"current_attempt": j.RetryInfo().CurrentAttempt,
+				"host_id":         j.host.Id,
+				"job":             j.ID(),
+				"message":         "retrying provisioning",
+			})
+			j.AddRetryableError(err)
+		} else {
+			j.AddError(err)
+		}
 		return nil
 	}
 
 	grip.Info(message.Fields{
-		"message":  "successfully finished provisioning host",
-		"host_id":  j.host.Id,
-		"DNS":      j.host.Host,
-		"distro":   j.host.Distro.Id,
-		"job":      j.ID(),
-		"attempts": j.host.ProvisionAttempts,
-		"runtime":  time.Since(setupStartTime),
+		"message":         "successfully finished provisioning host",
+		"host_id":         j.host.Id,
+		"DNS":             j.host.Host,
+		"distro":          j.host.Distro.Id,
+		"job":             j.ID(),
+		"current_attempt": j.RetryInfo().CurrentAttempt,
+		"runtime_secs":    time.Since(setupStartTime).Seconds(),
 	})
 
 	return nil
 }
 
-// runHostSetup transfers the specified setup script for an individual host.
-// Returns the output from running the script remotely, as well as any error
-// that occurs. If the script exits with a non-zero exit code, the error will be
-// non-nil.
-func (j *setupHostJob) runHostSetup(ctx context.Context, settings *evergreen.Settings) error {
-	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
-		if err := setupJasper(ctx, j.env, settings, j.host); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "could not set up Jasper",
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-				"job":     j.ID(),
-			}))
-			return errors.Wrapf(err, "error putting Jasper on host '%s'", j.host.Id)
-		}
-		grip.Info(message.Fields{
-			"message": "successfully fetched Jasper binary and started service",
-			"host_id": j.host.Id,
-			"job":     j.ID(),
-			"distro":  j.host.Distro.Id,
-		})
-	}
-
+// copySetupScript transfers the distro setup script to a host.
+func (j *setupHostJob) copySetupScript(ctx context.Context, settings *evergreen.Settings) error {
 	// Do not copy setup scripts to task-spawned hosts
 	if j.host.SpawnOptions.SpawnedByTask {
 		return nil
@@ -430,72 +404,55 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		"message": "setting up host",
 	})
 
-	err := j.runHostSetup(ctx, settings)
-	if err != nil {
-		if shouldRetryProvisioning(j.host) {
-			return nil
-		}
-
-		event.LogProvisionFailed(j.host.Id, "")
-		// mark the host's provisioning as failed
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"attempts":  j.host.ProvisionAttempts,
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host_id":   j.host.Id,
-		}))
-
-		return errors.Wrapf(err, "error initializing host %s", j.host.Id)
-	}
-
-	if j.host.IsVirtualWorkstation {
-		if err = attachVolume(ctx, j.env, j.host); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "can't attach volume",
-				"host_id":  j.host.Id,
-				"distro":   j.host.Distro.Id,
-				"attempts": j.host.ProvisionAttempts,
-				"job":      j.ID(),
-			}))
-			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned for mount failure",
-				"attempts":  j.host.ProvisionAttempts,
-				"distro":    j.host.Distro.Id,
-				"job":       j.ID(),
-				"host_id":   j.host.Id,
-			}))
-			return nil
-		}
-		if err = writeIcecreamConfig(ctx, j.env, j.host); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "can't write icecream config file",
+	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
+		if err := setupJasper(ctx, j.env, settings, j.host); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not set up Jasper",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
-			return nil
+			return errors.Wrapf(err, "error putting Jasper on host '%s'", j.host.Id)
+		}
+		grip.Info(message.Fields{
+			"message": "successfully fetched Jasper binary and started service",
+			"host_id": j.host.Id,
+			"job":     j.ID(),
+			"distro":  j.host.Distro.Id,
+		})
+	}
+
+	if err := j.copySetupScript(ctx, settings); err != nil {
+		return errors.Wrapf(err, "error initializing host %s", j.host.Id)
+	}
+
+	if j.host.IsVirtualWorkstation {
+		if err := attachVolume(ctx, j.env, j.host); err != nil {
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(err, "attaching volume")
+			if err := j.host.SetUnprovisioned(); err != nil {
+				catcher.Wrap(err, "setting host unprovisioned after volume failed to attach")
+			}
+			return catcher.Resolve()
+		}
+		if err := writeIcecreamConfig(ctx, j.env, j.host); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not write icecream config file",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
 		}
 	}
 
 	// If this is a spawn host
 	if j.host.ProvisionOptions != nil && j.host.UserHost {
 		grip.Infof("Uploading client binary to host %s", j.host.Id)
-		if err = j.setupSpawnHost(ctx, settings); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "failed to load client binary onto host",
-				"job":     j.ID(),
-				"host_id": j.host.Id,
-				"distro":  j.host.Distro.Id,
-			}))
-
-			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned",
-				"job":       j.ID(),
-				"distro":    j.host.Distro.Id,
-				"host_id":   j.host.Id,
-			}))
-			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", j.host.Id, err)
+		if err := j.setupSpawnHost(ctx, settings); err != nil {
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(err, "setting up spawn host")
+			catcher.Wrap(j.host.SetUnprovisioned(), "setting host unprovisioned after spawn host setup failed")
+			return catcher.Resolve()
 		}
 
 		grip.Info(message.Fields{
@@ -504,16 +461,12 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		})
-		// run the setup script with the agent
 		if logs, err := j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
-			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-				"host_id":   j.host.Id,
-				"operation": "setting host unprovisioned",
-				"distro":    j.host.Distro.Id,
-				"job":       j.ID(),
-			}))
-			event.LogProvisionFailed(j.host.Id, logs)
-			return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrapf(err, "running distro setup script on remote host: %s", logs)
+			catcher.Wrap(j.host.SetUnprovisioned(), "setting host unprovisioned after distro setup script failed")
+			event.LogHostProvisionFailed(j.host.Id, logs)
+			return catcher.Resolve()
 		}
 
 		if j.host.ProvisionOptions.OwnerId != "" && j.host.ProvisionOptions.TaskId != "" {
@@ -525,18 +478,18 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"job":     j.ID(),
 			})
 
-			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx),
-				message.Fields{
-					"message":   "failed to fetch data onto host",
-					"task":      j.host.ProvisionOptions.TaskId,
-					"task_sync": j.host.ProvisionOptions.TaskSync,
-					"host_id":   j.host.Id,
-					"job":       j.ID(),
-				}))
+			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx), message.Fields{
+				"message":   "failed to fetch data onto host",
+				"task":      j.host.ProvisionOptions.TaskId,
+				"task_sync": j.host.ProvisionOptions.TaskSync,
+				"host_id":   j.host.Id,
+				"job":       j.ID(),
+			}))
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
-			// Don't wait on setup script to finish, particularly for hosts waiting on task data.
-			j.AddError(j.env.RemoteQueue().Put(ctx, NewHostSetupScriptJob(j.env, j.host, 0)))
+			// Asynchronously run the task data setup script, since the task
+			// data setup script must wait for all task data to be loaded.
+			j.AddError(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostSetupScriptJob(j.env, j.host)))
 		}
 	}
 
@@ -547,7 +500,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		"distro":  j.host.Distro.Id,
 	})
 
-	// the setup was successful. update the host accordingly in the database
 	if err := j.host.MarkAsProvisioned(); err != nil {
 		return errors.Wrapf(err, "error marking host %s as provisioned", j.host.Id)
 	}
@@ -556,7 +508,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		"host_id":                 j.host.Id,
 		"distro":                  j.host.Distro.Id,
 		"provider":                j.host.Provider,
-		"attempts":                j.host.ProvisionAttempts,
+		"current_attempt":         j.RetryInfo().CurrentAttempt,
 		"job":                     j.ID(),
 		"message":                 "host successfully provisioned",
 		"provision_duration_secs": j.host.ProvisionTime.Sub(j.host.CreationTime).Seconds(),
@@ -636,8 +588,8 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	return errors.Wrap(err, "could not fetch remote task data")
 }
 
-func shouldRetryProvisioning(h *host.Host) bool {
-	return h.ProvisionAttempts < provisionRetryLimit && h.Status == evergreen.HostProvisioning && !h.Provisioned
+func (j *setupHostJob) canRetryProvisioning() bool {
+	return j.RetryInfo().GetRemainingAttempts() > 0 && j.host.Status == evergreen.HostProvisioning && !j.host.Provisioned
 }
 
 func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) error {

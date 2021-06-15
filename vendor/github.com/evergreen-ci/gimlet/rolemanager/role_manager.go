@@ -300,7 +300,7 @@ func (m *mongoBackedRoleManager) AddResourceToScope(scope, resource string) erro
 		},
 	}
 	update := bson.M{
-		"$push": bson.M{
+		"$addToSet": bson.M{
 			"resources": resource,
 		},
 	}

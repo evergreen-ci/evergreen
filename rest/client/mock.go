@@ -93,6 +93,10 @@ func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
 	return errors.New("(*Mock) ChangeSpawnHostPassword is not implemented")
 }
 
+func (*Mock) FindHostByIpAddress(context.Context, string) error {
+	return errors.New("(*Mock) FindHostByIpAddress is not implemented")
+}
+
 func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
 	return errors.New("(*Mock) ExtendSpawnHostExpiration is not implemented")
 }

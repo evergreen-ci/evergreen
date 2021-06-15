@@ -134,7 +134,6 @@
         "data": {
           "patch": {
             "project": {
-              "tasks": ["compile", "test", "lint", "coverage", "e2e_test"],
               "variants": [
                 {
                   "name": "ubuntu1604",
@@ -215,6 +214,16 @@
                 "value": "this_is_it"
               }
             ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "abortedPatchTasks.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "status": "aborted"
           }
         }
       }

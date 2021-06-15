@@ -35,7 +35,7 @@ type Query {
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
-  patchBuildVariants(patchId: String!): [PatchBuildVariant!]!
+  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   spruceConfig: SpruceConfig
@@ -70,6 +70,7 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
+  mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
 }
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
@@ -136,6 +137,45 @@ type Mutation {
   clearMySubscriptions: Int!
 }
 
+# Array of activated and unactivated versions
+# nextPage represents the last activated order number returned
+type MainlineCommits {
+  nextPageOrderNumber: Int
+  versions: [MainlineCommitVersion!]!
+}
+
+type MainlineCommitVersion {
+  version: Version
+  rolledUpVersions: [Version!]
+}
+type Version {
+  id: String!
+  createTime: Time!
+  startTime: Time
+  finishTime: Time
+  message: String!
+  revision: String!
+  author: String!
+  status: String!
+  order: Int!
+  repo: String!
+  project: String!
+  branch: String!
+  requester: String!
+  activated: Boolean
+  buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+}
+
+input BuildVariantOptions {
+  variants: [String!]
+  tasks: [String!]
+  statuses: [String!]
+}
+input MainlineCommitsOptions {
+  projectID: String! 
+  limit: Int = 7
+  skipOrderNumber: Int = 0
+}
 enum SpawnHostStatusActions {
   START
   STOP
@@ -392,20 +432,12 @@ type PatchTasks {
   count: Int!
 }
 
-type PatchBuildVariant {
+type GroupedBuildVariant {
   variant: String!
   displayName: String!
   tasks: [Task]
 }
 
-type PatchBuildVariantTask {
-  id: ID!
-  execution: Int!
-  displayName: String!
-  name: String!
-  status: String!
-  baseStatus: String
-}
 
 type TaskFiles {
   fileCount: Int!
@@ -451,6 +483,7 @@ type Patch {
   githash: String!
   patchNumber: Int!
   author: String!
+  authorDisplayName: String!
   version: String!
   status: String!
   variants: [String!]!
@@ -498,7 +531,6 @@ type Volume {
 
 type PatchProject {
   variants: [ProjectBuildVariant!]!
-  tasks: [String!]!
 }
 type ProjectBuildVariant {
   name: String!
@@ -970,7 +1002,7 @@ type Note {
 type IssueLink {
   issueKey: String
   url: String
-  source: Source!
+  source: Source
   jiraTicket: JiraTicket
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -24,6 +25,7 @@ import (
 type taskGetHandler struct {
 	taskID             string
 	fetchAllExecutions bool
+	execution          int
 	sc                 data.Connector
 }
 
@@ -43,13 +45,43 @@ func (tgh *taskGetHandler) Factory() gimlet.RouteHandler {
 func (tgh *taskGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	tgh.taskID = gimlet.GetVars(r)["task_id"]
 	_, tgh.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
+	execution := r.URL.Query().Get("execution")
+
+	if execution != "" && tgh.fetchAllExecutions {
+		return gimlet.ErrorResponse{
+			Message:    "fetch_all_executions=true cannot be combined with execution={task_execution}",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if execution != "" {
+		var err error
+		tgh.execution, err = strconv.Atoi(execution)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("Invalid execution: '%s'", err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	} else {
+		// since an int in go defaults to 0, we won't know if the user
+		// specifically wanted execution 0, or if they want the latest.
+		// we use -1 to indicate "not specified"
+		tgh.execution = -1
+	}
 	return nil
 }
 
 // Execute calls the data FindTaskById function and returns the task
 // from the provider.
 func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundTask, err := tgh.sc.FindTaskById(tgh.taskID)
+	var foundTask *task.Task
+	var err error
+	if tgh.execution == -1 {
+		foundTask, err = tgh.sc.FindTaskById(tgh.taskID)
+	} else {
+		foundTask, err = tgh.sc.FindTaskByIdAndExecution(tgh.taskID, tgh.execution)
+	}
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -382,10 +414,11 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
-// GET /tasks/{task_id}/set_has_cedar_results
+// POST /tasks/{task_id}/set_has_cedar_results
 
 type taskSetHasCedarResultsHandler struct {
 	taskID string
+	info   apimodels.CedarTestResultsTaskInfo
 	sc     data.Connector
 }
 
@@ -403,6 +436,11 @@ func (rh *taskSetHasCedarResultsHandler) Factory() gimlet.RouteHandler {
 
 func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Request) error {
 	rh.taskID = gimlet.GetVars(r)["task_id"]
+
+	if err := gimlet.GetJSON(r.Body, &rh.info); err != nil {
+		return errors.Wrap(err, "unmarshaling the request body")
+	}
+
 	return nil
 }
 
@@ -412,7 +450,7 @@ func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
 	}
 
-	if err = t.SetHasCedarResults(true); err != nil {
+	if err = t.SetHasCedarResults(true, rh.info.Failed); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "failed to set HasCedarResults flag for task with ID '%s'", rh.taskID))
 	}
 	return gimlet.NewTextResponse("HasCedarResults flag set in task")

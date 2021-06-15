@@ -105,7 +105,7 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}
 
-		if err := queue.Put(ctx, units.NewHostTerminationJob(env, h, true, fmt.Sprintf("terminated by %s", u.Username()))); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostTerminationJob(env, h, true, fmt.Sprintf("terminated by %s", u.Username()))); err != nil {
 			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}
 		return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), http.StatusOK, nil
@@ -132,7 +132,7 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 
 func GetRestartJasperCallback(ctx context.Context, env evergreen.Environment, username string) func(h *host.Host) (int, error) {
 	return func(h *host.Host) (int, error) {
-		modifyErr := h.SetNeedsJasperRestart(username)
+		modifyErr := h.SetNeedsToRestartJasper(username)
 		if modifyErr != nil {
 			return http.StatusInternalServerError, modifyErr
 		}

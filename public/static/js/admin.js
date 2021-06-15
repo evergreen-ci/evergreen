@@ -3,6 +3,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.can_clear_tokens = $window.can_clear_tokens;
   $scope.validDefaultHostAllocatorRoundingRules = $window.validDefaultHostAllocatorRoundingRules;
   $scope.validDefaultHostAllocatorFeedbackRules = $window.validDefaultHostAllocatorFeedbackRules;
+  $scope.validDefaultHostsOverallocatedRules = $window.validDefaultHostsOverallocatedRules;
 
   $scope.load = function () {
     $scope.Settings = {};

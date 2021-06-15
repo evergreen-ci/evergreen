@@ -346,6 +346,7 @@ type APIAmboyConfig struct {
 	GroupTTLMinutes                       int                 `json:"group_ttl"`
 	RequireRemotePriority                 bool                `json:"require_remote_priority"`
 	LockTimeoutMinutes                    int                 `json:"lock_timeout_minutes"`
+	SampleSize                            int                 `json:"sample_size"`
 	Retry                                 APIAmboyRetryConfig `json:"retry,omitempty"`
 }
 
@@ -364,6 +365,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupTTLMinutes = v.GroupTTLMinutes
 		a.RequireRemotePriority = v.RequireRemotePriority
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
+		a.SampleSize = v.SampleSize
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
 			return errors.Wrap(err, "building Amboy retry settings from service")
 		}
@@ -395,6 +397,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
 		RequireRemotePriority:                 a.RequireRemotePriority,
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
+		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
 	}, nil
 }
@@ -585,11 +588,10 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL  *string `json:"base_url"`
-	RPCPort  *string `json:"rpc_port"`
-	User     *string `json:"user"`
-	Password *string `json:"password"`
-	APIKey   *string `json:"api_key"`
+	BaseURL *string `json:"base_url"`
+	RPCPort *string `json:"rpc_port"`
+	User    *string `json:"user"`
+	APIKey  *string `json:"api_key"`
 }
 
 func (a *APICedarConfig) BuildFromService(h interface{}) error {
@@ -598,7 +600,6 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 		a.BaseURL = utility.ToStringPtr(v.BaseURL)
 		a.RPCPort = utility.ToStringPtr(v.RPCPort)
 		a.User = utility.ToStringPtr(v.User)
-		a.Password = utility.ToStringPtr(v.Password)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -608,11 +609,10 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 
 func (a *APICedarConfig) ToService() (interface{}, error) {
 	return evergreen.CedarConfig{
-		BaseURL:  utility.FromStringPtr(a.BaseURL),
-		RPCPort:  utility.FromStringPtr(a.RPCPort),
-		User:     utility.FromStringPtr(a.User),
-		Password: utility.FromStringPtr(a.Password),
-		APIKey:   utility.FromStringPtr(a.APIKey),
+		BaseURL: utility.FromStringPtr(a.BaseURL),
+		RPCPort: utility.FromStringPtr(a.RPCPort),
+		User:    utility.FromStringPtr(a.User),
+		APIKey:  utility.FromStringPtr(a.APIKey),
 	}, nil
 }
 
@@ -1649,6 +1649,7 @@ type APISchedulerConfig struct {
 	HostAllocator                 *string `json:"host_allocator"`
 	HostAllocatorRoundingRule     *string `json:"host_allocator_rounding_rule"`
 	HostAllocatorFeedbackRule     *string `json:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule        *string `json:"hosts_overallocated_rule"`
 	FutureHostFraction            float64 `json:"free_host_fraction"`
 	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
 	Planner                       *string `json:"planner"`
@@ -1669,6 +1670,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.TaskFinder = utility.ToStringPtr(v.TaskFinder)
 		a.HostAllocator = utility.ToStringPtr(v.HostAllocator)
 		a.HostAllocatorFeedbackRule = utility.ToStringPtr(v.HostAllocatorFeedbackRule)
+		a.HostsOverallocatedRule = utility.ToStringPtr(v.HostsOverallocatedRule)
 		a.FutureHostFraction = v.FutureHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
 		a.Planner = utility.ToStringPtr(v.Planner)
@@ -1692,6 +1694,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		TaskFinder:                    utility.FromStringPtr(a.TaskFinder),
 		HostAllocator:                 utility.FromStringPtr(a.HostAllocator),
 		HostAllocatorFeedbackRule:     utility.FromStringPtr(a.HostAllocatorFeedbackRule),
+		HostsOverallocatedRule:        utility.FromStringPtr(a.HostsOverallocatedRule),
 		FutureHostFraction:            a.FutureHostFraction,
 		CacheDurationSeconds:          a.CacheDurationSeconds,
 		Planner:                       utility.FromStringPtr(a.Planner),
@@ -1717,6 +1720,7 @@ type APIServiceFlags struct {
 	AgentStartDisabled            bool `json:"agent_start_disabled"`
 	RepotrackerDisabled           bool `json:"repotracker_disabled"`
 	SchedulerDisabled             bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled     bool `json:"check_blocked_tasks_disabled"`
 	GithubPRTestingDisabled       bool `json:"github_pr_testing_disabled"`
 	CLIUpdatesDisabled            bool `json:"cli_updates_disabled"`
 	BackgroundStatsDisabled       bool `json:"background_stats_disabled"`
@@ -1730,7 +1734,6 @@ type APIServiceFlags struct {
 	BackgroundReauthDisabled      bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled     bool `json:"background_cleanup_disabled"`
 	AmboyRemoteManagementDisabled bool `json:"amboy_remote_management_disabled"`
-	AmboyRetriesDisabled          bool `json:"amboy_retries_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1857,18 +1860,17 @@ func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 }
 
 type APIUIConfig struct {
-	Url                     *string  `json:"url"`
-	HelpUrl                 *string  `json:"help_url"`
-	UIv2Url                 *string  `json:"uiv2_url"`
-	HttpListenAddr          *string  `json:"http_listen_addr"`
-	Secret                  *string  `json:"secret"`
-	DefaultProject          *string  `json:"default_project"`
-	CacheTemplates          bool     `json:"cache_templates"`
-	CsrfKey                 *string  `json:"csrf_key"`
-	CORSOrigins             []string `json:"cors_origins"`
-	LoginDomain             *string  `json:"login_domain"`
-	ExpireLoginCookieDomain *string  `json:"expire_domain"`
-	UserVoice               *string  `json:"userVoice"`
+	Url            *string  `json:"url"`
+	HelpUrl        *string  `json:"help_url"`
+	UIv2Url        *string  `json:"uiv2_url"`
+	HttpListenAddr *string  `json:"http_listen_addr"`
+	Secret         *string  `json:"secret"`
+	DefaultProject *string  `json:"default_project"`
+	CacheTemplates bool     `json:"cache_templates"`
+	CsrfKey        *string  `json:"csrf_key"`
+	CORSOrigins    []string `json:"cors_origins"`
+	LoginDomain    *string  `json:"login_domain"`
+	UserVoice      *string  `json:"userVoice"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1884,7 +1886,6 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.CsrfKey = utility.ToStringPtr(v.CsrfKey)
 		a.CORSOrigins = v.CORSOrigins
 		a.LoginDomain = utility.ToStringPtr(v.LoginDomain)
-		a.ExpireLoginCookieDomain = utility.ToStringPtr(v.ExpireLoginCookieDomain)
 		a.UserVoice = utility.ToStringPtr(v.UserVoice)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -1894,18 +1895,17 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 
 func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
-		Url:                     utility.FromStringPtr(a.Url),
-		HelpUrl:                 utility.FromStringPtr(a.HelpUrl),
-		UIv2Url:                 utility.FromStringPtr(a.UIv2Url),
-		HttpListenAddr:          utility.FromStringPtr(a.HttpListenAddr),
-		Secret:                  utility.FromStringPtr(a.Secret),
-		DefaultProject:          utility.FromStringPtr(a.DefaultProject),
-		CacheTemplates:          a.CacheTemplates,
-		CsrfKey:                 utility.FromStringPtr(a.CsrfKey),
-		CORSOrigins:             a.CORSOrigins,
-		LoginDomain:             utility.FromStringPtr(a.LoginDomain),
-		ExpireLoginCookieDomain: utility.FromStringPtr(a.ExpireLoginCookieDomain),
-		UserVoice:               utility.FromStringPtr(a.UserVoice),
+		Url:            utility.FromStringPtr(a.Url),
+		HelpUrl:        utility.FromStringPtr(a.HelpUrl),
+		UIv2Url:        utility.FromStringPtr(a.UIv2Url),
+		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
+		Secret:         utility.FromStringPtr(a.Secret),
+		DefaultProject: utility.FromStringPtr(a.DefaultProject),
+		CacheTemplates: a.CacheTemplates,
+		CsrfKey:        utility.FromStringPtr(a.CsrfKey),
+		CORSOrigins:    a.CORSOrigins,
+		LoginDomain:    utility.FromStringPtr(a.LoginDomain),
+		UserVoice:      utility.FromStringPtr(a.UserVoice),
 	}, nil
 }
 
@@ -1978,6 +1978,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
 		as.SchedulerDisabled = v.SchedulerDisabled
+		as.CheckBlockedTasksDisabled = v.CheckBlockedTasksDisabled
 		as.GithubPRTestingDisabled = v.GithubPRTestingDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
 		as.EventProcessingDisabled = v.EventProcessingDisabled
@@ -1997,7 +1998,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.AmboyRemoteManagementDisabled = v.AmboyRemoteManagementDisabled
-		as.AmboyRetriesDisabled = v.AmboyRetriesDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -2015,6 +2015,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		AgentStartDisabled:            as.AgentStartDisabled,
 		RepotrackerDisabled:           as.RepotrackerDisabled,
 		SchedulerDisabled:             as.SchedulerDisabled,
+		CheckBlockedTasksDisabled:     as.CheckBlockedTasksDisabled,
 		GithubPRTestingDisabled:       as.GithubPRTestingDisabled,
 		CLIUpdatesDisabled:            as.CLIUpdatesDisabled,
 		EventProcessingDisabled:       as.EventProcessingDisabled,
@@ -2034,7 +2035,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundCleanupDisabled:     as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:      as.BackgroundReauthDisabled,
 		AmboyRemoteManagementDisabled: as.AmboyRemoteManagementDisabled,
-		AmboyRetriesDisabled:          as.AmboyRetriesDisabled,
 	}, nil
 }
 

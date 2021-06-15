@@ -78,9 +78,9 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(settings.Credentials["github"])
 
-	token, err = settings.GetGithubOauthString()
+	tokens, err := settings.GetGithubOauthStrings()
 	assert.NoError(err)
-	assert.Equal(settings.Credentials["github"], token)
+	assert.Equal(settings.Credentials["github"], tokens[0])
 
 	assert.NotPanics(func() {
 		settings := &Settings{}
@@ -254,6 +254,7 @@ func (s *AdminSuite) TestAmboyConfig() {
 		GroupPruneFrequencyMinutes:            60,
 		GroupTTLMinutes:                       70,
 		LockTimeoutMinutes:                    7,
+		SampleSize:                            200,
 	}
 
 	err := config.Set()

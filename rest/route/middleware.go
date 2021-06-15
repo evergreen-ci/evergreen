@@ -545,7 +545,10 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	}
 
 	patchID := util.CoalesceStrings(append(query["patch_id"], query["patchId"]...), vars["patch_id"], vars["patchId"])
-	if projectID == "" && patchID != "" && patch.IsValidId(patchID) {
+	if projectID == "" && patchID != "" {
+		if !patch.IsValidId(patchID) {
+			return nil, http.StatusBadRequest, errors.New("not a valid patch ID")
+		}
 		projectID, err = patch.FindProjectForPatch(patch.NewId(patchID))
 		if err != nil {
 			return nil, http.StatusNotFound, err

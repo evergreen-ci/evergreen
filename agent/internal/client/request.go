@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -156,7 +157,28 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 
 	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
-	return utility.RetryRequest(ctx, r, c.maxAttempts, c.timeoutStart, c.timeoutMax)
+	var resp *http.Response
+	resp, err = utility.RetryRequest(ctx, r, c.maxAttempts, c.timeoutStart, c.timeoutMax)
+	if err != nil && resp != nil && resp.StatusCode == 400 {
+		var taskId, start, end string
+		if info.taskData != nil {
+			taskId = info.taskData.ID
+		}
+		if len(out) >= 100 {
+			start = string(out[0:100])
+			end = string(out[len(out)-100:])
+		}
+		grip.Debug(message.Fields{
+			"message":          "error sending request",
+			"method":           info.method,
+			"path":             info.path,
+			"task":             taskId,
+			"len_request":      len(out),
+			"start_of_request": start,
+			"end_of_request":   end,
+		})
+	}
+	return resp, err
 }
 
 func (c *communicatorImpl) getBackoff() *backoff.Backoff {

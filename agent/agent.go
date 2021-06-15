@@ -565,7 +565,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		description = tc.getCurrentCommand().DisplayName()
 		cmdType = tc.getCurrentCommand().Type()
 	}
-	return &apimodels.TaskEndDetail{
+	detail := &apimodels.TaskEndDetail{
 		Description:     description,
 		Type:            cmdType,
 		TimedOut:        tc.hadTimedOut(),
@@ -576,6 +576,10 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 		Message:         message,
 		Logs:            tc.logs,
 	}
+	if tc.taskConfig != nil {
+		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
+	}
+	return detail
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
@@ -637,6 +641,10 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 
 // runEndTaskSync runs task sync if it was requested for the end of this task.
 func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
+	if tc.taskModel == nil {
+		tc.logger.Task().Error("Task model not found for running task sync.")
+		return
+	}
 	start := time.Now()
 	taskSyncCmds := endTaskSyncCommands(tc, detail)
 	if taskSyncCmds == nil {

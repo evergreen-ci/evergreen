@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/scheduler"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -54,12 +56,14 @@ func makeHostAllocatorJob() *hostAllocatorJob {
 }
 
 func NewHostAllocatorJob(env evergreen.Environment, distroID string, timestamp time.Time) amboy.Job {
-	job := makeHostAllocatorJob()
-	job.DistroID = distroID
-	job.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
-	job.env = env
+	j := makeHostAllocatorJob()
+	j.DistroID = distroID
+	j.env = env
+	j.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostAllocatorJobName, distroID)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 
-	return job
+	return j
 }
 
 func (j *hostAllocatorJob) Run(ctx context.Context) {
@@ -229,14 +233,15 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		timeToEmpty = time.Duration(0)
 		timeToEmptyNoSpawns = time.Duration(0)
 	} else {
+		// this is roughly the maximum value of hours we can set a time.Duration to
+		const maxPossibleHours = 2532000
 		hostsAvailNoSpawns := hostsAvail - correctedHostsSpawned
-		maxHours := 2532000
 		if hostsAvail <= 0 {
-			timeToEmpty = time.Duration(maxHours) * time.Hour
-			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
+			timeToEmpty = time.Duration(maxPossibleHours) * time.Hour
+			timeToEmptyNoSpawns = time.Duration(maxPossibleHours) * time.Hour
 		} else if hostsAvailNoSpawns <= 0 {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
-			timeToEmptyNoSpawns = time.Duration(maxHours) * time.Hour
+			timeToEmptyNoSpawns = time.Duration(maxPossibleHours) * time.Hour
 		} else {
 			timeToEmpty = scheduledDuration / time.Duration(hostsAvail)
 			timeToEmptyNoSpawns = scheduledDuration / time.Duration(hostsAvailNoSpawns)
@@ -245,6 +250,16 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
+
+	// rough value that should correspond to situations where a queue will be empty very soon
+	const lowRatioThresh = float32(.25)
+	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
+	if terminateExcess && hostQueueRatio < lowRatioThresh && len(upHosts) > 0 {
+		distroIsByHour := cloud.UsesHourlyBilling(&upHosts[0].Distro)
+		if !distroIsByHour {
+			j.setTargetAndTerminate(ctx, len(upHosts), hostQueueRatio, distro)
+		}
+	}
 
 	grip.Info(message.Fields{
 		"message":                      "distro-scheduler-report",
@@ -268,4 +283,37 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"instance":                     j.ID(),
 		"runner":                       scheduler.RunnerName,
 	})
+}
+
+func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts int, hostQueueRatio float32, distro *distro.Distro) {
+	var killableHosts, newCapTarget int
+	if hostQueueRatio == 0 {
+		killableHosts = numUpHosts
+	} else {
+		killableHosts = int(float32(numUpHosts) * (1 - hostQueueRatio))
+		newCapTarget = numUpHosts - killableHosts
+	}
+
+	if newCapTarget < distro.HostAllocatorSettings.MinimumHosts {
+		newCapTarget = distro.HostAllocatorSettings.MinimumHosts
+	}
+	// rough value to prevent killing hosts on low-volume distros
+	const lowCountFloor = 0
+	if killableHosts > lowCountFloor {
+
+		drawdownInfo := DrawdownInfo{
+			DistroID:     distro.Id,
+			NewCapTarget: newCapTarget,
+		}
+		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "Error drawing down hosts",
+				"instance": j.ID(),
+				"distro":   distro.Id,
+			}))
+		}
+
+	}
+
 }

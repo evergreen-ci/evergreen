@@ -290,26 +290,8 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
 	}
 
-	grip.InfoWhen(len(patchUpdateReq.Tasks) > 0 || len(patchUpdateReq.Variants) > 0, message.Fields{
-		"source":     "ui_update_patch",
-		"message":    "legacy structure is being used",
-		"update_req": patchUpdateReq,
-		"patch_id":   p.Id.Hex(),
-		"version":    p.Version,
-	})
-
-	tasks := model.TaskVariantPairs{}
-	if len(patchUpdateReq.VariantsTasks) > 0 {
-		tasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
-	} else {
-		for _, v := range patchUpdateReq.Variants {
-			for _, t := range patchUpdateReq.Tasks {
-				if project.FindTaskForVariant(t, v) != nil {
-					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{Variant: v, TaskName: t})
-				}
-			}
-		}
-	}
+	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
+	tasks := model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
 
 	tasks.ExecTasks, err = model.IncludeDependencies(project, tasks.ExecTasks, p.GetRequester())
 	grip.Warning(message.WrapError(err, message.Fields{
@@ -340,14 +322,21 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
+		projectRef, err := model.FindOneProjectRef(project.Identifier)
+		if err != nil {
+			return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
+		}
+		if projectRef == nil {
+			return errors.Errorf("project '%s' not found", project.Identifier), http.StatusInternalServerError, "", ""
+		}
 
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks)
+		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating new tasks for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
 
-		err := model.AddNewBuildsForPatch(ctx, p, version, project, tasks)
+		err = model.AddNewBuildsForPatch(ctx, p, version, project, tasks, projectRef)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating new builds for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
@@ -395,6 +384,25 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		}
 
 		return nil, http.StatusOK, "Patch builds are scheduled.", ver.Id
+	}
+}
+
+func addDisplayTasksToPatchReq(req *PatchVariantsTasksRequest, p model.Project) {
+	for i, vt := range req.VariantsTasks {
+		bv := p.FindBuildVariant(vt.Variant)
+		if bv == nil {
+			continue
+		}
+		for i := len(vt.Tasks) - 1; i >= 0; i-- {
+			task := vt.Tasks[i]
+			displayTask := bv.GetDisplayTask(task)
+			if displayTask == nil {
+				continue
+			}
+			vt.Tasks = append(vt.Tasks[:i], vt.Tasks[i+1:]...)
+			vt.DisplayTasks = append(vt.DisplayTasks, *displayTask)
+		}
+		req.VariantsTasks[i] = vt
 	}
 }
 
@@ -461,6 +469,9 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 		for _, taskUnit := range buildVariant.Tasks {
 			projTasks = append(projTasks, taskUnit.Name)
 		}
+		for _, displayTask := range buildVariant.DisplayTasks {
+			projTasks = append(projTasks, displayTask.Name)
+		}
 		sort.SliceStable(projTasks, func(i, j int) bool {
 			return projTasks[i] < projTasks[j]
 		})
@@ -470,23 +481,15 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 	sort.SliceStable(variants, func(i, j int) bool {
 		return variants[i].DisplayName < variants[j].DisplayName
 	})
-	// convert tasks to UI data structure
-	tasks := []string{}
-	for _, task := range patchProjectVariantsAndTasks.Tasks {
-		tasks = append(tasks, task.Name)
-	}
 
 	patchProject := PatchProject{
 		Variants: variants,
-		Tasks:    tasks,
 	}
 	return &patchProject, nil
 }
 
 type PatchVariantsTasksRequest struct {
 	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
-	Variants      []string             `json:"variants"`                 // old format
-	Tasks         []string             `json:"tasks"`                    // old format
 	Description   string               `json:"description"`
 }
 
@@ -499,9 +502,8 @@ func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchConfigure) {
 			Tasks:   vt.Tasks,
 		}
 		for _, displayTask := range vt.DisplayTasks {
-			dt := patch.DisplayTask{}
-			dt.Name = displayTask.Name
-			dt.ExecTasks = displayTask.ExecTasks
+			// note that the UI does not pass ExecTasks, which tells the back-end model figure out the right execution tasks
+			dt := patch.DisplayTask{Name: displayTask.Name}
 			variantTasks.DisplayTasks = append(variantTasks.DisplayTasks, dt)
 		}
 		p.VariantsTasks = append(p.VariantsTasks, variantTasks)
@@ -522,44 +524,48 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 	return &apiTask, nil
 }
 
-// ConvertDBTasksToGqlTasks converts tasks to task result objects
-func ConvertDBTasksToGqlTasks(tasks []task.Task) []*TaskResult {
-	var taskResults []*TaskResult
-	for _, t := range tasks {
-		baseStatus := t.BaseTask.Status
-		result := TaskResult{
-			ID:           t.Id,
-			DisplayName:  t.DisplayName,
-			Version:      t.Version,
-			Status:       t.GetDisplayStatus(),
-			BuildVariant: t.BuildVariant,
-			Blocked:      t.Blocked(),
-			Aborted:      t.Aborted,
-			BaseStatus:   &baseStatus,
-			BaseTask: &BaseTaskResult{
-				ID:     t.BaseTask.Id,
-				Status: t.BaseTask.Status,
-			},
-			BuildVariantDisplayName: t.BuildVariantDisplayName,
-		}
-		if len(t.ExecutionTasksFull) > 0 {
-			ets := []*restModel.APITask{}
-			for _, et := range t.ExecutionTasksFull {
-				at := restModel.APITask{}
-				if err := at.BuildFromService(&et); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message": "unable to convert APITask",
-					}))
-					continue
-				}
-				ets = append(ets, &at)
-			}
-			result.ExecutionTasksFull = ets
-		}
-
-		taskResults = append(taskResults, &result)
+// Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
+func generateBuildVariants(ctx context.Context, sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
+	var variantDisplayName map[string]string = map[string]string{}
+	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
 	}
-	return taskResults
+	opts := data.TaskFilterOptions{
+		Statuses:  statuses,
+		Variants:  searchVariants,
+		TaskNames: searchTasks,
+		Sorts:     defaultSort,
+	}
+	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err.Error()))
+	}
+	for _, t := range tasks {
+		apiTask := restModel.APITask{}
+		err := apiTask.BuildFromService(&t)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
+		}
+		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
+		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
+
+	}
+
+	result := []*GroupedBuildVariant{}
+	for variant, tasks := range tasksByVariant {
+		pbv := GroupedBuildVariant{
+			Variant:     variant,
+			DisplayName: variantDisplayName[variant],
+			Tasks:       tasks,
+		}
+		result = append(result, &pbv)
+	}
+	// sort variants by name
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].DisplayName < result[j].DisplayName
+	})
+	return result, nil
 }
 
 type VersionModificationAction string

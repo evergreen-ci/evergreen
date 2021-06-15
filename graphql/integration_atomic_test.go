@@ -24,9 +24,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -172,6 +174,16 @@ func makeTestsInDirectory(t *testing.T, state *atomicGraphQLState) func(t *testi
 				require.NoError(t, err)
 				b, err := ioutil.ReadAll(resp.Body)
 				require.NoError(t, err)
+
+				// Remove apollo tracing data from test responses
+				var bJSON map[string]json.RawMessage
+				err = json.Unmarshal(b, &bJSON)
+				require.NoError(t, err)
+
+				delete(bJSON, "extensions")
+				b, err = json.Marshal(bJSON)
+				require.NoError(t, err)
+
 				pass := assert.JSONEq(t, string(testCase.Result), string(b), "test failure, more details below (whitespace will not line up)")
 				if !pass {
 					var actual bytes.Buffer
@@ -216,7 +228,12 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 
 func directorySpecificTestSetup(t *testing.T, state atomicGraphQLState) {
 	persistTestSettings := func(t *testing.T) {
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 		require.NoError(t, state.settings.Set())
+
 	}
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
@@ -292,7 +309,6 @@ func spawnTestHostAndVolume(t *testing.T) {
 		Project:            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 		Zone:               "us-east-1a",
 		Provisioned:        true,
-		ProvisionAttempts:  0,
 	}
 	require.NoError(t, h.Insert())
 	ctx := context.Background()

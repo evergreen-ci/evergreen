@@ -17,6 +17,7 @@ type ServiceFlags struct {
 	AgentStartDisabled            bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
 	RepotrackerDisabled           bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
 	SchedulerDisabled             bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled     bool `bson:"check_blocked_tasks_disabled" json:"check_blocked_tasks_disabled"`
 	GithubPRTestingDisabled       bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
 	CLIUpdatesDisabled            bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
 	BackgroundStatsDisabled       bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
@@ -30,7 +31,6 @@ type ServiceFlags struct {
 	BackgroundReauthDisabled      bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled     bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	AmboyRemoteManagementDisabled bool `bson:"amboy_remote_management_disabled" json:"amboy_remote_management_disabled"`
-	AmboyRetriesDisabled          bool `bson:"amboy_retries_disabled" json:"amboy_retries_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -78,6 +78,7 @@ func (c *ServiceFlags) Set() error {
 			agentStartKey:                    c.AgentStartDisabled,
 			repotrackerKey:                   c.RepotrackerDisabled,
 			schedulerKey:                     c.SchedulerDisabled,
+			checkBlockedTasksKey:             c.CheckBlockedTasksDisabled,
 			githubPRTestingDisabledKey:       c.GithubPRTestingDisabled,
 			cliUpdatesDisabledKey:            c.CLIUpdatesDisabled,
 			backgroundStatsDisabledKey:       c.BackgroundStatsDisabled,
@@ -97,7 +98,6 @@ func (c *ServiceFlags) Set() error {
 			backgroundCleanupDisabledKey:     c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:      c.BackgroundReauthDisabled,
 			amboyRemoteManagementDisabledKey: c.AmboyRemoteManagementDisabled,
-			amboyRetriesDisabledKey:          c.AmboyRetriesDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 

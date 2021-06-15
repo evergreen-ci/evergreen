@@ -29,6 +29,8 @@ type TaskConfig struct {
 	GithubPatchData      thirdparty.GithubPatch
 	Timeout              *Timeout
 	TaskSync             evergreen.S3Credentials
+	ModulePaths          map[string]string
+	CedarTestResultsID   string
 
 	mu sync.RWMutex
 }

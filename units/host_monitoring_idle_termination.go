@@ -45,9 +45,8 @@ type idleHostJob struct {
 	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
 	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
 
-	env      evergreen.Environment
-	settings *evergreen.Settings
-	host     *host.Host
+	env  evergreen.Environment
+	host *host.Host
 }
 
 func makeIdleHostJob() *idleHostJob {
@@ -77,10 +76,6 @@ func (j *idleHostJob) Run(ctx context.Context) {
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
-	}
-
-	if j.settings == nil {
-		j.settings = j.env.Settings()
 	}
 
 	if j.HasErrors() {
@@ -166,54 +161,14 @@ func (j *idleHostJob) Run(ctx context.Context) {
 }
 
 func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) error {
-	if !h.IsEphemeral() {
-		grip.Notice(message.Fields{
-			"job":      j.ID(),
-			"host_id":  h.Id,
-			"job_type": j.Type().Name,
-			"status":   h.Status,
-			"provider": h.Distro.Provider,
-			"message":  "host termination for a non-ephemeral distro",
-			"cause":    "programmer error",
-		})
-		return errors.New("attempted to terminate non-ephemeral host")
+
+	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
+	if exitEarly {
+		return err
 	}
 
-	// ask the host how long it has been idle
 	idleTime := h.IdleTime()
-
-	// if the communication time is > 10 mins then there may not be an agent on the host.
 	communicationTime := h.GetElapsedCommunicationTime()
-
-	// get a cloud manager for the host
-	mgrOpts, err := cloud.GetManagerOptions(h.Distro)
-	if err != nil {
-		return errors.Wrapf(err, "can't get ManagerOpts for host '%s'", h.Id)
-	}
-	manager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		return errors.Wrapf(err, "error getting cloud manager for host %v", h.Id)
-	}
-
-	// ask how long until the next payment for the host
-	tilNextPayment := manager.TimeTilNextPayment(h)
-
-	if tilNextPayment > maxTimeTilNextPayment {
-		return nil
-	}
-
-	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
-		grip.Notice(message.Fields{
-			"op":                j.Type().Name,
-			"id":                j.ID(),
-			"message":           "not flagging idle host, waiting for an agent",
-			"host_id":           h.Id,
-			"distro":            h.Distro.Id,
-			"idle":              idleTime.String(),
-			"last_communicated": communicationTime.String(),
-		})
-		return nil
-	}
 
 	idleThreshold := idleTimeCutoff
 	if h.RunningTaskGroup != "" {
@@ -231,7 +186,63 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	if terminateReason != "" {
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
-		return j.env.RemoteQueue().Put(ctx, NewHostTerminationJob(j.env, h, false, terminateReason))
+		return amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, h, false, terminateReason))
 	}
+
 	return nil
+}
+
+//checkTerminationExemptions checks if some conditions apply where we shouldn't terminate an idle host,
+//and returns true if some exemption applies
+func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen.Environment, jobType string, jid string) (bool, error) {
+	if !h.IsEphemeral() {
+		grip.Notice(message.Fields{
+			"job":      jid,
+			"host_id":  h.Id,
+			"job_type": jobType,
+			"status":   h.Status,
+			"provider": h.Distro.Provider,
+			"message":  "host termination for a non-ephemeral distro",
+			"cause":    "programmer error",
+		})
+		return true, errors.Errorf("attempted to terminate non-ephemeral host '%s'", h.Id)
+	}
+
+	// ask the host how long it has been idle
+	idleTime := h.IdleTime()
+
+	// if the communication time is > 10 mins then there may not be an agent on the host.
+	communicationTime := h.GetElapsedCommunicationTime()
+
+	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
+		grip.Notice(message.Fields{
+			"op":                jobType,
+			"id":                jid,
+			"message":           "not flagging idle host, waiting for an agent",
+			"host_id":           h.Id,
+			"distro":            h.Distro.Id,
+			"idle":              idleTime.String(),
+			"last_communicated": communicationTime.String(),
+		})
+		return true, nil
+	}
+
+	// get a cloud manager for the host
+	mgrOpts, err := cloud.GetManagerOptions(h.Distro)
+	if err != nil {
+		return true, errors.Wrapf(err, "can't get ManagerOpts for host '%s'", h.Id)
+	}
+	manager, err := cloud.GetManager(ctx, env, mgrOpts)
+	if err != nil {
+		return true, errors.Wrapf(err, "error getting cloud manager for host %v", h.Id)
+	}
+
+	// ask how long until the next payment for the host
+	tilNextPayment := manager.TimeTilNextPayment(h)
+
+	if tilNextPayment > maxTimeTilNextPayment {
+		return true, nil
+	}
+
+	return false, nil
 }

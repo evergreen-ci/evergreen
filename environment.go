@@ -358,7 +358,7 @@ func (e *envState) createLocalQueue(ctx context.Context) error {
 	}
 
 	e.RegisterCloser("background-local-queue", true, func(ctx context.Context) error {
-		e.localQueue.Runner().Close(ctx)
+		e.localQueue.Close(ctx)
 		return nil
 	})
 
@@ -376,6 +376,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = false
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
+	opts.SampleSize = e.settings.Amboy.SampleSize
 
 	args := queue.MongoDBQueueCreationOptions{
 		Size:      e.settings.Amboy.PoolSizeRemote,
@@ -396,7 +397,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	}
 	e.remoteQueue = rq
 	e.RegisterCloser("application-queue", false, func(ctx context.Context) error {
-		e.remoteQueue.Runner().Close(ctx)
+		e.remoteQueue.Close(ctx)
 		return nil
 	})
 
@@ -470,7 +471,7 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 			catcher.Add(errors.New("failed to stop with running jobs"))
 		}
 
-		e.notificationsQueue.Runner().Close(ctx)
+		e.notificationsQueue.Close(ctx)
 
 		grip.Debug(message.Fields{
 			"message":     "closed notification queue",
@@ -500,7 +501,6 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 func (e *envState) initQueues(ctx context.Context) []error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(e.localQueue == nil, "local queue is not defined")
-	catcher.NewWhen(e.notificationsQueue == nil, "notification queue is not defined")
 	catcher.NewWhen(e.notificationsQueue == nil, "notification queue is not defined")
 
 	if e.localQueue != nil {

@@ -262,6 +262,26 @@ buildvariants:
 	})
 }
 
+func TestIntermediateProjectWithActivate(t *testing.T) {
+	yml := `
+tasks:
+- name: "t1"
+buildvariants:
+- name: "v1"
+  activate: false 
+  run_on: "distro1"
+  tasks: 
+  - name: "t1"
+    activate: true
+`
+	p, err := createIntermediateProject([]byte(yml))
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+	bv := p.BuildVariants[0]
+	assert.False(t, utility.FromBoolTPtr(bv.Activate))
+	assert.True(t, utility.FromBoolPtr(bv.Tasks[0].Activate))
+}
+
 func TestTranslateTasks(t *testing.T) {
 	parserProject := &ParserProject{
 		BuildVariants: []parserBV{{
@@ -1455,6 +1475,11 @@ parameters:
 - key: iter_count
   value: 3
   description: "used for something"
+variables:
+- &english
+  hello: "world"
+- &spanish
+  hola: "mundo"
 tasks:
 - name: task_1
   depends_on:
@@ -1464,11 +1489,14 @@ tasks:
   - command: myCommand
     params:
       env:
-        ${MY_KEY}: my-value
-        ${MY_NUMS}: [1,2,3]
+        key: ${my_value}
+        list_key: [1,2,3]
     loggers:
       system:
        - type: commandLogger
+  - func: function-with-updates
+    vars:
+        <<: [*english, *spanish]
 functions:
   function-with-updates:
     command: expansions.update

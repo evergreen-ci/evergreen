@@ -170,7 +170,7 @@ $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@mkdir -p $(buildDir)
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl --retry 10 --retry-max-time 120 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.30.0 >/dev/null 2>&1 && touch $@
+	@curl --retry 10 --retry-max-time 120 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.40.0 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -ldflags "-w" -o $@ $<
@@ -544,8 +544,14 @@ get-mongodb:mongodb/.get-mongodb
 start-mongod:mongodb/.get-mongodb
 	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --smallfiles --oplogSize 10
 	@echo "waiting for mongod to start up"
+start-mongod-auth:mongodb/.get-mongodb
+	./mongodb/mongod --auth --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
+	@echo "starting up mongod with auth"
 init-rs:mongodb/.get-mongodb
 	./mongodb/mongo --eval 'rs.initiate()'
+	sleep 30
+init-auth:mongodb/.get-mongodb
+	./mongodb/mongo --host `./mongodb/mongo --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
 check-mongod:mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"

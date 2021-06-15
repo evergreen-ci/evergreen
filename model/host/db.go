@@ -61,7 +61,6 @@ var (
 	NeedsNewAgentMonitorKey            = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
 	JasperCredentialsIDKey             = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
 	NeedsReprovisionKey                = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
-	ReprovisioningLockedKey            = bsonutil.MustHaveTag(Host{}, "ReprovisioningLocked")
 	StartedByKey                       = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey                    = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumesKey                         = bsonutil.MustHaveTag(Host{}, "Volumes")
@@ -71,7 +70,6 @@ var (
 	ZoneKey                            = bsonutil.MustHaveTag(Host{}, "Zone")
 	ProjectKey                         = bsonutil.MustHaveTag(Host{}, "Project")
 	ProvisionOptionsKey                = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
-	ProvisionAttemptsKey               = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
 	TaskCountKey                       = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                       = bsonutil.MustHaveTag(Host{}, "StartTime")
 	AgentStartTimeKey                  = bsonutil.MustHaveTag(Host{}, "AgentStartTime")
@@ -225,6 +223,20 @@ func startedTaskHostsQuery(distroID string) bson.M {
 	return query
 }
 
+func idleHostsQuery(distroID string) bson.M {
+	query := bson.M{
+		StartedByKey:     evergreen.User,
+		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+		RunningTaskKey:   bson.M{"$exists": false},
+		HasContainersKey: bson.M{"$ne": true},
+		StatusKey:        evergreen.HostRunning,
+	}
+	if distroID != "" {
+		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	}
+	return query
+}
+
 func CountRunningHosts(distroID string) (int, error) {
 	num, err := Count(db.Query(runningHostsQuery(distroID)))
 	return num, errors.Wrap(err, "problem finding running hosts")
@@ -245,6 +257,16 @@ func CountStartedTaskHosts() (int, error) {
 func CountStartedTaskHostsForDistro(distroID string) (int, error) {
 	num, err := Count(db.Query(startedTaskHostsQuery(distroID)))
 	return num, errors.Wrapf(err, "problem finding started hosts for '%s'", distroID)
+}
+
+// IdleHostsWithDistroID, given a distroID, returns a slice of all idle hosts in that distro
+func IdleHostsWithDistroID(distroID string) ([]Host, error) {
+	q := idleHostsQuery(distroID)
+	idleHosts, err := Find(db.Query(q))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding idle hosts")
+	}
+	return idleHosts, nil
 }
 
 // AllActiveHosts produces a HostGroup for all hosts with UpHost
@@ -460,14 +482,13 @@ func Provisioning() db.Q {
 	return db.Query(bson.M{StatusKey: evergreen.HostProvisioning})
 }
 
-// FindByFirstProvisioningAttempt finds all hosts that have not yet attempted
-// provisioning.
-func FindByProvisioningAttempt(attempt int) ([]Host, error) {
+// FindByProvisioning finds all hosts that are not yet provisioned by the app
+// server.
+func FindByProvisioning() ([]Host, error) {
 	return Find(db.Query(bson.M{
-		ProvisionAttemptsKey: bson.M{"$lte": attempt},
-		StatusKey:            evergreen.HostProvisioning,
-		NeedsReprovisionKey:  bson.M{"$exists": false},
-		ProvisionedKey:       false,
+		StatusKey:           evergreen.HostProvisioning,
+		NeedsReprovisionKey: bson.M{"$exists": false},
+		ProvisionedKey:      false,
 	}))
 }
 
@@ -488,9 +509,9 @@ func FindByShouldConvertProvisioning() ([]Host, error) {
 	}))
 }
 
-// FindByNeedsJasperRestart finds all hosts that are ready and waiting to
+// FindByNeedsToRestartJasper finds all hosts that are ready and waiting to
 // restart their Jasper service.
-func FindByNeedsJasperRestart() ([]Host, error) {
+func FindByNeedsToRestartJasper() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return Find(db.Query(bson.M{
 		StatusKey:           bson.M{"$in": []string{evergreen.HostProvisioning, evergreen.HostRunning}},
@@ -498,7 +519,7 @@ func FindByNeedsJasperRestart() ([]Host, error) {
 		RunningTaskKey:      bson.M{"$exists": false},
 		HasContainersKey:    bson.M{"$ne": true},
 		ParentIDKey:         bson.M{"$exists": false},
-		NeedsReprovisionKey: ReprovisionJasperRestart,
+		NeedsReprovisionKey: ReprovisionRestartJasper,
 		"$or": []bson.M{
 			{"$and": []bson.M{
 				{StartedByKey: bson.M{"$ne": evergreen.User}},
@@ -507,25 +528,6 @@ func FindByNeedsJasperRestart() ([]Host, error) {
 			{NeedsNewAgentMonitorKey: true},
 		},
 	}))
-}
-
-// NeedsReprovisioningLocked finds all hosts that need their provisioning changed
-// but their provisioning has been locked for more than the max LCT interval.
-func NeedsReprovisioningLocked(currentTime time.Time) bson.M {
-	cutoffTime := currentTime.Add(-MaxLCTInterval)
-	return bson.M{
-		StatusKey:               evergreen.HostProvisioning,
-		RunningTaskKey:          bson.M{"$exists": false},
-		HasContainersKey:        bson.M{"$ne": true},
-		ParentIDKey:             bson.M{"$exists": false},
-		NeedsReprovisionKey:     bson.M{"$exists": true, "$ne": ""},
-		ReprovisioningLockedKey: true,
-		"$or": []bson.M{
-			{LastCommunicationTimeKey: utility.ZeroTime},
-			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
-			{LastCommunicationTimeKey: bson.M{"$exists": false}},
-		},
-	}
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
@@ -568,6 +570,11 @@ func ByDistroIDs(distroIDs ...string) bson.M {
 // ById produces a query that returns a host with the given id.
 func ById(id string) db.Q {
 	return db.Query(bson.D{{Key: IdKey, Value: id}})
+}
+
+// ByIP produces a query that returns a host with the given ip address.
+func ByIP(ip string) db.Q {
+	return db.Query(bson.M{IPKey: ip})
 }
 
 // ByDistroIDOrAliasesRunning returns a query that returns all hosts with

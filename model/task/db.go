@@ -72,7 +72,9 @@ var (
 	GenerateTaskKey             = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	HasLegacyResultsKey         = bsonutil.MustHaveTag(Task{}, "HasLegacyResults")
 	HasCedarResultsKey          = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
+	CedarResultsFailedKey       = bsonutil.MustHaveTag(Task{}, "CedarResultsFailed")
 	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
@@ -136,6 +138,7 @@ var (
 	},
 	}
 
+	// This should reflect Task.GetDisplayStatus()
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
 			DisplayStatusKey: displayStatusExpression,
@@ -193,6 +196,41 @@ var (
 						"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
 					},
 					"then": evergreen.TaskTimedOut,
+				},
+				// A task will run if it is activated and does not have any blocking deps
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+							{"$eq": []interface{}{"$" + ActivatedKey, true}},
+							{
+								"$or": []bson.M{
+									{DependsOnKey: 0},
+									{"$ne": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
+								},
+							},
+						},
+					},
+					"then": evergreen.TaskWillRun,
+				},
+				// A task will be unscheduled if it is not activated
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []interface{}{"$" + ActivatedKey, false}},
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+						},
+					},
+					"then": evergreen.TaskUnscheduled,
+				},
+				// A task will be blocked if it has dependencies that are not attainable
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
+						},
+					},
+					"then": evergreen.TaskStatusBlocked,
 				},
 			},
 			"default": "$" + StatusKey,
@@ -771,7 +809,7 @@ func FindOne(query db.Q) (*Task, error) {
 		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrap(err, "errors merging new test results")
+		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -814,6 +852,53 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 	}
 
 	return task, nil
+}
+
+// FindOneIdAndExecutionWithDisplayStatus is FindOneIdAndExecution with display statuses added
+func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
+	tasks := []Task{}
+	match := bson.M{
+		IdKey: id,
+	}
+	if execution != nil {
+		match[ExecutionKey] = *execution
+	}
+	pipeline := []bson.M{
+		{"$match": match},
+		addDisplayStatus,
+	}
+	if err := Aggregate(pipeline, &tasks); err != nil {
+		return nil, errors.Wrap(err, "Couldnt find task")
+	}
+	if len(tasks) != 0 {
+		t := tasks[0]
+		return &t, nil
+	}
+	return FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id, execution)
+
+}
+
+// FindOneOldNoMergeByIdAndExecutionWithDisplayStatus is a FindOneOldNoMergeByIdAndExecution with display statuses added
+func FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
+	tasks := []Task{}
+	match := bson.M{
+		OldTaskIdKey: id,
+	}
+	if execution != nil {
+		match[ExecutionKey] = *execution
+	}
+	pipeline := []bson.M{
+		{"$match": match},
+		addDisplayStatus,
+	}
+	if err := db.Aggregate(OldCollection, pipeline, &tasks); err != nil {
+		return nil, errors.Wrap(err, "Couldn't find task")
+	}
+	if len(tasks) != 0 {
+		t := tasks[0]
+		return &t, nil
+	}
+	return nil, errors.New("cant find task")
 }
 
 // FindOneOldNoMerge is a FindOneOld without merging test results.
@@ -951,7 +1036,7 @@ func FindOneOld(query db.Q) (*Task, error) {
 		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrap(err, "errors merging new test results")
+		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
 	}
 	return task, err
 }

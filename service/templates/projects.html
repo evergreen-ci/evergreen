@@ -142,6 +142,17 @@ Evergreen Projects
     </div>
     <div class="form-group">
       <div class="col-lg-2 col-header">
+        <label class="control-label"> Identifier</label>
+      </div>
+      <div class="col-lg-4">
+        <input class="form-control" type="text" ng-model="settingsFormData.identifier">
+      </div>
+    </div>
+    <div class="muted small" style="padding-bottom:12px;width:60%;" ng-hide="settingsFormData.identifier==projectRef.identifier">
+      Please be aware that changing identifier will change the project identifier used for the CLI, inter-project dependencies, etc.
+      You will need to make any users of this project aware of this change, as using the old identifier will no longer work.</div>
+    <div class="form-group">
+      <div class="col-lg-2 col-header">
         <label class="control-label"> Config File</label>
       </div>
       <div class="col-lg-4">

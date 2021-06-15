@@ -201,12 +201,15 @@ func MongoDBQueueTestCases(client *mongo.Client) []QueueTestCase {
 				}
 
 				closer := func(ctx context.Context) error {
+					catcher := grip.NewBasicCatcher()
 					d := rq.Driver()
 					if d != nil {
-						d.Close()
+						catcher.Add(d.Close(ctx))
 					}
 
-					return client.Database(opts.MDB.DB).Collection(addJobsSuffix(name)).Drop(ctx)
+					catcher.Add(client.Database(opts.MDB.DB).Collection(addJobsSuffix(name)).Drop(ctx))
+
+					return catcher.Resolve()
 				}
 
 				return q, closer, nil
@@ -240,12 +243,16 @@ func MongoDBQueueTestCases(client *mongo.Client) []QueueTestCase {
 				}
 
 				closer := func(ctx context.Context) error {
+					catcher := grip.NewBasicCatcher()
+
 					d := rq.Driver()
 					if d != nil {
-						d.Close()
+						catcher.Add(d.Close(ctx))
 					}
 
-					return client.Database(opts.MDB.DB).Collection(addGroupSuffix(name)).Drop(ctx)
+					catcher.Add(client.Database(opts.MDB.DB).Collection(addGroupSuffix(name)).Drop(ctx))
+
+					return catcher.Resolve()
 				}
 
 				return q, closer, nil
@@ -278,12 +285,15 @@ func MongoDBQueueTestCases(client *mongo.Client) []QueueTestCase {
 				}
 
 				closer := func(ctx context.Context) error {
+					catcher := grip.NewBasicCatcher()
 					d := rq.Driver()
 					if d != nil {
-						d.Close()
+						catcher.Add(d.Close(ctx))
 					}
 
-					return client.Database(opts.MDB.DB).Collection(addJobsSuffix(name)).Drop(ctx)
+					catcher.Add(client.Database(opts.MDB.DB).Collection(addJobsSuffix(name)).Drop(ctx))
+
+					return catcher.Resolve()
 				}
 
 				return q, closer, nil
@@ -316,12 +326,15 @@ func MongoDBQueueTestCases(client *mongo.Client) []QueueTestCase {
 				}
 
 				closer := func(ctx context.Context) error {
+					catcher := grip.NewBasicCatcher()
 					d := rq.Driver()
 					if d != nil {
-						d.Close()
+						catcher.Add(d.Close(ctx))
 					}
 
-					return client.Database(opts.MDB.DB).Collection(addJobsSuffix(name)).Drop(ctx)
+					catcher.Add(client.Database(opts.MDB.DB).Collection(addJobsSuffix(name)).Drop(ctx))
+
+					return catcher.Resolve()
 				}
 
 				return q, closer, nil

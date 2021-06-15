@@ -99,6 +99,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig2, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData2)
 	s.Require().NoError(err)
 	s.taskConfig2.Expansions = util.NewExpansions(s.settings.Credentials)
+	s.taskConfig2.Expansions.Put("prefixpath", "hello")
 	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.taskConfig2.BuildVariant.Modules = []string{"sample"}
 	s.modelData2.Task.Requester = evergreen.PatchVersionRequester
@@ -258,7 +259,6 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 
 	err = c.Execute(ctx, comm, logger, conf)
 	s.Error(err)
-	s.Contains(err.Error(), fmt.Sprintf("after %d retries, operation failed", GitFetchProjectRetries))
 }
 
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
@@ -377,13 +377,14 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 		}
 	}
 	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = conf.WorkDir + "/src/module/sample/"
+	cmd.Dir = conf.WorkDir + "/src/hello/module/sample/"
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err = cmd.Run()
 	s.NoError(err)
 	ref := strings.Trim(out.String(), "\n") // revision that we actually checked out
 	s.Equal(refToCompare, ref)
+	s.Equal("hello/module", conf.ModulePaths["sample"])
 }
 
 func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
@@ -688,7 +689,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	}
 
 	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = conf.WorkDir + "/src/module/sample/"
+	cmd.Dir = conf.WorkDir + "/src/hello/module/sample/"
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err = cmd.Run()
@@ -706,6 +707,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 		}
 	}
 	s.True(foundMsg)
+	s.Equal("hello/module", conf.ModulePaths["sample"])
 }
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
@@ -731,7 +733,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	}
 
 	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = conf.WorkDir + "/src/module/sample/"
+	cmd.Dir = conf.WorkDir + "/src/hello/module/sample/"
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err = cmd.Run()
@@ -749,6 +751,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 		}
 	}
 	s.True(foundMsg)
+	s.Equal("hello/module", conf.ModulePaths["sample"])
 }
 
 func (s *GitGetProjectSuite) TearDownSuite() {

@@ -94,10 +94,18 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskCon
 		if res.LogRaw != "" {
 			logger.Execution().Info("Attaching raw test logs")
 			testLogs := &model.TestLog{
-				Name:          res.TestFile,
 				Task:          conf.Task.Id,
 				TaskExecution: conf.Task.Execution,
 				Lines:         []string{res.LogRaw},
+			}
+			if conf.ProjectRef.IsCedarTestResultsEnabled() {
+				// When sending test logs to cedar we need to
+				// use a unique string since there may be
+				// duplicate file names if there are duplicate
+				// test names.
+				testLogs.Name = utility.RandomString()
+			} else {
+				testLogs.Name = res.TestFile
 			}
 
 			logId, err := sendTestLog(ctx, comm, conf, testLogs)
@@ -105,6 +113,7 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskCon
 				logger.Execution().Errorf("problem posting raw logs from results %s", err.Error())
 			} else {
 				results.Results[i].LogId = logId
+				results.Results[i].LogTestName = testLogs.Name
 			}
 
 			// clear the logs from the TestResult struct after it has been saved in the test logs. Since they are

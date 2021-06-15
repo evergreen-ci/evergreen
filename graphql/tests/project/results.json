@@ -44,6 +44,35 @@
       }
     },
     {
+      "query_file": "patches-authorDisplayName.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8",
+                  "author": "testuser",
+                  "authorDisplayName": "testuser"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "author": "testuser",
+                  "authorDisplayName": "testuser"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "author": "testuser",
+                  "authorDisplayName": "testuser"
+                }
+              ],
+              "filteredPatchCount": 3
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "patches-include-commit-queue.graphql",
       "result": {
         "data": {

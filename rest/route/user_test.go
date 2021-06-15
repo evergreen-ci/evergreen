@@ -374,7 +374,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	_ = handler.Run(ctx)
 
-	request, err = http.NewRequest(http.MethodGet, "", nil)
+	_, err = http.NewRequest(http.MethodGet, "", nil)
 	require.NoError(t, err)
 	handler = makeGetServiceUsers(&data.DBConnector{})
 	resp := handler.Run(ctx)
@@ -393,7 +393,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	_ = handler.Run(ctx)
 
-	request, err = http.NewRequest(http.MethodGet, "", nil)
+	_, err = http.NewRequest(http.MethodGet, "", nil)
 	require.NoError(t, err)
 	handler = makeGetServiceUsers(&data.DBConnector{})
 	resp = handler.Run(ctx)

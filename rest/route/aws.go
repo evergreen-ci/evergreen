@@ -183,6 +183,19 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 		return nil
 	}
 
+	instanceType := "Empty Distro.ProviderSettingsList, unable to get instance_type"
+	if len(h.Distro.ProviderSettingsList) > 0 {
+		if stringVal, ok := h.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK(); ok {
+			instanceType = stringVal
+		}
+	}
+	grip.Info(message.Fields{
+		"message":       "got interruption warning from AWS",
+		"distro":        h.Distro.Id,
+		"instance_type": instanceType,
+		"host_id":       h.Id,
+	})
+
 	if h.Status == evergreen.HostTerminated {
 		return nil
 	}
@@ -192,7 +205,14 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 	}
 
 	// return success on duplicate job errors so AWS won't keep retrying
-	_ = aws.queue.Put(ctx, units.NewHostTerminationJob(aws.env, h, true, "got interruption warning"))
+	terminationJob := units.NewHostTerminationJob(aws.env, h, true, "got interruption warning")
+	if err := amboy.EnqueueUniqueJob(ctx, aws.queue, terminationJob); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":          "could not enqueue host termination job",
+			"host_id":          h.Id,
+			"enqueue_job_type": terminationJob.Type(),
+		}))
+	}
 
 	return nil
 }

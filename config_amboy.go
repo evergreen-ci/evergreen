@@ -7,8 +7,6 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -28,6 +26,7 @@ type AmboyConfig struct {
 	GroupTTLMinutes                       int              `bson:"group_ttl" json:"group_ttl" yaml:"group_ttl"`
 	RequireRemotePriority                 bool             `bson:"require_remote_priority" json:"require_remote_priority" yaml:"require_remote_priority"`
 	LockTimeoutMinutes                    int              `bson:"lock_timeout_minutes" json:"lock_timeout_minutes" yaml:"lock_timeout_minutes"`
+	SampleSize                            int              `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
 	Retry                                 AmboyRetryConfig `bson:"retry" json:"retry" yaml:"retry"`
 }
 
@@ -50,11 +49,12 @@ var (
 	amboyPoolSizeRemoteKey                        = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeRemote")
 	amboyLocalStorageKey                          = bsonutil.MustHaveTag(AmboyConfig{}, "LocalStorage")
 	amboyGroupDefaultWorkersKey                   = bsonutil.MustHaveTag(AmboyConfig{}, "GroupDefaultWorkers")
-	amboyGroupBackgroundCreateFrequengyMinutesKey = bsonutil.MustHaveTag(AmboyConfig{}, "GroupBackgroundCreateFrequencyMinutes")
+	amboyGroupBackgroundCreateFrequencyMinutesKey = bsonutil.MustHaveTag(AmboyConfig{}, "GroupBackgroundCreateFrequencyMinutes")
 	amboyGroupPruneFrequencyMinutesKey            = bsonutil.MustHaveTag(AmboyConfig{}, "GroupPruneFrequencyMinutes")
 	amboyGroupTTLMinutesKey                       = bsonutil.MustHaveTag(AmboyConfig{}, "GroupTTLMinutes")
 	amboyRequireRemotePriorityKey                 = bsonutil.MustHaveTag(AmboyConfig{}, "RequireRemotePriority")
 	amboyLockTimeoutMinutesKey                    = bsonutil.MustHaveTag(AmboyConfig{}, "LockTimeoutMinutes")
+	amboySampleSizeKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SampleSize")
 	amboyRetryKey                                 = bsonutil.MustHaveTag(AmboyConfig{}, "Retry")
 )
 
@@ -95,11 +95,12 @@ func (c *AmboyConfig) Set() error {
 			amboyPoolSizeRemoteKey:      c.PoolSizeRemote,
 			amboyLocalStorageKey:        c.LocalStorage,
 			amboyGroupDefaultWorkersKey: c.GroupDefaultWorkers,
-			amboyGroupBackgroundCreateFrequengyMinutesKey: c.GroupBackgroundCreateFrequencyMinutes,
+			amboyGroupBackgroundCreateFrequencyMinutesKey: c.GroupBackgroundCreateFrequencyMinutes,
 			amboyGroupPruneFrequencyMinutesKey:            c.GroupPruneFrequencyMinutes,
 			amboyGroupTTLMinutesKey:                       c.GroupTTLMinutes,
 			amboyRequireRemotePriorityKey:                 c.RequireRemotePriority,
 			amboyLockTimeoutMinutesKey:                    c.LockTimeoutMinutes,
+			amboySampleSizeKey:                            c.SampleSize,
 			amboyRetryKey:                                 c.Retry,
 		},
 	}, options.Update().SetUpsert(true))
@@ -170,22 +171,6 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 
 func (c *AmboyRetryConfig) RetryableQueueOptions() queue.RetryableQueueOptions {
 	return queue.RetryableQueueOptions{
-		Disabled: func() bool {
-			flags, err := GetServiceFlags()
-			if err != nil {
-				grip.ErrorWhen(sometimes.Percent(DegradedLoggingPercent), message.WrapError(err, message.Fields{
-					"message": "could not load service flags",
-					"context": "checking if Amboy retrying is disabled",
-				}))
-				return false
-			}
-			grip.InfoWhen(flags.AmboyRetriesDisabled && sometimes.Percent(DegradedLoggingPercent), message.Fields{
-				"message": "Amboy retries are disabled",
-				"impact":  "Amboy jobs will not retry automatically",
-				"mode":    "degraded",
-			})
-			return flags.AmboyRetriesDisabled
-		},
 		RetryHandler: amboy.RetryHandlerOptions{
 			NumWorkers:       c.NumWorkers,
 			MaxRetryAttempts: c.MaxRetryAttempts,

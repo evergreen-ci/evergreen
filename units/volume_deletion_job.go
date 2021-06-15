@@ -47,7 +47,9 @@ func makeVolumeDeletionJob() *volumeDeletionJob {
 
 func NewVolumeDeletionJob(ts string, v *host.Volume) amboy.Job {
 	j := makeVolumeDeletionJob()
-	j.SetID(fmt.Sprintf("%s.%s", volumeDeletionName, ts))
+	j.SetID(fmt.Sprintf("%s.%s.%s", volumeDeletionName, v.ID, ts))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", volumeDeletionName, v.ID)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 	j.VolumeID = v.ID
 	j.Provider = evergreen.ProviderNameEc2OnDemand
 	return j

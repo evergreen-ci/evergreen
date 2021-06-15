@@ -618,7 +618,7 @@ mciModule.controller(
             $scope.isDirty = false;
           },
           function (resp) {
-            $scope.saveMessage = "Couldn't save project: " + resp.data;
+            $scope.saveMessage = "Couldn't save project: " + resp.data.error;
           }
         );
     };

@@ -105,6 +105,7 @@ func MockConfig() *evergreen.Settings {
 			GroupPruneFrequencyMinutes:            60,
 			GroupTTLMinutes:                       70,
 			LockTimeoutMinutes:                    7,
+			SampleSize:                            500,
 			Retry: evergreen.AmboyRetryConfig{
 				NumWorkers:                          8,
 				MaxCapacity:                         100,
@@ -286,6 +287,7 @@ func MockConfig() *evergreen.Settings {
 			AgentStartDisabled:            true,
 			RepotrackerDisabled:           true,
 			SchedulerDisabled:             true,
+			CheckBlockedTasksDisabled:     true,
 			GithubPRTestingDisabled:       true,
 			CLIUpdatesDisabled:            true,
 			EventProcessingDisabled:       true,
@@ -296,7 +298,6 @@ func MockConfig() *evergreen.Settings {
 			GithubStatusAPIDisabled:       true,
 			BackgroundReauthDisabled:      true,
 			AmboyRemoteManagementDisabled: true,
-			AmboyRetriesDisabled:          true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

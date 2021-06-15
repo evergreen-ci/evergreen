@@ -2,13 +2,18 @@ package client
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/juniper/gopb"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
@@ -154,17 +159,17 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, td TaskData, c
 
 	exec, senders, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making agent logger")
+		return nil, errors.Wrap(err, "making agent logger")
 	}
 	underlying = append(underlying, senders...)
 	task, senders, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making task logger")
+		return nil, errors.Wrap(err, "making task logger")
 	}
 	underlying = append(underlying, senders...)
 	system, senders, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making system logger")
+		return nil, errors.Wrap(err, "making system logger")
 	}
 	underlying = append(underlying, senders...)
 
@@ -200,7 +205,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 		case model.FileLogSender:
 			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error creating file logger")
+				return nil, nil, errors.Wrap(err, "creating file logger")
 			}
 
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
@@ -212,7 +217,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error creating splunk logger")
+				return nil, nil, errors.Wrap(err, "creating splunk logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender = send.NewBufferedSender(newAnnotatedWrapper(td.ID, prefix, sender), bufferDuration, bufferSize)
@@ -226,7 +231,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error creating logkeeper logger")
+				return nil, nil, errors.Wrap(err, "creating logkeeper logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
@@ -245,11 +250,11 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 		case model.BuildloggerLogSender:
 			tk, err := c.GetTask(ctx, td)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error setting up buildlogger sender")
+				return nil, nil, errors.Wrap(err, "setting up buildlogger sender")
 			}
 
 			if err = c.createCedarGRPCConn(ctx); err != nil {
-				return nil, nil, errors.Wrap(err, "error setting up cedar grpc connection")
+				return nil, nil, errors.Wrap(err, "setting up cedar grpc connection")
 			}
 
 			timberOpts := &buildlogger.LoggerOptions{
@@ -268,7 +273,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = buildlogger.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "error creating buildlogger logger")
+				return nil, nil, errors.Wrap(err, "creating buildlogger logger")
 			}
 		default:
 			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
@@ -288,22 +293,87 @@ func (c *communicatorImpl) createCedarGRPCConn(ctx context.Context) error {
 	if c.cedarGRPCClient == nil {
 		cc, err := c.GetCedarConfig(ctx)
 		if err != nil {
-			return errors.Wrap(err, "error setting up buildlogger sender")
+			return errors.Wrap(err, "getting cedar config")
 		}
 
+		// TODO (EVG-14557): Remove TLS dial option fallback once cedar
+		// gRPC is on API auth.
+		catcher := grip.NewBasicCatcher()
 		dialOpts := timber.DialCedarOptions{
 			BaseAddress: cc.BaseURL,
 			RPCPort:     cc.RPCPort,
 			Username:    cc.Username,
-			Password:    cc.Password,
 			APIKey:      cc.APIKey,
 			Retries:     10,
 		}
+		if runtime.GOOS == "windows" {
+			cas, err := c.getAWSCACerts(ctx)
+			if err != nil {
+				return errors.Wrap(err, "getting AWS root CA certs for cedar gRPC client connections on Windows")
+			}
+			dialOpts.CACerts = [][]byte{cas}
+		}
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
 		if err != nil {
-			return errors.Wrap(err, "error creating cedar grpc client connection")
+			catcher.Wrap(err, "creating cedar grpc client connection with API auth.")
+		} else {
+			healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
+			_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
+			if err == nil {
+				return nil
+			}
+			catcher.Wrap(err, "checking cedar grpc health with API auth")
 		}
+
+		// Try again, this time with TLS auth.
+		dialOpts.TLSAuth = true
+		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
+		if err == nil {
+			return nil
+		}
+		catcher.Wrap(err, "creating cedar grpc client connection with TLS auth")
+
+		return catcher.Resolve()
 	}
 
 	return nil
+}
+
+// getAWSCACerts fetches AWS's root CA certificates stored in S3. This is a
+// workaround for the fact that Go cannot access the system certificate pool on
+// Windows (which would have these certificates).
+// TODO: If and when the Windows system cert issue is fixed, we can get rid of
+// this workaround. See https://github.com/golang/go/issues/16736.
+func (c *communicatorImpl) getAWSCACerts(ctx context.Context) ([]byte, error) {
+	setupData, err := c.GetAgentSetupData(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting setup data")
+	}
+
+	// We are hardcoding this magic object in S3 because these certificates
+	// are not set to expire for another 20 years. Also, we are hopeful
+	// that this Windows system cert issue will go away in future versions
+	// of Go.
+	bucket, err := pail.NewS3Bucket(pail.S3Options{
+		Name:        "boxes.10gen.com",
+		Prefix:      "build/amazontrust",
+		Region:      endpoints.UsEast1RegionID,
+		Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
+		MaxRetries:  10,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "creating pail bucket")
+	}
+
+	r, err := bucket.Get(ctx, "AmazonRootCA_all.pem")
+	if err != nil {
+		return nil, errors.Wrap(err, "getting AWS root CA certificates")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	cas, err := ioutil.ReadAll(r)
+	catcher.Wrap(err, "reading AWS root CA certificates")
+	catcher.Wrap(r.Close(), "closing the ReadCloser")
+
+	return cas, catcher.Resolve()
 }

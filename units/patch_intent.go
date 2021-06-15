@@ -244,7 +244,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		return errors.Wrap(err, "can't get patched config")
 	}
-	if errs := validator.CheckProjectSyntax(project); len(errs) != 0 {
+	if errs := validator.CheckProjectSyntax(project, false); len(errs) != 0 {
 		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
 			validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 		}

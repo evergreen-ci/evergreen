@@ -61,6 +61,26 @@ func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 	}
 }
 
+func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
+	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection))
+	testTask1 := &task.Task{
+		Id:        "task_1",
+		Execution: 0,
+		BuildId:   "build_1",
+	}
+	s.NoError(testTask1.Insert())
+	for i := 0; i < 10; i++ {
+		s.NoError(testTask1.Archive())
+		testTask1.Execution += 1
+	}
+	for i := 0; i < 10; i++ {
+		task, err := s.ctx.FindTaskByIdAndExecution("task_1", i)
+		s.NoError(err)
+		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
+		s.Equal(task.Execution, i)
+	}
+}
+
 func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection))
 	testTask1 := &task.Task{

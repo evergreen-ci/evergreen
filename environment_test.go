@@ -41,6 +41,23 @@ func (s *EnvironmentSuite) SetupTest() {
 	}
 }
 
+func (s *EnvironmentSuite) TestInitDB() {
+
+	db := &DBSettings{
+		Url: "mongodb://localhost:27017",
+		DB:  "mci_test",
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	localEnv := s.env
+	envAuth := os.Getenv(MongodbAuthFile)
+	if envAuth != "" {
+		db.AuthFile = envAuth
+	}
+	err := localEnv.initDB(ctx, *db)
+	s.NoError(err)
+}
+
 func (s *EnvironmentSuite) TestLoadingConfig() {
 	s.shouldSkip()
 

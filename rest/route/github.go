@@ -15,7 +15,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
@@ -337,14 +336,29 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		}))
 		return err
 	}
-
+	token, err := gh.settings.GetGithubOauthToken()
+	if err != nil {
+		return errors.New("error getting github token")
+	}
 	pusher := event.GetPusher().GetName()
 	tag := model.GitTag{
 		Tag:    strings.TrimPrefix(event.GetRef(), refTags),
 		Pusher: pusher,
 	}
 	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
-	hash := event.HeadCommit.GetID()
+	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, token, ownerAndRepo[0], ownerAndRepo[1], tag.Tag)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"source":  "github hook",
+			"message": "error getting tagged commit from github",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"owner":   ownerAndRepo[0],
+			"repo":    ownerAndRepo[1],
+			"tag":     tag,
+		}))
+		return errors.Wrapf(err, "error getting commit for tag '%s'", tag.Tag)
+	}
 
 	projectRefs, err := gh.sc.FindEnabledProjectRefsByOwnerAndRepo(ownerAndRepo[0], ownerAndRepo[1])
 	if err != nil {
@@ -374,10 +388,16 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 
 	foundVersion := map[string]bool{}
 
+	const (
+		checkVersionAttempts      = 5
+		checkVersionRetryMinDelay = 100 * time.Millisecond
+		checkVersionRetryMaxDelay = 3 * time.Second
+	)
+
 	catcher := grip.NewBasicCatcher()
 
 	// iterate through all projects before retrying. Only retry on errors related to finding the version.
-	err = util.Retry(
+	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			retryCatcher := grip.NewBasicCatcher()
@@ -424,7 +444,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 					RevisionMessage: existingVersion.Message,
 				}
 				var v *model.Version
-				v, err = gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
+				v, err = gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag, token)
 				if err != nil {
 					catcher.Wrapf(err, "error adding new version for tag '%s'", tag.Tag)
 					continue
@@ -444,8 +464,11 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				}
 			}
 			return retryCatcher.HasErrors(), retryCatcher.Resolve()
-		}, 5, 100*time.Millisecond, time.Second*3)
-
+		}, utility.RetryOptions{
+			MaxAttempts: checkVersionAttempts,
+			MinDelay:    checkVersionRetryMinDelay,
+			MaxDelay:    checkVersionRetryMaxDelay,
+		})
 	catcher.Add(err)
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "github hook",
@@ -461,11 +484,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 }
 
 func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
-	revision model.Revision, tag model.GitTag) (*model.Version, error) {
-	token, err := gh.settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.New("error getting github token")
-	}
+	revision model.Revision, tag model.GitTag, token string) (*model.Version, error) {
 	if !pRef.IsGitTagVersionsEnabled() {
 		return nil, nil
 	}
@@ -482,9 +501,8 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		})
 		return nil, nil
 	}
-	var hasAliases bool
-	var remotePath string
-	hasAliases, remotePath, err = gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
+
+	hasAliases, remotePath, err := gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
 	if err != nil {
 		return nil, err
 	}
@@ -537,6 +555,9 @@ func validatePushTagEvent(event *github.PushEvent) error {
 
 	if event.GetPusher().GetName() == "" {
 		return errors.New("Github pusher missing login name")
+	}
+	if !event.GetCreated() {
+		return errors.New("not a tag creation event")
 	}
 	return nil
 }

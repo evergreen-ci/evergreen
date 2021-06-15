@@ -511,21 +511,35 @@ func TryMarkStarted(versionId string, startTime time.Time) error {
 	return UpdateOne(filter, update)
 }
 
-// TryMarkFinished attempts to mark a patch of a given version as finished.
-func TryMarkFinished(versionId string, finishTime time.Time, status string) error {
-	filter := bson.M{VersionKey: versionId}
-	update := bson.M{
-		"$set": bson.M{
-			FinishTimeKey: finishTime,
-			StatusKey:     status,
-		},
-	}
-	return UpdateOne(filter, update)
-}
-
 // Insert inserts the patch into the db, returning any errors that occur
 func (p *Patch) Insert() error {
 	return db.Insert(Collection, p)
+}
+
+func (p *Patch) UpdateStatus(newStatus string) error {
+	if p.Status == newStatus {
+		return nil
+	}
+
+	p.Status = newStatus
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey: newStatus,
+		},
+	}
+	return UpdateOne(bson.M{IdKey: p.Id}, update)
+}
+
+func (p *Patch) MarkFinished(status string, finishTime time.Time) error {
+	p.Status = status
+	p.FinishTime = finishTime
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{"$set": bson.M{
+			FinishTimeKey: finishTime,
+			StatusKey:     status,
+		}},
+	)
 }
 
 // ConfigChanged looks through the parts of the patch and returns true if the
@@ -546,10 +560,10 @@ func (p *Patch) ConfigChanged(remotePath string) bool {
 }
 
 // SetActivated sets the patch to activated in the db
-func (p *Patch) SetActivated(versionId string) error {
+func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 	p.Version = versionId
 	p.Activated = true
-	return UpdateOne(
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -558,6 +572,7 @@ func (p *Patch) SetActivated(versionId string) error {
 			},
 		},
 	)
+	return err
 }
 
 // SetActivation sets the patch to the desired activation state without
@@ -666,6 +681,23 @@ func (p *Patch) IsChild() bool {
 
 func (p *Patch) IsParent() bool {
 	return len(p.Triggers.ChildPatches) > 0
+}
+
+func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
+	if !p.IsChild() {
+		return -1, nil
+	}
+	if parentPatch == nil {
+		return -1, errors.New(fmt.Sprintf("parent patch does not exist"))
+	}
+	siblings := parentPatch.Triggers.ChildPatches
+
+	for index, patch := range siblings {
+		if p.Id.Hex() == patch {
+			return index, nil
+		}
+	}
+	return -1, nil
 }
 
 func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {

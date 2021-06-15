@@ -70,6 +70,7 @@ var (
 	agentStartKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "AgentStartDisabled")
 	repotrackerKey                   = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerDisabled")
 	schedulerKey                     = bsonutil.MustHaveTag(ServiceFlags{}, "SchedulerDisabled")
+	checkBlockedTasksKey             = bsonutil.MustHaveTag(ServiceFlags{}, "CheckBlockedTasksDisabled")
 	githubPRTestingDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "GithubPRTestingDisabled")
 	cliUpdatesDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CLIUpdatesDisabled")
 	backgroundStatsDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundStatsDisabled")
@@ -89,7 +90,6 @@ var (
 	backgroundReauthDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 	backgroundCleanupDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	amboyRemoteManagementDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "AmboyRemoteManagementDisabled")
-	amboyRetriesDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "AmboyRetriesDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

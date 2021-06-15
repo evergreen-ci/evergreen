@@ -36,9 +36,9 @@ func (opts ConnectionOptions) Validate() error {
 		(opts.DialOpts.BaseAddress != "" && opts.DialOpts.RPCPort == "") {
 		return errors.New("must provide both base address and rpc port or neither")
 	}
-	hasAuth := opts.DialOpts.Username != "" && (opts.DialOpts.APIKey != "" || opts.DialOpts.Password != "")
+	hasAuth := opts.DialOpts.Username != "" && (opts.DialOpts.APIKey != "")
 	if !hasAuth && opts.DialOpts.BaseAddress == "" {
-		return errors.New("must specify username and api key/password, or address and port for an insecure connection")
+		return errors.New("must specify username and api key, or address and port for an insecure connection")
 	}
 	return nil
 }

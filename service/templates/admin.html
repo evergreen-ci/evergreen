@@ -3,6 +3,7 @@
 	window.validDefaultLoggers = {{.ValidDefaultLoggers }};
 	window.validDefaultHostAllocatorRoundingRules = {{.ValidDefaultHostAllocatorRoundingRules}};
 	window.validDefaultHostAllocatorFeedbackRules = {{.ValidDefaultHostAllocatorFeedbackRules}};
+	window.validDefaultHostsOverallocatedRules = {{.ValidDefaultHostsOverallocatedRules}};
 	window.can_clear_tokens = {{.CanClearTokens }};
 </script>
 <script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
@@ -220,6 +221,17 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Check Blocked Tasks</td>
+												<td colspan="2">
+													<md-radio-group
+															data-ng-model="Settings.service_flags.check_blocked_tasks_disabled"
+															layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>Test GitHub pull requests</td>
 												<td colspan="2">
 													<md-radio-group
@@ -345,17 +357,6 @@ Admin Settings
 												<td colspan="2">
 													<md-radio-group
 														data-ng-model="Settings.service_flags.amboy_remote_management_disabled"
-														layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Amboy Retries</td>
-												<td colspan="2">
-													<md-radio-group
-														data-ng-model="Settings.service_flags.amboy_retries_disabled"
 														layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
@@ -617,6 +618,13 @@ Admin Settings
 										<label>Feedback Rule</label>
 										<md-select ng-model="Settings.scheduler.host_allocator_feedback_rule">
 											<md-option ng-repeat="rule in validDefaultHostAllocatorFeedbackRules" value="[[rule]]">
+												[[rule]]</md-option>
+										</md-select>
+									</md-input-container>
+									<md-input-container class="control" style="width:60%;">
+										<label>Overallocation Rule</label>
+										<md-select ng-model="Settings.scheduler.hosts_overallocated_rule">
+											<md-option ng-repeat="rule in validDefaultHostsOverallocatedRules" value="[[rule]]">
 												[[rule]]</md-option>
 										</md-select>
 									</md-input-container>
@@ -1274,10 +1282,6 @@ Admin Settings
 										<input type="text" ng-model="Settings.cedar.user">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Password</label>
-										<input type="text" ng-model="Settings.cedar.password">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
 										<label>API Key</label>
 										<input type="text" ng-model="Settings.cedar.api_key">
 									</md-input-container>
@@ -1346,26 +1350,30 @@ Admin Settings
 										<input type="number" ng-model="Settings.amboy.lock_timeout_minutes">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Sample size</label>
+										<input type="number" ng-model="Settings.amboy.sample_size">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Retry Handler Workers</label>
 										<input type="number" ng-model="Settings.amboy.retry.num_workers">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Retry Handler Max Job Capacity</label>
 										<input type="number" ng-model="Settings.amboy.retry.max_capacity">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Max Retry Handler Attempts per Job</label>
 										<input type="number" ng-model="Settings.amboy.retry.max_retry_attempts">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Max Retry Handler Total Time per Job (Seconds)</label>
 										<input type="number" ng-model="Settings.amboy.retry.max_retry_time_seconds">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Retry Backoff per Job Attempt (Seconds)</label>
 										<input type="number" ng-model="Settings.amboy.retry.retry_backoff_seconds">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Frequency of Checking for Stale Retrying Jobs (Seconds)</label>
 										<input type="number" ng-model="Settings.amboy.retry.stale_retrying_monitor_interval_seconds">
 									</md-input-container>

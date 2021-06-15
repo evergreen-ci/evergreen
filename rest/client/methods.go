@@ -1524,13 +1524,13 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context, hostI
 	}
 	r, err := c.createRequest(info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create request")
+		return nil, errors.Wrap(err, "creating request")
 	}
 	r.Header.Add(evergreen.HostHeader, hostID)
 	r.Header.Add(evergreen.HostSecretHeader, hostSecret)
-	resp, err := c.doRequest(ctx, r)
+	resp, err := utility.RetryRequest(ctx, r, c.maxAttempts, c.timeoutStart, c.timeoutMax)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not make request")
+		return nil, utility.RespErrorf(resp, "making request")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -1570,4 +1570,30 @@ func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, use
 	}
 
 	return results.Order, results.Logic, nil
+}
+
+// FindHostByIpAddress queries the database for the host with ip matching the ip address
+func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (*model.APIHost, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("hosts/ip_address/%s", ip),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error sending request to find host by ip address")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, AuthError
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, utility.RespErrorf(resp, "getting hosts")
+	}
+
+	host := &model.APIHost{}
+	if err = utility.ReadJSON(resp.Body, host); err != nil {
+		return nil, errors.Wrap(err, "can't read response as APIHost")
+	}
+	return host, nil
 }

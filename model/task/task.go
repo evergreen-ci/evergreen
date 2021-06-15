@@ -75,18 +75,20 @@ type Task struct {
 	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
 	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 
-	Version           string              `bson:"version" json:"version,omitempty"`
-	Project           string              `bson:"branch" json:"branch,omitempty"`
-	Revision          string              `bson:"gitspec" json:"gitspec"`
-	Priority          int64               `bson:"priority" json:"priority"`
-	TaskGroup         string              `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
-	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
-	HasCedarResults   bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
-
-	// only relevant if the task is runnin.  the time of the last heartbeat
+	Version            string              `bson:"version" json:"version,omitempty"`
+	Project            string              `bson:"branch" json:"branch,omitempty"`
+	Revision           string              `bson:"gitspec" json:"gitspec"`
+	Priority           int64               `bson:"priority" json:"priority"`
+	TaskGroup          string              `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts  int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder     int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
+	Logs               *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
+	MustHaveResults    bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	HasCedarResults    bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	CedarResultsFailed bool                `bson:"cedar_results_failed,omitempty" json:"cedar_results_failed,omitempty"`
+	// we use a pointer for HasLegacyResults to distinguish the default from an intentional "false"
+	HasLegacyResults *bool `bson:"has_legacy_results,omitempty" json:"has_legacy_results,omitempty"`
+	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
 
@@ -648,14 +650,18 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	return true, nil
 }
 
-// HasFailedTests iterates through a tasks' tests and returns true if
-// that task had any failed tests.
+// HasFailedTests returns true if the task had any failed tests.
 func (t *Task) HasFailedTests() bool {
 	for _, test := range t.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			return true
 		}
 	}
+
+	if t.HasCedarResults && t.CedarResultsFailed {
+		return true
+	}
+
 	return false
 }
 
@@ -994,15 +1000,46 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
-func (t *Task) SetHasCedarResults(hasCedarResults bool) error {
+// SetHasCedarResults sets the HasCedarResults field of the task to
+// hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
+// true. An error is returned if hasCedarResults is false and failedResults is
+// true as this is an invalid state. Note that if failedResults is false,
+// CedarResultsFailed is not set. This is because in cases where separate calls
+// to attach test results are made, only one call needs to have a test failure
+// for the CedarResultsFailed to be set to true.
+func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
+	if !hasCedarResults && failedResults {
+		return errors.New("cannot set CedarResultsFailed to true when HasCedarResults is false")
+	}
+
 	t.HasCedarResults = hasCedarResults
+	set := bson.M{
+		HasCedarResultsKey: hasCedarResults,
+	}
+	if failedResults {
+		t.CedarResultsFailed = true
+		set[CedarResultsFailedKey] = true
+	}
+
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": set,
+		},
+	)
+}
+
+func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
+	t.HasLegacyResults = utility.ToBoolPtr(hasLegacyResults)
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				HasCedarResultsKey: hasCedarResults,
+				HasLegacyResultsKey: t.HasLegacyResults,
 			},
 		},
 	)
@@ -1321,23 +1358,39 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		},
 		bson.M{
 			"$set": bson.M{
-				FinishTimeKey: finishTime,
-				StatusKey:     detail.Status,
-				TimeTakenKey:  t.TimeTaken,
-				DetailsKey:    t.Details,
-				StartTimeKey:  t.StartTime,
-				LogsKey:       detail.Logs,
+				FinishTimeKey:       finishTime,
+				StatusKey:           detail.Status,
+				TimeTakenKey:        t.TimeTaken,
+				DetailsKey:          t.Details,
+				StartTimeKey:        t.StartTime,
+				LogsKey:             detail.Logs,
+				HasLegacyResultsKey: t.HasLegacyResults,
 			},
 		})
 
 }
 
+// GetDisplayStatus should reflect the statuses assigned during the addDisplayStatus aggregation step
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
 	if t.Aborted && t.IsFinished() {
 		return evergreen.TaskAborted
+	}
+	if t.Status == evergreen.TaskUndispatched {
+		if !t.Activated {
+			return evergreen.TaskUnscheduled
+		}
+		dependenciesMet, err := t.DependenciesMet(map[string]Task{})
+		if err != nil {
+			// Return the default undispatched status if we can't determine if dependencies have been met
+			// This will be replaced by Can't run in https://jira.mongodb.org/browse/EVG-13828
+			return t.Status
+		}
+		if dependenciesMet {
+			return evergreen.TaskWillRun
+		}
 	}
 	if !t.IsFinished() {
 		return t.Status
@@ -1456,10 +1509,11 @@ func resetTaskUpdate(t *Task) bson.M {
 			LastHeartbeatKey:       utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			DetailsKey:           "",
-			HasCedarResultsKey:   "",
-			ResetWhenFinishedKey: "",
-			AgentVersionKey:      "",
+			DetailsKey:            "",
+			HasCedarResultsKey:    "",
+			CedarResultsFailedKey: "",
+			ResetWhenFinishedKey:  "",
+			AgentVersionKey:       "",
 		},
 	}
 	return update
@@ -1994,6 +2048,10 @@ func (t *Task) MergeNewTestResults() error {
 	if t.Archived {
 		id = t.OldTaskId
 	}
+	if !evergreen.IsFinishedTaskStatus(t.Status) && t.Status != evergreen.TaskStarted {
+		return nil // task won't have test results
+	}
+
 	newTestResults, err := testresult.FindByTaskIDAndExecution(id, t.Execution)
 	if err != nil {
 		return errors.Wrap(err, "problem finding test results")
@@ -2012,6 +2070,11 @@ func (t *Task) MergeNewTestResults() error {
 			StartTime:       result.StartTime,
 			EndTime:         result.EndTime,
 		})
+	}
+
+	// Store whether or not results exist so we know if we should look them up in the future.
+	if t.HasLegacyResults == nil && !t.Archived {
+		return t.SetHasLegacyResults(len(newTestResults) > 0)
 	}
 	return nil
 }
@@ -2702,28 +2765,30 @@ type TasksSortOrder struct {
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variant string, taskName string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
+func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variants []string, taskNames []string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
 	var match bson.M = bson.M{}
 
 	// Allow searching by either variant name or variant display
-	if variant != "" {
+	if len(variants) > 0 {
+		variantsAsRegex := strings.Join(variants, "|")
+
 		match = bson.M{
 			"$or": []bson.M{
-				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variant, "$options": "i"}},
-				bson.M{BuildVariantKey: bson.M{"$regex": variant, "$options": "i"}},
+				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 			},
 		}
-
 	}
-	if len(taskName) > 0 {
-		match[DisplayNameKey] = bson.M{"$regex": taskName, "$options": "i"}
+	if len(taskNames) > 0 {
+		taskNamesAsRegex := strings.Join(taskNames, "|")
+		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	match[VersionKey] = versionID
 	const tempParentKey = "_parent"
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
-	if variant != "" {
+	if len(variants) > 0 {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	pipeline = append(pipeline,
@@ -2780,7 +2845,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		}...,
 	)
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if variant == "" {
+	if len(variants) == 0 {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	if len(statuses) > 0 {
@@ -2798,9 +2863,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		})
 	}
 	countPipeline := []bson.M{}
-	for _, stage := range pipeline {
-		countPipeline = append(countPipeline, stage)
-	}
+	countPipeline = append(countPipeline, pipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	sortFields := bson.D{}

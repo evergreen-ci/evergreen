@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -91,15 +92,17 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
-	_, _, err := addNewBuilds(ctx, batchTimeTasksAndVariants{}, patchVersion, project, tasks, p.SyncAtEndOpts, "")
+func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
+	tasks TaskVariantPairs, pRef *ProjectRef) error {
+	_, _, err := addNewBuilds(ctx, specificActivationInfo{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
-	_, err := addNewTasks(ctx, batchTimeTasksAndVariants{}, patchVersion, project, pairs, p.SyncAtEndOpts, "")
+func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
+	pairs TaskVariantPairs, projectIdentifier string) error {
+	_, err := addNewTasks(ctx, specificActivationInfo{}, patchVersion, project, pairs, p.SyncAtEndOpts, projectIdentifier, "")
 	return errors.Wrap(err, "can't add new tasks")
 }
 
@@ -320,6 +323,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,
 		Parameters:          p.Parameters,
+		Activated:           utility.TruePtr(),
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 
@@ -346,7 +350,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if p.IsCommitQueuePatch() && len(p.VariantsTasks) == 0 {
 		return nil, errors.Errorf("No builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
 	}
-	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
+	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
 	variantsProcessed := map[string]bool{}
 
 	createTime, err := getTaskCreateTime(p.Project, patchVersion)
@@ -415,19 +419,22 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
 		db := evergreen.GetEnvironment().DB()
-		_, err = db.Collection(VersionCollection).InsertOne(ctx, patchVersion)
+		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error inserting version '%s'", patchVersion.Id)
 		}
-		_, err = db.Collection(ParserProjectCollection).InsertOne(ctx, intermediateProject)
+		_, err = db.Collection(ParserProjectCollection).InsertOne(sessCtx, intermediateProject)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error inserting parser project for version '%s'", patchVersion.Id)
 		}
-		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
+		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
 			return nil, errors.Wrapf(err, "error inserting builds for version '%s'", patchVersion.Id)
 		}
-		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
+		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
 			return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
+		}
+		if err = p.SetActivated(sessCtx, patchVersion.Id); err != nil {
+			return nil, errors.Wrapf(err, "eror activating patch '%s'", patchVersion.Id)
 		}
 		return nil, err
 	}
@@ -435,9 +442,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	_, err = session.WithTransaction(ctx, txFunc)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to finalize patch")
-	}
-	if err = p.SetActivated(patchVersion.Id); err != nil {
-		return nil, errors.WithStack(err)
 	}
 
 	if p.IsParent() {
@@ -633,7 +637,7 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Wrap(err, "problem making merge patch")
 	}
 
-	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
+	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), PatchId: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
 
 	return errors.Wrap(err, "can't enqueue item")
 }
@@ -815,7 +819,7 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 	if err = newPatch.Insert(); err != nil {
 		return errors.Wrap(err, "error inserting patch")
 	}
-	if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
+	if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), PatchId: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
 		return errors.Wrap(err, "error enqueuing item")
 	}
 	return nil

@@ -117,12 +117,13 @@ func (s *githubSuite) TestGithubMergeBaseRevision() {
 }
 
 func (s *githubSuite) TestGetGithubFile() {
-	file, err := GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
+	_, err := GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
 		"doesntexist.txt", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
+	s.Error(err)
 	s.IsType(FileNotFoundError{}, err)
 	s.EqualError(err, "Requested file at doesntexist.txt not found")
 
-	file, err = GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
+	file, err := GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
 		"self-tests.yml", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
 	s.NoError(err)
 	s.NotPanics(func() {

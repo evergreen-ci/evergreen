@@ -62,7 +62,9 @@ func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfB
 	j.Reason = reason
 	j.SetPriority(2)
 	ts := utility.RoundPartOfHour(2).Format(TSFormat)
-	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
+	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, h.Id, ts))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostTerminationJobName, h.Id)})
+	j.SetShouldApplyScopesOnEnqueue(true)
 
 	return j
 }
@@ -343,15 +345,19 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 	grip.Info(message.Fields{
-		"message": "host successfully terminated",
-		"host_id": j.host.Id,
-		"distro":  j.host.Distro.Id,
-		"job":     j.ID(),
-		"reason":  j.Reason,
+		"message":           "host successfully terminated",
+		"host_id":           j.host.Id,
+		"distro":            j.host.Distro.Id,
+		"job":               j.ID(),
+		"reason":            j.Reason,
+		"total_idle_secs":   j.host.TotalIdleTime.Seconds(),
+		"total_uptime_secs": j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
+		"termination_time":  j.host.TerminationTime,
+		"creation_time":     j.host.CreationTime,
 	})
 
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
-		event.LogProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
+		event.LogHostProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
 		grip.Info(message.Fields{
 			"message":     "provisioning failure",
 			"status":      prevStatus,
