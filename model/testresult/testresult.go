@@ -78,7 +78,6 @@ var (
 	DistroIdKey     = bsonutil.MustHaveTag(TestResult{}, "DistroId")
 	RequesterKey    = bsonutil.MustHaveTag(TestResult{}, "Requester")
 	DisplayNameKey  = bsonutil.MustHaveTag(TestResult{}, "DisplayName")
-	GroupIDKey      = bsonutil.MustHaveTag(TestResult{}, "GroupID")
 
 	ExecutionDisplayNameKey = bsonutil.MustHaveTag(TestResult{}, "ExecutionDisplayName")
 	TaskCreateTimeKey       = bsonutil.MustHaveTag(TestResult{}, "TaskCreateTime")
