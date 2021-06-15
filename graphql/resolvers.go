@@ -1322,6 +1322,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			if err = apiTest.BuildFromService(&t); err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
+				apiTest.Logs.HTMLDisplayURL = &formattedURL
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
+				apiTest.Logs.RawDisplayURL = &formattedURL
+			}
 
 			testPointers = append(testPointers, &apiTest)
 		}
