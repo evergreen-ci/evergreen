@@ -7,19 +7,6 @@
       }
     },
     {
-      "query_file": "error-missing-build.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "error restarting task task2: can't activate build '' cached tasks: mongo: no documents in result",
-            "path": ["restartTask"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
-          }
-        ],
-        "data": null
-      }
-    },
-    {
       "query_file": "error-invalid-task_id.graphql",
       "result": {
         "errors": [

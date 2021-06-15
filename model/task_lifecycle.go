@@ -131,7 +131,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		if err := UpdateDisplayTask(t); err != nil {
+		if err := UpdateDisplayTask(t.DisplayTask); err != nil {
 			return errors.Wrap(err, "problem updating display task")
 		}
 	}
@@ -1074,7 +1074,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		return UpdateDisplayTask(t)
+		return UpdateDisplayTask(t.DisplayTask)
 	}
 
 	return nil
@@ -1089,7 +1089,7 @@ func MarkTaskUndispatched(t *task.Task) error {
 	event.LogTaskUndispatched(t.Id, t.Execution, t.HostId)
 
 	if t.IsPartOfDisplay() {
-		return UpdateDisplayTask(t)
+		return UpdateDisplayTask(t.DisplayTask)
 	}
 
 	return nil
@@ -1105,7 +1105,7 @@ func MarkTaskDispatched(t *task.Task, h *host.Host) error {
 	event.LogTaskDispatched(t.Id, t.Execution, h.Id)
 
 	if t.IsPartOfDisplay() {
-		return UpdateDisplayTask(t)
+		return UpdateDisplayTask(t.DisplayTask)
 	}
 
 	return nil
