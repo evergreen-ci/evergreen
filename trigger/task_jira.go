@@ -27,8 +27,7 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
-{{if and (.Task.DisplayOnly) (gt (len .Tests) (0))}}{{range executionTaskLogURLs . }}[Task Logs ({{.Tests}}) | {{.URL}}]
-{{end}}{{else}}[Task Logs | {{taskLogUrl .}}]
+{{range taskLogURLs . }}[Task Logs ({{.DisplayName}}) | {{.URL}}]
 {{end}}`
 
 const (
@@ -39,11 +38,10 @@ const (
 
 // descriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
 var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.FuncMap{
-	"taskurl":              getTaskURL,
-	"formatAsTimestamp":    formatAsTimestamp,
-	"host":                 getHostMetadata,
-	"taskLogUrl":           getTaskLogURL,
-	"executionTaskLogURLs": getExecutionTaskLogURLs,
+	"taskurl":           getTaskURL,
+	"formatAsTimestamp": formatAsTimestamp,
+	"host":              getHostMetadata,
+	"taskLogURLs":       getTaskLogURLs,
 }).Parse(descriptionTemplateString))
 
 func formatAsTimestamp(t time.Time) string {
@@ -71,42 +69,64 @@ func getTaskURL(data *jiraTemplateData) (string, error) {
 	return taskLink(data.UIRoot, id, execution), nil
 }
 
-func getTaskLogURL(data *jiraTemplateData) (string, error) {
+type taskInfo struct {
+	DisplayName string
+	URL         string
+}
+
+func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 	if data.Task == nil {
-		return "", errors.New("task is nil")
-	}
-	id := data.Task.Id
-	execution := data.Task.Execution
-	if len(data.Task.OldTaskId) != 0 {
-		id = data.Task.OldTaskId
+		return nil, errors.New("task is nil")
 	}
 
-	return taskLogLink(data.UIRoot, id, execution), nil
-}
+	if data.Task.DisplayOnly {
+		// Task is display only with tests
+		if len(data.Tests) > 0 {
+			execTaskMap := make(map[string][]jiraTestFailure)
+			result := make([]taskInfo, 0, len(execTaskMap))
+			for _, test := range data.Tests {
+				execTaskMap[test.TaskID] = append(execTaskMap[test.TaskID], test)
+			}
+			for taskID, tests := range execTaskMap {
+				info := taskInfo{URL: taskLogLink(data.UIRoot, taskID, tests[0].Execution)}
+				testIDs := make([]string, 0, len(tests))
+				for _, test := range tests {
+					testIDs = append(testIDs, test.Name)
+				}
+				info.DisplayName = strings.Join(testIDs, " ")
 
-type executionTaskInfo struct {
-	Tests string
-	URL   string
-}
+				result = append(result, info)
+			}
+			return result, nil
+		} else {
+			// Task is display only without tests
+			result := make([]taskInfo, 0)
+			execTasks, err := task.Find(task.ByIds(data.Task.ExecutionTasks))
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to fetch execution tasks")
+			}
 
-func getExecutionTaskLogURLs(data *jiraTemplateData) []executionTaskInfo {
-	execTaskMap := make(map[string][]jiraTestFailure)
-	for _, test := range data.Tests {
-		execTaskMap[test.TaskID] = append(execTaskMap[test.TaskID], test)
-	}
-	result := make([]executionTaskInfo, 0, len(execTaskMap))
-	for taskID, tests := range execTaskMap {
-		info := executionTaskInfo{URL: taskLogLink(data.UIRoot, taskID, tests[0].Execution)}
-		testIDs := make([]string, 0, len(tests))
-		for _, test := range tests {
-			testIDs = append(testIDs, test.Name)
+			for _, execTask := range execTasks {
+				if execTask.Status == evergreen.TaskFailed {
+					id := execTask.Id
+					execution := execTask.Execution
+					displayName := execTask.DisplayName
+					info := taskInfo{DisplayName: displayName, URL: taskLogLink(data.UIRoot, id, execution)}
+					result = append(result, info)
+				}
+			}
+			return result, nil
 		}
-		info.Tests = strings.Join(testIDs, " ")
-
-		result = append(result, info)
+	} else {
+		// Task is not display only
+		id := data.Task.Id
+		execution := data.Task.Execution
+		displayName := data.Task.DisplayName
+		if len(data.Task.OldTaskId) != 0 {
+			id = data.Task.OldTaskId
+		}
+		return []taskInfo{{DisplayName: displayName, URL: taskLogLink(data.UIRoot, id, execution)}}, nil
 	}
-
-	return result
 }
 
 // jiraTestFailure contains the required fields for generating a failure report.
