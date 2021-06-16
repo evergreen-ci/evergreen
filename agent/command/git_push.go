@@ -163,13 +163,12 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
 	if err := cmd.Run(ctx); err != nil {
+		errorOutput := stdErr.String()
+		if errorOutput != "" && p.token != "" {
+			errorOutput = strings.Replace(errorOutput, p.token, "[redacted oauth token]", -1)
+			logger.Execution().Error(errorOutput)
+		}
 		return errors.Wrap(err, "can't push to remote")
-	}
-
-	errorOutput := stdErr.String()
-	if errorOutput != "" && p.token != "" {
-		errorOutput = strings.Replace(errorOutput, p.token, "[redacted oauth token]", -1)
-		logger.Execution().Error(errorOutput)
 	}
 
 	return nil
