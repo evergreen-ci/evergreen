@@ -164,8 +164,10 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
 	err := cmd.Run(ctx)
 	errorOutput := stdErr.String()
-	if errorOutput != "" && p.token != "" {
-		errorOutput = strings.Replace(errorOutput, p.token, "[redacted oauth token]", -1)
+	if errorOutput != "" {
+		if p.token != "" {
+			errorOutput = strings.Replace(errorOutput, p.token, "[redacted oauth token]", -1)
+		}
 		logger.Execution().Error(errorOutput)
 	}
 	if err != nil {
