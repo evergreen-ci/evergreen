@@ -36,38 +36,49 @@ import (
 )
 
 // FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array
-func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResult, testName string, statuses []string, sortBy, groupId string, sortDir int, pageParam int, limitParam int) ([]apimodels.CedarTestResult, int) {
+type FilterSortAndPaginateCedarTestResultsOpts struct {
+	GroupID     string
+	Limit       int
+	Page        int
+	SortBy      string
+	SortDir     int
+	Statuses    []string
+	TestName    string
+	TestResults []apimodels.CedarTestResult
+}
+
+func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestResultsOpts) ([]apimodels.CedarTestResult, int) {
 	var filteredAndSortedTestResults []apimodels.CedarTestResult
-	for _, testResult := range testResults {
+	for _, testResult := range opts.TestResults {
 		match := true
-		if testName != "" {
-			if testResult.DisplayTestName != "" && !strings.Contains(testResult.DisplayTestName, testName) {
+		if opts.TestName != "" {
+			if testResult.DisplayTestName != "" && !strings.Contains(testResult.DisplayTestName, opts.TestName) {
 				match = false
-			} else if testResult.DisplayTestName == "" && !strings.Contains(testResult.TestName, testName) {
+			} else if testResult.DisplayTestName == "" && !strings.Contains(testResult.TestName, opts.TestName) {
 				match = false
 			}
 		}
-		if len(statuses) > 0 && !utility.StringSliceContains(statuses, testResult.Status) {
+		if len(opts.Statuses) > 0 && !utility.StringSliceContains(opts.Statuses, testResult.Status) {
 			match = false
 		}
-		if groupId != "" && testResult.GroupID != groupId {
+		if opts.GroupID != "" && testResult.GroupID != opts.GroupID {
 			match = false
 		}
 		if match {
 			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)
 		}
 	}
-	if sortBy != "" {
-		switch sortBy {
+	isAsc := opts.SortDir == 1
+	if opts.SortBy != "" {
+		switch opts.SortBy {
 		case "duration":
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
 				iDuration := testResultI.End.Sub(testResultI.Start)
 				jDuration := testResultJ.End.Sub(testResultJ.Start)
-				if sortDir == 1 {
+				if isAsc {
 					return iDuration < jDuration
-
 				}
 				return iDuration > jDuration
 			})
@@ -76,9 +87,8 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if sortDir == 1 {
+				if isAsc {
 					return testResultI.TestName < testResultJ.TestName
-
 				}
 				return testResultI.TestName > testResultJ.TestName
 			})
@@ -87,9 +97,8 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if sortDir == 1 {
+				if isAsc {
 					return testResultI.Status < testResultJ.Status
-
 				}
 				return testResultI.Status > testResultJ.Status
 			})
@@ -98,9 +107,9 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 	}
 	// Get filtered test count before applying any limits on it.
 	filteredTestCount := len(filteredAndSortedTestResults)
-	if limitParam != 0 {
-		offset := pageParam * limitParam
-		end := offset + limitParam
+	if opts.Limit != 0 {
+		offset := opts.Page * opts.Limit
+		end := offset + opts.Limit
 		if offset > filteredTestCount {
 			offset = filteredTestCount
 		}

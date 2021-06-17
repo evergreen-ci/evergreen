@@ -118,16 +118,16 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		var filteredCount int
-		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(
-			cedarTestResults,
-			tgh.testName,
-			testStatuses,
-			"",
-			"",
-			1,
-			startAt,
-			tgh.limit,
-		)
+		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(graphql.FilterSortAndPaginateCedarTestResultsOpts{
+			GroupID:     "",
+			Limit:       tgh.limit,
+			Page:        startAt,
+			SortBy:      "",
+			SortDir:     1,
+			Statuses:    testStatuses,
+			TestName:    tgh.testName,
+			TestResults: cedarTestResults,
+		})
 
 		if startAt*tgh.limit < filteredCount {
 			key = fmt.Sprintf("%d", startAt+1)

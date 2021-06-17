@@ -137,16 +137,16 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			results, count := FilterSortAndPaginateCedarTestResults(
-				testResults,
-				test.testName,
-				test.statuses,
-				test.sortBy,
-				test.groupId,
-				test.sortDir,
-				test.pageParam,
-				test.limitParam,
-			)
+			results, count := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
+				GroupID:     test.groupId,
+				Limit:       test.limitParam,
+				Page:        test.pageParam,
+				SortBy:      test.sortBy,
+				SortDir:     test.sortDir,
+				Statuses:    test.statuses,
+				TestName:    test.testName,
+				TestResults: testResults,
+			})
 			assert.Equal(t, test.expectedResults, results)
 			assert.Equal(t, test.expectedCount, count)
 		})
