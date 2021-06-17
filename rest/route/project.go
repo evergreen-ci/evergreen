@@ -1061,7 +1061,9 @@ type projectVarsPutInput struct {
 
 type projectVarsPutHandler struct {
 	replaceVars *projectVarsPutInput
-	sc          data.Connector
+	user        *user.DBUser
+
+	sc data.Connector
 }
 
 func makeProjectVarsPut(sc data.Connector) gimlet.RouteHandler {
@@ -1078,6 +1080,7 @@ func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the project's identifier from the http request.
 func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.user = MustHaveUser(ctx)
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
@@ -1099,7 +1102,7 @@ func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := h.sc.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.replaceVars.DryRun)
+	res, err := h.sc.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.user.Username(), h.replaceVars.DryRun)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"error updating projects with matching keys"))

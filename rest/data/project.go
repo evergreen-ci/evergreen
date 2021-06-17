@@ -259,7 +259,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
-func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement string, dryRun bool) (map[string]string, error) {
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjects, err := model.GetVarsByValue(toReplace)
 	if err != nil {
@@ -273,10 +273,31 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement st
 		for key, val := range project.Vars {
 			if val == toReplace {
 				if !dryRun {
+					oldProjectRef, err := pc.FindProjectById(project.Id, false)
+					if err != nil {
+						catcher.Wrap(err, "error finding project")
+					}
+					before, err := pc.GetProjectSettingsEvent(oldProjectRef)
+					if err != nil {
+						catcher.Wrapf(err, "Error getting ProjectSettingsEvent before update for project '%s'", project.Id)
+					}
+
 					project.Vars[key] = replacement
-					_, err := project.Upsert()
+					_, err = project.Upsert()
 					if err != nil {
 						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+					}
+
+					newProjectRef, err := pc.FindProjectById(project.Id, false)
+					if err != nil {
+						catcher.Wrap(err, "error finding project")
+					}
+					after, err := pc.GetProjectSettingsEvent(newProjectRef)
+					if err != nil {
+						catcher.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", project.Id)
+					}
+					if err = model.LogProjectModified(project.Id, username, before, after); err != nil {
+						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
 					}
 				}
 				changes[project.Id] = key
@@ -595,7 +616,7 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
-func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement string, dryRun bool) (map[string]string, error) {
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
 	changes := map[string]string{}
 	for _, cachedVars := range pc.CachedVars {
 		for key, val := range cachedVars.Vars {
