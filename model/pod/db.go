@@ -21,9 +21,9 @@ var (
 	TaskContainerCreationOptsImageKey              = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Image")
 	TaskContainerCreationOptsMemoryMBKey           = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "MemoryMB")
 	TaskContainerCreationOptsCPUKey                = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "CPU")
-	TaskContainerCreationOptsIsWindowsContainerKey = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "IsWindowsContainer")
+	TaskContainerCreationOptsIsWindowsContainerKey = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "IsWindows")
 	TaskContainerCreationOptsEnvVarsKey            = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvVars")
-	TaskContainerCreationOptsSecretsKey            = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Secrets")
+	TaskContainerCreationOptsSecretsKey            = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvSecrets")
 
 	TimeInfoInitializedKey = bsonutil.MustHaveTag(TimeInfo{}, "Initialized")
 	TimeInfoStartedKey     = bsonutil.MustHaveTag(TimeInfo{}, "Started")
