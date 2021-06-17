@@ -73,6 +73,11 @@ func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
 
+// IssueLink returns IssueLinkResolver implementation.
+func (r *Resolver) IssueLink() IssueLinkResolver {
+	return &issueLinkResolver{r}
+}
+
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
@@ -80,6 +85,7 @@ type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
+type issueLinkResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -820,6 +826,17 @@ func (r *patchResolver) ProjectIdentifier(ctx context.Context, apiPatch *restMod
 	return utility.ToStringPtr(identifier), nil
 }
 
+func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
+	usr, err := user.FindOneById(*obj.Author)
+	if err != nil {
+		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
+	}
+	if usr == nil {
+		return "", ResourceNotFound.Send(ctx, fmt.Sprint("Could not find user from user ID"))
+	}
+	return usr.DisplayName(), nil
+}
+
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
@@ -1025,7 +1042,7 @@ func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, 
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	dbTask, err := task.FindByIdExecution(taskID, execution)
+	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -1036,11 +1053,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
-	start, err := model.GetEstimatedStartTime(*dbTask)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
-	}
-	apiTask.EstimatedStart = restModel.NewAPIDuration(start)
+
 	return apiTask, err
 }
 
@@ -1315,6 +1328,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			}
 			if err = apiTest.BuildFromService(&t); err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
+				apiTest.Logs.HTMLDisplayURL = &formattedURL
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
+				apiTest.Logs.RawDisplayURL = &formattedURL
 			}
 
 			testPointers = append(testPointers, &apiTest)
@@ -1899,7 +1920,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
 	}
-	t, err := r.sc.FindTaskById(taskID)
+	t, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
 	}
@@ -2223,6 +2244,22 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	}
 	return apiTask, nil
 }
+func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
+	i, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *obj.Id))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
+	}
+	start, err := model.GetEstimatedStartTime(*t)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
+	}
+	duration := restModel.NewAPIDuration(start)
+	return &duration, nil
+}
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	tests, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
 	if err != nil {
@@ -2445,7 +2482,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	}
 	executionTasks := []*restModel.APITask{}
 	for _, execTaskID := range t.ExecutionTasks {
-		execT, err := task.FindByIdExecution(execTaskID, &t.Execution)
+		execT, err := task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, &t.Execution)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
 		}
@@ -2755,16 +2792,9 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	return IsWebhookConfigured(t), nil
 }
 
-func (r *annotationResolver) CreatedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
-	return restModel.GetJiraTickets(obj.CreatedIssues)
-}
+func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIssueLink) (*thirdparty.JiraTicket, error) {
+	return restModel.GetJiraTicketFromURL(*obj.URL)
 
-func (r *annotationResolver) Issues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
-	return restModel.GetJiraTickets(obj.Issues)
-}
-
-func (r *annotationResolver) SuspectedIssues(ctx context.Context, obj *restModel.APITaskAnnotation) ([]*restModel.APIIssueLink, error) {
-	return restModel.GetJiraTickets(obj.SuspectedIssues)
 }
 
 // New injects resources into the resolvers, such as the data connector

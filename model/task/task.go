@@ -86,8 +86,9 @@ type Task struct {
 	MustHaveResults    bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	HasCedarResults    bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
 	CedarResultsFailed bool                `bson:"cedar_results_failed,omitempty" json:"cedar_results_failed,omitempty"`
-
-	// only relevant if the task is runnin.  the time of the last heartbeat
+	// we use a pointer for HasLegacyResults to distinguish the default from an intentional "false"
+	HasLegacyResults *bool `bson:"has_legacy_results,omitempty" json:"has_legacy_results,omitempty"`
+	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
 
@@ -1030,6 +1031,20 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 	)
 }
 
+func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
+	t.HasLegacyResults = utility.ToBoolPtr(hasLegacyResults)
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				HasLegacyResultsKey: t.HasLegacyResults,
+			},
+		},
+	)
+}
+
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true
 func (t *Task) ActivateTask(caller string) ([]Task, error) {
 	t.ActivatedBy = caller
@@ -1343,23 +1358,39 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		},
 		bson.M{
 			"$set": bson.M{
-				FinishTimeKey: finishTime,
-				StatusKey:     detail.Status,
-				TimeTakenKey:  t.TimeTaken,
-				DetailsKey:    t.Details,
-				StartTimeKey:  t.StartTime,
-				LogsKey:       detail.Logs,
+				FinishTimeKey:       finishTime,
+				StatusKey:           detail.Status,
+				TimeTakenKey:        t.TimeTaken,
+				DetailsKey:          t.Details,
+				StartTimeKey:        t.StartTime,
+				LogsKey:             detail.Logs,
+				HasLegacyResultsKey: t.HasLegacyResults,
 			},
 		})
 
 }
 
+// GetDisplayStatus should reflect the statuses assigned during the addDisplayStatus aggregation step
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
 	if t.Aborted && t.IsFinished() {
 		return evergreen.TaskAborted
+	}
+	if t.Status == evergreen.TaskUndispatched {
+		if !t.Activated {
+			return evergreen.TaskUnscheduled
+		}
+		dependenciesMet, err := t.DependenciesMet(map[string]Task{})
+		if err != nil {
+			// Return the default undispatched status if we can't determine if dependencies have been met
+			// This will be replaced by Can't run in https://jira.mongodb.org/browse/EVG-13828
+			return t.Status
+		}
+		if dependenciesMet {
+			return evergreen.TaskWillRun
+		}
 	}
 	if !t.IsFinished() {
 		return t.Status
@@ -2017,6 +2048,10 @@ func (t *Task) MergeNewTestResults() error {
 	if t.Archived {
 		id = t.OldTaskId
 	}
+	if !evergreen.IsFinishedTaskStatus(t.Status) && t.Status != evergreen.TaskStarted {
+		return nil // task won't have test results
+	}
+
 	newTestResults, err := testresult.FindByTaskIDAndExecution(id, t.Execution)
 	if err != nil {
 		return errors.Wrap(err, "problem finding test results")
@@ -2035,6 +2070,11 @@ func (t *Task) MergeNewTestResults() error {
 			StartTime:       result.StartTime,
 			EndTime:         result.EndTime,
 		})
+	}
+
+	// Store whether or not results exist so we know if we should look them up in the future.
+	if t.HasLegacyResults == nil && !t.Archived {
+		return t.SetHasLegacyResults(len(newTestResults) > 0)
 	}
 	return nil
 }

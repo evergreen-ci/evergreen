@@ -3,7 +3,7 @@
     {
       "query_file": "success.graphql",
       "result": {
-        "data": { "restartTask": { "status": "undispatched", "id": "task1" } }
+        "data": { "restartTask": { "status": "will-run", "id": "task1" } }
       }
     },
     {

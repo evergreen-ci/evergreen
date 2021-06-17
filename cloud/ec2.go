@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -189,7 +188,7 @@ const (
 )
 
 const (
-	checkSuccessRetries    = 10
+	checkSuccessAttempts   = 10
 	checkSuccessInitPeriod = 2 * time.Second
 )
 
@@ -1141,7 +1140,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	}
 
 	// Check whether instance stopped
-	err = util.Retry(
+	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			var instance *ec2.Instance
@@ -1153,7 +1152,10 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 				return false, nil
 			}
 			return true, errors.New("host is not stopped")
-		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
+		}, utility.RetryOptions{
+			MaxAttempts: checkSuccessAttempts,
+			MinDelay:    checkSuccessInitPeriod,
+		})
 
 	if err != nil {
 		if err2 := h.SetStatus(prevStatus, user, ""); err2 != nil {
@@ -1195,7 +1197,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 
 	var instance *ec2.Instance
 	// Check whether instance is running
-	err = util.Retry(
+	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
 			instance, err = m.client.GetInstanceInfo(ctx, h.Id)
@@ -1206,7 +1208,10 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 				return false, nil
 			}
 			return true, errors.New("host is not started")
-		}, checkSuccessRetries, checkSuccessInitPeriod, 0)
+		}, utility.RetryOptions{
+			MaxAttempts: checkSuccessAttempts,
+			MinDelay:    checkSuccessInitPeriod,
+		})
 
 	if err != nil {
 		return errors.Wrap(err, "error checking if spawnhost started")

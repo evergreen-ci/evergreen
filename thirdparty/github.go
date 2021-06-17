@@ -13,7 +13,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
@@ -24,8 +23,8 @@ import (
 )
 
 const (
-	NumGithubRetries    = 5
-	GithubSleepTimeSecs = 1 * time.Second
+	NumGithubAttempts   = 5
+	GithubRetryMinDelay = time.Second
 	GithubStatusBase    = "https://status.github.com"
 	GithubAccessURL     = "https://github.com/login/oauth/access_token"
 
@@ -62,7 +61,7 @@ var (
 )
 
 func githubShouldRetry(index int, req *http.Request, resp *http.Response, err error) bool {
-	if index >= NumGithubRetries {
+	if index >= NumGithubAttempts {
 		return false
 	}
 
@@ -109,7 +108,7 @@ func githubShouldRetry(index int, req *http.Request, resp *http.Response, err er
 // githubShouldRetryWith404s allows HTTP requests to respond event when 404s
 // are returned.
 func githubShouldRetryWith404s(index int, req *http.Request, resp *http.Response, err error) bool {
-	if index >= NumGithubRetries {
+	if index >= NumGithubAttempts {
 		return false
 	}
 
@@ -135,9 +134,14 @@ func getGithubClient(token, caller string) *http.Client {
 		"message": "called getGithubClient",
 		"caller":  caller,
 	})
-	return utility.GetOauth2CustomHTTPRetryableClient(token,
+	return utility.GetOauth2CustomHTTPRetryableClient(
+		token,
 		githubShouldRetry,
-		util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+		utility.RetryHTTPDelay(utility.RetryOptions{
+			MaxAttempts: NumGithubAttempts,
+			MinDelay:    GithubRetryMinDelay,
+		}),
+	)
 }
 
 // GetGithubCommits returns a slice of GithubCommit objects from
@@ -184,16 +188,16 @@ func parseGithubErrorResponse(resp *github.Response) error {
 }
 
 // GetGithubFile returns a struct that contains the contents of files within
-// a repository as Base64 encoded content.
-func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash string) (*github.RepositoryContent, error) {
+// a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
+func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref string) (*github.RepositoryContent, error) {
 	httpClient := getGithubClient(oauthToken, "GetGithubFile")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	var opt *github.RepositoryContentGetOptions
-	if len(hash) != 0 {
+	if len(ref) != 0 {
 		opt = &github.RepositoryContentGetOptions{
-			Ref: hash,
+			Ref: ref,
 		}
 	}
 
@@ -378,7 +382,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 // tryGithubPost posts the data to the Github api endpoint with the url given
 func tryGithubPost(ctx context.Context, url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
 	grip.Errorf("Attempting GitHub API POST at ‘%s’", url)
-	err = util.Retry(ctx, func() (bool, error) {
+	err = utility.Retry(ctx, func() (bool, error) {
 		resp, err = githubRequest(ctx, http.MethodPost, url, oauthToken, data)
 		if err != nil {
 			grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
@@ -397,7 +401,10 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 		logGitHubRateLimit(parseGithubRateLimit(resp.Header))
 
 		return false, nil
-	}, NumGithubRetries, GithubSleepTimeSecs*time.Second, 0)
+	}, utility.RetryOptions{
+		MaxAttempts: NumGithubAttempts,
+		MinDelay:    GithubRetryMinDelay,
+	})
 
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -657,7 +664,14 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 }
 
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
-	httpClient := utility.GetOauth2CustomHTTPRetryableClient(token, githubShouldRetryWith404s, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	httpClient := utility.GetOauth2CustomHTTPRetryableClient(
+		token,
+		githubShouldRetryWith404s,
+		utility.RetryHTTPDelay(utility.RetryOptions{
+			MaxAttempts: NumGithubAttempts,
+			MinDelay:    GithubRetryMinDelay,
+		}),
+	)
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
@@ -677,7 +691,14 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
 func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch) (string, error) {
-	httpClient := utility.GetOauth2CustomHTTPRetryableClient(token, githubShouldRetryWith404s, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	httpClient := utility.GetOauth2CustomHTTPRetryableClient(
+		token,
+		githubShouldRetryWith404s,
+		utility.RetryHTTPDelay(utility.RetryOptions{
+			MaxAttempts: NumGithubAttempts,
+			MinDelay:    GithubRetryMinDelay,
+		}),
+	)
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
@@ -711,7 +732,14 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 }
 
 func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, PRNumber int) (*github.PullRequest, error) {
-	httpClient := utility.GetOauth2CustomHTTPRetryableClient(token, githubShouldRetryWith404s, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	httpClient := utility.GetOauth2CustomHTTPRetryableClient(
+		token,
+		githubShouldRetryWith404s,
+		utility.RetryHTTPDelay(utility.RetryOptions{
+			MaxAttempts: NumGithubAttempts,
+			MinDelay:    GithubRetryMinDelay,
+		}),
+	)
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
@@ -726,7 +754,14 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string, []Summary, error) {
-	httpClient := utility.GetOauth2CustomHTTPRetryableClient(token, githubShouldRetryWith404s, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	httpClient := utility.GetOauth2CustomHTTPRetryableClient(
+		token,
+		githubShouldRetryWith404s,
+		utility.RetryHTTPDelay(utility.RetryOptions{
+			MaxAttempts: NumGithubAttempts,
+			MinDelay:    GithubRetryMinDelay,
+		}),
+	)
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 

@@ -164,6 +164,13 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			h.newRepoRef.Triggers[i].DefinitionID = utility.RandomString()
 		}
 	}
+	for i := range h.newRepoRef.PatchTriggerAliases {
+		h.newRepoRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(h.newRepoRef.PatchTriggerAliases[i], h.newRepoRef.Id)
+		catcher.Add(err)
+	}
+	for i, buildDef := range h.newRepoRef.PeriodicBuilds {
+		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
+	}
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(catcher.Resolve())
 	}

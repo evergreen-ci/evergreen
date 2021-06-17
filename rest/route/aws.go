@@ -183,6 +183,19 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 		return nil
 	}
 
+	instanceType := "Empty Distro.ProviderSettingsList, unable to get instance_type"
+	if len(h.Distro.ProviderSettingsList) > 0 {
+		if stringVal, ok := h.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK(); ok {
+			instanceType = stringVal
+		}
+	}
+	grip.Info(message.Fields{
+		"message":       "got interruption warning from AWS",
+		"distro":        h.Distro.Id,
+		"instance_type": instanceType,
+		"host_id":       h.Id,
+	})
+
 	if h.Status == evergreen.HostTerminated {
 		return nil
 	}

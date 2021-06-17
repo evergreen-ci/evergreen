@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -75,7 +76,14 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if !isEmptyURL {
 			at.Logs.HTMLDisplayURL = at.Logs.URL
 		} else if isEmptyLogID {
-			at.Logs.HTMLDisplayURL = nil
+			at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf(
+				"/test_log/%s/%d/%s?group_id=%s#L%d",
+				url.PathEscape(v.TaskID),
+				v.Execution,
+				url.PathEscape(v.TestFile),
+				url.QueryEscape(v.GroupID),
+				v.LineNum,
+			))
 		} else {
 			dispString := fmt.Sprintf("/test_log/%s#L%d", *at.Logs.LogId, at.Logs.LineNum)
 			at.Logs.HTMLDisplayURL = &dispString
@@ -84,7 +92,13 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if !isEmptyURLRaw {
 			at.Logs.RawDisplayURL = at.Logs.URLRaw
 		} else if isEmptyLogID {
-			at.Logs.RawDisplayURL = nil
+			at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf(
+				"/test_log/%s/%d/%s?group_id=%s&text=true",
+				url.PathEscape(v.TaskID),
+				v.Execution,
+				url.PathEscape(v.TestFile),
+				url.QueryEscape(v.GroupID),
+			))
 		} else {
 			dispString := fmt.Sprintf("/test_log/%s?text=true", *at.Logs.LogId)
 			at.Logs.RawDisplayURL = &dispString
@@ -109,9 +123,22 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.LogTestName = utility.ToStringPtr(v.LogTestName)
 		}
 		at.Logs = TestLogs{
-			LineNum:        v.LineNum,
-			RawDisplayURL:  utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s&text=true", v.TaskID, v.Execution, testName, v.GroupID)),
-			HTMLDisplayURL: utility.ToStringPtr(fmt.Sprintf("/test_log/%s/%d/%s?group_id=%s#L%d", v.TaskID, v.Execution, testName, v.GroupID, v.LineNum)),
+			LineNum: v.LineNum,
+			RawDisplayURL: utility.ToStringPtr(fmt.Sprintf(
+				"/test_log/%s/%d/%s?group_id=%s&text=true",
+				url.PathEscape(v.TaskID),
+				v.Execution,
+				url.PathEscape(testName),
+				url.QueryEscape(v.GroupID),
+			)),
+			HTMLDisplayURL: utility.ToStringPtr(fmt.Sprintf(
+				"/test_log/%s/%d/%s?group_id=%s#L%d",
+				url.PathEscape(v.TaskID),
+				v.Execution,
+				url.PathEscape(testName),
+				url.QueryEscape(v.GroupID),
+				v.LineNum,
+			)),
 		}
 
 		if v.GroupID != "" {

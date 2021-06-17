@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/evergreen-ci/timber"
 	"github.com/mongodb/grip"
@@ -44,18 +45,18 @@ func GetTestResults(ctx context.Context, opts TestResultsGetOptions) ([]byte, er
 		return nil, errors.WithStack(err)
 	}
 
-	var url string
+	var urlString string
 	if opts.DisplayTaskID != "" {
-		url = fmt.Sprintf("%s/rest/v1/test_results/display_task_id/%s", opts.CedarOpts.BaseURL, opts.DisplayTaskID)
+		urlString = fmt.Sprintf("%s/rest/v1/test_results/display_task_id/%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.DisplayTaskID))
 	} else if opts.TestName == "" {
-		url = fmt.Sprintf("%s/rest/v1/test_results/task_id/%s", opts.CedarOpts.BaseURL, opts.TaskID)
+		urlString = fmt.Sprintf("%s/rest/v1/test_results/task_id/%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.TaskID))
 	} else {
-		url = fmt.Sprintf("%s/rest/v1/test_results/test_name/%s/%s", opts.CedarOpts.BaseURL, opts.TaskID, opts.TestName)
+		urlString = fmt.Sprintf("%s/rest/v1/test_results/test_name/%s/%s", opts.CedarOpts.BaseURL, url.PathEscape(opts.TaskID), url.PathEscape(opts.TestName))
 	}
-	url += fmt.Sprintf("?execution=%d", opts.Execution)
+	urlString += fmt.Sprintf("?execution=%d", opts.Execution)
 
 	catcher := grip.NewBasicCatcher()
-	resp, err := opts.CedarOpts.DoReq(ctx, url)
+	resp, err := opts.CedarOpts.DoReq(ctx, urlString)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem requesting test results from cedar")
 	}

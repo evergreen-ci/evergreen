@@ -123,7 +123,7 @@ imports:
   - name: github.com/mongodb/amboy
     version: 43815750c2f1d63d1f1de803a8a684ca79ac82d6
   - name: github.com/evergreen-ci/gimlet
-    version: dc2e3602d62b90a5c81b86ff915eddcc345da4d0
+    version: ca35738ff88824eab0bbbe7950a81b30b6bfde9e
   - name: github.com/evergreen-ci/shrub
     version: 005df8abf87f20331677ecfaa19744efb99eb80b
   - name: github.com/evergreen-ci/pail
@@ -133,7 +133,7 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 6760875fa58e0fa5518c992582efa6d807960d6c
   - name: github.com/evergreen-ci/timber
-    version: 8b4977542c6a7fee3a3c0f1732d3178dbe36e0aa
+    version: 50903dc055ac01bf2ad83fd11538476fbdf895e8
   - name: github.com/evergreen-ci/poplar
     version: 098cea7cb6dc183c69a96c882da4e370858c0aa3
   - name: github.com/evergreen-ci/juniper
@@ -190,7 +190,7 @@ imports:
   - name: github.com/robfig/cron
     version: 70971dc81bab3671fde85647b0a1367929f92be8
   - name: github.com/evergreen-ci/utility
-    version: e4d6d5b88c672031742d8c0710f0ada8a759564a
+    version: 9a40a71c1784193533247813b8361f534fe4101b
 
   - name: github.com/robbiet480/go.sns
     version: ca087b49e1da69fa4f163521cc98b1eaf7b66ffd
