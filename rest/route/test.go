@@ -119,10 +119,8 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 		var filteredCount int
 		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(graphql.FilterSortAndPaginateCedarTestResultsOpts{
-			GroupID:     "",
 			Limit:       tgh.limit,
 			Page:        startAt,
-			SortBy:      "",
 			SortDir:     1,
 			Statuses:    testStatuses,
 			TestName:    tgh.testName,
