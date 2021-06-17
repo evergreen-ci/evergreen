@@ -205,6 +205,7 @@ type TestResultsFilterSortPaginateOpts struct {
 	SortDir   int
 	Statuses  []string
 	TaskIDs   []string
+	TestID    string
 	TestName  string
 }
 
@@ -221,6 +222,10 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	if opts.GroupID != "" {
 		match[GroupIDKey] = opts.GroupID
 	}
+	if opts.TestID != "" {
+		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(opts.TestID)}
+	}
+
 	pipeline := []bson.M{
 		{"$match": match},
 	}
@@ -251,7 +256,10 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	sort := bson.D{}
 	if opts.SortBy != "" {
 		sort = append(sort, primitive.E{Key: opts.SortBy, Value: opts.SortDir})
+	} else if limit > 0 { // Don't sort TaskID if unlimited EVG-13965.
+		sort = append(sort, primitive.E{Key: TaskIDKey, Value: 1})
 	}
+
 	sort = append(sort, primitive.E{Key: "_id", Value: 1})
 	pipeline = append(pipeline, bson.M{"$sort": sort})
 
