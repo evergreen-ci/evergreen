@@ -259,6 +259,36 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
+	if varsModel == nil {
+		return nil
+	}
+	v, err := varsModel.ToService()
+	if err != nil {
+		return errors.Wrap(err, "problem converting to project variable model")
+	}
+	vars := v.(*model.ProjectVars)
+	vars.Id = projectId
+
+	if overwrite {
+		if _, err = vars.Upsert(); err != nil {
+			return errors.Wrapf(err, "problem overwriting variables for project '%s'", vars.Id)
+		}
+	} else {
+		_, err = vars.FindAndModify(varsModel.VarsToDelete)
+		if err != nil {
+			return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
+		}
+	}
+
+	vars = vars.RedactPrivateVars()
+	varsModel.Vars = vars.Vars
+	varsModel.PrivateVars = vars.PrivateVars
+	varsModel.RestrictedVars = vars.RestrictedVars
+	varsModel.VarsToDelete = []string{}
+	return nil
+}
+
 func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
 	vars, err := model.FindOneProjectVars(oldProjectId)
 	if err != nil {
