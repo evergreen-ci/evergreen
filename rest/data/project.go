@@ -598,6 +598,10 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
+	return nil
+}
+
 func (pc *MockProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
 	newVars := model.ProjectVars{Id: newProjectId}
 	for _, v := range pc.CachedVars {
