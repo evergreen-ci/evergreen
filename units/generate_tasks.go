@@ -278,15 +278,17 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"job":           j.ID(),
 		"version":       t.Version,
 	}))
-	grip.ErrorWhen(!shouldNoop && err != nil, message.WrapError(err, message.Fields{
-		"message":       "generate.tasks finished with errors",
-		"operation":     "generate.tasks",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"job":           j.ID(),
-		"version":       t.Version,
-		"should_retry":  strings.Contains(err.Error(), evergreen.RetryGenerateTasksError),
-	}))
+	if err != nil && !shouldNoop {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "generate.tasks finished with errors",
+			"operation":     "generate.tasks",
+			"duration_secs": time.Since(start).Seconds(),
+			"task":          t.Id,
+			"job":           j.ID(),
+			"version":       t.Version,
+			"should_retry":  strings.Contains(err.Error(), evergreen.RetryGenerateTasksError),
+		}))
+	}
 
 	if err != nil && !shouldNoop {
 		j.AddError(err)
