@@ -208,8 +208,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 			p.BuildVariants[i].Tasks[j].Priority = t.Priority
 		}
 	}
-	// For patches and versions triggered by users, activate all builds.
-	// Otherwise activate ones that are not setting batchtime and are not set to false.
+	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
 	batchTimeInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
 
 	newTVPairs := TaskVariantPairs{}
