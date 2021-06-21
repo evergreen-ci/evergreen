@@ -451,14 +451,15 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	}
 	logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
 
-	if err = fetchSourceCmd.Run(ctx); err != nil {
-		errorOutput := stdErr.String()
-		if errorOutput != "" {
-			if opts.token != "" {
-				errorOutput = strings.Replace(errorOutput, opts.token, "[redacted oauth token]", -1)
-			}
-			logger.Execution().Error(errorOutput)
+	err = fetchSourceCmd.Run(ctx)
+	errorOutput := stdErr.String()
+	if errorOutput != "" {
+		if opts.token != "" {
+			errorOutput = strings.Replace(errorOutput, opts.token, "[redacted oauth token]", -1)
 		}
+		logger.Execution().Error(errorOutput)
+	}
+	if err != nil {
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
