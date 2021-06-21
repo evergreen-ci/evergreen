@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -79,6 +80,72 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
 		s.Equal(task.Execution, i)
 	}
+}
+
+func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
+	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection, annotations.Collection))
+	task_known_2 := &task.Task{
+		Id:        "task_known",
+		Execution: 2,
+		Version:   "version_known",
+	}
+	task_not_known := &task.Task{
+		Id:        "task_not_known",
+		Execution: 0,
+		Version:   "version_not_known",
+		Status:    evergreen.TaskFailed,
+	}
+	task_no_annotation := &task.Task{
+		Id:        "task_no_annotation",
+		Execution: 0,
+		Version:   "version_no_annotation",
+		Status:    evergreen.TaskFailed,
+	}
+	task_with_empty_issues := &task.Task{
+		Id:        "task_with_empty_issues",
+		Execution: 0,
+		Version:   "version_with_empty_issues",
+		Status:    evergreen.TaskFailed,
+	}
+	s.NoError(task_known_2.Insert())
+	s.NoError(task_not_known.Insert())
+	s.NoError(task_no_annotation.Insert())
+	s.NoError(task_with_empty_issues.Insert())
+
+	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "chaya.malik"}}
+
+	a_execution_0 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_execution_1 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 1, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_execution_2 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 2, Issues: []annotations.IssueLink{issue}}
+
+	a_with__suspected_issue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_with_empty_issues := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, Issues: []annotations.IssueLink{}, SuspectedIssues: []annotations.IssueLink{issue}}
+
+	s.NoError(a_execution_0.Upsert())
+	s.NoError(a_execution_1.Upsert())
+	s.NoError(a_execution_2.Upsert())
+	s.NoError(a_with__suspected_issue.Upsert())
+	s.NoError(a_with_empty_issues.Upsert())
+
+	task, _, err := s.ctx.FindTasksByVersion("version_known", nil, nil, "", "", 0, 0, nil, nil)
+	s.NoError(err)
+	s.Equal(evergreen.TaskKnownIssue, task[0].DisplayStatus)
+
+	// test with empty issues list
+	task, _, err = s.ctx.FindTasksByVersion("version_not_known", nil, nil, "", "", 0, 0, nil, nil)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+
+	// test with no annotation document
+	task, _, err = s.ctx.FindTasksByVersion("version_no_annotation", nil, nil, "", "", 0, 0, nil, nil)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+
+	// test with empty issues
+	task, _, err = s.ctx.FindTasksByVersion("version_with_empty_issues", nil, nil, "", "", 0, 0, nil, nil)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {

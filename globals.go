@@ -74,6 +74,9 @@ const (
 	TaskStatusBlocked = "blocked"
 	TaskStatusPending = "pending"
 
+	// This is not an official task status; it is used by the front end to indicate that there is a linked issue in the annotation
+	TaskKnownIssue = "known-issue"
+
 	// Task Command Types
 	CommandTypeTest   = "test"
 	CommandTypeSystem = "system"
