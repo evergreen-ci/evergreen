@@ -655,6 +655,62 @@
     },
     {
       "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e1"
+      },
+      "branch": "evergreen",
+      "version": "5e4ff3abe3c3317e352062e1",
+      "activated": true,
+      "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "triggers": {
+        "child_patches": [
+          "5e4ff3abe3c3317e352062e4"
+        ]
+      },
+      "patches": [
+        {
+          "name": "",
+          "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+          "patch_set": {
+            "patch_file_id": "5e4ff3ab850e6136624eaf95_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "summary": [
+              {
+                "filename": "service/api_task.go",
+                "additions": 5,
+                "deletions": 4
+              }
+            ]
+          },
+          "message": ""
+        },
+        {
+          "name": "Spruce",
+          "githash": "5e823e1s28baeaa22ae00823d83e03082cd148ab",
+          "patch_set": {
+            "patch_file_id": "5e4ff3ab85026136624eaf95_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "summary": [
+              {
+                "filename": "src/page/Task.tsx",
+                "additions": 11,
+                "deletions": 4
+              },
+              {
+                "filename": "src/App.tsx",
+                "additions": 22,
+                "deletions": 4
+              },
+              {
+                "filename": "src/page/Patch.tsx",
+                "additions": 33,
+                "deletions": 4
+              }
+            ]
+          },
+          "message": ""
+        }
+      ]
+    },
+    {
+      "_id": {
         "$oid": "5e94c8213e8e8651bee37561"
       },
       "desc": "'evergreen-ci/spruce' pull request #132 by tgrander: EVG-7795: (patch) change patch success status to `succeeded` (https://github.com/evergreen-ci/spruce/pull/132)",
@@ -740,7 +796,7 @@
       "desc": "NO BASE COMMIT PATCH",
       "branch": "mongodb-mongo-master"
     },
-        {
+    {
       "_id": {
         "$oid": "9e4ff3abe3c3317e352063e3"
       },
@@ -765,7 +821,6 @@
       ],
       "tasks": [
         "compile"
-
       ],
       "variants_tasks": [
         {
