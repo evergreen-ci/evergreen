@@ -63,7 +63,7 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 	job.env = env
 	job.SetID(fmt.Sprintf("%s:%s_%s", commitQueueJobName, queueID, id))
 	job.SetShouldApplyScopesOnEnqueue(true)
-	job.SetScopes([]string{queueID})
+	job.SetScopes([]string{fmt.Sprintf("%s.%s", commitQueueJobName, queueID)})
 
 	return job
 }
