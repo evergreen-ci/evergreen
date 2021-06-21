@@ -127,22 +127,24 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.NoError(a_with__suspected_issue.Upsert())
 	s.NoError(a_with_empty_issues.Upsert())
 
-	task, _, err := s.ctx.FindTasksByVersion("version_known", nil, nil, "", "", 0, 0, nil, nil)
+	opts := TaskFilterOptions{}
+
+	task, _, err := s.ctx.FindTasksByVersion("version_known", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskKnownIssue, task[0].DisplayStatus)
 
 	// test with empty issues list
-	task, _, err = s.ctx.FindTasksByVersion("version_not_known", nil, nil, "", "", 0, 0, nil, nil)
+	task, _, err = s.ctx.FindTasksByVersion("version_not_known", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
 
 	// test with no annotation document
-	task, _, err = s.ctx.FindTasksByVersion("version_no_annotation", nil, nil, "", "", 0, 0, nil, nil)
+	task, _, err = s.ctx.FindTasksByVersion("version_no_annotation", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
 
 	// test with empty issues
-	task, _, err = s.ctx.FindTasksByVersion("version_with_empty_issues", nil, nil, "", "", 0, 0, nil, nil)
+	task, _, err = s.ctx.FindTasksByVersion("version_with_empty_issues", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
 
