@@ -343,7 +343,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if v == nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("version not found"))
+		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
 		return
 	}
 
