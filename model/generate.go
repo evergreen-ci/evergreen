@@ -211,9 +211,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// For patches and versions triggered by users, activate all builds.
 	// Otherwise activate ones that are not setting batchtime and are not set to false.
 	var batchTimeInfo specificActivationInfo
-	if evergreen.ShouldConsiderDifferentActivations(v.Requester) {
-		batchTimeInfo = g.findTasksAndVariantsWithSpecificActivations()
-	}
+	batchTimeInfo = g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
@@ -314,16 +313,21 @@ func (b *specificActivationInfo) tasksWithoutSpecificActivation(taskNames []stri
 	return tasksWithoutSpecificActivation
 }
 
-func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations() specificActivationInfo {
+func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
-		if bv.BatchTime != nil || bv.CronBatchTime != "" || bv.Activate != nil {
+		// only consider batchtime for certain requesters
+		if evergreen.ShouldConsiderBatchtime(requester) && (bv.BatchTime != nil || bv.CronBatchTime != "") {
+			res.variants = append(res.variants, bv.name())
+		} else if bv.Activate != nil {
 			res.variants = append(res.variants, bv.name())
 		}
 		// regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
-			if bvt.BatchTime != nil || bvt.CronBatchTime != "" || bvt.Activate != nil {
+			if evergreen.ShouldConsiderBatchtime(requester) && (bvt.BatchTime != nil || bvt.CronBatchTime != "") {
+				batchTimeTasks = append(batchTimeTasks, bvt.Name)
+			} else if bvt.Activate != nil {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			}
 		}

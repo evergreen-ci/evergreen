@@ -675,7 +675,7 @@ func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
 }
 
-func ShouldConsiderDifferentActivations(requester string) bool {
+func ShouldConsiderBatchtime(requester string) bool {
 	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
 
