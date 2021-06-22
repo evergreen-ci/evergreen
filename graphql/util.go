@@ -68,7 +68,6 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)
 		}
 	}
-	isAsc := opts.SortDir == 1
 	if opts.SortBy != "" {
 		switch opts.SortBy {
 		case "duration":
@@ -77,7 +76,7 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 				testResultJ := filteredAndSortedTestResults[j]
 				iDuration := testResultI.End.Sub(testResultI.Start)
 				jDuration := testResultJ.End.Sub(testResultJ.Start)
-				if isAsc {
+				if opts.SortDir == 1 {
 					return iDuration < jDuration
 				}
 				return iDuration > jDuration
@@ -87,7 +86,7 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if isAsc {
+				if opts.SortDir == 1 {
 					return testResultI.TestName < testResultJ.TestName
 				}
 				return testResultI.TestName > testResultJ.TestName
@@ -97,7 +96,7 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if isAsc {
+				if opts.SortDir == 1 {
 					return testResultI.Status < testResultJ.Status
 				}
 				return testResultI.Status > testResultJ.Status
