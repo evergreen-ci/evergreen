@@ -74,6 +74,9 @@ const (
 	TaskStatusBlocked = "blocked"
 	TaskStatusPending = "pending"
 
+	// This is not an official task status; it is used by the front end to indicate that there is a linked issue in the annotation
+	TaskKnownIssue = "known-issue"
+
 	// Task Command Types
 	CommandTypeTest   = "test"
 	CommandTypeSystem = "system"
@@ -675,7 +678,7 @@ func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
 }
 
-func ShouldConsiderDifferentActivations(requester string) bool {
+func ShouldConsiderBatchtime(requester string) bool {
 	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
 

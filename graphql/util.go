@@ -549,10 +549,13 @@ func generateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 		TaskNames: searchTasks,
 		Sorts:     defaultSort,
 	}
+	start := time.Now()
 	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err.Error()))
 	}
+	timeToFindTasks := time.Since(start)
+	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
 		err := apiTask.BuildFromService(&t)
@@ -564,6 +567,9 @@ func generateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 
 	}
 
+	timeToBuildTasks := time.Since(buildTaskStartTime)
+	groupTasksStartTime := time.Now()
+
 	result := []*GroupedBuildVariant{}
 	for variant, tasks := range tasksByVariant {
 		pbv := GroupedBuildVariant{
@@ -573,9 +579,28 @@ func generateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 		}
 		result = append(result, &pbv)
 	}
+
+	timeToGroupTasks := time.Since(groupTasksStartTime)
+
+	sortTasksStartTime := time.Now()
 	// sort variants by name
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].DisplayName < result[j].DisplayName
+	})
+
+	timeToSortTasks := time.Since(sortTasksStartTime)
+
+	totalTime := time.Since(start)
+	grip.InfoWhen(totalTime > time.Second*2, message.Fields{
+		"Ticket":            "EVG-14828",
+		"timeToFindTasks":   timeToFindTasks,
+		"timeToBuildTasks":  timeToBuildTasks,
+		"timeToGroupTasks":  timeToGroupTasks,
+		"timeToSortTasks":   timeToSortTasks,
+		"totalTime":         totalTime,
+		"versionId":         versionId,
+		"taskCount":         len(tasks),
+		"buildVariantCount": len(result),
 	})
 	return result, nil
 }
