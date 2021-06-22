@@ -128,6 +128,9 @@ type Task struct {
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
 	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
 
+	// Only used in addDisplayStatus aggregation step
+	HasUnattainableDeps bool `bson:"has_unattainable_deps" json:"-"`
+
 	// task requester - this is used to help tell the
 	// reason this task was created. e.g. it could be
 	// because the repotracker requested it (via tracking the
@@ -1382,15 +1385,10 @@ func (t *Task) GetDisplayStatus() string {
 		if !t.Activated {
 			return evergreen.TaskUnscheduled
 		}
-		dependenciesMet, err := t.DependenciesMet(map[string]Task{})
-		if err != nil {
-			// Return the default undispatched status if we can't determine if dependencies have been met
-			// This will be replaced by Can't run in https://jira.mongodb.org/browse/EVG-13828
-			return t.Status
+		if t.Blocked() {
+			return evergreen.TaskStatusBlocked
 		}
-		if dependenciesMet {
-			return evergreen.TaskWillRun
-		}
+		return evergreen.TaskWillRun
 	}
 	if !t.IsFinished() {
 		return t.Status
@@ -2808,7 +2806,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			},
 
 			// add a field for the display status of each task
-			addDisplayStatus,
+			// (...addDisplayStatus),
 			// add data about the base task
 			{"$lookup": bson.M{
 				"from": Collection,

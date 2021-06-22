@@ -78,6 +78,9 @@ var (
 	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
+	// HasUnattainableDepsKey is only used in the addDisplayStatus aggregation step to determine if a task has unattainabledeps
+	HasUnattainableDepsKey = bsonutil.MustHaveTag(Task{}, "HasUnattainableDeps")
+
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSONKey           = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
 	GeneratedJSONAsStringKey   = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
@@ -138,11 +141,34 @@ var (
 	},
 	}
 
-	// This should reflect Task.GetDisplayStatus()
-	addDisplayStatus = bson.M{
+	addUnattainableDepStatus = bson.M{
 		"$addFields": bson.M{
-			DisplayStatusKey: displayStatusExpression,
+			HasUnattainableDepsKey: bson.M{
+				"$filter": bson.M{
+					"input": "$" + DependsOnKey,
+					"cond":  "$$" + bsonutil.GetDottedKeyName("this", DependencyUnattainableKey),
+				},
+			},
 		},
+	}
+	setUnattainableDepStatus = bson.M{
+		"$addFields": bson.M{
+			HasUnattainableDepsKey: bson.M{
+				"$cond": bson.M{
+					"if":   bson.M{"$gt": []interface{}{bson.M{"$size": "$" + HasUnattainableDepsKey}, 0}},
+					"then": true,
+					"else": false,
+				},
+			},
+		},
+	}
+	// This should reflect Task.GetDisplayStatus()
+	addDisplayStatus = []bson.M{
+		addUnattainableDepStatus,
+		setUnattainableDepStatus,
+		{"$addFields": bson.M{
+			DisplayStatusKey: displayStatusExpression,
+		}},
 	}
 
 	displayStatusExpression = bson.M{
@@ -203,12 +229,7 @@ var (
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
 							{"$eq": []interface{}{"$" + ActivatedKey, true}},
-							{
-								"$or": []bson.M{
-									{DependsOnKey: 0},
-									{"$ne": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
-								},
-							},
+							{"$ne": []interface{}{"$" + HasUnattainableDepsKey, true}},
 						},
 					},
 					"then": evergreen.TaskWillRun,
@@ -227,7 +248,8 @@ var (
 				{
 					"case": bson.M{
 						"$and": []bson.M{
-							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+							{"$eq": []interface{}{"$" + HasUnattainableDepsKey, true}},
 						},
 					},
 					"then": evergreen.TaskStatusBlocked,
@@ -865,8 +887,8 @@ func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, e
 	}
 	pipeline := []bson.M{
 		{"$match": match},
-		addDisplayStatus,
 	}
+	pipeline = append(pipeline, addDisplayStatus...)
 	if err := Aggregate(pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "Couldnt find task")
 	}
@@ -889,8 +911,9 @@ func FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id string, execution *in
 	}
 	pipeline := []bson.M{
 		{"$match": match},
-		addDisplayStatus,
 	}
+	pipeline = append(pipeline, addDisplayStatus...)
+
 	if err := db.Aggregate(OldCollection, pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "Couldn't find task")
 	}
