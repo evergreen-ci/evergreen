@@ -224,8 +224,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for build '%s'", buildId)
 		}
-		err = task.DeactivateTasks(tasks, caller)
-		if err != nil {
+		if err = task.DeactivateTasks(tasks, caller); err != nil {
 			return errors.Wrapf(err, "can't deactivate tasks for build '%s'", buildId)
 		}
 	}

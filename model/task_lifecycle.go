@@ -59,9 +59,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		} else {
 			tasksToActivate = append(tasksToActivate, originalTasks...)
 		}
-		var err error
-		err = task.ActivateTasks(tasksToActivate, time.Now(), caller)
-		if err != nil {
+		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
 			return errors.Wrapf(err, "can't activate tasks")
 		}
 
