@@ -25,7 +25,7 @@ type goTestResults struct {
 
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// no files are found to be parsed.
-	Optional bool `mapstructure:"optional" plugin:"expand"`
+	OptionalOutput bool `mapstructure:"optional" plugin:"expand"`
 
 	base
 }
@@ -71,7 +71,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 
 	// make sure that we're parsing something or have optional parameter
 	if len(outputFiles) == 0 {
-		if c.Optional {
+		if c.OptionalOutput {
 			return nil
 		} else {
 			return errors.New("no files found to be parsed")
