@@ -64,9 +64,9 @@ func (c *goTestResults) Execute(ctx context.Context,
 		return errors.Wrap(err, "obtaining names of output files")
 	}
 
-	// make sure we're parsing something
+	// optional that we're parsing something
 	if len(outputFiles) == 0 {
-		return errors.New("no files found to be parsed")
+		return nil
 	}
 
 	// parse all of the files
