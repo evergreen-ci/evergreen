@@ -467,7 +467,7 @@ func doStepback(t *task.Task) error {
 	}
 
 	// activate the previous task to pinpoint regression
-	return errors.WithStack(activatePreviousTask(t.Id, evergreen.StepbackTaskActivator, ""))
+	return errors.WithStack(activatePreviousTask(t.Id, evergreen.StepbackTaskActivator, nil))
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
