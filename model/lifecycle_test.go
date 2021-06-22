@@ -934,6 +934,57 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 		})
 
+		Convey("the build should contain task caches that correspond exactly"+
+			" to the tasks created", func() {
+
+			args := BuildCreateArgs{
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       table,
+				BuildName:     buildVar2.Name,
+				ActivateBuild: false,
+				TaskNames:     []string{},
+			}
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
+			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			So(len(tasks), ShouldEqual, 4)
+			So(len(build.Tasks), ShouldEqual, 4)
+
+			// make sure the task caches are correct.  they should also appear
+			// in the same order that they appear in the project file
+			So(build.Tasks[0].Id, ShouldContainSubstring, "taskA")
+			So(build.Tasks[1].Id, ShouldContainSubstring, "taskB")
+			So(build.Tasks[2].Id, ShouldContainSubstring, "taskC")
+			So(build.Tasks[3].Id, ShouldContainSubstring, "taskE")
+		})
+
+		Convey("a task cache should not contain execution tasks that are part of a display task", func() {
+			args := BuildCreateArgs{
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       table,
+				BuildName:     buildVar1.Name,
+				ActivateBuild: false,
+				TaskNames:     []string{},
+			}
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
+			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			So(len(build.Tasks), ShouldEqual, 2)
+
+			// make sure the task caches are correct
+			So(build.Tasks[0].Id, ShouldContainSubstring, buildVar1.DisplayTasks[0].Name)
+			So(build.Tasks[1].Id, ShouldContainSubstring, buildVar1.DisplayTasks[1].Name)
+
+			// check the display tasks too
+			So(len(tasks), ShouldEqual, 6)
+			So(tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
+			So(tasks[0].DisplayOnly, ShouldBeTrue)
+			So(len(tasks[0].ExecutionTasks), ShouldEqual, 2)
+			So(tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
+			So(tasks[1].DisplayOnly, ShouldBeTrue)
+		})
 		Convey("all of the tasks created should have the dependencies"+
 			"and priorities specified in the project", func() {
 
