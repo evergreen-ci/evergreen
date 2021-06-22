@@ -25,7 +25,7 @@ type goTestResults struct {
 
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// no files are found to be parsed.
-	OptionalOutput bool `mapstructure:"optional" plugin:"expand"`
+	OptionalOutput bool `mapstructure:"optional_output" plugin:"expand"`
 
 	base
 }
