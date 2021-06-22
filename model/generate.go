@@ -209,7 +209,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		}
 	}
 	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
-	batchTimeInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+	batchTimeInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester, t)
 
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
@@ -311,7 +311,7 @@ func (b *specificActivationInfo) tasksWithoutSpecificActivation(taskNames []stri
 	return tasksWithoutSpecificActivation
 }
 
-func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
+func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string, generatorTask *task.Task) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
 		// only consider batchtime for certain requesters
@@ -323,6 +323,9 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		// regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
+			if isStepbackTask(generatorTask, bv.Name, bvt.Name) {
+				continue // don't consider batchtime/activation if we're stepping back this generated task
+			}
 			if evergreen.ShouldConsiderBatchtime(requester) && (bvt.BatchTime != nil || bvt.CronBatchTime != "") {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			} else if bvt.Activate != nil {
@@ -334,6 +337,16 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		}
 	}
 	return res
+}
+
+// isStepbackTask returns true if the task unit is supposed to be stepped back for this generator
+func isStepbackTask(generatorTask *task.Task, variant, taskName string) bool {
+	for bv, tasks := range generatorTask.GeneratedTasksToStepback {
+		if bv == variant && utility.StringSliceContains(tasks, taskName) {
+			return true
+		}
+	}
+	return false
 }
 
 func addDependencies(t *task.Task, newTaskIds []string) error {

@@ -154,7 +154,8 @@ func SetActiveStateById(id, user string, active bool) error {
 
 // activatePreviousTask will set the Active state for the first task with a
 // revision order number less than the current task's revision order number.
-func activatePreviousTask(taskId, caller string) error {
+// originalStepbackTask is only specified if we're first activating the generator for a generated task.
+func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task) error {
 	// find the task first
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
@@ -174,13 +175,20 @@ func activatePreviousTask(taskId, caller string) error {
 	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 || prevTask.Activated {
 		// try to activate the generator if the previous task we found isn't the actual last task
 		if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
-			return activatePreviousTask(t.GeneratedBy, caller)
+			return activatePreviousTask(t.GeneratedBy, caller, t)
 		}
 		return nil
 	}
 
 	// activate the task
-	return errors.WithStack(SetActiveState(prevTask, caller, true))
+	if err = SetActiveState(prevTask, caller, true); err != nil {
+		return errors.Wrapf(err, "error setting task '%s' active", prevTask.Id)
+	}
+	// add the task that we're actually stepping back so that we know to activate it
+	if prevTask.GenerateTask && originalStepbackTask != nil {
+		return prevTask.SetGeneratedTasksToStepback(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName)
+	}
+	return nil
 }
 
 func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
@@ -459,7 +467,7 @@ func doStepback(t *task.Task) error {
 	}
 
 	// activate the previous task to pinpoint regression
-	return errors.WithStack(activatePreviousTask(t.Id, evergreen.StepbackTaskActivator))
+	return errors.WithStack(activatePreviousTask(t.Id, evergreen.StepbackTaskActivator, ""))
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
