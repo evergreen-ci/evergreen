@@ -38,7 +38,6 @@ const (
 	DockerHostCreateTotalLimit              = 200
 	HostCreateLimitPerTask                  = 3
 	maxTaskSyncCommandsForDependenciesCheck = 300 // this should take about one second
-	GenerateSyntaxError                     = "project contains syntax error"
 )
 
 func (vel ValidationErrorLevel) String() string {
