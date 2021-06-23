@@ -1,4 +1,4 @@
-package data
+ffindpackage data
 
 import (
 	"context"
@@ -28,6 +28,19 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 )
+
+type FindTestsByTaskIdOpts struct {
+	Execution int
+	GroupID   string
+	Limit     int
+	Page      int
+	SortBy    string
+	SortDir   int
+	Statuses  []string
+	TaskID    string
+	TestID    string
+	TestName  string
+}
 
 // Connector is an interface that contains all of the methods which
 // connect to the service layer of evergreen. These methods abstract the link
@@ -126,6 +139,9 @@ type Connector interface {
 
 	// FindTestById returns a single test result with the given id.
 	FindTestById(string) ([]testresult.TestResult, error)
+	// FindTestsByTaskId returns a paginated list of testresults from a required TaskID. SortBy references the bson key name and SortDir indicates ascending or descending. 
+	// Not providing limit will return all results. All other options aside from TestID and Page filter the list based on exact match. Supplying TestID matches all IDs >= TestID.
+	// Page * Limit resembles the number of skipped documents. 
 	FindTestsByTaskId(FindTestsByTaskIdOpts) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
 	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)

@@ -55,19 +55,6 @@ func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName strin
 	return count, nil
 }
 
-type FindTestsByTaskIdOpts struct {
-	Execution int
-	GroupID   string
-	Limit     int
-	Page      int
-	SortBy    string
-	SortDir   int
-	Statuses  []string
-	TaskID    string
-	TestID    string
-	TestName  string
-}
-
 func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]testresult.TestResult, error) {
 	t, err := task.FindOneIdNewOrOld(opts.TaskID)
 	if err != nil {
