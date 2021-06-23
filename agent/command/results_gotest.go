@@ -26,8 +26,8 @@ type goTestResults struct {
 
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// no files are found to be parsed.
-	OptionalOutput     string `mapstructure:"optional_output" plugin:"expand"`
-	OptionalOutputBool bool
+	OptionalOutput   string `mapstructure:"optional_output" plugin:"expand"`
+	outputIsOptional bool
 
 	base
 }
@@ -44,12 +44,10 @@ func (c *goTestResults) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.OptionalOutput != "" {
-		c.OptionalOutputBool, err = strconv.ParseBool(c.OptionalOutput)
+		c.outputIsOptional, err = strconv.ParseBool(c.OptionalOutput)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-	} else {
-		c.OptionalOutputBool = false
 	}
 
 	if len(c.Files) == 0 {
@@ -83,7 +81,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 
 	// make sure that we're parsing something or have optional parameter
 	if len(outputFiles) == 0 {
-		if c.OptionalOutputBool {
+		if c.outputIsOptional {
 			return nil
 		} else {
 			return errors.New("no files found to be parsed")
