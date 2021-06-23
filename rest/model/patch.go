@@ -41,11 +41,17 @@ type APIPatch struct {
 	Parameters              []APIParameter    `json:"parameters"`
 	PatchedConfig           *string           `json:"patched_config"`
 	CanEnqueueToCommitQueue bool              `json:"can_enqueue_to_commit_queue"`
+	ChildPatches            []ChildPatch      `json:"child_patches"`
 }
 
 type DownstreamTasks struct {
 	Project *string   `json:"project"`
 	Tasks   []*string `json:"tasks"`
+}
+
+type ChildPatch struct {
+	Project *string `json:"project"`
+	PatchID *string `json:"patch_id"`
 }
 type VariantTask struct {
 	Name  *string   `json:"name"`
@@ -172,11 +178,14 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
-	downstreamTasks, err := getDownstreamTasks(v)
+
+	downstreamTasks, childPatches, err := getChildPatchesData(v)
 	if err != nil {
 		return errors.Wrap(err, "error getting downstream tasks")
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
+	apiPatch.ChildPatches = childPatches
+
 	if v.Project != "" {
 		identifier, err := model.GetIdentifierForProject(v.Project)
 		if err != nil {
@@ -188,29 +197,35 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
 
-func getDownstreamTasks(p patch.Patch) ([]DownstreamTasks, error) {
+func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error) {
+	if len(p.Triggers.ChildPatches) <= 0 {
+		return nil, nil, nil
+	}
 	downstreamTasks := []DownstreamTasks{}
+	childPatches := []ChildPatch{}
 	for _, childPatch := range p.Triggers.ChildPatches {
 		childPatchDoc, err := patch.FindOneId(childPatch)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error getting tasks for child patch '%s'", childPatch)
+			return nil, nil, errors.Wrapf(err, "error getting child patch '%s'", childPatch)
 		}
 		if childPatchDoc == nil {
 			continue
 		}
 
-		tasks := make([]*string, len(childPatchDoc.Tasks))
-		for i, t := range childPatchDoc.Tasks {
-			tasks[i] = utility.ToStringPtr(t)
-		}
+		tasks := utility.ToStringPtrSlice(childPatchDoc.Tasks)
 
 		dt := DownstreamTasks{
 			Project: utility.ToStringPtr(childPatchDoc.Project),
 			Tasks:   tasks,
 		}
+		cp := ChildPatch{
+			Project: utility.ToStringPtr(childPatchDoc.Project),
+			PatchID: utility.ToStringPtr(childPatch),
+		}
 		downstreamTasks = append(downstreamTasks, dt)
+		childPatches = append(childPatches, cp)
 	}
-	return downstreamTasks, nil
+	return downstreamTasks, childPatches, nil
 }
 
 // ToService converts a service layer patch using the data from APIPatch

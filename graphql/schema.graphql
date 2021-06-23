@@ -172,7 +172,7 @@ input BuildVariantOptions {
   statuses: [String!]
 }
 input MainlineCommitsOptions {
-  projectID: String! 
+  projectID: String!
   limit: Int = 7
   skipOrderNumber: Int = 0
 }
@@ -438,7 +438,6 @@ type GroupedBuildVariant {
   tasks: [Task]
 }
 
-
 type TaskFiles {
   fileCount: Int!
   groupedFiles: [GroupedFiles!]!
@@ -488,6 +487,7 @@ type Patch {
   status: String!
   variants: [String!]!
   tasks: [String!]!
+  childPatches: [ChildPatch!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
@@ -503,6 +503,11 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
+}
+
+type ChildPatch {
+  project: String!
+  patchID: String!
 }
 
 type Build {
