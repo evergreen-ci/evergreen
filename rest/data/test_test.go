@@ -102,8 +102,6 @@ func TestFindTestsByTaskId(t *testing.T) {
 
 	for i := 0; i < numTasks; i++ {
 		taskId := fmt.Sprintf("task_%d", i)
-		// 	//taskId, testId, testName, status string, limit, execution int
-
 		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: taskId})
 		assert.NoError(err)
 		assert.Len(foundTests, numTests)
@@ -231,6 +229,17 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
 	serviceContext := &DBConnector{}
+
+	emptyTask := &task.Task{
+		Id: "empty_task",
+	}
+	assert.NoError(emptyTask.Insert())
+	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: "empty_task"})
+	assert.NoError(err, "missing tests should not return a 404")
+	assert.Len(foundTests, 0)
+
+	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
 	numTests := 10
 	numTasks := 2
 	testObjects := make([]string, numTests)
@@ -267,6 +276,13 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 			assert.NoError(test.Insert())
 		}
 	}
+	task := &task.Task{
+		Id: "task_2",
+	}
+	assert.NoError(task.Insert())
+	testID := mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")
+	testResult := testresult.TestResult{ID: testID, TaskID: "task_2"}
+	assert.NoError(testResult.Insert())
 
 	for i := 0; i < numTasks; i++ {
 		taskId := fmt.Sprintf("task_%d", i)
@@ -338,7 +354,11 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 		assert.NoError(err)
 		assert.Len(foundTests, 10)
 	}
-	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: "fake_task", TestName: "", Statuses: []string{}, SortBy: "duration", GroupID: "", SortDir: 1, Page: 0, Limit: 0, Execution: 0})
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TestID: "5949645c9acd9604fdd202d9", TaskID: "task_2"})
+	assert.NoError(err)
+	assert.Len(foundTests, 1)
+
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: "fake_task", TestName: "", Statuses: []string{}, SortBy: "duration", GroupID: "", SortDir: 1, Page: 0, Limit: 0, Execution: 0})
 	assert.Error(err)
 	assert.Len(foundTests, 0)
 	apiErr, ok := err.(gimlet.ErrorResponse)
@@ -353,6 +373,7 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(foundTests, 0)
 }
+
 func TestFindTestsByTaskIdFilterSortPaginatePaginationOrderDependsOnObjectId(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
