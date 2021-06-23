@@ -144,8 +144,6 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 			}
 		} else {
-			//taskId, testId, testName, status string, limit, execution int
-			//tests, err = tgh.sc.FindTestsByTaskId(tgh.taskID, tgh.key, tgh.testName, tgh.testStatus, tgh.limit+1, tgh.testExecution)
 			tests, err = tgh.sc.FindTestsByTaskIdFilterSortPaginate(data.FindTestsByTaskIdFilterSortPaginateOpts{
 				Execution: tgh.testExecution,
 				Limit:     tgh.limit + 1,

@@ -126,10 +126,6 @@ type Connector interface {
 
 	// FindTestById returns a single test result with the given id.
 	FindTestById(string) ([]testresult.TestResult, error)
-	// FindTestsByTaskId is a method to find a set of tests that correspond to
-	// a given task. It takes a taskId, testId to start from, test name and status to filter,
-	// limit, and sort to provide additional control over the results.
-	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
 	FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
 	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)
