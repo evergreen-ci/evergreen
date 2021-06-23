@@ -20,10 +20,11 @@ mciModule.controller('AdminOptionsCtrl', [
 
     $scope.setRestartSelection = function(status){
         $scope.selection = status;
-
-        _.each($scope.buildTasks, function(task) {
-          task.checkedForRestart = status.matches(task.Task)
-        })
+        if(status !== "") {
+            _.each($scope.buildTasks, function(task) {
+                task.checkedForRestart = status.matches(task.Task)
+            })
+        }
     }
 
     $scope.abort = function() {
