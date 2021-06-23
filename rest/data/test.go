@@ -88,6 +88,7 @@ type FindTestsByTaskIdFilterSortPaginateOpts struct {
 	SortDir   int
 	Statuses  []string
 	TaskID    string
+	TestID    string
 	TestName  string
 }
 
@@ -112,7 +113,7 @@ func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(opts FindTestsByT
 		taskIDs = []string{opts.TaskID}
 	}
 
-	res, err := testresult.TestResultsFilterSortPaginate(testresult.TestResultsFilterSortPaginateOpts{TaskIDs: taskIDs, TestName: opts.TestName, Statuses: opts.Statuses, SortBy: opts.SortBy, GroupID: opts.GroupID, SortDir: opts.SortDir, Page: opts.Page, Limit: opts.Limit, Execution: opts.Execution})
+	res, err := testresult.TestResultsFilterSortPaginate(testresult.TestResultsFilterSortPaginateOpts{TestID: opts.TestID, TaskIDs: taskIDs, TestName: opts.TestName, Statuses: opts.Statuses, SortBy: opts.SortBy, GroupID: opts.GroupID, SortDir: opts.SortDir, Page: opts.Page, Limit: opts.Limit, Execution: opts.Execution})
 	if err != nil {
 		return nil, err
 	}

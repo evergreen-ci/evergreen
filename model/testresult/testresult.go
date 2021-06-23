@@ -256,7 +256,7 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	sort := bson.D{}
 	if opts.SortBy != "" {
 		sort = append(sort, primitive.E{Key: opts.SortBy, Value: opts.SortDir})
-	} else if limit > 0 { // Don't sort TaskID if unlimited EVG-13965.
+	} else if opts.Limit > 0 { // Don't sort TaskID if unlimited EVG-13965.
 		sort = append(sort, primitive.E{Key: TaskIDKey, Value: 1})
 	}
 
