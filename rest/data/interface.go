@@ -126,7 +126,7 @@ type Connector interface {
 
 	// FindTestById returns a single test result with the given id.
 	FindTestById(string) ([]testresult.TestResult, error)
-	FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts) ([]testresult.TestResult, error)
+	FindTestsByTaskId(FindTestsByTaskIdOpts) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
 	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)
 	// FindUserById is a method to find a specific user given its ID.

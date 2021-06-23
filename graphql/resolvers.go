@@ -1282,13 +1282,13 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 		baseTestStatusMap := make(map[string]string)
 		if baseTask != nil {
-			baseTestResults, _ := r.sc.FindTestsByTaskIdFilterSortPaginate(data.FindTestsByTaskIdFilterSortPaginateOpts{TaskID: baseTask.Id, Execution: taskExecution})
+			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: taskExecution})
 			for _, t := range baseTestResults {
 				baseTestStatusMap[t.TestFile] = t.Status
 			}
 		}
 
-		paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(data.FindTestsByTaskIdFilterSortPaginateOpts{TaskID: taskID, TestName: testNameParam, Statuses: statusesParam, SortBy: sortBy, GroupID: groupIdParam, SortDir: sortDir, Limit: limitParam, Execution: taskExecution, Page: pageParam})
+		paginatedFilteredTests, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: taskID, TestName: testNameParam, Statuses: statusesParam, SortBy: sortBy, GroupID: groupIdParam, SortDir: sortDir, Limit: limitParam, Execution: taskExecution, Page: pageParam})
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}

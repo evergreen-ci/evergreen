@@ -55,7 +55,7 @@ func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName strin
 	return count, nil
 }
 
-type FindTestsByTaskIdFilterSortPaginateOpts struct {
+type FindTestsByTaskIdOpts struct {
 	Execution int
 	GroupID   string
 	Limit     int
@@ -68,7 +68,7 @@ type FindTestsByTaskIdFilterSortPaginateOpts struct {
 	TestName  string
 }
 
-func (tc *DBTestConnector) FindTestsByTaskIdFilterSortPaginate(opts FindTestsByTaskIdFilterSortPaginateOpts) ([]testresult.TestResult, error) {
+func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]testresult.TestResult, error) {
 	t, err := task.FindOneIdNewOrOld(opts.TaskID)
 	if err != nil {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
@@ -114,7 +114,7 @@ func (mtc *MockTestConnector) FindTestById(id string) ([]testresult.TestResult, 
 func (tc *MockTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	return 0, nil
 }
-func (tc *MockTestConnector) FindTestsByTaskIdFilterSortPaginate(opts FindTestsByTaskIdFilterSortPaginateOpts) ([]testresult.TestResult, error) {
+func (tc *MockTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]testresult.TestResult, error) {
 	return nil, nil
 }
 
