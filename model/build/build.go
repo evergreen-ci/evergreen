@@ -247,6 +247,16 @@ func (b *Build) MarkFinished(status string, finishTime time.Time) error {
 	)
 }
 
+func (b *Build) GetTimeSpent() (time.Duration, time.Duration, error) {
+	tasks, err := task.FindAllFirstExecution(task.ByBuildId(b.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey))
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "can't get tasks")
+	}
+
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+	return timeTaken, makespan, nil
+}
+
 // Insert writes the b to the db.
 func (b *Build) Insert() error {
 	return db.Insert(Collection, b)

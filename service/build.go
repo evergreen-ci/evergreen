@@ -24,12 +24,19 @@ import (
 
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
-func getUiTaskCache(build *build.Build, tasks []task.Task) ([]uiTask, error) {
+func getUiTaskCache(b *build.Build) ([]uiTask, error) {
+	tasks, err := task.FindAll(task.ByBuildId(b.Id))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get tasks for build")
+	}
+	if tasks == nil {
+		return nil, errors.Errorf("no tasks found for build '%s'", b.Id)
+	}
 	idToTask := task.TaskSliceToMap(tasks)
 
 	// Insert the tasks in the same order as the task cache
-	uiTasks := make([]uiTask, 0, len(build.Tasks))
-	for _, taskCache := range build.Tasks {
+	uiTasks := make([]uiTask, 0, len(b.Tasks))
+	for _, taskCache := range b.Tasks {
 		t, ok := idToTask[taskCache.Id]
 		if !ok {
 			continue
@@ -69,18 +76,19 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
-	tasks, err := task.FindAllFirstExecution(task.ByBuildId(projCtx.Build.Id))
+	uiTasks, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
 		return
 	}
-	uiTasks, err := getUiTaskCache(projCtx.Build, tasks)
+	buildAsUI.Tasks = uiTasks
+
+	timeTaken, makespan, err := projCtx.Build.GetTimeSpent()
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
 	}
-	buildAsUI.Tasks = uiTasks
-	buildAsUI.TimeTaken, buildAsUI.Makespan = task.GetTimeSpent(tasks)
+	buildAsUI.TimeTaken, buildAsUI.Makespan = timeTaken, makespan
 
 	if projCtx.Build.TriggerID != "" {
 		var projectName string
@@ -290,18 +298,19 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		Version:     *projCtx.Version,
 	}
 
-	tasks, err := task.FindAllFirstExecution(task.ByBuildId(projCtx.Build.Id))
+	uiTasks, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
 		return
 	}
-	uiTasks, err := getUiTaskCache(projCtx.Build, tasks)
+	updatedBuild.Tasks = uiTasks
+
+	timeTaken, makespan, err := projCtx.Build.GetTimeSpent()
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
 	}
-	updatedBuild.Tasks = uiTasks
-	updatedBuild.TimeTaken, updatedBuild.Makespan = task.GetTimeSpent(tasks)
+	updatedBuild.TimeTaken, updatedBuild.Makespan = timeTaken, makespan
 
 	gimlet.WriteJSON(w, updatedBuild)
 }
@@ -327,6 +336,12 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	buildTaskMap, err := getBuildTaskMap(builds)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error getting tasks for builds: %v", err), http.StatusInternalServerError)
+		return
+	}
+
 	history := &struct {
 		Builds      []*uiBuild `json:"builds"`
 		LastSuccess *uiBuild   `json:"lastSuccess"`
@@ -344,8 +359,19 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("no version found for build %v", builds[i].Id), http.StatusNotFound)
 			return
 		}
+
+		uiTasks := make([]uiTask, 0, len(builds[i].Tasks))
+		if dbTaskMap, ok := buildTaskMap[builds[i].Id]; ok {
+			for _, t := range builds[i].Tasks {
+				if dbTask, ok := dbTaskMap[t.Id]; ok {
+					uiTasks = append(uiTasks, uiTask{Task: dbTask})
+				}
+			}
+		}
+
 		history.Builds[i] = &uiBuild{
 			Build:       builds[i],
+			Tasks:       uiTasks,
 			CurrentTime: time.Now().UnixNano(),
 			Elapsed:     time.Since(builds[i].StartTime),
 			RepoOwner:   v.Owner,
@@ -378,4 +404,24 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gimlet.WriteJSON(w, history)
+}
+
+func getBuildTaskMap(builds []build.Build) (map[string]map[string]task.Task, error) {
+	buildIds := make([]string, 0, len(builds))
+	for _, b := range builds {
+		buildIds = append(buildIds, b.Id)
+	}
+	tasksForBuilds, err := task.FindAll(task.ByBuildIds(buildIds).WithFields(task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get tasks for builds")
+	}
+	buildTaskMap := make(map[string]map[string]task.Task)
+	for _, t := range tasksForBuilds {
+		if buildTaskMap[t.BuildId] == nil {
+			buildTaskMap[t.BuildId] = make(map[string]task.Task)
+		}
+		buildTaskMap[t.BuildId][t.Id] = t
+	}
+
+	return buildTaskMap, nil
 }
