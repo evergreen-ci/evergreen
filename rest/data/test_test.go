@@ -354,7 +354,7 @@ func TestFindTestsByTaskIdFilterSortPaginate(t *testing.T) {
 		assert.NoError(err)
 		assert.Len(foundTests, 10)
 	}
-	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TestID: "5949645c9acd9604fdd202d9", TaskID: "task_2"})
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TestID: string(testID), TaskID: "task_2"})
 	assert.NoError(err)
 	assert.Len(foundTests, 1)
 
