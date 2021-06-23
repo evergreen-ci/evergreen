@@ -10,7 +10,7 @@ mciModule.controller('AdminOptionsCtrl', [
     };
 
     $scope.numToBeRestarted = function(){
-        return $scope.build.tasks.filter(function(x){return x.checkedForRestart}).length;
+        return $scope.buildTasks.filter(function(x){return x.checkedForRestart}).length;
     }
 
     $scope.adminOptionVals = {};
@@ -22,7 +22,7 @@ mciModule.controller('AdminOptionsCtrl', [
         $scope.selection = status;
 
         _.each($scope.buildTasks, function(task) {
-          task.checkedForRestart = status.matches(task)
+          task.checkedForRestart = status.matches(task.Task)
         })
     }
 

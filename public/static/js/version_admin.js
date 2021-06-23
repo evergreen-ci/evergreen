@@ -38,7 +38,7 @@ mciModule.controller('AdminOptionsCtrl', [
 
         _.each($scope.version.Builds, function(build) {
             _.each(build.Tasks, function(task) {
-                task.checkedForRestart = status.matches(task)
+                task.checkedForRestart = status.matches(task.Task)
             })
         })
     }

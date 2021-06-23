@@ -19,7 +19,7 @@
        <ul ng-show="collapsedBuilds[build.Build._id]">
          <li ng-repeat="task in build.Tasks" style="list-style:none;" >
            <input type="checkbox" ng-model="task.checkedForRestart" ng-change="setRestartSelection('')"/> &nbsp;
-           <span ng-class="task | statusFilter" style="width:12px;height:12px;display:inline-block;vertical-align:middle">&nbsp;</span> [[task.display_name]]
+           <span ng-class="task.Task | statusFilter" style="width:12px;height:12px;display:inline-block;vertical-align:middle">&nbsp;</span> [[task.Task.display_name]]
          </li>
        </ul>
      </li>
