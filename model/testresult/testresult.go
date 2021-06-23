@@ -222,8 +222,13 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	if opts.GroupID != "" {
 		match[GroupIDKey] = opts.GroupID
 	}
+
 	if opts.TestID != "" {
-		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(opts.TestID)}
+		id := mgobson.ObjectId(opts.TestID)
+		if mgobson.IsObjectIdHex(opts.TestID) {
+			id = mgobson.ObjectIdHex(opts.TestID)
+		}
+		match[IDKey] = bson.M{"$gte": id}
 	}
 
 	pipeline := []bson.M{
