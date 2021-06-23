@@ -22,11 +22,6 @@ type goTestResults struct {
 	// a list of filename blobs to include
 	// e.g. "monitor.suite", "output/*"
 	Files []string `mapstructure:"files" plugin:"expand"`
-
-	// Optional, when set to true, causes this command to be skipped over without an error when
-	// no files are found to be parsed.
-	OptionalOutput bool `mapstructure:"optional_output" plugin:"expand"`
-
 	base
 }
 
@@ -69,13 +64,9 @@ func (c *goTestResults) Execute(ctx context.Context,
 		return errors.Wrap(err, "obtaining names of output files")
 	}
 
-	// make sure that we're parsing something or have optional parameter
+	// make sure we're parsing something
 	if len(outputFiles) == 0 {
-		if c.OptionalOutput {
-			return nil
-		} else {
-			return errors.New("no files found to be parsed")
-		}
+		return errors.New("no files found to be parsed")
 	}
 
 	// parse all of the files
