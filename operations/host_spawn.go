@@ -1018,7 +1018,7 @@ func hostRunCommand() cli.Command {
 	return cli.Command{
 		Name:  "exec",
 		Usage: "run a bash shell script on host(s) and print the output",
-		Flags: mergeFlagSlices(addHostFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addHostFlag(), addSkipConfirmFlag(
 			cli.StringFlag{
 				Name:  createdBeforeFlagName,
 				Usage: "only run on hosts created before `TIME` in RFC3339 format",
@@ -1064,7 +1064,7 @@ func hostRunCommand() cli.Command {
 			mine := c.Bool(mineFlagName)
 			script := c.String(scriptFlagName)
 			path := c.String(pathFlagName)
-			skipConfirm := c.Bool(yesFlagName)
+			skipConfirm := c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName)
 			batchSize := c.Int(batchSizeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())

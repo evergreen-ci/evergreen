@@ -123,7 +123,7 @@ func mergeCommand() cli.Command {
 	return cli.Command{
 		Name:  "merge",
 		Usage: "test and merge a feature branch",
-		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addCommitsFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addCommitsFlag(), addSkipConfirmFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(resumeFlagName, "r", patchFinalizeFlagName, "f"),
 				Usage: "resume testing a preexisting item with `ID`",
@@ -156,7 +156,7 @@ func mergeCommand() cli.Command {
 				commits:     commits,
 				id:          c.String(resumeFlagName),
 				pause:       c.Bool(pauseFlagName),
-				skipConfirm: c.Bool(yesFlagName),
+				skipConfirm: c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName),
 				large:       c.Bool(largeFlagName),
 				force:       c.Bool(forceFlagName),
 			}
@@ -185,7 +185,7 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addCommitsFlag()),
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addCommitsFlag()),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
@@ -199,7 +199,7 @@ func setModuleCommand() cli.Command {
 				ref:         c.String(refFlagName),
 				commits:     c.String(commitsFlagName),
 				large:       c.Bool(largeFlagName),
-				skipConfirm: c.Bool(yesFlagName),
+				skipConfirm: c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName),
 			}
 
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
@@ -224,7 +224,7 @@ func enqueuePatch() cli.Command {
 	return cli.Command{
 		Name:  "enqueue-patch",
 		Usage: "enqueue an existing patch on the commit queue",
-		Flags: mergeFlagSlices(addYesFlag(), addPatchIDFlag(
+		Flags: mergeFlagSlices(addSkipConfirmFlag(), addPatchIDFlag(
 			cli.BoolFlag{
 				Name:  forceFlagName,
 				Usage: "force item to front of queue",
@@ -243,7 +243,7 @@ func enqueuePatch() cli.Command {
 			patchID := c.String(patchIDFlagName)
 			commitMessage := c.String(commitMessageFlag)
 			force := c.Bool(forceFlagName)
-			skipConfirm := c.Bool(yesFlagName)
+			skipConfirm := c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
