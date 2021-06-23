@@ -393,8 +393,16 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("no version '%v' found", lastSuccess.Version), http.StatusNotFound)
 			return
 		}
+
+		uiTasks, err := getUiTaskCache(lastSuccess)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("can't get tasks for last successful version '%s'", lastSuccess.Version), http.StatusInternalServerError)
+			return
+		}
+
 		history.LastSuccess = &uiBuild{
 			Build:       *lastSuccess,
+			Tasks:       uiTasks,
 			CurrentTime: time.Now().UnixNano(),
 			Elapsed:     time.Since(lastSuccess.StartTime),
 			RepoOwner:   v.Owner,
