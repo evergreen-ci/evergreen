@@ -62,7 +62,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 		Id: "empty_task",
 	}
 	assert.NoError(emptyTask.Insert())
-	foundTests, err := serviceContext.FindTestsByTaskId("empty_task", "", "", "", 0, 0)
+	foundTests, err := serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: "empty_task"})
 	assert.NoError(err, "missing tests should not return a 404")
 	assert.Len(foundTests, 0)
 
@@ -102,22 +102,24 @@ func TestFindTestsByTaskId(t *testing.T) {
 
 	for i := 0; i < numTasks; i++ {
 		taskId := fmt.Sprintf("task_%d", i)
-		foundTests, err = serviceContext.FindTestsByTaskId(taskId, "", "", "", 0, 0)
+		// 	//taskId, testId, testName, status string, limit, execution int
+
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: taskId})
 		assert.NoError(err)
 		assert.Len(foundTests, numTests)
 
-		foundTests, err = serviceContext.FindTestsByTaskId(taskId, "", "", "", i+1, 0)
+		foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: taskId, Limit: i + 1})
 		assert.NoError(err)
 		assert.Len(foundTests, i+1)
 
 		for _, testName := range testObjects {
-			foundTests, err = serviceContext.FindTestsByTaskId(taskId, "", testName, "", 0, 0)
+			foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: taskId, TestName: testName})
 			assert.NoError(err)
 			assert.Len(foundTests, 1)
 		}
 
 		for _, status := range []string{"pass", "fail"} {
-			foundTests, err = serviceContext.FindTestsByTaskId(fmt.Sprintf("task_%d", i), "", "", status, 0, 0)
+			foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: fmt.Sprintf("task_%d", i), Statuses: []string{status}})
 			assert.NoError(err)
 			assert.Equal(numTests/2, len(foundTests))
 			for _, t := range foundTests {
@@ -126,7 +128,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 		}
 	}
 
-	foundTests, err = serviceContext.FindTestsByTaskId("fake_task", "", "", "", 0, 0)
+	foundTests, err = serviceContext.FindTestsByTaskIdFilterSortPaginate(FindTestsByTaskIdFilterSortPaginateOpts{TaskID: "fake_task"})
 	assert.Error(err)
 	assert.Len(foundTests, 0)
 	apiErr, ok := err.(gimlet.ErrorResponse)
