@@ -9,7 +9,7 @@ mciModule.controller('AdminOptionsCtrl', [
     $scope.checkedForRestartIds = function(){
         return _.pluck($scope.version.Builds.map(
           function(x){
-            return x.Build.tasks.filter(function(y){return y.checkedForRestart});
+            return x.Tasks.filter(function(y){return y.checkedForRestart});
           }
         ).reduce(function(x,y){return x.concat(y)}, []), "id");
     }
@@ -23,10 +23,10 @@ mciModule.controller('AdminOptionsCtrl', [
         // filtered set of builds
         return $scope.version.Builds.filter(buildFilter).map(
           function(x){
-            if (!x.Build.tasks) {
+            if (!x.Tasks) {
               return 0;
             }
-            return x.Build.tasks.filter(function(y){return y.checkedForRestart}).length;
+            return x.Tasks.filter(function(y){return y.checkedForRestart}).length;
           }
         ).reduce(function(x,y){return x+y}, 0);
     }
@@ -37,7 +37,7 @@ mciModule.controller('AdminOptionsCtrl', [
         $scope.selection = status
 
         _.each($scope.version.Builds, function(build) {
-            _.each(build.Build.tasks, function(task) {
+            _.each(build.Tasks, function(task) {
                 task.checkedForRestart = status.matches(task)
             })
         })
