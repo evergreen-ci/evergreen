@@ -171,12 +171,13 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 		return errors.Wrap(err, "Error finding previous task")
 	}
 
+	// for generated tasks, try to activate the generator instead if the previous task we found isn't the actual last task
+	if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
+		return activatePreviousTask(t.GeneratedBy, caller, t)
+	}
+
 	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
 	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 || prevTask.Activated {
-		// try to activate the generator if the previous task we found isn't the actual last task
-		if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
-			return activatePreviousTask(t.GeneratedBy, caller, t)
-		}
 		return nil
 	}
 
@@ -420,7 +421,6 @@ func getStepback(taskId string) (bool, error) {
 	}
 
 	projectTask := project.FindProjectTask(t.DisplayName)
-
 	// Check if the task overrides the stepback policy specified by the project
 	if projectTask != nil && projectTask.Stepback != nil {
 		return *projectTask.Stepback, nil
