@@ -508,6 +508,8 @@ type Patch {
 type ChildPatch {
   project: String!
   patchID: String!
+  status: String!
+  taskCount: Int
 }
 
 type Build {

@@ -52,6 +52,7 @@ type DownstreamTasks struct {
 type ChildPatch struct {
 	Project *string `json:"project"`
 	PatchID *string `json:"patch_id"`
+	Status  *string `json:"status"`
 }
 type VariantTask struct {
 	Name  *string   `json:"name"`
@@ -221,6 +222,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error)
 		cp := ChildPatch{
 			Project: utility.ToStringPtr(childPatchDoc.Project),
 			PatchID: utility.ToStringPtr(childPatch),
+			Status:  utility.ToStringPtr(childPatchDoc.Status),
 		}
 		downstreamTasks = append(downstreamTasks, dt)
 		childPatches = append(childPatches, cp)

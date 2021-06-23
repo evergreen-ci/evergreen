@@ -40,6 +40,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Annotation() AnnotationResolver
+	ChildPatch() ChildPatchResolver
 	Host() HostResolver
 	IssueLink() IssueLinkResolver
 	Mutation() MutationResolver
@@ -111,8 +112,10 @@ type ComplexityRoot struct {
 	}
 
 	ChildPatch struct {
-		PatchID func(childComplexity int) int
-		Project func(childComplexity int) int
+		PatchID   func(childComplexity int) int
+		Project   func(childComplexity int) int
+		Status    func(childComplexity int) int
+		TaskCount func(childComplexity int) int
 	}
 
 	ClientBinary struct {
@@ -812,6 +815,9 @@ type ComplexityRoot struct {
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
+type ChildPatchResolver interface {
+	TaskCount(ctx context.Context, obj *model.ChildPatch) (*int, error)
+}
 type HostResolver interface {
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
 
@@ -933,6 +939,8 @@ type TaskResolver interface {
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 
 	DisplayTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
+
+	EstimatedStart(ctx context.Context, obj *model.APITask) (*model.APIDuration, error)
 
 	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
 
@@ -1200,6 +1208,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ChildPatch.Project(childComplexity), true
+
+	case "ChildPatch.status":
+		if e.complexity.ChildPatch.Status == nil {
+			break
+		}
+
+		return e.complexity.ChildPatch.Status(childComplexity), true
+
+	case "ChildPatch.taskCount":
+		if e.complexity.ChildPatch.TaskCount == nil {
+			break
+		}
+
+		return e.complexity.ChildPatch.TaskCount(childComplexity), true
 
 	case "ClientBinary.arch":
 		if e.complexity.ClientBinary.Arch == nil {
@@ -5378,6 +5400,8 @@ type Patch {
 type ChildPatch {
   project: String!
   patchID: String!
+  status: String!
+  taskCount: Int
 }
 
 type Build {
@@ -8209,6 +8233,71 @@ func (ec *executionContext) _ChildPatch_patchID(ctx context.Context, field graph
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ChildPatch_status(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ChildPatch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ChildPatch_taskCount(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ChildPatch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ChildPatch().TaskCount(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ClientBinary_arch(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
@@ -18896,13 +18985,13 @@ func (ec *executionContext) _Task_estimatedStart(ctx context.Context, field grap
 		Object:   "Task",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.EstimatedStart, nil
+		return ec.resolvers.Task().EstimatedStart(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18911,9 +19000,9 @@ func (ec *executionContext) _Task_estimatedStart(ctx context.Context, field grap
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(model.APIDuration)
+	res := resTmp.(*model.APIDuration)
 	fc.Result = res
-	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_execution(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -26426,13 +26515,29 @@ func (ec *executionContext) _ChildPatch(ctx context.Context, sel ast.SelectionSe
 		case "project":
 			out.Values[i] = ec._ChildPatch_project(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "patchID":
 			out.Values[i] = ec._ChildPatch_patchID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "status":
+			out.Values[i] = ec._ChildPatch_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "taskCount":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChildPatch_taskCount(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -29336,7 +29441,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "estimatedStart":
-			out.Values[i] = ec._Task_estimatedStart(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_estimatedStart(ctx, field, obj)
+				return res
+			})
 		case "execution":
 			out.Values[i] = ec._Task_execution(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
