@@ -301,12 +301,11 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	}
 	updatedBuild.Tasks = uiTasks
 
-	timeTaken, makespan, err := projCtx.Build.GetTimeSpent()
+	updatedBuild.TimeTaken, updatedBuild.Makespan, err = projCtx.Build.GetTimeSpent()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
 	}
-	updatedBuild.TimeTaken, updatedBuild.Makespan = timeTaken, makespan
 
 	gimlet.WriteJSON(w, updatedBuild)
 }
@@ -332,7 +331,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buildTaskIDsMap, taskIDTaskMap, err := getBuildTaskMaps(builds)
+	taskMap, err := getTaskMapForBuilds(builds)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting tasks for builds: %v", err), http.StatusInternalServerError)
 		return
@@ -357,9 +356,8 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		}
 
 		uiTasks := make([]uiTask, 0, len(builds[i].Tasks))
-		taskIDs := buildTaskIDsMap[builds[i].Id]
-		for _, tID := range taskIDs {
-			if dbTask, ok := taskIDTaskMap[tID]; ok {
+		for _, t := range builds[i].Tasks {
+			if dbTask, ok := taskMap[t.Id]; ok {
 				uiTasks = append(uiTasks, uiTask{Task: dbTask})
 			}
 		}
@@ -409,24 +407,17 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, history)
 }
 
-// getBuildTaskMaps returns
-// 1. a map of build ID to a task ID slice
-// 2. a map of task IDs to task documents
-func getBuildTaskMaps(builds []build.Build) (map[string][]string, map[string]task.Task, error) {
+// getTaskMapForBuilds returns a map of task ID to task document
+// for all tasks in builds
+func getTaskMapForBuilds(builds []build.Build) (map[string]task.Task, error) {
 	buildIds := make([]string, 0, len(builds))
 	for _, b := range builds {
 		buildIds = append(buildIds, b.Id)
 	}
 	tasksForBuilds, err := task.FindAll(task.ByBuildIds(buildIds).WithFields(task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "can't get tasks for builds")
-	}
-	buildTaskIDsMap := make(map[string][]string)
-	taskIDTaskMap := make(map[string]task.Task)
-	for _, t := range tasksForBuilds {
-		buildTaskIDsMap[t.BuildId] = append(buildTaskIDsMap[t.BuildId], t.Id)
-		taskIDTaskMap[t.Id] = t
+		return nil, errors.Wrap(err, "can't get tasks for builds")
 	}
 
-	return buildTaskIDsMap, taskIDTaskMap, nil
+	return task.TaskSliceToMap(tasksForBuilds), nil
 }
