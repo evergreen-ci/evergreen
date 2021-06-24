@@ -239,22 +239,19 @@ const (
 	MergeTaskName    = "merge-patch"
 	MergeTaskGroup   = "merge-task-group"
 
-	MaxTeardownGroupTimeoutSecs = 30 * 60
-
 	DefaultJasperPort = 2385
 
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	VSCodePort = 2021
 
-	// can flip this when regions are configured
-	UseSpawnHostRegions = false
-
 	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the
 	// end of a patch.
 	DefaultTaskSyncAtEndTimeout = time.Hour
 
 	DefaultShutdownWaitSeconds = 10
+
+	RetryGenerateTasksError = "error saving config in `generate.tasks`"
 )
 
 var InternalAliases []string = []string{
