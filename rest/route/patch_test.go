@@ -127,15 +127,14 @@ func (s *PatchesByProjectSuite) SetupTest() {
 	s.route = makePatchesByProjectRoute(s.sc).(*patchesByProjectHandler)
 }
 
-func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
+func (s *PatchesByProjectSuite) TestPaginatorShouldSucceedIfNoResults() {
 	s.route.projectId = "project3"
 	s.route.key = s.now
 	s.route.limit = 1
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.Equal(http.StatusNotFound, resp.Status())
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no patches found")
+	s.Equal(http.StatusOK, resp.Status(), "%+v", resp.Data())
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
@@ -428,15 +427,14 @@ func (s *PatchesByUserSuite) SetupTest() {
 	}
 }
 
-func (s *PatchesByUserSuite) TestPaginatorShouldErrorIfNoResults() {
+func (s *PatchesByUserSuite) TestPaginatorShouldSucceedIfNoResults() {
 	s.route.user = "zzz"
 	s.route.key = s.now
 	s.route.limit = 1
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.Equal(http.StatusNotFound, resp.Status())
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no patches found")
+	s.Equal(http.StatusOK, resp.Status(), "%+v", resp.Data())
 }
 
 func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
