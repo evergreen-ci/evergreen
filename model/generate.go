@@ -209,7 +209,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		}
 	}
 	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
-	batchTimeInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester, t)
 
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
@@ -264,12 +264,12 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
-	tasksInExistingBuilds, err := addNewTasks(ctx, batchTimeInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, projectRef.Identifier, g.TaskID)
+	tasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, projectRef.Identifier, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := addNewBuilds(ctx, batchTimeInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, projectRef, g.TaskID)
+	_, tasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, projectRef, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
@@ -282,47 +282,57 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 }
 
 type specificActivationInfo struct {
-	tasks    map[string][]string // tasks by variant that have batchtime or activate specified
-	variants []string            // variants that have batchtime or activate specified
+	stepbackTasks      map[string][]string
+	activationTasks    map[string][]string // tasks by variant that have batchtime or activate specified
+	activationVariants []string            // variants that have batchtime or activate specified
 }
 
 func newSpecificActivationInfo() specificActivationInfo {
 	return specificActivationInfo{
-		tasks:    map[string][]string{},
-		variants: []string{},
+		stepbackTasks:      map[string][]string{},
+		activationTasks:    map[string][]string{},
+		activationVariants: []string{},
 	}
 }
 
 func (b *specificActivationInfo) variantHasSpecificActivation(variant string) bool {
-	return utility.StringSliceContains(b.variants, variant)
+	return utility.StringSliceContains(b.activationVariants, variant)
 }
 
 func (b *specificActivationInfo) getTasks(variant string) []string {
-	return b.tasks[variant]
+	return b.activationTasks[variant]
 }
 
 func (b *specificActivationInfo) hasTasks() bool {
-	return len(b.tasks) > 0
+	return len(b.activationTasks) > 0
+}
+
+func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
+	return utility.StringSliceContains(b.stepbackTasks[variant], task)
 }
 
 // given some list of tasks, returns the tasks that don't have batchtime
 func (b *specificActivationInfo) tasksWithoutSpecificActivation(taskNames []string, variant string) []string {
-	tasksWithoutSpecificActivation, _ := utility.StringSliceSymmetricDifference(taskNames, b.tasks[variant])
+	tasksWithoutSpecificActivation, _ := utility.StringSliceSymmetricDifference(taskNames, b.activationTasks[variant])
 	return tasksWithoutSpecificActivation
 }
 
-func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
+func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string, generatorTask *task.Task) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
 		// only consider batchtime for certain requesters
 		if evergreen.ShouldConsiderBatchtime(requester) && (bv.BatchTime != nil || bv.CronBatchTime != "") {
-			res.variants = append(res.variants, bv.name())
+			res.activationVariants = append(res.activationVariants, bv.name())
 		} else if bv.Activate != nil {
-			res.variants = append(res.variants, bv.name())
+			res.activationVariants = append(res.activationVariants, bv.name())
 		}
 		// regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
+			if isStepbackTask(generatorTask, bv.Name, bvt.Name) {
+				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], bvt.Name)
+				continue // don't consider batchtime/activation if we're stepping back this generated task
+			}
 			if evergreen.ShouldConsiderBatchtime(requester) && (bvt.BatchTime != nil || bvt.CronBatchTime != "") {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			} else if bvt.Activate != nil {
@@ -330,10 +340,20 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 			}
 		}
 		if len(batchTimeTasks) > 0 {
-			res.tasks[bv.name()] = batchTimeTasks
+			res.activationTasks[bv.name()] = batchTimeTasks
 		}
 	}
 	return res
+}
+
+// isStepbackTask returns true if the task unit is supposed to be stepped back for this generator
+func isStepbackTask(generatorTask *task.Task, variant, taskName string) bool {
+	for bv, tasks := range generatorTask.GeneratedTasksToStepback {
+		if bv == variant && utility.StringSliceContains(tasks, taskName) {
+			return true
+		}
+	}
+	return false
 }
 
 func addDependencies(t *task.Task, newTaskIds []string) error {

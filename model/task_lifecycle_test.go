@@ -347,7 +347,7 @@ func TestActivatePreviousTask(t *testing.T) {
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
-			So(activatePreviousTask(currentTask.Id, ""), ShouldBeNil)
+			So(activatePreviousTask(currentTask.Id, "", nil), ShouldBeNil)
 			t, err := task.FindOne(task.ById(previousTask.Id))
 			So(err, ShouldBeNil)
 			So(t.Activated, ShouldBeTrue)
@@ -2725,18 +2725,13 @@ func TestStepbackWithGenerators(t *testing.T) {
 		Version:   "v1",
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
-	b2 := &build.Build{
-		Id:        "build2",
-		Status:    evergreen.BuildStarted,
-		Version:   "v2",
-		Requester: evergreen.RepotrackerVersionRequester,
-	}
 	t1Success := &task.Task{
 		Id:                  "t1_success",
 		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           true,
 		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
 		Execution:           1,
 		Project:             "sample",
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
@@ -2751,6 +2746,7 @@ func TestStepbackWithGenerators(t *testing.T) {
 		DisplayName:         "other_task",
 		Activated:           true,
 		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
 		Execution:           1,
 		Project:             "sample",
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
@@ -2764,7 +2760,8 @@ func TestStepbackWithGenerators(t *testing.T) {
 		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           false,
-		BuildId:             b2.Id,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
 		Execution:           1,
 		Project:             "sample",
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
@@ -2779,7 +2776,8 @@ func TestStepbackWithGenerators(t *testing.T) {
 		DistroId:            "test",
 		DisplayName:         "other_task_gen",
 		Activated:           false,
-		BuildId:             b2.Id,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
 		Execution:           1,
 		Project:             "sample",
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
@@ -2787,6 +2785,7 @@ func TestStepbackWithGenerators(t *testing.T) {
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             "v2",
+		GenerateTask:        true,
 		DependsOn: []task.Dependency{
 			{
 				TaskId: "my_dep",
@@ -2799,7 +2798,8 @@ func TestStepbackWithGenerators(t *testing.T) {
 		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           false,
-		BuildId:             b2.Id,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
 		Execution:           1,
 		Project:             "sample",
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
@@ -2815,7 +2815,8 @@ func TestStepbackWithGenerators(t *testing.T) {
 		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           true,
-		BuildId:             b2.Id,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
 		Execution:           1,
 		Project:             "sample",
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
@@ -2830,7 +2831,8 @@ func TestStepbackWithGenerators(t *testing.T) {
 		DistroId:            "test",
 		DisplayName:         "other_task_gen",
 		Activated:           true,
-		BuildId:             b2.Id,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
 		Execution:           1,
 		Project:             "sample",
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
@@ -2838,13 +2840,15 @@ func TestStepbackWithGenerators(t *testing.T) {
 		RevisionOrderNumber: 2,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Version:             "v2",
+		GenerateTask:        true,
 	}
 	taskToStepback2 := &task.Task{
 		Id:                  "t4",
 		DistroId:            "test",
 		DisplayName:         "other_task",
 		Activated:           true,
-		BuildId:             b2.Id,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
 		Execution:           1,
 		Project:             "sample",
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
@@ -2855,7 +2859,6 @@ func TestStepbackWithGenerators(t *testing.T) {
 		Version:             "v3",
 	}
 	assert.NoError(t, b1.Insert())
-	assert.NoError(t, b2.Insert())
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, genToStepback.Insert())
 	assert.NoError(t, taskToStepback.Insert())
@@ -2878,6 +2881,7 @@ func TestStepbackWithGenerators(t *testing.T) {
 	dbTask, err = task.FindOne(task.ById(genPrevious.Id))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)
+	assert.Equal(t, dbTask.GeneratedTasksToStepback[taskToStepback2.BuildVariant], []string{taskToStepback2.DisplayName})
 	// verify dependency is activated as well
 	dbTask, err = task.FindOne(task.ById(depTask.Id))
 	assert.NoError(t, err)
