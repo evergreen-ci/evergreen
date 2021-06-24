@@ -156,7 +156,7 @@ func mergeCommand() cli.Command {
 				commits:     commits,
 				id:          c.String(resumeFlagName),
 				pause:       c.Bool(pauseFlagName),
-				skipConfirm: c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName),
+				skipConfirm: c.Bool(skipConfirmFlagName),
 				large:       c.Bool(largeFlagName),
 				force:       c.Bool(forceFlagName),
 			}
@@ -199,7 +199,7 @@ func setModuleCommand() cli.Command {
 				ref:         c.String(refFlagName),
 				commits:     c.String(commitsFlagName),
 				large:       c.Bool(largeFlagName),
-				skipConfirm: c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName),
+				skipConfirm: c.Bool(skipConfirmFlagName),
 			}
 
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
@@ -243,7 +243,7 @@ func enqueuePatch() cli.Command {
 			patchID := c.String(patchIDFlagName)
 			commitMessage := c.String(commitMessageFlag)
 			force := c.Bool(forceFlagName)
-			skipConfirm := c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName)
+			skipConfirm := c.Bool(skipConfirmFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

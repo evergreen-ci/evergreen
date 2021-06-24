@@ -1064,7 +1064,7 @@ func hostRunCommand() cli.Command {
 			mine := c.Bool(mineFlagName)
 			script := c.String(scriptFlagName)
 			path := c.String(pathFlagName)
-			skipConfirm := c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName)
+			skipConfirm := c.Bool(skipConfirmFlagName)
 			batchSize := c.Int(batchSizeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())

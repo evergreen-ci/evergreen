@@ -35,7 +35,7 @@ func PatchSetModule() cli.Command {
 			module := c.String(moduleFlagName)
 			patchID := c.String(patchIDFlagName)
 			large := c.Bool(largeFlagName)
-			skipConfirm := c.Bool(yesFlagName) || c.Bool(skipConfirmFlagName)
+			skipConfirm := c.Bool(skipConfirmFlagName)
 			ref := c.String(refFlagName)
 			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			preserveCommits := c.Bool(preserveCommitsFlag)
