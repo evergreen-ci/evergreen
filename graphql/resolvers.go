@@ -73,6 +73,11 @@ func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
 
+// ChildPatch returns ChildPatchResolver implementation.
+func (r *Resolver) ChildPatch() ChildPatchResolver {
+	return &childPatchResolver{r}
+}
+
 // IssueLink returns IssueLinkResolver implementation.
 func (r *Resolver) IssueLink() IssueLinkResolver {
 	return &issueLinkResolver{r}
@@ -85,6 +90,7 @@ type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
+type childPatchResolver struct{ *Resolver }
 type issueLinkResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
@@ -1328,6 +1334,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			}
 			if err = apiTest.BuildFromService(&t); err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
+				apiTest.Logs.HTMLDisplayURL = &formattedURL
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
+				apiTest.Logs.RawDisplayURL = &formattedURL
 			}
 
 			testPointers = append(testPointers, &apiTest)
@@ -2782,6 +2796,14 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
 	return IsWebhookConfigured(t), nil
+}
+
+func (r *childPatchResolver) TaskCount(ctx context.Context, obj *restModel.ChildPatch) (*int, error) {
+	taskCount, err := task.Count(task.ByVersion(*obj.PatchID))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.PatchID, err.Error()))
+	}
+	return &taskCount, nil
 }
 
 func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIssueLink) (*thirdparty.JiraTicket, error) {

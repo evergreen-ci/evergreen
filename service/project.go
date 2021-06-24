@@ -473,10 +473,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable git tag versions without version definitions"))
 				return
 			}
-			if len(responseRef.GitTagAuthorizedUsers) == 0 && len(responseRef.GitTagAuthorizedTeams) == 0 {
-				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("must authorize users or teams to create git tag versions"))
-				return
-			}
 		}
 
 		// Prevent multiple projects tracking the same repo/branch from enabling commit queue

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -189,6 +190,9 @@ type Task struct {
 	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
+	// GeneratedTasksToStepback is only populated if we want to override activation for these generated tasks, because of stepback.
+	// Maps the build variant to a list of task names.
+	GeneratedTasksToStepback map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -864,6 +868,20 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 		bson.M{
 			"$set": bson.M{
 				GeneratedJSONAsStringKey: s,
+			},
+		},
+	)
+}
+
+// SetGeneratedTasksToStepback adds a task to stepback after activation
+func (t *Task) SetGeneratedTasksToStepback(buildVariantName, taskName string) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$addToSet": bson.M{
+				bsonutil.GetDottedKeyName(GeneratedTasksToStepbackKey, buildVariantName): taskName,
 			},
 		},
 	)
@@ -2804,6 +2822,35 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			{
 				"$match": bson.M{
 					tempParentKey: []interface{}{},
+				},
+			},
+			// get any annotation that has at least one issue
+			{
+				"$lookup": bson.M{
+					"from": annotations.Collection,
+					"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
+					"pipeline": []bson.M{
+						{
+							"$match": bson.M{
+								"$expr": bson.M{
+									"$and": []bson.M{
+										{
+											"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
+										},
+										{
+											"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
+										},
+										{
+											"$ne": []interface{}{
+												bson.M{
+													"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+												}, 0,
+											},
+										},
+									},
+								},
+							}}},
+					"as": "annotation_docs",
 				},
 			},
 
