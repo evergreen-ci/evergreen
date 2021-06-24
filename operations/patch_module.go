@@ -18,7 +18,7 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(),
+		Flags: mergeFlagSlices(addPatchIDFlag(), addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addUncommittedChangesFlag(),
 			addPatchFinalizeFlag(), addPreserveCommitsFlag(
 				cli.BoolFlag{
 					Name:  largeFlagName,
@@ -35,7 +35,7 @@ func PatchSetModule() cli.Command {
 			module := c.String(moduleFlagName)
 			patchID := c.String(patchIDFlagName)
 			large := c.Bool(largeFlagName)
-			skipConfirm := c.Bool(yesFlagName)
+			skipConfirm := c.Bool(skipConfirmFlagName)
 			ref := c.String(refFlagName)
 			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			preserveCommits := c.Bool(preserveCommitsFlag)
