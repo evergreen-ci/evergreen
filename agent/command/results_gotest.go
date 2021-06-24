@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -25,7 +26,8 @@ type goTestResults struct {
 
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// no files are found to be parsed.
-	OptionalOutput bool `mapstructure:"optional_output" plugin:"expand"`
+	OptionalOutput   string `mapstructure:"optional_output" plugin:"expand"`
+	outputIsOptional bool
 
 	base
 }
@@ -36,8 +38,16 @@ func (c *goTestResults) Name() string { return "gotest.parse_files" }
 // ParseParams reads the specified map of parameters into the goTestResults struct, and
 // validates that at least one file pattern is specified.
 func (c *goTestResults) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, c); err != nil {
+	var err error
+	if err = mapstructure.Decode(params, c); err != nil {
 		return errors.Wrapf(err, "error decoding '%s' params", c.Name())
+	}
+
+	if c.OptionalOutput != "" {
+		c.outputIsOptional, err = strconv.ParseBool(c.OptionalOutput)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	if len(c.Files) == 0 {
@@ -71,7 +81,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 
 	// make sure that we're parsing something or have optional parameter
 	if len(outputFiles) == 0 {
-		if c.OptionalOutput {
+		if c.outputIsOptional {
 			return nil
 		} else {
 			return errors.New("no files found to be parsed")

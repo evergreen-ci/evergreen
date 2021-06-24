@@ -219,13 +219,6 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	if len(patches) == 0 {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "no patches found",
-			StatusCode: http.StatusNotFound,
-		})
-	}
-
 	resp := gimlet.NewResponseBuilder()
 	if err = resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
@@ -313,13 +306,6 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	patches, err := p.sc.FindPatchesByProject(p.projectId, p.key, p.limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
-	}
-
-	if len(patches) == 0 {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "no patches found",
-			StatusCode: http.StatusNotFound,
-		})
 	}
 
 	resp := gimlet.NewResponseBuilder()

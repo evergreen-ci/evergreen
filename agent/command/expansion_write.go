@@ -52,5 +52,4 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	}
 	logger.Task().Infof("expansions written to file (%s)", fn)
 	return nil
-
 }

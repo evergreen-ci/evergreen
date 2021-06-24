@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/mongodb/grip"
@@ -29,10 +28,6 @@ FileLoop:
 	for file := range pathsToAdd {
 		if ctx.Err() != nil {
 			return numFilesArchived, errors.Wrap(ctx.Err(), "timeout when building archive")
-		}
-		if reflect.ValueOf(file.Info).IsNil() {
-			logger.Warningf("Could not get FileInfo for %s, ignoring", file.Path)
-			continue
 		}
 
 		var intarball string
