@@ -772,6 +772,7 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 			"requester":       requester,
 			"allowed_origins": allowedOrigins,
 			"adding_headers":  utility.StringSliceContains(allowedOrigins, requester),
+			"settings_is_nil": evergreen.GetEnvironment().Settings() == nil,
 		})
 		if len(allowedOrigins) > 0 {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
