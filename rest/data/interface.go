@@ -1,4 +1,4 @@
-ffindpackage data
+package data
 
 import (
 	"context"
@@ -139,9 +139,9 @@ type Connector interface {
 
 	// FindTestById returns a single test result with the given id.
 	FindTestById(string) ([]testresult.TestResult, error)
-	// FindTestsByTaskId returns a paginated list of testresults from a required TaskID. SortBy references the bson key name and SortDir indicates ascending or descending. 
+	// FindTestsByTaskId returns a paginated list of testresults from a required TaskID. SortBy references the bson key name and SortDir indicates ascending or descending.
 	// Not providing limit will return all results. All other options aside from TestID and Page filter the list based on exact match. Supplying TestID matches all IDs >= TestID.
-	// Page * Limit resembles the number of skipped documents. 
+	// Page * Limit resembles the number of skipped documents.
 	FindTestsByTaskId(FindTestsByTaskIdOpts) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
 	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)

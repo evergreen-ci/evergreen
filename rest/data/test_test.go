@@ -394,10 +394,10 @@ func TestFindTestsByDisplayTaskId(t *testing.T) {
 		ExecutionTasks: []string{},
 	}
 	assert.NoError(displayTaskWithoutTasks.Insert())
-	foundTests, err := serviceContext.FindTestsByTaskId("with_tasks", "", "", "", 0, 0)
+	foundTests, err := serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "with_tasks"})
 	assert.NoError(err)
 	assert.Len(foundTests, 20)
-	foundTests, err = serviceContext.FindTestsByTaskId("without_tasks", "", "", "", 0, 0)
+	foundTests, err = serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "without_tasks"})
 	assert.Error(err)
 	assert.Len(foundTests, 0)
 }
