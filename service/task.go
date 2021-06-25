@@ -794,6 +794,9 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	logId := vars["log_id"]
 	taskID := vars["task_id"]
 	testName := vars["test_name"]
+	if testName == "" {
+		testName = vals.Get("test_name")
+	}
 	taskExecutionsAsString := vars["task_execution"]
 	taskExec, err := strconv.Atoi(taskExecutionsAsString)
 	if logId == "" && err != nil {
