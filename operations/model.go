@@ -286,22 +286,6 @@ func (s *ClientSettings) FindDefaultParameters(project string) []patch.Parameter
 	return nil
 }
 
-func (s *ClientSettings) SetDefaultParameters(project string, parameters []patch.Parameter) {
-	params := parametersToMap(parameters)
-	for i, p := range s.Projects {
-		if p.Name == project {
-			s.Projects[i].Parameters = params
-			return
-		}
-	}
-
-	s.Projects = append(s.Projects, ClientProjectConf{
-		Name:       project,
-		Default:    true,
-		Parameters: params,
-	})
-}
-
 func parametersFromMap(params map[string]string) []patch.Parameter {
 	res := []patch.Parameter{}
 	for key, val := range params {
