@@ -324,6 +324,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Test Logs
 	app.AddRoute("/test_log/{log_id}").Wrap(needsContext, allowsCORS).Handler(uis.testLog).Get()
 	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
+	// TODO: We are keeping this route temporarily for backwards
+	// compatibility. Please use
+	// `/test_log/{task_id}/{task_execution}?test_name={test_name}`.
 	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 
 	// Build page
