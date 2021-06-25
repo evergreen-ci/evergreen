@@ -2306,8 +2306,8 @@ func checkStatuses(t *testing.T, expected string, toCheck Task) {
 		{"$match": bson.M{
 			IdKey: toCheck.Id,
 		}},
+		addDisplayStatus,
 	}
-	aggregation = append(aggregation, addDisplayStatus...)
 	err := db.Aggregate(Collection, aggregation, &dbTasks)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, dbTasks[0].DisplayStatus)

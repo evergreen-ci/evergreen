@@ -137,36 +137,19 @@ var (
 		},
 	},
 	}
-
-	HasUnattainableDepsKey   = "hasUnattainableDeps"
-	addUnattainableDepStatus = bson.M{
-		"$addFields": bson.M{
-			HasUnattainableDepsKey: bson.M{
-				"$filter": bson.M{
-					"input": "$" + DependsOnKey,
-					"cond":  "$$" + bsonutil.GetDottedKeyName("this", DependencyUnattainableKey),
-				},
-			},
+	isAttainable = bson.M{
+		"$ne": []interface{}{bson.M{"$reduce": bson.M{
+			"input":        "$" + DependsOnKey,
+			"initialValue": false,
+			"in":           bson.M{"$or": []interface{}{"$$" + bsonutil.GetDottedKeyName("value", DependencyUnattainableKey), "$$" + bsonutil.GetDottedKeyName("this", DependencyUnattainableKey)}},
 		},
-	}
-	setUnattainableDepStatus = bson.M{
-		"$addFields": bson.M{
-			HasUnattainableDepsKey: bson.M{
-				"$cond": bson.M{
-					"if":   bson.M{"$gt": []interface{}{bson.M{"$size": "$" + HasUnattainableDepsKey}, 0}},
-					"then": true,
-					"else": false,
-				},
-			},
-		},
+		}, true},
 	}
 	// This should reflect Task.GetDisplayStatus()
-	addDisplayStatus = []bson.M{
-		addUnattainableDepStatus,
-		setUnattainableDepStatus,
-		{"$addFields": bson.M{
+	addDisplayStatus = bson.M{
+		"$addFields": bson.M{
 			DisplayStatusKey: displayStatusExpression,
-		}},
+		},
 	}
 
 	displayStatusExpression = bson.M{
@@ -227,7 +210,7 @@ var (
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
 							{"$eq": []interface{}{"$" + ActivatedKey, true}},
-							{"$ne": []interface{}{"$" + HasUnattainableDepsKey, true}},
+							{"$eq": []interface{}{isAttainable, true}},
 						},
 					},
 					"then": evergreen.TaskWillRun,
@@ -247,7 +230,7 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
-							{"$eq": []interface{}{"$" + HasUnattainableDepsKey, true}},
+							{"$eq": []interface{}{isAttainable, false}},
 						},
 					},
 					"then": evergreen.TaskStatusBlocked,
@@ -885,8 +868,8 @@ func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, e
 	}
 	pipeline := []bson.M{
 		{"$match": match},
+		addDisplayStatus,
 	}
-	pipeline = append(pipeline, addDisplayStatus...)
 	if err := Aggregate(pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "Couldnt find task")
 	}
@@ -909,8 +892,8 @@ func FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id string, execution *in
 	}
 	pipeline := []bson.M{
 		{"$match": match},
+		addDisplayStatus,
 	}
-	pipeline = append(pipeline, addDisplayStatus...)
 
 	if err := db.Aggregate(OldCollection, pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "Couldn't find task")
