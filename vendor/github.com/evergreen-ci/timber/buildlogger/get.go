@@ -46,6 +46,8 @@ func (opts *BuildloggerGetOptions) Validate() error {
 	catcher.AddWhen(opts.ID == "" && opts.TaskID == "", errors.New("must provide an id or task id"))
 	catcher.AddWhen(opts.ID != "" && opts.TaskID != "", errors.New("cannot provide both id and task id"))
 	catcher.AddWhen(opts.TestName != "" && opts.TaskID == "", errors.New("must provide a task id when a test name is specified"))
+	catcher.AddWhen(opts.GroupID != "" && opts.TaskID == "", errors.New("must provide a task id when a group id is specified"))
+	catcher.AddWhen(opts.GroupID != "" && opts.Meta, errors.New("cannot specify a group id and set meta to true"))
 
 	return catcher.Resolve()
 }
@@ -102,13 +104,12 @@ func (opts *BuildloggerGetOptions) parse() (string, error) {
 		urlString += fmt.Sprintf("/%s", url.PathEscape(opts.ID))
 	} else if opts.TestName != "" {
 		urlString += fmt.Sprintf("/test_name/%s/%s", url.PathEscape(opts.TaskID), url.PathEscape(opts.TestName))
-		if opts.GroupID != "" {
-			urlString += fmt.Sprintf("/group/%s", url.PathEscape(opts.GroupID))
-		}
 	} else {
 		urlString += fmt.Sprintf("/task_id/%s", url.PathEscape(opts.TaskID))
 	}
-	if opts.Meta {
+	if opts.GroupID != "" {
+		urlString += fmt.Sprintf("/group/%s", url.PathEscape(opts.GroupID))
+	} else if opts.Meta {
 		urlString += "/meta"
 	}
 	urlString += params

@@ -40,6 +40,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Annotation() AnnotationResolver
+	ChildPatch() ChildPatchResolver
 	Host() HostResolver
 	IssueLink() IssueLinkResolver
 	Mutation() MutationResolver
@@ -108,6 +109,13 @@ type ComplexityRoot struct {
 	BuildBaron struct {
 		BuildBaronConfigured func(childComplexity int) int
 		SearchReturnInfo     func(childComplexity int) int
+	}
+
+	ChildPatch struct {
+		PatchID   func(childComplexity int) int
+		Project   func(childComplexity int) int
+		Status    func(childComplexity int) int
+		TaskCount func(childComplexity int) int
 	}
 
 	ClientBinary struct {
@@ -397,6 +405,7 @@ type ComplexityRoot struct {
 		BaseVersionID           func(childComplexity int) int
 		Builds                  func(childComplexity int) int
 		CanEnqueueToCommitQueue func(childComplexity int) int
+		ChildPatches            func(childComplexity int) int
 		CommitQueuePosition     func(childComplexity int) int
 		CreateTime              func(childComplexity int) int
 		Description             func(childComplexity int) int
@@ -806,6 +815,9 @@ type ComplexityRoot struct {
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
+type ChildPatchResolver interface {
+	TaskCount(ctx context.Context, obj *model.ChildPatch) (*int, error)
+}
 type HostResolver interface {
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
 
@@ -927,6 +939,8 @@ type TaskResolver interface {
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 
 	DisplayTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
+
+	EstimatedStart(ctx context.Context, obj *model.APITask) (*model.APIDuration, error)
 
 	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
 
@@ -1180,6 +1194,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.BuildBaron.SearchReturnInfo(childComplexity), true
+
+	case "ChildPatch.patchID":
+		if e.complexity.ChildPatch.PatchID == nil {
+			break
+		}
+
+		return e.complexity.ChildPatch.PatchID(childComplexity), true
+
+	case "ChildPatch.project":
+		if e.complexity.ChildPatch.Project == nil {
+			break
+		}
+
+		return e.complexity.ChildPatch.Project(childComplexity), true
+
+	case "ChildPatch.status":
+		if e.complexity.ChildPatch.Status == nil {
+			break
+		}
+
+		return e.complexity.ChildPatch.Status(childComplexity), true
+
+	case "ChildPatch.taskCount":
+		if e.complexity.ChildPatch.TaskCount == nil {
+			break
+		}
+
+		return e.complexity.ChildPatch.TaskCount(childComplexity), true
 
 	case "ClientBinary.arch":
 		if e.complexity.ClientBinary.Arch == nil {
@@ -2638,6 +2680,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.CanEnqueueToCommitQueue(childComplexity), true
+
+	case "Patch.childPatches":
+		if e.complexity.Patch.ChildPatches == nil {
+			break
+		}
+
+		return e.complexity.Patch.ChildPatches(childComplexity), true
 
 	case "Patch.commitQueuePosition":
 		if e.complexity.Patch.CommitQueuePosition == nil {
@@ -5015,7 +5064,7 @@ input BuildVariantOptions {
   statuses: [String!]
 }
 input MainlineCommitsOptions {
-  projectID: String! 
+  projectID: String!
   limit: Int = 7
   skipOrderNumber: Int = 0
 }
@@ -5281,7 +5330,6 @@ type GroupedBuildVariant {
   tasks: [Task]
 }
 
-
 type TaskFiles {
   fileCount: Int!
   groupedFiles: [GroupedFiles!]!
@@ -5331,6 +5379,7 @@ type Patch {
   status: String!
   variants: [String!]!
   tasks: [String!]!
+  childPatches: [ChildPatch!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
@@ -5346,6 +5395,13 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
+}
+
+type ChildPatch {
+  project: String!
+  patchID: String!
+  status: String!
+  taskCount: Int
 }
 
 type Build {
@@ -8109,6 +8165,139 @@ func (ec *executionContext) _BuildBaron_buildBaronConfigured(ctx context.Context
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ChildPatch_project(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ChildPatch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Project, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ChildPatch_patchID(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ChildPatch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PatchID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ChildPatch_status(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ChildPatch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ChildPatch_taskCount(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ChildPatch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ChildPatch().TaskCount(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ClientBinary_arch(ctx context.Context, field graphql.CollectedField, obj *model.APIClientBinary) (ret graphql.Marshaler) {
@@ -14541,6 +14730,37 @@ func (ec *executionContext) _Patch_tasks(ctx context.Context, field graphql.Coll
 	return ec.marshalNString2ᚕᚖstringᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Patch_childPatches(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Patch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChildPatches, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.ChildPatch)
+	fc.Result = res
+	return ec.marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatchᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Patch_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -18765,13 +18985,13 @@ func (ec *executionContext) _Task_estimatedStart(ctx context.Context, field grap
 		Object:   "Task",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.EstimatedStart, nil
+		return ec.resolvers.Task().EstimatedStart(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18780,9 +19000,9 @@ func (ec *executionContext) _Task_estimatedStart(ctx context.Context, field grap
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(model.APIDuration)
+	res := resTmp.(*model.APIDuration)
 	fc.Result = res
-	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_execution(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -26281,6 +26501,54 @@ func (ec *executionContext) _BuildBaron(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var childPatchImplementors = []string{"ChildPatch"}
+
+func (ec *executionContext) _ChildPatch(ctx context.Context, sel ast.SelectionSet, obj *model.ChildPatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, childPatchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChildPatch")
+		case "project":
+			out.Values[i] = ec._ChildPatch_project(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "patchID":
+			out.Values[i] = ec._ChildPatch_patchID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "status":
+			out.Values[i] = ec._ChildPatch_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "taskCount":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChildPatch_taskCount(ctx, field, obj)
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var clientBinaryImplementors = []string{"ClientBinary"}
 
 func (ec *executionContext) _ClientBinary(ctx context.Context, sel ast.SelectionSet, obj *model.APIClientBinary) graphql.Marshaler {
@@ -27818,6 +28086,8 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "childPatches":
+			out.Values[i] = ec._Patch_childPatches(ctx, field, obj)
 		case "variantsTasks":
 			out.Values[i] = ec._Patch_variantsTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -29171,7 +29441,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "estimatedStart":
-			out.Values[i] = ec._Task_estimatedStart(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_estimatedStart(ctx, field, obj)
+				return res
+			})
 		case "execution":
 			out.Values[i] = ec._Task_execution(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -30754,6 +31033,10 @@ func (ec *executionContext) marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._BuildBaron(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNChildPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx context.Context, sel ast.SelectionSet, v model.ChildPatch) graphql.Marshaler {
+	return ec._ChildPatch(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNClientBinary2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinary(ctx context.Context, sel ast.SelectionSet, v model.APIClientBinary) graphql.Marshaler {
@@ -33041,6 +33324,46 @@ func (ec *executionContext) unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋever
 	}
 	res, err := ec.unmarshalOBuildVariantOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, v)
 	return &res, err
+}
+
+func (ec *executionContext) marshalOChildPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatchᚄ(ctx context.Context, sel ast.SelectionSet, v []model.ChildPatch) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChildPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐChildPatch(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalOClientBinary2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIClientBinaryᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIClientBinary) graphql.Marshaler {

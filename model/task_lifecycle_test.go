@@ -347,7 +347,7 @@ func TestActivatePreviousTask(t *testing.T) {
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
-			So(ActivatePreviousTask(currentTask.Id, ""), ShouldBeNil)
+			So(activatePreviousTask(currentTask.Id, "", nil), ShouldBeNil)
 			t, err := task.FindOne(task.ById(previousTask.Id))
 			So(err, ShouldBeNil)
 			So(t.Activated, ShouldBeTrue)
@@ -2709,6 +2709,183 @@ func TestStepback(t *testing.T) {
 	dbTask, err = task.FindOne(task.ById(dt2.Id))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
+}
+
+func TestStepbackWithGenerators(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
+	v1 := &Version{
+		Id: "v1",
+	}
+	v2 := &Version{
+		Id: "v2",
+	}
+	b1 := &build.Build{
+		Id:        "build1",
+		Status:    evergreen.BuildStarted,
+		Version:   "v1",
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	t1Success := &task.Task{
+		Id:                  "t1_success",
+		DistroId:            "test",
+		DisplayName:         "task",
+		Activated:           true,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v1",
+	}
+	t2Success := &task.Task{
+		Id:                  "t2_success",
+		DistroId:            "test",
+		DisplayName:         "other_task",
+		Activated:           true,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v1",
+	}
+	depTask := &task.Task{
+		Id:                  "my_dep",
+		DistroId:            "test",
+		DisplayName:         "task",
+		Activated:           false,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskUndispatched,
+		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v2",
+	}
+
+	genPrevious := &task.Task{
+		Id:                  "previous_gen",
+		DistroId:            "test",
+		DisplayName:         "other_task_gen",
+		Activated:           false,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskUndispatched,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v2",
+		GenerateTask:        true,
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "my_dep",
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+	}
+	t1 := &task.Task{
+		Id:                  "t1",
+		DistroId:            "test",
+		DisplayName:         "task",
+		Activated:           false,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		GeneratedBy:         "not-important",
+		Status:              evergreen.TaskUndispatched,
+		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v2",
+	}
+
+	taskToStepback := &task.Task{
+		Id:                  "t3",
+		DistroId:            "test",
+		DisplayName:         "task",
+		Activated:           true,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		GeneratedBy:         "not-important",
+		Status:              evergreen.TaskFailed,
+		RevisionOrderNumber: 3,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v3",
+	}
+	genToStepback := &task.Task{
+		Id:                  "other_task_gen1",
+		DistroId:            "test",
+		DisplayName:         "other_task_gen",
+		Activated:           true,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v2",
+		GenerateTask:        true,
+	}
+	taskToStepback2 := &task.Task{
+		Id:                  "t4",
+		DistroId:            "test",
+		DisplayName:         "other_task",
+		Activated:           true,
+		BuildId:             b1.Id,
+		BuildVariant:        "bv1_name",
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		GeneratedBy:         "other_task_gen1",
+		Status:              evergreen.TaskFailed,
+		RevisionOrderNumber: 3,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             "v3",
+	}
+	assert.NoError(t, b1.Insert())
+	assert.NoError(t, t1.Insert())
+	assert.NoError(t, genToStepback.Insert())
+	assert.NoError(t, taskToStepback.Insert())
+	assert.NoError(t, taskToStepback2.Insert())
+	assert.NoError(t, t1Success.Insert())
+	assert.NoError(t, t2Success.Insert())
+	assert.NoError(t, depTask.Insert())
+	assert.NoError(t, genPrevious.Insert())
+	assert.NoError(t, v1.Insert())
+	assert.NoError(t, v2.Insert())
+
+	// test stepping back where an existing generated task needs to be activated
+	assert.NoError(t, doStepback(taskToStepback))
+	dbTask, err := task.FindOne(task.ById(t1.Id))
+	assert.NoError(t, err)
+	assert.True(t, dbTask.Activated)
+
+	// test stepping back where the generator needs to be activated
+	assert.NoError(t, doStepback(taskToStepback2))
+	dbTask, err = task.FindOne(task.ById(genPrevious.Id))
+	assert.NoError(t, err)
+	assert.True(t, dbTask.Activated)
+	assert.Equal(t, dbTask.GeneratedTasksToStepback[taskToStepback2.BuildVariant], []string{taskToStepback2.DisplayName})
+	// verify dependency is activated as well
+	dbTask, err = task.FindOne(task.ById(depTask.Id))
+	assert.NoError(t, err)
+	assert.True(t, dbTask.Activated)
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {

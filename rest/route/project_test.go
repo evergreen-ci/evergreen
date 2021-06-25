@@ -142,20 +142,13 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	}}
 	s.NoError(repoRef.Add(nil))
 
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp)
-	s.NotNil(resp.Data())
-	s.Require().Equal(http.StatusBadRequest, resp.Status())
-	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("must authorize users or teams to create git tag versions", errResp.Message)
-
 	jsonBody = []byte(`{"enabled": true, "use_repo_settings": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "tag": ".*"}]}`)
 	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err = s.rm.Parse(ctx, req)
 	s.NoError(err)
 
-	resp = s.rm.Run(ctx)
+	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status())

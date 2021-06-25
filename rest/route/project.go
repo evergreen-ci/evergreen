@@ -369,12 +369,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 					Message:    "cannot enable git tag versions without a version definition",
 				})
 			}
-			if len(mergedProjectRef.GitTagAuthorizedUsers) == 0 && len(mergedProjectRef.GitTagAuthorizedTeams) == 0 {
-				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					StatusCode: http.StatusBadRequest,
-					Message:    "must authorize users or teams to create git tag versions",
-				})
-			}
 		}
 
 		// verify enabling commit queue valid
