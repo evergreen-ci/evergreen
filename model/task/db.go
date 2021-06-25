@@ -78,9 +78,6 @@ var (
 	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
-	// HasUnattainableDepsKey is only used in the addDisplayStatus aggregation step to determine if a task has unattainabledeps
-	HasUnattainableDepsKey = bsonutil.MustHaveTag(Task{}, "HasUnattainableDeps")
-
 	// GeneratedJSONKey is no longer used but must be kept for old tasks.
 	GeneratedJSONKey           = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
 	GeneratedJSONAsStringKey   = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
@@ -141,6 +138,7 @@ var (
 	},
 	}
 
+	HasUnattainableDepsKey   = "hasUnattainableDeps"
 	addUnattainableDepStatus = bson.M{
 		"$addFields": bson.M{
 			HasUnattainableDepsKey: bson.M{

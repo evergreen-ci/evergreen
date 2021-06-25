@@ -128,9 +128,6 @@ type Task struct {
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
 	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
 
-	// Only used in addDisplayStatus aggregation step
-	HasUnattainableDeps bool `bson:"has_unattainable_deps" json:"-"`
-
 	// task requester - this is used to help tell the
 	// reason this task was created. e.g. it could be
 	// because the repotracker requested it (via tracking the
