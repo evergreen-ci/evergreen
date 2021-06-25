@@ -101,7 +101,21 @@ func (mtc *MockTestConnector) FindTestById(id string) ([]testresult.TestResult, 
 func (tc *MockTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	return 0, nil
 }
-func (tc *MockTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]testresult.TestResult, error) {
+
+func (mtc *MockTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]testresult.TestResult, error) {
+	if mtc.StoredError != nil {
+		return []testresult.TestResult{}, mtc.StoredError
+	}
+
+	// loop until the testId is found
+	for ix, t := range mtc.CachedTests {
+		if string(t.ID) == opts.TestID { // We've found the test to start from
+			if opts.TestName == "" {
+				return mtc.findAllTestsFromIx(ix, opts.Limit), nil
+			}
+			return mtc.findTestsByNameFromIx(opts.TestName, ix, opts.Limit), nil
+		}
+	}
 	return nil, nil
 }
 
