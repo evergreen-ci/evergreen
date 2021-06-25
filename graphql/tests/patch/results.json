@@ -12,6 +12,33 @@
       }
     },
     {
+      "query_file": "childPatches.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e4ff3abe3c3317e352062e1",
+            "childPatches": [
+              {
+                "project": "evergreen",
+                "patchID": "5e4ff3abe3c3317e352062e4"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "noChildPatches.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5d7288d91f8c8a403bc34a7d",
+            "childPatches": null
+          }
+        }
+      }
+    },
+    {
       "query_file": "baseVersionId.graphql",
       "result": {
         "data": {
@@ -138,7 +165,13 @@
                 {
                   "name": "ubuntu1604",
                   "displayName": "Ubuntu 16.04",
-                  "tasks": ["compile", "coverage", "e2e_test", "lint", "test"]
+                  "tasks": [
+                    "compile",
+                    "coverage",
+                    "e2e_test",
+                    "lint",
+                    "test"
+                  ]
                 }
               ]
             }

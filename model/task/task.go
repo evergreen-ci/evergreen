@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -189,6 +190,9 @@ type Task struct {
 	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
+	// GeneratedTasksToStepback is only populated if we want to override activation for these generated tasks, because of stepback.
+	// Maps the build variant to a list of task names.
+	GeneratedTasksToStepback map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -864,6 +868,20 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 		bson.M{
 			"$set": bson.M{
 				GeneratedJSONAsStringKey: s,
+			},
+		},
+	)
+}
+
+// SetGeneratedTasksToStepback adds a task to stepback after activation
+func (t *Task) SetGeneratedTasksToStepback(buildVariantName, taskName string) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$addToSet": bson.M{
+				bsonutil.GetDottedKeyName(GeneratedTasksToStepbackKey, buildVariantName): taskName,
 			},
 		},
 	)
@@ -2801,6 +2819,36 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 					tempParentKey: []interface{}{},
 				},
 			},
+			// get any annotation that has at least one issue
+			{
+				"$lookup": bson.M{
+					"from": annotations.Collection,
+					"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
+					"pipeline": []bson.M{
+						{
+							"$match": bson.M{
+								"$expr": bson.M{
+									"$and": []bson.M{
+										{
+											"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
+										},
+										{
+											"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
+										},
+										{
+											"$ne": []interface{}{
+												bson.M{
+													"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+												}, 0,
+											},
+										},
+									},
+								},
+							}}},
+					"as": "annotation_docs",
+				},
+			},
+
 			// add a field for the display status of each task
 			addDisplayStatus,
 			// add data about the base task
@@ -2943,21 +2991,27 @@ func addStatusColorSort(key string) bson.M {
 						},
 						{
 							"case": bson.M{
+								"$in": []interface{}{"$" + key, []string{evergreen.TaskKnownIssue}},
+							},
+							"then": 2,
+						},
+						{
+							"case": bson.M{
 								"$eq": []string{"$" + key, evergreen.TaskSetupFailed},
 							},
-							"then": 2, // lavender
+							"then": 3, // lavender
 						},
 						{
 							"case": bson.M{
 								"$in": []interface{}{"$" + key, []string{evergreen.TaskSystemFailed, evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut}},
 							},
-							"then": 3, // purple
+							"then": 4, // purple
 						},
 						{
 							"case": bson.M{
 								"$in": []interface{}{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
 							},
-							"then": 4, // yellow
+							"then": 5, // yellow
 						},
 						{
 							"case": bson.M{

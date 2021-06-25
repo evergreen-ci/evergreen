@@ -16,6 +16,7 @@ const (
 	projectFlagName           = "project"
 	patchIDFlagName           = "patch"
 	moduleFlagName            = "module"
+	skipConfirmFlagName       = "skip_confirm"
 	yesFlagName               = "yes"
 	variantsFlagName          = "variants"
 	tasksFlagName             = "tasks"
@@ -179,9 +180,9 @@ func addModuleFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
-func addYesFlag(flags ...cli.Flag) []cli.Flag {
+func addSkipConfirmFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
-		Name:  joinFlagNames(yesFlagName, "y"),
+		Name:  joinFlagNames(skipConfirmFlagName, yesFlagName, "y"),
 		Usage: "skip confirmation text",
 	})
 }

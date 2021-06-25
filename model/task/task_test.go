@@ -2195,6 +2195,41 @@ func TestSetHasLegacyResults(t *testing.T) {
 	assert.True(t, utility.FromBoolPtr(taskFromDb.HasLegacyResults))
 }
 
+func TestSetGeneratedTasksToStepback(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	task := Task{Id: "t1"}
+	assert.NoError(t, task.Insert())
+
+	// add stepback task to variant
+	assert.NoError(t, task.SetGeneratedTasksToStepback("bv2", "t2"))
+	taskFromDb, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.NotNil(t, taskFromDb)
+	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv2"], []string{"t2"})
+
+	// add different stepback task to variant
+	assert.NoError(t, task.SetGeneratedTasksToStepback("bv2", "t2.0"))
+	taskFromDb, err = FindOneId("t1")
+	assert.NoError(t, err)
+	assert.NotNil(t, taskFromDb)
+	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv2"], []string{"t2", "t2.0"})
+
+	// verify duplicate doesn't overwrite
+	assert.NoError(t, task.SetGeneratedTasksToStepback("bv2", "t2.0"))
+	taskFromDb, err = FindOneId("t1")
+	assert.NoError(t, err)
+	assert.NotNil(t, taskFromDb)
+	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv2"], []string{"t2", "t2.0"})
+
+	// adding second variant doesn't affect previous
+	assert.NoError(t, task.SetGeneratedTasksToStepback("bv3", "t3"))
+	taskFromDb, err = FindOneId("t1")
+	assert.NoError(t, err)
+	assert.NotNil(t, taskFromDb)
+	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv2"], []string{"t2", "t2.0"})
+	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv3"], []string{"t3"})
+}
+
 func TestDisplayStatus(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{

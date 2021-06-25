@@ -700,9 +700,11 @@ func TestTestPaginator(t *testing.T) {
 						TaskId:    utility.ToStringPtr(""),
 						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    utility.ToStringPtr(""),
-							URLRaw: utility.ToStringPtr(""),
-							LogId:  utility.ToStringPtr(""),
+							URL:            utility.ToStringPtr(""),
+							URLRaw:         utility.ToStringPtr(""),
+							LogId:          utility.ToStringPtr(""),
+							RawDisplayURL:  utility.ToStringPtr("/test_log//0?test_name=&group_id=&text=true"),
+							HTMLDisplayURL: utility.ToStringPtr("/test_log//0?test_name=&group_id=#L0"),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -744,9 +746,11 @@ func TestTestPaginator(t *testing.T) {
 						TaskId:    utility.ToStringPtr(""),
 						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    utility.ToStringPtr(""),
-							URLRaw: utility.ToStringPtr(""),
-							LogId:  utility.ToStringPtr(""),
+							URL:            utility.ToStringPtr(""),
+							URLRaw:         utility.ToStringPtr(""),
+							LogId:          utility.ToStringPtr(""),
+							RawDisplayURL:  utility.ToStringPtr("/test_log//0?test_name=&group_id=&text=true"),
+							HTMLDisplayURL: utility.ToStringPtr("/test_log//0?test_name=&group_id=#L0"),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -788,9 +792,11 @@ func TestTestPaginator(t *testing.T) {
 						TaskId:    utility.ToStringPtr(""),
 						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    utility.ToStringPtr(""),
-							URLRaw: utility.ToStringPtr(""),
-							LogId:  utility.ToStringPtr(""),
+							URL:            utility.ToStringPtr(""),
+							URLRaw:         utility.ToStringPtr(""),
+							LogId:          utility.ToStringPtr(""),
+							RawDisplayURL:  utility.ToStringPtr("/test_log//0?test_name=&group_id=&text=true"),
+							HTMLDisplayURL: utility.ToStringPtr("/test_log//0?test_name=&group_id=#L0"),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -832,9 +838,11 @@ func TestTestPaginator(t *testing.T) {
 						TaskId:    utility.ToStringPtr(""),
 						TestFile:  utility.ToStringPtr(""),
 						Logs: model.TestLogs{
-							URL:    utility.ToStringPtr(""),
-							URLRaw: utility.ToStringPtr(""),
-							LogId:  utility.ToStringPtr(""),
+							URL:            utility.ToStringPtr(""),
+							URLRaw:         utility.ToStringPtr(""),
+							LogId:          utility.ToStringPtr(""),
+							RawDisplayURL:  utility.ToStringPtr("/test_log//0?test_name=&group_id=&text=true"),
+							HTMLDisplayURL: utility.ToStringPtr("/test_log//0?test_name=&group_id=#L0"),
 						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)

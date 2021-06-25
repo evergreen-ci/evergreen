@@ -37,6 +37,8 @@ message TestResult {
   google.protobuf.Timestamp task_create_time = 8;
   google.protobuf.Timestamp test_start_time = 9;
   google.protobuf.Timestamp test_end_time = 10;
+  string log_url = 11;
+  string raw_log_url = 12;
 }
 
 message TestResultsEndInfo {
