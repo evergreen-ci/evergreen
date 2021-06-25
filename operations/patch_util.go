@@ -56,6 +56,7 @@ type localDiff struct {
 
 type patchParams struct {
 	Project           string
+	Path              string
 	Alias             string
 	Variants          []string
 	Tasks             []string
@@ -84,6 +85,7 @@ type patchSubmission struct {
 	description       string
 	base              string
 	alias             string
+	path              string
 	variants          []string
 	tasks             []string
 	syncBuildVariants []string
@@ -117,6 +119,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		triggerAliases:    p.TriggerAliases,
 		gitMetadata:       diffData.gitMetadata,
 		reuseDefinition:   p.ReuseDefinition,
+		path:              p.Path,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)

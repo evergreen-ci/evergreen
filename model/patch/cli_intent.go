@@ -73,6 +73,9 @@ type cliIntent struct {
 	// alias defines the variants and tasks to run this patch on.
 	Alias string `bson:"alias"`
 
+	// path defines the path to an evergreen project configuration file.
+	Path string `bson:"path"`
+
 	// TriggerAliases alias sets of tasks to include in child patches
 	TriggerAliases []string `bson:"trigger_aliases"`
 
@@ -146,6 +149,10 @@ func (c *cliIntent) GetType() string {
 	return CliIntentType
 }
 
+func (c *cliIntent) getPath() string {
+	return c.Path
+}
+
 func (c *cliIntent) ID() string {
 	return c.DocumentID
 }
@@ -169,6 +176,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		Author:        c.User,
 		Project:       c.ProjectID,
 		Githash:       c.BaseHash,
+		Path:          c.Path,
 		Status:        evergreen.PatchCreated,
 		BuildVariants: c.BuildVariants,
 		Parameters:    c.Parameters,
@@ -195,6 +203,7 @@ func (c *cliIntent) NewPatch() *Patch {
 
 type CLIIntentParams struct {
 	User            string
+	Path            string
 	Project         string
 	BaseGitHash     string
 	Module          string
@@ -252,6 +261,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		DocumentID:      mgobson.NewObjectId().Hex(),
 		IntentType:      CliIntentType,
 		PatchContent:    params.PatchContent,
+		Path:            params.Path,
 		Description:     params.Description,
 		BuildVariants:   params.Variants,
 		Tasks:           params.Tasks,

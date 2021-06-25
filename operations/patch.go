@@ -60,6 +60,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Name:  reuseDefinitionFlag,
 				Usage: "use the same tasks/variants defined for the last patch you scheduled for this project",
 			},
+			cli.StringFlag{
+				Name:  pathFlagName,
+				Usage: "path to an evergreen project configuration file",
+			},
 		))
 }
 
@@ -87,6 +91,7 @@ func Patch() cli.Command {
 			args := c.Args()
 			params := &patchParams{
 				Project:           c.String(projectFlagName),
+				Path:              c.String(pathFlagName),
 				Variants:          utility.SplitCommas(c.StringSlice(variantsFlagName)),
 				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
 				SyncBuildVariants: utility.SplitCommas(c.StringSlice(syncBuildVariantsFlagName)),
