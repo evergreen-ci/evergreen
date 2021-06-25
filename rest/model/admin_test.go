@@ -147,6 +147,15 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Key, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSyncRead.Key))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Secret, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSyncRead.Secret))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSyncRead.Bucket, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSync.Bucket))
+	assert.EqualValues(testSettings.Providers.AWS.ECS.Role, utility.FromStringPtr(apiSettings.Providers.AWS.ECS.Role))
+	assert.EqualValues(testSettings.Providers.AWS.ECS.TaskDefinitionPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.ECS.TaskDefinitionPrefix))
+	assert.EqualValues(testSettings.Providers.AWS.ECS.TaskDefinitionPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.ECS.TaskDefinitionPrefix))
+	require.Len(apiSettings.Providers.AWS.ECS.Clusters, len(testSettings.Providers.AWS.ECS.Clusters))
+	for i := 0; i < len(testSettings.Providers.AWS.ECS.Clusters); i++ {
+		assert.Equal(testSettings.Providers.AWS.ECS.Clusters[i].Name, utility.FromStringPtr(apiSettings.Providers.AWS.ECS.Clusters[i].Name))
+		assert.Equal(testSettings.Providers.AWS.ECS.Clusters[i].Platform, utility.FromStringPtr(apiSettings.Providers.AWS.ECS.Clusters[i].Platform))
+		assert.Equal(testSettings.Providers.AWS.ECS.Clusters[i].Region, utility.FromStringPtr(apiSettings.Providers.AWS.ECS.Clusters[i].Region))
+	}
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, utility.FromStringPtr(apiSettings.Providers.GCE.ClientEmail))
 	assert.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, utility.FromStringPtr(apiSettings.Providers.OpenStack.IdentityEndpoint))

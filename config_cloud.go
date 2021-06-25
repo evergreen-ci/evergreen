@@ -58,7 +58,11 @@ func (c *CloudProviders) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
-func (c *CloudProviders) ValidateAndDefault() error { return nil }
+func (c *CloudProviders) ValidateAndDefault() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(c.AWS.ECS.Validate(), "invalid ECS config")
+	return catcher.Resolve()
+}
 
 // EC2Key links a region with a corresponding key and secret
 type EC2Key struct {
@@ -91,6 +95,12 @@ type AWSConfig struct {
 	// EC2 instance types for spawn hosts
 	AllowedInstanceTypes []string `bson:"allowed_instance_types" json:"allowed_instance_types" yaml:"allowed_instance_types"`
 	MaxVolumeSizePerUser int      `bson:"max_volume_size" json:"max_volume_size" yaml:"max_volume_size"`
+
+	// ECS represents configuration for using AWS ECS.
+	ECS ECSConfig `bson:"ecs" json:"ecs" yaml:"ecs"`
+	// SecretsManager represents configuration for using AWS Secrets Manager
+	// with AWS ECS.
+	SecretsManager SecretsManagerConfig `bson:"secrets_manager" json:"secrets_manager" yaml:"secrets_manager"`
 }
 
 type S3Credentials struct {
@@ -105,6 +115,57 @@ func (c *S3Credentials) Validate() error {
 	catcher.NewWhen(c.Secret == "", "secret must not be empty")
 	catcher.NewWhen(c.Bucket == "", "bucket must not be empty")
 	return catcher.Resolve()
+}
+
+// ECSConfig represents configuration for AWS ECS.
+type ECSConfig struct {
+	// Role is the role to assume to make calls to the ECS API.
+	Role string `bson:"role,omitempty" json:"role,omitempty" yaml:"role,omitempty"`
+	// TaskDefinitionPrefix is the prefix for the task definition families.
+	TaskDefinitionPrefix string `bson:"task_definition_prefix,omitempty" json:"task_definition_prefix,omitempty" yaml:"task_definition_prefix,omitempty"`
+	// Clusters specify the configuration of each particular ECS cluster.
+	Clusters []ECSClusterConfig `bson:"clusters,omitempty" json:"clusters,omitempty" yaml:"clusters,omitempty"`
+}
+
+// Validate checks that the required ECS configuration options are given.
+func (c *ECSConfig) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	for _, clusterConf := range c.Clusters {
+		catcher.Add(clusterConf.Validate())
+	}
+	return catcher.Resolve()
+}
+
+// ECSClusterConfig represents configuration specific to a particular ECS
+// cluster.
+type ECSClusterConfig struct {
+	// Name is the ECS cluster name.
+	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
+	// Platform is the platform supported by the cluster.
+	Platform PodPlatform `bson:"platform,omitempty" json:"platform,omitempty" yaml:"platform,omitempty"`
+	// Region is the cluster's region.
+	Region string `bson:"region,omitempty" json:"region,omitempty" yaml:"region,omitempty"`
+}
+
+// Validate checks that the ECS cluster configuration has the required fields
+// and all fields are valid values.
+func (c *ECSClusterConfig) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(c.Name == "", "must specify a cluster name")
+	catcher.Add(c.Platform.Validate())
+	return catcher.Resolve()
+}
+
+// SecretsManagerConfig represents configuration for AWS Secrets Manager.
+type SecretsManagerConfig struct {
+	// SecretPrefix is the prefix for secret names.
+	SecretPrefix string `bson:"secret_prefix,omitempty" json:"secret_prefix,omitempty" yaml:"secret_prefix,omitempty"`
+	// kim: TODO: figure out best way to structure the configs so that the IAM
+	// role matches up with the region between both ECS and Secrets Manager.
+	// We likely need a AWSPodConfig struct standardize this across ECS and
+	// Secrets Manager.
+	// Region is the region where the secrets are available.
+	Region string `bson:"region,omitempty" json:"region,omitempty" yaml:"region,omitempty"`
 }
 
 // DockerConfig stores auth info for Docker.

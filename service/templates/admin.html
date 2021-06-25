@@ -1588,15 +1588,15 @@ Admin Settings
 										<label>Task Read-Only S3 Bucket</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync_read.bucket">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%">
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px">
 										<label>Allowed Instance Types</label>
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types"
 											ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
@@ -1605,6 +1605,77 @@ Admin Settings
 										<label>Allowed Regions</label>
 										<textarea ng-model="Settings.providers.aws.allowed_regions" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
+                  <!-- kim: TODO: add ECS/Secrets Manager settings -->
+									<md-input-container class="control" style="width:45%;">
+										<label>ECS Role</label>
+										<input type="text" ng-model="Settings.providers.aws.ecs.role">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>ECS Task Definition Prefix</label>
+										<input type="text" ng-model="Settings.providers.aws.ecs.task_definition_prefix">
+									</md-input-container>
+                  <md-card>
+										<md-card-title>
+											<md-card-title-text>
+												<span>ECS Clusters</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="ec2-list" class="form-group"
+												ng-repeat="(index, cluster) in Settings.providers.aws.ecs.clusters">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="cluster.name"
+															placeholder="Name">
+													</md-input-container>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="cluster.platform"
+															placeholder="Platform (linux, windows)">
+													</md-input-container>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="cluster.region"
+															placeholder="Region">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteECSCluster(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_ecs_cluster.name"
+														placeholder="Name">
+												</md-input-container>
+												<md-input-container class="control" flex=50>
+													<input class="control" type="text" ng-model="new_ecs_cluster.platform"
+														placeholder="Platform (linux, windows)">
+												</md-input-container>
+												<md-input-container class="control" flex=50>
+													<input class="control" type="text" ng-model="new_ecs_cluster.region"
+														placeholder="Region">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="!(new_ecs_cluster)" type="button"
+														style="float: left" ng-click="addECSCluster()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidECSCluster ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
+									<md-input-container class="control" style="width:45%;">
+										<label>Secrets Manager Secret Prefix</label>
+										<input type="text" ng-model="Settings.providers.aws.secrets_manager.secret_prefix">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Secrets Manager Region</label>
+										<input type="text" ng-model="Settings.providers.aws.ecs.task_definition_prefix">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

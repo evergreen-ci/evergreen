@@ -242,6 +242,51 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return subnet && subnet.az && subnet.subnet_id;
   }
 
+  $scope.addECSCluster = function () {
+    if ($scope.Settings.providers === null || $scope.Settings.provider === undefined) {
+      $scope.Settings.providers = {
+        "aws": {
+          "ecs": {
+            "clusters": []
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws === null || $scope.Settings.provider.aws === undefined) {
+      $scope.Settings.providers.aws = {
+        "ecs": {
+          "clusters": []
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.ecs === null || $scope.Settings.provider.aws.ecs === undefined) {
+      $scope.Settings.providers.aws.ecs = {
+        "clusters": []
+      };
+    }
+
+    if ($scope.Settings.providers.aws.ecs.clusters == null || $scope.Settings.providers.aws.ecs.cluster === undefined) {
+      $scope.Settings.providers.aws.ecs.clusters = [];
+    }
+
+    if (!$scope.validECSCluster($scope.new_ecs_cluster)) {
+      $scope.invalidECSCluster = "ECS cluster name, platform, and region are required.";
+      return
+    }
+
+    $scope.Settings.providers.aws.ecs.clusters.push($scope.new_ecs_cluster);
+    $scope.new_ecs_cluster = {};
+    $scope.invalidECSCluster = "";
+  }
+
+  $scope.validECSCluster = function (item) {
+    return item && item.name && item.platform && item.region;
+  }
+
+  $scope.deleteECSCluster = function (index) {
+    $scope.Settings.providers.aws.ecs.clusters.splice(index, 1);
+  }
+
   $scope.clearAllUserTokens = function () {
     if (!confirm("This will log out all users from all existing sessions. Continue?"))
       return
