@@ -2801,44 +2801,42 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 					tempParentKey: []interface{}{},
 				},
 			},
-		}...)
-	// add a field for the display status of each task
-	pipeline = append(pipeline, addDisplayStatus...)
-	pipeline = append(pipeline, []bson.M{
-		// add data about the base task
-		{"$lookup": bson.M{
-			"from": Collection,
-			"let": bson.M{
-				RevisionKey:     "$" + RevisionKey,
-				BuildVariantKey: "$" + BuildVariantKey,
-				DisplayNameKey:  "$" + DisplayNameKey,
-			},
-			"as": BaseTaskKey,
-			"pipeline": []bson.M{
-				{"$match": bson.M{
-					RequesterKey: evergreen.RepotrackerVersionRequester,
-					"$expr": bson.M{
-						"$and": []bson.M{
-							{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
-							{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-							{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+			// add a field for the display status of each task
+			addDisplayStatus,
+			// add data about the base task
+			{"$lookup": bson.M{
+				"from": Collection,
+				"let": bson.M{
+					RevisionKey:     "$" + RevisionKey,
+					BuildVariantKey: "$" + BuildVariantKey,
+					DisplayNameKey:  "$" + DisplayNameKey,
+				},
+				"as": BaseTaskKey,
+				"pipeline": []bson.M{
+					{"$match": bson.M{
+						RequesterKey: evergreen.RepotrackerVersionRequester,
+						"$expr": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
+								{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+								{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+							},
 						},
-					},
-				}},
-				{"$project": bson.M{
-					IdKey:     1,
-					StatusKey: displayStatusExpression,
-				}},
-				{"$limit": 1},
+					}},
+					{"$project": bson.M{
+						IdKey:     1,
+						StatusKey: displayStatusExpression,
+					}},
+					{"$limit": 1},
+				},
+			}},
+			{
+				"$unwind": bson.M{
+					"path":                       "$" + BaseTaskKey,
+					"preserveNullAndEmptyArrays": true,
+				},
 			},
-		}},
-		{
-			"$unwind": bson.M{
-				"path":                       "$" + BaseTaskKey,
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-	}...,
+		}...,
 	)
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if len(variants) == 0 {
