@@ -63,7 +63,7 @@ func MergeApplications(apps ...*APIApp) (http.Handler, error) {
 		return nil, errors.New("must specify at least one application")
 	}
 
-	return AssembleHandler(mux.NewRouter(), apps...)
+	return AssembleHandler(mux.NewRouter().UseEncodedPath(), apps...)
 }
 
 // Merge takes multiple application instances and merges all of their
