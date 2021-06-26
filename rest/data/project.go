@@ -14,6 +14,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -259,34 +260,25 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
-func (pc *DBProjectConnector) UpdateProjectVarsByValue(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
-	if varsModel == nil {
-		return nil
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace string, replacement string) ([]*db.ChangeInfo, error) {
+	matchingProjects, err := model.GetVarsByValue(toReplace)
+	if matchingProjects == nil {
+		return nil, errors.Wrap(err, "no projects with matching value found")
 	}
-	v, err := varsModel.ToService()
-	if err != nil {
-		return errors.Wrap(err, "problem converting to project variable model")
-	}
-	vars := v.(*model.ProjectVars)
-	vars.Id = projectId
-
-	if overwrite {
-		if _, err = vars.Upsert(); err != nil {
-			return errors.Wrapf(err, "problem overwriting variables for project '%s'", vars.Id)
-		}
-	} else {
-		_, err = vars.FindAndModify(varsModel.VarsToDelete)
-		if err != nil {
-			return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
+	changes := []*db.ChangeInfo{}
+	for _, project := range matchingProjects {
+		for key, val := range project.Vars {
+			if val == toReplace {
+				project.Vars[key] = replacement
+				change, err := project.Upsert()
+				if err != nil {
+					return nil, errors.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+				}
+				changes = append(changes, change)
+			}
 		}
 	}
-
-	vars = vars.RedactPrivateVars()
-	varsModel.Vars = vars.Vars
-	varsModel.PrivateVars = vars.PrivateVars
-	varsModel.RestrictedVars = vars.RestrictedVars
-	varsModel.VarsToDelete = []string{}
-	return nil
+	return changes, nil
 }
 
 func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
@@ -598,8 +590,15 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
-func (pc *MockProjectConnector) UpdateProjectVarsByValue(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
-	return nil
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace string, replacement string) ([]*db.ChangeInfo, error) {
+	for _, cachedVars := range pc.CachedVars {
+		for key, val := range cachedVars.Vars {
+			if toReplace == val {
+				cachedVars.Vars[key] = replacement
+			}
+		}
+	}
+	return nil, nil
 }
 
 func (pc *MockProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {

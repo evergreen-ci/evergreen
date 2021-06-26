@@ -442,6 +442,20 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.NoError(s.ctx.UpdateProjectVars("not-an-id", &newVars, false))
 }
 
+func (s *ProjectConnectorGetSuite) TestUpdateProjectVarsByValue() {
+	s.ctx.UpdateProjectVarsByValue("1", "11")
+
+	res, err := s.ctx.FindProjectVarsById(projectId, "", false)
+	s.NoError(err)
+	s.Require().NotNil(res)
+	s.Equal("11", res.Vars["a"])
+
+	res, err = s.ctx.FindProjectVarsById(projectId, repoProjectId, false)
+	s.NoError(err)
+	s.Require().NotNil(res)
+	s.Equal("11", res.Vars["a"])
+}
+
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 	s.NoError(s.ctx.CopyProjectVars(projectId, "project-copy"))
 	origProj, err := s.ctx.FindProjectVarsById(projectId, "", false)

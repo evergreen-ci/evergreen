@@ -1051,12 +1051,13 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 
 ////////////////////////////////////////////////////////////////////////
 //
-// PUT /rest/v2/projects/value/{value}
+// PUT /rest/v2/projects/value/{toReplace}/{replacement}
 
 type projectVarsPatchHandler struct {
-	valueToUpdate string
-	user          *user.DBUser
-	args          []byte
+	toReplace   string
+	replacement string
+	user        *user.DBUser
+	args        []byte
 
 	sc       data.Connector
 	settings *evergreen.Settings
@@ -1078,7 +1079,8 @@ func (h *projectVarsPatchHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the project's identifier from the http request.
 func (h *projectVarsPatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.valueToUpdate = gimlet.GetVars(r)["value"]
+	h.toReplace = gimlet.GetVars(r)["toReplace"]
+	h.replacement = gimlet.GetVars(r)["replacement"]
 	h.user = MustHaveUser(ctx)
 	body := util.NewRequestReader(r)
 	b, err := ioutil.ReadAll(body)
@@ -1092,10 +1094,6 @@ func (h *projectVarsPatchHandler) Parse(ctx context.Context, r *http.Request) er
 
 // Run updates a project by name.
 func (h *projectVarsPatchHandler) Run(ctx context.Context) gimlet.Responder {
-
-	responder := gimlet.NewJSONResponse(h.args)
-	// if err = responder.SetStatus(http.StatusOK); err != nil {
-	// 	return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
-	// }
-	return responder
+	res, _ := h.sc.UpdateProjectVarsByValue(h.toReplace, h.replacement)
+	return gimlet.NewJSONResponse(res)
 }

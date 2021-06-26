@@ -27,6 +27,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/anser/db"
 )
 
 // Connector is an interface that contains all of the methods which
@@ -81,7 +82,7 @@ type Connector interface {
 	// in the model (removing old variables if overwrite is set).
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars, bool) error
-	UpdateProjectVarsByValue(string, *restModel.APIProjectVars, bool) error
+	UpdateProjectVarsByValue(string, string) ([]*db.ChangeInfo, error)
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
