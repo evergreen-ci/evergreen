@@ -1053,9 +1053,13 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 //
 // PUT /rest/v2/projects/value/{toReplace}/{replacement}
 
-type projectVarsPatchHandler struct {
+type rotation struct {
 	toReplace   string
 	replacement string
+}
+
+type projectVarsPatchHandler struct {
+	replaceVars *rotation
 	user        *user.DBUser
 	args        []byte
 
@@ -1079,8 +1083,6 @@ func (h *projectVarsPatchHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the project's identifier from the http request.
 func (h *projectVarsPatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.toReplace = gimlet.GetVars(r)["toReplace"]
-	h.replacement = gimlet.GetVars(r)["replacement"]
 	h.user = MustHaveUser(ctx)
 	body := util.NewRequestReader(r)
 	b, err := ioutil.ReadAll(body)
@@ -1088,12 +1090,17 @@ func (h *projectVarsPatchHandler) Parse(ctx context.Context, r *http.Request) er
 		return errors.Wrap(err, "Argument read error")
 	}
 	h.args = b
+	replacements := &rotation{}
+	if err = json.Unmarshal(b, replacements); err != nil {
+		return errors.Wrap(err, "API error while unmarshalling JSON")
+	}
+	h.replaceVars = replacements
 	defer body.Close()
 	return nil
 }
 
 // Run updates a project by name.
 func (h *projectVarsPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	res, _ := h.sc.UpdateProjectVarsByValue(h.toReplace, h.replacement)
+	res, _ := h.sc.UpdateProjectVarsByValue(h.replaceVars.toReplace, h.replaceVars.replacement)
 	return gimlet.NewJSONResponse(res)
 }

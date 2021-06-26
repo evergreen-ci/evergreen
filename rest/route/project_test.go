@@ -776,3 +776,20 @@ func TestDeleteProject(t *testing.T) {
 	resp = pdh.Run(ctx)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for PUT /rest/v2/projects/value
+
+func (s *ProjectPutSuite) TestNotSureIfThisRight() {
+	ctx := context.Background()
+	json := []byte(
+		`{
+				"toReplace": "a",
+				"replacement": "z"
+		}`)
+
+	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/value", bytes.NewBuffer(json))
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+}
