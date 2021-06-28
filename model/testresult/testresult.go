@@ -196,6 +196,9 @@ func TestResultCount(taskIds []string, testName string, statuses []string, execu
 	return Count(q)
 }
 
+// Returns tests that match exact Execution, GroupID, Statuses, TaskID, and TestName,
+// Match TestIDs that are >= to supplied TestID.
+// Supplied SortBy key sorts on BSON tag of TestResult struct.
 type TestResultsFilterSortPaginateOpts struct {
 	Execution int
 	GroupID   string
