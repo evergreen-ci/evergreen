@@ -29,6 +29,13 @@ import (
 	"github.com/mongodb/amboy"
 )
 
+// FindTestsByTaskIdOpts contains filtering, sorting and pagination options for TestResults.
+// TaskID is the only required field.
+// SortBy should equal a bson tag from the TestResults struct and SortDir indicates ascending/descending.
+// Not providing limit will return all results.
+// TaskID, Execution, GroupID, Statuses and TestName filter the list based on exact match.
+// Supplying TestID matches all IDs >= TestID.
+// Page * Limit resembles the number of skipped documents.
 type FindTestsByTaskIdOpts struct {
 	Execution int
 	GroupID   string
@@ -139,9 +146,7 @@ type Connector interface {
 
 	// FindTestById returns a single test result with the given id.
 	FindTestById(string) ([]testresult.TestResult, error)
-	// FindTestsByTaskId returns a paginated list of testresults from a required TaskID. SortBy references the bson key name and SortDir indicates ascending or descending.
-	// Not providing limit will return all results. All other options aside from TestID and Page filter the list based on exact match. Supplying TestID matches all IDs >= TestID.
-	// Page * Limit resembles the number of skipped documents.
+	// FindTestsByTaskId returns a paginated list of TestResults from a required TaskID
 	FindTestsByTaskId(FindTestsByTaskIdOpts) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
 	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)
