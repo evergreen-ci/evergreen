@@ -41,6 +41,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		Description       string             `json:"desc"`
+		Path              string             `json:"path"`
 		Project           string             `json:"project"`
 		BackportInfo      patch.BackportInfo `json:"backport_info"`
 		GitMetadata       *patch.GitMetadata `json:"git_metadata"`
@@ -111,6 +112,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:            dbUser.Id,
 		Project:         pref.Id,
+		Path:            data.Path,
 		BaseGitHash:     data.Githash,
 		Module:          r.FormValue("module"),
 		PatchContent:    patchString,
