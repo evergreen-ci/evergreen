@@ -1407,9 +1407,9 @@ func RemoveAdminFromProjects(toDelete string) error {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	_, err := db.UpdateAll(ProjectRefCollection, bson.M{}, projectUpdate)
+	_, err := db.UpdateAll(ProjectRefCollection, bson.M{ProjectRefAdminsKey: bson.M{"$ne": nil}}, projectUpdate)
 	catcher.Add(errors.Wrap(err, "error updating projects"))
-	_, err = db.UpdateAll(RepoRefCollection, bson.M{}, repoUpdate)
+	_, err = db.UpdateAll(RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
 	catcher.Add(errors.Wrap(err, "error updating repos"))
 	return catcher.Resolve()
 }
