@@ -779,17 +779,27 @@ func TestDeleteProject(t *testing.T) {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Tests for PUT /rest/v2/projects/value
+// Tests for PUT /rest/v2/projects/variables/rotate
 
-func (s *ProjectPutSuite) TestNotSureIfThisRight() {
+func (s *ProjectPutSuite) TestRotateProjectVars() {
 	ctx := context.Background()
+	s.sc = getMockProjectsConnector()
 	json := []byte(
 		`{
-				"toReplace": "a",
-				"replacement": "z"
+				"to_replace": "yellow",
+				"replacement": "brown"
 		}`)
 
-	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/value", bytes.NewBuffer(json))
+	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+	vars, err := s.sc.UpdateProjectVarsByValue("yellow", "brown", false)
+	s.NoError(err)
+	_, ok := vars[0].Vars["banana"]
+	s.True(ok)
+	s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
 }
