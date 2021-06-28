@@ -18,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v3"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -568,8 +567,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *Pa
 // matrix logic has been evaluated).
 func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	p := &ParserProject{}
-	err := yaml.Unmarshal(yml, p)
-	if err != nil {
+	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 		return nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
 	}

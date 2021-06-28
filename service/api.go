@@ -25,7 +25,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -204,7 +203,7 @@ func (as *APIServer) GetParserProject(w http.ResponseWriter, r *http.Request) {
 	// handle legacy
 	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
 		pp = &model.ParserProject{}
-		if err = yaml.Unmarshal([]byte(v.Config), pp); err != nil {
+		if err = util.UnmarshalYAMLWithFallback([]byte(v.Config), pp); err != nil {
 			http.Error(w, "invalid version config", http.StatusNotFound)
 			return
 		}
