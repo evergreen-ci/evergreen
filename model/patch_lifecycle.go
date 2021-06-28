@@ -143,8 +143,8 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		hash = p.GithubPatchData.MergeCommitSHA
 	}
 
-	var path = projectRef.RemotePath
-	if p.Path != "" {
+	path := projectRef.RemotePath
+	if p.Path != "" && !p.IsGithubPRPatch() {
 		path = p.Path
 	}
 
