@@ -76,7 +76,19 @@ func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]test
 		taskIDs = []string{opts.TaskID}
 	}
 
-	res, err := testresult.TestResultsFilterSortPaginate(testresult.TestResultsFilterSortPaginateOpts{TestID: opts.TestID, TaskIDs: taskIDs, TestName: opts.TestName, Statuses: opts.Statuses, SortBy: opts.SortBy, GroupID: opts.GroupID, SortDir: opts.SortDir, Page: opts.Page, Limit: opts.Limit, Execution: opts.Execution})
+	res, err := testresult.TestResultsFilterSortPaginate(testresult.TestResultsFilterSortPaginateOpts{
+		TestID:    opts.TestID,
+		TaskIDs:   taskIDs,
+		TestName:  opts.TestName,
+		Statuses:  opts.Statuses,
+		SortBy:    opts.SortBy,
+		GroupID:   opts.GroupID,
+		SortDir:   opts.SortDir,
+		Page:      opts.Page,
+		Limit:     opts.Limit,
+		Execution: opts.Execution
+	})
+
 	if err != nil {
 		return nil, err
 	}

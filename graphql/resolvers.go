@@ -1288,7 +1288,18 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			}
 		}
 
-		paginatedFilteredTests, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: taskID, TestName: testNameParam, Statuses: statusesParam, SortBy: sortBy, GroupID: groupIdParam, SortDir: sortDir, Limit: limitParam, Execution: taskExecution, Page: pageParam})
+		paginatedFilteredTests, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+			TaskID:    taskID,
+			TestName:  testNameParam,
+			Statuses:  statusesParam,
+			SortBy:    sortBy,
+			GroupID:   groupIdParam,
+			SortDir:   sortDir,
+			Limit:     limitParam,
+			Execution: taskExecution,
+			Page:      pageParam
+		})
+
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
