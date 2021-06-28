@@ -7,11 +7,10 @@ mciModule.controller('AdminOptionsCtrl', [
     $scope.collapsedBuilds = {};
 
     $scope.checkedForRestartIds = function(){
-        return _.pluck($scope.version.Builds.map(
-          function(x){
-            return x.Tasks.filter(function(y){return y.checkedForRestart});
-          }
-        ).reduce(function(x,y){return x.concat(y)}, []), "id");
+        return $scope.version.Builds.reduce(
+          (accumulator, currentBuild) =>
+          accumulator.concat(currentBuild.Tasks.filter(task => task.checkedForRestart).map(task => task.Task.id)),
+          []);
     }
 
     $scope.numToBeRestarted = function(build_id){

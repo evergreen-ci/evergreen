@@ -53,7 +53,7 @@ mciModule.controller('AdminOptionsCtrl', [
             $scope.buildId,
             'restart',
             { abort: $scope.adminOptionVals.abort,
-              taskIds: _.pluck(_.filter($scope.buildTasks, function(y){return y.checkedForRestart}),"id")
+              taskIds: $scope.buildTasks.filter(function(y){return y.checkedForRestart}).map(task => task.Task.id)
             },
             {
                 success: function(resp) {
