@@ -144,7 +144,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 
 	path := projectRef.RemotePath
-	if p.Path != "" && !p.IsGithubPRPatch() {
+	if p.Path != "" && !p.IsGithubPRPatch() && !p.IsCommitQueuePatch() {
 		path = p.Path
 	}
 
