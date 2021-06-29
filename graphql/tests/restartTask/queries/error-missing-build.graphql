@@ -1,6 +1,0 @@
-mutation {
-  restartTask(taskId: "task2") {
-    status
-    id
-  }
-}

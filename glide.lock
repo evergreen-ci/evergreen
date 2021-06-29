@@ -125,7 +125,7 @@ imports:
   - name: github.com/mongodb/amboy
     version: 43815750c2f1d63d1f1de803a8a684ca79ac82d6
   - name: github.com/evergreen-ci/gimlet
-    version: ca35738ff88824eab0bbbe7950a81b30b6bfde9e
+    version: 5fbd893c2d4d34fcbbd8e8e9c65810f41a955e66
   - name: github.com/evergreen-ci/shrub
     version: 005df8abf87f20331677ecfaa19744efb99eb80b
   - name: github.com/evergreen-ci/pail
@@ -135,11 +135,11 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 6760875fa58e0fa5518c992582efa6d807960d6c
   - name: github.com/evergreen-ci/timber
-    version: 50903dc055ac01bf2ad83fd11538476fbdf895e8
+    version: daddfabf64ff09a73c20b9e788c1f44052931ea6
   - name: github.com/evergreen-ci/poplar
     version: 098cea7cb6dc183c69a96c882da4e370858c0aa3
   - name: github.com/evergreen-ci/juniper
-    version: 5073cb7711610abd618fb98fb65cada479f7efe6
+    version: 0fd21a88954c06e128edc4fb26e30bb79e6e207d
 
   - name: github.com/evergreen-ci/certdepot
     version: 2ef4a0af44a3f102d27d5d703fef66f722ca5693

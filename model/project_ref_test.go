@@ -1143,6 +1143,9 @@ func TestRemoveAdminFromProjects(t *testing.T) {
 		Id:     "your_project",
 		Admins: []string{"you", "villain"},
 	}
+	pRef3 := ProjectRef{
+		Id: "adminless_project",
+	}
 	repoRef := RepoRef{ProjectRef{
 		Id:     "my_repo",
 		Admins: []string{"villain"},
@@ -1151,11 +1154,16 @@ func TestRemoveAdminFromProjects(t *testing.T) {
 		Id:     "your_repo",
 		Admins: []string{"villain"},
 	}}
+	repoRef3 := RepoRef{ProjectRef{
+		Id: "adminless_repo",
+	}}
 
 	assert.NoError(t, pRef.Upsert())
 	assert.NoError(t, pRef2.Upsert())
+	assert.NoError(t, pRef3.Upsert())
 	assert.NoError(t, repoRef.Upsert())
 	assert.NoError(t, repoRef2.Upsert())
+	assert.NoError(t, repoRef3.Upsert())
 
 	assert.NoError(t, RemoveAdminFromProjects("villain"))
 
@@ -1168,12 +1176,20 @@ func TestRemoveAdminFromProjects(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotContains(t, pRefFromDB.Admins, "villain")
+	pRefFromDB, err = FindOneProjectRef(pRef3.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, pRefFromDB)
+	assert.NotContains(t, pRefFromDB.Admins, "villain")
 
 	repoRefFromDB, err := FindOneRepoRef(repoRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRefFromDB)
 	assert.NotContains(t, repoRefFromDB.Admins, "villain")
 	repoRefFromDB, err = FindOneRepoRef(repoRef2.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, repoRefFromDB)
+	assert.NotContains(t, repoRefFromDB.Admins, "villain")
+	repoRefFromDB, err = FindOneRepoRef(repoRef3.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRefFromDB)
 	assert.NotContains(t, repoRefFromDB.Admins, "villain")

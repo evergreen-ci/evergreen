@@ -341,6 +341,10 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	if v == nil {
+		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
+		return
+	}
 
 	proj, _, err := model.LoadProjectForVersion(v, t.Project, false)
 	if err != nil {

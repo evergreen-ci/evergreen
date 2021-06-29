@@ -77,10 +77,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.Logs.HTMLDisplayURL = at.Logs.URL
 		} else if isEmptyLogID {
 			at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d/%s?group_id=%s#L%d",
+				"/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
 				url.PathEscape(v.TaskID),
 				v.Execution,
-				url.PathEscape(v.TestFile),
+				url.QueryEscape(v.TestFile),
 				url.QueryEscape(v.GroupID),
 				v.LineNum,
 			))
@@ -93,10 +93,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.Logs.RawDisplayURL = at.Logs.URLRaw
 		} else if isEmptyLogID {
 			at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d/%s?group_id=%s&text=true",
+				"/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
 				url.PathEscape(v.TaskID),
 				v.Execution,
-				url.PathEscape(v.TestFile),
+				url.QueryEscape(v.TestFile),
 				url.QueryEscape(v.GroupID),
 			))
 		} else {
@@ -122,23 +122,37 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			testName = v.LogTestName
 			at.LogTestName = utility.ToStringPtr(v.LogTestName)
 		}
+
 		at.Logs = TestLogs{
+			URL:     utility.ToStringPtr(v.LogURL),
+			URLRaw:  utility.ToStringPtr(v.RawLogURL),
 			LineNum: v.LineNum,
-			RawDisplayURL: utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d/%s?group_id=%s&text=true",
+		}
+		isEmptyURL := v.LogURL == ""
+		isEmptyURLRaw := v.RawLogURL == ""
+
+		if !isEmptyURL {
+			at.Logs.HTMLDisplayURL = at.Logs.URL
+		} else {
+			at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf(
+				"/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
 				url.PathEscape(v.TaskID),
 				v.Execution,
-				url.PathEscape(testName),
-				url.QueryEscape(v.GroupID),
-			)),
-			HTMLDisplayURL: utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d/%s?group_id=%s#L%d",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.PathEscape(testName),
+				url.QueryEscape(testName),
 				url.QueryEscape(v.GroupID),
 				v.LineNum,
-			)),
+			))
+		}
+		if !isEmptyURLRaw {
+			at.Logs.RawDisplayURL = at.Logs.URLRaw
+		} else {
+			at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf(
+				"/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
+				url.PathEscape(v.TaskID),
+				v.Execution,
+				url.QueryEscape(testName),
+				url.QueryEscape(v.GroupID),
+			))
 		}
 
 		if v.GroupID != "" {

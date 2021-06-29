@@ -291,7 +291,7 @@ func TestPreventMergeForItem(t *testing.T) {
 		Version: patchID,
 	}
 
-	mergeBuild := &build.Build{Id: "b1", Tasks: []build.TaskCache{{Id: "t1", Activated: true}}}
+	mergeBuild := &build.Build{Id: "b1"}
 	require.NoError(t, mergeBuild.Insert())
 	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID, BuildId: "b1"}
 	require.NoError(t, mergeTask.Insert())
@@ -305,10 +305,6 @@ func TestPreventMergeForItem(t *testing.T) {
 	mergeTask, err = task.FindOneId("t1")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(-1), mergeTask.Priority)
-
-	mergeBuild, err = build.FindOneId("b1")
-	assert.NoError(t, err)
-	assert.False(t, mergeBuild.Tasks[0].Activated)
 }
 
 func TestNextUnprocessed(t *testing.T) {

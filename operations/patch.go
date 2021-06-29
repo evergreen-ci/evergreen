@@ -32,7 +32,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addSyncStatusesFlag(),
 		addSyncTimeoutFlag(),
 		addLargeFlag(),
-		addYesFlag(),
+		addSkipConfirmFlag(),
 		addRefFlag(),
 		addUncommittedChangesFlag(),
 		addPreserveCommitsFlag(
@@ -59,6 +59,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			cli.BoolFlag{
 				Name:  reuseDefinitionFlag,
 				Usage: "use the same tasks/variants defined for the last patch you scheduled for this project",
+			},
+			cli.StringFlag{
+				Name:  pathFlagName,
+				Usage: "path to an evergreen project configuration file",
 			},
 		))
 }
@@ -87,13 +91,14 @@ func Patch() cli.Command {
 			args := c.Args()
 			params := &patchParams{
 				Project:           c.String(projectFlagName),
+				Path:              c.String(pathFlagName),
 				Variants:          utility.SplitCommas(c.StringSlice(variantsFlagName)),
 				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
 				SyncBuildVariants: utility.SplitCommas(c.StringSlice(syncBuildVariantsFlagName)),
 				SyncTasks:         utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 				SyncStatuses:      utility.SplitCommas(c.StringSlice(syncStatusesFlagName)),
 				SyncTimeout:       c.Duration(syncTimeoutFlagName),
-				SkipConfirm:       c.Bool(yesFlagName),
+				SkipConfirm:       c.Bool(skipConfirmFlagName),
 				Description:       c.String(patchDescriptionFlagName),
 				Finalize:          c.Bool(patchFinalizeFlagName),
 				Browse:            c.Bool(patchBrowseFlagName),
@@ -214,7 +219,7 @@ func PatchFile() cli.Command {
 				Variants:    utility.SplitCommas(c.StringSlice(variantsFlagName)),
 				Tasks:       utility.SplitCommas(c.StringSlice(tasksFlagName)),
 				Alias:       c.String(patchAliasFlagName),
-				SkipConfirm: c.Bool(yesFlagName),
+				SkipConfirm: c.Bool(skipConfirmFlagName),
 				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),
 				ShowSummary: c.Bool(patchVerboseFlagName),

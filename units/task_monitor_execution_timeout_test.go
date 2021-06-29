@@ -82,7 +82,6 @@ func TestCleanupTask(t *testing.T) {
 
 				b := &build.Build{
 					Id:      bID,
-					Tasks:   []build.TaskCache{{Id: tID}},
 					Version: vID,
 				}
 				So(b.Insert(), ShouldBeNil)
@@ -134,7 +133,6 @@ func TestCleanupTask(t *testing.T) {
 					So(et2.Insert(), ShouldBeNil)
 					b := &build.Build{
 						Id:      "b2",
-						Tasks:   []build.TaskCache{{Id: "dt"}},
 						Version: vID,
 					}
 					So(b.Insert(), ShouldBeNil)
@@ -180,7 +178,6 @@ func TestCleanupTask(t *testing.T) {
 
 				build := &build.Build{
 					Id:      bID,
-					Tasks:   []build.TaskCache{{Id: tID}},
 					Version: vID,
 				}
 				So(build.Insert(), ShouldBeNil)
@@ -267,7 +264,6 @@ func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
 	}
 	b := &build.Build{
 		Id:      "b1",
-		Tasks:   []build.TaskCache{{Id: "t1"}, {Id: "t2"}, {Id: "t3"}},
 		Version: "v1",
 	}
 	h := &host.Host{
