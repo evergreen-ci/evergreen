@@ -1897,8 +1897,11 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
-
-	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.ProjectId), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, false)
+	item := restModel.APICommitQueueItem{
+		Issue:   newPatch.Id,
+		PatchId: newPatch.Id,
+		Source:  utility.ToStringPtr(commitqueue.SourceDiff)}
+	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.ProjectId), item, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
 	}
