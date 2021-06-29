@@ -246,27 +246,38 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     if ($scope.Settings.providers === null || $scope.Settings.provider === undefined) {
       $scope.Settings.providers = {
         "aws": {
-          "ecs": {
-            "clusters": []
+          "pod": {
+            "ecs": {
+              "clusters": []
+            }
           }
         }
       };
     }
     if ($scope.Settings.providers.aws === null || $scope.Settings.provider.aws === undefined) {
       $scope.Settings.providers.aws = {
+        "pod": {
+          "ecs": {
+            "clusters": []
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod === null || $scope.Settings.provider.aws.pod === undefined) {
+      $scope.Settings.providers.aws.pod = {
         "ecs": {
           "clusters": []
         }
       };
     }
-    if ($scope.Settings.providers.aws.ecs === null || $scope.Settings.provider.aws.ecs === undefined) {
-      $scope.Settings.providers.aws.ecs = {
+    if ($scope.Settings.providers.aws.pod.ecs === null || $scope.Settings.provider.aws.pod.ecs === undefined) {
+      $scope.Settings.providers.aws.pod.ecs = {
         "clusters": []
       };
     }
 
-    if ($scope.Settings.providers.aws.ecs.clusters == null || $scope.Settings.providers.aws.ecs.cluster === undefined) {
-      $scope.Settings.providers.aws.ecs.clusters = [];
+    if ($scope.Settings.providers.aws.pod.ecs.clusters == null || $scope.Settings.providers.aws.pod.ecs.cluster === undefined) {
+      $scope.Settings.providers.aws.pod.ecs.clusters = [];
     }
 
     if (!$scope.validECSCluster($scope.new_ecs_cluster)) {
@@ -274,7 +285,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       return
     }
 
-    $scope.Settings.providers.aws.ecs.clusters.push($scope.new_ecs_cluster);
+    $scope.Settings.providers.aws.pod.ecs.clusters.push($scope.new_ecs_cluster);
     $scope.new_ecs_cluster = {};
     $scope.invalidECSCluster = "";
   }
@@ -284,7 +295,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.deleteECSCluster = function (index) {
-    $scope.Settings.providers.aws.ecs.clusters.splice(index, 1);
+    $scope.Settings.providers.aws.pod.ecs.clusters.splice(index, 1);
   }
 
   $scope.clearAllUserTokens = function () {

@@ -1601,19 +1601,23 @@ Admin Settings
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types"
 											ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Regions</label>
 										<textarea ng-model="Settings.providers.aws.allowed_regions" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
-                  <!-- kim: TODO: add ECS/Secrets Manager settings -->
-									<md-input-container class="control" style="width:45%;">
-										<label>ECS Role</label>
-										<input type="text" ng-model="Settings.providers.aws.ecs.role">
+                  <!-- kim: TODO: add pod settings along with ECS/Secrets Manager settings -->
+                  <md-input-container class="control" style="width:45%;margin-left:50px">
+										<label>Pod Role</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.role">
+									</md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+										<label>Pod Region</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.region">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>ECS Task Definition Prefix</label>
-										<input type="text" ng-model="Settings.providers.aws.ecs.task_definition_prefix">
+										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_definition_prefix">
 									</md-input-container>
                   <md-card>
 										<md-card-title>
@@ -1623,7 +1627,7 @@ Admin Settings
 										</md-card-title>
 										<md-card-content>
 											<div id="ec2-list" class="form-group"
-												ng-repeat="(index, cluster) in Settings.providers.aws.ecs.clusters">
+												ng-repeat="(index, cluster) in Settings.providers.aws.pod.ecs.clusters">
 												<section layout="row" flex>
 													<md-input-container class="control" flex=25>
 														<input class="control" type="text" ng-model="cluster.name"
@@ -1670,12 +1674,8 @@ Admin Settings
 										</md-card-content>
 									</md-card>
 									<md-input-container class="control" style="width:45%;">
-										<label>Secrets Manager Secret Prefix</label>
-										<input type="text" ng-model="Settings.providers.aws.secrets_manager.secret_prefix">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Secrets Manager Region</label>
-										<input type="text" ng-model="Settings.providers.aws.ecs.task_definition_prefix">
+										<label>Pod Secrets Manager Secret Prefix</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.secrets_manager.secret_prefix">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
