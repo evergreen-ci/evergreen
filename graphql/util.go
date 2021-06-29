@@ -35,7 +35,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array.
 type FilterSortAndPaginateCedarTestResultsOpts struct {
 	GroupID     string
 	Limit       int
@@ -47,6 +46,7 @@ type FilterSortAndPaginateCedarTestResultsOpts struct {
 	TestResults []apimodels.CedarTestResult
 }
 
+// FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array.
 func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestResultsOpts) ([]apimodels.CedarTestResult, int) {
 	var filteredAndSortedTestResults []apimodels.CedarTestResult
 	for _, testResult := range opts.TestResults {
