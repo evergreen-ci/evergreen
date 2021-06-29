@@ -1819,7 +1819,7 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 	return &patchID, nil
 }
 
-// We only allow scheduling undispatched base tasks for tasks that are failing on the current patch
+// ScheduleUndispatchedBaseTasks only allows scheduling undispatched base tasks for tasks that are failing on the current patch
 func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
 	opts := data.TaskFilterOptions{
 		Statuses:     evergreen.TaskFailureStatuses,
@@ -1827,12 +1827,12 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 	}
 
 	restartedTasks := []*restModel.APITask{}
 	for _, t := range tasks {
-		// Can ignore error while fetching tasks this could just mean the task didn't exist on the base commit
+		// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
 		baseTask, _ := t.FindTaskOnBaseCommit()
 		if baseTask != nil {
 			task, err := SetScheduled(ctx, r.sc, baseTask.Id, true)
