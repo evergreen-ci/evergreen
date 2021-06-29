@@ -243,7 +243,6 @@ var (
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
 							{"$eq": []interface{}{"$" + ActivatedKey, true}},
-							{"$eq": []interface{}{isAttainable, true}},
 						},
 					},
 					"then": evergreen.TaskWillRun,
