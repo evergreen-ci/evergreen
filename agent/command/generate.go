@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
@@ -103,13 +103,20 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		pollRetryMaxDelay = 15 * time.Second
 	)
 
-	var generateStatus *apimodels.GeneratePollResponse
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			generateStatus, err = comm.GenerateTasksPoll(ctx, td)
+			generateStatus, err := comm.GenerateTasksPoll(ctx, td)
 			if err != nil {
 				return true, err
+			}
+			// only retry if the errors are with saving the project
+			if len(generateStatus.Errors) > 0 {
+				fullErr := errors.New(strings.Join(generateStatus.Errors, ", "))
+				if strings.Contains(fullErr.Error(), evergreen.RetryGenerateTasksError) {
+					return true, fullErr
+				}
+				return false, fullErr
 			}
 			if generateStatus.Finished {
 				return false, nil
@@ -122,9 +129,6 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		})
 	if err != nil {
 		return errors.WithMessage(err, "problem polling for generate tasks job")
-	}
-	if len(generateStatus.Errors) > 0 {
-		return errors.New(strings.Join(generateStatus.Errors, ", "))
 	}
 	return nil
 }

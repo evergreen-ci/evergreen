@@ -126,12 +126,6 @@ func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
 	s.Equal("user1", b.ActivatedBy)
 }
 
-func (s *BuildConnectorChangeStatusSuite) TestSetActivatedFail() {
-	err := s.ctx.SetBuildActivated("zzz", "user1", true)
-	s.Error(err)
-	s.Contains(err.Error(), "not found")
-}
-
 func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
 	err := s.ctx.SetBuildPriority("build1", int64(2), "")
 	s.NoError(err)

@@ -822,13 +822,7 @@ func TestNextTask(t *testing.T) {
 		}
 		So(task2.Insert(), ShouldBeNil)
 
-		testBuild := build.Build{
-			Id: buildID,
-			Tasks: []build.TaskCache{
-				{Id: "task1"},
-				{Id: "task2"},
-			},
-		}
+		testBuild := build.Build{Id: buildID}
 		So(testBuild.Insert(), ShouldBeNil)
 
 		task3 := task.Task{
@@ -1086,12 +1080,7 @@ func TestNextTask(t *testing.T) {
 						Provisioned:   true,
 						Status:        evergreen.HostRunning,
 					}
-					anotherBuild := build.Build{
-						Id: "anotherBuild",
-						Tasks: []build.TaskCache{
-							{Id: t1.Id},
-						},
-					}
+					anotherBuild := build.Build{Id: "anotherBuild"}
 
 					So(anotherBuild.Insert(), ShouldBeNil)
 					So(anotherHost.Insert(), ShouldBeNil)
@@ -1127,12 +1116,7 @@ func TestNextTask(t *testing.T) {
 							AgentRevision: evergreen.AgentVersion,
 						}
 						So(h3.Insert(), ShouldBeNil)
-						anotherBuild := build.Build{
-							Id: "b",
-							Tasks: []build.TaskCache{
-								{Id: inactiveTask.Id},
-							},
-						}
+						anotherBuild := build.Build{Id: "b"}
 						So(anotherBuild.Insert(), ShouldBeNil)
 						Convey("the inactive task should not be returned and the host running task should be unset", func() {
 							resp := getNextTaskEndpoint(t, as, h3.Id, sent)
@@ -1260,12 +1244,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		So(sampleHost.Insert(), ShouldBeNil)
 
 		testBuild := build.Build{
-			Id: buildID,
-			Tasks: []build.TaskCache{
-				{Id: "task1"},
-				{Id: "task2"},
-				{Id: "dt"},
-			},
+			Id:      buildID,
 			Project: projectId,
 			Version: versionId,
 		}
@@ -1464,11 +1443,6 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				dbTask, err := task.FindOne(task.ById(displayTask.Id))
 				So(err, ShouldBeNil)
 				So(dbTask.Status, ShouldEqual, evergreen.TaskFailed)
-			})
-			Convey("the build cache should be updated correctly", func() {
-				dbBuild, err := build.FindOne(build.ById(buildID))
-				So(err, ShouldBeNil)
-				So(dbBuild.Tasks[2].Status, ShouldEqual, evergreen.TaskFailed)
 			})
 		})
 	})

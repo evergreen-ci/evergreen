@@ -2,14 +2,15 @@ mciModule.controller('AdminOptionsCtrl', [
   '$scope', '$rootScope', 'mciBuildsRestService', 'notificationService','$filter', 'RestartUtil',
   function($scope, $rootScope, buildRestService, notifier, $filter, RestartUtil) {
     $scope.selection = "completed";
-    $scope.setBuild = function(build) {
-      $scope.build = build;
+    $scope.setBuild = function(uiBuild) {
+      $scope.build = uiBuild.Build;
       $scope.setRestartSelection(RestartUtil.STATUS.ALL)
-      $scope.buildId = build._id;
+      $scope.buildId = $scope.build._id;
+      $scope.buildTasks = uiBuild.Tasks
     };
 
     $scope.numToBeRestarted = function(){
-        return $scope.build.tasks.filter(function(x){return x.checkedForRestart}).length;
+        return $scope.buildTasks.filter(function(x){return x.checkedForRestart}).length;
     }
 
     $scope.adminOptionVals = {};
@@ -19,10 +20,11 @@ mciModule.controller('AdminOptionsCtrl', [
 
     $scope.setRestartSelection = function(status){
         $scope.selection = status;
-
-        _.each($scope.build.tasks, function(task) {
-          task.checkedForRestart = status.matches(task)
-        })
+        if(status !== "") {
+            _.each($scope.buildTasks, function(task) {
+                task.checkedForRestart = status.matches(task.Task)
+            })
+        }
     }
 
     $scope.abort = function() {
@@ -51,7 +53,7 @@ mciModule.controller('AdminOptionsCtrl', [
             $scope.buildId,
             'restart',
             { abort: $scope.adminOptionVals.abort,
-              taskIds: _.pluck(_.filter($scope.build.tasks, function(y){return y.checkedForRestart}),"id")
+              taskIds: $scope.buildTasks.filter(function(y){return y.checkedForRestart}).map(task => task.Task.id)
             },
             {
                 success: function(resp) {
