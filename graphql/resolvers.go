@@ -1819,7 +1819,8 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 	return &patchID, nil
 }
 
-func (r *mutationResolver) ScheduleFailingBasePatchTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
+// We only allow scheduling undispatched base tasks for tasks that are failing on the current patch
+func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
 	opts := data.TaskFilterOptions{
 		Statuses:     evergreen.TaskFailureStatuses,
 		BaseStatuses: []string{evergreen.TaskUndispatched},
