@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "query_file": "successful-restart.graphql",
+      "result": { "data": { "scheduleFailingBasePatchTasks": [
+          {
+              "id": "base-task-2",
+              "execution": 0,
+              "status": "will-run"
+          }
+      ] } }
+    }
+]
+}

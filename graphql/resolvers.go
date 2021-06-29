@@ -1819,6 +1819,32 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 	return &patchID, nil
 }
 
+func (r *mutationResolver) ScheduleFailingBasePatchTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
+	opts := data.TaskFilterOptions{
+		Statuses:     evergreen.TaskFailureStatuses,
+		BaseStatuses: []string{evergreen.TaskUndispatched},
+	}
+	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+	}
+
+	restartedTasks := []*restModel.APITask{}
+	for _, t := range tasks {
+		// Can ignore error while fetching tasks this could just mean the task didn't exist on the base commit
+		baseTask, _ := t.FindTaskOnBaseCommit()
+		if baseTask != nil {
+			task, err := SetScheduled(ctx, r.sc, baseTask.Id, true)
+			if err != nil {
+				return nil, err
+			}
+			restartedTasks = append(restartedTasks, task)
+		}
+
+	}
+	return restartedTasks, nil
+}
+
 func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
 	if len(taskIds) == 0 {
 		return nil, InputValidationError.Send(ctx, "`taskIds` array is empty. You must provide at least one task id")

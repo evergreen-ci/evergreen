@@ -72,8 +72,8 @@
         "$date": "0001-01-01T00:00:00Z"
       },
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "author": "Trey Granderson",
-      "author_email": "trey.granderson@mongodb.com",
+      "author": "Mohamed Khelif",
+      "author_email": "mohamed.khelif@mongodb.com",
       "message": "EVG-7343: timeTaken and makespan fields on Patch type (#3166)\n\n* EVG-7327: query for patch by id\r\n\r\n* EVG-7343: add makespan and timetaken to patch schema type\r\n\r\n* generated\r\n\r\n* remove patch dates type\r\n\r\n* add back time fields\r\n\r\n* change time field to duration\r\n\r\n* update tests\r\n\r\n* put time fields back on Patch type\r\n\r\n* revert time fields\r\n\r\n* update tests\r\n\r\n* import time in util\r\n\r\n* fix util imports\r\n\r\n* change patch id to $oid\r\n\r\n* change $oid field to numbers\r\n\r\n* remove dashes from $oid field\r\n\r\n* more fixes\r\n\r\n* omg\r\n\r\n* use correct patch id in query\r\n\r\n* add create time to test patch\r\n\r\n* add to patch\r\n\r\n* idek at this point\r\n\r\n* fix duration query\r\n\r\n* add right version id to tasks\r\n\r\n* use duration.String()\r\n\r\n* remove unusued imports in util\r\n\r\n* change json keys of tasks\r\n\r\n* use $date in task date fields\r\n\r\n* round by seconds\r\n\r\n* update test results\r\n\r\n* merge merge merge\r\n\r\n* fix leftover conflict\r\n\r\n* duration times of 0 are null\r\n\r\n* convert durations to string before inspecting",
       "status": "started",
       "order": 1354,
@@ -190,7 +190,7 @@
       "remote": false,
       "remote_path": "self-tests.yml",
       "r": "gitter_request",
-      "author_id": "trey.granderson"
+      "author_id": "mohamed.khelif"
     }
   ],
   "old_tasks": [
@@ -219,86 +219,6 @@
   ],
   "tasks": [
     {
-      "_id": "taskity_task",
-      "order": 2567,
-      "version": "5e4ff3abe3c3317e352062e4",
-      "host_id": "i-0bb70e2ac4c1a9ac8",
-      "distro": "archlinux-small",
-      "execution": 0,
-      "details": {
-        "oom_killer": {
-          "detected": true,
-          "pids": [1234, 5678, 9101, 1235]
-        }
-      },
-      "depends_on": [
-        {
-          "_id": "dep1",
-          "status": "*",
-          "unattainable": true
-        },
-        {
-          "_id": "dep2",
-          "status": "*",
-          "unattainable": false
-        }
-      ]
-    },
-    {
-      "_id": "1",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "build_variant": "ubuntu1604",
-      "display_name": "test-thirdparty-docker",
-      "status": "success",
-      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "r": "github_pull_request",
-      "branch": "spruce"
-    },
-    {
-      "_id": "some_task",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "build_variant": "ubuntu1604",
-      "display_name": "test-thirdparty-docker",
-      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "r": "github_pull_request",
-      "status": "failed",
-      "branch": "spruce",
-      "distro": "macos-1014",
-      "execution": 1,
-      "host_id": "host2"
-    },
-    {
-      "_id": "execution_task",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "build_variant": "ubuntu1604",
-      "display_name": "test-thirdparty-docker",
-      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "r": "github_pull_request",
-      "status": "success",
-      "branch": "spruce",
-      "distro": "macos-1014",
-      "execution": 1,
-      "host_id": "host2"
-    },
-    {
-      "_id": "display_task",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "build_variant": "ubuntu1604",
-      "display_name": "test-thirdparty-docker",
-      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "r": "github_pull_request",
-      "status": "success",
-      "branch": "spruce",
-      "distro": "macos-1014",
-      "execution": 1,
-      "host_id": "host2",
-      "execution_tasks": ["execution_task"]
-    },
-    {
       "_id": "some_task_2",
       "version": "5e4ff3abe3c3317e352062e4",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
@@ -309,34 +229,6 @@
       "status": "undispatched",
       "branch": "spruce",
       "host_id": "host1"
-    },
-    {
-      "_id": "some_task_3",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "build_variant": "ubuntu1604",
-      "display_name": "test-thirdparty-docker",
-      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "r": "github_pull_request",
-      "activated": true,
-      "status": "undispatched",
-      "branch": "spruce"
-    },
-    {
-      "_id": "some_task_4",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "build_variant": "ubuntu1604",
-      "display_name": "test-thirdparty-docker",
-      "r": "github_pull_request",
-      "status": "success",
-      "depends_on": [
-        {
-          "_id": "random_thang",
-          "status": "failed",
-          "unattainable": true
-        }
-      ]
     },
     {
       "_id": "2",
@@ -357,7 +249,7 @@
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
-      "status": "undispatched",
+      "status": "success",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "branch": "spruce"
@@ -368,130 +260,11 @@
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
-      "status": "failed",
+      "status": "undispatched",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
-      "branch": "spruce"
-    },
-    {
-      "_id": "dep1",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "display_name": "dep1",
-      "build_variant": "ubuntu",
-      "host_id": "host1"
-    },
-    {
-      "_id": "dep2",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "display_name": "dep2",
-      "build_variant": "windows",
-      "status": "failed"
-    },
-    {
-      "_id": "dep3",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "display_name": "dep3",
-      "build_variant": "windows",
-      "status": "started"
-    },
-    {
-      "_id": "dep4",
-      "version": "1e4ff3abe3c3317e352062e4",
-      "display_name": "dep4",
-      "build_variant": "windows",
-      "depends_on": [
-        {
-          "_id": "task6",
-          "status": "failed",
-          "unattainable": false
-        }
-      ]
-    },
-    {
-      "_id": "dep5",
-      "version": "1e4ff3abe3c3317e352062e4",
-      "display_name": "dep5",
-      "build_variant": "windows",
-      "status": "failed"
-    },
-    {
-      "_id": "task2",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "depends_on": [
-        {
-          "_id": "dep1",
-          "status": "*",
-          "unattainable": false
-        }
-      ],
-      "host_id": "host2"
-    },
-    {
-      "_id": "task3",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "depends_on": [
-        {
-          "_id": "dep1",
-          "status": "started",
-          "unattainable": false
-        }
-      ],
-      "status": "failed",
-      "host_id": "host3"
-    },
-    {
-      "_id": "task4",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "depends_on": [
-        {
-          "_id": "dep2",
-          "status": "*",
-          "unattainable": false
-        }
-      ],
-      "host_id": "host4"
-    },
-    {
-      "_id": "task5",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "depends_on": [
-        {
-          "_id": "dep2",
-          "status": "failed",
-          "unattainable": false
-        }
-      ],
-      "host_id": "host5"
-    },
-    {
-      "_id": "task6",
-      "version": "1e4ff3abe3c3317e352062e4",
-      "depends_on": [
-        {
-          "_id": "dep4",
-          "status": "failed",
-          "unattainable": false
-        }
-      ]
-    },
-    {
-      "_id": "task7",
-      "version": "5e4ff3abe3c3317e352062e4",
-      "depends_on": [
-        {
-          "_id": "dep5",
-          "status": "",
-          "unattainable": false
-        }
-      ]
-    },
-    {
-      "_id": "generated_task",
-      "generated_by": "generator_task"
-    },
-    {
-      "_id": "generator_task",
-      "display_name": "i am a generator"
+      "branch": "spruce",
+      "build_id": "5"
     }
   ],
   "hosts": [
@@ -1308,6 +1081,131 @@
         "format_command": ""
       },
       "icecream_settings": {}
+    }
+  ],
+  "builds": [
+    {
+      "_id": "9",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "osx",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "wuzzup",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "OSX",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "7",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "windows",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "wuzzup",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "Windows",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "5",
+      "create_time": "2019-07-10T22:05:08.973Z",
+      "start_time": "2019-07-21T00:39:42.274Z",
+      "finish_time": "0001-01-01T00:00:00Z",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "branch": "mci",
+      "gitspec": "",
+      "build_variant": "ubuntu1604",
+      "build_number": "1798",
+      "status": "failed",
+      "activated": false,
+      "activated_by": "",
+      "activated_time": "1970-01-01T00:00:00Z",
+      "order": 4129,
+      "tasks": [
+        {
+          "id": "base-task-2",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        },
+        {
+          "id": "wuzzup-activated",
+          "d": "dist",
+          "s": "undispatched",
+          "ed": {},
+          "st": "1970-01-01T00:00:00Z",
+          "tt": 0,
+          "a": false
+        }
+      ],
+      "time_taken": 0,
+      "display_name": "Ubuntu 16.04",
+      "predicted_makespan": 0,
+      "actual_makespan": 0,
+      "r": "ad_hoc"
     }
   ]
 }
