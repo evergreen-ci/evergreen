@@ -2228,8 +2228,9 @@ func TestDisplayStatus(t *testing.T) {
 	assert.NoError(t, t2.Insert())
 	checkStatuses(t, evergreen.TaskWillRun, t2)
 	t3 := Task{
-		Id:     "t3",
-		Status: evergreen.TaskFailed,
+		Id:        "t3",
+		Status:    evergreen.TaskFailed,
+		Activated: true,
 	}
 	assert.NoError(t, t3.Insert())
 	checkStatuses(t, evergreen.TaskFailed, t3)
@@ -2273,8 +2274,9 @@ func TestDisplayStatus(t *testing.T) {
 	assert.NoError(t, t7.Insert())
 	checkStatuses(t, evergreen.TaskSystemUnresponse, t7)
 	t8 := Task{
-		Id:     "t8",
-		Status: evergreen.TaskStarted,
+		Id:        "t8",
+		Status:    evergreen.TaskStarted,
+		Activated: true,
 	}
 	assert.NoError(t, t8.Insert())
 	checkStatuses(t, evergreen.TaskStarted, t8)
@@ -2285,16 +2287,45 @@ func TestDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, t9.Insert())
 	checkStatuses(t, evergreen.TaskUnscheduled, t9)
+	t10 := Task{
+		Id:        "t10",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []Dependency{
+			{
+				TaskId:       "t9",
+				Unattainable: true,
+				Status:       "success",
+			},
+		},
+	}
+	assert.NoError(t, t10.Insert())
+	checkStatuses(t, evergreen.TaskStatusBlocked, t10)
+	t11 := Task{
+		Id:        "t11",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []Dependency{
+			{
+				TaskId:       "t8",
+				Unattainable: false,
+				Status:       "success",
+			},
+		},
+	}
+	assert.NoError(t, t11.Insert())
+	checkStatuses(t, evergreen.TaskWillRun, t11)
 }
 
 func checkStatuses(t *testing.T, expected string, toCheck Task) {
 	var dbTasks []Task
-	err := db.Aggregate(Collection, []bson.M{
+	aggregation := []bson.M{
 		{"$match": bson.M{
 			IdKey: toCheck.Id,
 		}},
 		addDisplayStatus,
-	}, &dbTasks)
+	}
+	err := db.Aggregate(Collection, aggregation, &dbTasks)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, dbTasks[0].DisplayStatus)
 	assert.Equal(t, expected, toCheck.GetDisplayStatus())
