@@ -205,9 +205,10 @@ type TestResultsFilterSortPaginateOpts struct {
 	SortBy    string
 	SortDir   int
 	Statuses  []string
-	TaskIDs   []string // TaskIDs is the only required option.
-	TestID    string
-	TestName  string
+	// TaskIDs is the only required option.
+	TaskIDs  []string
+	TestID   string
+	TestName string
 }
 
 // TestResultsFilterSortPaginate is a query for returning test results from supplied TaskIDs.

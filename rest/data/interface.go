@@ -31,16 +31,19 @@ import (
 
 // FindTestsByTaskIdOpts contains filtering, sorting and pagination options for TestResults.
 type FindTestsByTaskIdOpts struct {
-	Execution int    // Execution matches exact.
-	GroupID   string // GroupID matches exact.
-	Limit     int    // Omitting Limit will return all results.
-	Page      int    // Page * Limit resembles the number of skipped documents.
-	SortBy    string // SortBy should equal a bson tag from the TestResults struct.
-	SortDir   int
-	Statuses  []string // Statuses matches exact.
-	TaskID    string   // TaskID is the only required field and matches exact.
-	TestID    string   // TestID matches all IDs >= TestID.
-	TestName  string   // TestName matches exact.
+	Execution int
+	GroupID   string
+	Limit     int
+	Page      int
+	// SortBy should equal a bson tag from the TestResults struct.
+	SortBy   string
+	SortDir  int
+	Statuses []string
+	// TaskID is the only required field.
+	TaskID string
+	// TestID matches all IDs >= TestID.
+	TestID   string
+	TestName string
 }
 
 // Connector is an interface that contains all of the methods which
