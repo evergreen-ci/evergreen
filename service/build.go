@@ -24,12 +24,16 @@ import (
 
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
-func getUiTaskCache(build *build.Build, tasks []task.Task) ([]uiTask, error) {
+func getUiTaskCache(b *build.Build) ([]uiTask, error) {
+	tasks, err := task.FindAll(task.ByBuildId(b.Id))
+	if len(tasks) == 0 {
+		return nil, errors.Wrap(err, "can't get tasks for build")
+	}
 	idToTask := task.TaskSliceToMap(tasks)
 
 	// Insert the tasks in the same order as the task cache
-	uiTasks := make([]uiTask, 0, len(build.Tasks))
-	for _, taskCache := range build.Tasks {
+	uiTasks := make([]uiTask, 0, len(b.Tasks))
+	for _, taskCache := range b.Tasks {
 		t, ok := idToTask[taskCache.Id]
 		if !ok {
 			continue
@@ -69,18 +73,18 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
-	tasks, err := task.FindAllFirstExecution(task.ByBuildId(projCtx.Build.Id))
+	uiTasks, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
 		return
 	}
-	uiTasks, err := getUiTaskCache(projCtx.Build, tasks)
+	buildAsUI.Tasks = uiTasks
+
+	buildAsUI.TimeTaken, buildAsUI.Makespan, err = projCtx.Build.GetTimeSpent()
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
 	}
-	buildAsUI.Tasks = uiTasks
-	buildAsUI.TimeTaken, buildAsUI.Makespan = task.GetTimeSpent(tasks)
 
 	if projCtx.Build.TriggerID != "" {
 		var projectName string
@@ -169,10 +173,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	case "abort":
 		if err = model.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
-			return
-		}
-		if err = model.RefreshTasksCache(projCtx.Build.Id); err != nil {
-			http.Error(w, fmt.Sprintf("problem refreshing tasks cache %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
 		if projCtx.Build.Requester == evergreen.MergeTestRequester {
@@ -294,18 +294,18 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		Version:     *projCtx.Version,
 	}
 
-	tasks, err := task.FindAllFirstExecution(task.ByBuildId(projCtx.Build.Id))
+	uiTasks, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
 		return
 	}
-	uiTasks, err := getUiTaskCache(projCtx.Build, tasks)
+	updatedBuild.Tasks = uiTasks
+
+	updatedBuild.TimeTaken, updatedBuild.Makespan, err = projCtx.Build.GetTimeSpent()
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
 	}
-	updatedBuild.Tasks = uiTasks
-	updatedBuild.TimeTaken, updatedBuild.Makespan = task.GetTimeSpent(tasks)
 
 	gimlet.WriteJSON(w, updatedBuild)
 }
@@ -331,6 +331,12 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	taskMap, err := getTaskMapForBuilds(builds)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error getting tasks for builds: %v", err), http.StatusInternalServerError)
+		return
+	}
+
 	history := &struct {
 		Builds      []*uiBuild `json:"builds"`
 		LastSuccess *uiBuild   `json:"lastSuccess"`
@@ -348,8 +354,17 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("no version found for build %v", builds[i].Id), http.StatusNotFound)
 			return
 		}
+
+		uiTasks := make([]uiTask, 0, len(builds[i].Tasks))
+		for _, t := range builds[i].Tasks {
+			if dbTask, ok := taskMap[t.Id]; ok {
+				uiTasks = append(uiTasks, uiTask{Task: dbTask})
+			}
+		}
+
 		history.Builds[i] = &uiBuild{
 			Build:       builds[i],
+			Tasks:       uiTasks,
 			CurrentTime: time.Now().UnixNano(),
 			Elapsed:     time.Since(builds[i].StartTime),
 			RepoOwner:   v.Owner,
@@ -371,8 +386,16 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("no version '%v' found", lastSuccess.Version), http.StatusNotFound)
 			return
 		}
+
+		uiTasks, err := getUiTaskCache(lastSuccess)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("can't get tasks for last successful version '%s'", lastSuccess.Version), http.StatusInternalServerError)
+			return
+		}
+
 		history.LastSuccess = &uiBuild{
 			Build:       *lastSuccess,
+			Tasks:       uiTasks,
 			CurrentTime: time.Now().UnixNano(),
 			Elapsed:     time.Since(lastSuccess.StartTime),
 			RepoOwner:   v.Owner,
@@ -382,4 +405,19 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gimlet.WriteJSON(w, history)
+}
+
+// getTaskMapForBuilds returns a map of task ID to task document
+// for all tasks in builds
+func getTaskMapForBuilds(builds []build.Build) (map[string]task.Task, error) {
+	buildIds := make([]string, 0, len(builds))
+	for _, b := range builds {
+		buildIds = append(buildIds, b.Id)
+	}
+	tasksForBuilds, err := task.FindAll(task.ByBuildIds(buildIds).WithFields(task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get tasks for builds")
+	}
+
+	return task.TaskSliceToMap(tasksForBuilds), nil
 }
