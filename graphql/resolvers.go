@@ -2501,15 +2501,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
 			}
 			executionTasks = append(executionTasks, apiTask)
-		} else {
-			grip.Warning(message.Fields{
-				"function":  "ExecutionTasksFull",
-				"message":   "execution task from db not found",
-				"task_id":   execTaskID,
-				"execution": t.Execution,
-			})
 		}
-
 	}
 
 	return executionTasks, nil
