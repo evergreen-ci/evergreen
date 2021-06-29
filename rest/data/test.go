@@ -86,7 +86,7 @@ func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]test
 		SortDir:   opts.SortDir,
 		Page:      opts.Page,
 		Limit:     opts.Limit,
-		Execution: opts.Execution
+		Execution: opts.Execution,
 	})
 
 	if err != nil {

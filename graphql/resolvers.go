@@ -1297,7 +1297,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			SortDir:   sortDir,
 			Limit:     limitParam,
 			Execution: taskExecution,
-			Page:      pageParam
+			Page:      pageParam,
 		})
 
 		if err != nil {
