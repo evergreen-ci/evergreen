@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 func Evaluate() cli.Command {
