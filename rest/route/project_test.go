@@ -793,26 +793,39 @@ func TestProjectPutRotateSuite(t *testing.T) {
 }
 
 func (s *ProjectPutRotateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection))
 	s.sc = getMockProjectsConnector()
-
-	settings, err := evergreen.GetConfig()
-	s.NoError(err)
-	s.rm = makeProjectVarsPut(s.sc, settings).(*projectVarsPutHandler)
+	s.rm = makeProjectVarsPut(s.sc).(*projectVarsPutHandler)
 }
 
 func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	ctx := context.Background()
-	json := []byte(
+
+	dryRunTrue := []byte(
+		`{
+				"to_replace": "yellow",
+				"replacement": "brown",
+				"dry_run": true
+		}`)
+
+	dryRunFalse := []byte(
 		`{
 				"to_replace": "yellow",
 				"replacement": "brown"
 		}`)
 
-	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(json))
+	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunTrue))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal("yellow", s.sc.CachedVars[0].Vars["banana"])
+
+	req, _ = http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunFalse))
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)

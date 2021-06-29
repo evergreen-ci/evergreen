@@ -1061,28 +1061,25 @@ type projectVarsPutInput struct {
 
 type projectVarsPutHandler struct {
 	replaceVars *projectVarsPutInput
-
-	sc       data.Connector
-	settings *evergreen.Settings
+	sc          data.Connector
 }
 
-func makeProjectVarsPut(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
+func makeProjectVarsPut(sc data.Connector) gimlet.RouteHandler {
 	return &projectVarsPutHandler{
-		sc:       sc,
-		settings: settings,
+		sc: sc,
 	}
 }
 
 func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
 	return &projectVarsPutHandler{
-		sc:       h.sc,
-		settings: h.settings,
+		sc: h.sc,
 	}
 }
 
 // Parse fetches the project's identifier from the http request.
 func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
+	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
 		return errors.Wrap(err, "Argument read error")
@@ -1098,11 +1095,9 @@ func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.New("'replacement' parameter must be specified")
 	}
 	h.replaceVars = replacements
-	defer body.Close()
 	return nil
 }
 
-// Run updates a project by name.
 func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
 	res, err := h.sc.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.replaceVars.DryRun)
 	if err != nil {

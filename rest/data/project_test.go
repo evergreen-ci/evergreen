@@ -443,7 +443,15 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVarsByValue() {
-	s.ctx.UpdateProjectVarsByValue("1", "11")
+	resp, err := s.ctx.UpdateProjectVarsByValue("1", "11", true)
+	s.NoError(err)
+	s.Require().NotNil(resp)
+	s.Equal("a", resp[projectId])
+
+	resp, err = s.ctx.UpdateProjectVarsByValue("1", "11", false)
+	s.NoError(err)
+	s.Require().NotNil(resp)
+	s.Equal("a", resp[projectId])
 
 	res, err := s.ctx.FindProjectVarsById(projectId, "", false)
 	s.NoError(err)

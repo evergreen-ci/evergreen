@@ -259,16 +259,16 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
-func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement string, dryRun bool) ([]*model.ProjectVars, error) {
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement string, dryRun bool) (map[string]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjects, err := model.GetVarsByValue(toReplace)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "failed to fetch projects with matching value"))
+		catcher.Wrap(err, "failed to fetch projects with matching value")
 	}
 	if matchingProjects == nil {
-		catcher.Add(errors.New("no projects with matching value found"))
+		catcher.New("no projects with matching value found")
 	}
-	changes := []*model.ProjectVars{}
+	changes := map[string]string{}
 	for _, project := range matchingProjects {
 		for key, val := range project.Vars {
 			if val == toReplace {
@@ -276,14 +276,10 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement st
 					project.Vars[key] = replacement
 					_, err := project.Upsert()
 					if err != nil {
-						catcher.Add(errors.Wrapf(err, "problem overwriting variables for project '%s'", project.Id))
+						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
 					}
 				}
-				change := model.ProjectVars{
-					Id:   project.Id,
-					Vars: map[string]string{key: project.Vars[key]},
-				}
-				changes = append(changes, &change)
+				changes[project.Id] = key
 			}
 		}
 	}
@@ -599,19 +595,15 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
-func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement string, dryRun bool) ([]*model.ProjectVars, error) {
-	changes := []*model.ProjectVars{}
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement string, dryRun bool) (map[string]string, error) {
+	changes := map[string]string{}
 	for _, cachedVars := range pc.CachedVars {
 		for key, val := range cachedVars.Vars {
 			if toReplace == val {
 				if !dryRun {
 					cachedVars.Vars[key] = replacement
 				}
-				change := model.ProjectVars{
-					Id:   cachedVars.Id,
-					Vars: map[string]string{key: cachedVars.Vars[key]},
-				}
-				changes = append(changes, &change)
+				changes[cachedVars.Id] = key
 			}
 		}
 	}
