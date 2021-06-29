@@ -138,6 +138,8 @@ var (
 		},
 	},
 	}
+
+	// Checks if task dependencies are attainable/ have met all their dependencies and are not blocked
 	isAttainable = bson.M{
 		"$ne": []interface{}{bson.M{"$reduce": bson.M{
 			"input":        "$" + DependsOnKey,
@@ -215,17 +217,6 @@ var (
 					},
 					"then": evergreen.TaskTimedOut,
 				},
-				// A task will run if it is activated and does not have any blocking deps
-				{
-					"case": bson.M{
-						"$and": []bson.M{
-							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
-							{"$eq": []interface{}{"$" + ActivatedKey, true}},
-							{"$eq": []interface{}{isAttainable, true}},
-						},
-					},
-					"then": evergreen.TaskWillRun,
-				},
 				// A task will be unscheduled if it is not activated
 				{
 					"case": bson.M{
@@ -245,6 +236,17 @@ var (
 						},
 					},
 					"then": evergreen.TaskStatusBlocked,
+				},
+				// A task will run if it is activated and does not have any blocking deps
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+							{"$eq": []interface{}{"$" + ActivatedKey, true}},
+							{"$eq": []interface{}{isAttainable, true}},
+						},
+					},
+					"then": evergreen.TaskWillRun,
 				},
 			},
 			"default": "$" + StatusKey,
