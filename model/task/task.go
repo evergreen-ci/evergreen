@@ -3093,6 +3093,8 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		DisplayTestName: result.DisplayTestName,
 		GroupID:         result.GroupID,
 		LogTestName:     result.LogTestName,
+		URL:             result.LogURL,
+		URLRaw:          result.RawLogURL,
 		LineNum:         result.LineNum,
 		StartTime:       float64(result.Start.Unix()),
 		EndTime:         float64(result.End.Unix()),

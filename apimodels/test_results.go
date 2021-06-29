@@ -21,6 +21,8 @@ type CedarTestResult struct {
 	GroupID         string    `json:"group_id"`
 	Status          string    `json:"status"`
 	LogTestName     string    `json:"log_test_name"`
+	LogURL          string    `json:"log_url"`
+	RawLogURL       string    `json:"raw_log_url"`
 	LineNum         int       `json:"line_num"`
 	Start           time.Time `json:"test_start_time"`
 	End             time.Time `json:"test_end_time"`
