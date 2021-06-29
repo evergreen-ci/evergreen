@@ -16,14 +16,14 @@ mciModule.controller('BuildVariantHistoryController', function ($scope, $http, $
   };
 
   var computeBuildResults = function (buildData) {
-    var build = buildData.Build;
-    $scope.buildResults[build._id] = [];
+    var tasks = buildData.Tasks;
+    $scope.buildResults[buildData.Build._id] = [];
 
-    for (var j = 0; j < build.tasks.length; ++j) {
-      $scope.buildResults[build._id].push({
-        "class": $filter('statusFilter')(build.tasks[j]),
-        "tooltip": build.tasks[j].display_name + " - " + $filter('statusLabel')(build.tasks[j]),
-        "link": '/task/' + build.tasks[j].id
+    for (var j = 0; j < tasks.length; ++j) {
+      $scope.buildResults[buildData.Build._id].push({
+        "class": $filter('statusFilter')(tasks[j].Task),
+        "tooltip": tasks[j].Task.display_name + " - " + $filter('statusLabel')(tasks[j].Task),
+        "link": '/task/' + tasks[j].Task.id
       });
     }
   };

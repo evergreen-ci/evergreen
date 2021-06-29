@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
@@ -89,12 +88,8 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 		}
 	}
 	if len(tasksToDeactivate) > 0 {
-		var deactivatedTasks []task.Task
-		deactivatedTasks, err = task.DeactivateTasks(tasksToDeactivate, j.ID())
+		err = task.DeactivateTasks(tasksToDeactivate, j.ID())
 		j.AddError(err)
-		if err == nil {
-			j.AddError(build.SetManyCachedTasksActivated(deactivatedTasks, false))
-		}
 	}
 
 	grip.InfoWhen(!j.HasErrors(),

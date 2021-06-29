@@ -713,63 +713,6 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.False(complete)
 }
 
-func TestBuildSetCachedTaskFinished(t *testing.T) {
-	assert := assert.New(t)
-
-	b := &Build{
-		Id:      "b1",
-		Status:  evergreen.BuildStarted,
-		Version: "abc",
-		Tasks: []TaskCache{
-			{
-				Id:     "t1",
-				Status: evergreen.TaskStarted,
-			},
-			{
-				Id:     "t2",
-				Status: evergreen.TaskStarted,
-			},
-		},
-	}
-	assert.NoError(b.Insert())
-	b.Id = "b2"
-	assert.NoError(b.Insert())
-	b.Id = "b1"
-
-	detail := apimodels.TaskEndDetail{
-		Status: evergreen.TaskFailed,
-		Type:   evergreen.CommandTypeSystem,
-	}
-	timeTaken := 10 * time.Minute
-
-	assert.NoError(b.SetCachedTaskFinished("t1", evergreen.TaskFailed, &detail, timeTaken))
-	assert.NoError(b.SetCachedTaskFinished("t2", evergreen.TaskFailed, &detail, timeTaken))
-	assert.EqualError(b.SetCachedTaskFinished("t3", evergreen.TaskFailed, &detail, timeTaken), "document not found")
-
-	assert.NoError(SetCachedTaskFinished("b2", "t1", evergreen.TaskFailed, &detail, timeTaken))
-	assert.NoError(SetCachedTaskFinished("b2", "t2", evergreen.TaskFailed, &detail, timeTaken))
-	assert.EqualError(SetCachedTaskFinished("b2", "t3", evergreen.TaskFailed, &detail, timeTaken), "document not found")
-
-	// Results from build.SetCachedTaskFinished and SetCachedTaskFinished
-	// should be the same
-	b2, err := FindOneId("b2")
-	assert.NoError(err)
-	assert.NotNil(b2)
-
-	// we want the time to actually equal and it won't because
-	// timezone on nils
-	b.Id = ""
-	b2.Id = ""
-	b.CreateTime = b2.CreateTime
-	b.StartTime = b2.StartTime
-	b.FinishTime = b2.FinishTime
-	b.ActivatedTime = b2.ActivatedTime
-	for idx := range b.Tasks {
-		b.Tasks[idx].StartTime = b2.Tasks[idx].StartTime
-	}
-	assert.EqualValues(b2, b)
-}
-
 func TestBulkInsert(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	builds := Builds{
