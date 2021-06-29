@@ -781,9 +781,28 @@ func TestDeleteProject(t *testing.T) {
 //
 // Tests for PUT /rest/v2/projects/variables/rotate
 
-func (s *ProjectPutSuite) TestRotateProjectVars() {
-	ctx := context.Background()
+type ProjectPutRotateSuite struct {
+	sc *data.MockConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestProjectPutRotateSuite(t *testing.T) {
+	suite.Run(t, new(ProjectPutRotateSuite))
+}
+
+func (s *ProjectPutRotateSuite) SetupTest() {
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection))
 	s.sc = getMockProjectsConnector()
+
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.rm = makeProjectVarsPut(s.sc, settings).(*projectVarsPutHandler)
+}
+
+func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
+	ctx := context.Background()
 	json := []byte(
 		`{
 				"to_replace": "yellow",
@@ -797,9 +816,5 @@ func (s *ProjectPutSuite) TestRotateProjectVars() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	vars, err := s.sc.UpdateProjectVarsByValue("yellow", "brown", false)
-	s.NoError(err)
-	_, ok := vars[0].Vars["banana"]
-	s.True(ok)
 	s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
 }
