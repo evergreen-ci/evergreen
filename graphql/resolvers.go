@@ -2809,6 +2809,14 @@ func (r *childPatchResolver) TaskCount(ctx context.Context, obj *restModel.Child
 	return &taskCount, nil
 }
 
+func (r *childPatchResolver) BaseVersionID(ctx context.Context, obj *restModel.ChildPatch) (*string, error) {
+	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Githash).Project(bson.M{model.VersionIdentifierKey: 1}))
+	if baseVersion == nil || err != nil {
+		return nil, nil
+	}
+	return &baseVersion.Id, nil
+}
+
 func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIssueLink) (*thirdparty.JiraTicket, error) {
 	return restModel.GetJiraTicketFromURL(*obj.URL)
 

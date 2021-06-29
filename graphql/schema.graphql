@@ -506,6 +506,8 @@ type Patch {
 }
 
 type ChildPatch {
+  baseVersionID: String
+  githash: String!
   project: String!
   patchID: String!
   status: String!

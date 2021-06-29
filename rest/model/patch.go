@@ -50,6 +50,7 @@ type DownstreamTasks struct {
 }
 
 type ChildPatch struct {
+	Githash *string `json:"git_hash"`
 	Project *string `json:"project"`
 	PatchID *string `json:"patch_id"`
 	Status  *string `json:"status"`
@@ -220,6 +221,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error)
 			Tasks:   tasks,
 		}
 		cp := ChildPatch{
+			Githash: utility.ToStringPtr(childPatchDoc.Githash),
 			Project: utility.ToStringPtr(childPatchDoc.Project),
 			PatchID: utility.ToStringPtr(childPatch),
 			Status:  utility.ToStringPtr(childPatchDoc.Status),

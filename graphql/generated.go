@@ -112,10 +112,12 @@ type ComplexityRoot struct {
 	}
 
 	ChildPatch struct {
-		PatchID   func(childComplexity int) int
-		Project   func(childComplexity int) int
-		Status    func(childComplexity int) int
-		TaskCount func(childComplexity int) int
+		BaseVersionID func(childComplexity int) int
+		Githash       func(childComplexity int) int
+		PatchID       func(childComplexity int) int
+		Project       func(childComplexity int) int
+		Status        func(childComplexity int) int
+		TaskCount     func(childComplexity int) int
 	}
 
 	ClientBinary struct {
@@ -816,6 +818,8 @@ type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
 type ChildPatchResolver interface {
+	BaseVersionID(ctx context.Context, obj *model.ChildPatch) (*string, error)
+
 	TaskCount(ctx context.Context, obj *model.ChildPatch) (*int, error)
 }
 type HostResolver interface {
@@ -1194,6 +1198,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.BuildBaron.SearchReturnInfo(childComplexity), true
+
+	case "ChildPatch.baseVersionID":
+		if e.complexity.ChildPatch.BaseVersionID == nil {
+			break
+		}
+
+		return e.complexity.ChildPatch.BaseVersionID(childComplexity), true
+
+	case "ChildPatch.githash":
+		if e.complexity.ChildPatch.Githash == nil {
+			break
+		}
+
+		return e.complexity.ChildPatch.Githash(childComplexity), true
 
 	case "ChildPatch.patchID":
 		if e.complexity.ChildPatch.PatchID == nil {
@@ -5398,6 +5416,8 @@ type Patch {
 }
 
 type ChildPatch {
+  baseVersionID: String
+  githash: String!
   project: String!
   patchID: String!
   status: String!
@@ -8165,6 +8185,71 @@ func (ec *executionContext) _BuildBaron_buildBaronConfigured(ctx context.Context
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ChildPatch_baseVersionID(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ChildPatch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ChildPatch().BaseVersionID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ChildPatch_githash(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ChildPatch",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Githash, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ChildPatch_project(ctx context.Context, field graphql.CollectedField, obj *model.ChildPatch) (ret graphql.Marshaler) {
@@ -26512,6 +26597,22 @@ func (ec *executionContext) _ChildPatch(ctx context.Context, sel ast.SelectionSe
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ChildPatch")
+		case "baseVersionID":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChildPatch_baseVersionID(ctx, field, obj)
+				return res
+			})
+		case "githash":
+			out.Values[i] = ec._ChildPatch_githash(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "project":
 			out.Values[i] = ec._ChildPatch_project(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
