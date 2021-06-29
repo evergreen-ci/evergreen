@@ -32,7 +32,7 @@ import (
 // FindTestsByTaskIdOpts contains filtering, sorting and pagination options for TestResults.
 type FindTestsByTaskIdOpts struct {
 	Execution int    // Execution matches exact.
-	GroupID   string //GroupID matches exact.
+	GroupID   string // GroupID matches exact.
 	Limit     int    // Omitting Limit will return all results.
 	Page      int    // Page * Limit resembles the number of skipped documents.
 	SortBy    string // SortBy should equal a bson tag from the TestResults struct.

@@ -196,9 +196,7 @@ func TestResultCount(taskIds []string, testName string, statuses []string, execu
 	return Count(q)
 }
 
-// Returns tests that match exact Execution, GroupID, Statuses, TaskID, and TestName,
-// Match TestIDs that are >= to supplied TestID.
-// Supplied SortBy key sorts on BSON tag of TestResult struct.
+// TestResultsFilterSortPaginateOpts contains filtering, sorting and pagination options for TestResults.
 type TestResultsFilterSortPaginateOpts struct {
 	Execution int
 	GroupID   string
@@ -207,12 +205,12 @@ type TestResultsFilterSortPaginateOpts struct {
 	SortBy    string
 	SortDir   int
 	Statuses  []string
-	TaskIDs   []string
+	TaskIDs   []string // TaskIDs is the only required option.
 	TestID    string
 	TestName  string
 }
 
-// TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
+// TestResultsFilterSortPaginate is a query for returning test results from supplied TaskIDs.
 func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]TestResult, error) {
 	tests := []TestResult{}
 	match := bson.M{
