@@ -1867,7 +1867,10 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 				baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
 				// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
 				if baseGeneratorTask != nil {
-					baseGeneratorTask.SetGeneratedTasksToStepback(t.BuildVariant, t.DisplayName)
+					err = baseGeneratorTask.SetGeneratedTasksToStepback(t.BuildVariant, t.DisplayName)
+					if err != nil {
+						return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not stepback generated task: %s", err.Error()))
+					}
 					// If we plan on scheduling a generator task already make sure we don't try to schedule it twice
 					if baseGeneratorTasksToSchedule[baseGeneratorTask.Id] == nil {
 						baseGeneratorTasksToSchedule[baseGeneratorTask.Id] = baseGeneratorTask
