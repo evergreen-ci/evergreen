@@ -68,10 +68,11 @@ type FileDiff struct {
 }
 
 type APIModulePatch struct {
-	BranchName *string    `json:"branch_name"`
-	HTMLLink   *string    `json:"html_link"`
-	RawLink    *string    `json:"raw_link"`
-	FileDiffs  []FileDiff `json:"file_diffs"`
+	BranchName     *string    `json:"branch_name"`
+	HTMLLink       *string    `json:"html_link"`
+	RawLink        *string    `json:"raw_link"`
+	CommitMessages []*string  `json:"commit_messages"`
+	FileDiffs      []FileDiff `json:"file_diffs"`
 }
 
 type APIParameter struct {
@@ -166,10 +167,11 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 				fileDiffs = append(fileDiffs, fileDiff)
 			}
 			apiModPatch := APIModulePatch{
-				BranchName: &branchName,
-				HTMLLink:   &htmlLink,
-				RawLink:    &rawLink,
-				FileDiffs:  fileDiffs,
+				BranchName:     &branchName,
+				HTMLLink:       &htmlLink,
+				RawLink:        &rawLink,
+				FileDiffs:      fileDiffs,
+				CommitMessages: utility.ToStringPtrSlice(modPatch.PatchSet.CommitMessages),
 			}
 			codeChanges = append(codeChanges, apiModPatch)
 		}
