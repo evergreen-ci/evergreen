@@ -191,6 +191,48 @@
       "remote_path": "self-tests.yml",
       "r": "gitter_request",
       "author_id": "mohamed.khelif"
+    },
+        {
+      "_id": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "start_time": {
+        "$date": "2020-02-22T01:40:41.991Z"
+      },
+      "finish_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "author": "Mohamed Khelif",
+      "author_email": "mohamed.khelif@mongodb.com",
+      "message": "EVG-7343: timeTaken and makespan fields on Patch type (#3166)\n\n* EVG-7327: query for patch by id\r\n\r\n* EVG-7343: add makespan and timetaken to patch schema type\r\n\r\n* generated\r\n\r\n* remove patch dates type\r\n\r\n* add back time fields\r\n\r\n* change time field to duration\r\n\r\n* update tests\r\n\r\n* put time fields back on Patch type\r\n\r\n* revert time fields\r\n\r\n* update tests\r\n\r\n* import time in util\r\n\r\n* fix util imports\r\n\r\n* change patch id to $oid\r\n\r\n* change $oid field to numbers\r\n\r\n* remove dashes from $oid field\r\n\r\n* more fixes\r\n\r\n* omg\r\n\r\n* use correct patch id in query\r\n\r\n* add create time to test patch\r\n\r\n* add to patch\r\n\r\n* idek at this point\r\n\r\n* fix duration query\r\n\r\n* add right version id to tasks\r\n\r\n* use duration.String()\r\n\r\n* remove unusued imports in util\r\n\r\n* change json keys of tasks\r\n\r\n* use $date in task date fields\r\n\r\n* round by seconds\r\n\r\n* update test results\r\n\r\n* merge merge merge\r\n\r\n* fix leftover conflict\r\n\r\n* duration times of 0 are null\r\n\r\n* convert durations to string before inspecting",
+      "status": "started",
+      "order": 1354,
+      "config_number": 1,
+      "ignored": false,
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "branch_name": "main",
+      "repo_kind": "github",
+      "build_variants_status": [
+        {
+          "build_variant": "ubuntu1604",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-20T20:37:12.925Z"
+          },
+          "build_id": "evergreen_ubuntu1604_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        }
+      ],
+      "builds": [
+        "evergreen_ubuntu1604_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+      ],
+      "identifier": "evergreen",
+      "remote": false,
+      "remote_path": "self-tests.yml",
+      "r": "gitter_request",
+      "author_id": "mohamed.khelif"
     }
   ],
   "old_tasks": [
@@ -218,6 +260,56 @@
     }
   ],
   "tasks": [
+    {
+      "_id": "generator_task",
+      "version": "5e4ff3abe3c3317e352062e5",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "branch": "spruce",
+      "build_variant": "ubuntu1604",
+      "display_name": "Some generator task",
+      "status": "failed",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "generate_task": true,
+      "generated_tasks": true
+    },
+    {
+      "_id": "generated_task",
+      "version": "5e4ff3abe3c3317e352062e5",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "build_variant": "ubuntu1604",
+      "branch": "spruce",
+      "display_name": "Some generated task",
+      "status": "failed",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "generate_task": false,
+      "generated_by": "generator_task"
+    },
+    {
+      "_id": "base_generator_task",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "build_variant": "ubuntu1604",
+      "display_name": "Some generator task",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "status": "undispatched",
+      "r": "gitter_request",
+      "branch":"spruce",
+      "generate_task": true,
+      "generated_tasks": true
+    },
+    {
+      "_id": "base_generated_task",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "build_variant": "ubuntu1604",
+      "display_name": "Some generated task",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "status": "undispatched",
+      "branch":"spruce",
+      "generate_task": false,
+      "generated_by": "base_generator_task",
+      "r": "gitter_request"
+    },
     {
       "_id": "some_task_2",
       "version": "5e4ff3abe3c3317e352062e4",
