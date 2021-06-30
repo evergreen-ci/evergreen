@@ -99,7 +99,8 @@
       "display_name": "test-model",
       "task_create_time": { "$date": "2020-02-20T20:37:06Z" },
       "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
-      "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }
+      "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }, 
+      "group_id": "llama"
     },
     {
       "_id": "5e4ff42d4e88faea7a90f0be",
