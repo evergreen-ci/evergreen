@@ -91,7 +91,7 @@ func GetStatsByDistro() (DistroStats, error) {
 	return stats, nil
 }
 
-// GetProvierCounts returns data on the number of hosts by different provider stats.
+// GetProviderCounts returns data on the number of hosts by different provider stats.
 func GetProviderCounts() (ProviderStats, error) {
 	stats := []StatsByProvider{}
 	if err := db.Aggregate(Collection, statsByProviderPipeline(), &stats); err != nil {
