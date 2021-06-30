@@ -72,7 +72,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 				archiveContents = append(archiveContents, ArchiveContentFile{path, info, nil})
 				return nil
 			}
-			_ = filepath.Walk(dir, walk)
+			catcher.Add(filepath.Walk(dir, walk))
 		} else if strings.Contains(filematch, "**") {
 			globSuffix := filematch[2:]
 			walk = func(path string, info os.FileInfo, err error) error {
@@ -87,7 +87,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 				}
 				return nil
 			}
-			_ = filepath.Walk(dir, walk)
+			catcher.Add(filepath.Walk(dir, walk))
 		} else {
 			walk = func(path string, info os.FileInfo, err error) error {
 				a, b := filepath.Split(path)
