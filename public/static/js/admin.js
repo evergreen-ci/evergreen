@@ -16,6 +16,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.restartLavender = true;
     $scope.ValidThemes = ["announcement", "information", "warning", "important"];
     $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "allow_service_users", "github"];
+    $scope.validECSPlatforms = ["linux", "windows"];
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
@@ -243,7 +244,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.addECSCluster = function () {
-    if ($scope.Settings.providers === null || $scope.Settings.provider === undefined) {
+    if ($scope.Settings.providers === null || $scope.Settings.providers === undefined) {
       $scope.Settings.providers = {
         "aws": {
           "pod": {
@@ -254,7 +255,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         }
       };
     }
-    if ($scope.Settings.providers.aws === null || $scope.Settings.provider.aws === undefined) {
+    if ($scope.Settings.providers.aws === null || $scope.Settings.providers.aws === undefined) {
       $scope.Settings.providers.aws = {
         "pod": {
           "ecs": {
@@ -263,25 +264,25 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         }
       };
     }
-    if ($scope.Settings.providers.aws.pod === null || $scope.Settings.provider.aws.pod === undefined) {
+    if ($scope.Settings.providers.aws.pod === null || $scope.Settings.providers.aws.pod === undefined) {
       $scope.Settings.providers.aws.pod = {
         "ecs": {
           "clusters": []
         }
       };
     }
-    if ($scope.Settings.providers.aws.pod.ecs === null || $scope.Settings.provider.aws.pod.ecs === undefined) {
+    if ($scope.Settings.providers.aws.pod.ecs === null || $scope.Settings.providers.aws.pod.ecs === undefined) {
       $scope.Settings.providers.aws.pod.ecs = {
         "clusters": []
       };
     }
 
-    if ($scope.Settings.providers.aws.pod.ecs.clusters == null || $scope.Settings.providers.aws.pod.ecs.cluster === undefined) {
+    if ($scope.Settings.providers.aws.pod.ecs.clusters == null || $scope.Settings.providers.aws.pod.ecs.clusters === undefined) {
       $scope.Settings.providers.aws.pod.ecs.clusters = [];
     }
 
     if (!$scope.validECSCluster($scope.new_ecs_cluster)) {
-      $scope.invalidECSCluster = "ECS cluster name, platform, and region are required.";
+      $scope.invalidECSCluster = "ECS cluster name and platform are required.";
       return
     }
 
@@ -291,7 +292,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.validECSCluster = function (item) {
-    return item && item.name && item.platform && item.region;
+    return item && item.name && item.platform;
   }
 
   $scope.deleteECSCluster = function (index) {

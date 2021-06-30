@@ -1578,7 +1578,7 @@ func (a *APIAWSPodConfig) ToService() (interface{}, error) {
 type APIECSConfig struct {
 	Role                 *string               `json:"role"`
 	TaskDefinitionPrefix *string               `json:"task_definition_prefix"`
-	Clusters             []APIECSClusterConfig `json:"cluster"`
+	Clusters             []APIECSClusterConfig `json:"clusters"`
 }
 
 func (a *APIECSConfig) BuildFromService(h interface{}) error {
