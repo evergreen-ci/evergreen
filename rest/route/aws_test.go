@@ -21,7 +21,7 @@ import (
 )
 
 func TestAWSSNSRoute(t *testing.T) {
-	aws := awsSns{messageType: "unknown"}
+	aws := awsSNS{messageType: "unknown"}
 	responder := aws.Run(context.Background())
 	assert.Equal(t, http.StatusBadRequest, responder.Status())
 
@@ -43,7 +43,7 @@ func TestAWSSNSRoute(t *testing.T) {
 func TestHandleAWSSNSNotification(t *testing.T) {
 	ctx := context.Background()
 
-	aws := awsSns{}
+	aws := awsSNS{}
 	aws.queue = queue.NewLocalLimitedSize(1, 1)
 	require.NoError(t, aws.queue.Start(ctx))
 	aws.payload = sns.Payload{Message: `{"version":"0","id":"qwertyuiop","detail-type":"EC2 Instance State-change Notification","source":"aws.ec2","time":"2020-07-23T14:48:37Z","region":"us-east-1","resources":["arn:aws:ec2:us-east-1:1234567890:instance/i-0123456789"],"detail":{"instance-id":"i-0123456789","state":"terminated"}}`}
@@ -74,7 +74,7 @@ func TestAWSSNSNotificationHandlers(t *testing.T) {
 		UserHost:  true,
 	}
 	messageID := "m0"
-	aws := awsSns{}
+	aws := awsSNS{}
 	aws.payload.MessageId = messageID
 	aws.sc = &data.MockConnector{MockHostConnector: data.MockHostConnector{
 		CachedHosts: []host.Host{

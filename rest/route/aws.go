@@ -31,9 +31,10 @@ const (
 
 	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
+	taskStateChangeType     = "ECS Task State-change Notification"
 )
 
-type awsSns struct {
+type awsSNS struct {
 	sc    data.Connector
 	queue amboy.Queue
 	env   evergreen.Environment
@@ -42,23 +43,23 @@ type awsSns struct {
 	payload     sns.Payload
 }
 
-func makeAwsSnsRoute(sc data.Connector, env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
-	return &awsSns{
+func makeAWSSNS(sc data.Connector, env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
+	return &awsSNS{
 		sc:    sc,
 		env:   env,
 		queue: queue,
 	}
 }
 
-func (aws *awsSns) Factory() gimlet.RouteHandler {
-	return &awsSns{
+func (aws *awsSNS) Factory() gimlet.RouteHandler {
+	return &awsSNS{
 		sc:    aws.sc,
 		env:   aws.env,
 		queue: aws.queue,
 	}
 }
 
-func (aws *awsSns) Parse(ctx context.Context, r *http.Request) error {
+func (aws *awsSNS) Parse(ctx context.Context, r *http.Request) error {
 	aws.messageType = r.Header.Get("x-amz-sns-message-type")
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -81,7 +82,7 @@ func (aws *awsSns) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (aws *awsSns) Run(ctx context.Context) gimlet.Responder {
+func (aws *awsSNS) Run(ctx context.Context) gimlet.Responder {
 	// Subscription/Unsubscription is a rare action that we will handle manually and will be logged to splunk given the logging level.
 	switch aws.messageType {
 	case messageTypeSubscriptionConfirmation:
@@ -127,7 +128,7 @@ type eventDetail struct {
 	State      string `json:"state"`
 }
 
-func (aws *awsSns) handleNotification(ctx context.Context) error {
+func (aws *awsSNS) handleNotification(ctx context.Context) error {
 	notification := &eventBridgeNotification{}
 	if err := json.Unmarshal([]byte(aws.payload.Message), notification); err != nil {
 		return gimlet.ErrorResponse{
@@ -162,7 +163,11 @@ func (aws *awsSns) handleNotification(ctx context.Context) error {
 				}
 			}
 		}
-
+	case taskStateChangeType:
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("TODO (EVG-14891): implement"),
+		}
 	default:
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -173,7 +178,7 @@ func (aws *awsSns) handleNotification(ctx context.Context) error {
 	return nil
 }
 
-func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
+func (aws *awsSNS) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
 	h, err := aws.sc.FindHostById(instanceID)
 	if err != nil {
 		return err
@@ -245,7 +250,7 @@ func skipEarlyTermination(h *host.Host) bool {
 	return false
 }
 
-func (aws *awsSns) handleInstanceTerminated(ctx context.Context, instanceID string) error {
+func (aws *awsSNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {
 	h, err := aws.sc.FindHostById(instanceID)
 	if err != nil {
 		return err
@@ -269,7 +274,7 @@ func (aws *awsSns) handleInstanceTerminated(ctx context.Context, instanceID stri
 // handleInstanceStopped handles an agent host when AWS reports that it is
 // stopped. Agent hosts that are stopped externally are treated the same as an
 // externally-terminated host.
-func (aws *awsSns) handleInstanceStopped(ctx context.Context, instanceID string) error {
+func (aws *awsSNS) handleInstanceStopped(ctx context.Context, instanceID string) error {
 	h, err := aws.sc.FindHostById(instanceID)
 	if err != nil {
 		return err
