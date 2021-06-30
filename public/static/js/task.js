@@ -363,14 +363,16 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
         url = prefix + testResult.log_id + lineNum;
       }
     } else if (url == '') {
-      var group_id = '?group_id='
-      group_id += (testResult.group_id) ? encodeURIComponent(testResult.group_id) : ""
-      var test_name = (testResult.log_test_name) ? testResult.log_test_name : testResult.test_file;
-      url = prefix + encodeURIComponent(testResult.task_id) + '/' + testResult.execution + '/' + encodeURIComponent(test_name) + group_id
+      let test_name = (testResult.log_test_name) ? testResult.log_test_name : testResult.test_file;
+      let group_id = (testResult.group_id) ? encodeURIComponent(testResult.group_id) : '';
+      url = prefix + encodeURIComponent(testResult.task_id) + '/' + testResult.execution + '?test_name=' + encodeURIComponent(test_name);
+      if (group_id != '') {
+        url += '&group_id=' + group_id;
+      }
       if (isRaw) {
-          url  += '&' + raw;
+        url += '&' + raw;
       } else {
-          url += lineNum;
+        url += lineNum;
       }
     }
 

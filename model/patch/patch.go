@@ -138,6 +138,7 @@ type GitMetadata struct {
 type Patch struct {
 	Id              mgobson.ObjectId       `bson:"_id,omitempty"`
 	Description     string                 `bson:"desc"`
+	Path            string                 `bson:"path,omitempty"`
 	Project         string                 `bson:"branch"`
 	Githash         string                 `bson:"githash"`
 	PatchNumber     int                    `bson:"patch_number"`

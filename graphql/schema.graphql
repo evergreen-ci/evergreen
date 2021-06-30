@@ -31,6 +31,7 @@ type Query {
     limit: Int = 0
     testName: String = ""
     statuses: [String!]! = []
+    groupId: String = ""
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!

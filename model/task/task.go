@@ -1064,7 +1064,7 @@ func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
 }
 
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true
-func (t *Task) ActivateTask(caller string) ([]Task, error) {
+func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
 	t.ActivatedTime = time.Now()
@@ -1072,7 +1072,7 @@ func (t *Task) ActivateTask(caller string) ([]Task, error) {
 	return ActivateTasks([]Task{*t}, t.ActivatedTime, caller)
 }
 
-func ActivateTasks(tasks []Task, activationTime time.Time, caller string) ([]Task, error) {
+func ActivateTasks(tasks []Task, activationTime time.Time, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
@@ -1090,18 +1090,13 @@ func ActivateTasks(tasks []Task, activationTime time.Time, caller string) ([]Tas
 			},
 		})
 	if err != nil {
-		return nil, errors.Wrap(err, "can't activate tasks")
+		return errors.Wrap(err, "can't activate tasks")
 	}
 	for _, t := range tasks {
 		event.LogTaskActivated(t.Id, t.Execution, caller)
 	}
 
-	activatedDependencies, err := ActivateDeactivatedDependencies(taskIDs, caller)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't activate dependencies")
-	}
-
-	return append(tasks, activatedDependencies...), nil
+	return ActivateDeactivatedDependencies(taskIDs, caller)
 }
 
 func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
@@ -1119,7 +1114,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 		return errors.Wrap(err, "can't get recursive dependencies")
 	}
 
-	if _, err = ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+	if err = ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
 		return errors.Wrap(err, "problem updating tasks for activation")
 	}
 	return nil
@@ -1127,7 +1122,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 
 // ActivateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
 // they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
-func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, error) {
+func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 	taskMap := make(map[string]bool)
 	for _, t := range tasks {
 		taskMap[t] = true
@@ -1135,14 +1130,14 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, err
 
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get recursive dependencies down")
+		return errors.Wrap(err, "can't get recursive dependencies down")
 	}
 
 	// do a topological sort so we've dealt with
 	// all a task's dependencies by the time we get up to it
 	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	// get dependencies we don't have yet and add them to a map
@@ -1167,7 +1162,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, err
 		var missingTasks []Task
 		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get missing tasks")
+			return errors.Wrap(err, "can't get missing tasks")
 		}
 		for _, t := range missingTasks {
 			missingTaskMap[t.Id] = t
@@ -1197,7 +1192,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, err
 	}
 
 	if len(tasksToActivate) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	taskIDsToActivate := make([]string, 0, len(tasksToActivate))
@@ -1214,16 +1209,14 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, err
 		}},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't update activation for dependencies")
+		return errors.Wrap(err, "can't update activation for dependencies")
 	}
 
-	taskSlice := make([]Task, 0, len(tasksToActivate))
 	for _, t := range tasksToActivate {
 		event.LogTaskActivated(t.Id, t.Execution, caller)
-		taskSlice = append(taskSlice, t)
 	}
 
-	return taskSlice, nil
+	return nil
 }
 
 func topologicalSort(tasks []Task) ([]Task, error) {
@@ -1263,7 +1256,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 }
 
 // DeactivateTask will set the ActivatedBy field to the caller and set the active state to be false and deschedule the task
-func (t *Task) DeactivateTask(caller string) ([]Task, error) {
+func (t *Task) DeactivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
@@ -1271,7 +1264,7 @@ func (t *Task) DeactivateTask(caller string) ([]Task, error) {
 	return DeactivateTasks([]Task{*t}, caller)
 }
 
-func DeactivateTasks(tasks []Task, caller string) ([]Task, error) {
+func DeactivateTasks(tasks []Task, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
@@ -1290,24 +1283,19 @@ func DeactivateTasks(tasks []Task, caller string) ([]Task, error) {
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem deactivating tasks")
+		return errors.Wrap(err, "problem deactivating tasks")
 	}
 	for _, t := range tasks {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 	}
 
-	deactivatedDependencies, err := DeactivateDependencies(taskIDs, caller)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't deactivate dependencies")
-	}
-
-	return append(tasks, deactivatedDependencies...), nil
+	return DeactivateDependencies(taskIDs, caller)
 }
 
-func DeactivateDependencies(tasks []string, caller string) ([]Task, error) {
+func DeactivateDependencies(tasks []string, caller string) error {
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get recursive dependencies down")
+		return errors.Wrap(err, "can't get recursive dependencies down")
 	}
 
 	tasksToUpdate := make([]Task, 0, len(tasksDependingOnTheseTasks))
@@ -1320,7 +1308,7 @@ func DeactivateDependencies(tasks []string, caller string) ([]Task, error) {
 	}
 
 	if len(tasksToUpdate) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	_, err = UpdateAll(
@@ -1334,13 +1322,13 @@ func DeactivateDependencies(tasks []string, caller string) ([]Task, error) {
 		}},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem deactivating dependencies")
+		return errors.Wrap(err, "problem deactivating dependencies")
 	}
 	for _, t := range tasksToUpdate {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 	}
 
-	return tasksToUpdate, nil
+	return nil
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
@@ -1400,15 +1388,10 @@ func (t *Task) GetDisplayStatus() string {
 		if !t.Activated {
 			return evergreen.TaskUnscheduled
 		}
-		dependenciesMet, err := t.DependenciesMet(map[string]Task{})
-		if err != nil {
-			// Return the default undispatched status if we can't determine if dependencies have been met
-			// This will be replaced by Can't run in https://jira.mongodb.org/browse/EVG-13828
-			return t.Status
+		if t.Blocked() {
+			return evergreen.TaskStatusBlocked
 		}
-		if dependenciesMet {
-			return evergreen.TaskWillRun
-		}
+		return evergreen.TaskWillRun
 	}
 	if !t.IsFinished() {
 		return t.Status
@@ -1554,8 +1537,7 @@ func (t *Task) UpdateHeartbeat() error {
 
 // SetDisabledPriority sets the priority of a task so it will never run.
 // It also deactivates the task and any tasks that depend on it.
-// The build cache is not updated
-func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
+func (t *Task) SetDisabledPriority(user string) error {
 	t.Priority = evergreen.DisabledTaskPriority
 
 	ids := append([]string{t.Id}, t.ExecutionTasks...)
@@ -1564,26 +1546,20 @@ func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
 		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't update priority")
+		return errors.Wrap(err, "can't update priority")
 	}
 
 	tasks, err := FindAll(db.Query(bson.M{
 		IdKey: bson.M{"$in": ids},
 	}).WithFields(ExecutionKey))
 	if err != nil {
-		return nil, errors.Wrap(err, "can't find matching tasks")
+		return errors.Wrap(err, "can't find matching tasks")
 	}
 	for _, task := range tasks {
 		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.DisabledTaskPriority)
 	}
 
-	var deactivatedTasks []Task
-	deactivatedTasks, err = t.DeactivateTask(user)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't deactivate task")
-	}
-
-	return deactivatedTasks, nil
+	return t.DeactivateTask(user)
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon
@@ -2996,21 +2972,27 @@ func addStatusColorSort(key string) bson.M {
 						},
 						{
 							"case": bson.M{
+								"$in": []interface{}{"$" + key, []string{evergreen.TaskKnownIssue}},
+							},
+							"then": 2,
+						},
+						{
+							"case": bson.M{
 								"$eq": []string{"$" + key, evergreen.TaskSetupFailed},
 							},
-							"then": 2, // lavender
+							"then": 3, // lavender
 						},
 						{
 							"case": bson.M{
 								"$in": []interface{}{"$" + key, []string{evergreen.TaskSystemFailed, evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut}},
 							},
-							"then": 3, // purple
+							"then": 4, // purple
 						},
 						{
 							"case": bson.M{
 								"$in": []interface{}{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
 							},
-							"then": 4, // yellow
+							"then": 5, // yellow
 						},
 						{
 							"case": bson.M{
@@ -3111,6 +3093,8 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		DisplayTestName: result.DisplayTestName,
 		GroupID:         result.GroupID,
 		LogTestName:     result.LogTestName,
+		URL:             result.LogURL,
+		URLRaw:          result.RawLogURL,
 		LineNum:         result.LineNum,
 		StartTime:       float64(result.Start.Unix()),
 		EndTime:         float64(result.End.Unix()),

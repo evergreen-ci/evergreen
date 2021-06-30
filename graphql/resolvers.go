@@ -1207,7 +1207,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	return &patchTasks, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -1252,14 +1252,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 	}
 
+	groupIdParam := utility.FromStringPtr(groupID)
+
 	if *sortDirection == SortDirectionDesc {
 		sortDir = -1
 	}
 
-	testNameParam := ""
-	if testName != nil {
-		testNameParam = *testName
-	}
+	testNameParam := utility.FromStringPtr(testName)
+
 	pageParam := 0
 	if page != nil {
 		pageParam = *page
@@ -1288,12 +1288,24 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 		baseTestStatusMap := make(map[string]string)
 		if baseTask != nil {
-			baseTestResults, _ := r.sc.FindTestsByTaskId(baseTask.Id, "", "", "", 0, taskExecution)
+			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: taskExecution})
 			for _, t := range baseTestResults {
 				baseTestStatusMap[t.TestFile] = t.Status
 			}
 		}
-		paginatedFilteredTests, err := r.sc.FindTestsByTaskIdFilterSortPaginate(taskID, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam, taskExecution)
+
+		paginatedFilteredTests, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+			TaskID:    taskID,
+			TestName:  testNameParam,
+			Statuses:  statusesParam,
+			SortBy:    sortBy,
+			GroupID:   groupIdParam,
+			SortDir:   sortDir,
+			Limit:     limitParam,
+			Execution: taskExecution,
+			Page:      pageParam,
+		})
+
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
@@ -1326,7 +1338,16 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
 		}
 	} else {
-		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(cedarTestResults, testNameParam, statusesParam, sortBy, sortDir, pageParam, limitParam)
+		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
+			GroupID:     groupIdParam,
+			Limit:       limitParam,
+			Page:        pageParam,
+			SortBy:      sortBy,
+			SortDir:     sortDir,
+			Statuses:    statusesParam,
+			TestName:    testNameParam,
+			TestResults: cedarTestResults,
+		})
 		for _, t := range filteredTestResults {
 			apiTest := restModel.APITest{}
 			if err = apiTest.BuildFromService(taskID); err != nil {
@@ -1871,8 +1892,11 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
-
-	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.ProjectId), restModel.APICommitQueueItem{Issue: newPatch.Id, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, false)
+	item := restModel.APICommitQueueItem{
+		Issue:   newPatch.Id,
+		PatchId: newPatch.Id,
+		Source:  utility.ToStringPtr(commitqueue.SourceDiff)}
+	_, err = r.sc.EnqueueItem(utility.FromStringPtr(newPatch.ProjectId), item, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
 	}
@@ -2498,15 +2522,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
 			}
 			executionTasks = append(executionTasks, apiTask)
-		} else {
-			grip.Warning(message.Fields{
-				"function":  "ExecutionTasksFull",
-				"message":   "execution task from db not found",
-				"task_id":   execTaskID,
-				"execution": t.Execution,
-			})
 		}
-
 	}
 
 	return executionTasks, nil

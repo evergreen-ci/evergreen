@@ -526,6 +526,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	data := struct {
 		Description       string             `json:"desc"`
 		Project           string             `json:"project"`
+		Path              string             `json:"path"`
 		PatchBytes        []byte             `json:"patch_bytes"`
 		Githash           string             `json:"githash"`
 		Alias             string             `json:"alias"`
@@ -544,6 +545,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	}{
 		Description:       incomingPatch.description,
 		Project:           incomingPatch.projectName,
+		Path:              incomingPatch.path,
 		PatchBytes:        []byte(incomingPatch.patchData),
 		Githash:           incomingPatch.base,
 		Alias:             incomingPatch.alias,

@@ -766,15 +766,22 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		requester := r.Header.Get("Origin")
+		grip.Debug(message.Fields{
+			"op":              "addCORSHeaders",
+			"requester":       requester,
+			"allowed_origins": allowedOrigins,
+			"adding_headers":  utility.StringSliceContains(allowedOrigins, requester),
+			"settings_is_nil": evergreen.GetEnvironment().Settings() == nil,
+		})
 		if len(allowedOrigins) > 0 {
-			requester := r.Header.Get("Origin")
-
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
 
 			if utility.StringSliceContains(allowedOrigins, requester) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
+				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 			}
 		}

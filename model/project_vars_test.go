@@ -204,6 +204,48 @@ func TestRedactPrivateVars(t *testing.T) {
 	assert.NotEqual("", projectVars.Vars["a"], "original vars should not be modified")
 }
 
+func TestGetVarsByValue(t *testing.T) {
+	assert := assert.New(t)
+
+	require.NoError(t, db.Clear(ProjectVarsCollection),
+		"Error clearing collection")
+
+	projectVars1 := &ProjectVars{
+		Id:   "mongodb1",
+		Vars: map[string]string{"a": "1", "b": "2"},
+	}
+
+	projectVars2 := &ProjectVars{
+		Id:   "mongodb2",
+		Vars: map[string]string{"c": "1", "d": "2"},
+	}
+
+	projectVars3 := &ProjectVars{
+		Id:   "mongodb3",
+		Vars: map[string]string{"e": "2", "f": "3"},
+	}
+
+	require.NoError(t, projectVars1.Insert())
+	require.NoError(t, projectVars2.Insert())
+	require.NoError(t, projectVars3.Insert())
+
+	newVars, err := GetVarsByValue("1")
+	assert.NoError(err)
+	assert.Equal(2, len(newVars))
+
+	newVars, err = GetVarsByValue("2")
+	assert.NoError(err)
+	assert.Equal(3, len(newVars))
+
+	newVars, err = GetVarsByValue("3")
+	assert.NoError(err)
+	assert.Equal(1, len(newVars))
+
+	newVars, err = GetVarsByValue("0")
+	assert.NoError(err)
+	assert.Equal(0, len(newVars))
+}
+
 func TestAWSVars(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(ProjectVarsCollection, ProjectRefCollection))

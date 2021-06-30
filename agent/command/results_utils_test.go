@@ -31,6 +31,7 @@ func TestSendTestResults(t *testing.T) {
 				GroupID:         "group",
 				Status:          "pass",
 				URL:             "https://url.com",
+				URLRaw:          "https://rawurl.com",
 				LogTestName:     "log_test_name",
 				LineNum:         123,
 				StartTime:       float64(time.Now().Add(-time.Hour).Unix()),
@@ -102,6 +103,8 @@ func TestSendTestResults(t *testing.T) {
 				} else {
 					assert.Equal(t, results.Results[0].TestFile, res[0].Results[0].LogTestName)
 				}
+				assert.Equal(t, results.Results[0].URL, res[0].Results[0].LogUrl)
+				assert.Equal(t, results.Results[0].URLRaw, res[0].Results[0].RawLogUrl)
 				assert.EqualValues(t, results.Results[0].LineNum, res[0].Results[0].LineNum)
 				assert.Equal(t, int64(results.Results[0].StartTime), res[0].Results[0].TestStartTime.Seconds)
 				assert.Equal(t, int64(results.Results[0].EndTime), res[0].Results[0].TestEndTime.Seconds)

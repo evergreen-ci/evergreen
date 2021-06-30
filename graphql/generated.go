@@ -509,7 +509,7 @@ type ComplexityRoot struct {
 		TaskFiles               func(childComplexity int, taskID string, execution *int) int
 		TaskLogs                func(childComplexity int, taskID string, execution *int) int
 		TaskQueueDistros        func(childComplexity int) int
-		TaskTests               func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) int
+		TaskTests               func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
 		User                    func(childComplexity int, userID *string) int
 		UserConfig              func(childComplexity int) int
 		UserPatches             func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
@@ -895,7 +895,7 @@ type QueryResolver interface {
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error)
-	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string) (*TaskTestResult, error)
+	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error)
 	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	TaskLogs(ctx context.Context, taskID string, execution *int) (*RecentTaskLogs, error)
@@ -3299,7 +3299,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["execution"].(*int), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string)), true
+		return e.complexity.Query.TaskTests(childComplexity, args["taskId"].(string), args["execution"].(*int), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string), args["groupId"].(*string)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
@@ -4923,6 +4923,7 @@ var sources = []*ast.Source{
     limit: Int = 0
     testName: String = ""
     statuses: [String!]! = []
+    groupId: String = ""
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
@@ -7085,6 +7086,14 @@ func (ec *executionContext) field_Query_taskTests_args(ctx context.Context, rawA
 		}
 	}
 	args["statuses"] = arg7
+	var arg8 *string
+	if tmp, ok := rawArgs["groupId"]; ok {
+		arg8, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["groupId"] = arg8
 	return args, nil
 }
 
@@ -16427,7 +16436,7 @@ func (ec *executionContext) _Query_taskTests(ctx context.Context, field graphql.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["execution"].(*int), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string))
+		return ec.resolvers.Query().TaskTests(rctx, args["taskId"].(string), args["execution"].(*int), args["sortCategory"].(*TestSortCategory), args["sortDirection"].(*SortDirection), args["page"].(*int), args["limit"].(*int), args["testName"].(*string), args["statuses"].([]string), args["groupId"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
