@@ -442,26 +442,36 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.NoError(s.ctx.UpdateProjectVars("not-an-id", &newVars, false))
 }
 
-func (s *ProjectConnectorGetSuite) TestUpdateProjectVarsByValue() {
-	resp, err := s.ctx.UpdateProjectVarsByValue("1", "11", true)
-	s.NoError(err)
-	s.Require().NotNil(resp)
-	s.Equal("a", resp[projectId])
+func TestUpdateProjectVarsByValue(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection))
+	dc := &DBProjectConnector{}
 
-	resp, err = s.ctx.UpdateProjectVarsByValue("1", "11", false)
-	s.NoError(err)
-	s.Require().NotNil(resp)
-	s.Equal("a", resp[projectId])
+	vars := &model.ProjectVars{
+		Id:          projectId,
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	require.NoError(t, vars.Insert())
 
-	res, err := s.ctx.FindProjectVarsById(projectId, "", false)
-	s.NoError(err)
-	s.Require().NotNil(res)
-	s.Equal("11", res.Vars["a"])
+	resp, err := dc.UpdateProjectVarsByValue("1", "11", true)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, "a", resp[projectId])
 
-	res, err = s.ctx.FindProjectVarsById(projectId, repoProjectId, false)
-	s.NoError(err)
-	s.Require().NotNil(res)
-	s.Equal("11", res.Vars["a"])
+	res, err := dc.FindProjectVarsById(projectId, "", false)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, "1", res.Vars["a"])
+
+	resp, err = dc.UpdateProjectVarsByValue("1", "11", false)
+	assert.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "a", resp[projectId])
+
+	res, err = dc.FindProjectVarsById(projectId, "", false)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, "11", res.Vars["a"])
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
