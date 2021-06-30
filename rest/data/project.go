@@ -273,13 +273,15 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 		for key, val := range project.Vars {
 			if val == toReplace {
 				if !dryRun {
-					oldProjectRef, err := pc.FindProjectById(project.Id, false)
-					if err != nil {
-						catcher.Wrap(err, "error finding project")
+					originalVars := make(map[string]string)
+					for k, v := range project.Vars {
+						originalVars[k] = v
 					}
-					before, err := pc.GetProjectSettingsEvent(oldProjectRef)
-					if err != nil {
-						catcher.Wrapf(err, "Error getting ProjectSettingsEvent before update for project '%s'", project.Id)
+					before := model.ProjectSettingsEvent{
+						Vars: model.ProjectVars{
+							Id:   project.Id,
+							Vars: originalVars,
+						},
 					}
 
 					project.Vars[key] = replacement
@@ -288,15 +290,14 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
 					}
 
-					newProjectRef, err := pc.FindProjectById(project.Id, false)
-					if err != nil {
-						catcher.Wrap(err, "error finding project")
+					after := model.ProjectSettingsEvent{
+						Vars: model.ProjectVars{
+							Id:   project.Id,
+							Vars: project.Vars,
+						},
 					}
-					after, err := pc.GetProjectSettingsEvent(newProjectRef)
-					if err != nil {
-						catcher.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", project.Id)
-					}
-					if err = model.LogProjectModified(project.Id, username, before, after); err != nil {
+
+					if err = model.LogProjectModified(project.Id, username, &before, &after); err != nil {
 						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
 					}
 				}
