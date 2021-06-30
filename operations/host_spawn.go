@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/shlex"
@@ -174,6 +175,7 @@ func hostModify() cli.Command {
 		noExpireFlagName     = "no-expire"
 		expireFlagName       = "expire"
 		extendFlagName       = "extend"
+		addSSHKeyFlag        = "add-ssh-key"
 	)
 
 	return cli.Command{
@@ -208,11 +210,15 @@ func hostModify() cli.Command {
 				Name:  expireFlagName,
 				Usage: "make host expire like a normal spawn host, in 24 hours",
 			},
+			cli.StringFlag{
+				Name:  addSSHKeyFlag,
+				Usage: "add user defined public key to the host's authorized_keys",
+			},
 		)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireHostFlag,
-			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName),
+			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, addSSHKeyFlag),
 			mutuallyExclusiveArgs(false, noExpireFlagName, extendFlagName),
 			mutuallyExclusiveArgs(false, noExpireFlagName, expireFlagName),
 		),
@@ -227,6 +233,7 @@ func hostModify() cli.Command {
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
+			addKeyName := c.String(addSSHKeyFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -243,6 +250,11 @@ func hostModify() cli.Command {
 				return errors.Wrap(err, "problem generating tags to add")
 			}
 
+			addPubKey, err := validatePublicKey(ctx, client, hostID, addKeyName)
+			if err != nil {
+				return errors.Wrap(err, "public key failed validation")
+			}
+
 			hostChanges := host.HostModifyOptions{
 				AddInstanceTags:    addTags,
 				DeleteInstanceTags: deleteTagSlice,
@@ -250,6 +262,7 @@ func hostModify() cli.Command {
 				AddHours:           time.Duration(extension) * time.Hour,
 				SubscriptionType:   subscriptionType,
 				NewName:            displayName,
+				AddKey:             addPubKey,
 			}
 
 			if noExpire {
@@ -271,6 +284,26 @@ func hostModify() cli.Command {
 			return nil
 		},
 	}
+}
+
+func validatePublicKey(ctx context.Context, client client.Communicator, hostID, addKeyName string) (string, error) {
+	if len(addKeyName) == 0 {
+		return "", nil
+	}
+
+	userKeys, err := client.GetCurrentUsersKeys(ctx)
+	if err != nil {
+		return "", errors.New("problem retreiving user keys")
+	}
+
+	for _, pubKey := range userKeys {
+		if utility.FromStringPtr(pubKey.Name) == addKeyName {
+			return utility.FromStringPtr(pubKey.Key), nil
+		}
+	}
+
+	return "", errors.Errorf("key '%s' is not defined for the authenticated user", addKeyName)
+
 }
 
 func hostConfigure() cli.Command {
