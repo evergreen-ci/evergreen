@@ -453,11 +453,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	}
 	require.NoError(t, vars.Insert())
 
-<<<<<<< HEAD
-	resp, err := dc.UpdateProjectVarsByValue("1", "11", true)
-=======
 	resp, err := dc.UpdateProjectVarsByValue("1", "11", "user", true)
->>>>>>> 814dee1f1 (add logging)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, "a", resp[projectId])
@@ -467,11 +463,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.Equal(t, "1", res.Vars["a"])
 
-<<<<<<< HEAD
-	resp, err = dc.UpdateProjectVarsByValue("1", "11", false)
-=======
 	resp, err = dc.UpdateProjectVarsByValue("1", "11", "user", false)
->>>>>>> 814dee1f1 (add logging)
 	assert.NoError(t, err)
 	require.NotNil(t, resp)
 	assert.Equal(t, "a", resp[projectId])
