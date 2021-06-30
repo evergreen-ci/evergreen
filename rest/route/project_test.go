@@ -776,3 +776,58 @@ func TestDeleteProject(t *testing.T) {
 	resp = pdh.Run(ctx)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for PUT /rest/v2/projects/variables/rotate
+
+type ProjectPutRotateSuite struct {
+	sc *data.MockConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestProjectPutRotateSuite(t *testing.T) {
+	suite.Run(t, new(ProjectPutRotateSuite))
+}
+
+func (s *ProjectPutRotateSuite) SetupTest() {
+	s.sc = getMockProjectsConnector()
+	s.rm = makeProjectVarsPut(s.sc).(*projectVarsPutHandler)
+}
+
+func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
+	ctx := context.Background()
+
+	dryRunTrue := []byte(
+		`{
+				"to_replace": "yellow",
+				"replacement": "brown",
+				"dry_run": true
+		}`)
+
+	dryRunFalse := []byte(
+		`{
+				"to_replace": "yellow",
+				"replacement": "brown"
+		}`)
+
+	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunTrue))
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal("yellow", s.sc.CachedVars[0].Vars["banana"])
+
+	req, _ = http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunFalse))
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
+}
