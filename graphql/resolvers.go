@@ -1831,17 +1831,53 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	}
 
 	restartedTasks := []*restModel.APITask{}
-	for _, t := range tasks {
-		// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
-		baseTask, _ := t.FindTaskOnBaseCommit()
-		if baseTask != nil {
-			task, err := SetScheduled(ctx, r.sc, baseTask.Id, true)
-			if err != nil {
-				return nil, err
-			}
-			restartedTasks = append(restartedTasks, task)
-		}
+	generatedTasksToRestart := []*task.Task{}
 
+	for _, t := range tasks {
+		// If a task is a generator task or generated don't schedule it until we get all of the generated tasks we want to generate
+		if !t.GenerateTask && t.GeneratedBy == "" {
+			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
+			baseTask, _ := t.FindTaskOnBaseCommit()
+			if baseTask != nil {
+				task, err := SetScheduled(ctx, r.sc, baseTask.Id, true)
+				if err != nil {
+					return nil, err
+				}
+				restartedTasks = append(restartedTasks, task)
+			}
+			// If a task is generated lets keep track of it so we can restart it later
+		} else if t.GeneratedBy != "" {
+			generatedTasksToRestart = append(generatedTasksToRestart, &t)
+
+		}
+	}
+
+	baseGeneratorTasksToSchedule := []*task.Task{}
+	// If a generated task does not have a base task find its generator and use its base task
+	// to generate it
+	for _, t := range generatedTasksToRestart {
+		baseTask, _ := t.FindTaskOnBaseCommit()
+		if baseTask == nil {
+			generatorTask, err := task.FindByIdExecution(t.GeneratedBy, &t.Execution)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
+			}
+			// Lets schedule the generated tasks on the base generator task
+			baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
+			baseGeneratorTask.SetGeneratedTasksToStepback(t.BuildVariant, t.DisplayName)
+			// If we plan on scheduling a generator task already make sure we don't try to schedule it twice
+			i := sort.Search(len(baseGeneratorTasksToSchedule), func(i int) bool { return baseGeneratorTasksToSchedule[i].Id == generatorTask.Id })
+			if i == len(baseGeneratorTasksToSchedule) {
+				baseGeneratorTasksToSchedule = append(baseGeneratorTasksToSchedule, baseGeneratorTask)
+			}
+		}
+	}
+	for _, t := range baseGeneratorTasksToSchedule {
+		task, err := SetScheduled(ctx, r.sc, t.Id, true)
+		if err != nil {
+			return nil, err
+		}
+		restartedTasks = append(restartedTasks, task)
 	}
 	return restartedTasks, nil
 }
