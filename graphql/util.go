@@ -69,13 +69,13 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 		}
 	}
 
-	if sortBy != "" {
-		switch sortBy {
+	if opts.SortBy != "" {
+		switch opts.SortBy {
 		case "start":
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if sortDir == 1 {
+				if opts.SortDir == 1 {
 					return testResultI.Start.Before(testResultJ.Start)
 
 				}
