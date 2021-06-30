@@ -309,7 +309,7 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 
 // Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	user = MustHaveUser(ctx)
+	user := MustHaveUser(ctx)
 	old, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
