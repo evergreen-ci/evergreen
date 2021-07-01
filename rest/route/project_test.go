@@ -799,6 +799,7 @@ func (s *ProjectPutRotateSuite) SetupTest() {
 
 func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 
 	dryRunTrue := []byte(
 		`{

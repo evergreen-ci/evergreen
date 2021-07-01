@@ -443,8 +443,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection))
-	require.NoError(t, db.ClearCollections(event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.AllLogCollection))
 	dc := &DBProjectConnector{}
 
 	vars := &model.ProjectVars{
