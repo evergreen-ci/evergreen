@@ -866,38 +866,39 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 }
 
 // UpdateBuildStatus updates the status of the build based on its tasks' statuses.
-func UpdateBuildStatus(b *build.Build) error {
+// Returns true if the build's status has changed.
+func UpdateBuildStatus(b *build.Build) (bool, error) {
 	buildTasks, err := task.Find(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
 	if err != nil {
-		return errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
+		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
 
 	buildStatus := getBuildStatus(buildTasks)
 
 	if buildStatus == b.Status {
-		return nil
+		return false, nil
 	}
 
 	event.LogBuildStateChangeEvent(b.Id, buildStatus)
 
 	if evergreen.IsFinishedBuildStatus(buildStatus) {
 		if err = b.MarkFinished(buildStatus, time.Now()); err != nil {
-			return errors.Wrapf(err, "marking build as finished with status '%s'", buildStatus)
+			return true, errors.Wrapf(err, "marking build as finished with status '%s'", buildStatus)
 		}
 		if err = updateMakespans(b, buildTasks); err != nil {
-			return errors.Wrapf(err, "updating makespan information for '%s'", b.Id)
+			return true, errors.Wrapf(err, "updating makespan information for '%s'", b.Id)
 		}
 	} else {
 		if err = b.UpdateStatus(buildStatus); err != nil {
-			return errors.Wrap(err, "updating build status")
+			return true, errors.Wrap(err, "updating build status")
 		}
 	}
 
 	if err = updateBuildGithubStatus(b, buildTasks); err != nil {
-		return errors.Wrap(err, "updating build github status")
+		return true, errors.Wrap(err, "updating build github status")
 	}
 
-	return nil
+	return true, nil
 }
 
 func getVersionStatus(builds []build.Build) string {
@@ -1017,8 +1018,13 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if taskBuild == nil {
 		return errors.Errorf("no build '%s' found for task '%s'", t.BuildId, t.Id)
 	}
-	if err = UpdateBuildStatus(taskBuild); err != nil {
+	buildStatusChanged, err := UpdateBuildStatus(taskBuild)
+	if err != nil {
 		return errors.Wrapf(err, "updating build '%s' status", taskBuild.Id)
+	}
+	// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
+	if !buildStatusChanged {
+		return nil
 	}
 
 	taskVersion, err := VersionFindOneId(t.Version)
