@@ -1334,35 +1334,7 @@ type APIAWSConfig struct {
 	AllowedInstanceTypes []*string         `json:"allowed_instance_types"`
 	AllowedRegions       []*string         `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int              `json:"max_volume_size"`
-}
-
-type APIS3Credentials struct {
-	Key    *string `json:"key"`
-	Secret *string `json:"secret"`
-	Bucket *string `json:"bucket"`
-}
-
-func (a *APIS3Credentials) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.S3Credentials:
-		a.Key = utility.ToStringPtr(v.Key)
-		a.Secret = utility.ToStringPtr(v.Secret)
-		a.Bucket = utility.ToStringPtr(v.Bucket)
-		return nil
-	default:
-		return errors.Errorf("%T is not a supported type", h)
-	}
-}
-
-func (a *APIS3Credentials) ToService() (interface{}, error) {
-	if a == nil {
-		return nil, nil
-	}
-	return evergreen.S3Credentials{
-		Key:    utility.FromStringPtr(a.Key),
-		Secret: utility.FromStringPtr(a.Secret),
-		Bucket: utility.FromStringPtr(a.Bucket),
-	}, nil
+	Pod                  *APIAWSPodConfig  `json:"pod"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1386,19 +1358,19 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 
 		s3Creds := &APIS3Credentials{}
 		if err := s3Creds.BuildFromService(v.S3); err != nil {
-			return errors.Wrap(err, "could not convert API S3 credentials to service")
+			return errors.Wrap(err, "converting S3 credentials from service")
 		}
 		a.S3 = s3Creds
 
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
-			return errors.Wrap(err, "could not convert API S3 credentials to service")
+			return errors.Wrap(err, "converting S3 credentials from service")
 		}
 		a.TaskSync = taskSync
 
 		taskSyncRead := &APIS3Credentials{}
 		if err := taskSyncRead.BuildFromService(v.TaskSyncRead); err != nil {
-			return errors.Wrap(err, "could not convert API S3 credentials to service")
+			return errors.Wrap(err, "converting S3 credentials from service")
 		}
 		a.TaskSyncRead = taskSyncRead
 
@@ -1407,6 +1379,11 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.AllowedInstanceTypes = utility.ToStringPtrSlice(v.AllowedInstanceTypes)
 		a.AllowedRegions = utility.ToStringPtrSlice(v.AllowedRegions)
 
+		pod := &APIAWSPodConfig{}
+		if err := pod.BuildFromService(v.Pod); err != nil {
+			return errors.Wrap(err, "converting pod AWS config from service")
+		}
+		a.Pod = pod
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1496,7 +1473,205 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	config.AllowedInstanceTypes = utility.FromStringPtrSlice(a.AllowedInstanceTypes)
 	config.AllowedRegions = utility.FromStringPtrSlice(a.AllowedRegions)
 
+	i, err = a.Pod.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not convert ECS configuration to service")
+	}
+	pod, ok := i.(evergreen.AWSPodConfig)
+	if !ok {
+		return nil, errors.Wrapf(err, "programmatic error: unexpected type %T for pod config", i)
+	}
+	config.Pod = pod
+
 	return config, nil
+}
+
+type APIS3Credentials struct {
+	Key    *string `json:"key"`
+	Secret *string `json:"secret"`
+	Bucket *string `json:"bucket"`
+}
+
+func (a *APIS3Credentials) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.S3Credentials:
+		a.Key = utility.ToStringPtr(v.Key)
+		a.Secret = utility.ToStringPtr(v.Secret)
+		a.Bucket = utility.ToStringPtr(v.Bucket)
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIS3Credentials) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.S3Credentials{
+		Key:    utility.FromStringPtr(a.Key),
+		Secret: utility.FromStringPtr(a.Secret),
+		Bucket: utility.FromStringPtr(a.Bucket),
+	}, nil
+}
+
+// APIAWSPodConfig represents configuration options for pods running in AWS.
+type APIAWSPodConfig struct {
+	Role           *string                  `json:"role"`
+	Region         *string                  `json:"region"`
+	ECS            *APIECSConfig            `json:"ecs"`
+	SecretsManager *APISecretsManagerConfig `json:"secrets_manager"`
+}
+
+func (a *APIAWSPodConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.AWSPodConfig:
+		a.Role = utility.ToStringPtr(v.Role)
+		a.Region = utility.ToStringPtr(v.Region)
+		var apiECS APIECSConfig
+		if err := apiECS.BuildFromService(v.ECS); err != nil {
+			return errors.Wrap(err, "building API ECS config")
+		}
+		a.ECS = &apiECS
+		var apiSecretsManager APISecretsManagerConfig
+		if err := apiSecretsManager.BuildFromService(v.SecretsManager); err != nil {
+			return errors.Wrap(err, "building API Secrets Manager config")
+		}
+		a.SecretsManager = &apiSecretsManager
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIAWSPodConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+
+	i, err := a.ECS.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "building ECS config")
+	}
+	ecs, ok := i.(evergreen.ECSConfig)
+	if !ok {
+		return nil, errors.Errorf("programmatic error: unexpected type %T for ECS config", i)
+	}
+
+	i, err = a.SecretsManager.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "building Secrets Manager config")
+	}
+	sm, ok := i.(evergreen.SecretsManagerConfig)
+	if !ok {
+		return nil, errors.Errorf("programmatic error: unexpected type %T for Secrets Manager config", i)
+	}
+
+	return evergreen.AWSPodConfig{
+		Role:           utility.FromStringPtr(a.Role),
+		Region:         utility.FromStringPtr(a.Region),
+		ECS:            ecs,
+		SecretsManager: sm,
+	}, nil
+}
+
+// APIECSConfig represents configuration options for AWS ECS.
+type APIECSConfig struct {
+	Role                 *string               `json:"role"`
+	TaskDefinitionPrefix *string               `json:"task_definition_prefix"`
+	Clusters             []APIECSClusterConfig `json:"clusters"`
+}
+
+func (a *APIECSConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ECSConfig:
+		a.TaskDefinitionPrefix = utility.ToStringPtr(v.TaskDefinitionPrefix)
+		for _, cluster := range v.Clusters {
+			var apiCluster APIECSClusterConfig
+			if err := apiCluster.BuildFromService(cluster); err != nil {
+				return errors.Wrap(err, "building API ECS cluster config")
+			}
+			a.Clusters = append(a.Clusters, apiCluster)
+		}
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIECSConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+
+	var clusters []evergreen.ECSClusterConfig
+	for _, apiCluster := range a.Clusters {
+		i, err := apiCluster.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "building ECS cluster config")
+		}
+		cluster, ok := i.(evergreen.ECSClusterConfig)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: unexpected type %T for ECS cluster config", i)
+		}
+		clusters = append(clusters, cluster)
+	}
+	return evergreen.ECSConfig{
+		TaskDefinitionPrefix: utility.FromStringPtr(a.TaskDefinitionPrefix),
+		Clusters:             clusters,
+	}, nil
+}
+
+// APIECSClusterConfig represents configuration options for a cluster in AWS ECS.
+type APIECSClusterConfig struct {
+	Name     *string `json:"name"`
+	Platform *string `json:"platform"`
+}
+
+func (a *APIECSClusterConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ECSClusterConfig:
+		a.Name = utility.ToStringPtr(v.Name)
+		a.Platform = utility.ToStringPtr(string(v.Platform))
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APIECSClusterConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.ECSClusterConfig{
+		Name:     utility.FromStringPtr(a.Name),
+		Platform: evergreen.PodPlatform(utility.FromStringPtr(a.Platform)),
+	}, nil
+}
+
+// APISecretsManagerConfig represents configuration options for AWS Secrets
+// Manager.
+type APISecretsManagerConfig struct {
+	SecretPrefix *string `json:"secret_prefix"`
+}
+
+func (a *APISecretsManagerConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SecretsManagerConfig:
+		a.SecretPrefix = utility.ToStringPtr(v.SecretPrefix)
+		return nil
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+}
+
+func (a *APISecretsManagerConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.SecretsManagerConfig{
+		SecretPrefix: utility.FromStringPtr(a.SecretPrefix),
+	}, nil
 }
 
 type APIDockerConfig struct {
