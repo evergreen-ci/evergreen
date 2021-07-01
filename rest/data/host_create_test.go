@@ -308,8 +308,9 @@ buildvariants:
 			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
 			assert.NotEmpty(t, ec2Settings.KeyName)
 			assert.InDelta(t, time.Now().Add(evergreen.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
-			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
+			require.Len(t, ec2Settings.SecurityGroupIDs, 2)
 			assert.Equal(t, "sg-distro", ec2Settings.SecurityGroupIDs[0]) // if not overridden, stick with ec2 security group
+			assert.Equal(t, "sg-097bff6dd0d1d31d0", ec2Settings.SecurityGroupIDs[1])
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 		}
 	})
