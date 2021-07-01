@@ -2077,18 +2077,18 @@ func (t *Task) MergeNewTestResults() error {
 // collection) and new (from the testresults collection) OR Cedar test results
 // merged in the Task's LocalTestResults field.
 func (t *Task) MergeTestResults() error {
-	if t.HasCedarResults {
-		results, err := t.GetCedarTestResults()
-		if err != nil {
-			return errors.Wrap(err, "getting test results from cedar")
-
-		}
-		t.LocalTestResults = append(t.LocalTestResults, results...)
-
-		return nil
+	if !t.HasCedarResults {
+		return t.MergeNewTestResults()
 	}
 
-	return t.MergeNewTestResults()
+	results, err := t.GetCedarTestResults()
+	if err != nil {
+		return errors.Wrap(err, "getting test results from cedar")
+
+	}
+	t.LocalTestResults = append(t.LocalTestResults, results...)
+
+	return nil
 }
 
 // GetTestResultsForDisplayTask returns the test results for the execution
@@ -2098,16 +2098,17 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 		return nil, errors.Errorf("%s is not a display task", t.Id)
 	}
 
-	if t.HasCedarResults {
-		return t.LocalTestResults, nil
+	if !t.HasCedarResults {
+		tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
+		return tasks[0].LocalTestResults, errors.Wrap(err, "error merging test results for display task")
 	}
 
-	tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "error merging test results for display task")
+	var err error
+	if len(t.LocalTestResults) == 0 {
+		t.LocalTestResults, err = t.GetCedarTestResults()
 	}
 
-	return tasks[0].LocalTestResults, nil
+	return t.LocalTestResults, err
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group
