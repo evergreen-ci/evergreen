@@ -200,3 +200,14 @@ func AdminEventsBefore(before time.Time, n int) db.Q {
 func FindAllByResourceID(resourceID string) ([]EventLogEntry, error) {
 	return Find(AllLogCollection, db.Query(bson.M{ResourceIdKey: resourceID}))
 }
+
+// Pod events
+
+// MostRecentPodEvents creates a query to find the n most recent pod events for
+// the given pod ID.
+func MostRecentPodEvents(id string, n int) db.Q {
+	filter := ResourceTypeKeyIs(ResourceTypePod)
+	filter[ResourceIdKey] = id
+
+	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
