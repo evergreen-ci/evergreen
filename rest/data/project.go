@@ -259,7 +259,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
-func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement string, dryRun bool) (map[string]string, error) {
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjects, err := model.GetVarsByValue(toReplace)
 	if err != nil {
@@ -273,10 +273,32 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement st
 		for key, val := range project.Vars {
 			if val == toReplace {
 				if !dryRun {
+					originalVars := make(map[string]string)
+					for k, v := range project.Vars {
+						originalVars[k] = v
+					}
+					before := model.ProjectSettingsEvent{
+						Vars: model.ProjectVars{
+							Id:   project.Id,
+							Vars: originalVars,
+						},
+					}
+
 					project.Vars[key] = replacement
-					_, err := project.Upsert()
+					_, err = project.Upsert()
 					if err != nil {
 						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+					}
+
+					after := model.ProjectSettingsEvent{
+						Vars: model.ProjectVars{
+							Id:   project.Id,
+							Vars: project.Vars,
+						},
+					}
+
+					if err = model.LogProjectModified(project.Id, username, &before, &after); err != nil {
+						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
 					}
 				}
 				changes[project.Id] = key
@@ -595,7 +617,7 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
-func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement string, dryRun bool) (map[string]string, error) {
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
 	changes := map[string]string{}
 	for _, cachedVars := range pc.CachedVars {
 		for key, val := range cachedVars.Vars {

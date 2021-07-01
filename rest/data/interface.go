@@ -98,7 +98,7 @@ type Connector interface {
 	// in the model (removing old variables if overwrite is set).
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars, bool) error
-	UpdateProjectVarsByValue(string, string, bool) (map[string]string, error)
+	UpdateProjectVarsByValue(string, string, string, bool) (map[string]string, error)
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
