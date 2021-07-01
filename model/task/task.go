@@ -3136,13 +3136,8 @@ func (t *Task) GetCedarTestResults() ([]TestResult, error) {
 		return nil, nil
 	}
 
-	config, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting global config")
-	}
-
 	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   config.Cedar.BaseURL,
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		Execution: t.Execution,
 	}
 	if t.DisplayOnly {
