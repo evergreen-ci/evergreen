@@ -753,6 +753,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 
 func (s *DistroPatchByIDSuite) TestParse() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"ssh_options":["StrictHostKeyChecking=no","BatchMode=yes","ConnectTimeout=10"]}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8", bytes.NewBuffer(json))
 
@@ -763,6 +764,7 @@ func (s *DistroPatchByIDSuite) TestParse() {
 
 func (s *DistroPatchByIDSuite) TestRunValidSpawnAllowed() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"user_spawn_allowed": true}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -779,6 +781,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSpawnAllowed() {
 
 func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"provider": "mock"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -795,6 +798,7 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 
 func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	distro1 := s.data.CachedDistros[0]
 	s.data.CachedDistros[0] = distro1
 	s.Len(s.data.CachedDistros[0].ProviderSettingsList, 1)
@@ -832,6 +836,7 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 
 func (s *DistroPatchByIDSuite) TestRunValidArch() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"arch": "linux_amd64"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -848,6 +853,7 @@ func (s *DistroPatchByIDSuite) TestRunValidArch() {
 
 func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"work_dir": "/tmp"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -864,6 +870,7 @@ func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
 
 func (s *DistroPatchByIDSuite) TestRunValidHostAllocatorSettingsMaximumHosts() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"host_allocator_settings": {"maximum_hosts": 50}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -880,6 +887,7 @@ func (s *DistroPatchByIDSuite) TestRunValidHostAllocatorSettingsMaximumHosts() {
 
 func (s *DistroPatchByIDSuite) TestRunValidSetupAsSudo() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"setup_as_sudo": false}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -896,6 +904,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSetupAsSudo() {
 
 func (s *DistroPatchByIDSuite) TestRunValidSetup() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"setup": "New Set-up string"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -912,6 +921,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSetup() {
 
 func (s *DistroPatchByIDSuite) TestRunValidUser() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"user": "user101"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -928,6 +938,7 @@ func (s *DistroPatchByIDSuite) TestRunValidUser() {
 
 func (s *DistroPatchByIDSuite) TestRunValidSSHKey() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"ssh_key": "New SSH Key"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -944,6 +955,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSSHKey() {
 
 func (s *DistroPatchByIDSuite) TestRunValidSSHOptions() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"ssh_options":["BatchMode=no"]}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -960,6 +972,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSSHOptions() {
 
 func (s *DistroPatchByIDSuite) TestRunValidExpansions() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"expansions": [{"key": "key1", "value": "value1"}]}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -977,6 +990,7 @@ func (s *DistroPatchByIDSuite) TestRunValidExpansions() {
 
 func (s *DistroPatchByIDSuite) TestRunValidDisabled() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"disabled": true}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -993,6 +1007,7 @@ func (s *DistroPatchByIDSuite) TestRunValidDisabled() {
 
 func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"container_pool": ""}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1010,6 +1025,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"arch": "","user": "","work_dir": "","ssh_key": "","provider": "mock"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1035,6 +1051,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 
 func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"planner_settings": {"version": "tunable"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1050,6 +1067,7 @@ func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidPlannerSettingsVersion() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"planner_settings": {"version": "invalid"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1062,6 +1080,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidPlannerSettingsVersion() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidFinderSettingsVersion() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"finder_settings": {"version": "invalid"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1074,6 +1093,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidFinderSettingsVersion() {
 
 func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"finder_settings": {"version": "legacy"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1089,6 +1109,7 @@ func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
 
 func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"bootstrap_settings": {"method": "legacy-ssh"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1105,6 +1126,7 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"bootstrap_settings": {"method": "foobar"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1117,6 +1139,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
 
 func (s *DistroPatchByIDSuite) TestRunValidCommunicationMethod() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"bootstrap_settings": {"communication": "legacy-ssh"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1133,6 +1156,7 @@ func (s *DistroPatchByIDSuite) TestRunValidCommunicationMethod() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidCommunicationMethod() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"bootstrap_settings": {"communication": "foobar"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1145,6 +1169,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidCommunicationMethod() {
 
 func (s *DistroPatchByIDSuite) TestRunValidBootstrapAndCommunicationMethods() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(fmt.Sprintf(
 		`{"bootstrap_settings": {"method": "%s", "communication": "%s"}}`,
 		distro.BootstrapMethodLegacySSH, distro.CommunicationMethodLegacySSH))
@@ -1164,6 +1189,7 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapAndCommunicationMethods() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapAndCommunicationMethods() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(fmt.Sprintf(
 		`{"bootstrap_settings": {"method": "%s", "communication": "%s"}}`,
 		distro.BootstrapMethodUserData, distro.CommunicationMethodLegacySSH))
@@ -1178,6 +1204,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapAndCommunicationMethods() 
 
 func (s *DistroPatchByIDSuite) TestRunMissingNonLegacyBootstrapSettings() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(fmt.Sprintf(
 		`{"bootstrap_settings": {"method": "%s", "communication": "%s"}}`,
 		distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
@@ -1197,6 +1224,7 @@ func (s *DistroPatchByIDSuite) TestRunMissingNonLegacyBootstrapSettings() {
 
 func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(fmt.Sprintf(
 		`{"bootstrap_settings": {
 			"method": "%s",
@@ -1228,6 +1256,7 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 
 func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(fmt.Sprintf(`{"clone_method": "%s"}`, distro.CloneMethodLegacySSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1244,6 +1273,7 @@ func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidCloneMethod() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"clone_method": "foobar"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1256,6 +1286,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidCloneMethod() {
 
 func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	docToWrite := []byte(
 		`{
 				"arch" : "linux_amd64",
@@ -1414,6 +1445,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 
 func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	json := []byte(`{"name": "Updated distro name"}`)
 	h := s.rm.(*distroIDPatchHandler)
