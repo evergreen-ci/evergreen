@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -172,6 +173,9 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	expansions := opts.expansions.Map()
 	if opts.addExpansionsToEnv {
 		for k, v := range expansions {
+			if k == evergreen.GlobalGitHubTokenExpansion {
+				continue
+			}
 			env[k] = v
 		}
 	}

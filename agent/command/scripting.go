@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
 	"io"
 	"os"
 	"path/filepath"
@@ -294,6 +295,9 @@ func (c *scriptingExec) doExpansions(exp *util.Expansions) error {
 	expansions := exp.Map()
 	if c.AddExpansionsToEnv {
 		for k, v := range expansions {
+			if k == evergreen.GlobalGitHubTokenExpansion {
+				continue
+			}
 			c.Env[k] = v
 		}
 	}

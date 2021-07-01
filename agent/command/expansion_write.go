@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen"
 	"io/ioutil"
 	"path/filepath"
 
@@ -37,7 +38,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	expansions := map[string]string{}
 	for k, v := range conf.Expansions.Map() {
 		_, ok := conf.Redacted[k]
-		if ok && !c.Redacted {
+		if (ok && !c.Redacted) || k == evergreen.GlobalGitHubTokenExpansion {
 			continue
 		}
 		expansions[k] = v
