@@ -11,11 +11,11 @@ import (
 // about containers running in a container orchestration system.
 type Pod struct {
 	// ID is the unique identifier for the metadata document. This is
-	// semantically unrelated to the PodID.
+	// semantically unrelated to the ExternalID.
 	ID string `bson:"_id" json:"id"`
-	// PodID is the unique resource identifier for the collection of containers
-	// running in the container orchestration service.
-	PodID string `bson:"pod_id" json:"pod_id"`
+	// ExternalID is the unique external resource identifier for the collection
+	// of containers running in the container orchestration service.
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
