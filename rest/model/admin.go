@@ -1515,6 +1515,7 @@ func (a *APIS3Credentials) ToService() (interface{}, error) {
 	}, nil
 }
 
+// APIAWSPodConfig represents configuration options for pods running in AWS.
 type APIAWSPodConfig struct {
 	Role           *string                  `json:"role"`
 	Region         *string                  `json:"region"`
@@ -1602,6 +1603,7 @@ func (a *APIECSConfig) ToService() (interface{}, error) {
 	if a == nil {
 		return nil, nil
 	}
+
 	var clusters []evergreen.ECSClusterConfig
 	for _, apiCluster := range a.Clusters {
 		i, err := apiCluster.ToService()
@@ -1651,7 +1653,6 @@ func (a *APIECSClusterConfig) ToService() (interface{}, error) {
 // Manager.
 type APISecretsManagerConfig struct {
 	SecretPrefix *string `json:"secret_prefix"`
-	Region       *string `json:"region"`
 }
 
 func (a *APISecretsManagerConfig) BuildFromService(h interface{}) error {
