@@ -264,17 +264,18 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
-	tasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, projectRef.Identifier, g.TaskID)
+	activatedTasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, projectRef.Identifier, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, projectRef, g.TaskID)
+	activatedTasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, projectRef, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
 
-	if err = addDependencies(t, append(tasksInExistingBuilds, tasksInNewBuilds...)); err != nil {
+	// only want to add dependencies to activated tasks
+	if err = addDependencies(t, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "error adding dependencies")
 	}
 
