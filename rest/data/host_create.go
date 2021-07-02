@@ -390,15 +390,11 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		ec2Settings.UserData = createHost.UserdataCommand
 	}
 
-	defaultSg := evergreen.GetEnvironment().Settings().Providers.AWS.DefaultSecurityGroup
-
 	// Always override distro security group with provided security group.
 	if len(createHost.SecurityGroups) > 0 {
 		ec2Settings.SecurityGroupIDs = createHost.SecurityGroups
-	} else if ec2Settings.SecurityGroupIDs == nil || len(ec2Settings.SecurityGroupIDs) == 0 {
-		ec2Settings.SecurityGroupIDs = []string{defaultSg}
 	} else {
-		ec2Settings.SecurityGroupIDs = append(ec2Settings.SecurityGroupIDs, defaultSg)
+		ec2Settings.SecurityGroupIDs = append(ec2Settings.SecurityGroupIDs, evergreen.GetEnvironment().Settings().Providers.AWS.DefaultSecurityGroup)
 	}
 
 	ec2Settings.IPv6 = createHost.IPv6
