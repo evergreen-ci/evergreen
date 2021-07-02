@@ -183,7 +183,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	}
 
 	for _, expName := range opts.includeExpansionsInEnv {
-		if val, ok := expansions[expName]; ok {
+		if val, ok := expansions[expName]; ok && expName != evergreen.GlobalGitHubTokenExpansion {
 			env[expName] = val
 		}
 	}

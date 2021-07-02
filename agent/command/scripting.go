@@ -305,7 +305,7 @@ func (c *scriptingExec) doExpansions(exp *util.Expansions) error {
 	}
 
 	for _, ei := range c.IncludeExpansionsInEnv {
-		if val, ok := expansions[ei]; ok {
+		if val, ok := expansions[ei]; ok && ei != evergreen.GlobalGitHubTokenExpansion {
 			c.Env[ei] = val
 		}
 	}
