@@ -2034,9 +2034,9 @@ func (t *Task) makeArchivedTask() *Task {
 
 // Aggregation
 
-// MergeNewTestResults returns the task with both old (embedded in the tasks
-// collection) and new (from the testresults collection) test results merged in
-// the Task's LocalTestResults field.
+// MergeNewTestResults returns the task with both old (embedded in
+// the tasks collection) and new (from the testresults collection) test results
+// merged in the Task's LocalTestResults field.
 func (t *Task) MergeNewTestResults() error {
 	id := t.Id
 	if t.Archived {
@@ -2073,42 +2073,17 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
-// MergeTestResults returns the task with both old (embedded in the tasks
-// collection) and new (from the testresults collection) OR Cedar test results
-// merged in the Task's LocalTestResults field.
-func (t *Task) MergeTestResults() error {
-	if !t.HasCedarResults {
-		return t.MergeNewTestResults()
-	}
-
-	results, err := t.GetCedarTestResults()
-	if err != nil {
-		return errors.Wrap(err, "getting test results from cedar")
-
-	}
-	t.LocalTestResults = append(t.LocalTestResults, results...)
-
-	return nil
-}
-
-// GetTestResultsForDisplayTask returns the test results for the execution
-// tasks for a display task.
+// GetTestResultsForDisplayTask returns the test results for the execution tasks
+// for a display task.
 func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	if !t.DisplayOnly {
 		return nil, errors.Errorf("%s is not a display task", t.Id)
 	}
-
-	if !t.HasCedarResults {
-		tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
-		return tasks[0].LocalTestResults, errors.Wrap(err, "error merging test results for display task")
+	tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error merging test results for display task")
 	}
-
-	var err error
-	if len(t.LocalTestResults) == 0 {
-		t.LocalTestResults, err = t.GetCedarTestResults()
-	}
-
-	return t.LocalTestResults, err
+	return tasks[0].LocalTestResults, nil
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group
@@ -3108,58 +3083,6 @@ func (t *Task) SetNumDependents() error {
 	}, update)
 }
 
-func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
-	if len(execTasks) == 0 {
-		return nil
-	}
-
-	return UpdateOne(
-		bson.M{IdKey: displayTaskId},
-		bson.M{"$addToSet": bson.M{
-			ExecutionTasksKey: bson.M{"$each": execTasks},
-		}},
-	)
-}
-
-////////////////
-// Cedar Helpers
-////////////////
-
-// Get CedarTestResults fetches the task's test results from the Cedar service.
-// If the task does not have test results in Cedar, (nil, nil) is returned. If
-// the task is a display task, all of its execution tasks' test results are
-// returned.
-func (t *Task) GetCedarTestResults() ([]TestResult, error) {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
-
-	if !t.HasCedarResults {
-		return nil, nil
-	}
-
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: t.Execution,
-	}
-	if t.DisplayOnly {
-		opts.DisplayTaskID = t.Id
-	} else {
-		opts.TaskID = t.Id
-	}
-
-	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting test results from cedar")
-	}
-
-	results := make([]TestResult, len(cedarResults))
-	for i, result := range cedarResults {
-		results[i] = ConvertCedarTestResult(result)
-	}
-
-	return results, nil
-}
-
 // ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
 // struct.
 func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
@@ -3177,4 +3100,17 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		EndTime:         float64(result.End.Unix()),
 		Status:          result.Status,
 	}
+}
+
+func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
+	if len(execTasks) == 0 {
+		return nil
+	}
+
+	return UpdateOne(
+		bson.M{IdKey: displayTaskId},
+		bson.M{"$addToSet": bson.M{
+			ExecutionTasksKey: bson.M{"$each": execTasks},
+		}},
+	)
 }
