@@ -826,6 +826,9 @@ func getBuildStatus(buildTasks []task.Task) string {
 
 	// started but not finished
 	for _, t := range buildTasks {
+		if t.Status == evergreen.TaskStarted {
+			return evergreen.BuildStarted
+		}
 		if t.Activated && !t.Blocked() && !t.IsFinished() {
 			return evergreen.BuildStarted
 		}
