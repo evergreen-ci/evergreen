@@ -3,6 +3,7 @@ package pod
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -34,9 +35,8 @@ type TaskContainerCreationOptions struct {
 	// CPU is the CPU units that the task will be allocated. 1024 CPU units is
 	// equivalent to 1vCPU.
 	CPU int `bson:"cpu" json:"cpu"`
-	// IsWindows indicates whether or not the task will run in a Windows
-	// container.
-	IsWindows bool `bson:"is_windows" json:"is_windows"`
+	// Platform indicates which particular platform the pod's containers run on.
+	Platform evergreen.PodPlatform `bson:"platform" json:"platform"`
 	// EnvVars is a mapping of the non-secret environment variables to expose in
 	// the task's container environment.
 	EnvVars map[string]string `bson:"env_vars,omitempty" json:"env_vars,omitempty"`
@@ -49,7 +49,7 @@ type TaskContainerCreationOptions struct {
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o TaskContainerCreationOptions) IsZero() bool {
-	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && !o.IsWindows && o.EnvVars == nil && o.EnvSecrets == nil
+	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.Platform == "" && o.EnvVars == nil && o.EnvSecrets == nil
 }
 
 // TimeInfo represents timing information about the pod.
