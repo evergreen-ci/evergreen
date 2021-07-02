@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -296,6 +296,8 @@ func (c *scriptingExec) doExpansions(exp *util.Expansions) error {
 	if c.AddExpansionsToEnv {
 		for k, v := range expansions {
 			if k == evergreen.GlobalGitHubTokenExpansion {
+				//users should not be able to use the global github token expansion
+				//as it can result in the breaching of Evergreen's GitHub API limit
 				continue
 			}
 			c.Env[k] = v

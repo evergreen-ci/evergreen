@@ -2,11 +2,11 @@ package command
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
