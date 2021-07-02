@@ -192,7 +192,6 @@ const (
 	ExpireOnFormat                      = "2006-01-02"
 	DefaultMaxSpawnHostsPerUser         = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
-	DefaultSecurityGroup                = "sg-097bff6dd0d1d31d0"
 	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 	UnattachedVolumeExpiration          = 24 * time.Hour * 30
