@@ -3,6 +3,7 @@ package pod
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -11,11 +12,11 @@ import (
 // about containers running in a container orchestration system.
 type Pod struct {
 	// ID is the unique identifier for the metadata document. This is
-	// semantically unrelated to the PodID.
+	// semantically unrelated to the ExternalID.
 	ID string `bson:"_id" json:"id"`
-	// PodID is the unique resource identifier for the collection of containers
-	// running in the container orchestration service.
-	PodID string `bson:"pod_id" json:"pod_id"`
+	// ExternalID is the unique external resource identifier for the collection
+	// of containers running in the container orchestration service.
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
@@ -34,9 +35,8 @@ type TaskContainerCreationOptions struct {
 	// CPU is the CPU units that the task will be allocated. 1024 CPU units is
 	// equivalent to 1vCPU.
 	CPU int `bson:"cpu" json:"cpu"`
-	// IsWindows indicates whether or not the task will run in a Windows
-	// container.
-	IsWindows bool `bson:"is_windows" json:"is_windows"`
+	// Platform indicates which particular platform the pod's containers run on.
+	Platform evergreen.PodPlatform `bson:"platform" json:"platform"`
 	// EnvVars is a mapping of the non-secret environment variables to expose in
 	// the task's container environment.
 	EnvVars map[string]string `bson:"env_vars,omitempty" json:"env_vars,omitempty"`
@@ -49,7 +49,7 @@ type TaskContainerCreationOptions struct {
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o TaskContainerCreationOptions) IsZero() bool {
-	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && !o.IsWindows && o.EnvVars == nil && o.EnvSecrets == nil
+	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.Platform == "" && o.EnvVars == nil && o.EnvSecrets == nil
 }
 
 // TimeInfo represents timing information about the pod.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -83,9 +84,10 @@ func TestExpansionWriter(t *testing.T) {
 	assert.NoError(err)
 	tc := &internal.TaskConfig{
 		Expansions: &util.Expansions{
-			"foo":      "bar",
-			"baz":      "qux",
-			"password": "hunter2",
+			"foo":                                "bar",
+			"baz":                                "qux",
+			"password":                           "hunter2",
+			evergreen.GlobalGitHubTokenExpansion: "sample_token",
 		},
 		Redacted: map[string]bool{
 			"password": true,

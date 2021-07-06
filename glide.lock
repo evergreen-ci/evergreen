@@ -137,7 +137,7 @@ imports:
   - name: github.com/evergreen-ci/timber
     version: daddfabf64ff09a73c20b9e788c1f44052931ea6
   - name: github.com/evergreen-ci/poplar
-    version: 098cea7cb6dc183c69a96c882da4e370858c0aa3
+    version: b7f63602780c1918f467faba6a04037d533c2fd2
   - name: github.com/evergreen-ci/juniper
     version: 0fd21a88954c06e128edc4fb26e30bb79e6e207d
 

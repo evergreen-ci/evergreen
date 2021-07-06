@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/mitchellh/mapstructure"
@@ -37,7 +38,9 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	expansions := map[string]string{}
 	for k, v := range conf.Expansions.Map() {
 		_, ok := conf.Redacted[k]
-		if ok && !c.Redacted {
+		if (ok && !c.Redacted) || k == evergreen.GlobalGitHubTokenExpansion {
+			//users should not be able to use the global github token expansion
+			//as it can result in the breaching of Evergreen's GitHub API limit
 			continue
 		}
 		expansions[k] = v
