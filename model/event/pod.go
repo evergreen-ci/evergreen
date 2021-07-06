@@ -23,7 +23,7 @@ const (
 // podData contains information relevant to a pod event.
 type podData struct {
 	OldStatus string `bson:"old_status,omitempty" json:"old_status,omitempty"`
-	NewStatus string `bson:"new_status,omitempty" json:"new_status,omitempty\\,omitempty"`
+	NewStatus string `bson:"new_status,omitempty" json:"new_status,omitempty"`
 }
 
 // LogPodEvent logs an event for a pod to the event log.
