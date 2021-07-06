@@ -3180,7 +3180,7 @@ func (t *Task) hasCedarResults() bool {
 	// display task accordingly.
 	if len(t.ExecutionTasks) > 0 {
 		execTask, err := FindOneId(t.ExecutionTasks[0])
-		if err != nil {
+		if err != nil || execTask == nil {
 			return false
 		}
 
@@ -3189,7 +3189,7 @@ func (t *Task) hasCedarResults() bool {
 		// want to iterate through all the execution tasks and it isn't
 		// really needed for display tasks.
 		// Since we do not want to fail here, we can ignore the error.
-		_ = t.SetHasCedarResults(true, false)
+		_ = t.SetHasCedarResults(execTask.HasCedarResults, false)
 
 		return execTask.HasCedarResults
 	}
