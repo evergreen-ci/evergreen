@@ -42,6 +42,7 @@ type APIPatch struct {
 	PatchedConfig           *string           `json:"patched_config"`
 	CanEnqueueToCommitQueue bool              `json:"can_enqueue_to_commit_queue"`
 	ChildPatches            []ChildPatch      `json:"child_patches"`
+	ChildPatchesTemp        []APIPatch        `json:"child_patches_temp"`
 }
 
 type DownstreamTasks struct {
@@ -182,12 +183,13 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
 
-	downstreamTasks, childPatches, err := getChildPatchesData(v)
+	downstreamTasks, childPatches, childPatchesTemp, err := getChildPatchesData(v)
 	if err != nil {
 		return errors.Wrap(err, "error getting downstream tasks")
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
+	apiPatch.ChildPatchesTemp = childPatchesTemp
 
 	if v.Project != "" {
 		identifier, err := model.GetIdentifierForProject(v.Project)
@@ -200,16 +202,17 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
 
-func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error) {
+func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, []APIPatch, error) {
 	if len(p.Triggers.ChildPatches) <= 0 {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	downstreamTasks := []DownstreamTasks{}
 	childPatches := []ChildPatch{}
+	childPatchesTemp := []APIPatch{}
 	for _, childPatch := range p.Triggers.ChildPatches {
 		childPatchDoc, err := patch.FindOneId(childPatch)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error getting child patch '%s'", childPatch)
+			return nil, nil, nil, errors.Wrapf(err, "error getting child patch '%s'", childPatch)
 		}
 		if childPatchDoc == nil {
 			continue
@@ -226,10 +229,16 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error)
 			PatchID: utility.ToStringPtr(childPatch),
 			Status:  utility.ToStringPtr(childPatchDoc.Status),
 		}
+		apiPatch := APIPatch{}
+		err = apiPatch.BuildFromService(*childPatchDoc)
+		if err != nil {
+			return nil, nil, nil, errors.Wrapf(err, "error building child patch from service '%s'", childPatch)
+		}
 		downstreamTasks = append(downstreamTasks, dt)
 		childPatches = append(childPatches, cp)
+		childPatchesTemp = append(childPatchesTemp, apiPatch)
 	}
-	return downstreamTasks, childPatches, nil
+	return downstreamTasks, childPatches, childPatchesTemp, nil
 }
 
 // ToService converts a service layer patch using the data from APIPatch

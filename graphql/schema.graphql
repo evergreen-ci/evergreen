@@ -489,6 +489,7 @@ type Patch {
   variants: [String!]!
   tasks: [String!]!
   childPatches: [ChildPatch!]
+  childPatchesTemp: [Patch!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
