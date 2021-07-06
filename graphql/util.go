@@ -68,8 +68,20 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)
 		}
 	}
+
 	if opts.SortBy != "" {
 		switch opts.SortBy {
+		case "start":
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+				if opts.SortDir == 1 {
+					return testResultI.Start.Before(testResultJ.Start)
+
+				}
+				return testResultI.Start.After(testResultJ.Start)
+			})
+			break
 		case "duration":
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
