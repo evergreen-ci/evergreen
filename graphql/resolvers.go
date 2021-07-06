@@ -1240,6 +1240,9 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			break
 		case TestSortCategoryTestName:
 			sortBy = testresult.TestFileKey
+			break
+		case TestSortCategoryStartTime:
+			sortBy = testresult.StartTimeKey
 		}
 	}
 
