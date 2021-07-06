@@ -1020,8 +1020,9 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 
 // SetHasCedarResults sets the HasCedarResults field of the task to
 // hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
-// true. An error is returned if hasCedarResults is false and failedResults is
-// true as this is an invalid state. Note that if failedResults is false,
+// true. If the task is part of a display task, the display tasks's fields are
+// also set. An error is returned if hasCedarResults is false and failedResults
+// is true as this is an invalid state. Note that if failedResults is false,
 // CedarResultsFailed is not set. This is because in cases where separate calls
 // to attach test results are made, only one call needs to have a test failure
 // for the CedarResultsFailed to be set to true.
@@ -1039,14 +1040,22 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 		set[CedarResultsFailedKey] = true
 	}
 
-	return UpdateOne(
+	if err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": set,
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	if !t.DisplayOnly && t.IsPartOfDisplay() {
+		return t.DisplayTask.SetHasCedarResults(hasCedarResults, failedResults)
+	}
+
+	return nil
 }
 
 func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
@@ -2077,14 +2086,13 @@ func (t *Task) MergeNewTestResults() error {
 // collection) and new (from the testresults collection) OR Cedar test results
 // merged in the Task's LocalTestResults field.
 func (t *Task) MergeTestResults() error {
-	if !t.HasCedarResults {
+	if !t.hasCedarResults() {
 		return t.MergeNewTestResults()
 	}
 
 	results, err := t.GetCedarTestResults()
 	if err != nil {
 		return errors.Wrap(err, "getting test results from cedar")
-
 	}
 	t.LocalTestResults = append(t.LocalTestResults, results...)
 
@@ -2098,7 +2106,7 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 		return nil, errors.Errorf("%s is not a display task", t.Id)
 	}
 
-	if !t.HasCedarResults {
+	if !t.hasCedarResults() {
 		tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
 		return tasks[0].LocalTestResults, errors.Wrap(err, "error merging test results for display task")
 	}
@@ -3133,7 +3141,7 @@ func (t *Task) GetCedarTestResults() ([]TestResult, error) {
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
 
-	if !t.HasCedarResults {
+	if !t.hasCedarResults() {
 		return nil, nil
 	}
 
@@ -3158,6 +3166,35 @@ func (t *Task) GetCedarTestResults() ([]TestResult, error) {
 	}
 
 	return results, nil
+}
+
+func (t *Task) hasCedarResults() bool {
+	if !t.DisplayOnly || t.HasCedarResults {
+		return t.HasCedarResults
+	}
+
+	// Older display tasks may incorrectly indicate that they do not have
+	// test results in Cedar. Since all or none of the execution tasks will
+	// have test results in Cedar, we only need to check one. In the case
+	// that there are results in Cedar, this will attempt to update the
+	// display task accordingly.
+	if len(t.ExecutionTasks) > 0 {
+		execTask, err := FindOneId(t.ExecutionTasks[0])
+		if err != nil {
+			return false
+		}
+
+		// Attempt to update the display task's HasCedarResults field.
+		// We will not update the CedarResultsFailed field since we do
+		// want to iterate through all the execution tasks and it isn't
+		// really needed for display tasks.
+		// Since we do not want to fail here, we can ignore the error.
+		_ = t.SetHasCedarResults(true, false)
+
+		return execTask.HasCedarResults
+	}
+
+	return false
 }
 
 // ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
