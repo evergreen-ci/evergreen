@@ -74,6 +74,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	projectToCopy.Enabled = utility.FalsePtr()
 	projectToCopy.PRTestingEnabled = nil
 	projectToCopy.CommitQueue.Enabled = nil
+	adminsToAdd := projectToCopy.Admins
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err = p.sc.CreateProject(projectToCopy, u); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error creating project for id '%s'", p.newProject))
@@ -92,6 +93,10 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if err = p.sc.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying subscriptions from project '%s'", p.oldProject))
+	}
+	//update admins
+	if err = p.sc.UpdateAdminRoles(projectToCopy, adminsToAdd, nil); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", p.oldProject))
 	}
 
 	return gimlet.NewJSONResponse(apiProjectRef)
