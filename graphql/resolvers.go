@@ -1311,7 +1311,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 		for _, t := range paginatedFilteredTests {
 			apiTest := restModel.APITest{}
-			if err = apiTest.BuildFromService(taskID); err != nil {
+			if err = apiTest.BuildFromService(t.TaskID); err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 			if err = apiTest.BuildFromService(&t); err != nil {
@@ -1350,7 +1350,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		})
 		for _, t := range filteredTestResults {
 			apiTest := restModel.APITest{}
-			if err = apiTest.BuildFromService(taskID); err != nil {
+			if err = apiTest.BuildFromService(t.TaskID); err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 			if err = apiTest.BuildFromService(&t); err != nil {
