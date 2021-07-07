@@ -320,12 +320,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.IsPartOfDisplay() {
-		dt, err := t.GetDisplayTask()
-		if err != nil {
-			grip.Error(errors.Wrapf(err, "can't get display task for task %s", t.Id))
-		} else {
-			msg["display_task_id"] = dt.Id
-		}
+		msg["display_task_id"] = t.DisplayTask.Id
 	}
 
 	grip.Info(msg)
