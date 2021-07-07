@@ -296,6 +296,10 @@ type Connector interface {
 
 	CheckHostSecret(string, *http.Request) (int, error)
 
+	// CheckPodSecret checks that the ID and secret match the server's
+	// stored credentials for the pod.
+	CheckPodSecret(id, secret string) error
+
 	// FindProjectAliases queries the database to find all aliases (including or excluding those specified).
 	// Includes repo aliases if repoId is provided.
 	FindProjectAliases(string, string, []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error)

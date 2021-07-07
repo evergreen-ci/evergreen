@@ -13,6 +13,7 @@ type DBConnector struct {
 	DBContextConnector
 	DBDistroConnector
 	DBHostConnector
+	DBPodConnector
 	DBTestConnector
 	DBBuildConnector
 	DBVersionConnector
@@ -48,6 +49,7 @@ type MockConnector struct {
 	MockContextConnector
 	MockDistroConnector
 	MockHostConnector
+	MockPodConnector
 	MockTestConnector
 	MockBuildConnector
 	MockVersionConnector

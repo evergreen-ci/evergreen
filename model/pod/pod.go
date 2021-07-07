@@ -17,6 +17,9 @@ type Pod struct {
 	// ExternalID is the unique external resource identifier for the collection
 	// of containers running in the container orchestration service.
 	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
+	// Secret is the shared secret between the server and the pod for
+	// authentication when the host is provisioned.
+	Secret string `bson:"secret" json:"secret"`
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
