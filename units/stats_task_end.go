@@ -132,6 +132,15 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"version":              j.task.Version,
 	}
 
+	if j.task.IsPartOfDisplay() {
+		dt, err := j.task.GetDisplayTask()
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "can't get display task for task %s", j.task.Id))
+		} else {
+			msg["display_task_id"] = dt.Id
+		}
+	}
+
 	pRef, err := model.FindOneProjectRef(j.task.Project)
 	if pRef != nil {
 		msg["project_identifier"] = pRef.Identifier
