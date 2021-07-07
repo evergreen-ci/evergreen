@@ -3193,7 +3193,7 @@ func (t *Task) hasCedarResults() bool {
 				// really needed for display tasks.
 				// Since we do not want to fail here, we can
 				// ignore the error.
-				_ = t.SetHasCedarResults(execTask.HasCedarResults, false)
+				_ = t.SetHasCedarResults(true, false)
 
 				return true
 			}
