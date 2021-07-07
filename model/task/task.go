@@ -3174,24 +3174,30 @@ func (t *Task) hasCedarResults() bool {
 	}
 
 	// Older display tasks may incorrectly indicate that they do not have
-	// test results in Cedar. Since all or none of the execution tasks will
-	// have test results in Cedar, we only need to check one. In the case
-	// that there are results in Cedar, this will attempt to update the
-	// display task accordingly.
+	// test results in Cedar. In the case that the execution tasks have
+	// results in Cedar, this will attempt to update the display task
+	// accordingly.
 	if len(t.ExecutionTasks) > 0 {
-		execTask, err := FindOneId(t.ExecutionTasks[0])
-		if err != nil || execTask == nil {
+		execTasks, err := FindAll(ByIds(t.ExecutionTasks))
+		if err != nil {
 			return false
 		}
 
-		// Attempt to update the display task's HasCedarResults field.
-		// We will not update the CedarResultsFailed field since we do
-		// want to iterate through all the execution tasks and it isn't
-		// really needed for display tasks.
-		// Since we do not want to fail here, we can ignore the error.
-		_ = t.SetHasCedarResults(execTask.HasCedarResults, false)
+		for _, execTask := range execTasks {
+			if execTask.HasCedarResults {
+				// Attempt to update the display task's
+				// HasCedarResults field.
+				// We will not update the CedarResultsFailed
+				// field since we do want to iterate through
+				// all of the execution tasks and it isn't
+				// really needed for display tasks.
+				// Since we do not want to fail here, we can
+				// ignore the error.
+				_ = t.SetHasCedarResults(execTask.HasCedarResults, false)
 
-		return execTask.HasCedarResults
+				return true
+			}
+		}
 	}
 
 	return false
