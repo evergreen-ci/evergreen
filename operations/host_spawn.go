@@ -176,6 +176,7 @@ func hostModify() cli.Command {
 		expireFlagName       = "expire"
 		extendFlagName       = "extend"
 		addSSHKeyFlag        = "add-ssh-key"
+		addSSHKeyNameFlag    = "add-ssh-key-name"
 	)
 
 	return cli.Command{
@@ -212,15 +213,20 @@ func hostModify() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  addSSHKeyFlag,
-				Usage: "add user defined public key corresponding the `KEY_NAME` to the host's authorized_keys",
+				Usage: "add `PUBLIC_KEY` to the host's authorized_keys",
+			},
+			cli.StringFlag{
+				Name:  addSSHKeyNameFlag,
+				Usage: "add user defined public key named `KEY_NAME` to the host's authorized_keys",
 			},
 		)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireHostFlag,
-			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, addSSHKeyFlag),
+			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, addSSHKeyFlag, addSSHKeyNameFlag),
 			mutuallyExclusiveArgs(false, noExpireFlagName, extendFlagName),
 			mutuallyExclusiveArgs(false, noExpireFlagName, expireFlagName),
+			mutuallyExclusiveArgs(false, addSSHKeyFlag, addSSHKeyNameFlag),
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -233,7 +239,8 @@ func hostModify() cli.Command {
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
-			addKeyName := c.String(addSSHKeyFlag)
+			publicKey := c.String(addSSHKeyFlag)
+			publicKeyName := c.String(addSSHKeyNameFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -250,9 +257,11 @@ func hostModify() cli.Command {
 				return errors.Wrap(err, "problem generating tags to add")
 			}
 
-			addPubKey, err := validatePublicKey(ctx, client, hostID, addKeyName)
-			if err != nil {
-				return errors.Wrap(err, "public key failed validation")
+			if publicKey == "" && publicKeyName != "" {
+				publicKey, err = validatePublicKey(ctx, client, hostID, publicKeyName)
+				if err != nil {
+					return errors.Wrap(err, "public key failed validation")
+				}
 			}
 
 			hostChanges := host.HostModifyOptions{
@@ -262,7 +271,7 @@ func hostModify() cli.Command {
 				AddHours:           time.Duration(extension) * time.Hour,
 				SubscriptionType:   subscriptionType,
 				NewName:            displayName,
-				AddKey:             addPubKey,
+				AddKey:             publicKey,
 			}
 
 			if noExpire {
@@ -293,7 +302,7 @@ func validatePublicKey(ctx context.Context, client client.Communicator, hostID, 
 
 	userKeys, err := client.GetCurrentUsersKeys(ctx)
 	if err != nil {
-		return "", errors.New("problem retreiving user keys")
+		return "", errors.New("problem retrieving user keys")
 	}
 
 	for _, pubKey := range userKeys {
