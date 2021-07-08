@@ -3189,7 +3189,7 @@ func (t *Task) hasCedarResults() bool {
 		)
 		if t.Archived {
 			// This is a display task from the old task collection,
-			// we need to look their for its execution tasks.
+			// we need to look there for its execution tasks.
 			execTasks, err = FindAllOld(db.Query(bson.M{
 				IdKey:        bson.M{"$in": t.ExecutionTasks},
 				ExecutionKey: t.Execution,
