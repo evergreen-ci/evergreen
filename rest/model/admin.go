@@ -664,11 +664,12 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 }
 
 type APIOktaConfig struct {
-	ClientID           *string `json:"client_id"`
-	ClientSecret       *string `json:"client_secret"`
-	Issuer             *string `json:"issuer"`
-	UserGroup          *string `json:"user_group"`
-	ExpireAfterMinutes int     `json:"expire_after_minutes"`
+	ClientID           *string  `json:"client_id"`
+	ClientSecret       *string  `json:"client_secret"`
+	Issuer             *string  `json:"issuer"`
+	Scopes             []string `json:"scopes"`
+	UserGroup          *string  `json:"user_group"`
+	ExpireAfterMinutes int      `json:"expire_after_minutes"`
 }
 
 func (a *APIOktaConfig) BuildFromService(h interface{}) error {
@@ -680,6 +681,7 @@ func (a *APIOktaConfig) BuildFromService(h interface{}) error {
 		a.ClientID = utility.ToStringPtr(v.ClientID)
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
 		a.Issuer = utility.ToStringPtr(v.Issuer)
+		a.Scopes = v.Scopes
 		a.UserGroup = utility.ToStringPtr(v.UserGroup)
 		a.ExpireAfterMinutes = v.ExpireAfterMinutes
 		return nil
@@ -696,6 +698,7 @@ func (a *APIOktaConfig) ToService() (interface{}, error) {
 		ClientID:           utility.FromStringPtr(a.ClientID),
 		ClientSecret:       utility.FromStringPtr(a.ClientSecret),
 		Issuer:             utility.FromStringPtr(a.Issuer),
+		Scopes:             a.Scopes,
 		UserGroup:          utility.FromStringPtr(a.UserGroup),
 		ExpireAfterMinutes: a.ExpireAfterMinutes,
 	}, nil
