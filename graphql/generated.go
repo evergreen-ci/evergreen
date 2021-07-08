@@ -5210,6 +5210,8 @@ input EditSpawnHostInput {
   deletedInstanceTags: [InstanceTagInput!]
   volume: String
   servicePassword: String
+  publicKey: PublicKeyInput
+  savePublicKey: Boolean
 }
 
 input SpawnVolumeInput {
@@ -25471,6 +25473,18 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			if err != nil {
 				return it, err
 			}
+		case "publicKey":
+			var err error
+			it.PublicKey, err = ec.unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "savePublicKey":
+			var err error
+			it.SavePublicKey, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -34028,6 +34042,18 @@ func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 		return graphql.Null
 	}
 	return ec._Project(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPublicKeyInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx context.Context, v interface{}) (PublicKeyInput, error) {
+	return ec.unmarshalInputPublicKeyInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx context.Context, v interface{}) (*PublicKeyInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOPublicKeyInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalOSearchReturnInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐSearchReturnInfo(ctx context.Context, sel ast.SelectionSet, v thirdparty.SearchReturnInfo) graphql.Marshaler {
