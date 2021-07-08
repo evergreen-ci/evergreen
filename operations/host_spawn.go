@@ -212,7 +212,7 @@ func hostModify() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  addSSHKeyFlag,
-				Usage: "add user defined public key to the host's authorized_keys",
+				Usage: "add user defined public key corresponding the `KEY_NAME` to the host's authorized_keys",
 			},
 		)),
 		Before: mergeBeforeFuncs(
