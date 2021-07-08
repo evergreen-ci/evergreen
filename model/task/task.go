@@ -3145,14 +3145,19 @@ func (t *Task) GetCedarTestResults() ([]TestResult, error) {
 		return nil, nil
 	}
 
+	taskID := t.Id
+	if t.Archived {
+		taskID = t.OldTaskId
+	}
+
 	opts := apimodels.GetCedarTestResultsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		Execution: t.Execution,
 	}
 	if t.DisplayOnly {
-		opts.DisplayTaskID = t.Id
+		opts.DisplayTaskID = taskID
 	} else {
-		opts.TaskID = t.Id
+		opts.TaskID = taskID
 	}
 
 	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
@@ -3178,7 +3183,20 @@ func (t *Task) hasCedarResults() bool {
 	// results in Cedar, this will attempt to update the display task
 	// accordingly.
 	if len(t.ExecutionTasks) > 0 {
-		execTasks, err := FindAll(ByIds(t.ExecutionTasks))
+		var (
+			execTasks []Task
+			err       error
+		)
+		if t.Archived {
+			// This is a display task from the old task collection,
+			// we need to look there for its execution tasks.
+			execTasks, err = FindAllOld(db.Query(bson.M{
+				OldTaskIdKey: bson.M{"$in": t.ExecutionTasks},
+				ExecutionKey: t.Execution,
+			}))
+		} else {
+			execTasks, err = FindAll(ByIds(t.ExecutionTasks))
+		}
 		if err != nil {
 			return false
 		}
@@ -3186,13 +3204,12 @@ func (t *Task) hasCedarResults() bool {
 		for _, execTask := range execTasks {
 			if execTask.HasCedarResults {
 				// Attempt to update the display task's
-				// HasCedarResults field.
-				// We will not update the CedarResultsFailed
-				// field since we do want to iterate through
-				// all of the execution tasks and it isn't
-				// really needed for display tasks.
-				// Since we do not want to fail here, we can
-				// ignore the error.
+				// HasCedarResults field. We will not update
+				// the CedarResultsFailed field since we do
+				// want to iterate through all of the execution
+				// tasks and it isn't really needed for display
+				// tasks. Since we do not want to fail here, we
+				// can ignore the error.
 				_ = t.SetHasCedarResults(true, false)
 
 				return true
