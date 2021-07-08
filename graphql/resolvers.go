@@ -1830,24 +1830,24 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 	}
 
-	restartedTasks := []*restModel.APITask{}
-	generatedTasksToRestart := []task.Task{}
+	scheduledTasks := []*restModel.APITask{}
+	generatedTasksToSchedule := []task.Task{}
 
 	for _, t := range tasks {
-		// If a task is a generator task or generated don't schedule it until we get all of the generated tasks we want to generate
-		if !t.GenerateTask && t.GeneratedBy == "" {
+		// If a task is a generated task don't schedule it until we get all of the generated tasks we want to generate
+		if t.GeneratedBy == "" {
 			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
 			baseTask, _ := t.FindTaskOnBaseCommit()
-			if baseTask != nil {
+			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
 				task, err := SetScheduled(ctx, r.sc, baseTask.Id, true)
 				if err != nil {
 					return nil, err
 				}
-				restartedTasks = append(restartedTasks, task)
+				scheduledTasks = append(scheduledTasks, task)
 			}
 			// If a task is generated lets keep track of it so we can restart it later
 		} else if t.GeneratedBy != "" {
-			generatedTasksToRestart = append(generatedTasksToRestart, t)
+			generatedTasksToSchedule = append(generatedTasksToSchedule, t)
 
 		}
 	}
@@ -1855,10 +1855,10 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	baseGeneratorTasksToSchedule := make(map[string]*task.Task)
 	// If a generated task does not have a base task find its generator and use its base task
 	// to generate it
-	for _, t := range generatedTasksToRestart {
+	for _, t := range generatedTasksToSchedule {
 		baseTask, _ := t.FindTaskOnBaseCommit()
 		// If the task is undispatched or doesn't exist on the base commit then we want to schedule
-		if baseTask == nil || baseTask.Status == evergreen.TaskUndispatched {
+		if baseTask == nil {
 			generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
@@ -1867,7 +1867,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 				baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
 				// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
 				if baseGeneratorTask != nil {
-					err = baseGeneratorTask.SetGeneratedTasksToStepback(t.BuildVariant, t.DisplayName)
+					err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
 					if err != nil {
 						return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not stepback generated task: %s", err.Error()))
 					}
@@ -1884,9 +1884,9 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		if err != nil {
 			return nil, err
 		}
-		restartedTasks = append(restartedTasks, task)
+		scheduledTasks = append(scheduledTasks, task)
 	}
-	return restartedTasks, nil
+	return scheduledTasks, nil
 }
 
 func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {

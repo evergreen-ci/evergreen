@@ -190,9 +190,9 @@ type Task struct {
 	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
-	// GeneratedTasksToStepback is only populated if we want to override activation for these generated tasks, because of stepback.
+	// GeneratedTasksToActivate is only populated if we want to override activation for these generated tasks, because of stepback.
 	// Maps the build variant to a list of task names.
-	GeneratedTasksToStepback map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
+	GeneratedTasksToActivate map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -873,15 +873,15 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 	)
 }
 
-// SetGeneratedTasksToStepback adds a task to stepback after activation
-func (t *Task) SetGeneratedTasksToStepback(buildVariantName, taskName string) error {
+// SetGeneratedTasksToActivate adds a task to stepback after activation
+func (t *Task) SetGeneratedTasksToActivate(buildVariantName, taskName string) error {
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$addToSet": bson.M{
-				bsonutil.GetDottedKeyName(GeneratedTasksToStepbackKey, buildVariantName): taskName,
+				bsonutil.GetDottedKeyName(GeneratedTasksToActivateKey, buildVariantName): taskName,
 			},
 		},
 	)

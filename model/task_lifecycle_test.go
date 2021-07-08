@@ -2617,7 +2617,7 @@ func TestStepbackWithGenerators(t *testing.T) {
 	dbTask, err = task.FindOne(task.ById(genPrevious.Id))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)
-	assert.Equal(t, dbTask.GeneratedTasksToStepback[taskToStepback2.BuildVariant], []string{taskToStepback2.DisplayName})
+	assert.Equal(t, dbTask.GeneratedTasksToActivate[taskToStepback2.BuildVariant], []string{taskToStepback2.DisplayName})
 	// verify dependency is activated as well
 	dbTask, err = task.FindOne(task.ById(depTask.Id))
 	assert.NoError(t, err)
