@@ -1831,6 +1831,8 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	}
 
 	scheduledTasks := []*restModel.APITask{}
+	tasksToSchedule := make(map[string]*task.Task)
+
 	generatedTasksToSchedule := []task.Task{}
 
 	for _, t := range tasks {
@@ -1839,11 +1841,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
 			baseTask, _ := t.FindTaskOnBaseCommit()
 			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
-				task, err := SetScheduled(ctx, r.sc, baseTask.Id, true)
-				if err != nil {
-					return nil, err
-				}
-				scheduledTasks = append(scheduledTasks, task)
+				tasksToSchedule[baseTask.Id] = baseTask
 			}
 			// If a task is generated lets keep track of it so we can restart it later
 		} else if t.GeneratedBy != "" {
@@ -1852,7 +1850,6 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		}
 	}
 
-	baseGeneratorTasksToSchedule := make(map[string]*task.Task)
 	// If a generated task does not have a base task find its generator and use its base task
 	// to generate it
 	for _, t := range generatedTasksToSchedule {
@@ -1871,16 +1868,14 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 					if err != nil {
 						return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not stepback generated task: %s", err.Error()))
 					}
-					// If we plan on scheduling a generator task already make sure we don't try to schedule it twice
-					if baseGeneratorTasksToSchedule[baseGeneratorTask.Id] == nil {
-						baseGeneratorTasksToSchedule[baseGeneratorTask.Id] = baseGeneratorTask
-					}
+					tasksToSchedule[baseGeneratorTask.Id] = baseGeneratorTask
+
 				}
 			}
 		}
 	}
-	for _, t := range baseGeneratorTasksToSchedule {
-		task, err := SetScheduled(ctx, r.sc, t.Id, true)
+	for taskId := range tasksToSchedule {
+		task, err := SetScheduled(ctx, r.sc, taskId, true)
 		if err != nil {
 			return nil, err
 		}
