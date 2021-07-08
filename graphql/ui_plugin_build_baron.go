@@ -48,6 +48,10 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 		taskNotFound = true
 		return taskNotFound, errors.Wrap(err, fmt.Sprintf("task not found for id %s", taskId))
 	}
+	if t.Details.Description == evergreen.TaskDescriptionStranded {
+		// We avoid creating BFG ticket in the case that the task is stranded to reduce noise for the Build Bartender
+		return true, nil
+	}
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	queue := env.RemoteQueue()

@@ -326,7 +326,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 
 func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, testNames string) (*notification.Notification, error) {
 	var payload interface{}
-	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
+	if sub.Subscriber.Type == event.JIRAIssueSubscriberType && t.task.Details.Description != evergreen.TaskDescriptionStranded {
 		issueSub, ok := sub.Subscriber.Target.(*event.JIRAIssueSubscriber)
 		if !ok {
 			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)

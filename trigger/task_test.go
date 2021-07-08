@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
@@ -163,6 +164,11 @@ func (s *taskSuite) SetupTest() {
 		FinishTime:          startTime.Add(20 * time.Minute),
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Details: apimodels.TaskEndDetail{
+			Status:      evergreen.TaskFailed,
+			Type:        "test",
+			Description: evergreen.TaskDescriptionStranded,
+		},
 	}
 	s.NoError(s.task.Insert())
 
@@ -757,6 +763,32 @@ func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 	n, err = s.t.taskRegressionByTest(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
+}
+
+func (s *taskSuite) TestSkipStrandedJIRA() {
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      triggerTaskRegressionByTest,
+		Selectors: []event.Selector{
+			{
+				Type: event.SelectorProject,
+				Data: "myproj",
+			},
+		},
+		Subscriber: event.Subscriber{
+			Type:   event.JIRAIssueSubscriberType,
+			Target: "a@b.com",
+		},
+		TriggerData: map[string]string{
+			event.TestRegexKey: "test*",
+		},
+		Owner: "someone",
+	}
+	s.t = s.makeTaskTriggers(s.task.Id, s.task.Execution)
+	n, err := s.t.generate(&sub, "", "")
+	s.NoError(err)
+	s.Equal(n.Payload, nil)
 }
 
 func (s *taskSuite) TestRegressionByTestSimpleRegression() {
