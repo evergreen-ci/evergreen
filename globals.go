@@ -334,6 +334,8 @@ const (
 	TaskSecretHeader    = "Task-Secret"
 	HostHeader          = "Host-Id"
 	HostSecretHeader    = "Host-Secret"
+	PodHeader           = "Pod-Id"
+	PodSecretHeader     = "Pod-Secret"
 	ContentTypeHeader   = "Content-Type"
 	ContentTypeValue    = "application/json"
 	ContentLengthHeader = "Content-Length"

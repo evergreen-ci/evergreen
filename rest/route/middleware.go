@@ -316,6 +316,48 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
+type podAuthMiddleware struct {
+	sc data.Connector
+}
+
+// NewPodAuthMiddleware returns a middleware that verifies the request's pod ID
+// and secret.
+func NewPodAuthMiddleware(sc data.Connector) gimlet.Middleware {
+	return &podAuthMiddleware{sc: sc}
+}
+
+func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	id := gimlet.GetVars(r)["pod_id"]
+	if id == "" {
+		if id = r.Header.Get(evergreen.PodHeader); id == "" {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "missing pod ID",
+			}))
+			return
+		}
+	}
+
+	secret := r.Header.Get(evergreen.PodSecretHeader)
+	if secret == "" {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "missing pod secret",
+		}))
+		return
+	}
+
+	if err := m.sc.CheckPodSecret(id, secret); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    err.Error(),
+		}))
+		return
+	}
+
+	next(rw, r)
+}
+
 func NewTaskAuthMiddleware(sc data.Connector) gimlet.Middleware {
 	return &TaskAuthMiddleware{
 		sc: sc,
