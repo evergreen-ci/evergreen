@@ -489,7 +489,7 @@ type Patch {
   status: String!
   variants: [String!]!
   tasks: [String!]!
-  childPatches: [ChildPatch!]
+  childPatches: [Patch!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
@@ -505,13 +505,6 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
-}
-
-type ChildPatch {
-  project: String!
-  patchID: String!
-  status: String!
-  taskCount: Int
 }
 
 type Build {
