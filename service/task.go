@@ -177,6 +177,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	executionStr := gimlet.GetVars(r)["execution"]
 	archived := false
+	taskId := projCtx.Task.Id
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
@@ -329,7 +330,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	testResults := uis.getTestResults(w, r, projCtx, &uiTask)
+	testResults := uis.getTestResults(w, r, projCtx, &uiTask, taskId)
 
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
@@ -886,7 +887,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
-func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData) []task.TestResult {
+func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData, taskId string) []task.TestResult {
 	var err error
 	var testResults []task.TestResult
 
@@ -937,9 +938,10 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 	} else {
 		for _, tr := range projCtx.Context.Task.LocalTestResults {
+			tr.TaskID = taskId
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 				TestResult: tr,
-				TaskId:     tr.TaskID,
+				TaskId:     taskId,
 			})
 		}
 		testResults = projCtx.Task.LocalTestResults
