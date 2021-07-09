@@ -20,11 +20,13 @@ func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 		return errors.New("pod does not exist")
 	}
 	if secret != p.Secret {
-		return errors.New("pod secrets do not match")
+		return errors.New("incorrect pod secret")
 	}
 	return nil
 }
 
+// MockPodConnector implements the pod-related methods from the connector via an
+// in-memory cache of pods.
 type MockPodConnector struct {
 	CachedPods []pod.Pod
 }
@@ -35,7 +37,7 @@ func (c *MockPodConnector) CheckPodSecret(id, secret string) error {
 			continue
 		}
 		if secret != p.Secret {
-			return errors.New("pod secrets do not match")
+			return errors.New("incorrect pod secret")
 		}
 	}
 	return errors.New("pod does not exist")

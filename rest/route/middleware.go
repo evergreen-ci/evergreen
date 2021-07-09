@@ -320,6 +320,8 @@ type podAuthMiddleware struct {
 	sc data.Connector
 }
 
+// NewPodAuthMiddleware returns a middleware that verifies the request's pod ID
+// and secret.
 func NewPodAuthMiddleware(sc data.Connector) gimlet.Middleware {
 	return &podAuthMiddleware{sc: sc}
 }
