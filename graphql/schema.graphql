@@ -192,6 +192,7 @@ enum TaskSortCategory {
 enum TestSortCategory {
   BASE_STATUS
   STATUS
+  START_TIME
   DURATION
   TEST_NAME
 }

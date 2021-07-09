@@ -1240,6 +1240,9 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			break
 		case TestSortCategoryTestName:
 			sortBy = testresult.TestFileKey
+			break
+		case TestSortCategoryStartTime:
+			sortBy = testresult.StartTimeKey
 		}
 	}
 
@@ -2514,7 +2517,11 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	for _, execTaskID := range t.ExecutionTasks {
 		execT, err := task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, &t.Execution)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
+			// The task is not found, possibly because the execution is out of sync with the display task. Get the latest instead.
+			execT, err = task.FindOne(task.ById(execTaskID))
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
+			}
 		}
 		if execT != nil {
 			apiTask := &restModel.APITask{}
