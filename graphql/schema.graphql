@@ -507,13 +507,6 @@ type Patch {
   canEnqueueToCommitQueue: Boolean!
 }
 
-type ChildPatch {
-  project: String!
-  patchID: String!
-  status: String!
-  taskCount: Int
-}
-
 type Build {
   id: String!
   buildVariant: String!
