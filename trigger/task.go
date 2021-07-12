@@ -326,6 +326,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 
 func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, testNames string) (*notification.Notification, error) {
 	var payload interface{}
+	// We avoid creating BFG ticket in the case that the task is stranded to reduce noise for the Build Bartender
 	if t.task.Details.Description == evergreen.TaskDescriptionStranded {
 		return nil, nil
 	}

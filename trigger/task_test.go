@@ -124,8 +124,8 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	n, err = NotificationsFromEvent(&e)
 	assert.NoError(err)
 	grip.Error(err)
-	//assert.Len(n, 1)
-	//assert.EqualValues(user.PreferenceSlack, n[0].Subscriber.Type)
+	assert.Len(n, 1)
+	assert.EqualValues(user.PreferenceSlack, n[0].Subscriber.Type)
 }
 
 func TestTaskTriggers(t *testing.T) {
@@ -165,7 +165,6 @@ func (s *taskSuite) SetupTest() {
 		FinishTime:          startTime.Add(20 * time.Minute),
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
-		Details:             apimodels.TaskEndDetail{Description: evergreen.TaskDescriptionStranded},
 	}
 	s.NoError(s.task.Insert())
 
@@ -783,6 +782,9 @@ func (s *taskSuite) TestSkipStrandedJIRA() {
 		Owner: "someone",
 	}
 	s.t = s.makeTaskTriggers(s.task.Id, s.task.Execution)
+	s.t.task.Details = apimodels.TaskEndDetail{
+		Description: evergreen.TaskDescriptionStranded,
+	}
 	n, err := s.t.generate(&sub, "", "")
 	s.NoError(err)
 	s.Equal(n, (*notification.Notification)(nil))
