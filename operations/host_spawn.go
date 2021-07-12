@@ -213,7 +213,7 @@ func hostModify() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  addSSHKeyFlag,
-				Usage: "add `PUBLIC_KEY` to the host's authorized_keys",
+				Usage: "add public key from local file `PATH` to the host's authorized_keys",
 			},
 			cli.StringFlag{
 				Name:  addSSHKeyNameFlag,
@@ -239,7 +239,7 @@ func hostModify() cli.Command {
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
-			publicKey := c.String(addSSHKeyFlag)
+			publicKeyFile := c.String(addSSHKeyFlag)
 			publicKeyName := c.String(addSSHKeyNameFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -257,11 +257,9 @@ func hostModify() cli.Command {
 				return errors.Wrap(err, "problem generating tags to add")
 			}
 
-			if publicKey == "" && publicKeyName != "" {
-				publicKey, err = validatePublicKey(ctx, client, hostID, publicKeyName)
-				if err != nil {
-					return errors.Wrap(err, "public key failed validation")
-				}
+			publicKey, err := getPublicKey(ctx, client, publicKeyFile, publicKeyName)
+			if err != nil {
+				return errors.Wrap(err, "public key failed validation")
 			}
 
 			hostChanges := host.HostModifyOptions{
@@ -295,24 +293,44 @@ func hostModify() cli.Command {
 	}
 }
 
-func validatePublicKey(ctx context.Context, client client.Communicator, hostID, addKeyName string) (string, error) {
-	if len(addKeyName) == 0 {
-		return "", nil
+func getPublicKey(ctx context.Context, client client.Communicator, keyFile, keyName string) (string, error) {
+	if keyFile != "" {
+		return readKeyFromFile(keyFile)
 	}
 
+	if keyName != "" {
+		return getUserKeyByName(ctx, client, keyName)
+	}
+
+	return "", nil
+}
+
+func readKeyFromFile(keyFile string) (string, error) {
+	if !utility.FileExists(keyFile) {
+		return "", errors.Errorf("key file '%s' does not exist", keyFile)
+	}
+
+	publicKeyBytes, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		return "", errors.Wrapf(err, "reading public key from file")
+	}
+
+	return string(publicKeyBytes), nil
+}
+
+func getUserKeyByName(ctx context.Context, client client.Communicator, keyName string) (string, error) {
 	userKeys, err := client.GetCurrentUsersKeys(ctx)
 	if err != nil {
 		return "", errors.New("problem retrieving user keys")
 	}
 
 	for _, pubKey := range userKeys {
-		if utility.FromStringPtr(pubKey.Name) == addKeyName {
+		if utility.FromStringPtr(pubKey.Name) == keyName {
 			return utility.FromStringPtr(pubKey.Key), nil
 		}
 	}
 
-	return "", errors.Errorf("key '%s' is not defined for the authenticated user", addKeyName)
-
+	return "", errors.Errorf("key name '%s' is not defined for the authenticated user", keyName)
 }
 
 func hostConfigure() cli.Command {
