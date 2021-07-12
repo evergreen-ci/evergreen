@@ -405,6 +405,12 @@ tasks:
     tags: ["db", "test", "agent"]
     name: test-agent
   - <<: *run-go-test-suite
+    tags: ["test", "nodb", "agent"]
+    name: test-agent-internal
+  - <<: *run-go-test-suite
+    tags: ["test", "nodb", "agent"]
+    name: test-agent-internal-client
+  - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-util
   - <<: *run-go-test-suite-with-mongodb

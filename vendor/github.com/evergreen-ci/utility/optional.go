@@ -64,6 +64,34 @@ func FromIntPtr(in *int) int {
 	return *in
 }
 
+// ToInt64Ptr returns a pointer to an int64 value.
+func ToInt64Ptr(in int64) *int64 {
+	return &in
+}
+
+// FromInt64Ptr returns the resolved int64 value from the input int64 pointer.
+// For nil pointers, it returns 0.
+func FromInt64Ptr(in *int64) int64 {
+	if in == nil {
+		return 0
+	}
+	return *in
+}
+
+// ToInt32Ptr returns a pointer to an int32 value.
+func ToInt32Ptr(in int32) *int32 {
+	return &in
+}
+
+// FromInt32Ptr returns the resolved int32 value from the input int32 pointer.
+// For nil pointers, it returns 0.
+func FromInt32Ptr(in *int32) int32 {
+	if in == nil {
+		return 0
+	}
+	return *in
+}
+
 // ToUintPtr returns a pointer to a uint value.
 func ToUintPtr(in uint) *uint {
 	return &in
