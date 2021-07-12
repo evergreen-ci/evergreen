@@ -155,10 +155,10 @@ func (s *mockAuthorizationServer) app(port int) (*gimlet.APIApp, error) {
 	}
 
 	app.AddRoute("/").Version(1).Get().Handler(s.root)
-	app.AddRoute("/v1/authorize").Version(1).Get().Handler(s.authorize)
-	app.AddRoute("/v1/token").Version(1).Post().Handler(s.token)
-	app.AddRoute("/v1/userinfo").Version(1).Get().Handler(s.userinfo)
-	app.AddRoute("/v1/introspect").Version(1).Post().Handler(s.introspect)
+	app.AddRoute("/oauth2/v1/authorize").Version(1).Get().Handler(s.authorize)
+	app.AddRoute("/oauth2/v1/token").Version(1).Post().Handler(s.token)
+	app.AddRoute("/oauth2/v1/userinfo").Version(1).Get().Handler(s.userinfo)
+	app.AddRoute("/oauth2/v1/introspect").Version(1).Post().Handler(s.introspect)
 
 	return app, nil
 }
@@ -427,7 +427,6 @@ func mockCreationOptions() CreationOptions {
 		ClientSecret:         "client_secret",
 		RedirectURI:          "redirect_uri",
 		Issuer:               "issuer",
-		Scopes:               []string{"openid", "email", "profile", "offline_access"},
 		UserGroup:            "user_group",
 		CookiePath:           "cookie_path",
 		CookieDomain:         "example.com",
@@ -515,7 +514,7 @@ func TestMakeUserFromInfo(t *testing.T) {
 				assert.NotEmpty(t, user.Username())
 				assert.Equal(t, testCase.info.Name, user.DisplayName())
 				assert.Equal(t, testCase.info.Email, user.Email())
-				assert.ElementsMatch(t, testCase.info.Groups, user.Roles())
+				assert.Equal(t, testCase.info.Groups, testCase.info.Groups)
 				assert.Equal(t, "access_token", user.GetAccessToken())
 				assert.Equal(t, "refresh_token", user.GetRefreshToken())
 			} else {
@@ -798,9 +797,11 @@ func TestLoginHandler(t *testing.T) {
 				"redirect_uri":  []string{"redirect_uri"},
 			})
 			scope := q.Get("scope")
-			for _, requestedScope := range mockCreationOptions().Scopes {
-				assert.Contains(t, scope, requestedScope)
-			}
+			assert.Contains(t, scope, "openid")
+			assert.Contains(t, scope, "profile")
+			assert.Contains(t, scope, "email")
+			assert.Contains(t, scope, "groups")
+			assert.Contains(t, scope, "offline_access")
 		},
 		"SucceedsWithoutRedirectURI": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			rw := httptest.NewRecorder()
@@ -828,15 +829,17 @@ func TestLoginHandler(t *testing.T) {
 			require.NoError(t, err)
 			q := parsed.Query()
 			mapContains(t, q, map[string][]string{
-				"client_id":     {"client_id"},
-				"response_type": {"code"},
-				"response_mode": {"query"},
-				"redirect_uri":  {"redirect_uri"},
+				"client_id":     []string{"client_id"},
+				"response_type": []string{"code"},
+				"response_mode": []string{"query"},
+				"redirect_uri":  []string{"redirect_uri"},
 			})
 			scope := q.Get("scope")
-			for _, requestedScope := range mockCreationOptions().Scopes {
-				assert.Contains(t, scope, requestedScope)
-			}
+			assert.Contains(t, scope, "openid")
+			assert.Contains(t, scope, "profile")
+			assert.Contains(t, scope, "email")
+			assert.Contains(t, scope, "groups")
+			assert.Contains(t, scope, "offline_access")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -875,6 +878,7 @@ func TestLoginHandlerCallback(t *testing.T) {
 		"Succeeds": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
 			email := "email"
 			name := "name"
+			group := "user_group"
 
 			um.doValidateIDToken = func(string, string) (*jwtverifier.Jwt, error) {
 				return &jwtverifier.Jwt{
@@ -891,8 +895,9 @@ func TestLoginHandlerCallback(t *testing.T) {
 				IDToken:     "id_token",
 			}
 			s.UserInfoResponse = &userInfoResponse{
-				Name:  name,
-				Email: email,
+				Name:   name,
+				Email:  email,
+				Groups: []string{group},
 			}
 
 			state := "some_state"
@@ -915,14 +920,14 @@ func TestLoginHandlerCallback(t *testing.T) {
 			assert.Equal(t, []string{redirect}, resp.Header["Location"])
 
 			mapContains(t, s.TokenHeaders, map[string][]string{
-				"Accept":        {"application/json"},
-				"Content-Type":  {"application/x-www-form-urlencoded"},
-				"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
+				"Accept":        []string{"application/json"},
+				"Content-Type":  []string{"application/x-www-form-urlencoded"},
+				"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
 			})
 			mapContains(t, s.TokenParameters, map[string][]string{
-				"grant_type":   {"authorization_code"},
-				"code":         {code},
-				"redirect_uri": {um.redirectURI},
+				"grant_type":   []string{"authorization_code"},
+				"code":         []string{code},
+				"redirect_uri": []string{um.redirectURI},
 			})
 			assert.Empty(t, s.UserInfoHeaders)
 
@@ -943,9 +948,9 @@ func TestLoginHandlerCallback(t *testing.T) {
 			assert.Equal(t, user, checkUser)
 		},
 		"SucceedsWithGroupValidation": func(ctx context.Context, t *testing.T, um *userManager, s *mockAuthorizationServer) {
+
 			email := "email"
 			name := "name"
-			groups := []string{"user_group"}
 
 			um.validateGroups = true
 
@@ -966,7 +971,7 @@ func TestLoginHandlerCallback(t *testing.T) {
 			s.UserInfoResponse = &userInfoResponse{
 				Name:   name,
 				Email:  email,
-				Groups: groups,
+				Groups: []string{"user_group"},
 			}
 
 			state := "some_state"
@@ -989,19 +994,19 @@ func TestLoginHandlerCallback(t *testing.T) {
 			assert.Equal(t, []string{redirect}, resp.Header["Location"])
 
 			mapContains(t, s.TokenHeaders, map[string][]string{
-				"Accept":        {"application/json"},
-				"Content-Type":  {"application/x-www-form-urlencoded"},
-				"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
+				"Accept":        []string{"application/json"},
+				"Content-Type":  []string{"application/x-www-form-urlencoded"},
+				"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", um.clientID, um.clientSecret)))},
 			})
 			mapContains(t, s.TokenParameters, map[string][]string{
-				"grant_type":   {"authorization_code"},
-				"code":         {code},
-				"redirect_uri": {um.redirectURI},
+				"grant_type":   []string{"authorization_code"},
+				"code":         []string{code},
+				"redirect_uri": []string{um.redirectURI},
 			})
 
 			mapContains(t, s.UserInfoHeaders, map[string][]string{
-				"Accept":        {"application/json"},
-				"Authorization": {"Bearer access_token"},
+				"Accept":        []string{"application/json"},
+				"Authorization": []string{"Bearer access_token"},
 			})
 
 			cookies, err := cookieMap(resp.Cookies())
@@ -1014,7 +1019,7 @@ func TestLoginHandlerCallback(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, user)
 			assert.Equal(t, email, user.Email())
-			assert.ElementsMatch(t, groups, user.Roles())
+			assert.ElementsMatch(t, []string{"user_group"}, user.Roles())
 
 			checkUser, err := um.GetUserByToken(ctx, loginToken)
 			require.NoError(t, err)
@@ -1182,7 +1187,7 @@ func TestReauthorization(t *testing.T) {
 			mapContains(t, s.TokenParameters, map[string][]string{
 				"grant_type":    {"refresh_token"},
 				"refresh_token": {refreshToken},
-				"scope":         {um.requestScopes()},
+				"scope":         {"openid email profile offline_access groups"},
 			})
 			mapContains(t, s.TokenHeaders, map[string][]string{
 				"Content-Type": {"application/x-www-form-urlencoded"},
@@ -1299,7 +1304,7 @@ func TestReauthorization(t *testing.T) {
 			mapContains(t, s.TokenParameters, map[string][]string{
 				"grant_type":    {"refresh_token"},
 				"refresh_token": {refreshToken},
-				"scope":         {um.requestScopes()},
+				"scope":         {"openid email profile offline_access groups"},
 			})
 			mapContains(t, s.TokenHeaders, map[string][]string{
 				"Content-Type": {"application/x-www-form-urlencoded"},

@@ -501,41 +501,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return ($scope.validAuthKinds.indexOf(kind) < 0);
   }
 
-  $scope.addOktaScope = function () {
-    if ($scope.Settings.auth === null || $scope.Settings.auth === undefined) {
-      $scope.Settings.auth = {
-        "okta": {
-          "scopes": []
-        }
-      };
-    }
-    if ($scope.Settings.auth.okta === null || $scope.Settings.auth.okta === undefined) {
-      $scope.Settings.auth.okta = {
-        "scopes": []
-      };
-    }
-    if ($scope.Settings.auth.okta.scopes === null || $scope.Settings.auth.okta.scopes === undefined) {
-      $scope.Settings.auth.okta.scopes = [];
-    }
-
-    if (!$scope.validOktaScope($scope.new_okta_scope)) {
-      $scope.invalidScope = "Scope cannot be empty.";
-      return
-    }
-
-    $scope.Settings.auth.okta.scopes.push($scope.new_okta_scope);
-    $scope.new_okta_scope = "";
-    $scope.invalidOktaScope = "";
-  }
-
-  $scope.deleteOktaScope = function (index) {
-    $scope.Settings.auth.okta.scopes.splice(index, 1);
-  }
-
-  $scope.validOktaScope = function (scope) {
-    return scope;
-  }
-
   $scope.addExpansion = function (chip) {
     var obj = {};
     pieces = chip.split(":");

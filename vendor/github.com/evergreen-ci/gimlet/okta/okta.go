@@ -25,9 +25,6 @@ type CreationOptions struct {
 	ClientSecret string
 	RedirectURI  string
 	Issuer       string
-	// Scopes define the user information to request when authorizing the user.
-	// See https://developer.okta.com/docs/reference/api/oidc/#access-token-scopes-and-claims
-	Scopes []string
 
 	UserGroup string
 	// If set, user can be reauthorized without needing to authenticate.
@@ -35,9 +32,7 @@ type CreationOptions struct {
 	// If set, authentication and reauthorization will validate the group for
 	// the user matches UserGroup. Otherwise, it simply checks that the user
 	// attempting to reauthorize has the same name as that returned by the ID
-	// token. This validation is only possible when the issuer returns group
-	// information from its endpoints, which requires the application to have
-	// permission to request them as part of the scopes.
+	// token.
 	ValidateGroups bool
 
 	CookiePath   string
@@ -90,7 +85,6 @@ type userManager struct {
 	clientSecret string
 	redirectURI  string
 	issuer       string
-	scopes       []string
 
 	userGroup string
 
@@ -140,7 +134,6 @@ func NewUserManager(opts CreationOptions) (gimlet.UserManager, error) {
 		redirectURI:          opts.RedirectURI,
 		issuer:               opts.Issuer,
 		userGroup:            opts.UserGroup,
-		scopes:               opts.Scopes,
 		cookiePath:           opts.CookiePath,
 		cookieDomain:         opts.CookieDomain,
 		cookieTTL:            opts.CookieTTL,
@@ -364,7 +357,7 @@ func (m *userManager) GetLoginHandler(_ string) http.HandlerFunc {
 		q.Add("client_id", m.clientID)
 		q.Add("response_type", "code")
 		q.Add("response_mode", "query")
-		q.Add("scope", m.requestScopes())
+		q.Add("scope", m.scopes())
 		if !canSilentReauth {
 			q.Add("prompt", "login consent")
 		}
@@ -373,7 +366,7 @@ func (m *userManager) GetLoginHandler(_ string) http.HandlerFunc {
 		q.Add("nonce", nonce)
 
 		r.Header.Add("Cache-Control", "no-cache,no-store")
-		http.Redirect(w, r, fmt.Sprintf("%s/v1/authorize?%s", m.issuer, q.Encode()), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("%s/oauth2/v1/authorize?%s", m.issuer, q.Encode()), http.StatusFound)
 	}
 }
 
@@ -521,7 +514,8 @@ func (m *userManager) getUserTokens(code, nonce string) (*tokenResponse, *jwtver
 func (m *userManager) generateUserFromInfo(accessToken, refreshToken string) (gimlet.User, error) {
 	userInfo, err := m.getUserInfo(context.Background(), accessToken)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve user info from Okta")
+		err = errors.Wrap(err, "could not retrieve user info from Okta")
+		return nil, err
 	}
 	if m.validateGroups {
 		if err := m.validateGroup(userInfo.Groups); err != nil {
@@ -681,19 +675,19 @@ func (m *userManager) refreshTokens(ctx context.Context, refreshToken string) (*
 	q := url.Values{}
 	q.Set("grant_type", "refresh_token")
 	q.Set("refresh_token", refreshToken)
-	q.Set("scope", m.requestScopes())
+	q.Set("scope", m.scopes())
 	return m.redeemTokens(ctx, q.Encode())
 }
 
-// requestScopes returns the necessary scopes that Okta must return.
-func (m *userManager) requestScopes() string {
-	return strings.Join(m.scopes, " ")
+// scopes returns the necessary scopes for Okta to return.
+func (m *userManager) scopes() string {
+	return "openid email profile offline_access groups"
 }
 
 // redeemTokens sends the request to redeem tokens with the required client
 // credentials.
 func (m *userManager) redeemTokens(ctx context.Context, query string) (*tokenResponse, error) {
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/v1/token", m.issuer), bytes.NewBufferString(query))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/oauth2/v1/token", m.issuer), bytes.NewBufferString(query))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -733,7 +727,7 @@ type userInfoResponse struct {
 // getUserInfo uses the access token to retrieve user information from the
 // userinfo endpoint.
 func (m *userManager) getUserInfo(ctx context.Context, accessToken string) (*userInfoResponse, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/v1/userinfo", m.issuer), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/oauth2/v1/userinfo", m.issuer), nil)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -783,7 +777,7 @@ func (m *userManager) getTokenInfo(ctx context.Context, token, tokenType string)
 	q := url.Values{}
 	q.Add("token", token)
 	q.Add("token_type_hint", tokenType)
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/v1/introspect", m.issuer), strings.NewReader(q.Encode()))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/oauth2/v1/introspect", m.issuer), strings.NewReader(q.Encode()))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
