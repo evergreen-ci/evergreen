@@ -335,11 +335,11 @@
                            "id": "evergreen_version2",
                            "taskStatusCounts": [
                               {
-                                 "status": "success",
+                                 "status": "failed",
                                  "count": 1
                               },
                               {
-                                 "status": "failed",
+                                 "status": "success",
                                  "count": 1
                               }
                            ]
