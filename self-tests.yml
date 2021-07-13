@@ -404,7 +404,7 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent
-  - <<: *run-go-test-suite
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent-internal
   - <<: *run-go-test-suite
