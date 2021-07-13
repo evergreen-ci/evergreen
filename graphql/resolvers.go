@@ -2691,6 +2691,34 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 type versionResolver struct{ *Resolver }
 
+// Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
+func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion) ([]*StatusCount, error) {
+	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, data.TaskFilterOptions{})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", *v.Id, err.Error()))
+	}
+
+	statusCountsMap := map[string]int{}
+	for _, task := range tasks {
+		if val, exist := statusCountsMap[task.GetDisplayStatus()]; exist {
+			statusCountsMap[task.GetDisplayStatus()] = val + 1
+		} else {
+			statusCountsMap[task.GetDisplayStatus()] = 1
+		}
+	}
+
+	statusCountsArr := []*StatusCount{}
+	for statusName, statusCount := range statusCountsMap {
+		sc := StatusCount{
+			Status: statusName,
+			Count:  statusCount,
+		}
+		statusCountsArr = append(statusCountsArr, &sc)
+	}
+
+	return statusCountsArr, nil
+}
+
 // Returns grouped build variants for a version. Will not return build variants for unactivated versions
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
