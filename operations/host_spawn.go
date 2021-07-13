@@ -310,7 +310,7 @@ func readKeyFromFile(keyFile string) (string, error) {
 		return "", errors.Errorf("key file '%s' does not exist", keyFile)
 	}
 
-	publicKeyBytes, err := ioutil.ReadFile(keyFile)
+	publicKeyBytes, err := os.ReadFile(keyFile)
 	if err != nil {
 		return "", errors.Wrapf(err, "reading public key from file")
 	}
