@@ -2804,6 +2804,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 			},
+			ActivatedKey: true,
 		}
 	}
 	if len(taskNames) > 0 {
