@@ -30,7 +30,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const OutputBufferSize = 1000

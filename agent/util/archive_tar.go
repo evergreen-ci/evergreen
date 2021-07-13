@@ -19,13 +19,16 @@ import (
 // Returns the number of files that were added to the archive
 func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, includes []string,
 	excludes []string, logger grip.Journaler) (int, error) {
-	pathsToAdd := streamArchiveContents(ctx, rootPath, includes, []string{})
+	pathsToAdd, err := streamArchiveContents(ctx, rootPath, includes, []string{})
+	if err != nil {
+		return 0, errors.Wrap(err, "problem getting archive contents")
+	}
 
 	numFilesArchived := 0
 	processed := map[string]bool{}
 	logger.Infof("beginning to build archive")
 FileLoop:
-	for file := range pathsToAdd {
+	for _, file := range pathsToAdd {
 		if ctx.Err() != nil {
 			return numFilesArchived, errors.Wrap(ctx.Err(), "timeout when building archive")
 		}

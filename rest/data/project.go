@@ -259,6 +259,55 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
+	catcher := grip.NewBasicCatcher()
+	matchingProjects, err := model.GetVarsByValue(toReplace)
+	if err != nil {
+		catcher.Wrap(err, "failed to fetch projects with matching value")
+	}
+	if matchingProjects == nil {
+		catcher.New("no projects with matching value found")
+	}
+	changes := map[string]string{}
+	for _, project := range matchingProjects {
+		for key, val := range project.Vars {
+			if val == toReplace {
+				if !dryRun {
+					originalVars := make(map[string]string)
+					for k, v := range project.Vars {
+						originalVars[k] = v
+					}
+					before := model.ProjectSettingsEvent{
+						Vars: model.ProjectVars{
+							Id:   project.Id,
+							Vars: originalVars,
+						},
+					}
+
+					project.Vars[key] = replacement
+					_, err = project.Upsert()
+					if err != nil {
+						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+					}
+
+					after := model.ProjectSettingsEvent{
+						Vars: model.ProjectVars{
+							Id:   project.Id,
+							Vars: project.Vars,
+						},
+					}
+
+					if err = model.LogProjectModified(project.Id, username, &before, &after); err != nil {
+						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
+					}
+				}
+				changes[project.Id] = key
+			}
+		}
+	}
+	return changes, catcher.Resolve()
+}
+
 func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
 	vars, err := model.FindOneProjectVars(oldProjectId)
 	if err != nil {
@@ -566,6 +615,21 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	tempVars = tempVars.RedactPrivateVars()
 	varsModel.Vars = tempVars.Vars
 	return nil
+}
+
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
+	changes := map[string]string{}
+	for _, cachedVars := range pc.CachedVars {
+		for key, val := range cachedVars.Vars {
+			if toReplace == val {
+				if !dryRun {
+					cachedVars.Vars[key] = replacement
+				}
+				changes[cachedVars.Id] = key
+			}
+		}
+	}
+	return changes, nil
 }
 
 func (pc *MockProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {

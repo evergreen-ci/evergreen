@@ -48,20 +48,6 @@ type RestartResults struct {
 	ItemsErrored   []string
 }
 
-// cacheFromTask is helper for creating a build.TaskCache from a real Task model.
-func cacheFromTask(t task.Task) build.TaskCache {
-	return build.TaskCache{
-		Id:            t.Id,
-		DisplayName:   t.DisplayName,
-		Status:        t.Status,
-		StatusDetails: t.Details,
-		StartTime:     t.StartTime,
-		TimeTaken:     t.TimeTaken,
-		Activated:     t.Activated,
-		Blocked:       t.Blocked(),
-	}
-}
-
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
@@ -119,7 +105,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 			return errors.Wrap(err, "can't get recursive dependencies")
 		}
 
-		if _, err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+		if err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
 			return errors.Wrap(err, "problem updating tasks for activation")
 		}
 	} else {
@@ -136,14 +122,8 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		if err != nil {
 			return errors.Wrap(err, "can't get tasks to deactivate")
 		}
-		if _, err = task.DeactivateTasks(tasks, caller); err != nil {
+		if err = task.DeactivateTasks(tasks, caller); err != nil {
 			return errors.Wrap(err, "can't deactivate tasks")
-		}
-	}
-
-	for _, buildId := range buildIds {
-		if err := RefreshTasksCache(buildId); err != nil {
-			return errors.Wrapf(err, "can't refresh cache for build '%s'", buildId)
 		}
 	}
 
@@ -219,12 +199,8 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 
 	// negative priority - deactivate the task
 	if priority <= evergreen.DisabledTaskPriority {
-		var deactivatedTasks []task.Task
-		if deactivatedTasks, err = t.DeactivateTask(caller); err != nil {
+		if err = t.DeactivateTask(caller); err != nil {
 			return errors.Wrap(err, "can't deactivate task")
-		}
-		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
-			return errors.Wrap(err, "can't update task cache activation")
 		}
 	}
 
@@ -248,13 +224,8 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for build '%s'", buildId)
 		}
-		var deactivatedTasks []task.Task
-		deactivatedTasks, err = task.DeactivateTasks(tasks, caller)
-		if err != nil {
+		if err = task.DeactivateTasks(tasks, caller); err != nil {
 			return errors.Wrapf(err, "can't deactivate tasks for build '%s'", buildId)
-		}
-		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
-			return errors.Wrap(err, "can't set cached tasks deactivated")
 		}
 	}
 
@@ -279,13 +250,9 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for version '%s'", versionId)
 		}
-		var deactivatedTasks []task.Task
-		deactivatedTasks, err = task.DeactivateTasks(tasks, caller)
+		err = task.DeactivateTasks(tasks, caller)
 		if err != nil {
 			return errors.Wrapf(err, "can't deactivate tasks for version '%s'", versionId)
-		}
-		if err = build.SetManyCachedTasksActivated(deactivatedTasks, false); err != nil {
-			return errors.Wrap(err, "can't set cached tasks deactivated")
 		}
 	}
 
@@ -398,10 +365,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			event.LogTaskRestarted(t.Id, t.Execution, caller)
 		}
 	}
-	// TODO figure out a way to coalesce updates for task cache for the same build, so we
-	// only need to do one update per-build instead of one per-task here.
-	// Doesn't seem to be possible as-is because $ can only apply to one array element matched per
-	// document.
 	if err = build.SetBuildStartedForTasks(tasksToRestart, caller); err != nil {
 		return errors.Wrapf(err, "error setting builds started")
 	}
@@ -497,7 +460,7 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, task := range tasks {
 		if task.DisplayTask == nil {
-			cache = append(cache, cacheFromTask(task))
+			cache = append(cache, build.TaskCache{Id: task.Id})
 		}
 	}
 	return cache
@@ -1478,21 +1441,22 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
+// Returns activated task IDs.
 func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project,
-	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, projectRef *ProjectRef, generatedBy string) ([]string, []string, error) {
+	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, projectRef *ProjectRef, generatedBy string) ([]string, error) {
 
 	taskIdTables, err := getTaskIdTables(v, p, tasks, projectRef.Identifier)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "unable to make task ID table")
+		return nil, errors.Wrap(err, "unable to make task ID table")
 	}
 
 	newBuildIds := make([]string, 0)
-	newTaskIds := make([]string, 0)
+	newActivatedTaskIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id).WithFields(build.BuildVariantKey, build.IdKey))
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
@@ -1501,7 +1465,7 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 
 	createTime, err := getTaskCreateTime(p.Identifier, v)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "can't get create time for tasks")
+		return nil, errors.Wrap(err, "can't get create time for tasks")
 	}
 	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, pair := range tasks.ExecTasks {
@@ -1536,7 +1500,7 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		})
 		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
 		if err != nil {
-			return nil, nil, errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
 			grip.Info(message.Fields{
@@ -1549,16 +1513,18 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		}
 
 		if err = build.Insert(); err != nil {
-			return nil, nil, errors.Wrapf(err, "error inserting build %s", build.Id)
+			return nil, errors.Wrapf(err, "error inserting build %s", build.Id)
 		}
 		if err = tasks.InsertUnordered(ctx); err != nil {
-			return nil, nil, errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
+			return nil, errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
 		}
 		newBuildIds = append(newBuildIds, build.Id)
 
 		batchTimeTasksToIds := map[string]string{}
 		for _, t := range tasks {
-			newTaskIds = append(newTaskIds, t.Id)
+			if t.Activated {
+				newActivatedTaskIds = append(newActivatedTaskIds, t.Id)
+			}
 			if utility.StringSliceContains(tasksWithBatchtime, t.DisplayName) {
 				batchTimeTasksToIds[t.DisplayName] = t.Id
 			}
@@ -1600,7 +1566,7 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		"version": v.Id,
 	}))
 
-	return newBuildIds, newTaskIds, errors.WithStack(VersionUpdateOne(
+	return newActivatedTaskIds, errors.WithStack(VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$push": bson.M{
@@ -1612,7 +1578,7 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 }
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
-// within the set of already existing builds.
+// within the set of already existing builds. Returns activated task IDs.
 func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project, pairs TaskVariantPairs,
 	syncAtEndOpts patch.SyncAtEndOptions, projectIdentifier string, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
@@ -1633,7 +1599,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		return nil, errors.Wrap(err, "can't get table of task IDs")
 	}
 
-	taskIds := []string{}
+	activatedTaskIds := []string{}
 	for _, b := range builds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build
@@ -1689,8 +1655,8 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		}
 
 		for _, t := range tasks {
-			taskIds = append(taskIds, t.Id)
 			if t.Activated {
+				activatedTaskIds = append(activatedTaskIds, t.Id)
 				b.Activated = true
 			}
 			if t.Activated && activationInfo.isStepbackTask(t.BuildVariant, t.DisplayName) {
@@ -1714,7 +1680,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		return nil, errors.Wrap(err, "can't set version activation to true")
 	}
 
-	return taskIds, nil
+	return activatedTaskIds, nil
 }
 
 func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs, projectName string) (TaskIdConfig, error) {

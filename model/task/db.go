@@ -139,6 +139,15 @@ var (
 	},
 	}
 
+	// Checks if task dependencies are attainable/ have met all their dependencies and are not blocked
+	isAttainable = bson.M{
+		"$ne": []interface{}{bson.M{"$reduce": bson.M{
+			"input":        "$" + DependsOnKey,
+			"initialValue": false,
+			"in":           bson.M{"$or": []interface{}{"$$" + bsonutil.GetDottedKeyName("value", DependencyUnattainableKey), "$$" + bsonutil.GetDottedKeyName("this", DependencyUnattainableKey)}},
+		},
+		}, true},
+	}
 	// This should reflect Task.GetDisplayStatus()
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
@@ -208,22 +217,6 @@ var (
 					},
 					"then": evergreen.TaskTimedOut,
 				},
-				// A task will run if it is activated and does not have any blocking deps
-				{
-					"case": bson.M{
-						"$and": []bson.M{
-							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
-							{"$eq": []interface{}{"$" + ActivatedKey, true}},
-							{
-								"$or": []bson.M{
-									{DependsOnKey: 0},
-									{"$ne": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
-								},
-							},
-						},
-					},
-					"then": evergreen.TaskWillRun,
-				},
 				// A task will be unscheduled if it is not activated
 				{
 					"case": bson.M{
@@ -238,10 +231,21 @@ var (
 				{
 					"case": bson.M{
 						"$and": []bson.M{
-							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+							{"$eq": []interface{}{isAttainable, false}},
 						},
 					},
 					"then": evergreen.TaskStatusBlocked,
+				},
+				// A task will run if it is activated and does not have any blocking deps
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+							{"$eq": []interface{}{"$" + ActivatedKey, true}},
+						},
+					},
+					"then": evergreen.TaskWillRun,
 				},
 			},
 			"default": "$" + StatusKey,
@@ -819,8 +823,8 @@ func FindOne(query db.Q) (*Task, error) {
 	if task == nil {
 		return nil, nil
 	}
-	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
+	if err = task.MergeTestResults(); err != nil {
+		return nil, errors.Wrapf(err, "errors merging test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -902,6 +906,7 @@ func FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id string, execution *in
 		{"$match": match},
 		addDisplayStatus,
 	}
+
 	if err := db.Aggregate(OldCollection, pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "Couldn't find task")
 	}
@@ -1046,8 +1051,8 @@ func FindOneOld(query db.Q) (*Task, error) {
 	if task == nil {
 		return nil, nil
 	}
-	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
+	if err = task.MergeTestResults(); err != nil {
+		return nil, errors.Wrapf(err, "errors merging test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -1060,8 +1065,8 @@ func FindOld(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 	for i, task := range tasks {
-		if err = task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging new test results")
+		if err = task.MergeTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging test results")
 		}
 		tasks[i] = task
 	}
@@ -1084,8 +1089,8 @@ func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 	for i, task := range tasks {
-		if err = task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging new test results")
+		if err = task.MergeTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging test results")
 		}
 		tasks[i] = task
 	}

@@ -7,11 +7,10 @@ mciModule.controller('AdminOptionsCtrl', [
     $scope.collapsedBuilds = {};
 
     $scope.checkedForRestartIds = function(){
-        return _.pluck($scope.version.Builds.map(
-          function(x){
-            return x.Build.tasks.filter(function(y){return y.checkedForRestart});
-          }
-        ).reduce(function(x,y){return x.concat(y)}, []), "id");
+        return $scope.version.Builds.reduce(
+          (accumulator, currentBuild) =>
+          accumulator.concat(currentBuild.Tasks.filter(task => task.checkedForRestart).map(task => task.Task.id)),
+          []);
     }
 
     $scope.numToBeRestarted = function(build_id){
@@ -23,10 +22,10 @@ mciModule.controller('AdminOptionsCtrl', [
         // filtered set of builds
         return $scope.version.Builds.filter(buildFilter).map(
           function(x){
-            if (!x.Build.tasks) {
+            if (!x.Tasks) {
               return 0;
             }
-            return x.Build.tasks.filter(function(y){return y.checkedForRestart}).length;
+            return x.Tasks.filter(function(y){return y.checkedForRestart}).length;
           }
         ).reduce(function(x,y){return x+y}, 0);
     }
@@ -36,11 +35,13 @@ mciModule.controller('AdminOptionsCtrl', [
     $scope.setRestartSelection = function(status){
         $scope.selection = status
 
-        _.each($scope.version.Builds, function(build) {
-            _.each(build.Build.tasks, function(task) {
-                task.checkedForRestart = status.matches(task)
+        if(status !== "") {
+          _.each($scope.version.Builds, function(build) {
+            _.each(build.Tasks, function(task) {
+                task.checkedForRestart = status.matches(task.Task)
             })
-        })
+          })
+        }
     }
 
     $scope.restart = function() {

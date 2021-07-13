@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -259,11 +258,8 @@ func preventMergeForItem(item CommitQueueItem, user string) error {
 		return errors.New("merge task doesn't exist")
 	}
 	event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
-	if _, err = mergeTask.SetDisabledPriority(user); err != nil {
+	if err = mergeTask.SetDisabledPriority(user); err != nil {
 		return errors.Wrap(err, "can't disable merge task")
-	}
-	if err = build.SetCachedTaskActivated(mergeTask.BuildId, mergeTask.Id, false); err != nil {
-		return errors.Wrapf(err, "error updating task cache for build %s", mergeTask.BuildId)
 	}
 
 	return nil

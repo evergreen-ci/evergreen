@@ -585,6 +585,7 @@ type TestSortCategory string
 const (
 	TestSortCategoryBaseStatus TestSortCategory = "BASE_STATUS"
 	TestSortCategoryStatus     TestSortCategory = "STATUS"
+	TestSortCategoryStartTime  TestSortCategory = "START_TIME"
 	TestSortCategoryDuration   TestSortCategory = "DURATION"
 	TestSortCategoryTestName   TestSortCategory = "TEST_NAME"
 )
@@ -592,13 +593,14 @@ const (
 var AllTestSortCategory = []TestSortCategory{
 	TestSortCategoryBaseStatus,
 	TestSortCategoryStatus,
+	TestSortCategoryStartTime,
 	TestSortCategoryDuration,
 	TestSortCategoryTestName,
 }
 
 func (e TestSortCategory) IsValid() bool {
 	switch e {
-	case TestSortCategoryBaseStatus, TestSortCategoryStatus, TestSortCategoryDuration, TestSortCategoryTestName:
+	case TestSortCategoryBaseStatus, TestSortCategoryStatus, TestSortCategoryStartTime, TestSortCategoryDuration, TestSortCategoryTestName:
 		return true
 	}
 	return false

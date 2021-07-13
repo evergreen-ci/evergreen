@@ -1020,8 +1020,9 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 
 // SetHasCedarResults sets the HasCedarResults field of the task to
 // hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
-// true. An error is returned if hasCedarResults is false and failedResults is
-// true as this is an invalid state. Note that if failedResults is false,
+// true. If the task is part of a display task, the display tasks's fields are
+// also set. An error is returned if hasCedarResults is false and failedResults
+// is true as this is an invalid state. Note that if failedResults is false,
 // CedarResultsFailed is not set. This is because in cases where separate calls
 // to attach test results are made, only one call needs to have a test failure
 // for the CedarResultsFailed to be set to true.
@@ -1039,14 +1040,22 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 		set[CedarResultsFailedKey] = true
 	}
 
-	return UpdateOne(
+	if err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": set,
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	if !t.DisplayOnly && t.IsPartOfDisplay() {
+		return t.DisplayTask.SetHasCedarResults(hasCedarResults, failedResults)
+	}
+
+	return nil
 }
 
 func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
@@ -1064,7 +1073,7 @@ func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
 }
 
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true
-func (t *Task) ActivateTask(caller string) ([]Task, error) {
+func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
 	t.ActivatedTime = time.Now()
@@ -1072,7 +1081,7 @@ func (t *Task) ActivateTask(caller string) ([]Task, error) {
 	return ActivateTasks([]Task{*t}, t.ActivatedTime, caller)
 }
 
-func ActivateTasks(tasks []Task, activationTime time.Time, caller string) ([]Task, error) {
+func ActivateTasks(tasks []Task, activationTime time.Time, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
@@ -1090,18 +1099,13 @@ func ActivateTasks(tasks []Task, activationTime time.Time, caller string) ([]Tas
 			},
 		})
 	if err != nil {
-		return nil, errors.Wrap(err, "can't activate tasks")
+		return errors.Wrap(err, "can't activate tasks")
 	}
 	for _, t := range tasks {
 		event.LogTaskActivated(t.Id, t.Execution, caller)
 	}
 
-	activatedDependencies, err := ActivateDeactivatedDependencies(taskIDs, caller)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't activate dependencies")
-	}
-
-	return append(tasks, activatedDependencies...), nil
+	return ActivateDeactivatedDependencies(taskIDs, caller)
 }
 
 func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
@@ -1119,7 +1123,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 		return errors.Wrap(err, "can't get recursive dependencies")
 	}
 
-	if _, err = ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+	if err = ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
 		return errors.Wrap(err, "problem updating tasks for activation")
 	}
 	return nil
@@ -1127,7 +1131,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 
 // ActivateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
 // they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
-func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, error) {
+func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 	taskMap := make(map[string]bool)
 	for _, t := range tasks {
 		taskMap[t] = true
@@ -1135,14 +1139,14 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, err
 
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get recursive dependencies down")
+		return errors.Wrap(err, "can't get recursive dependencies down")
 	}
 
 	// do a topological sort so we've dealt with
 	// all a task's dependencies by the time we get up to it
 	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	// get dependencies we don't have yet and add them to a map
@@ -1167,7 +1171,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, err
 		var missingTasks []Task
 		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get missing tasks")
+			return errors.Wrap(err, "can't get missing tasks")
 		}
 		for _, t := range missingTasks {
 			missingTaskMap[t.Id] = t
@@ -1197,7 +1201,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, err
 	}
 
 	if len(tasksToActivate) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	taskIDsToActivate := make([]string, 0, len(tasksToActivate))
@@ -1214,16 +1218,14 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) ([]Task, err
 		}},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't update activation for dependencies")
+		return errors.Wrap(err, "can't update activation for dependencies")
 	}
 
-	taskSlice := make([]Task, 0, len(tasksToActivate))
 	for _, t := range tasksToActivate {
 		event.LogTaskActivated(t.Id, t.Execution, caller)
-		taskSlice = append(taskSlice, t)
 	}
 
-	return taskSlice, nil
+	return nil
 }
 
 func topologicalSort(tasks []Task) ([]Task, error) {
@@ -1263,7 +1265,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 }
 
 // DeactivateTask will set the ActivatedBy field to the caller and set the active state to be false and deschedule the task
-func (t *Task) DeactivateTask(caller string) ([]Task, error) {
+func (t *Task) DeactivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
@@ -1271,7 +1273,7 @@ func (t *Task) DeactivateTask(caller string) ([]Task, error) {
 	return DeactivateTasks([]Task{*t}, caller)
 }
 
-func DeactivateTasks(tasks []Task, caller string) ([]Task, error) {
+func DeactivateTasks(tasks []Task, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
@@ -1290,24 +1292,19 @@ func DeactivateTasks(tasks []Task, caller string) ([]Task, error) {
 		},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem deactivating tasks")
+		return errors.Wrap(err, "problem deactivating tasks")
 	}
 	for _, t := range tasks {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 	}
 
-	deactivatedDependencies, err := DeactivateDependencies(taskIDs, caller)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't deactivate dependencies")
-	}
-
-	return append(tasks, deactivatedDependencies...), nil
+	return DeactivateDependencies(taskIDs, caller)
 }
 
-func DeactivateDependencies(tasks []string, caller string) ([]Task, error) {
+func DeactivateDependencies(tasks []string, caller string) error {
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get recursive dependencies down")
+		return errors.Wrap(err, "can't get recursive dependencies down")
 	}
 
 	tasksToUpdate := make([]Task, 0, len(tasksDependingOnTheseTasks))
@@ -1320,7 +1317,7 @@ func DeactivateDependencies(tasks []string, caller string) ([]Task, error) {
 	}
 
 	if len(tasksToUpdate) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	_, err = UpdateAll(
@@ -1334,13 +1331,13 @@ func DeactivateDependencies(tasks []string, caller string) ([]Task, error) {
 		}},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem deactivating dependencies")
+		return errors.Wrap(err, "problem deactivating dependencies")
 	}
 	for _, t := range tasksToUpdate {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 	}
 
-	return tasksToUpdate, nil
+	return nil
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
@@ -1400,15 +1397,10 @@ func (t *Task) GetDisplayStatus() string {
 		if !t.Activated {
 			return evergreen.TaskUnscheduled
 		}
-		dependenciesMet, err := t.DependenciesMet(map[string]Task{})
-		if err != nil {
-			// Return the default undispatched status if we can't determine if dependencies have been met
-			// This will be replaced by Can't run in https://jira.mongodb.org/browse/EVG-13828
-			return t.Status
+		if t.Blocked() {
+			return evergreen.TaskStatusBlocked
 		}
-		if dependenciesMet {
-			return evergreen.TaskWillRun
-		}
+		return evergreen.TaskWillRun
 	}
 	if !t.IsFinished() {
 		return t.Status
@@ -1554,8 +1546,7 @@ func (t *Task) UpdateHeartbeat() error {
 
 // SetDisabledPriority sets the priority of a task so it will never run.
 // It also deactivates the task and any tasks that depend on it.
-// The build cache is not updated
-func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
+func (t *Task) SetDisabledPriority(user string) error {
 	t.Priority = evergreen.DisabledTaskPriority
 
 	ids := append([]string{t.Id}, t.ExecutionTasks...)
@@ -1564,26 +1555,20 @@ func (t *Task) SetDisabledPriority(user string) ([]Task, error) {
 		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't update priority")
+		return errors.Wrap(err, "can't update priority")
 	}
 
 	tasks, err := FindAll(db.Query(bson.M{
 		IdKey: bson.M{"$in": ids},
 	}).WithFields(ExecutionKey))
 	if err != nil {
-		return nil, errors.Wrap(err, "can't find matching tasks")
+		return errors.Wrap(err, "can't find matching tasks")
 	}
 	for _, task := range tasks {
 		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.DisabledTaskPriority)
 	}
 
-	var deactivatedTasks []Task
-	deactivatedTasks, err = t.DeactivateTask(user)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't deactivate task")
-	}
-
-	return deactivatedTasks, nil
+	return t.DeactivateTask(user)
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon
@@ -2058,9 +2043,9 @@ func (t *Task) makeArchivedTask() *Task {
 
 // Aggregation
 
-// MergeNewTestResults returns the task with both old (embedded in
-// the tasks collection) and new (from the testresults collection) test results
-// merged in the Task's LocalTestResults field.
+// MergeNewTestResults returns the task with both old (embedded in the tasks
+// collection) and new (from the testresults collection) test results merged in
+// the Task's LocalTestResults field.
 func (t *Task) MergeNewTestResults() error {
 	id := t.Id
 	if t.Archived {
@@ -2097,17 +2082,41 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
-// GetTestResultsForDisplayTask returns the test results for the execution tasks
-// for a display task.
+// MergeTestResults returns the task with both old (embedded in the tasks
+// collection) and new (from the testresults collection) OR Cedar test results
+// merged in the Task's LocalTestResults field.
+func (t *Task) MergeTestResults() error {
+	if !t.hasCedarResults() {
+		return t.MergeNewTestResults()
+	}
+
+	results, err := t.GetCedarTestResults()
+	if err != nil {
+		return errors.Wrap(err, "getting test results from cedar")
+	}
+	t.LocalTestResults = append(t.LocalTestResults, results...)
+
+	return nil
+}
+
+// GetTestResultsForDisplayTask returns the test results for the execution
+// tasks for a display task.
 func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	if !t.DisplayOnly {
 		return nil, errors.Errorf("%s is not a display task", t.Id)
 	}
-	tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "error merging test results for display task")
+
+	if !t.hasCedarResults() {
+		tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
+		return tasks[0].LocalTestResults, errors.Wrap(err, "error merging test results for display task")
 	}
-	return tasks[0].LocalTestResults, nil
+
+	var err error
+	if len(t.LocalTestResults) == 0 {
+		t.LocalTestResults, err = t.GetCedarTestResults()
+	}
+
+	return t.LocalTestResults, err
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group
@@ -3107,23 +3116,6 @@ func (t *Task) SetNumDependents() error {
 	}, update)
 }
 
-// ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
-// struct.
-func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
-	return TestResult{
-		TaskID:          result.TaskID,
-		Execution:       result.Execution,
-		TestFile:        result.TestName,
-		DisplayTestName: result.DisplayTestName,
-		GroupID:         result.GroupID,
-		LogTestName:     result.LogTestName,
-		LineNum:         result.LineNum,
-		StartTime:       float64(result.Start.Unix()),
-		EndTime:         float64(result.End.Unix()),
-		Status:          result.Status,
-	}
-}
-
 func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
 	if len(execTasks) == 0 {
 		return nil
@@ -3135,4 +3127,114 @@ func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
 			ExecutionTasksKey: bson.M{"$each": execTasks},
 		}},
 	)
+}
+
+////////////////
+// Cedar Helpers
+////////////////
+
+// Get CedarTestResults fetches the task's test results from the Cedar service.
+// If the task does not have test results in Cedar, (nil, nil) is returned. If
+// the task is a display task, all of its execution tasks' test results are
+// returned.
+func (t *Task) GetCedarTestResults() ([]TestResult, error) {
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+
+	if !t.hasCedarResults() {
+		return nil, nil
+	}
+
+	taskID := t.Id
+	if t.Archived {
+		taskID = t.OldTaskId
+	}
+
+	opts := apimodels.GetCedarTestResultsOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		Execution: t.Execution,
+	}
+	if t.DisplayOnly {
+		opts.DisplayTaskID = taskID
+	} else {
+		opts.TaskID = taskID
+	}
+
+	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results from cedar")
+	}
+
+	results := make([]TestResult, len(cedarResults))
+	for i, result := range cedarResults {
+		results[i] = ConvertCedarTestResult(result)
+	}
+
+	return results, nil
+}
+
+func (t *Task) hasCedarResults() bool {
+	if !t.DisplayOnly || t.HasCedarResults {
+		return t.HasCedarResults
+	}
+
+	// Older display tasks may incorrectly indicate that they do not have
+	// test results in Cedar. In the case that the execution tasks have
+	// results in Cedar, this will attempt to update the display task
+	// accordingly.
+	if len(t.ExecutionTasks) > 0 {
+		var (
+			execTasks []Task
+			err       error
+		)
+		if t.Archived {
+			// This is a display task from the old task collection,
+			// we need to look there for its execution tasks.
+			execTasks, err = FindAllOld(db.Query(bson.M{
+				OldTaskIdKey: bson.M{"$in": t.ExecutionTasks},
+				ExecutionKey: t.Execution,
+			}))
+		} else {
+			execTasks, err = FindAll(ByIds(t.ExecutionTasks))
+		}
+		if err != nil {
+			return false
+		}
+
+		for _, execTask := range execTasks {
+			if execTask.HasCedarResults {
+				// Attempt to update the display task's
+				// HasCedarResults field. We will not update
+				// the CedarResultsFailed field since we do
+				// want to iterate through all of the execution
+				// tasks and it isn't really needed for display
+				// tasks. Since we do not want to fail here, we
+				// can ignore the error.
+				_ = t.SetHasCedarResults(true, false)
+
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
+// struct.
+func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
+	return TestResult{
+		TaskID:          result.TaskID,
+		Execution:       result.Execution,
+		TestFile:        result.TestName,
+		DisplayTestName: result.DisplayTestName,
+		GroupID:         result.GroupID,
+		LogTestName:     result.LogTestName,
+		URL:             result.LogURL,
+		URLRaw:          result.RawLogURL,
+		LineNum:         result.LineNum,
+		StartTime:       float64(result.Start.Unix()),
+		EndTime:         float64(result.End.Unix()),
+		Status:          result.Status,
+	}
 }

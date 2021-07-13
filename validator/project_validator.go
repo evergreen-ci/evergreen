@@ -18,7 +18,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 type projectValidator func(*model.Project) ValidationErrors
@@ -245,7 +244,7 @@ func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
 		Variables interface{} `yaml:"variables,omitempty" bson:"-"`
 	}{}
 
-	if err := yaml.UnmarshalStrict(yamlBytes, &strictProjectWithVariables); err != nil {
+	if err := util.UnmarshalYAMLStrictWithFallback(yamlBytes, &strictProjectWithVariables); err != nil {
 		validationErrs = append(validationErrs, ValidationError{
 			Level:   Warning,
 			Message: err.Error(),

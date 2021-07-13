@@ -94,7 +94,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project,
 	tasks TaskVariantPairs, pRef *ProjectRef) error {
-	_, _, err := addNewBuilds(ctx, specificActivationInfo{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
+	_, err := addNewBuilds(ctx, specificActivationInfo{}, patchVersion, project, tasks, p.SyncAtEndOpts, pRef, "")
 	return errors.Wrap(err, "can't add new builds")
 }
 
@@ -174,7 +174,6 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-
 	if _, err := LoadProjectInto(projectFileBytes, projectRef.Id, project); err != nil {
 		return nil, "", errors.WithStack(err)
 	}

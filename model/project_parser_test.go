@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -1475,11 +1475,6 @@ parameters:
 - key: iter_count
   value: 3
   description: "used for something"
-variables:
-- &english
-  hello: "world"
-- &spanish
-  hola: "mundo"
 tasks:
 - name: task_1
   depends_on:
@@ -1494,9 +1489,6 @@ tasks:
     loggers:
       system:
        - type: commandLogger
-  - func: function-with-updates
-    vars:
-        <<: [*english, *spanish]
 functions:
   function-with-updates:
     command: expansions.update

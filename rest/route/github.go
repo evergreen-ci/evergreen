@@ -390,8 +390,8 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 
 	const (
 		checkVersionAttempts      = 5
-		checkVersionRetryMinDelay = 100 * time.Millisecond
-		checkVersionRetryMaxDelay = 3 * time.Second
+		checkVersionRetryMinDelay = 3500 * time.Millisecond
+		checkVersionRetryMaxDelay = 15 * time.Second
 	)
 
 	catcher := grip.NewBasicCatcher()

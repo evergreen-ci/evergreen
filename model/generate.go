@@ -7,12 +7,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -99,7 +99,7 @@ func MergeGeneratedProjects(projects []GeneratedProject) (*GeneratedProject, err
 func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
 	g := GeneratedProject{}
 	dataAsJSON := []byte(data)
-	if err := yaml.Unmarshal(dataAsJSON, &g); err != nil {
+	if err := util.UnmarshalYAMLWithFallback(dataAsJSON, &g); err != nil {
 		return g, errors.Wrap(err, "error unmarshaling into GeneratedTasks")
 	}
 	return g, nil
@@ -110,7 +110,7 @@ func ParseProjectFromJSONString(data string) (GeneratedProject, error) {
 // properly unmarshal into a struct with multiple fields as options, like the YAMLCommandSet.
 func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 	g := GeneratedProject{}
-	if err := yaml.Unmarshal(data, &g); err != nil {
+	if err := util.UnmarshalYAMLWithFallback(data, &g); err != nil {
 		return g, errors.Wrap(err, "error unmarshaling into GeneratedTasks")
 	}
 	return g, nil
@@ -264,17 +264,18 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
-	tasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, projectRef.Identifier, g.TaskID)
+	activatedTasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, projectRef.Identifier, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 
-	_, tasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, projectRef, g.TaskID)
+	activatedTasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, projectRef, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
 
-	if err = addDependencies(t, append(tasksInExistingBuilds, tasksInNewBuilds...)); err != nil {
+	// only want to add dependencies to activated tasks
+	if err = addDependencies(t, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "error adding dependencies")
 	}
 

@@ -1048,3 +1048,64 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 
 	return gimlet.NewJSONResponse(res)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// PUT /rest/v2/projects/variables/rotate
+
+type projectVarsPutInput struct {
+	ToReplace   string `json:"to_replace"`
+	Replacement string `json:"replacement"`
+	DryRun      bool   `json:"dry_run"`
+}
+
+type projectVarsPutHandler struct {
+	replaceVars *projectVarsPutInput
+	user        *user.DBUser
+
+	sc data.Connector
+}
+
+func makeProjectVarsPut(sc data.Connector) gimlet.RouteHandler {
+	return &projectVarsPutHandler{
+		sc: sc,
+	}
+}
+
+func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
+	return &projectVarsPutHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse fetches the project's identifier from the http request.
+func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.user = MustHaveUser(ctx)
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	b, err := ioutil.ReadAll(body)
+	if err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+	replacements := &projectVarsPutInput{}
+	if err = json.Unmarshal(b, replacements); err != nil {
+		return errors.Wrap(err, "API error while unmarshalling JSON")
+	}
+	if replacements.ToReplace == "" {
+		return errors.New("'to_replace' parameter must be specified")
+	}
+	if replacements.Replacement == "" {
+		return errors.New("'replacement' parameter must be specified")
+	}
+	h.replaceVars = replacements
+	return nil
+}
+
+func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
+	res, err := h.sc.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.user.Username(), h.replaceVars.DryRun)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
+			"error updating projects with matching keys"))
+	}
+	return gimlet.NewJSONResponse(res)
+}

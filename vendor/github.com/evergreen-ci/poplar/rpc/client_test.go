@@ -83,7 +83,7 @@ func TestClient(t *testing.T) {
 	s3Bucket, err := pail.NewS3BucketWithHTTPClient(client, s3Opts)
 	require.NoError(t, err)
 
-	report := generateTestReport(testdataDir, s3Name, s3Prefix)
+	report := generateTestReport(testdataDir, s3Name, s3Prefix, false)
 	expectedTests := []poplar.Test{
 		report.Tests[0],
 		report.Tests[0].SubTests[0],
@@ -115,7 +115,7 @@ func TestClient(t *testing.T) {
 
 	t.Run("WetRun", func(t *testing.T) {
 		for _, serialize := range []bool{true, false} {
-			testReport := generateTestReport(testdataDir, s3Name, s3Prefix)
+			testReport := generateTestReport(testdataDir, s3Name, s3Prefix, false)
 			mc := NewMockClient()
 			require.NoError(t, mockUploadReport(ctx, &testReport, mc, serialize, false))
 			require.Len(t, mc.resultData, len(expectedTests))
@@ -182,7 +182,7 @@ func TestClient(t *testing.T) {
 
 	t.Run("DryRun", func(t *testing.T) {
 		for _, serialize := range []bool{true, false} {
-			testReport := generateTestReport(testdataDir, s3Name, s3Prefix)
+			testReport := generateTestReport(testdataDir, s3Name, s3Prefix, false)
 			mc := NewMockClient()
 			require.NoError(t, mockUploadReport(ctx, &testReport, mc, serialize, true))
 			assert.Empty(t, mc.resultData)
@@ -199,10 +199,27 @@ func TestClient(t *testing.T) {
 			}
 		}
 	})
+
+	for _, test := range expectedTests {
+		for _, artifact := range test.Artifacts {
+			require.NoError(t, s3Bucket.Remove(ctx, artifact.Path))
+			require.NoError(t, os.RemoveAll(filepath.Join(testdataDir, artifact.Path)))
+		}
+	}
+
+	t.Run("DuplicateMetricName", func(t *testing.T) {
+		for _, serialize := range []bool{true, false} {
+			testReport := generateTestReport(testdataDir, s3Name, s3Prefix, true)
+			mc := NewMockClient()
+			assert.Error(t, mockUploadReport(ctx, &testReport, mc, serialize, true))
+			assert.Empty(t, mc.resultData)
+			assert.Empty(t, mc.endData)
+		}
+	})
 }
 
-func generateTestReport(testdataDir, s3Name, s3Prefix string) poplar.Report {
-	return poplar.Report{
+func generateTestReport(testdataDir, s3Name, s3Prefix string, duplicateMetric bool) poplar.Report {
+	report := poplar.Report{
 		Project:   "project",
 		Version:   "version",
 		Order:     2,
@@ -301,4 +318,18 @@ func generateTestReport(testdataDir, s3Name, s3Prefix string) poplar.Report {
 			},
 		},
 	}
+
+	if duplicateMetric {
+		report.Tests[0].SubTests[0].Metrics = append(
+			report.Tests[0].SubTests[0].Metrics,
+			poplar.TestMetrics{
+				Name:    "mean",
+				Version: 1,
+				Value:   2,
+				Type:    "MEAN",
+			},
+		)
+	}
+
+	return report
 }

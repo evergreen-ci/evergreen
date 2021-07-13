@@ -442,6 +442,49 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.NoError(s.ctx.UpdateProjectVars("not-an-id", &newVars, false))
 }
 
+func TestUpdateProjectVarsByValue(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.AllLogCollection))
+	dc := &DBProjectConnector{}
+
+	vars := &model.ProjectVars{
+		Id:          projectId,
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	require.NoError(t, vars.Insert())
+
+	resp, err := dc.UpdateProjectVarsByValue("1", "11", "user", true)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, "a", resp[projectId])
+
+	res, err := dc.FindProjectVarsById(projectId, "", false)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, "1", res.Vars["a"])
+
+	resp, err = dc.UpdateProjectVarsByValue("1", "11", username, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, "a", resp[projectId])
+
+	res, err = dc.FindProjectVarsById(projectId, "", false)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.Equal(t, "11", res.Vars["a"])
+
+	projectEvents, err := model.MostRecentProjectEvents(projectId, 5)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(projectEvents))
+
+	assert.NotNil(t, projectEvents[0].Data)
+	eventData := projectEvents[0].Data.(*model.ProjectChangeEvent)
+
+	assert.Equal(t, username, eventData.User)
+	assert.Equal(t, "1", eventData.Before.Vars.Vars["a"])
+	assert.Equal(t, "11", eventData.After.Vars.Vars["a"])
+}
+
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 	s.NoError(s.ctx.CopyProjectVars(projectId, "project-copy"))
 	origProj, err := s.ctx.FindProjectVarsById(projectId, "", false)

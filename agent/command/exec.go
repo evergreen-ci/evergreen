@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -172,12 +173,17 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	expansions := opts.expansions.Map()
 	if opts.addExpansionsToEnv {
 		for k, v := range expansions {
+			if k == evergreen.GlobalGitHubTokenExpansion {
+				//users should not be able to use the global github token expansion
+				//as it can result in the breaching of Evergreen's GitHub API limit
+				continue
+			}
 			env[k] = v
 		}
 	}
 
 	for _, expName := range opts.includeExpansionsInEnv {
-		if val, ok := expansions[expName]; ok {
+		if val, ok := expansions[expName]; ok && expName != evergreen.GlobalGitHubTokenExpansion {
 			env[expName] = val
 		}
 	}

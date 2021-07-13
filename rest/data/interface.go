@@ -29,6 +29,23 @@ import (
 	"github.com/mongodb/amboy"
 )
 
+// FindTestsByTaskIdOpts contains filtering, sorting and pagination options for TestResults.
+type FindTestsByTaskIdOpts struct {
+	Execution int
+	GroupID   string
+	Limit     int
+	Page      int
+	// SortBy should equal a bson tag from the TestResults struct.
+	SortBy   string
+	SortDir  int
+	Statuses []string
+	// TaskID is the only required field.
+	TaskID string
+	// TestID matches all IDs >= TestID.
+	TestID   string
+	TestName string
+}
+
 // Connector is an interface that contains all of the methods which
 // connect to the service layer of evergreen. These methods abstract the link
 // between the service and the API layers, allowing for changes in the
@@ -81,6 +98,7 @@ type Connector interface {
 	// in the model (removing old variables if overwrite is set).
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars, bool) error
+	UpdateProjectVarsByValue(string, string, string, bool) (map[string]string, error)
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
@@ -126,11 +144,8 @@ type Connector interface {
 
 	// FindTestById returns a single test result with the given id.
 	FindTestById(string) ([]testresult.TestResult, error)
-	// FindTestsByTaskId is a method to find a set of tests that correspond to
-	// a given task. It takes a taskId, testId to start from, test name and status to filter,
-	// limit, and sort to provide additional control over the results.
-	FindTestsByTaskId(string, string, string, string, int, int) ([]testresult.TestResult, error)
-	FindTestsByTaskIdFilterSortPaginate(string, string, []string, string, int, int, int, int) ([]testresult.TestResult, error)
+	// FindTestsByTaskId returns a paginated list of TestResults from a required TaskID.
+	FindTestsByTaskId(FindTestsByTaskIdOpts) ([]testresult.TestResult, error)
 	GetTestCountByTaskIdAndFilters(string, string, []string, int) (int, error)
 	FindTasksByVersion(string, TaskFilterOptions) ([]task.Task, int, error)
 	// FindUserById is a method to find a specific user given its ID.
@@ -281,6 +296,10 @@ type Connector interface {
 	TerminateHost(context.Context, *host.Host, string) error
 
 	CheckHostSecret(string, *http.Request) (int, error)
+
+	// CheckPodSecret checks that the ID and secret match the server's
+	// stored credentials for the pod.
+	CheckPodSecret(id, secret string) error
 
 	// FindProjectAliases queries the database to find all aliases (including or excluding those specified).
 	// Includes repo aliases if repoId is provided.
