@@ -7,10 +7,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -20,15 +23,22 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/juniper/gopb"
+	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/timber"
+	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
-func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
+func (c *hostCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
 	out := &apimodels.AgentSetupData{}
 	info := requestInfo{
 		method:  http.MethodGet,
@@ -50,7 +60,7 @@ func (c *communicatorImpl) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 }
 
 // StartTask marks the task as started.
-func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) error {
+func (c *hostCommunicator) StartTask(ctx context.Context, taskData TaskData) error {
 	grip.Info(message.Fields{
 		"message":     "started StartTask",
 		"task_id":     taskData.ID,
@@ -78,7 +88,7 @@ func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) err
 }
 
 // EndTask marks the task as finished with the given status
-func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
+func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
 	grip.Info(message.Fields{
 		"message":     "started EndTask",
 		"task_id":     taskData.ID,
@@ -109,7 +119,7 @@ func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEn
 }
 
 // GetTask returns the active task.
-func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
+func (c *hostCommunicator) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
 	task := &task.Task{}
 	info := requestInfo{
 		method:   http.MethodGet,
@@ -131,7 +141,7 @@ func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*tas
 
 // GetDisplayTaskInfoFromExecution returns the display task info associated
 // with the execution task.
-func (c *communicatorImpl) GetDisplayTaskInfoFromExecution(ctx context.Context, td TaskData) (*apimodels.DisplayTaskInfo, error) {
+func (c *hostCommunicator) GetDisplayTaskInfoFromExecution(ctx context.Context, td TaskData) (*apimodels.DisplayTaskInfo, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		path:     fmt.Sprintf("tasks/%s/display_task", td.ID),
@@ -154,7 +164,7 @@ func (c *communicatorImpl) GetDisplayTaskInfoFromExecution(ctx context.Context, 
 }
 
 // GetProjectRef loads the task's project.
-func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
+func (c *hostCommunicator) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
 	info := requestInfo{
 		method:   http.MethodGet,
@@ -174,7 +184,7 @@ func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData)
 	return projectRef, nil
 }
 
-func (c *communicatorImpl) GetDistroView(ctx context.Context, taskData TaskData) (*apimodels.DistroView, error) {
+func (c *hostCommunicator) GetDistroView(ctx context.Context, taskData TaskData) (*apimodels.DistroView, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
@@ -195,7 +205,7 @@ func (c *communicatorImpl) GetDistroView(ctx context.Context, taskData TaskData)
 }
 
 // GetDistroAMI returns the distro for the task.
-func (c *communicatorImpl) GetDistroAMI(ctx context.Context, distro, region string, taskData TaskData) (string, error) {
+func (c *hostCommunicator) GetDistroAMI(ctx context.Context, distro, region string, taskData TaskData) (string, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
@@ -217,7 +227,7 @@ func (c *communicatorImpl) GetDistroAMI(ctx context.Context, distro, region stri
 	return string(out), nil
 }
 
-func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
+func (c *hostCommunicator) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
@@ -235,7 +245,7 @@ func (c *communicatorImpl) GetProject(ctx context.Context, taskData TaskData) (*
 	return model.GetProjectFromBSON(respBytes)
 }
 
-func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
+func (c *hostCommunicator) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
 	e := util.Expansions{}
 	info := requestInfo{
 		method:   http.MethodGet,
@@ -258,7 +268,7 @@ func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData)
 
 // Heartbeat sends a heartbeat to the API server. The server can respond with
 // an "abort" response. This function returns true if the agent should abort.
-func (c *communicatorImpl) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
+func (c *hostCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
 	data := interface{}("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
@@ -291,7 +301,7 @@ func (c *communicatorImpl) Heartbeat(ctx context.Context, taskData TaskData) (bo
 }
 
 // FetchExpansionVars loads expansions for a communicator's task from the API server.
-func (c *communicatorImpl) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
+func (c *hostCommunicator) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
 	resultVars := &apimodels.ExpansionVars{}
 	info := requestInfo{
 		method:   http.MethodGet,
@@ -312,7 +322,7 @@ func (c *communicatorImpl) FetchExpansionVars(ctx context.Context, taskData Task
 }
 
 // GetNextTask returns a next task response by getting the next task for a given host.
-func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
+func (c *hostCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	nextTask := &apimodels.NextTaskResponse{}
 	info := requestInfo{
 		method:  http.MethodGet,
@@ -335,7 +345,7 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 
 // GetCedarConfig returns the cedar service information including the base URL,
 // URL, RPC port, and credentials.
-func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
+func (c *hostCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
 	cc := &apimodels.CedarConfig{}
 
 	info := requestInfo{
@@ -362,15 +372,246 @@ func (c *communicatorImpl) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or
 // creates it if it doesn't exist.
-func (c *communicatorImpl) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
+func (c *hostCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 	if err := c.createCedarGRPCConn(ctx); err != nil {
 		return nil, errors.Wrap(err, "setting up cedar grpc connection")
 	}
 	return c.cedarGRPCClient, nil
 }
 
+func (c *hostCommunicator) createCedarGRPCConn(ctx context.Context) error {
+	if c.cedarGRPCClient == nil {
+		cc, err := c.GetCedarConfig(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting cedar config")
+		}
+
+		// TODO (EVG-14557): Remove TLS dial option fallback once cedar
+		// gRPC is on API auth.
+		catcher := grip.NewBasicCatcher()
+		dialOpts := timber.DialCedarOptions{
+			BaseAddress: cc.BaseURL,
+			RPCPort:     cc.RPCPort,
+			Username:    cc.Username,
+			APIKey:      cc.APIKey,
+			Retries:     10,
+		}
+		if runtime.GOOS == "windows" {
+			cas, err := c.getAWSCACerts(ctx)
+			if err != nil {
+				return errors.Wrap(err, "getting AWS root CA certs for cedar gRPC client connections on Windows")
+			}
+			dialOpts.CACerts = [][]byte{cas}
+		}
+		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
+		if err != nil {
+			catcher.Wrap(err, "creating cedar grpc client connection with API auth.")
+		} else {
+			healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
+			_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
+			if err == nil {
+				return nil
+			}
+			catcher.Wrap(err, "checking cedar grpc health with API auth")
+		}
+
+		// Try again, this time with TLS auth.
+		dialOpts.TLSAuth = true
+		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
+		if err == nil {
+			return nil
+		}
+		catcher.Wrap(err, "creating cedar grpc client connection with TLS auth")
+
+		return catcher.Resolve()
+	}
+
+	return nil
+}
+
+// getAWSCACerts fetches AWS's root CA certificates stored in S3. This is a
+// workaround for the fact that Go cannot access the system certificate pool on
+// Windows (which would have these certificates).
+// TODO: If and when the Windows system cert issue is fixed, we can get rid of
+// this workaround. See https://github.com/golang/go/issues/16736.
+func (c *hostCommunicator) getAWSCACerts(ctx context.Context) ([]byte, error) {
+	setupData, err := c.GetAgentSetupData(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting setup data")
+	}
+
+	// We are hardcoding this magic object in S3 because these certificates
+	// are not set to expire for another 20 years. Also, we are hopeful
+	// that this Windows system cert issue will go away in future versions
+	// of Go.
+	bucket, err := pail.NewS3Bucket(pail.S3Options{
+		Name:        "boxes.10gen.com",
+		Prefix:      "build/amazontrust",
+		Region:      endpoints.UsEast1RegionID,
+		Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
+		MaxRetries:  10,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "creating pail bucket")
+	}
+
+	r, err := bucket.Get(ctx, "AmazonRootCA_all.pem")
+	if err != nil {
+		return nil, errors.Wrap(err, "getting AWS root CA certificates")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	cas, err := ioutil.ReadAll(r)
+	catcher.Wrap(err, "reading AWS root CA certificates")
+	catcher.Wrap(r.Close(), "closing the ReadCloser")
+
+	return cas, catcher.Resolve()
+}
+
+func (c *hostCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
+	if config == nil {
+		config = &LoggerConfig{
+			Agent:  []LogOpts{{Sender: model.EvergreenLogSender}},
+			System: []LogOpts{{Sender: model.EvergreenLogSender}},
+			Task:   []LogOpts{{Sender: model.EvergreenLogSender}},
+		}
+	}
+	underlying := []send.Sender{}
+
+	exec, senders, err := c.makeSender(ctx, td, config.Agent, apimodels.AgentLogPrefix, evergreen.LogTypeAgent)
+	if err != nil {
+		return nil, errors.Wrap(err, "making agent logger")
+	}
+	underlying = append(underlying, senders...)
+	task, senders, err := c.makeSender(ctx, td, config.Task, apimodels.TaskLogPrefix, evergreen.LogTypeTask)
+	if err != nil {
+		return nil, errors.Wrap(err, "making task logger")
+	}
+	underlying = append(underlying, senders...)
+	system, senders, err := c.makeSender(ctx, td, config.System, apimodels.SystemLogPrefix, evergreen.LogTypeSystem)
+	if err != nil {
+		return nil, errors.Wrap(err, "making system logger")
+	}
+	underlying = append(underlying, senders...)
+
+	return &logHarness{
+		execution:                 logging.MakeGrip(exec),
+		task:                      logging.MakeGrip(task),
+		system:                    logging.MakeGrip(system),
+		underlyingBufferedSenders: underlying,
+	}, nil
+}
+
+func (c *hostCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string, logType string) (send.Sender, []send.Sender, error) {
+	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
+	senders := []send.Sender{grip.GetSender()}
+	underlyingBufferedSenders := []send.Sender{}
+
+	for _, opt := range opts {
+		var sender send.Sender
+		var err error
+		bufferDuration := defaultLogBufferTime
+		if opt.BufferDuration > 0 {
+			bufferDuration = opt.BufferDuration
+		}
+		bufferSize := defaultLogBufferSize
+		if opt.BufferSize > 0 {
+			bufferSize = opt.BufferSize
+		}
+		// disallow sending system logs to S3 or logkeeper for security reasons
+		if prefix == apimodels.SystemLogPrefix && (opt.Sender == model.FileLogSender || opt.Sender == model.LogkeeperLogSender) {
+			opt.Sender = model.EvergreenLogSender
+		}
+		switch opt.Sender {
+		case model.FileLogSender:
+			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating file logger")
+			}
+
+			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
+			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+		case model.SplunkLogSender:
+			info := send.SplunkConnectionInfo{
+				ServerURL: opt.SplunkServerURL,
+				Token:     opt.SplunkToken,
+			}
+			sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating splunk logger")
+			}
+			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
+			sender = send.NewBufferedSender(newAnnotatedWrapper(td.ID, prefix, sender), bufferDuration, bufferSize)
+		case model.LogkeeperLogSender:
+			config := send.BuildloggerConfig{
+				URL:        opt.LogkeeperURL,
+				Number:     opt.LogkeeperBuildNum,
+				Local:      grip.GetSender(),
+				Test:       prefix,
+				CreateTest: true,
+			}
+			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating logkeeper logger")
+			}
+			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
+			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+			metadata := LogkeeperMetadata{
+				Build: config.GetBuildID(),
+				Test:  config.GetTestID(),
+			}
+			switch prefix {
+			case apimodels.AgentLogPrefix:
+				c.loggerInfo.Agent = append(c.loggerInfo.Agent, metadata)
+			case apimodels.SystemLogPrefix:
+				c.loggerInfo.System = append(c.loggerInfo.System, metadata)
+			case apimodels.TaskLogPrefix:
+				c.loggerInfo.Task = append(c.loggerInfo.Task, metadata)
+			}
+		case model.BuildloggerLogSender:
+			tk, err := c.GetTask(ctx, td)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "setting up buildlogger sender")
+			}
+
+			if err = c.createCedarGRPCConn(ctx); err != nil {
+				return nil, nil, errors.Wrap(err, "setting up cedar grpc connection")
+			}
+
+			timberOpts := &buildlogger.LoggerOptions{
+				Project:       tk.Project,
+				Version:       tk.Version,
+				Variant:       tk.BuildVariant,
+				TaskName:      tk.DisplayName,
+				TaskID:        tk.Id,
+				Execution:     int32(tk.Execution),
+				Tags:          append(tk.Tags, logType, utility.RandomString()),
+				Mainline:      !evergreen.IsPatchRequester(tk.Requester),
+				Storage:       buildlogger.LogStorageS3,
+				MaxBufferSize: opt.BufferSize,
+				FlushInterval: opt.BufferDuration,
+				ClientConn:    c.cedarGRPCClient,
+			}
+			sender, err = buildlogger.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating buildlogger logger")
+			}
+		default:
+			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
+		}
+
+		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
+		if prefix == apimodels.TaskLogPrefix {
+			sender = makeTimeoutLogSender(sender, c)
+		}
+		senders = append(senders, sender)
+	}
+
+	return send.NewConfiguredMultiSender(senders...), underlyingBufferedSenders, nil
+}
+
 // SendLogMessages posts a group of log messages for a task.
-func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
+func (c *hostCommunicator) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
 	if len(msgs) == 0 {
 		return nil
 	}
@@ -428,7 +669,7 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 }
 
 // SendTaskResults posts a task's results, used by the attach results operations.
-func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskData, r *task.LocalTestResults) error {
+func (c *hostCommunicator) SendTaskResults(ctx context.Context, taskData TaskData, r *task.LocalTestResults) error {
 	if r == nil || len(r.Results) == 0 {
 		return nil
 	}
@@ -451,7 +692,7 @@ func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskDat
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure. If patchId is not specified, the task's
 // patch is returned
-func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData, patchId string) (*patchmodel.Patch, error) {
+func (c *hostCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, patchId string) (*patchmodel.Patch, error) {
 	patch := patchmodel.Patch{}
 	info := requestInfo{
 		method:   http.MethodGet,
@@ -478,7 +719,7 @@ func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData, 
 
 // GetPatchFiles is used by the git.get_project plugin and fetches
 // patches from the database, used in patch builds.
-func (c *communicatorImpl) GetPatchFile(ctx context.Context, taskData TaskData, patchFileID string) (string, error) {
+func (c *hostCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, patchFileID string) (string, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
@@ -502,7 +743,7 @@ func (c *communicatorImpl) GetPatchFile(ctx context.Context, taskData TaskData, 
 
 // SendTestLog is used by the attach plugin to add to the test_logs
 // collection for log data associated with a test.
-func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
+func (c *hostCommunicator) SendTestLog(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
 	if log == nil {
 		return "", nil
 	}
@@ -533,7 +774,7 @@ func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, l
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
-func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskData, results *task.LocalTestResults) error {
+func (c *hostCommunicator) SendTestResults(ctx context.Context, taskData TaskData, results *task.LocalTestResults) error {
 	if results == nil || len(results.Results) == 0 {
 		return nil
 	}
@@ -553,7 +794,7 @@ func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskDat
 
 // SetHasCedarResults sets the HasCedarResults flag to true in the given task
 // in the database.
-func (c *communicatorImpl) SetHasCedarResults(ctx context.Context, taskData TaskData, failed bool) error {
+func (c *hostCommunicator) SetHasCedarResults(ctx context.Context, taskData TaskData, failed bool) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
@@ -569,7 +810,7 @@ func (c *communicatorImpl) SetHasCedarResults(ctx context.Context, taskData Task
 }
 
 // AttachFiles attaches task files.
-func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
+func (c *hostCommunicator) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
 	if len(taskFiles) == 0 {
 		return nil
 	}
@@ -589,7 +830,7 @@ func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, t
 	return nil
 }
 
-func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+func (c *hostCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
 	info := requestInfo{
 		method: http.MethodPost,
 		taskData: &TaskData{
@@ -608,7 +849,7 @@ func (c *communicatorImpl) SetDownstreamParams(ctx context.Context, downstreamPa
 	return nil
 }
 
-func (c *communicatorImpl) GetManifest(ctx context.Context, taskData TaskData) (*manifest.Manifest, error) {
+func (c *hostCommunicator) GetManifest(ctx context.Context, taskData TaskData) (*manifest.Manifest, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
@@ -629,7 +870,7 @@ func (c *communicatorImpl) GetManifest(ctx context.Context, taskData TaskData) (
 	return &mfest, nil
 }
 
-func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *apimodels.S3CopyRequest) (string, error) {
+func (c *hostCommunicator) S3Copy(ctx context.Context, taskData TaskData, req *apimodels.S3CopyRequest) (string, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
@@ -644,7 +885,7 @@ func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *a
 	return "", nil
 }
 
-func (c *communicatorImpl) KeyValInc(ctx context.Context, taskData TaskData, kv *model.KeyVal) error {
+func (c *hostCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv *model.KeyVal) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
@@ -664,7 +905,7 @@ func (c *communicatorImpl) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	return nil
 }
 
-func (c *communicatorImpl) PostJSONData(ctx context.Context, taskData TaskData, path string, data interface{}) error {
+func (c *hostCommunicator) PostJSONData(ctx context.Context, taskData TaskData, path string, data interface{}) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
@@ -680,7 +921,7 @@ func (c *communicatorImpl) PostJSONData(ctx context.Context, taskData TaskData, 
 	return nil
 }
 
-func (c *communicatorImpl) GetJSONData(ctx context.Context, taskData TaskData, taskName, dataName, variantName string) ([]byte, error) {
+func (c *hostCommunicator) GetJSONData(ctx context.Context, taskData TaskData, taskName, dataName, variantName string) ([]byte, error) {
 	pathParts := []string{"json", "data", taskName, dataName}
 	if variantName != "" {
 		pathParts = append(pathParts, variantName)
@@ -705,7 +946,7 @@ func (c *communicatorImpl) GetJSONData(ctx context.Context, taskData TaskData, t
 	return out, nil
 }
 
-func (c *communicatorImpl) GetJSONHistory(ctx context.Context, taskData TaskData, tags bool, taskName, dataName string) ([]byte, error) {
+func (c *hostCommunicator) GetJSONHistory(ctx context.Context, taskData TaskData, tags bool, taskName, dataName string) ([]byte, error) {
 	path := "json/history/"
 	if tags {
 		path = "json/tags/"
@@ -734,7 +975,7 @@ func (c *communicatorImpl) GetJSONHistory(ctx context.Context, taskData TaskData
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
+func (c *hostCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
@@ -746,7 +987,7 @@ func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, jsonB
 }
 
 // GenerateTasksPoll posts new tasks for the `generate.tasks` command.
-func (c *communicatorImpl) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.GeneratePollResponse, error) {
+func (c *hostCommunicator) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.GeneratePollResponse, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &td,
@@ -766,7 +1007,7 @@ func (c *communicatorImpl) GenerateTasksPoll(ctx context.Context, td TaskData) (
 }
 
 // CreateHost requests a new host be created
-func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) ([]string, error) {
+func (c *hostCommunicator) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) ([]string, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
@@ -786,7 +1027,7 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 	return ids, nil
 }
 
-func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) (restmodel.HostListResults, error) {
+func (c *hostCommunicator) ListHosts(ctx context.Context, td TaskData) (restmodel.HostListResults, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &td,
@@ -807,7 +1048,7 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) (restmode
 	return result, nil
 }
 
-func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
+func (c *hostCommunicator) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
 	info := requestInfo{
 		method:  http.MethodGet,
 		version: apiVersion2,
@@ -830,7 +1071,7 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 }
 
 // GetDockerStatus returns status of the container for the given host
-func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
+func (c *hostCommunicator) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
 	info := requestInfo{
 		method:  http.MethodGet,
 		path:    fmt.Sprintf("hosts/%s/status", hostID),
@@ -853,7 +1094,7 @@ func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (
 	return &status, nil
 }
 
-func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
+func (c *hostCommunicator) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
 	path := fmt.Sprintf("/hosts/%s/logs", hostID)
 	if isError {
 		path = fmt.Sprintf("%s/error", path)
@@ -891,7 +1132,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	return body, nil
 }
 
-func (c *communicatorImpl) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
+func (c *hostCommunicator) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		path:     fmt.Sprintf("commit_queue/%s/conclude_merge", patchId),
@@ -916,7 +1157,7 @@ func (c *communicatorImpl) ConcludeMerge(ctx context.Context, patchId, status st
 	return nil
 }
 
-func (c *communicatorImpl) GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error) {
+func (c *hostCommunicator) GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		path:     fmt.Sprintf("commit_queue/%s/additional", patchId),

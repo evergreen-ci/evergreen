@@ -45,7 +45,7 @@ func TestCommandFileLogging(t *testing.T) {
 			LogPrefix:        evergreen.LocalLoggingOverride,
 			WorkingDirectory: tmpDirName,
 		},
-		comm: client.NewCommunicator("www.example.com"),
+		comm: client.NewHostCommunicator("www.example.com", "host", "secret"),
 	}
 	jpm, err := jasper.NewSynchronizedManager(false)
 	require.NoError(err)
@@ -189,7 +189,7 @@ func TestStartLoggingErrors(t *testing.T) {
 			LogPrefix:        evergreen.LocalLoggingOverride,
 			WorkingDirectory: tmpDirName,
 		},
-		comm: client.NewCommunicator("www.foo.com"),
+		comm: client.NewHostCommunicator("www.foo.com", "host", "secret"),
 	}
 	project := &model.Project{
 		Loggers: &model.LoggerConfig{
