@@ -93,6 +93,10 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = p.sc.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying subscriptions from project '%s'", p.oldProject))
 	}
+	// set the same admin roles from the old project on the newly copied project.
+	if err = p.sc.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", p.newProject))
+	}
 
 	return gimlet.NewJSONResponse(apiProjectRef)
 }

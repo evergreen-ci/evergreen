@@ -640,16 +640,6 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.Empty(tc.taskDirectory)
 }
 
-func (s *AgentSuite) TestAgentConstructorSetsHostData() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	agent, err := newWithCommunicator(ctx, Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
-	s.Require().NoError(err)
-	s.Equal("host_id", agent.comm.GetHostID())
-	s.Equal("host_secret", agent.comm.GetHostSecret())
-}
-
 func (s *AgentSuite) TestGroupPreGroupCommands() {
 	s.tc.taskGroup = "task_group_name"
 	s.tc.taskGroup = "task_group_name"

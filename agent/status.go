@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
+func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 	// Although checking the error returned by `srv.ListenAndServe` is sufficient to exit if
 	// another agent is running, it's possible for `startStatusServer` to return before
 	// `grip.EmergencyFatal` runs, which means that later code, e.g., code that deletes files
@@ -32,12 +32,12 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.NoVersions = true
 
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
-	app.AddRoute("/status").Handler(agt.statusHandler()).Get()
+	app.AddRoute("/status").Handler(a.statusHandler()).Get()
 	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
 
-	jpmapp := remote.NewRESTService(agt.jasper).App(ctx)
+	jpmapp := remote.NewRESTService(a.jasper).App(ctx)
 	jpmapp.SetPrefix("jasper")
 
 	handler, err := gimlet.MergeApplications(app, jpmapp, gimlet.GetPProfApp())
@@ -84,10 +84,10 @@ type statusResponse struct {
 }
 
 // statusHandler is a function that produces the status handler.
-func (agt *Agent) statusHandler() http.HandlerFunc {
+func (a *Agent) statusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		grip.Debug("preparing status response")
-		resp := buildResponse(agt.opts)
+		resp := buildResponse(a.opts)
 
 		// in the future we may want to use the same render
 		// package used in the service, but doing this

@@ -98,14 +98,11 @@ const (
 // Agent's Start method to begin listening for tasks to run. Users should call
 // Close when the agent is finished.
 func New(ctx context.Context, opts Options, serverURL string) (*Agent, error) {
-	comm := client.NewCommunicator(serverURL)
+	comm := client.NewHostCommunicator(serverURL, opts.HostID, opts.HostSecret)
 	return newWithCommunicator(ctx, opts, comm)
 }
 
 func newWithCommunicator(ctx context.Context, opts Options, comm client.Communicator) (*Agent, error) {
-	comm.SetHostID(opts.HostID)
-	comm.SetHostSecret(opts.HostSecret)
-
 	jpm, err := jasper.NewSynchronizedManager(false)
 	if err != nil {
 		comm.Close()

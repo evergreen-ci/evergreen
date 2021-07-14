@@ -129,7 +129,11 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 
 	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
-	resp, err := utility.RetryRequest(ctx, r, c.maxAttempts, c.timeoutStart, c.timeoutMax)
+	resp, err := utility.RetryRequest(ctx, r, utility.RetryOptions{
+		MaxAttempts: c.maxAttempts,
+		MinDelay:    c.timeoutStart,
+		MaxDelay:    c.timeoutMax,
+	})
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 		return resp, AuthError
 	} else if err != nil {

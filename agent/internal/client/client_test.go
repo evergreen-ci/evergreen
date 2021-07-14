@@ -4,30 +4,26 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEvergreenCommunicatorConstructor(t *testing.T) {
-	client := NewCommunicator("url")
+	client := NewHostCommunicator("url", "hostID", "hostSecret")
 	defer client.Close()
 
-	c, ok := client.(*communicatorImpl)
+	c, ok := client.(*hostCommunicator)
 	assert.True(t, ok, true)
-	assert.Empty(t, c.hostID)
-	assert.Empty(t, c.hostSecret)
-	assert.Equal(t, defaultMaxAttempts, c.maxAttempts)
-	assert.Equal(t, defaultTimeoutStart, c.timeoutStart)
-	assert.Equal(t, defaultTimeoutMax, c.timeoutMax)
-
-	client.SetHostID("hostID")
-	client.SetHostSecret("hostSecret")
-	assert.Equal(t, "hostID", c.hostID)
-	assert.Equal(t, "hostSecret", c.hostSecret)
+	assert.Equal(t, "hostID", c.reqHeaders[evergreen.HostHeader])
+	assert.Equal(t, "hostSecret", c.reqHeaders[evergreen.HostSecretHeader])
+	assert.Equal(t, defaultMaxAttempts, c.retry.MaxAttempts)
+	assert.Equal(t, defaultTimeoutStart, c.retry.MinDelay)
+	assert.Equal(t, defaultTimeoutMax, c.retry.MaxDelay)
 }
 
 func TestLoggerClose(t *testing.T) {
 	assert := assert.New(t)
-	comm := NewCommunicator("www.foo.com")
+	comm := NewHostCommunicator("www.foo.com", "hostID", "hostSecret")
 	logger, err := comm.GetLoggerProducer(context.Background(), TaskData{}, nil)
 	assert.NoError(err)
 	assert.NotNil(logger)
