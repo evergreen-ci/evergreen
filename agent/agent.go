@@ -187,7 +187,10 @@ LOOP:
 			// and avoid task system failures.
 			_, err := a.comm.GetCedarGRPCConn(ctx)
 			if err != nil {
-				return errors.Wrap(err, "connecting to cedar GRPC service")
+				grip.Debug("cedar unreachable, sleeping and trying again")
+				timer.Reset(0)
+				agentSleepInterval = minAgentSleepInterval
+				continue LOOP
 			}
 
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
