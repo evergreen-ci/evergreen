@@ -100,7 +100,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroSetup(sc))
 
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
-	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeAWSSNS(sc, env, opts.APIQueue))
+	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeEC2SNS(sc, env, opts.APIQueue))
+	app.AddRoute("/hooks/aws/ecs").Version(2).Post().RouteHandler(makeECSSNS(sc, env, opts.APIQueue))
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHostFilter(sc))
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStartProcesses(sc, env))
 	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostGetProcesses(sc, env))
