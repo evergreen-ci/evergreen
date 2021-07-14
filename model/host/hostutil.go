@@ -1001,6 +1001,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		executablePath,
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--mode=host"),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
