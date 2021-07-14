@@ -1203,6 +1203,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 	}
 
 	var instance *ec2.Instance
+
 	// Check whether instance is running
 	err = utility.Retry(
 		ctx,
