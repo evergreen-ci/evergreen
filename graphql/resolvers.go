@@ -971,6 +971,25 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
 	}
+
+	if len(patch.ChildPatches) > 0 {
+		allPatches := []restModel.APIPatch{}
+		allPatches = append(allPatches, *patch)
+		for _, cp := range patch.ChildPatches {
+			allPatches = append(allPatches, cp)
+			// add the child patch tasks to tasks so that we can consider their status
+			childPatchTasks, _, err := r.sc.FindTasksByVersion(*cp.Id, opts)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+			}
+			tasks = append(tasks, childPatchTasks...)
+		}
+		// determine what the main patch status should be given the status of
+		// the child patches
+		sort.Sort(restModel.PatchesByStatus(allPatches))
+		// after sorting, the first patch will be the one with the highest priority
+		patch.Status = allPatches[0].Status
+	}
 	statuses := getAllTaskStatuses(tasks)
 
 	// If theres an aborted task we should set the patch status to aborted if there are no other failures
