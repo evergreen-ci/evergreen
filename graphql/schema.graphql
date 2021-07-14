@@ -10,6 +10,7 @@ type Query {
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
+  version(id: String!): Version!
   projects: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(

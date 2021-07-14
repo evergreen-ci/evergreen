@@ -506,6 +506,7 @@ type ComplexityRoot struct {
 		UserConfig              func(childComplexity int) int
 		UserPatches             func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
 		UserSettings            func(childComplexity int) int
+		Version                 func(childComplexity int, id string) int
 	}
 
 	RecentTaskLogs struct {
@@ -881,6 +882,7 @@ type QueryResolver interface {
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
+	Version(ctx context.Context, id string) (*model.APIVersion, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error)
@@ -3300,6 +3302,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.UserSettings(childComplexity), true
 
+	case "Query.version":
+		if e.complexity.Query.Version == nil {
+			break
+		}
+
+		args, err := ec.field_Query_version_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Version(childComplexity, args["id"].(string)), true
+
 	case "RecentTaskLogs.agentLogs":
 		if e.complexity.RecentTaskLogs.AgentLogs == nil {
 			break
@@ -4863,6 +4877,7 @@ var sources = []*ast.Source{
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
+  version(id: String!): Version!
   projects: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
@@ -7139,6 +7154,20 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["userId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_version_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -16116,6 +16145,47 @@ func (ec *executionContext) _Query_patch(ctx context.Context, field graphql.Coll
 	res := resTmp.(*model.APIPatch)
 	fc.Result = res
 	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_version(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_version_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Version(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -28411,6 +28481,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_patch(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "version":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_version(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

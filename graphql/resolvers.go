@@ -984,6 +984,19 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
+func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIVersion, error) {
+	v, err := r.sc.FindVersionById(id)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find a version with id: `%s`, %s", id, err))
+	}
+	apiVersion := restModel.APIVersion{}
+	err = apiVersion.BuildFromService(v)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`, %s", id, err))
+	}
+	return &apiVersion, nil
+}
+
 func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
 	project, err := r.sc.FindProjectById(id, true)
 	if err != nil {
