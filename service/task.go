@@ -787,7 +787,8 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(r.Context())
 	data := logData{Buildlogger: make(chan apimodels.LogMessage, 1024), User: usr}
-	vars := gimlet.GetVars(r)
+	vars := gimlet
+	testLog.GetVars(r)
 	vals := r.URL.Query()
 	raw := (vals.Get("text") == "true") || (r.Header.Get("Content-Type") == "text/plain")
 
