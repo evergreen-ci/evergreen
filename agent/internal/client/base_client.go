@@ -20,7 +20,6 @@ type baseCommunicator struct {
 	retry           utility.RetryOptions
 	httpClient      *http.Client
 	reqHeaders      map[string]string
-	cedarHTTPClient *http.Client
 	cedarGRPCClient *grpc.ClientConn
 	loggerInfo      LoggerMetadata
 
@@ -90,14 +89,6 @@ func (c *baseCommunicator) resetClient() {
 		c.httpClient = utility.GetDefaultHTTPRetryableClient()
 		c.httpClient.Timeout = heartbeatTimeout
 	}
-	if c.cedarHTTPClient != nil {
-		utility.PutHTTPClient(c.cedarHTTPClient)
-
-		// We need to create a new HTTP client since cedar gRPC requests may
-		// often exceed one minute or use a stream.
-		c.cedarHTTPClient = utility.GetDefaultHTTPRetryableClient()
-		c.cedarHTTPClient.Timeout = 0
-	}
 }
 
 func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context, comm Communicator) error {
@@ -114,7 +105,7 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context, comm Communi
 			APIKey:      cc.APIKey,
 			Retries:     10,
 		}
-		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
+		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
 		if err != nil {
 			return errors.Wrap(err, "creating cedar grpc client connection")
 		}
