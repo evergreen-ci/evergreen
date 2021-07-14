@@ -175,7 +175,9 @@ OUTER:
 			}
 			if task.Status != evergreen.TaskSucceeded {
 				grip.Infof("found task is status %s", task.Status)
-				task = apimodels.APITask{}
+				task = apimodels.APITask{
+					Status: task.Status,
+				}
 				continue OUTER
 			}
 
