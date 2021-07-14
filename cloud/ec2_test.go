@@ -1247,6 +1247,7 @@ func (s *EC2Suite) TestCacheHostData() {
 		},
 	}
 	instance.PublicDnsName = aws.String("public_dns_name")
+	instance.PublicIpAddress = aws.String("12.34.56.78")
 
 	s.NoError(cacheHostData(s.ctx, s.h, instance, ec2m.client))
 
@@ -1266,6 +1267,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
 	s.True(instance.LaunchTime.Equal(h.StartTime))
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
+	s.Equal("12.34.56.78", h.IPv4)
 	s.Equal([]host.VolumeAttachment{
 		{
 			VolumeID:   "volume_id",

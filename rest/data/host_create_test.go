@@ -28,6 +28,7 @@ func TestListHostsForTask(t *testing.T) {
 			Id:     "1",
 			Host:   "1.com",
 			IP:     "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47",
+			IPv4:   "12.34.56.78",
 			Status: evergreen.HostRunning,
 			SpawnOptions: host.SpawnOptions{
 				TaskID: "task_1",
@@ -88,6 +89,7 @@ func TestListHostsForTask(t *testing.T) {
 	assert.Equal("4.com", found[0].Host)
 	assert.Equal("1.com", found[1].Host)
 	assert.Equal("abcd:1234:459c:2d00:cfe4:843b:1d60:8e47", found[1].IP)
+	assert.Equal("12.34.56.78", found[1].IPv4)
 }
 
 func TestCreateHostsFromTask(t *testing.T) {

@@ -384,6 +384,33 @@ func TestHostSetDNSName(t *testing.T) {
 	})
 }
 
+func TestHostSetIPv4Address(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	host := &Host{
+		Id: "hostOne",
+	}
+	assert.NoError(host.Insert())
+
+	ipv4Address := "12.34.56.78"
+	ipv4Address2 := "87.65.43.21"
+
+	assert.NoError(host.SetIPv4Address(ipv4Address))
+	assert.Equal(host.IPv4, ipv4Address)
+	host, err := FindOne(ById(host.Id))
+	assert.NoError(err)
+	assert.Equal(host.IPv4, ipv4Address)
+
+	// if the host is already updated, new updates should work
+	assert.NoError(host.SetIPv4Address(ipv4Address2))
+	assert.Equal(host.IPv4, ipv4Address2)
+
+	host, err = FindOne(ById(host.Id))
+	assert.NoError(err)
+	assert.Equal(host.IPv4, ipv4Address2)
+}
+
 func TestHostSetIPv6Address(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
