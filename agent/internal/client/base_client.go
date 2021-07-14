@@ -85,10 +85,10 @@ func (c *baseCommunicator) resetClient() {
 
 	if c.httpClient != nil {
 		utility.PutHTTPClient(c.httpClient)
-
-		c.httpClient = utility.GetDefaultHTTPRetryableClient()
-		c.httpClient.Timeout = heartbeatTimeout
 	}
+
+	c.httpClient = utility.GetDefaultHTTPRetryableClient()
+	c.httpClient.Timeout = heartbeatTimeout
 }
 
 func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context, comm Communicator) error {
