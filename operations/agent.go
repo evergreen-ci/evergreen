@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
-	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -110,13 +109,11 @@ func Agent() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			comm := client.NewCommunicator(c.String(agentAPIServerURLFlagName))
-			defer comm.Close()
-
 			agt, err := agent.New(ctx, opts, c.String(agentAPIServerURLFlagName))
 			if err != nil {
 				return errors.Wrap(err, "problem constructing agent")
 			}
+
 			defer agt.Close()
 
 			go hardShutdownForSignals(ctx, cancel)
