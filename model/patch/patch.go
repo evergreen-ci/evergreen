@@ -973,3 +973,33 @@ func (p PatchesByCreateTime) Less(i, j int) bool {
 func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
+
+type PatchesByStatus []Patch
+
+func (p PatchesByStatus) Len() int {
+	return len(p)
+}
+
+func (p PatchesByStatus) Less(i, j int) bool {
+	return p[i].patchStatusPriority() < p[j].patchStatusPriority()
+}
+
+func (p PatchesByStatus) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+// patchStatusPriority answers the question of what the patch status should be
+// when the patch status and the status of it's children are different
+func (p *Patch) patchStatusPriority() int {
+	switch p.Status {
+	case evergreen.PatchCreated:
+		return 10
+	case evergreen.PatchStarted:
+		return 20
+	case evergreen.PatchFailed:
+		return 30
+	case evergreen.PatchSucceeded:
+		return 40
+	}
+	return 100
+}

@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"net/url"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -188,6 +189,18 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
+
+	// set the patch status to the collective status between the parent and child patches
+	if len(childPatches) > 0 {
+		allPatches := []APIPatch{}
+		allPatches = append(allPatches, *apiPatch)
+		for _, cp := range childPatches {
+			allPatches = append(allPatches, cp)
+		}
+		sort.Sort(PatchesByStatus(allPatches))
+		// after sorting, the first patch will be the one with the highest priority
+		apiPatch.Status = allPatches[0].Status
+	}
 
 	if v.Project != "" {
 		identifier, err := model.GetIdentifierForProject(v.Project)

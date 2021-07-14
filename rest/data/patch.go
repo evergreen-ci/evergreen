@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -284,6 +285,25 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no patch '%s' found", patchID),
 		}
+	}
+
+	// set the patch status to the collective status between the parent and child patches
+	if patchDoc.IsParent() {
+		allPatches := []patch.Patch{}
+		allPatches = append(allPatches, *patchDoc)
+		for _, childPatchId := range patchDoc.Triggers.ChildPatches {
+			cp, err := patch.FindOneId(childPatchId)
+			if err != nil {
+				return nil, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "can't get child patch").Error(),
+				}
+			}
+			allPatches = append(allPatches, *cp)
+		}
+		sort.Sort(patch.PatchesByStatus(allPatches))
+		// after sorting, the first patch will be the one with the highest priority
+		patchDoc.Status = allPatches[0].Status
 	}
 
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
