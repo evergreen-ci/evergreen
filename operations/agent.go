@@ -30,6 +30,9 @@ func Agent() cli.Command {
 		logPrefixFlagName        = "log_prefix"
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
+		modeFlagName             = "mode"
+		podIDFlagName            = "pod_id"
+		podSecretFlagName        = "pod_secret"
 	)
 
 	return cli.Command{
@@ -41,11 +44,19 @@ func Agent() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  hostIDFlagName,
-				Usage: "id of machine agent is running on",
+				Usage: "id of machine agent is running on (applies only to host mode)",
 			},
 			cli.StringFlag{
 				Name:  hostSecretFlagName,
-				Usage: "secret for the current host",
+				Usage: "secret for the current host (applies only to host mode)",
+			},
+			cli.StringFlag{
+				Name:  podIDFlagName,
+				Usage: "the ID of the pod that the agent is running on (applies only to pod mode)",
+			},
+			cli.StringFlag{
+				Name:  podSecretFlagName,
+				Usage: "the secret for the pod that the agent is running on (applies only to pod mode)",
 			},
 			cli.StringFlag{
 				Name:  agentAPIServerURLFlagName,
@@ -73,12 +84,32 @@ func Agent() cli.Command {
 				Name:  agentCloudProviderFlagName,
 				Usage: "the cloud provider that manages this host",
 			},
+			cli.StringFlag{
+				Name:  modeFlagName,
+				Usage: "the mode that the agent should run in (host, pod)",
+				Value: "host",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(agentAPIServerURLFlagName),
-			requireStringFlag(hostIDFlagName),
-			requireStringFlag(hostSecretFlagName),
 			requireStringFlag(workingDirectoryFlagName),
+			func(c *cli.Context) error {
+				mode := c.String(modeFlagName)
+				switch mode {
+				case string(agent.HostMode):
+					catcher := grip.NewBasicCatcher()
+					catcher.Add(requireStringFlag(hostIDFlagName)(c))
+					catcher.Add(requireStringFlag(hostSecretFlagName)(c))
+					return catcher.Resolve()
+				case string(agent.PodMode):
+					catcher := grip.NewBasicCatcher()
+					catcher.Add(requireStringFlag(podIDFlagName)(c))
+					catcher.Add(requireStringFlag(podSecretFlagName)(c))
+					return catcher.Resolve()
+				default:
+					return errors.Errorf("invalid mode '%s'", mode)
+				}
+			},
 			func(c *cli.Context) error {
 				grip.SetName("evergreen.agent")
 				return nil
@@ -88,6 +119,9 @@ func Agent() cli.Command {
 			opts := agent.Options{
 				HostID:           c.String(hostIDFlagName),
 				HostSecret:       c.String(hostSecretFlagName),
+				PodID:            c.String(podIDFlagName),
+				PodSecret:        c.String(podSecretFlagName),
+				Mode:             agent.Mode(c.String(modeFlagName)),
 				StatusPort:       c.Int(statusPortFlagName),
 				LogPrefix:        c.String(logPrefixFlagName),
 				WorkingDirectory: c.String(workingDirectoryFlagName),

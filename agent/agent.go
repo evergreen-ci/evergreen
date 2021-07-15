@@ -38,10 +38,16 @@ type Agent struct {
 	defaultLogger send.Sender
 }
 
-// Options contains startup options for the Agent.
+// Options contains startup options for an Agent.
 type Options struct {
-	HostID                string
-	HostSecret            string
+	// Mode determines which mode the agent will run in.
+	Mode Mode
+	// HostID and HostSecret only apply in host mode.
+	HostID     string
+	HostSecret string
+	// PodID and PodSecret only apply in pod mode.
+	PodID                 string
+	PodSecret             string
 	StatusPort            int
 	LogPrefix             string
 	LogkeeperURL          string
@@ -54,6 +60,16 @@ type Options struct {
 	SetupData             apimodels.AgentSetupData
 	CloudProvider         string
 }
+
+// Mode represents a mode that the agent will run in.
+type Mode string
+
+const (
+	// HostMode indicates that the agent will run in a host.
+	HostMode Mode = "host"
+	// PodMode indicates that the agent will run in a pod's container.
+	PodMode Mode = "pod"
+)
 
 type taskContext struct {
 	currentCommand         command.Command
@@ -98,7 +114,15 @@ const (
 // Agent's Start method to begin listening for tasks to run. Users should call
 // Close when the agent is finished.
 func New(ctx context.Context, opts Options, serverURL string) (*Agent, error) {
-	comm := client.NewHostCommunicator(serverURL, opts.HostID, opts.HostSecret)
+	var comm client.Communicator
+	switch opts.Mode {
+	case HostMode:
+		comm = client.NewHostCommunicator(serverURL, opts.HostID, opts.HostSecret)
+	case PodMode:
+		comm = client.NewPodCommunicator(serverURL, opts.PodID, opts.PodSecret)
+	default:
+		return nil, errors.Errorf("unrecognized agent mode '%s'", opts.Mode)
+	}
 	return newWithCommunicator(ctx, opts, comm)
 }
 

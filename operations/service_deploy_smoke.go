@@ -130,12 +130,14 @@ func smokeStartEvergreen() cli.Command {
 					wd,
 					binary,
 					"agent",
+					"--mode=host",
 					"--host_id", hostId,
 					"--host_secret", hostSecret,
 					"--api_server", apiServerURL,
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--status_port", statusPort,
-					"--working_directory", wd)
+					"--working_directory", wd,
+				)
 
 				if err != nil {
 					return errors.Wrap(err, "error running agent")
@@ -176,6 +178,7 @@ func smokeStartEvergreen() cli.Command {
 					wd,
 					binary,
 					"agent",
+					"--mode=host",
 					"--host_id", hostId,
 					"--host_secret", hostSecret,
 					"--api_server", apiServerURL,
