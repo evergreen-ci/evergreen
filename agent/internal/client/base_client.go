@@ -1,15 +1,11 @@
 package client
 
 import (
-	"context"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/evergreen-ci/juniper/gopb"
-	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
@@ -20,6 +16,7 @@ type baseCommunicator struct {
 	retry           utility.RetryOptions
 	httpClient      *http.Client
 	reqHeaders      map[string]string
+	cedarHTTPClient *http.Client
 	cedarGRPCClient *grpc.ClientConn
 	loggerInfo      LoggerMetadata
 
@@ -85,41 +82,16 @@ func (c *baseCommunicator) resetClient() {
 
 	if c.httpClient != nil {
 		utility.PutHTTPClient(c.httpClient)
+
+		c.httpClient = utility.GetDefaultHTTPRetryableClient()
+		c.httpClient.Timeout = heartbeatTimeout
 	}
+	if c.cedarHTTPClient != nil {
+		utility.PutHTTPClient(c.cedarHTTPClient)
 
-	c.httpClient = utility.GetDefaultHTTPRetryableClient()
-	c.httpClient.Timeout = heartbeatTimeout
-}
-
-func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context, comm Communicator) error {
-	if c.cedarGRPCClient == nil {
-		cc, err := comm.GetCedarConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting cedar config")
-		}
-
-		if cc.BaseURL == "" {
-			// No cedar base URL probably means we are running
-			// evergreen locally or in some testing mode.
-			return nil
-		}
-
-		dialOpts := timber.DialCedarOptions{
-			BaseAddress: cc.BaseURL,
-			RPCPort:     cc.RPCPort,
-			Username:    cc.Username,
-			APIKey:      cc.APIKey,
-			Retries:     10,
-		}
-		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
-		if err != nil {
-			return errors.Wrap(err, "creating cedar grpc client connection")
-		}
+		// We need to create a new HTTP client since cedar gRPC requests may
+		// often exceed one minute or use a stream.
+		c.cedarHTTPClient = utility.GetDefaultHTTPRetryableClient()
+		c.cedarHTTPClient.Timeout = 0
 	}
-
-	// We should always check the health of the conn as a sanity check,
-	// this way we can fail the agent early and avoid task system failures.
-	healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
-	_, err := healthClient.Check(ctx, &gopb.HealthCheckRequest{})
-	return errors.Wrap(err, "checking cedar grpc health")
 }
