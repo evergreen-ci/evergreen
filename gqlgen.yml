@@ -25,6 +25,9 @@ models:
     model: github.com/evergreen-ci/evergreen/graphql.StringMap
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+    fields:
+      status:
+        resolver: true
   Parameter:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:
@@ -182,3 +185,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
   Version:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
+    fields:
+      projectIdentifier:
+        resolver: true
+      status:
+        resolver: true

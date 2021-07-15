@@ -21,7 +21,7 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
-func validatePatchID(patchId string) error {
+func ValidatePatchID(patchId string) error {
 	if !mgobson.IsObjectIdHex(patchId) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -58,7 +58,7 @@ func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time,
 
 // FindPatchById queries the backing database for the patch matching patchId.
 func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, error) {
-	if err := validatePatchID(patchId); err != nil {
+	if err := ValidatePatchID(patchId); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -85,7 +85,7 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.APIPatch, error) {
 	patchObjectIDs := []mgobson.ObjectId{}
 	for _, patchID := range patchIds {
-		if err := validatePatchID(patchID); err != nil {
+		if err := ValidatePatchID(patchID); err != nil {
 			return nil, errors.Wrap(err, "problem validating patchId")
 		}
 		patchObjectIDs = append(patchObjectIDs, mgobson.ObjectIdHex(patchID))
@@ -115,7 +115,7 @@ func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.API
 // AbortPatch uses the service level CancelPatch method to abort a single patch
 // with matching Id.
 func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
-	if err := validatePatchID(patchId); err != nil {
+	if err := ValidatePatchID(patchId); err != nil {
 		return errors.WithStack(err)
 	}
 

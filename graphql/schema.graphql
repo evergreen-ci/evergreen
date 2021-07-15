@@ -150,6 +150,7 @@ type MainlineCommitVersion {
   version: Version
   rolledUpVersions: [Version!]
 }
+
 type Version {
   id: String!
   createTime: Time!
@@ -162,12 +163,25 @@ type Version {
   order: Int!
   repo: String!
   project: String!
+  projectIdentifier: String!
   branch: String!
   requester: String!
   activated: Boolean
   taskStatusCounts: [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+  isPatch: Boolean!
+  patch: Patch
+  taskCount: Int
+  baseVersionID: String
+  versionTiming: VersionTiming
+  parameters: [Parameter!]!
 }
+
+type VersionTiming {
+  makespan: Duration
+  timeTaken: Duration
+}
+
 type StatusCount {
   status: String!
   count: Int!
