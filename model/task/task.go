@@ -1020,9 +1020,8 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 
 // SetHasCedarResults sets the HasCedarResults field of the task to
 // hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
-// true. If the task is part of a display task, the display tasks's fields are
-// also set. An error is returned if hasCedarResults is false and failedResults
-// is true as this is an invalid state. Note that if failedResults is false,
+// true. An error is returned if hasCedarResults is false and failedResults is
+// true as this is an invalid state. Note that if failedResults is false,
 // CedarResultsFailed is not set. This is because in cases where separate calls
 // to attach test results are made, only one call needs to have a test failure
 // for the CedarResultsFailed to be set to true.
@@ -1040,22 +1039,14 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 		set[CedarResultsFailedKey] = true
 	}
 
-	if err := UpdateOne(
+	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": set,
 		},
-	); err != nil {
-		return err
-	}
-
-	if !t.DisplayOnly && t.IsPartOfDisplay() {
-		return t.DisplayTask.SetHasCedarResults(hasCedarResults, failedResults)
-	}
-
-	return nil
+	)
 }
 
 func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
@@ -2043,9 +2034,9 @@ func (t *Task) makeArchivedTask() *Task {
 
 // Aggregation
 
-// MergeNewTestResults returns the task with both old (embedded in the tasks
-// collection) and new (from the testresults collection) test results merged in
-// the Task's LocalTestResults field.
+// MergeNewTestResults returns the task with both old (embedded in
+// the tasks collection) and new (from the testresults collection) test results
+// merged in the Task's LocalTestResults field.
 func (t *Task) MergeNewTestResults() error {
 	id := t.Id
 	if t.Archived {
@@ -2082,41 +2073,17 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
-// MergeTestResults returns the task with both old (embedded in the tasks
-// collection) and new (from the testresults collection) OR Cedar test results
-// merged in the Task's LocalTestResults field.
-func (t *Task) MergeTestResults() error {
-	if !t.hasCedarResults() {
-		return t.MergeNewTestResults()
-	}
-
-	results, err := t.GetCedarTestResults()
-	if err != nil {
-		return errors.Wrap(err, "getting test results from cedar")
-	}
-	t.LocalTestResults = append(t.LocalTestResults, results...)
-
-	return nil
-}
-
-// GetTestResultsForDisplayTask returns the test results for the execution
-// tasks for a display task.
+// GetTestResultsForDisplayTask returns the test results for the execution tasks
+// for a display task.
 func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	if !t.DisplayOnly {
 		return nil, errors.Errorf("%s is not a display task", t.Id)
 	}
-
-	if !t.hasCedarResults() {
-		tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
-		return tasks[0].LocalTestResults, errors.Wrap(err, "error merging test results for display task")
+	tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error merging test results for display task")
 	}
-
-	var err error
-	if len(t.LocalTestResults) == 0 {
-		t.LocalTestResults, err = t.GetCedarTestResults()
-	}
-
-	return t.LocalTestResults, err
+	return tasks[0].LocalTestResults, nil
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group
@@ -3116,110 +3083,6 @@ func (t *Task) SetNumDependents() error {
 	}, update)
 }
 
-func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
-	if len(execTasks) == 0 {
-		return nil
-	}
-
-	return UpdateOne(
-		bson.M{IdKey: displayTaskId},
-		bson.M{"$addToSet": bson.M{
-			ExecutionTasksKey: bson.M{"$each": execTasks},
-		}},
-	)
-}
-
-////////////////
-// Cedar Helpers
-////////////////
-
-// Get CedarTestResults fetches the task's test results from the Cedar service.
-// If the task does not have test results in Cedar, (nil, nil) is returned. If
-// the task is a display task, all of its execution tasks' test results are
-// returned.
-func (t *Task) GetCedarTestResults() ([]TestResult, error) {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
-
-	if !t.hasCedarResults() {
-		return nil, nil
-	}
-
-	taskID := t.Id
-	if t.Archived {
-		taskID = t.OldTaskId
-	}
-
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: t.Execution,
-	}
-	if t.DisplayOnly {
-		opts.DisplayTaskID = taskID
-	} else {
-		opts.TaskID = taskID
-	}
-
-	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting test results from cedar")
-	}
-
-	results := make([]TestResult, len(cedarResults))
-	for i, result := range cedarResults {
-		results[i] = ConvertCedarTestResult(result)
-	}
-
-	return results, nil
-}
-
-func (t *Task) hasCedarResults() bool {
-	if !t.DisplayOnly || t.HasCedarResults {
-		return t.HasCedarResults
-	}
-
-	// Older display tasks may incorrectly indicate that they do not have
-	// test results in Cedar. In the case that the execution tasks have
-	// results in Cedar, this will attempt to update the display task
-	// accordingly.
-	if len(t.ExecutionTasks) > 0 {
-		var (
-			execTasks []Task
-			err       error
-		)
-		if t.Archived {
-			// This is a display task from the old task collection,
-			// we need to look there for its execution tasks.
-			execTasks, err = FindAllOld(db.Query(bson.M{
-				OldTaskIdKey: bson.M{"$in": t.ExecutionTasks},
-				ExecutionKey: t.Execution,
-			}))
-		} else {
-			execTasks, err = FindAll(ByIds(t.ExecutionTasks))
-		}
-		if err != nil {
-			return false
-		}
-
-		for _, execTask := range execTasks {
-			if execTask.HasCedarResults {
-				// Attempt to update the display task's
-				// HasCedarResults field. We will not update
-				// the CedarResultsFailed field since we do
-				// want to iterate through all of the execution
-				// tasks and it isn't really needed for display
-				// tasks. Since we do not want to fail here, we
-				// can ignore the error.
-				_ = t.SetHasCedarResults(true, false)
-
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 // ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
 // struct.
 func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
@@ -3237,4 +3100,17 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		EndTime:         float64(result.End.Unix()),
 		Status:          result.Status,
 	}
+}
+
+func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
+	if len(execTasks) == 0 {
+		return nil
+	}
+
+	return UpdateOne(
+		bson.M{IdKey: displayTaskId},
+		bson.M{"$addToSet": bson.M{
+			ExecutionTasksKey: bson.M{"$each": execTasks},
+		}},
+	)
 }
