@@ -192,11 +192,8 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 	// set the patch status to the collective status between the parent and child patches
 	if len(childPatches) > 0 {
-		allPatches := []APIPatch{}
-		allPatches = append(allPatches, *apiPatch)
-		for _, cp := range childPatches {
-			allPatches = append(allPatches, cp)
-		}
+		allPatches := []APIPatch{*apiPatch}
+		allPatches = append(allPatches, childPatches...)
 		sort.Sort(PatchesByStatus(allPatches))
 		// after sorting, the first patch will be the one with the highest priority
 		apiPatch.Status = allPatches[0].Status
