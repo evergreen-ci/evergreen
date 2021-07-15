@@ -191,7 +191,7 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 	}
 	existingHostCount, err := host.CountRunningHosts(h.Distro.Id)
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "database error counting running hosts by h.Distro.Id"))
+		grip.Error(errors.Wrap(err, "database error counting running hosts by h.Distro.Id"))
 		existingHostCount = -1
 	}
 
