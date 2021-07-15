@@ -342,15 +342,19 @@ func RetryRequest(ctx context.Context, r *http.Request, opts RetryOptions) (*htt
 				"max":       opts.MaxAttempts,
 				"wait_secs": b.ForAttempt(float64(attempt)).Seconds(),
 			}))
-		} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return true, err
+		}
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return false, nil
-		} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		}
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 			return false, errors.Errorf("server returned status %d", resp.StatusCode)
 		}
 
 		// if we get here it should most likely be a 5xx status code
 
-		return true, nil
+		return true, errors.Errorf("server returned status %s", resp.StatusCode)
 	}, opts); err != nil {
 		return resp, err
 	}
