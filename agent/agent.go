@@ -207,6 +207,16 @@ LOOP:
 			grip.Info("agent loop canceled")
 			return nil
 		case <-timer.C:
+			// Check the cedar GRPC connection so we can fail early
+			// and avoid task system failures.
+			_, err := a.comm.GetCedarGRPCConn(ctx)
+			if err != nil {
+				grip.Warning(errors.Wrap(err, "cedar unreachable, sleeping and trying again").Error())
+				timer.Reset(0)
+				agentSleepInterval = minAgentSleepInterval
+				continue LOOP
+			}
+
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
 				AgentRevision: evergreen.AgentVersion,
