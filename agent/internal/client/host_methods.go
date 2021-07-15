@@ -363,7 +363,7 @@ func (c *hostCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, cc); err != nil {
-		err = errors.Wrap(err, "failed to read next task from response")
+		err = errors.Wrap(err, "reading cedar config from response")
 		return nil, err
 	}
 

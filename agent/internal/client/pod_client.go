@@ -6,6 +6,9 @@ import "github.com/evergreen-ci/evergreen"
 // for an agent running in a pod.
 type podCommunicator struct {
 	baseCommunicator
+
+	podID     string
+	podSecret string
 }
 
 // NewPodCommunicator returns a Communicator capable of making HTTP requests
@@ -16,6 +19,8 @@ func NewPodCommunicator(serverURL, podID, podSecret string) Communicator {
 			evergreen.PodHeader:       podID,
 			evergreen.PodSecretHeader: podSecret,
 		}),
+		podID:     podID,
+		podSecret: podSecret,
 	}
 
 	c.resetClient()
