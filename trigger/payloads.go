@@ -455,11 +455,11 @@ func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
 }
 
 func taskLink(uiBase string, taskID string, execution int) string {
-	return fmt.Sprintf("%s/task/%s/%d", uiBase, taskID, execution)
+	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
 }
 
 func taskLogLink(uiBase string, taskID string, execution int) string {
-	return fmt.Sprintf("%s/task_log_raw/%s/%d?type=T", uiBase, taskID, execution)
+	return fmt.Sprintf("%s/task_log_raw/%s/%d?type=T", uiBase, url.PathEscape(taskID), execution)
 }
 
 func buildLink(uiBase string, buildID string, hasPatch bool) string {
