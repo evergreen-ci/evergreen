@@ -873,8 +873,7 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
 	tasks := []Task{}
 	match := bson.M{
-		IdKey:        id,
-		ActivatedKey: true,
+		IdKey: id,
 	}
 	if execution != nil {
 		match[ExecutionKey] = *execution
