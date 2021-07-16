@@ -293,6 +293,7 @@ func (s *AdminSuite) TestAuthConfig() {
 			ClientID:           "id",
 			ClientSecret:       "secret",
 			Issuer:             "issuer",
+			Scopes:             []string{"openid", "email", "profile", "offline_access"},
 			UserGroup:          "group",
 			ExpireAfterMinutes: 60,
 		},
