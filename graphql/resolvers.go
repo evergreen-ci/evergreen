@@ -1882,9 +1882,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	}
 
 	scheduledTasks := []*restModel.APITask{}
-	tasksToSchedule := make(map[string]*task.Task)
-
-	generatedTasksToSchedule := []task.Task{}
+	tasksToSchedule := make(map[string]bool)
 
 	for _, t := range tasks {
 		// If a task is a generated task don't schedule it until we get all of the generated tasks we want to generate
@@ -1892,39 +1890,36 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
 			baseTask, _ := t.FindTaskOnBaseCommit()
 			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
-				tasksToSchedule[baseTask.Id] = baseTask
+				tasksToSchedule[baseTask.Id] = true
 			}
-			// If a task is generated lets keep track of it so we can restart it later
+			// If a task is generated lets find its base task if it exists otherwise we need to generate it
 		} else if t.GeneratedBy != "" {
-			generatedTasksToSchedule = append(generatedTasksToSchedule, t)
-
-		}
-	}
-
-	// If a generated task does not have a base task find its generator and use its base task
-	// to generate it
-	for _, t := range generatedTasksToSchedule {
-		baseTask, _ := t.FindTaskOnBaseCommit()
-		// If the task is undispatched or doesn't exist on the base commit then we want to schedule
-		if baseTask == nil {
-			generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
-			}
-			if generatorTask != nil {
-				baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
-				// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
-				if baseGeneratorTask != nil {
-					err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
-					if err != nil {
-						return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not stepback generated task: %s", err.Error()))
-					}
-					tasksToSchedule[baseGeneratorTask.Id] = baseGeneratorTask
-
+			baseTask, _ := t.FindTaskOnBaseCommit()
+			// If the task is undispatched or doesn't exist on the base commit then we want to schedule
+			if baseTask == nil {
+				generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
 				}
+				if generatorTask != nil {
+					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
+					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
+					if baseGeneratorTask != nil {
+						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
+						if err != nil {
+							return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not stepback generated task: %s", err.Error()))
+						}
+						tasksToSchedule[baseGeneratorTask.Id] = true
+
+					}
+				}
+			} else {
+				tasksToSchedule[baseTask.Id] = true
 			}
+
 		}
 	}
+
 	for taskId := range tasksToSchedule {
 		task, err := SetScheduled(ctx, r.sc, taskId, true)
 		if err != nil {
