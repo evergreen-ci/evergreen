@@ -1126,11 +1126,11 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	})
 
 	s.Equal("public_dns_name_1", hosts[1].Host)
-	s.Equal("1.1.1.1", hosts[1].Host)
+	s.Equal("1.1.1.1", hosts[1].IPv4)
 	s.Equal("public_dns_name_2", hosts[2].Host)
-	s.Equal("2.2.2.2", hosts[1].Host)
+	s.Equal("2.2.2.2", hosts[1].IPv4)
 	s.Equal("public_dns_name_3", hosts[3].Host)
-	s.Equal("3.3.3.3", hosts[1].Host)
+	s.Equal("3.3.3.3", hosts[1].IPv4)
 
 	s.Equal("i-3", hosts[2].ExternalIdentifier)
 }
