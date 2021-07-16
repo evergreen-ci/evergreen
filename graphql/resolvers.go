@@ -561,6 +561,20 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		}
 		opts.AttachVolume = *editSpawnHostInput.Volume
 	}
+	if editSpawnHostInput.PublicKey != nil {
+		if utility.FromBoolPtr(editSpawnHostInput.SavePublicKey) {
+			if err = savePublicKey(ctx, *editSpawnHostInput.PublicKey); err != nil {
+				return nil, err
+			}
+		}
+		opts.AddKey = editSpawnHostInput.PublicKey.Key
+		if opts.AddKey == "" {
+			opts.AddKey, err = r.sc.GetPublicKey(usr, editSpawnHostInput.PublicKey.Name)
+			if err != nil {
+				return nil, InputValidationError.Send(ctx, fmt.Sprintf("No matching key found for name '%s'", editSpawnHostInput.PublicKey.Name))
+			}
+		}
+	}
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
 	}
