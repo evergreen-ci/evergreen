@@ -211,6 +211,11 @@ LOOP:
 			// and avoid task system failures.
 			err := utility.Retry(ctx, func() (bool, error) {
 				_, err := a.comm.GetCedarGRPCConn(ctx)
+				if ctx.Err() != nil {
+					// We don't want to return an error if
+					// the agent loop is canceled.
+					return false, nil
+				}
 				return true, err
 			}, utility.RetryOptions{MaxAttempts: 5, MaxDelay: minAgentSleepInterval})
 			if err != nil {
