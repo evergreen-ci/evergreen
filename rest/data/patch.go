@@ -286,6 +286,30 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 		}
 	}
 
+	// set the patch status to the collective status between the parent and child patches
+	if patchDoc.IsParent() {
+		allPatches := []patch.Patch{*patchDoc}
+		for _, childPatchId := range patchDoc.Triggers.ChildPatches {
+			cp, err := patch.FindOneId(childPatchId)
+			if err != nil {
+				return nil, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "can't get child patch").Error(),
+				}
+			}
+			if cp == nil {
+				return nil, gimlet.ErrorResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    fmt.Sprintf("child patch with id %s not found", childPatchId),
+				}
+			}
+			allPatches = append(allPatches, *cp)
+		}
+
+		collectiveStatus := patch.GetCollectiveStatus(allPatches)
+		patchDoc.Status = &collectiveStatus
+	}
+
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
