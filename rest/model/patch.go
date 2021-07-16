@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"net/url"
-	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -194,9 +194,12 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	if len(childPatches) > 0 {
 		allPatches := []APIPatch{*apiPatch}
 		allPatches = append(allPatches, childPatches...)
-		sort.Sort(PatchesByStatus(allPatches))
-		// after sorting, the first patch will be the one with the highest priority
-		apiPatch.Status = allPatches[0].Status
+		collectiveStatus, err := getCollectiveStatus(allPatches)
+		if err != nil {
+			return errors.Wrapf(err, "error getting collective status for  '%s'", *apiPatch.Id)
+		}
+		apiPatch.Status = &collectiveStatus
+
 	}
 
 	if v.Project != "" {
@@ -208,6 +211,44 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	}
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
+}
+
+func getCollectiveStatus(allPatches []APIPatch) string {
+	hasCreated := false
+	hasFailure := false
+	hasSuccess := false
+
+	for _, p := range allPatches {
+		switch *p.Status {
+		case evergreen.PatchStarted:
+			return evergreen.PatchStarted
+		case evergreen.PatchCreated:
+			hasCreated = true
+		case evergreen.PatchFailed:
+			hasFailure = true
+		case evergreen.PatchSucceeded:
+			hasSuccess = true
+		}
+	}
+
+	if !(hasCreated || hasFailure || hasSuccess) {
+		grip.Critical(message.WrapError(errors.New("unknown patch status"), message.Fields{
+			"message": "An unknown patch status was found",
+			"cause":   "Programmer error: new statuses should be added to GetCollectiveStatus().",
+			"patches": allPatches,
+		}))
+	}
+
+	if hasCreated && (hasFailure || hasSuccess) {
+		return evergreen.PatchStarted
+	} else if hasCreated {
+		return evergreen.PatchCreated
+	} else if hasFailure {
+		return evergreen.PatchFailed
+	} else if hasSuccess {
+		return evergreen.PatchSucceeded
+	}
+	return evergreen.PatchCreated
 }
 
 func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
@@ -332,34 +373,4 @@ func (g *githubPatch) ToService() (interface{}, error) {
 	res.HeadHash = utility.FromStringPtr(g.HeadHash)
 	res.Author = utility.FromStringPtr(g.Author)
 	return res, nil
-}
-
-type PatchesByStatus []APIPatch
-
-func (p PatchesByStatus) Len() int {
-	return len(p)
-}
-
-func (p PatchesByStatus) Less(i, j int) bool {
-	return p[i].patchStatusPriority() < p[j].patchStatusPriority()
-}
-
-func (p PatchesByStatus) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-// patchStatusPriority answers the question of what the patch status should be
-// when the patch status and the status of it's children are different
-func (p *APIPatch) patchStatusPriority() int {
-	switch *p.Status {
-	case evergreen.PatchCreated:
-		return 10
-	case evergreen.PatchStarted:
-		return 20
-	case evergreen.PatchFailed:
-		return 30
-	case evergreen.PatchSucceeded:
-		return 40
-	}
-	return 100
 }

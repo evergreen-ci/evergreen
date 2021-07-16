@@ -19,6 +19,8 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -974,32 +976,40 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-type PatchesByStatus []Patch
+func GetCollectiveStatus(allPatches []Patch) string {
+	hasCreated := false
+	hasFailure := false
+	hasSuccess := false
 
-func (p PatchesByStatus) Len() int {
-	return len(p)
-}
-
-func (p PatchesByStatus) Less(i, j int) bool {
-	return p[i].patchStatusPriority() < p[j].patchStatusPriority()
-}
-
-func (p PatchesByStatus) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-// patchStatusPriority answers the question of what the patch status should be
-// when the patch status and the status of it's children are different
-func (p *Patch) patchStatusPriority() int {
-	switch p.Status {
-	case evergreen.PatchCreated:
-		return 10
-	case evergreen.PatchStarted:
-		return 20
-	case evergreen.PatchFailed:
-		return 30
-	case evergreen.PatchSucceeded:
-		return 40
+	for _, p := range allPatches {
+		switch p.Status {
+		case evergreen.PatchStarted:
+			return evergreen.PatchStarted
+		case evergreen.PatchCreated:
+			hasCreated = true
+		case evergreen.PatchFailed:
+			hasFailure = true
+		case evergreen.PatchSucceeded:
+			hasSuccess = true
+		}
 	}
-	return 100
+
+	if !(hasCreated || hasFailure || hasSuccess) {
+		grip.Critical(message.WrapError(errors.New("unknown patch status"), message.Fields{
+			"message": "An unknown patch status was found",
+			"cause":   "Programmer error: new statuses should be added to GetCollectiveStatus().",
+			"patches": allPatches,
+		}))
+	}
+
+	if hasCreated && (hasFailure || hasSuccess) {
+		return evergreen.PatchStarted
+	} else if hasCreated {
+		return evergreen.PatchCreated
+	} else if hasFailure {
+		return evergreen.PatchFailed
+	} else if hasSuccess {
+		return evergreen.PatchSucceeded
+	}
+	return evergreen.PatchCreated
 }

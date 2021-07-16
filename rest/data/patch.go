@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -306,9 +305,9 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 			}
 			allPatches = append(allPatches, *cp)
 		}
-		sort.Sort(patch.PatchesByStatus(allPatches))
-		// after sorting, the first patch will be the one with the highest priority
-		patchDoc.Status = allPatches[0].Status
+
+		collectiveStatus := patch.GetCollectiveStatus(allPatches)
+		patchDoc.Status = &collectiveStatus
 	}
 
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
