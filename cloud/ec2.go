@@ -1214,6 +1214,9 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusRunning {
 				return false, nil
 			}
+			if err = h.SetIPv4Address(*instance.PublicIpAddress); err != nil {
+				return false, errors.Wrap(err, "error setting ipv4 address")
+			}
 			return true, errors.New("host is not started")
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,

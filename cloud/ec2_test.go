@@ -130,6 +130,7 @@ func (s *EC2Suite) SetupTest() {
 				CanBeModified: true,
 			},
 		},
+		IsVirtualWorkstation: true,
 	}
 
 	s.volume = &host.Volume{
@@ -774,10 +775,11 @@ func (s *EC2Suite) TestStartInstance() {
 			Status: evergreen.HostRunning,
 		},
 		&host.Host{
-			Id:     "host-stopped",
-			Status: evergreen.HostStopped,
-			Host:   "old_dns_name",
-			IPv4:   "1.1.1.1",
+			Id:                   "host-stopped",
+			Status:               evergreen.HostStopped,
+			Host:                 "old_dns_name",
+			IPv4:                 "1.1.1.1",
+			IsVirtualWorkstation: true,
 		},
 	}
 	for _, h := range hosts {
@@ -939,6 +941,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2Spot,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "i-2",
@@ -946,6 +949,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "sir-3",
@@ -953,6 +957,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2Spot,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "i-4",
@@ -960,6 +965,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "i-5",
@@ -967,6 +973,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "i-6",
@@ -974,6 +981,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -1128,9 +1136,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	s.Equal("public_dns_name_1", hosts[1].Host)
 	s.Equal("1.1.1.1", hosts[1].IPv4)
 	s.Equal("public_dns_name_2", hosts[2].Host)
-	s.Equal("2.2.2.2", hosts[1].IPv4)
+	s.Equal("2.2.2.2", hosts[2].IPv4)
 	s.Equal("public_dns_name_3", hosts[3].Host)
-	s.Equal("3.3.3.3", hosts[1].IPv4)
+	s.Equal("3.3.3.3", hosts[3].IPv4)
 
 	s.Equal("i-3", hosts[2].ExternalIdentifier)
 }
