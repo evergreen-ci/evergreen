@@ -209,12 +209,12 @@ LOOP:
 		case <-timer.C:
 			// Check the cedar GRPC connection so we can fail early
 			// and avoid task system failures.
-			_, err := a.comm.GetCedarGRPCConn(ctx)
+			err := utility.Retry(ctx, func() (bool, error) {
+				_, err := a.comm.GetCedarGRPCConn(ctx)
+				return true, err
+			}, utility.RetryOptions{MaxAttempts: 20, MaxDelay: time.Minute})
 			if err != nil {
-				grip.Warning(errors.Wrap(err, "cedar unreachable, sleeping and trying again").Error())
-				timer.Reset(0)
-				agentSleepInterval = minAgentSleepInterval
-				continue LOOP
+				return errors.Wrap(err, "cannot conntect to cedar")
 			}
 
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
