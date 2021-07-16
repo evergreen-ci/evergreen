@@ -212,7 +212,7 @@ LOOP:
 			err := utility.Retry(ctx, func() (bool, error) {
 				_, err := a.comm.GetCedarGRPCConn(ctx)
 				return true, err
-			}, utility.RetryOptions{MaxAttempts: 20, MaxDelay: time.Minute})
+			}, utility.RetryOptions{MaxAttempts: 5, MaxDelay: minAgentSleepInterval})
 			if err != nil {
 				return errors.Wrap(err, "cannot connect to cedar")
 			}
