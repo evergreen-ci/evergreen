@@ -194,10 +194,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	if len(childPatches) > 0 {
 		allPatches := []APIPatch{*apiPatch}
 		allPatches = append(allPatches, childPatches...)
-		collectiveStatus, err := getCollectiveStatus(allPatches)
-		if err != nil {
-			return errors.Wrapf(err, "error getting collective status for  '%s'", *apiPatch.Id)
-		}
+		collectiveStatus := getCollectiveStatus(allPatches)
 		apiPatch.Status = &collectiveStatus
 
 	}
