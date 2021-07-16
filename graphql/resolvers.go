@@ -2755,7 +2755,6 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		}
 		statusCountsArr = append(statusCountsArr, &sc)
 	}
-
 	//sort the result array by status name
 	sort.Slice(statusCountsArr, func(p, q int) bool {
 		return statusCountsArr[p].Status < statusCountsArr[q].Status
