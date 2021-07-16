@@ -14,9 +14,10 @@ const (
 
 var (
 	IDKey                        = bsonutil.MustHaveTag(Pod{}, "ID")
+	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
 	SecretKey                    = bsonutil.MustHaveTag(Pod{}, "Secret")
-	ExternalIDKey                = bsonutil.MustHaveTag(Pod{}, "ExternalID")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
+	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
 	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 
 	TaskContainerCreationOptsImageKey    = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Image")
@@ -32,9 +33,9 @@ var (
 )
 
 // FindOne finds one pod by the given query.
-func FindOne(query db.Q) (*Pod, error) {
+func FindOne(q bson.M) (*Pod, error) {
 	var p Pod
-	err := db.FindOneQ(Collection, query, &p)
+	err := db.FindOneQ(Collection, db.Query(q), &p)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -43,10 +44,24 @@ func FindOne(query db.Q) (*Pod, error) {
 
 // FindOneByID finds one pod by its ID.
 func FindOneByID(id string) (*Pod, error) {
-	query := db.Query(bson.M{IDKey: id})
-	p, err := FindOne(query)
+	p, err := FindOne(ByID(id))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod '%s'", id)
 	}
 	return p, nil
+}
+
+func ByID(id string) bson.M {
+	return bson.M{
+		IDKey: id,
+	}
+}
+
+// UpdateOne updates one pod.
+func UpdateOne(query interface{}, update interface{}) error {
+	return db.Update(
+		Collection,
+		query,
+		update,
+	)
 }

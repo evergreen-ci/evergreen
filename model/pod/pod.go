@@ -3,8 +3,11 @@ package pod
 import (
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
+	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -14,17 +17,82 @@ type Pod struct {
 	// ID is the unique identifier for the metadata document. This is
 	// semantically unrelated to the ExternalID.
 	ID string `bson:"_id" json:"id"`
-	// ExternalID is the unique external resource identifier for the collection
-	// of containers running in the container orchestration service.
-	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
+	// Status is the current state of the pod.
+	Status Status `bson:"pod_status"`
 	// Secret is the shared secret between the server and the pod for
 	// authentication when the host is provisioned.
 	Secret string `bson:"secret" json:"secret"`
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
+	// Resources are external resources that are managed by this pod.
+	Resources ResourceInfo `bson:"ecs_info" json:"ecs_info"`
 	// TimeInfo contains timing information for the pod's lifecycle.
 	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
+}
+
+// Status represents a possible state that a pod can be in.
+type Status string
+
+func (s Status) Export() (cocoa.ECSPodStatus, error) {
+	switch s {
+	case InitializingStatus:
+	case StartingStatus:
+		return cocoa.Starting, nil
+	case RunningStatus:
+		return cocoa.Running, nil
+	case TerminatedStatus:
+		return cocoa.Deleted, nil
+	default:
+		return "", errors.Errorf("no equivalent ECS status for pod status '%s'", s)
+	}
+}
+
+const (
+	// InitializingStatus indicates that a pod is waiting to be created.
+	InitializingStatus Status = "initializing"
+	// StartingStatus indicates that a pod's containers are starting.
+	StartingStatus Status = "starting"
+	// Running indicates that the pod's containers are running.
+	RunningStatus Status = "running"
+	// TerminatedStatus indicates that the pod's containers have been
+	// deleted.
+	TerminatedStatus Status = "terminated"
+)
+
+// ResourceInfo represents information about external resources associated with
+// a pod.
+type ResourceInfo struct {
+	// ID is the unique resource identifier for the collection of containers
+	// running.
+	ID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
+	// Cluster is the name of the cluster where the containers are running.
+	Cluster string `bson:"cluster" json:"cluster"`
+	// DefinitionID is the resource identifier for the pod definition template.
+	DefinitionID string `bson:"definition_id" json:"definition_id"`
+	// SecretIDs are the resource identifiers for the secrets owned by this pod
+	// in Secrets Manager.
+	SecretIDs []string `bson:"secret_ids" json:"secret_ids"`
+}
+
+func (i *ResourceInfo) Export() cocoa.ECSPodResources {
+	var secrets []cocoa.PodSecret
+	for _, id := range i.SecretIDs {
+		s := cocoa.NewPodSecret().
+			SetName(id).
+			SetOwned(true)
+		secrets = append(secrets, *s)
+	}
+
+	taskDef := cocoa.NewECSTaskDefinition().
+		SetID(i.DefinitionID).
+		SetOwned(true)
+
+	return *cocoa.NewECSPodResources().
+		SetTaskID(i.ID).
+		SetCluster(i.Cluster).
+		SetTaskDefinition(*taskDef).
+		SetSecrets(secrets)
 }
 
 // TaskCreationOptions are options to apply to the task's container when
@@ -86,4 +154,38 @@ func (p *Pod) Remove() error {
 			IDKey: p.ID,
 		},
 	)
+}
+
+// UpdateStatus updates the pod status.
+func (p *Pod) UpdateStatus(s Status) error {
+	if err := UpdateOne(ByID(p.ID), bson.M{
+		"$set": bson.M{StatusKey: s},
+	}); err != nil {
+		return err
+	}
+
+	p.Status = s
+
+	// TODO (EVG-15026): set up event logs when pod state changes.
+
+	return nil
+}
+
+func (p *Pod) Export(settings *evergreen.Settings, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, error) {
+	status, err := p.Status.Export()
+	if err != nil {
+		return nil, errors.Wrap(err, "exporting pod status")
+	}
+
+	res := p.Resources.Export()
+	if err != nil {
+		return nil, errors.Wrap(err, "exporting pod resources")
+	}
+
+	opts := ecs.NewBasicECSPodOptions().
+		SetClient(c).
+		SetVault(v).
+		SetResources(res)
+		SetStatus(status).
+	return nil, errors.New("TODO: implement")
 }
