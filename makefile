@@ -38,7 +38,7 @@ ifeq ($(OS),Windows_NT)
 endif
 
 export GO111MODULE := off
-export GOPATH=$(gopath)
+export GOPATH := $(gopath)
 export GOCACHE := $(gocache)
 # end go runtime settings
 
