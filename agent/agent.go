@@ -214,7 +214,7 @@ LOOP:
 				return true, err
 			}, utility.RetryOptions{MaxAttempts: 20, MaxDelay: time.Minute})
 			if err != nil {
-				return errors.Wrap(err, "cannot conntect to cedar")
+				return errors.Wrap(err, "cannot connect to cedar")
 			}
 
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
