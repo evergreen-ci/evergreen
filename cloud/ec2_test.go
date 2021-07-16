@@ -772,13 +772,12 @@ func (s *EC2Suite) TestStartInstance() {
 		&host.Host{
 			Id:     "host-running",
 			Status: evergreen.HostRunning,
-			IPv4:   "1.1.1.1",
 		},
 		&host.Host{
 			Id:     "host-stopped",
 			Status: evergreen.HostStopped,
 			Host:   "old_dns_name",
-			IPv4:   "2.2.2.2",
+			IPv4:   "1.1.1.1",
 		},
 	}
 	for _, h := range hosts {
@@ -792,6 +791,7 @@ func (s *EC2Suite) TestStartInstance() {
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, found.Status)
 	s.Equal("public_dns_name", found.Host)
+	s.Equal("12.34.56.78", found.IPv4)
 }
 
 func (s *EC2Suite) TestIsUp() {

@@ -37,7 +37,7 @@ type Host struct {
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
 	Provider        string        `bson:"host_type" json:"host_type"`
-	IP              string        `bson:"ip_address" json:"ip_address"`
+	IP              string        `bson:"ip_address" json:"ip_address"` // holds ipv6 address
 	IPv4            string        `bson:"ipv4_address" json:"ipv4_address"`
 
 	// secondary (external) identifier for the host

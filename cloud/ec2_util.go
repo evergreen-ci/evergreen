@@ -329,8 +329,10 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 		return errors.Wrap(err, "error updating host document in db")
 	}
 
-	if err := h.SetIPv4Address(*instance.PublicIpAddress); err != nil {
-		return errors.Wrap(err, "error setting ipv4 address")
+	if h.IsVirtualWorkstation {
+		if err := h.SetIPv4Address(*instance.PublicIpAddress); err != nil {
+			return errors.Wrap(err, "error setting ipv4 address")
+		}
 	}
 
 	// set IPv6 address, if applicable
