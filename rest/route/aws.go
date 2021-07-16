@@ -189,11 +189,18 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 			instanceType = stringVal
 		}
 	}
+	existingHostCount, err := host.CountRunningHosts(h.Distro.Id)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "database error counting running hosts by h.Distro.Id"))
+		existingHostCount = -1
+	}
+
 	grip.Info(message.Fields{
-		"message":       "got interruption warning from AWS",
-		"distro":        h.Distro.Id,
-		"instance_type": instanceType,
-		"host_id":       h.Id,
+		"message":            "got interruption warning from AWS",
+		"distro":             h.Distro.Id,
+		"running_host_count": existingHostCount,
+		"instance_type":      instanceType,
+		"host_id":            h.Id,
 	})
 
 	if h.Status == evergreen.HostTerminated {

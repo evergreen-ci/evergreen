@@ -3,7 +3,9 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"runtime"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/timber"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -27,7 +30,23 @@ import (
 )
 
 func (c *podCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
-	return nil, errors.New("TODO: implement")
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("pods/%s/agent/setup", c.podID),
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, "getting agent setup data: %s", err.Error())
+	}
+
+	var data apimodels.AgentSetupData
+	if err := utility.ReadJSON(resp.Body, data); err != nil {
+		return nil, errors.Wrap(err, "reading agent setup data from response")
+	}
+
+	return &data, nil
 }
 
 // StartTask marks the task as started.
@@ -92,7 +111,23 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 // GetCedarConfig returns the cedar service information including the base URL,
 // URL, RPC port, and credentials.
 func (c *podCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	return nil, errors.New("TODO: implement")
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("pods/%s/agent/cedar_config", c.podID),
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, "getting cedar config: %s", err.Error())
+	}
+
+	var cc apimodels.CedarConfig
+	if err := utility.ReadJSON(resp.Body, &cc); err != nil {
+		return nil, errors.Wrap(err, "reading cedar config from response")
+	}
+
+	return &cc, nil
 }
 
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or

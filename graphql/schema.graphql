@@ -164,7 +164,12 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
+  taskStatusCounts: [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+}
+type StatusCount {
+  status: String!
+  count: Int!
 }
 
 input BuildVariantOptions {

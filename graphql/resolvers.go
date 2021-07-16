@@ -985,6 +985,25 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
 	}
+
+	if len(patch.ChildPatches) > 0 {
+		allPatches := []restModel.APIPatch{}
+		allPatches = append(allPatches, *patch)
+		for _, cp := range patch.ChildPatches {
+			allPatches = append(allPatches, cp)
+			// add the child patch tasks to tasks so that we can consider their status
+			childPatchTasks, _, err := r.sc.FindTasksByVersion(*cp.Id, opts)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+			}
+			tasks = append(tasks, childPatchTasks...)
+		}
+		// determine what the main patch status should be given the status of
+		// the child patches
+		sort.Sort(restModel.PatchesByStatus(allPatches))
+		// after sorting, the first patch will be the one with the highest priority
+		patch.Status = allPatches[0].Status
+	}
 	statuses := getAllTaskStatuses(tasks)
 
 	// If theres an aborted task we should set the patch status to aborted if there are no other failures
@@ -2704,6 +2723,34 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 }
 
 type versionResolver struct{ *Resolver }
+
+// Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
+func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion) ([]*StatusCount, error) {
+	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, data.TaskFilterOptions{})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", *v.Id, err.Error()))
+	}
+
+	statusCountsMap := map[string]int{}
+	for _, task := range tasks {
+		if val, exist := statusCountsMap[task.GetDisplayStatus()]; exist {
+			statusCountsMap[task.GetDisplayStatus()] = val + 1
+		} else {
+			statusCountsMap[task.GetDisplayStatus()] = 1
+		}
+	}
+
+	statusCountsArr := []*StatusCount{}
+	for statusName, statusCount := range statusCountsMap {
+		sc := StatusCount{
+			Status: statusName,
+			Count:  statusCount,
+		}
+		statusCountsArr = append(statusCountsArr, &sc)
+	}
+
+	return statusCountsArr, nil
+}
 
 // Returns grouped build variants for a version. Will not return build variants for unactivated versions
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error) {
