@@ -2726,7 +2726,14 @@ type versionResolver struct{ *Resolver }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
 func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion) ([]*StatusCount, error) {
-	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, data.TaskFilterOptions{})
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
+	}
+	opts := data.TaskFilterOptions{
+		Sorts: defaultSort,
+	}
+	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
+
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", *v.Id, err.Error()))
 	}
@@ -2748,6 +2755,10 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		}
 		statusCountsArr = append(statusCountsArr, &sc)
 	}
+	//sort the result array by status name
+	sort.Slice(statusCountsArr, func(p, q int) bool {
+		return statusCountsArr[p].Status < statusCountsArr[q].Status
+	})
 
 	return statusCountsArr, nil
 }
