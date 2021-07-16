@@ -330,6 +330,7 @@ type HostModifyOptions struct {
 	DetachVolume       string
 	SubscriptionType   string
 	NewName            string
+	AddKey             string
 }
 
 type SpawnHostUsage struct {

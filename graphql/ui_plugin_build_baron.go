@@ -269,27 +269,23 @@ func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.Bui
 func BbGetTask(taskId string, executionString string) (*task.Task, error) {
 	execution, err := strconv.Atoi(executionString)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid execution number")
+		return nil, errors.Wrap(err, "Invalid execution number")
 	}
-
 	t, err := task.FindOneIdOldOrNew(taskId, execution)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding task")
+		return nil, errors.Wrap(err, "problem finding task")
 	}
 	if t == nil {
-		return nil, errors.Errorf("no task found for task id: %s and execution: %d", taskId, execution)
+		return nil, errors.Errorf("No task found for taskId: %s and execution: %d", taskId, execution)
 	}
-
 	if t.DisplayOnly {
 		t.LocalTestResults, err = t.GetTestResultsForDisplayTask()
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding test results for display task '%s'", t.Id)
+			return nil, errors.Wrapf(err, "Problem finding test results for display task '%s'", t.Id)
 		}
 	}
-
 	return t, nil
 }
-
 func (js *JiraSuggest) GetTimeout() time.Duration {
 	// This function is never called because we are willing to wait forever for the fallback handler
 	// to return JIRA ticket results.

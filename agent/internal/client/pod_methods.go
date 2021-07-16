@@ -3,11 +3,10 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
-	"runtime"
+	"fmt"
+	"net/http"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -17,17 +16,30 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/juniper/gopb"
-	"github.com/evergreen-ci/pail"
-	"github.com/evergreen-ci/timber"
-	"github.com/mongodb/grip"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
 func (c *podCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
-	return nil, errors.New("TODO: implement")
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("pods/%s/agent/setup", c.podID),
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, "getting agent setup data: %s", err.Error())
+	}
+
+	var data apimodels.AgentSetupData
+	if err := utility.ReadJSON(resp.Body, data); err != nil {
+		return nil, errors.Wrap(err, "reading agent setup data from response")
+	}
+
+	return &data, nil
 }
 
 // StartTask marks the task as started.
@@ -92,105 +104,32 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 // GetCedarConfig returns the cedar service information including the base URL,
 // URL, RPC port, and credentials.
 func (c *podCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	return nil, errors.New("TODO: implement")
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("pods/%s/agent/cedar_config", c.podID),
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, "getting cedar config: %s", err.Error())
+	}
+
+	var cc apimodels.CedarConfig
+	if err := utility.ReadJSON(resp.Body, &cc); err != nil {
+		return nil, errors.Wrap(err, "reading cedar config from response")
+	}
+
+	return &cc, nil
 }
 
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or
 // creates it if it doesn't exist.
 func (c *podCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
-	if err := c.createCedarGRPCConn(ctx); err != nil {
+	if err := c.createCedarGRPCConn(ctx, c); err != nil {
 		return nil, errors.Wrap(err, "setting up cedar grpc connection")
 	}
 	return c.cedarGRPCClient, nil
-}
-
-func (c *podCommunicator) createCedarGRPCConn(ctx context.Context) error {
-	if c.cedarGRPCClient == nil {
-		cc, err := c.GetCedarConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting cedar config")
-		}
-
-		// TODO (EVG-14557): Remove TLS dial option fallback once cedar
-		// gRPC is on API auth.
-		catcher := grip.NewBasicCatcher()
-		dialOpts := timber.DialCedarOptions{
-			BaseAddress: cc.BaseURL,
-			RPCPort:     cc.RPCPort,
-			Username:    cc.Username,
-			APIKey:      cc.APIKey,
-			Retries:     10,
-		}
-		if runtime.GOOS == "windows" {
-			cas, err := c.getAWSCACerts(ctx)
-			if err != nil {
-				return errors.Wrap(err, "getting AWS root CA certs for cedar gRPC client connections on Windows")
-			}
-			dialOpts.CACerts = [][]byte{cas}
-		}
-		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
-		if err != nil {
-			catcher.Wrap(err, "creating cedar grpc client connection with API auth.")
-		} else {
-			healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
-			_, err = healthClient.Check(ctx, &gopb.HealthCheckRequest{})
-			if err == nil {
-				return nil
-			}
-			catcher.Wrap(err, "checking cedar grpc health with API auth")
-		}
-
-		// Try again, this time with TLS auth.
-		dialOpts.TLSAuth = true
-		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.cedarHTTPClient, dialOpts)
-		if err == nil {
-			return nil
-		}
-		catcher.Wrap(err, "creating cedar grpc client connection with TLS auth")
-
-		return catcher.Resolve()
-	}
-
-	return nil
-}
-
-// getAWSCACerts fetches AWS's root CA certificates stored in S3. This is a
-// workaround for the fact that Go cannot access the system certificate pool on
-// Windows (which would have these certificates).
-// TODO: If and when the Windows system cert issue is fixed, we can get rid of
-// this workaround. See https://github.com/golang/go/issues/16736.
-func (c *podCommunicator) getAWSCACerts(ctx context.Context) ([]byte, error) {
-	setupData, err := c.GetAgentSetupData(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting setup data")
-	}
-
-	// We are hardcoding this magic object in S3 because these certificates
-	// are not set to expire for another 20 years. Also, we are hopeful
-	// that this Windows system cert issue will go away in future versions
-	// of Go.
-	bucket, err := pail.NewS3Bucket(pail.S3Options{
-		Name:        "boxes.10gen.com",
-		Prefix:      "build/amazontrust",
-		Region:      endpoints.UsEast1RegionID,
-		Credentials: pail.CreateAWSCredentials(setupData.S3Key, setupData.S3Secret, ""),
-		MaxRetries:  10,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "creating pail bucket")
-	}
-
-	r, err := bucket.Get(ctx, "AmazonRootCA_all.pem")
-	if err != nil {
-		return nil, errors.Wrap(err, "getting AWS root CA certificates")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	cas, err := ioutil.ReadAll(r)
-	catcher.Wrap(err, "reading AWS root CA certificates")
-	catcher.Wrap(r.Close(), "closing the ReadCloser")
-
-	return cas, catcher.Resolve()
 }
 
 func (c *podCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {

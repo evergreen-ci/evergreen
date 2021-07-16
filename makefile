@@ -38,7 +38,7 @@ ifeq ($(OS),Windows_NT)
 endif
 
 export GO111MODULE := off
-export GOPATH=$(gopath)
+export GOPATH := $(gopath)
 export GOCACHE := $(gocache)
 # end go runtime settings
 
@@ -261,6 +261,21 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/genproto/
 	rm -rf vendor/github.com/docker/docker/vendor/google.golang.org/grpc/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/evergreen-ci/gimlet/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/evergreen-ci/utility/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/aws/aws-sdk-go/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/davecgh/go-spew/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/jmespath/go-jmespath/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/jpillora/backoff/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/pmezard/go-difflib/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/PuerkitoBio/rehttp/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/stretchr/objx/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/golang.org/x/oauth2/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/evergreen-ci/cocoa/vendor/gopkg.in/yaml.v3/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/anser/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/pkg/errors/

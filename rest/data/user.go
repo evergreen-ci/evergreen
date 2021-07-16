@@ -40,6 +40,10 @@ func (u *DBUserConnector) DeletePublicKey(user *user.DBUser, keyName string) err
 	return user.DeletePublicKey(keyName)
 }
 
+func (u *DBUserConnector) GetPublicKey(user *user.DBUser, keyName string) (string, error) {
+	return user.GetPublicKey(keyName)
+}
+
 func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	if strings.HasPrefix(settings.SlackUsername, "#") {
 		return gimlet.ErrorResponse{
@@ -266,6 +270,21 @@ func (muc *MockUserConnector) DeletePublicKey(u *user.DBUser, keyName string) er
 	}
 	cu.PubKeys = newKeys
 	return nil
+}
+
+func (muc *MockUserConnector) GetPublicKey(u *user.DBUser, keyName string) (string, error) {
+	cu, ok := muc.CachedUsers[u.Id]
+	if !ok {
+		return "", errors.New(fmt.Sprintf("User '%s' doesn't exist", u.Id))
+	}
+
+	for _, key := range cu.PubKeys {
+		if key.Name == keyName {
+			return key.Key, nil
+		}
+	}
+
+	return "", errors.New(fmt.Sprintf("User '%s' has no key named '%s'", u.Id, keyName))
 }
 
 func (muc *MockUserConnector) UpdateSettings(user *user.DBUser, settings user.UserSettings) error {
