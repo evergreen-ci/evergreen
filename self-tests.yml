@@ -706,3 +706,4 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     tasks:
       - name: ".agent .test"
+      - name: ".cli .test"
