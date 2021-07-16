@@ -104,6 +104,10 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		opts.TaskID = tgh.taskID
 	}
 	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	testStatuses := []string{}
+	if tgh.testStatus != "" {
+		testStatuses = append(testStatuses, tgh.testStatus)
+	}
 	if err == nil && tgh.testID == "" {
 		startAt := 0
 		if tgh.key != "" {
@@ -112,21 +116,15 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(errors.New("invalid start_at"))
 			}
 		}
-		testStatuses := []string{}
-		if tgh.testStatus != "" {
-			testStatuses = append(testStatuses, tgh.testStatus)
-		}
-
 		var filteredCount int
-		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(
-			cedarTestResults,
-			tgh.testName,
-			testStatuses,
-			"",
-			1,
-			startAt,
-			tgh.limit,
-		)
+		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(graphql.FilterSortAndPaginateCedarTestResultsOpts{
+			Limit:       tgh.limit,
+			Page:        startAt,
+			SortDir:     1,
+			Statuses:    testStatuses,
+			TestName:    tgh.testName,
+			TestResults: cedarTestResults,
+		})
 
 		if startAt*tgh.limit < filteredCount {
 			key = fmt.Sprintf("%d", startAt+1)
@@ -146,7 +144,14 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 			}
 		} else {
-			tests, err = tgh.sc.FindTestsByTaskId(tgh.taskID, tgh.key, tgh.testName, tgh.testStatus, tgh.limit+1, tgh.testExecution)
+			tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+				Execution: tgh.testExecution,
+				Limit:     tgh.limit + 1,
+				Statuses:  testStatuses,
+				TaskID:    tgh.taskID,
+				TestID:    tgh.key,
+				TestName:  tgh.testName,
+			})
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 			}

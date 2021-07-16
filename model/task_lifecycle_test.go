@@ -606,7 +606,7 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	displayName := "testName"
 	b := &build.Build{
 		Id:        "buildtest",
-		Status:    evergreen.BuildStarted,
+		Status:    evergreen.BuildFailed,
 		Version:   "abc",
 		Activated: true,
 	}
@@ -640,6 +640,9 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	assert.NoError(t, anotherTask.Insert())
 
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(&testTask))
+	dbBuild, err := build.FindOneId(b.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.BuildStarted, dbBuild.Status)
 	dbVersion, err := VersionFindOneId(v.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)

@@ -31,6 +31,7 @@ type Query {
     limit: Int = 0
     testName: String = ""
     statuses: [String!]! = []
+    groupId: String = ""
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
@@ -164,7 +165,12 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
+  taskStatusCounts: [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+}
+type StatusCount {
+  status: String!
+  count: Int!
 }
 
 input BuildVariantOptions {
@@ -192,6 +198,7 @@ enum TaskSortCategory {
 enum TestSortCategory {
   BASE_STATUS
   STATUS
+  START_TIME
   DURATION
   TEST_NAME
 }
@@ -319,6 +326,8 @@ input EditSpawnHostInput {
   deletedInstanceTags: [InstanceTagInput!]
   volume: String
   servicePassword: String
+  publicKey: PublicKeyInput
+  savePublicKey: Boolean
 }
 
 input SpawnVolumeInput {
@@ -488,7 +497,7 @@ type Patch {
   status: String!
   variants: [String!]!
   tasks: [String!]!
-  childPatches: [ChildPatch!]
+  childPatches: [Patch!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
@@ -504,13 +513,6 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
-}
-
-type ChildPatch {
-  project: String!
-  patchID: String!
-  status: String!
-  taskCount: Int
 }
 
 type Build {

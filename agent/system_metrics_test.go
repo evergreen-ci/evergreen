@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -367,7 +368,12 @@ func TestCollectProcesses(t *testing.T) {
 	assert.NotEmpty(t, procs)
 
 	for _, proc := range procs.Processes {
-		assert.NotZero(t, proc.Command)
+		// Windows sometimes doesn't have PIDs for its processes.
+		if runtime.GOOS == "windows" {
+			assert.NotZero(t, proc.Command)
+		} else {
+			assert.NotZero(t, proc.PID)
+		}
 	}
 }
 

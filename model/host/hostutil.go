@@ -30,7 +30,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const OutputBufferSize = 1000
@@ -1001,6 +1001,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		executablePath,
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--mode=host"),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
@@ -1031,6 +1032,14 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		Args: args,
 		Tags: []string{evergreen.AgentMonitorTag},
 	}
+}
+
+func (h *Host) AddPubKey(ctx context.Context, pubKey string) error {
+	if logs, err := h.RunSSHCommand(ctx, fmt.Sprintf("grep -qxF \"%s\" ~/.ssh/authorized_keys || echo \"%s\" >> ~/.ssh/authorized_keys", pubKey, pubKey)); err != nil {
+		return errors.Wrapf(err, "could not run SSH command to add to authorized keys on '%s'. Logs: '%s'", h.Id, logs)
+	}
+
+	return nil
 }
 
 // SpawnHostSetupCommands returns the commands to handle setting up a spawn

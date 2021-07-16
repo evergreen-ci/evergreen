@@ -103,6 +103,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			dispString := fmt.Sprintf("/test_log/%s?text=true", *at.Logs.LogId)
 			at.Logs.RawDisplayURL = &dispString
 		}
+
+		if v.GroupID != "" {
+			at.GroupId = utility.ToStringPtr(v.GroupID)
+		}
 	case *apimodels.CedarTestResult:
 		at.Id = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution
@@ -122,23 +126,37 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			testName = v.LogTestName
 			at.LogTestName = utility.ToStringPtr(v.LogTestName)
 		}
+
 		at.Logs = TestLogs{
+			URL:     utility.ToStringPtr(v.LogURL),
+			URLRaw:  utility.ToStringPtr(v.RawLogURL),
 			LineNum: v.LineNum,
-			RawDisplayURL: utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(testName),
-				url.QueryEscape(v.GroupID),
-			)),
-			HTMLDisplayURL: utility.ToStringPtr(fmt.Sprintf(
+		}
+		isEmptyURL := v.LogURL == ""
+		isEmptyURLRaw := v.RawLogURL == ""
+
+		if !isEmptyURL {
+			at.Logs.HTMLDisplayURL = at.Logs.URL
+		} else {
+			at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf(
 				"/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
 				url.PathEscape(v.TaskID),
 				v.Execution,
 				url.QueryEscape(testName),
 				url.QueryEscape(v.GroupID),
 				v.LineNum,
-			)),
+			))
+		}
+		if !isEmptyURLRaw {
+			at.Logs.RawDisplayURL = at.Logs.URLRaw
+		} else {
+			at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf(
+				"/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
+				url.PathEscape(v.TaskID),
+				v.Execution,
+				url.QueryEscape(testName),
+				url.QueryEscape(v.GroupID),
+			))
 		}
 
 		if v.GroupID != "" {

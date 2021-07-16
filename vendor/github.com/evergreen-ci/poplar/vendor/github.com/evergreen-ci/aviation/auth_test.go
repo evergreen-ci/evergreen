@@ -14,8 +14,8 @@ func TestAuthRequiredInterceptors(t *testing.T) {
 	const (
 		username       = "testUser"
 		userAPIKey     = "123abc"
-		headerUserName = "UserName"
-		headerKeyName  = "KeyName"
+		headerUserName = "user"
+		headerKeyName  = "key"
 	)
 
 	user := gimlet.NewBasicUser(username, "test", "test@test.com", userAPIKey, nil)

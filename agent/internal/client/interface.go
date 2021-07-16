@@ -19,15 +19,6 @@ import (
 )
 
 type Communicator interface {
-	// SetHostID sets the host ID.
-	SetHostID(string)
-	// SetHostSecret sets the host secret.
-	SetHostSecret(string)
-	// GetHostID returns the host ID.
-	GetHostID() string
-	// GetHostSecret returns the host secret.
-	GetHostSecret() string
-
 	// Method to release resources used by the communicator.
 	Close()
 

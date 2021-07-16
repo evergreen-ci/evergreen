@@ -245,6 +245,22 @@ func MockConfig() *evergreen.Settings {
 					Secret: "task_sync_read_secret",
 					Bucket: "task_sync_bucket",
 				},
+				Pod: evergreen.AWSPodConfig{
+					Role:   "role",
+					Region: "region",
+					ECS: evergreen.ECSConfig{
+						TaskDefinitionPrefix: "ecs_prefix",
+						Clusters: []evergreen.ECSClusterConfig{
+							{
+								Name:     "cluster_name",
+								Platform: evergreen.LinuxPodPlatform,
+							},
+						},
+					},
+					SecretsManager: evergreen.SecretsManagerConfig{
+						SecretPrefix: "secret_prefix",
+					},
+				},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",

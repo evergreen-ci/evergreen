@@ -41,7 +41,7 @@ type APIPatch struct {
 	Parameters              []APIParameter    `json:"parameters"`
 	PatchedConfig           *string           `json:"patched_config"`
 	CanEnqueueToCommitQueue bool              `json:"can_enqueue_to_commit_queue"`
-	ChildPatches            []ChildPatch      `json:"child_patches"`
+	ChildPatches            []APIPatch        `json:"child_patches"`
 }
 
 type DownstreamTasks struct {
@@ -68,10 +68,11 @@ type FileDiff struct {
 }
 
 type APIModulePatch struct {
-	BranchName *string    `json:"branch_name"`
-	HTMLLink   *string    `json:"html_link"`
-	RawLink    *string    `json:"raw_link"`
-	FileDiffs  []FileDiff `json:"file_diffs"`
+	BranchName     *string    `json:"branch_name"`
+	HTMLLink       *string    `json:"html_link"`
+	RawLink        *string    `json:"raw_link"`
+	CommitMessages []*string  `json:"commit_messages"`
+	FileDiffs      []FileDiff `json:"file_diffs"`
 }
 
 type APIParameter struct {
@@ -166,10 +167,11 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 				fileDiffs = append(fileDiffs, fileDiff)
 			}
 			apiModPatch := APIModulePatch{
-				BranchName: &branchName,
-				HTMLLink:   &htmlLink,
-				RawLink:    &rawLink,
-				FileDiffs:  fileDiffs,
+				BranchName:     &branchName,
+				HTMLLink:       &htmlLink,
+				RawLink:        &rawLink,
+				FileDiffs:      fileDiffs,
+				CommitMessages: utility.ToStringPtrSlice(modPatch.PatchSet.CommitMessages),
 			}
 			codeChanges = append(codeChanges, apiModPatch)
 		}
@@ -198,12 +200,12 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
 
-func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error) {
+func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 	if len(p.Triggers.ChildPatches) <= 0 {
 		return nil, nil, nil
 	}
 	downstreamTasks := []DownstreamTasks{}
-	childPatches := []ChildPatch{}
+	childPatches := []APIPatch{}
 	for _, childPatch := range p.Triggers.ChildPatches {
 		childPatchDoc, err := patch.FindOneId(childPatch)
 		if err != nil {
@@ -219,13 +221,13 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []ChildPatch, error)
 			Project: utility.ToStringPtr(childPatchDoc.Project),
 			Tasks:   tasks,
 		}
-		cp := ChildPatch{
-			Project: utility.ToStringPtr(childPatchDoc.Project),
-			PatchID: utility.ToStringPtr(childPatch),
-			Status:  utility.ToStringPtr(childPatchDoc.Status),
+		apiPatch := APIPatch{}
+		err = apiPatch.BuildFromService(*childPatchDoc)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "error building child patch from service '%s'", childPatch)
 		}
 		downstreamTasks = append(downstreamTasks, dt)
-		childPatches = append(childPatches, cp)
+		childPatches = append(childPatches, apiPatch)
 	}
 	return downstreamTasks, childPatches, nil
 }
@@ -320,4 +322,34 @@ func (g *githubPatch) ToService() (interface{}, error) {
 	res.HeadHash = utility.FromStringPtr(g.HeadHash)
 	res.Author = utility.FromStringPtr(g.Author)
 	return res, nil
+}
+
+type PatchesByStatus []APIPatch
+
+func (p PatchesByStatus) Len() int {
+	return len(p)
+}
+
+func (p PatchesByStatus) Less(i, j int) bool {
+	return p[i].patchStatusPriority() < p[j].patchStatusPriority()
+}
+
+func (p PatchesByStatus) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+// patchStatusPriority answers the question of what the patch status should be
+// when the patch status and the status of it's children are different
+func (p *APIPatch) patchStatusPriority() int {
+	switch *p.Status {
+	case evergreen.PatchCreated:
+		return 10
+	case evergreen.PatchStarted:
+		return 20
+	case evergreen.PatchFailed:
+		return 30
+	case evergreen.PatchSucceeded:
+		return 40
+	}
+	return 100
 }

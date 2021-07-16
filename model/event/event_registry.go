@@ -122,3 +122,7 @@ func adminEventDataFactory() interface{} {
 func userEventDataFactory() interface{} {
 	return &userData{}
 }
+
+func podEventDataFactory() interface{} {
+	return &podData{}
+}

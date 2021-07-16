@@ -2,13 +2,13 @@ package internal
 
 import (
 	"bytes"
+	"container/list"
 	"context"
 	fmt "fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -29,7 +29,7 @@ func TestCreateCollector(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tmpDir))
 	}()
-	svc := getTestCollectorService(tmpDir)
+	svc := getTestCollectorService(t, tmpDir)
 	defer func() {
 		assert.NoError(t, closeCollectorService(svc))
 	}()
@@ -89,7 +89,15 @@ func TestCloseCollector(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tmpDir))
 	}()
-	svc := getTestCollectorService(tmpDir)
+	svc := getTestCollectorService(t, tmpDir)
+	svc.coordinator.groups["group"] = &streamGroup{
+		streams: map[string]*stream{
+			"id1": &stream{
+				buffer: &list.List{},
+			},
+		},
+		eventHeap: &PerformanceHeap{},
+	}
 	defer func() {
 		assert.NoError(t, closeCollectorService(svc))
 	}()
@@ -116,6 +124,8 @@ func TestCloseCollector(t *testing.T) {
 			assert.NoError(t, err)
 			_, ok := svc.registry.GetCollector(test.id.Name)
 			assert.False(t, ok)
+			_, ok = svc.coordinator.groups["group"].streams["id1"]
+			assert.False(t, ok)
 		})
 	}
 }
@@ -126,7 +136,7 @@ func TestSendEvent(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tmpDir))
 	}()
-	svc := getTestCollectorService(tmpDir)
+	svc := getTestCollectorService(t, tmpDir)
 	defer func() {
 		assert.NoError(t, closeCollectorService(svc))
 	}()
@@ -174,7 +184,7 @@ func TestRegisterStream(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tmpDir))
 	}()
-	svc := getTestCollectorService(tmpDir)
+	svc := getTestCollectorService(t, tmpDir)
 	defer func() {
 		assert.NoError(t, closeCollectorService(svc))
 	}()
@@ -227,7 +237,7 @@ func TestStreamEvent(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tmpDir))
 	}()
-	svc := getTestCollectorService(tmpDir)
+	svc := getTestCollectorService(t, tmpDir)
 	defer func() {
 		assert.NoError(t, closeCollectorService(svc))
 	}()
@@ -331,8 +341,6 @@ func TestStreamEvent(t *testing.T) {
 	}
 
 	t.Run("MultipleStreams", func(t *testing.T) {
-		catcher := grip.NewBasicCatcher()
-		var wg sync.WaitGroup
 		event := EventMetrics{
 			Name: "multiple",
 			Time: &timestamp.Timestamp{},
@@ -352,22 +360,26 @@ func TestStreamEvent(t *testing.T) {
 		}
 
 		for i := range streams {
-			wg.Add(1)
+			event.Time = &timestamp.Timestamp{Seconds: time.Now().Add(time.Duration(i+3) * -time.Minute).Unix()}
+			require.NoError(t, streams[i].Send(&event))
+			event.Time = &timestamp.Timestamp{Seconds: time.Now().Add(time.Duration(i+2) * -time.Minute).Unix()}
+			require.NoError(t, streams[i].Send(&event))
 			event.Time = &timestamp.Timestamp{Seconds: time.Now().Add(time.Duration(i+1) * -time.Minute).Unix()}
-			go sendToStream(t, streams[i], event, catcher, &wg, false)
+			require.NoError(t, streams[i].Send(&event))
 		}
-		wg.Wait()
-		wg.Add(1)
 		event.Time = &timestamp.Timestamp{Seconds: time.Now().Add(-30 * time.Second).Unix()}
-		go sendToStream(t, streams[0], event, catcher, &wg, false)
-		wg.Wait()
+		require.NoError(t, streams[0].Send(&event))
 		for i := range streams {
-			wg.Add(1)
+			event.Time = &timestamp.Timestamp{Seconds: time.Now().Add(time.Duration(i+3) * -time.Second).Unix()}
+			require.NoError(t, streams[i].Send(&event))
+			event.Time = &timestamp.Timestamp{Seconds: time.Now().Add(time.Duration(i+2) * -time.Second).Unix()}
+			require.NoError(t, streams[i].Send(&event))
 			event.Time = &timestamp.Timestamp{Seconds: time.Now().Add(time.Duration(i+1) * -time.Second).Unix()}
-			go sendToStream(t, streams[i], event, catcher, &wg, true)
+			require.NoError(t, streams[i].Send(&event))
+
+			_, err := streams[i].CloseAndRecv()
+			require.NoError(t, err)
 		}
-		wg.Wait()
-		require.NoError(t, catcher.Resolve())
 
 		collector, ok := svc.registry.GetEventsCollector("multiple")
 		require.True(t, ok)
@@ -376,6 +388,7 @@ func TestStreamEvent(t *testing.T) {
 		chunkIt := ftdc.ReadChunks(context.TODO(), bytes.NewReader(data))
 		defer chunkIt.Close()
 
+		count := 0
 		lastTS := time.Time{}
 		for i := 0; chunkIt.Next(); i++ {
 			chunk := chunkIt.Chunk()
@@ -389,41 +402,35 @@ func TestStreamEvent(t *testing.T) {
 					for _, val := range metric.Values {
 						require.True(t, lastVal <= val)
 						lastVal = val
+						count++
 					}
 					ts := time.Unix(lastVal/1000, lastVal%1000*1000000)
 					lastTS = ts
 				}
 			}
 		}
+		assert.Equal(t, 19, count)
 	})
 }
 
-func sendToStream(t *testing.T, stream PoplarEventCollector_StreamEventsClient, event EventMetrics, catcher grip.Catcher, wg *sync.WaitGroup, closeStream bool) {
-	defer wg.Done()
-
-	catcher.Add(stream.Send(&event))
-	if closeStream {
-		_, err := stream.CloseAndRecv()
-		catcher.Add(err)
-	}
-}
-
-func getTestCollectorService(tmpDir string) *collectorService {
+func getTestCollectorService(t *testing.T, tmpDir string) *collectorService {
 	registry := poplar.NewRegistry()
-	registry.Create("collector", poplar.CreateOptions{
+	_, err := registry.Create("collector", poplar.CreateOptions{
 		Path:      filepath.Join(tmpDir, "exists"),
 		ChunkSize: 5,
 		Recorder:  poplar.RecorderPerf,
 		Dynamic:   true,
 		Events:    poplar.EventsCollectorBasic,
 	})
-	registry.Create("multiple", poplar.CreateOptions{
+	require.NoError(t, err)
+	_, err = registry.Create("multiple", poplar.CreateOptions{
 		Path:      filepath.Join(tmpDir, "multiple"),
 		ChunkSize: 5,
 		Recorder:  poplar.RecorderPerf,
 		Dynamic:   true,
 		Events:    poplar.EventsCollectorBasic,
 	})
+	require.NoError(t, err)
 
 	return &collectorService{
 		registry: registry,

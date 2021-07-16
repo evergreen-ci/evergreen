@@ -58,15 +58,17 @@ type DisplayTask struct {
 }
 
 type EditSpawnHostInput struct {
-	HostID              string      `json:"hostId"`
-	DisplayName         *string     `json:"displayName"`
-	Expiration          *time.Time  `json:"expiration"`
-	NoExpiration        *bool       `json:"noExpiration"`
-	InstanceType        *string     `json:"instanceType"`
-	AddedInstanceTags   []*host.Tag `json:"addedInstanceTags"`
-	DeletedInstanceTags []*host.Tag `json:"deletedInstanceTags"`
-	Volume              *string     `json:"volume"`
-	ServicePassword     *string     `json:"servicePassword"`
+	HostID              string          `json:"hostId"`
+	DisplayName         *string         `json:"displayName"`
+	Expiration          *time.Time      `json:"expiration"`
+	NoExpiration        *bool           `json:"noExpiration"`
+	InstanceType        *string         `json:"instanceType"`
+	AddedInstanceTags   []*host.Tag     `json:"addedInstanceTags"`
+	DeletedInstanceTags []*host.Tag     `json:"deletedInstanceTags"`
+	Volume              *string         `json:"volume"`
+	ServicePassword     *string         `json:"servicePassword"`
+	PublicKey           *PublicKeyInput `json:"publicKey"`
+	SavePublicKey       *bool           `json:"savePublicKey"`
 }
 
 type GroupedBuildVariant struct {
@@ -206,6 +208,11 @@ type SpawnVolumeInput struct {
 	Expiration       *time.Time `json:"expiration"`
 	NoExpiration     *bool      `json:"noExpiration"`
 	Host             *string    `json:"host"`
+}
+
+type StatusCount struct {
+	Status string `json:"status"`
+	Count  int    `json:"count"`
 }
 
 type TaskFiles struct {
@@ -583,6 +590,7 @@ type TestSortCategory string
 const (
 	TestSortCategoryBaseStatus TestSortCategory = "BASE_STATUS"
 	TestSortCategoryStatus     TestSortCategory = "STATUS"
+	TestSortCategoryStartTime  TestSortCategory = "START_TIME"
 	TestSortCategoryDuration   TestSortCategory = "DURATION"
 	TestSortCategoryTestName   TestSortCategory = "TEST_NAME"
 )
@@ -590,13 +598,14 @@ const (
 var AllTestSortCategory = []TestSortCategory{
 	TestSortCategoryBaseStatus,
 	TestSortCategoryStatus,
+	TestSortCategoryStartTime,
 	TestSortCategoryDuration,
 	TestSortCategoryTestName,
 }
 
 func (e TestSortCategory) IsValid() bool {
 	switch e {
-	case TestSortCategoryBaseStatus, TestSortCategoryStatus, TestSortCategoryDuration, TestSortCategoryTestName:
+	case TestSortCategoryBaseStatus, TestSortCategoryStatus, TestSortCategoryStartTime, TestSortCategoryDuration, TestSortCategoryTestName:
 		return true
 	}
 	return false

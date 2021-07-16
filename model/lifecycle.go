@@ -1441,21 +1441,22 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
+// Returns activated task IDs.
 func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project,
-	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, projectRef *ProjectRef, generatedBy string) ([]string, []string, error) {
+	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, projectRef *ProjectRef, generatedBy string) ([]string, error) {
 
 	taskIdTables, err := getTaskIdTables(v, p, tasks, projectRef.Identifier)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "unable to make task ID table")
+		return nil, errors.Wrap(err, "unable to make task ID table")
 	}
 
 	newBuildIds := make([]string, 0)
-	newTaskIds := make([]string, 0)
+	newActivatedTaskIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id).WithFields(build.BuildVariantKey, build.IdKey))
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
@@ -1464,7 +1465,7 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 
 	createTime, err := getTaskCreateTime(p.Identifier, v)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "can't get create time for tasks")
+		return nil, errors.Wrap(err, "can't get create time for tasks")
 	}
 	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, pair := range tasks.ExecTasks {
@@ -1499,7 +1500,7 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		})
 		build, tasks, err := CreateBuildFromVersionNoInsert(buildArgs)
 		if err != nil {
-			return nil, nil, errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
 			grip.Info(message.Fields{
@@ -1512,16 +1513,18 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		}
 
 		if err = build.Insert(); err != nil {
-			return nil, nil, errors.Wrapf(err, "error inserting build %s", build.Id)
+			return nil, errors.Wrapf(err, "error inserting build %s", build.Id)
 		}
 		if err = tasks.InsertUnordered(ctx); err != nil {
-			return nil, nil, errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
+			return nil, errors.Wrapf(err, "error inserting tasks for build %s", build.Id)
 		}
 		newBuildIds = append(newBuildIds, build.Id)
 
 		batchTimeTasksToIds := map[string]string{}
 		for _, t := range tasks {
-			newTaskIds = append(newTaskIds, t.Id)
+			if t.Activated {
+				newActivatedTaskIds = append(newActivatedTaskIds, t.Id)
+			}
 			if utility.StringSliceContains(tasksWithBatchtime, t.DisplayName) {
 				batchTimeTasksToIds[t.DisplayName] = t.Id
 			}
@@ -1563,7 +1566,7 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		"version": v.Id,
 	}))
 
-	return newBuildIds, newTaskIds, errors.WithStack(VersionUpdateOne(
+	return newActivatedTaskIds, errors.WithStack(VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$push": bson.M{
@@ -1575,7 +1578,7 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 }
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
-// within the set of already existing builds.
+// within the set of already existing builds. Returns activated task IDs.
 func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project, pairs TaskVariantPairs,
 	syncAtEndOpts patch.SyncAtEndOptions, projectIdentifier string, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
@@ -1596,7 +1599,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		return nil, errors.Wrap(err, "can't get table of task IDs")
 	}
 
-	taskIds := []string{}
+	activatedTaskIds := []string{}
 	for _, b := range builds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build
@@ -1652,8 +1655,8 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		}
 
 		for _, t := range tasks {
-			taskIds = append(taskIds, t.Id)
 			if t.Activated {
+				activatedTaskIds = append(activatedTaskIds, t.Id)
 				b.Activated = true
 			}
 			if t.Activated && activationInfo.isStepbackTask(t.BuildVariant, t.DisplayName) {
@@ -1677,7 +1680,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		return nil, errors.Wrap(err, "can't set version activation to true")
 	}
 
-	return taskIds, nil
+	return activatedTaskIds, nil
 }
 
 func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs, projectName string) (TaskIdConfig, error) {

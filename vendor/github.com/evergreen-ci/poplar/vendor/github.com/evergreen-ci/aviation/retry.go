@@ -53,7 +53,7 @@ func MakeRetryUnaryClientInterceptor(maxRetries int) grpc.UnaryClientInterceptor
 			"message":       "GRPC client retries exceeded or canceled",
 			"method":        method,
 			"total_retries": i,
-			"time_elasped":  timeElapsed,
+			"time_elapsed":  timeElapsed,
 		}))
 		return lastErr
 	}
@@ -102,7 +102,7 @@ func MakeRetryStreamClientInterceptor(maxRetries int) grpc.StreamClientIntercept
 			"message":       "GRPC client retries exceeded or canceled",
 			"method":        method,
 			"total_retries": i,
-			"time_elasped":  timeElapsed,
+			"time_elapsed":  timeElapsed,
 		}))
 		return nil, lastErr
 	}

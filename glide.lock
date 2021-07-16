@@ -52,6 +52,8 @@ imports:
     version: b4936e06046bbecbb94cae9c18127ebe510a2cb9
   - name: gopkg.in/yaml.v2
     version: 7649d4548cb53a614db133b2a8ac1f31859dda8c
+  - name: gopkg.in/yaml.v3
+    version: 496545a6307b2a7d7a710fd516e5e16e8ab62dbc
   - name: gopkg.in/mgo.v2
     version: 60f23985327354fe2d4dde32ba05598bb047a114
   - name: github.com/gophercloud/gophercloud
@@ -122,6 +124,8 @@ imports:
     version: d883a62b49faf8279c9209d28db88858a103177e
   - name: github.com/mongodb/amboy
     version: 43815750c2f1d63d1f1de803a8a684ca79ac82d6
+  - name: github.com/evergreen-ci/cocoa
+    version: ac9936b0dad760026d955eb59548f5948371aad6
   - name: github.com/evergreen-ci/gimlet
     version: 5fbd893c2d4d34fcbbd8e8e9c65810f41a955e66
   - name: github.com/evergreen-ci/shrub
@@ -133,9 +137,9 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 6760875fa58e0fa5518c992582efa6d807960d6c
   - name: github.com/evergreen-ci/timber
-    version: daddfabf64ff09a73c20b9e788c1f44052931ea6
+    version: 8f9bbd69caf3d5710a0d66e90f0a541908ebcde0
   - name: github.com/evergreen-ci/poplar
-    version: 098cea7cb6dc183c69a96c882da4e370858c0aa3
+    version: b7f63602780c1918f467faba6a04037d533c2fd2
   - name: github.com/evergreen-ci/juniper
     version: 0fd21a88954c06e128edc4fb26e30bb79e6e207d
 
@@ -190,7 +194,7 @@ imports:
   - name: github.com/robfig/cron
     version: 70971dc81bab3671fde85647b0a1367929f92be8
   - name: github.com/evergreen-ci/utility
-    version: 9a40a71c1784193533247813b8361f534fe4101b
+    version: 8a88f29180ba74476c65e36075bc372013e3ac05
 
   - name: github.com/robbiet480/go.sns
     version: ca087b49e1da69fa4f163521cc98b1eaf7b66ffd

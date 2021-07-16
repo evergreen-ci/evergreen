@@ -24,8 +24,8 @@ func TestInsertAndFindOneByID(t *testing.T) {
 		},
 		"InsertSucceedsAndIsFoundByID": func(t *testing.T) {
 			p := Pod{
-				ID:    "id",
-				PodID: "pod_id",
+				ID:         "id",
+				ExternalID: "external_id",
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
 					Image:    "alpine",
 					MemoryMB: 128,
@@ -42,7 +42,7 @@ func TestInsertAndFindOneByID(t *testing.T) {
 			require.NotNil(t, dbPod)
 
 			assert.Equal(t, p.ID, dbPod.ID)
-			assert.Equal(t, p.PodID, dbPod.PodID)
+			assert.Equal(t, p.ExternalID, dbPod.ExternalID)
 			assert.Equal(t, p.TaskContainerCreationOpts, dbPod.TaskContainerCreationOpts)
 			assert.Equal(t, p.TimeInfo, dbPod.TimeInfo)
 		},
