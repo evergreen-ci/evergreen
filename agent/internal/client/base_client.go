@@ -83,15 +83,17 @@ func (c *baseCommunicator) resetClient() {
 	if c.httpClient != nil {
 		utility.PutHTTPClient(c.httpClient)
 
-		c.httpClient = utility.GetDefaultHTTPRetryableClient()
-		c.httpClient.Timeout = heartbeatTimeout
 	}
 	if c.cedarHTTPClient != nil {
 		utility.PutHTTPClient(c.cedarHTTPClient)
 
-		// We need to create a new HTTP client since cedar gRPC requests may
-		// often exceed one minute or use a stream.
-		c.cedarHTTPClient = utility.GetDefaultHTTPRetryableClient()
-		c.cedarHTTPClient.Timeout = 0
 	}
+
+	c.httpClient = utility.GetDefaultHTTPRetryableClient()
+	c.httpClient.Timeout = heartbeatTimeout
+
+	// We need to create a new HTTP client since cedar gRPC requests may
+	// often exceed one minute or use a stream.
+	c.cedarHTTPClient = utility.GetDefaultHTTPRetryableClient()
+	c.cedarHTTPClient.Timeout = 0
 }
