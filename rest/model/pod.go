@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// APISecretOpts is the model for secrets in a container.
 type APISecretOpts struct {
 	Name   *string
 	Value  *string
@@ -15,12 +16,14 @@ type APISecretOpts struct {
 	Exists *bool
 }
 
+// APIPodEnvVar is the model for environment variables in a container
 type APIPodEnvVar struct {
 	Name       *string
 	Value      *string
 	SecretOpts *APISecretOpts
 }
 
+// APITimeInfo is the model for the timing information of a pod.
 type APITimeInfo struct {
 	Initialized time.Time
 	Started     time.Time
