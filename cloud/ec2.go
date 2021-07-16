@@ -816,6 +816,13 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			catcher.Wrapf(err, "attaching volume '%s' to host '%s'", volume.ID, h.Id)
 		}
 	}
+
+	if opts.AddKey != "" {
+		if err := h.AddPubKey(ctx, opts.AddKey); err != nil {
+			catcher.Wrapf(err, "can't add key to host '%s'", h.Id)
+		}
+	}
+
 	return catcher.Resolve()
 }
 

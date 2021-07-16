@@ -325,6 +325,8 @@ input EditSpawnHostInput {
   deletedInstanceTags: [InstanceTagInput!]
   volume: String
   servicePassword: String
+  publicKey: PublicKeyInput
+  savePublicKey: Boolean
 }
 
 input SpawnVolumeInput {
