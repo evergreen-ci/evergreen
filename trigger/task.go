@@ -327,6 +327,10 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, testNames string) (*notification.Notification, error) {
 	var payload interface{}
 	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
+		// We avoid creating BFG ticket in the case that the task is stranded to reduce noise for the Build Baron
+		if t.task.Details.Description == evergreen.TaskDescriptionStranded {
+			return nil, nil
+		}
 		issueSub, ok := sub.Subscriber.Target.(*event.JIRAIssueSubscriber)
 		if !ok {
 			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)
