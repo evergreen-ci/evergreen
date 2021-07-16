@@ -678,34 +678,33 @@ buildvariants:
       - name: ".agent .test"
       - name: ".cli .test"
 
-- name: ubuntu1604-arm64
-  display_name: Ubuntu 16.04 ARM
-  batchtime: 2880
-  run_on:
-    - ubuntu1604-arm64-small
-  expansions:
-    disable_coverage: yes
-    xc_build: yes
-    goarch: arm64
-    goos: linux
-    gobin: /opt/golang/go1.16/bin/go
-    goroot: /opt/golang/go1.16
-    mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
-  tasks:
-    - name: ".agent .test"
+  - name: ubuntu1604-arm64
+    display_name: Ubuntu 16.04 ARM
+    batchtime: 2880
+    run_on:
+      - ubuntu1604-arm64-small
+    expansions:
+      disable_coverage: yes
+      xc_build: yes
+      goarch: arm64
+      goos: linux
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
+    tasks:
+      - name: ".agent .test"
 
-- name: osx
-  display_name: OSX
-  batchtime: 2880
-  run_on:
-    - macos-1014
-  expansions:
-    disable_coverage: yes
-    gobin: /opt/golang/go1.16/bin/go
-    goroot: /opt/golang/go1.16
-    mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
-  tasks:
-    mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
-  tasks:
-    - name: ".agent .test"
--
+  - name: osx
+    display_name: OSX
+    batchtime: 2880
+    run_on:
+      - macos-1014
+    expansions:
+      disable_coverage: yes
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
+    tasks:
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
+    tasks:
+      - name: ".agent .test"
