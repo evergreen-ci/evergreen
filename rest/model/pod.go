@@ -37,9 +37,8 @@ type APIPod struct {
 	CPU      *int
 	Image    *string
 	EnvVars  []*APIPodEnvVar
-	Cluster  *string
+	Platform *string
 	Secret   *string
-	TimeInfo APITimeInfo
 }
 
 // fromAPIEnvVars converts a slice of APIPodEnvVars to a string-string map of environment variables and a string-string map of secrets.
@@ -62,19 +61,13 @@ func fromAPIEnvVars(api []*APIPodEnvVar) (map[string]string, map[string]string) 
 func (p *APIPod) ToService() (interface{}, error) {
 	podDB := pod.Pod{}
 	podDB.ID = utility.RandomString()
-	podDB.ExternalID = utility.FromStringPtr(p.Name)
 	podDB.Secret = utility.FromStringPtr(p.Secret)
-	podDB.TimeInfo = pod.TimeInfo{
-		Initialized: p.TimeInfo.Initialized,
-		Started:     p.TimeInfo.Started,
-		Provisioned: p.TimeInfo.Provisioned,
-	}
 	envVars, secrets := fromAPIEnvVars(p.EnvVars)
 	opts := pod.TaskContainerCreationOptions{
 		Image:      utility.FromStringPtr(p.Image),
 		MemoryMB:   utility.FromIntPtr(p.Memory),
 		CPU:        utility.FromIntPtr(p.CPU),
-		Platform:   evergreen.PodPlatform(utility.FromStringPtr(p.Cluster)),
+		Platform:   evergreen.PodPlatform(utility.FromStringPtr(p.Platform)),
 		EnvVars:    envVars,
 		EnvSecrets: secrets,
 	}
