@@ -73,7 +73,10 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 func (hc *DBHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
 	h, err := host.FindOne(host.ByIP(ip))
 	if err != nil {
-		return nil, err
+		h, err = host.FindOne(host.ByIPv4(ip))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return h, nil
