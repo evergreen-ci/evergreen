@@ -130,6 +130,7 @@ func (s *EC2Suite) SetupTest() {
 				CanBeModified: true,
 			},
 		},
+		IsVirtualWorkstation: true,
 	}
 
 	s.volume = &host.Volume{
@@ -774,9 +775,11 @@ func (s *EC2Suite) TestStartInstance() {
 			Status: evergreen.HostRunning,
 		},
 		&host.Host{
-			Id:     "host-stopped",
-			Status: evergreen.HostStopped,
-			Host:   "old_dns_name",
+			Id:                   "host-stopped",
+			Status:               evergreen.HostStopped,
+			Host:                 "old_dns_name",
+			IPv4:                 "1.1.1.1",
+			IsVirtualWorkstation: true,
 		},
 	}
 	for _, h := range hosts {
@@ -790,6 +793,7 @@ func (s *EC2Suite) TestStartInstance() {
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, found.Status)
 	s.Equal("public_dns_name", found.Host)
+	s.Equal("12.34.56.78", found.IPv4)
 }
 
 func (s *EC2Suite) TestIsUp() {
@@ -937,6 +941,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2Spot,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "i-2",
@@ -944,6 +949,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "sir-3",
@@ -951,6 +957,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2Spot,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "i-4",
@@ -958,6 +965,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "i-5",
@@ -965,6 +973,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 		{
 			Id: "i-6",
@@ -972,6 +981,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
+			IsVirtualWorkstation: true,
 		},
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -1020,7 +1030,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName: aws.String("public_dns_name_2"),
+						PublicDnsName:   aws.String("public_dns_name_2"),
+						PublicIpAddress: aws.String("2.2.2.2"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1042,7 +1053,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName: aws.String("public_dns_name_1"),
+						PublicDnsName:   aws.String("public_dns_name_1"),
+						PublicIpAddress: aws.String("1.1.1.1"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1074,7 +1086,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName: aws.String("public_dns_name_3"),
+						PublicDnsName:   aws.String("public_dns_name_3"),
+						PublicIpAddress: aws.String("3.3.3.3"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1121,8 +1134,11 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	})
 
 	s.Equal("public_dns_name_1", hosts[1].Host)
+	s.Equal("1.1.1.1", hosts[1].IPv4)
 	s.Equal("public_dns_name_2", hosts[2].Host)
+	s.Equal("2.2.2.2", hosts[2].IPv4)
 	s.Equal("public_dns_name_3", hosts[3].Host)
+	s.Equal("3.3.3.3", hosts[3].IPv4)
 
 	s.Equal("i-3", hosts[2].ExternalIdentifier)
 }
@@ -1161,7 +1177,8 @@ func (s *EC2Suite) TestGetInstanceStatusesTerminate() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName: aws.String("public_dns_name_2"),
+						PublicDnsName:   aws.String("public_dns_name_2"),
+						PublicIpAddress: aws.String("2.2.2.2"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1247,6 +1264,7 @@ func (s *EC2Suite) TestCacheHostData() {
 		},
 	}
 	instance.PublicDnsName = aws.String("public_dns_name")
+	instance.PublicIpAddress = aws.String("12.34.56.78")
 
 	s.NoError(cacheHostData(s.ctx, s.h, instance, ec2m.client))
 
@@ -1266,6 +1284,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.Equal(*instance.Placement.AvailabilityZone, h.Zone)
 	s.True(instance.LaunchTime.Equal(h.StartTime))
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
+	s.Equal("12.34.56.78", h.IPv4)
 	s.Equal([]host.VolumeAttachment{
 		{
 			VolumeID:   "volume_id",

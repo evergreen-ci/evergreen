@@ -317,6 +317,9 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	if instance.PublicDnsName == nil {
 		return errors.New("instance missing public dns name")
 	}
+	if instance.PublicIpAddress == nil {
+		return errors.New("instance missing public ip address")
+	}
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
 	h.Host = *instance.PublicDnsName
@@ -324,6 +327,12 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 
 	if err := h.CacheHostData(); err != nil {
 		return errors.Wrap(err, "error updating host document in db")
+	}
+
+	if h.IsVirtualWorkstation {
+		if err := h.SetIPv4Address(*instance.PublicIpAddress); err != nil {
+			return errors.Wrap(err, "error setting ipv4 address")
+		}
 	}
 
 	// set IPv6 address, if applicable

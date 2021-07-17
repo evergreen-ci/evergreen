@@ -9,6 +9,7 @@ import (
 type CreateHost struct {
 	DNSName    *string `json:"dns_name,omitempty"`
 	IP         *string `json:"ip_address,omitempty"`
+	IPv4       *string `json:"ipv4_address,omitempty"`
 	InstanceID *string `json:"instance_id,omitempty"`
 
 	HostID       *string      `json:"host_id,omitempty"`
@@ -23,6 +24,7 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	case host.Host:
 		createHost.DNSName = utility.ToStringPtr(v.Host)
 		createHost.IP = utility.ToStringPtr(v.IP)
+		createHost.IPv4 = utility.ToStringPtr(v.IPv4)
 
 		// container
 		if v.ParentID != "" {
@@ -40,6 +42,7 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	case *host.Host:
 		createHost.DNSName = utility.ToStringPtr(v.Host)
 		createHost.IP = utility.ToStringPtr(v.IP)
+		createHost.IPv4 = utility.ToStringPtr(v.IPv4)
 
 		// container
 		if v.ParentID != "" {
