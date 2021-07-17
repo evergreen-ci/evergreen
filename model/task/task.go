@@ -2777,6 +2777,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		taskNamesAsRegex := strings.Join(taskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
+	match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	match[VersionKey] = versionID
 	const tempParentKey = "_parent"
 	pipeline := []bson.M{}
