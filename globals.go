@@ -115,6 +115,7 @@ const (
 	PatchStarted     = "started"
 	PatchSucceeded   = "succeeded"
 	PatchFailed      = "failed"
+	PatchAborted     = "aborted"
 	PatchAllOutcomes = "*"
 
 	PushLogPushing = "pushing"

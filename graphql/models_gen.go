@@ -271,6 +271,11 @@ type VariantTasks struct {
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
 }
 
+type VersionTiming struct {
+	Makespan  *model.APIDuration `json:"makespan"`
+	TimeTaken *model.APIDuration `json:"timeTaken"`
+}
+
 type VolumeHost struct {
 	VolumeID string `json:"volumeId"`
 	HostID   string `json:"hostId"`

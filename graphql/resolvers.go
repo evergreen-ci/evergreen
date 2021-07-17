@@ -896,7 +896,7 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	if tasks == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, "Could not find any tasks for patch")
 	}
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 
@@ -971,38 +971,35 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 	return *obj.Id, nil
 }
 
-func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPatch, error) {
-	patch, err := r.sc.FindPatchById(id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
+func (r *patchResolver) Status(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := data.TaskFilterOptions{
 		Statuses:        failedAndAbortedStatuses,
 		FieldsToProject: []string{task.DisplayStatusKey},
 	}
-	tasks, _, err := r.sc.FindTasksByVersion(id, opts)
+	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
 	}
-
-	if len(patch.ChildPatches) > 0 {
+	status := obj.Status
+	if len(obj.ChildPatches) > 0 {
 		allPatches := []restModel.APIPatch{}
-		allPatches = append(allPatches, *patch)
-		for _, cp := range patch.ChildPatches {
+		allPatches = append(allPatches, *obj)
+		for _, cp := range obj.ChildPatches {
 			allPatches = append(allPatches, cp)
 			// add the child patch tasks to tasks so that we can consider their status
 			childPatchTasks, _, err := r.sc.FindTasksByVersion(*cp.Id, opts)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+				return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
 			}
 			tasks = append(tasks, childPatchTasks...)
 		}
 		// determine what the main patch status should be given the status of
 		// the child patches
 		sort.Sort(restModel.PatchesByStatus(allPatches))
+
 		// after sorting, the first patch will be the one with the highest priority
-		patch.Status = allPatches[0].Status
+		status = allPatches[0].Status
 	}
 	statuses := getAllTaskStatuses(tasks)
 
@@ -1010,11 +1007,35 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
 		if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
 			abortedStatus := evergreen.TaskAborted
-			patch.Status = &abortedStatus
+			status = &abortedStatus
 		}
+	}
+	return *status, nil
+}
+
+func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPatch, error) {
+	patch, err := r.sc.FindPatchById(id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	return patch, nil
+}
+
+func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIVersion, error) {
+	v, err := r.sc.FindVersionById(id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", id, err))
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find a version with id: `%s`", id))
+	}
+	apiVersion := restModel.APIVersion{}
+	err = apiVersion.BuildFromService(v)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`, %s", id, err))
+	}
+	return &apiVersion, nil
 }
 
 func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
@@ -2799,6 +2820,114 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		return nil, nil
 	}
 	return generateBuildVariants(ctx, r.sc, *v.Id, options.Variants, options.Tasks, options.Statuses)
+}
+
+func (r *versionResolver) IsPatch(ctx context.Context, v *restModel.APIVersion) (bool, error) {
+	return evergreen.IsPatchRequester(*v.Requester), nil
+}
+
+func (r *versionResolver) Patch(ctx context.Context, v *restModel.APIVersion) (*restModel.APIPatch, error) {
+	if !evergreen.IsPatchRequester(*v.Requester) {
+		return nil, nil
+	}
+	apiPatch, err := r.sc.FindPatchById(*v.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *v.Id, err))
+	}
+	return apiPatch, nil
+}
+
+func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
+	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.Id, err.Error()))
+	}
+	return &taskCount, nil
+}
+
+func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
+	tasks, err := task.FindAllFirstExecution(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	if tasks == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find any tasks for version %s", *obj.Id))
+	}
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+
+	// return nil if rounded timeTaken/makespan == 0s
+	t := timeTaken.Round(time.Second)
+	m := makespan.Round(time.Second)
+	if t.String() == "0s" {
+		return nil, nil
+	}
+	apiTimeTaken := restModel.NewAPIDuration(t)
+	apiMakespan := restModel.NewAPIDuration(m)
+	return &VersionTiming{
+		TimeTaken: &apiTimeTaken,
+		Makespan:  &apiMakespan,
+	}, nil
+}
+
+func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIVersion) (*string, error) {
+	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision).WithFields(model.VersionIdentifierKey))
+	if baseVersion == nil || err != nil {
+		return nil, nil
+	}
+	return &baseVersion.Id, nil
+}
+
+func (r *versionResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIVersion) (string, error) {
+	return utility.FromStringPtr(obj.ProjectIdentifier), nil
+}
+
+func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
+	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
+	opts := data.TaskFilterOptions{
+		Statuses:        failedAndAbortedStatuses,
+		FieldsToProject: []string{task.DisplayStatusKey},
+	}
+	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
+	if err != nil {
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+	}
+	status, _ := evergreen.VersionStatusToPatchStatus(*obj.Status)
+
+	if evergreen.IsPatchRequester(*obj.Requester) {
+		p, err := r.sc.FindPatchById(*obj.Id)
+		if err != nil {
+			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch :%s ", err.Error()))
+		}
+
+		if len(p.ChildPatches) > 0 {
+			allPatches := []restModel.APIPatch{}
+			allPatches = append(allPatches, *p)
+			for _, cp := range p.ChildPatches {
+				allPatches = append(allPatches, cp)
+				// add the child patch tasks to tasks so that we can consider their status
+				childPatchTasks, _, err := r.sc.FindTasksByVersion(*cp.Id, opts)
+				if err != nil {
+					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch :%s ", err.Error()))
+				}
+				tasks = append(tasks, childPatchTasks...)
+			}
+			// determine what the main patch status should be given the status of
+			// the child patches
+			sort.Sort(restModel.PatchesByStatus(allPatches))
+
+			// after sorting, the first patch will be the one with the highest priority
+			status = *allPatches[0].Status
+		}
+	}
+	taskStatuses := getAllTaskStatuses(tasks)
+
+	// If theres an aborted task we should set the patch status to aborted if there are no other failures
+	if utility.StringSliceContains(taskStatuses, evergreen.TaskAborted) {
+		if len(utility.StringSliceIntersection(taskStatuses, evergreen.TaskFailureStatuses)) == 0 {
+			status = evergreen.PatchAborted
+		}
+	}
+	return status, nil
 }
 
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
