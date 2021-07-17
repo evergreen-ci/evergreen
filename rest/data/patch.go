@@ -21,7 +21,7 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
-func ValidatePatchID(patchId string) error {
+func validatePatchID(patchId string) error {
 	if !mgobson.IsObjectIdHex(patchId) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
