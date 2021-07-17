@@ -82,7 +82,7 @@ var (
 	GeneratedJSONKey            = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
 	GeneratedJSONAsStringKey    = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
 	GenerateTasksErrorKey       = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
-	GeneratedTasksToStepbackKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToStepback")
+	GeneratedTasksToActivateKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
 	ResetWhenFinishedKey        = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	LogsKey                     = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey         = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")

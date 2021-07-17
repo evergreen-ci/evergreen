@@ -241,20 +241,32 @@ func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest,
 }
 
 type TaskFilterOptions struct {
-	Statuses        []string
-	BaseStatuses    []string
-	Variants        []string
-	TaskNames       []string
-	Page            int
-	Limit           int
-	FieldsToProject []string
-	Sorts           []task.TasksSortOrder
+	Statuses              []string
+	BaseStatuses          []string
+	Variants              []string
+	TaskNames             []string
+	Page                  int
+	Limit                 int
+	FieldsToProject       []string
+	Sorts                 []task.TasksSortOrder
+	IncludeExecutionTasks bool
 }
 
 // FindTasksByVersion gets all tasks for a specific version
 // Results can be filtered by task name, variant name and status in addition to being paginated and limited
 func (tc *DBTaskConnector) FindTasksByVersion(versionID string, opts TaskFilterOptions) ([]task.Task, int, error) {
-	tasks, total, err := task.GetTasksByVersion(versionID, opts.Sorts, opts.Statuses, opts.BaseStatuses, opts.Variants, opts.TaskNames, opts.Page, opts.Limit, opts.FieldsToProject)
+	getTaskByVersionOpts := task.GetTasksByVersionOptions{
+		Statuses:              opts.Statuses,
+		BaseStatuses:          opts.BaseStatuses,
+		Variants:              opts.Variants,
+		TaskNames:             opts.TaskNames,
+		Page:                  opts.Page,
+		Limit:                 opts.Limit,
+		FieldsToProject:       opts.FieldsToProject,
+		Sorts:                 opts.Sorts,
+		IncludeExecutionTasks: opts.IncludeExecutionTasks,
+	}
+	tasks, total, err := task.GetTasksByVersion(versionID, getTaskByVersionOpts)
 	if err != nil {
 		return nil, 0, err
 	}

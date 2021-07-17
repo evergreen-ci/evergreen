@@ -327,41 +327,42 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AbortTask                 func(childComplexity int, taskID string) int
-		AddAnnotationIssue        func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		AddFavoriteProject        func(childComplexity int, identifier string) int
-		AttachVolumeToHost        func(childComplexity int, volumeAndHost VolumeHost) int
-		BbCreateTicket            func(childComplexity int, taskID string, execution *int) int
-		ClearMySubscriptions      func(childComplexity int) int
-		CreatePublicKey           func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DetachVolumeFromHost      func(childComplexity int, volumeID string) int
-		EditAnnotationNote        func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
-		EditSpawnHost             func(childComplexity int, spawnHost *EditSpawnHostInput) int
-		EnqueuePatch              func(childComplexity int, patchID string, commitMessage *string) int
-		MoveAnnotationIssue       func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		RemoveAnnotationIssue     func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		RemoveFavoriteProject     func(childComplexity int, identifier string) int
-		RemoveItemFromCommitQueue func(childComplexity int, commitQueueID string, issue string) int
-		RemovePublicKey           func(childComplexity int, keyName string) int
-		RemoveVolume              func(childComplexity int, volumeID string) int
-		RestartJasper             func(childComplexity int, hostIds []string) int
-		RestartPatch              func(childComplexity int, patchID string, abort bool, taskIds []string) int
-		RestartTask               func(childComplexity int, taskID string) int
-		SaveSubscription          func(childComplexity int, subscription model.APISubscription) int
-		SchedulePatch             func(childComplexity int, patchID string, configure PatchConfigure) int
-		SchedulePatchTasks        func(childComplexity int, patchID string) int
-		ScheduleTask              func(childComplexity int, taskID string) int
-		SetPatchPriority          func(childComplexity int, patchID string, priority int) int
-		SetTaskPriority           func(childComplexity int, taskID string, priority int) int
-		SpawnHost                 func(childComplexity int, spawnHostInput *SpawnHostInput) int
-		SpawnVolume               func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
-		UnschedulePatchTasks      func(childComplexity int, patchID string, abort bool) int
-		UnscheduleTask            func(childComplexity int, taskID string) int
-		UpdateHostStatus          func(childComplexity int, hostIds []string, status string, notes *string) int
-		UpdatePublicKey           func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
-		UpdateSpawnHostStatus     func(childComplexity int, hostID string, action SpawnHostStatusActions) int
-		UpdateUserSettings        func(childComplexity int, userSettings *model.APIUserSettings) int
-		UpdateVolume              func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
+		AbortTask                     func(childComplexity int, taskID string) int
+		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
+		AddFavoriteProject            func(childComplexity int, identifier string) int
+		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
+		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
+		ClearMySubscriptions          func(childComplexity int) int
+		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
+		DetachVolumeFromHost          func(childComplexity int, volumeID string) int
+		EditAnnotationNote            func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
+		EditSpawnHost                 func(childComplexity int, spawnHost *EditSpawnHostInput) int
+		EnqueuePatch                  func(childComplexity int, patchID string, commitMessage *string) int
+		MoveAnnotationIssue           func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
+		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
+		RemoveFavoriteProject         func(childComplexity int, identifier string) int
+		RemoveItemFromCommitQueue     func(childComplexity int, commitQueueID string, issue string) int
+		RemovePublicKey               func(childComplexity int, keyName string) int
+		RemoveVolume                  func(childComplexity int, volumeID string) int
+		RestartJasper                 func(childComplexity int, hostIds []string) int
+		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []string) int
+		RestartTask                   func(childComplexity int, taskID string) int
+		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
+		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
+		SchedulePatchTasks            func(childComplexity int, patchID string) int
+		ScheduleTask                  func(childComplexity int, taskID string) int
+		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
+		SetPatchPriority              func(childComplexity int, patchID string, priority int) int
+		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
+		SpawnHost                     func(childComplexity int, spawnHostInput *SpawnHostInput) int
+		SpawnVolume                   func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
+		UnschedulePatchTasks          func(childComplexity int, patchID string, abort bool) int
+		UnscheduleTask                func(childComplexity int, taskID string) int
+		UpdateHostStatus              func(childComplexity int, hostIds []string, status string, notes *string) int
+		UpdatePublicKey               func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
+		UpdateSpawnHostStatus         func(childComplexity int, hostID string, action SpawnHostStatusActions) int
+		UpdateUserSettings            func(childComplexity int, userSettings *model.APIUserSettings) int
+		UpdateVolume                  func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
 	}
 
 	Note struct {
@@ -833,6 +834,7 @@ type MutationResolver interface {
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
+	ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*model.APITask, error)
 	EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*model.APIPatch, error)
 	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -2376,6 +2378,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ScheduleTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.scheduleUndispatchedBaseTasks":
+		if e.complexity.Mutation.ScheduleUndispatchedBaseTasks == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_scheduleUndispatchedBaseTasks_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ScheduleUndispatchedBaseTasks(childComplexity, args["patchId"].(string)), true
 
 	case "Mutation.setPatchPriority":
 		if e.complexity.Mutation.SetPatchPriority == nil {
@@ -4961,6 +4975,7 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
   scheduleTask(taskId: String!): Task!
@@ -6376,6 +6391,20 @@ func (ec *executionContext) field_Mutation_scheduleTask_args(ctx context.Context
 		}
 	}
 	args["taskId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_scheduleUndispatchedBaseTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg0
 	return args, nil
 }
 
@@ -12592,6 +12621,44 @@ func (ec *executionContext) _Mutation_restartPatch(ctx context.Context, field gr
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_scheduleUndispatchedBaseTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_scheduleUndispatchedBaseTasks_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ScheduleUndispatchedBaseTasks(rctx, args["patchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APITask)
+	fc.Result = res
+	return ec.marshalOTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_enqueuePatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -27656,6 +27723,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_unschedulePatchTasks(ctx, field)
 		case "restartPatch":
 			out.Values[i] = ec._Mutation_restartPatch(ctx, field)
+		case "scheduleUndispatchedBaseTasks":
+			out.Values[i] = ec._Mutation_scheduleUndispatchedBaseTasks(ctx, field)
 		case "enqueuePatch":
 			out.Values[i] = ec._Mutation_enqueuePatch(ctx, field)
 			if out.Values[i] == graphql.Null {
