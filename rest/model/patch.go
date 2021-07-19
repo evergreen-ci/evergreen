@@ -210,6 +210,8 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
 
+// getCollectiveStatus answers the question of what the patch status should be
+// when the patch status and the status of it's children are different
 func getCollectiveStatus(allPatches []APIPatch) string {
 	hasCreated := false
 	hasFailure := false
@@ -229,11 +231,11 @@ func getCollectiveStatus(allPatches []APIPatch) string {
 	}
 
 	if !(hasCreated || hasFailure || hasSuccess) {
-		grip.Critical(message.WrapError(errors.New("unknown patch status"), message.Fields{
+		grip.Critical(message.Fields{
 			"message": "An unknown patch status was found",
 			"cause":   "Programmer error: new statuses should be added to GetCollectiveStatus().",
 			"patches": allPatches,
-		}))
+		})
 	}
 
 	if hasCreated && (hasFailure || hasSuccess) {

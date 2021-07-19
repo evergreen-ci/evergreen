@@ -995,11 +995,11 @@ func GetCollectiveStatus(allPatches []Patch) string {
 	}
 
 	if !(hasCreated || hasFailure || hasSuccess) {
-		grip.Critical(message.WrapError(errors.New("unknown patch status"), message.Fields{
+		grip.Critical(message.Fields{
 			"message": "An unknown patch status was found",
 			"cause":   "Programmer error: new statuses should be added to GetCollectiveStatus().",
 			"patches": allPatches,
-		}))
+		})
 	}
 
 	if hasCreated && (hasFailure || hasSuccess) {
