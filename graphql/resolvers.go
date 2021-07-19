@@ -1904,16 +1904,16 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 				if generatorTask != nil {
 					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
 					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
-					if baseGeneratorTask != nil {
+					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
 						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
 						if err != nil {
-							return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not stepback generated task: %s", err.Error()))
+							return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not activate generated task: %s", err.Error()))
 						}
 						tasksToSchedule[baseGeneratorTask.Id] = true
 
 					}
 				}
-			} else {
+			} else if baseTask.Status == evergreen.TaskUndispatched {
 				tasksToSchedule[baseTask.Id] = true
 			}
 
