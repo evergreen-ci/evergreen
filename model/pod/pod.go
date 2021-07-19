@@ -120,9 +120,10 @@ func (p *Pod) Remove() error {
 }
 
 // UpdateStatus updates the pod status.
-// kim: TODO: test
 func (p *Pod) UpdateStatus(s Status) error {
-	if err := UpdateOne(ByID(p.ID), bson.M{
+	byIDAndStatus := ByID(p.ID)
+	byIDAndStatus[StatusKey] = p.Status
+	if err := UpdateOne(byIDAndStatus, bson.M{
 		"$set": bson.M{StatusKey: s},
 	}); err != nil {
 		return err
