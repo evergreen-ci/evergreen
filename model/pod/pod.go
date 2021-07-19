@@ -3,11 +3,8 @@ package pod
 import (
 	"time"
 
-	"github.com/evergreen-ci/cocoa"
-	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -34,20 +31,6 @@ type Pod struct {
 // Status represents a possible state that a pod can be in.
 type Status string
 
-func (s Status) Export() (cocoa.ECSPodStatus, error) {
-	switch s {
-	case InitializingStatus:
-	case StartingStatus:
-		return cocoa.Starting, nil
-	case RunningStatus:
-		return cocoa.Running, nil
-	case TerminatedStatus:
-		return cocoa.Deleted, nil
-	default:
-		return "", errors.Errorf("no equivalent ECS status for pod status '%s'", s)
-	}
-}
-
 const (
 	// InitializingStatus indicates that a pod is waiting to be created.
 	InitializingStatus Status = "initializing"
@@ -73,26 +56,6 @@ type ResourceInfo struct {
 	// SecretIDs are the resource identifiers for the secrets owned by this pod
 	// in Secrets Manager.
 	SecretIDs []string `bson:"secret_ids" json:"secret_ids"`
-}
-
-func (i *ResourceInfo) Export() cocoa.ECSPodResources {
-	var secrets []cocoa.PodSecret
-	for _, id := range i.SecretIDs {
-		s := cocoa.NewPodSecret().
-			SetName(id).
-			SetOwned(true)
-		secrets = append(secrets, *s)
-	}
-
-	taskDef := cocoa.NewECSTaskDefinition().
-		SetID(i.DefinitionID).
-		SetOwned(true)
-
-	return *cocoa.NewECSPodResources().
-		SetTaskID(i.ID).
-		SetCluster(i.Cluster).
-		SetTaskDefinition(*taskDef).
-		SetSecrets(secrets)
 }
 
 // TaskCreationOptions are options to apply to the task's container when
@@ -157,6 +120,7 @@ func (p *Pod) Remove() error {
 }
 
 // UpdateStatus updates the pod status.
+// kim: TODO: test
 func (p *Pod) UpdateStatus(s Status) error {
 	if err := UpdateOne(ByID(p.ID), bson.M{
 		"$set": bson.M{StatusKey: s},
@@ -169,23 +133,4 @@ func (p *Pod) UpdateStatus(s Status) error {
 	// TODO (EVG-15026): set up event logs when pod state changes.
 
 	return nil
-}
-
-func (p *Pod) Export(settings *evergreen.Settings, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, error) {
-	status, err := p.Status.Export()
-	if err != nil {
-		return nil, errors.Wrap(err, "exporting pod status")
-	}
-
-	res := p.Resources.Export()
-	if err != nil {
-		return nil, errors.Wrap(err, "exporting pod resources")
-	}
-
-	opts := ecs.NewBasicECSPodOptions().
-		SetClient(c).
-		SetVault(v).
-		SetResources(res)
-		SetStatus(status).
-	return nil, errors.New("TODO: implement")
 }

@@ -5,10 +5,8 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/cocoa"
-	"github.com/evergreen-ci/cocoa/awsutil"
-	"github.com/evergreen-ci/cocoa/ecs"
-	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -124,7 +122,7 @@ func (j *terminatePodJob) populateIfUnset(ctx context.Context) (populateErr erro
 			return err
 		}
 		if p == nil {
-			return errors.New("pod not founnd")
+			return errors.New("pod not found")
 		}
 		j.pod = p
 	}
@@ -146,53 +144,26 @@ func (j *terminatePodJob) populateIfUnset(ctx context.Context) (populateErr erro
 	}()
 
 	if j.vault == nil {
-		if j.smClient == nil {
-			client, err := secret.NewBasicSecretsManagerClient(j.exportAWSOpts(settings))
-			if err != nil {
-				return errors.Wrap(err, "initializing Secrets Manager client")
-			}
-			j.smClient = client
+		vault, err := cloud.MakeSecretsManagerVault(settings)
+		if err != nil {
+			return errors.Wrap(err, "initializing vault")
 		}
-
-		j.vault = secret.NewBasicSecretsManager(j.smClient)
+		j.vault = vault
 	}
 
 	if j.ecsClient == nil {
-		// This intentionally does not share the AWS options between the Secrets
-		// Manager and ECS clients to avoid dependencies between each other's
-		// HTTP clients.
-		client, err := ecs.NewBasicECSClient(j.exportAWSOpts(settings))
+		client, err := cloud.MakeECSClient(settings)
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS client")
 		}
 		j.ecsClient = client
 	}
 
-	// kim: TODO: add converter from DB pod status to cocoa pod status
-	// kim: TODO: add converter from DB pod resources to cocoa pod resources.
-	opts := ecs.NewBasicECSPodOptions().SetClient(j.ecsClient).SetVault(j.vault)
-
-	ecsPod, err := ecs.NewBasicECSPod(opts)
+	ecsPod, err := cloud.ExportPod(j.pod, j.ecsClient, j.vault)
 	if err != nil {
-		return errors.Wrap(err, "initializing ECS pod")
+		return errors.Wrap(err, "exporting pod")
 	}
-
 	j.ecsPod = ecsPod
 
 	return nil
-}
-
-// kim: TODO: make AWS options from global settings
-// kim: TODO: wait for awsutil change to merge
-func (j *terminatePodJob) exportAWSOpts(settings *evergreen.Settings) awsutil.ClientOptions {
-	opts := *awsutil.NewClientOptions().
-		SetRegion(settings.Providers.AWS.Pod.Region).
-		SetRole(settings.Providers.AWS.Pod.Role)
-
-		// kim: TODO: deal with populated AWS credentials if they're set
-	// if settings.AWS.Pod.Creds != nil {
-	//
-	// }
-
-	return opts
 }
