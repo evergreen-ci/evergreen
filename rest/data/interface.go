@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -297,6 +298,8 @@ type Connector interface {
 
 	CheckHostSecret(string, *http.Request) (int, error)
 
+	// CreatePod is a method to insert a given pod.
+	CreatePod(*pod.Pod) error
 	// CheckPodSecret checks that the ID and secret match the server's
 	// stored credentials for the pod.
 	CheckPodSecret(id, secret string) error
