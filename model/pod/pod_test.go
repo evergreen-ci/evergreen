@@ -111,21 +111,57 @@ func TestRemove(t *testing.T) {
 
 func TestUpdateStatus(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
-		"Succeeds": func(t *testing.T, p Pod) {
+		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(InitializingStatus))
+			assert.Equal(t, InitializingStatus, p.Status)
+			assert.NotZero(t, p.TimeInfo.Initialized)
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, p.Status, dbPod.Status)
+			assert.NotZero(t, dbPod.TimeInfo.Initialized)
+		},
+		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(TerminatedStatus))
-			assert.Equal(t, TerminatedStatus, p.Status)
+			require.NoError(t, p.UpdateStatus(StartingStatus))
+			assert.Equal(t, StartingStatus, p.Status)
+			assert.NotZero(t, p.TimeInfo.Started)
 
-			dbPod, err = FindOneByID(p.ID)
+			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, p.Status, dbPod.Status)
+			assert.NotZero(t, dbPod.TimeInfo.Started)
+		},
+		"SucceedsWithRunningStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(RunningStatus))
+			assert.Equal(t, RunningStatus, p.Status)
+			assert.NotZero(t, p.TimeInfo.Provisioned)
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, p.Status, dbPod.Status)
+			assert.NotZero(t, dbPod.TimeInfo.Provisioned)
+		},
+		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(TerminatedStatus))
+			assert.Equal(t, TerminatedStatus, p.Status)
+			assert.NotZero(t, p.TimeInfo.Terminated)
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, p.Status, dbPod.Status)
+			assert.NotZero(t, dbPod.TimeInfo.Terminated)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
 			assert.Error(t, p.UpdateStatus(TerminatedStatus))

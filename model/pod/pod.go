@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -125,15 +126,39 @@ func (p *Pod) Remove() error {
 func (p *Pod) UpdateStatus(s Status) error {
 	byIDAndStatus := ByID(p.ID)
 	byIDAndStatus[StatusKey] = p.Status
+
+	setFields := bson.M{
+		StatusKey: s,
+	}
+	statusUpdated := time.Now()
+	switch s {
+	case InitializingStatus:
+		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoInitializedKey)] = statusUpdated
+	case StartingStatus:
+		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartedKey)] = statusUpdated
+	case RunningStatus:
+		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoProvisionedKey)] = statusUpdated
+	case TerminatedStatus:
+		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoTerminatedKey)] = statusUpdated
+	}
+
 	if err := UpdateOne(byIDAndStatus, bson.M{
-		"$set": bson.M{StatusKey: s},
+		"$set": setFields,
 	}); err != nil {
 		return err
 	}
 
 	p.Status = s
-
-	// TODO (EVG-15026): set up event logs when pod state changes.
+	switch s {
+	case InitializingStatus:
+		p.TimeInfo.Initialized = statusUpdated
+	case StartingStatus:
+		p.TimeInfo.Started = statusUpdated
+	case RunningStatus:
+		p.TimeInfo.Provisioned = statusUpdated
+	case TerminatedStatus:
+		p.TimeInfo.Terminated = statusUpdated
+	}
 
 	return nil
 }
