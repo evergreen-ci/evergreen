@@ -144,11 +144,14 @@ func (j *terminatePodJob) populateIfUnset(ctx context.Context) (populateErr erro
 	}()
 
 	if j.vault == nil {
-		vault, err := cloud.MakeSecretsManagerVault(settings)
-		if err != nil {
-			return errors.Wrap(err, "initializing vault")
+		if j.smClient == nil {
+			client, err := cloud.MakeSecretsManagerClient(settings)
+			if err != nil {
+				return errors.Wrap(err, "initializing Secrets Manager client")
+			}
+			j.smClient = client
 		}
-		j.vault = vault
+		j.vault = cloud.MakeSecretsManagerVault(j.smClient)
 	}
 
 	if j.ecsClient == nil {

@@ -28,8 +28,8 @@ var (
 	TaskContainerCreationOptsSecretsKey  = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvSecrets")
 
 	ResourceInfoID           = bsonutil.MustHaveTag(ResourceInfo{}, "ID")
-	ResourceInfoCluster      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
 	ResourceInfoDefinitionID = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
+	ResourceInfoCluster      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
 	ResourceInfoSecretIDs    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
 
 	TimeInfoInitializedKey = bsonutil.MustHaveTag(TimeInfo{}, "Initialized")

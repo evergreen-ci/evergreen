@@ -49,10 +49,10 @@ type ResourceInfo struct {
 	// ID is the unique resource identifier for the collection of containers
 	// running.
 	ID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
-	// Cluster is the name of the cluster where the containers are running.
-	Cluster string `bson:"cluster" json:"cluster"`
 	// DefinitionID is the resource identifier for the pod definition template.
 	DefinitionID string `bson:"definition_id" json:"definition_id"`
+	// Cluster is the name of the cluster where the containers are running.
+	Cluster string `bson:"cluster" json:"cluster"`
 	// SecretIDs are the resource identifiers for the secrets owned by this pod
 	// in Secrets Manager.
 	SecretIDs []string `bson:"secret_ids" json:"secret_ids"`

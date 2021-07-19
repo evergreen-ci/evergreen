@@ -11,31 +11,23 @@ import (
 )
 
 // MakeECSClient creates a cocoa.ECSClient to interact with ECS.
-// kim: TODO: test
 func MakeECSClient(settings *evergreen.Settings) (cocoa.ECSClient, error) {
 	return ecs.NewBasicECSClient(podAWSOptions(settings))
 }
 
 // MakeSecretsManagerClient creates a cocoa.SecretsManagerClient to interact
 // with Secrets Manager.
-// kim: TODO: test
 func MakeSecretsManagerClient(settings *evergreen.Settings) (cocoa.SecretsManagerClient, error) {
 	return secret.NewBasicSecretsManagerClient(podAWSOptions(settings))
 }
 
 // MakeSecretsManagerVault creates a cocoa.Vault backed by Secrets Manager.
-// kim: TODO: test
-func MakeSecretsManagerVault(settings *evergreen.Settings) (cocoa.Vault, error) {
-	client, err := MakeSecretsManagerClient(settings)
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing Secrets Manager client")
-	}
-	return secret.NewBasicSecretsManager(client), nil
+func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) cocoa.Vault {
+	return secret.NewBasicSecretsManager(c)
 }
 
 // ExportPod exports the pod DB model to its equivalent cocoa.ECSPod backed by
-// the given ECS client and secrets vault.
-// kim: TODO: test
+// the given ECS client and secret vault.
 func ExportPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, error) {
 	status, err := ExportPodStatus(p.Status)
 	if err != nil {
@@ -57,7 +49,6 @@ func ExportPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, erro
 }
 
 // ExportStatus exports the pod status to the equivalent cocoa.ECSPodStatus.
-// kim: TODO: test
 func ExportPodStatus(s pod.Status) (cocoa.ECSPodStatus, error) {
 	switch s {
 	case pod.InitializingStatus:
@@ -75,7 +66,6 @@ func ExportPodStatus(s pod.Status) (cocoa.ECSPodStatus, error) {
 
 // ExportPodResources exports the ECS pod resource information into the
 // equivalent cocoa.ECSPodResources.
-// kim: TODO: test
 func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 	var secrets []cocoa.PodSecret
 	for _, id := range info.SecretIDs {
@@ -91,10 +81,6 @@ func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 		res.SetTaskID(info.ID)
 	}
 
-	if info.Cluster != "" {
-		res.SetCluster(info.Cluster)
-	}
-
 	if info.DefinitionID != "" {
 		taskDef := cocoa.NewECSTaskDefinition().
 			SetID(info.DefinitionID).
@@ -102,14 +88,22 @@ func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 		res.SetTaskDefinition(*taskDef)
 	}
 
+	if info.Cluster != "" {
+		res.SetCluster(info.Cluster)
+	}
+
 	return *res
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.
-// kim: TODO: test
 func podAWSOptions(settings *evergreen.Settings) awsutil.ClientOptions {
-	return *awsutil.NewClientOptions().
-		SetRegion(settings.Providers.AWS.Pod.Region).
-		SetRole(settings.Providers.AWS.Pod.Role).
-		SetRetryOptions(awsClientDefaultRetryOptions())
+	opts := awsutil.NewClientOptions().SetRetryOptions(awsClientDefaultRetryOptions())
+	if region := settings.Providers.AWS.Pod.Region; region != "" {
+		opts.SetRegion(region)
+	}
+	if role := settings.Providers.AWS.Pod.Role; role != "" {
+		opts.SetRole(role)
+	}
+
+	return *opts
 }
