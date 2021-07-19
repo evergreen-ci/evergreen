@@ -96,6 +96,8 @@ type TimeInfo struct {
 	// Provisioned is the time when the pod was finished provisioning and
 	// ready to do useful work.
 	Provisioned time.Time `bson:"provisioned,omitempty" json:"provisioned,omitempty"`
+	// Terminated is the time when the pod was terminated.
+	Terminated time.Time `bson:"terminated,omitempty" json:"terminated,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the

@@ -35,6 +35,7 @@ var (
 	TimeInfoInitializedKey = bsonutil.MustHaveTag(TimeInfo{}, "Initialized")
 	TimeInfoStartedKey     = bsonutil.MustHaveTag(TimeInfo{}, "Started")
 	TimeInfoProvisionedKey = bsonutil.MustHaveTag(TimeInfo{}, "Provisioned")
+	TimeInfoTerminatedKey  = bsonutil.MustHaveTag(TimeInfo{}, "Terminated")
 )
 
 // FindOne finds one pod by the given query.

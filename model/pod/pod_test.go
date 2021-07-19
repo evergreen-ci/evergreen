@@ -41,7 +41,9 @@ func TestInsertAndFindOneByID(t *testing.T) {
 				},
 				TimeInfo: TimeInfo{
 					Initialized: utility.BSONTime(time.Now()),
+					Started:     utility.BSONTime(time.Now()),
 					Provisioned: utility.BSONTime(time.Now()),
+					Terminated:  utility.BSONTime(time.Now()),
 				},
 			}
 			require.NoError(t, p.Insert())

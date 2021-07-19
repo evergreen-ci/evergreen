@@ -38,6 +38,12 @@ type terminatePodJob struct {
 	env       evergreen.Environment
 }
 
+// podLifecycleScope is a job scope that applies to all jobs that seek to make
+// transitions within the pod lifecycle.
+func podLifecycleScope(id string) string {
+	return fmt.Sprintf("pod-lifecycle.%s", id)
+}
+
 func makeTerminatePodJob() *terminatePodJob {
 	j := &terminatePodJob{
 		Base: job.Base{
@@ -54,10 +60,12 @@ func makeTerminatePodJob() *terminatePodJob {
 // NewTerminatePodJob creates a job to terminate the given pod with the given
 // termination reason. Callers should populate the reason with as much context
 // as possible for why the pod is being terminated.
-func NewTerminatePodJob(env evergreen.Environment, p *pod.Pod, reason string) amboy.Job {
+func NewTerminatePodJob(p *pod.Pod, reason string) amboy.Job {
 	j := makeTerminatePodJob()
+	j.PodID = p.ID
+	j.Reason = reason
 	j.pod = p
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", terminatePodJobName, p.ID)})
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", terminatePodJobName, p.ID), podLifecycleScope(p.ID)})
 	j.SetShouldApplyScopesOnEnqueue(true)
 
 	return j
@@ -89,6 +97,7 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 			"job":                        j.ID(),
 		})
 	case pod.StartingStatus, pod.RunningStatus:
+		// TODO (EVG-15034): ensure deletion is idempotent.
 		if err := j.ecsPod.Delete(ctx); err != nil {
 			j.AddError(errors.Wrap(err, "deleting pod resources"))
 			return
@@ -100,6 +109,7 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 			"termination_attempt_reason": j.Reason,
 			"job":                        j.ID(),
 		})
+		return
 	}
 
 	if err := j.pod.UpdateStatus(pod.TerminatedStatus); err != nil {
@@ -125,6 +135,10 @@ func (j *terminatePodJob) populateIfUnset(ctx context.Context) (populateErr erro
 			return errors.New("pod not found")
 		}
 		j.pod = p
+	}
+
+	if j.pod.Status == pod.InitializingStatus || j.pod.Status == pod.TerminatedStatus {
+		return
 	}
 
 	settings := j.env.Settings()
