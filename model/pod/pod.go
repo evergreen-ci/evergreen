@@ -1,11 +1,8 @@
 package pod
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -25,8 +22,6 @@ type Pod struct {
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
 	// Resources are external resources that are managed by this pod.
 	Resources ResourceInfo `bson:"ecs_info" json:"ecs_info"`
-	// TimeInfo contains timing information for the pod's lifecycle.
-	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
 }
 
 // Status represents a possible state that a pod can be in.
@@ -87,26 +82,6 @@ func (o TaskContainerCreationOptions) IsZero() bool {
 	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.Platform == "" && o.EnvVars == nil && o.EnvSecrets == nil
 }
 
-// TimeInfo represents timing information about the pod.
-type TimeInfo struct {
-	// Initialized is the time when this pod was first initialized.
-	Initialized time.Time `bson:"initialized,omitempty" json:"initialized,omitempty"`
-	// Started is the time when this pod was actually requested to start its
-	// containers.
-	Started time.Time `bson:"started,omitempty" json:"started,omitempty"`
-	// Provisioned is the time when the pod was finished provisioning and
-	// ready to do useful work.
-	Provisioned time.Time `bson:"provisioned,omitempty" json:"provisioned,omitempty"`
-	// Terminated is the time when the pod was terminated.
-	Terminated time.Time `bson:"terminated,omitempty" json:"terminated,omitempty"`
-}
-
-// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
-// zero value for BSON marshalling.
-func (i TimeInfo) IsZero() bool {
-	return i.Initialized.IsZero() && i.Started.IsZero() && i.Provisioned.IsZero()
-}
-
 // Insert inserts a new pod into the collection.
 func (p *Pod) Insert() error {
 	return db.Insert(Collection, p)
@@ -127,38 +102,15 @@ func (p *Pod) UpdateStatus(s Status) error {
 	byIDAndStatus := ByID(p.ID)
 	byIDAndStatus[StatusKey] = p.Status
 
-	setFields := bson.M{
-		StatusKey: s,
-	}
-	statusUpdated := time.Now()
-	switch s {
-	case InitializingStatus:
-		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoInitializedKey)] = statusUpdated
-	case StartingStatus:
-		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartedKey)] = statusUpdated
-	case RunningStatus:
-		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoProvisionedKey)] = statusUpdated
-	case TerminatedStatus:
-		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoTerminatedKey)] = statusUpdated
-	}
-
 	if err := UpdateOne(byIDAndStatus, bson.M{
-		"$set": setFields,
+		"$set": bson.M{StatusKey: s},
 	}); err != nil {
 		return err
 	}
 
 	p.Status = s
-	switch s {
-	case InitializingStatus:
-		p.TimeInfo.Initialized = statusUpdated
-	case StartingStatus:
-		p.TimeInfo.Started = statusUpdated
-	case RunningStatus:
-		p.TimeInfo.Provisioned = statusUpdated
-	case TerminatedStatus:
-		p.TimeInfo.Terminated = statusUpdated
-	}
+
+	// TODO (EVG-15026): set up event logging when pod status changes.
 
 	return nil
 }

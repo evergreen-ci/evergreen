@@ -18,7 +18,6 @@ var (
 	SecretKey                    = bsonutil.MustHaveTag(Pod{}, "Secret")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
-	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 
 	TaskContainerCreationOptsImageKey    = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Image")
 	TaskContainerCreationOptsMemoryMBKey = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "MemoryMB")
@@ -31,11 +30,6 @@ var (
 	ResourceInfoDefinitionID = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
 	ResourceInfoCluster      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
 	ResourceInfoSecretIDs    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
-
-	TimeInfoInitializedKey = bsonutil.MustHaveTag(TimeInfo{}, "Initialized")
-	TimeInfoStartedKey     = bsonutil.MustHaveTag(TimeInfo{}, "Started")
-	TimeInfoProvisionedKey = bsonutil.MustHaveTag(TimeInfo{}, "Provisioned")
-	TimeInfoTerminatedKey  = bsonutil.MustHaveTag(TimeInfo{}, "Terminated")
 )
 
 // FindOne finds one pod by the given query.
