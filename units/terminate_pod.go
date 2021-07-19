@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
@@ -60,13 +61,14 @@ func makeTerminatePodJob() *terminatePodJob {
 // NewTerminatePodJob creates a job to terminate the given pod with the given
 // termination reason. Callers should populate the reason with as much context
 // as possible for why the pod is being terminated.
-func NewTerminatePodJob(p *pod.Pod, reason string) amboy.Job {
+func NewTerminatePodJob(p *pod.Pod, reason string, ts time.Time) amboy.Job {
 	j := makeTerminatePodJob()
 	j.PodID = p.ID
 	j.Reason = reason
 	j.pod = p
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", terminatePodJobName, p.ID), podLifecycleScope(p.ID)})
 	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetID(fmt.Sprintf("%s.%s.%s", terminatePodJobName, p.ID, ts.Format(TSFormat)))
 
 	return j
 }

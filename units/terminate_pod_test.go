@@ -22,7 +22,7 @@ func TestNewTerminatePodJob(t *testing.T) {
 		ID: "id",
 	}
 	reason := "reason"
-	j, ok := NewTerminatePodJob(&p, reason).(*terminatePodJob)
+	j, ok := NewTerminatePodJob(&p, reason, utility.RoundPartOfMinute(0)).(*terminatePodJob)
 	require.True(t, ok)
 
 	assert.NotZero(t, j.ID())
@@ -157,7 +157,7 @@ func TestTerminatePodJob(t *testing.T) {
 				},
 			}
 
-			j, ok := NewTerminatePodJob(&p, "reason").(*terminatePodJob)
+			j, ok := NewTerminatePodJob(&p, "reason", utility.RoundPartOfMinute(0)).(*terminatePodJob)
 			require.True(t, ok)
 			j.smClient = &mock.SecretsManagerClient{}
 			defer func() {
