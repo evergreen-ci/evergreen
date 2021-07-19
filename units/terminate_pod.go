@@ -76,11 +76,6 @@ func NewTerminatePodJob(p *pod.Pod, reason string, ts time.Time) amboy.Job {
 func (j *terminatePodJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if err := j.populateIfUnset(ctx); err != nil {
-		j.AddError(err)
-		return
-	}
-
 	defer func() {
 		if j.smClient != nil {
 			j.AddError(j.smClient.Close(ctx))
@@ -89,6 +84,10 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 			j.AddError(j.ecsClient.Close(ctx))
 		}
 	}()
+	if err := j.populateIfUnset(ctx); err != nil {
+		j.AddError(err)
+		return
+	}
 
 	switch j.pod.Status {
 	case pod.InitializingStatus:
@@ -119,7 +118,7 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *terminatePodJob) populateIfUnset(ctx context.Context) (populateErr error) {
+func (j *terminatePodJob) populateIfUnset(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -140,24 +139,10 @@ func (j *terminatePodJob) populateIfUnset(ctx context.Context) (populateErr erro
 	}
 
 	if j.pod.Status == pod.InitializingStatus || j.pod.Status == pod.TerminatedStatus {
-		return
+		return nil
 	}
 
 	settings := j.env.Settings()
-
-	defer func() {
-		if populateErr == nil {
-			return
-		}
-
-		if j.smClient != nil {
-			j.AddError(j.smClient.Close(ctx))
-		}
-
-		if j.ecsClient != nil {
-			j.AddError(j.ecsClient.Close(ctx))
-		}
-	}()
 
 	if j.vault == nil {
 		if j.smClient == nil {
