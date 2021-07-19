@@ -139,7 +139,9 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 				}
 			}
 		case <-ctx.Done():
-			tc.logger.Task().Errorf("Command stopped early, idle timeout duration of %d seconds has been reached: %s", int(tc.timeout.idleTimeoutDuration.Seconds()), ctx.Err())
+			if ctx.Err() == context.DeadlineExceeded {
+				tc.logger.Task().Errorf("Command stopped early, idle timeout duration of %d seconds has been reached: %s", int(tc.timeout.idleTimeoutDuration.Seconds()), ctx.Err())
+			}
 			return errors.Wrap(ctx.Err(), "Agent stopped early")
 		}
 		tc.logger.Task().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
