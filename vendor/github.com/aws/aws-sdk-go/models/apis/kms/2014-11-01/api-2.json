@@ -347,7 +347,8 @@
         {"shape":"InvalidKeyUsageException"},
         {"shape":"InvalidGrantTokenException"},
         {"shape":"KMSInternalException"},
-        {"shape":"KMSInvalidStateException"}
+        {"shape":"KMSInvalidStateException"},
+        {"shape":"UnsupportedOperationException"}
       ]
     },
     "GenerateDataKeyPairWithoutPlaintext":{
@@ -366,7 +367,8 @@
         {"shape":"InvalidKeyUsageException"},
         {"shape":"InvalidGrantTokenException"},
         {"shape":"KMSInternalException"},
-        {"shape":"KMSInvalidStateException"}
+        {"shape":"KMSInvalidStateException"},
+        {"shape":"UnsupportedOperationException"}
       ]
     },
     "GenerateDataKeyWithoutPlaintext":{
@@ -523,6 +525,7 @@
         {"shape":"NotFoundException"},
         {"shape":"DependencyTimeoutException"},
         {"shape":"InvalidMarkerException"},
+        {"shape":"InvalidGrantIdException"},
         {"shape":"InvalidArnException"},
         {"shape":"KMSInternalException"},
         {"shape":"KMSInvalidStateException"}
@@ -738,6 +741,7 @@
         {"shape":"DependencyTimeoutException"},
         {"shape":"NotFoundException"},
         {"shape":"KMSInternalException"},
+        {"shape":"LimitExceededException"},
         {"shape":"KMSInvalidStateException"}
       ]
     },
@@ -815,7 +819,9 @@
       "members":{
         "AliasName":{"shape":"AliasNameType"},
         "AliasArn":{"shape":"ArnType"},
-        "TargetKeyId":{"shape":"KeyIdType"}
+        "TargetKeyId":{"shape":"KeyIdType"},
+        "CreationDate":{"shape":"DateType"},
+        "LastUpdatedDate":{"shape":"DateType"}
       }
     },
     "AliasNameType":{
@@ -1752,7 +1758,9 @@
       "members":{
         "Limit":{"shape":"LimitType"},
         "Marker":{"shape":"MarkerType"},
-        "KeyId":{"shape":"KeyIdType"}
+        "KeyId":{"shape":"KeyIdType"},
+        "GrantId":{"shape":"GrantIdType"},
+        "GranteePrincipal":{"shape":"PrincipalIdType"}
       }
     },
     "ListGrantsResponse":{

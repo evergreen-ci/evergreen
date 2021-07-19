@@ -93,13 +93,7 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 	case pod.StartingStatus, pod.RunningStatus:
 		if err := j.ecsPod.Delete(ctx); err != nil {
 			j.AddError(errors.Wrap(err, "deleting pod resources"))
-			// kim: TODO: should this return or not? Assuming Delete is
-			// idempotent, it might be called multiple times so it should be
-			// allowed to do so. However, that would be difficult to implement
-			// unless you check within Delete for every "resource already
-			// deleted" exception,
-			// so it might be easier to just rely on the reaper to get any
-			// uncleaned resources for now.
+			return
 		}
 	case pod.TerminatedStatus:
 		grip.Info(message.Fields{

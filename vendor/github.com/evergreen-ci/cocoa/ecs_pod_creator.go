@@ -454,6 +454,12 @@ func (s *SecretOptions) SetExists(exists bool) *SecretOptions {
 	return s
 }
 
+// SetOwned returns whether or not the secret is owned by its pod.
+func (s *SecretOptions) SetOwned(owned bool) *SecretOptions {
+	s.Owned = &owned
+	return s
+}
+
 // Validate validates that the secret name is given and that either the secret
 // already exists or the new secret's value is given.
 func (s *SecretOptions) Validate() error {
@@ -684,7 +690,7 @@ func (d *ECSTaskDefinition) SetID(id string) *ECSTaskDefinition {
 	return d
 }
 
-// SetOwned sets if the task definition should be owned by its pod.
+// SetOwned sets if the task definition is owned by its pod.
 func (d *ECSTaskDefinition) SetOwned(owned bool) *ECSTaskDefinition {
 	d.Owned = &owned
 	return d

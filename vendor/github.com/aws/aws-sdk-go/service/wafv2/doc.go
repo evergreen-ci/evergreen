@@ -21,25 +21,26 @@
 //
 // AWS WAF is a web application firewall that lets you monitor the HTTP and
 // HTTPS requests that are forwarded to Amazon CloudFront, an Amazon API Gateway
-// API, or an Application Load Balancer. AWS WAF also lets you control access
-// to your content. Based on conditions that you specify, such as the IP addresses
-// that requests originate from or the values of query strings, API Gateway,
-// CloudFront, or the Application Load Balancer responds to requests either
-// with the requested content or with an HTTP 403 status code (Forbidden). You
-// also can configure CloudFront to return a custom error page when a request
-// is blocked.
+// REST API, an Application Load Balancer, or an AWS AppSync GraphQL API. AWS
+// WAF also lets you control access to your content. Based on conditions that
+// you specify, such as the IP addresses that requests originate from or the
+// values of query strings, the API Gateway REST API, CloudFront distribution,
+// the Application Load Balancer, or the AWS AppSync GraphQL API responds to
+// requests either with the requested content or with an HTTP 403 status code
+// (Forbidden). You also can configure CloudFront to return a custom error page
+// when a request is blocked.
 //
 // This API guide is for developers who need detailed information about AWS
 // WAF API actions, data types, and errors. For detailed information about AWS
 // WAF features and an overview of how to use AWS WAF, see the AWS WAF Developer
 // Guide (https://docs.aws.amazon.com/waf/latest/developerguide/).
 //
-// You can make API calls using the endpoints listed in AWS Service Endpoints
-// for AWS WAF (https://docs.aws.amazon.com/general/latest/gr/rande.html#waf_region).
+// You can make calls using the endpoints listed in AWS Service Endpoints for
+// AWS WAF (https://docs.aws.amazon.com/general/latest/gr/rande.html#waf_region).
 //
 //    * For regional applications, you can use any of the endpoints in the list.
-//    A regional application can be an Application Load Balancer (ALB) or an
-//    API Gateway stage.
+//    A regional application can be an Application Load Balancer (ALB), an API
+//    Gateway REST API, or an AppSync GraphQL API.
 //
 //    * For AWS CloudFront applications, you must use the API endpoint listed
 //    for US East (N. Virginia): us-east-1.
@@ -56,9 +57,9 @@
 //    need to distinguish the scope, you specify a Scope parameter and set it
 //    to CLOUDFRONT or REGIONAL.
 //
-//    * You can define a Web ACL or rule group with a single API call, and update
+//    * You can define a Web ACL or rule group with a single call, and update
 //    it with a single call. You define all rule specifications in JSON format,
-//    and pass them to your rule group or Web ACL API calls.
+//    and pass them to your rule group or Web ACL calls.
 //
 //    * The limits AWS WAF places on the use of rules more closely reflects
 //    the cost of running each type of rule. Rule groups include capacity settings,

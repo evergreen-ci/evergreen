@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/cocoa"
-	"github.com/evergreen-ci/cocoa/internal/awsutil"
+	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/internal/testcase"
 	"github.com/evergreen-ci/cocoa/internal/testutil"
 	"github.com/evergreen-ci/cocoa/secret"
@@ -17,11 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestECSPodCreatorInterface(t *testing.T) {
-	assert.Implements(t, (*cocoa.ECSPodCreator)(nil), &BasicECSPodCreator{})
-}
-
 func TestBasicECSPodCreator(t *testing.T) {
+	assert.Implements(t, (*cocoa.ECSPodCreator)(nil), &BasicECSPodCreator{})
+
 	testutil.CheckAWSEnvVarsForECSAndSecretsManager(t)
 
 	ctx, cancel := context.WithCancel(context.Background())

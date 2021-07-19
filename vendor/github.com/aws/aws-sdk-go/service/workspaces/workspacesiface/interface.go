@@ -26,7 +26,7 @@ import (
 //    // myFunc uses an SDK service client to make a request to
 //    // Amazon WorkSpaces.
 //    func myFunc(svc workspacesiface.WorkSpacesAPI) bool {
-//        // Make svc.AssociateIpGroups request
+//        // Make svc.AssociateConnectionAlias request
 //    }
 //
 //    func main() {
@@ -42,7 +42,7 @@ import (
 //    type mockWorkSpacesClient struct {
 //        workspacesiface.WorkSpacesAPI
 //    }
-//    func (m *mockWorkSpacesClient) AssociateIpGroups(input *workspaces.AssociateIpGroupsInput) (*workspaces.AssociateIpGroupsOutput, error) {
+//    func (m *mockWorkSpacesClient) AssociateConnectionAlias(input *workspaces.AssociateConnectionAliasInput) (*workspaces.AssociateConnectionAliasOutput, error) {
 //        // mock response/functionality
 //    }
 //
@@ -60,6 +60,10 @@ import (
 // and waiters. Its suggested to use the pattern above for testing, or using
 // tooling to generate mocks to satisfy the interfaces.
 type WorkSpacesAPI interface {
+	AssociateConnectionAlias(*workspaces.AssociateConnectionAliasInput) (*workspaces.AssociateConnectionAliasOutput, error)
+	AssociateConnectionAliasWithContext(aws.Context, *workspaces.AssociateConnectionAliasInput, ...request.Option) (*workspaces.AssociateConnectionAliasOutput, error)
+	AssociateConnectionAliasRequest(*workspaces.AssociateConnectionAliasInput) (*request.Request, *workspaces.AssociateConnectionAliasOutput)
+
 	AssociateIpGroups(*workspaces.AssociateIpGroupsInput) (*workspaces.AssociateIpGroupsOutput, error)
 	AssociateIpGroupsWithContext(aws.Context, *workspaces.AssociateIpGroupsInput, ...request.Option) (*workspaces.AssociateIpGroupsOutput, error)
 	AssociateIpGroupsRequest(*workspaces.AssociateIpGroupsInput) (*request.Request, *workspaces.AssociateIpGroupsOutput)
@@ -72,6 +76,10 @@ type WorkSpacesAPI interface {
 	CopyWorkspaceImageWithContext(aws.Context, *workspaces.CopyWorkspaceImageInput, ...request.Option) (*workspaces.CopyWorkspaceImageOutput, error)
 	CopyWorkspaceImageRequest(*workspaces.CopyWorkspaceImageInput) (*request.Request, *workspaces.CopyWorkspaceImageOutput)
 
+	CreateConnectionAlias(*workspaces.CreateConnectionAliasInput) (*workspaces.CreateConnectionAliasOutput, error)
+	CreateConnectionAliasWithContext(aws.Context, *workspaces.CreateConnectionAliasInput, ...request.Option) (*workspaces.CreateConnectionAliasOutput, error)
+	CreateConnectionAliasRequest(*workspaces.CreateConnectionAliasInput) (*request.Request, *workspaces.CreateConnectionAliasOutput)
+
 	CreateIpGroup(*workspaces.CreateIpGroupInput) (*workspaces.CreateIpGroupOutput, error)
 	CreateIpGroupWithContext(aws.Context, *workspaces.CreateIpGroupInput, ...request.Option) (*workspaces.CreateIpGroupOutput, error)
 	CreateIpGroupRequest(*workspaces.CreateIpGroupInput) (*request.Request, *workspaces.CreateIpGroupOutput)
@@ -80,9 +88,17 @@ type WorkSpacesAPI interface {
 	CreateTagsWithContext(aws.Context, *workspaces.CreateTagsInput, ...request.Option) (*workspaces.CreateTagsOutput, error)
 	CreateTagsRequest(*workspaces.CreateTagsInput) (*request.Request, *workspaces.CreateTagsOutput)
 
+	CreateWorkspaceBundle(*workspaces.CreateWorkspaceBundleInput) (*workspaces.CreateWorkspaceBundleOutput, error)
+	CreateWorkspaceBundleWithContext(aws.Context, *workspaces.CreateWorkspaceBundleInput, ...request.Option) (*workspaces.CreateWorkspaceBundleOutput, error)
+	CreateWorkspaceBundleRequest(*workspaces.CreateWorkspaceBundleInput) (*request.Request, *workspaces.CreateWorkspaceBundleOutput)
+
 	CreateWorkspaces(*workspaces.CreateWorkspacesInput) (*workspaces.CreateWorkspacesOutput, error)
 	CreateWorkspacesWithContext(aws.Context, *workspaces.CreateWorkspacesInput, ...request.Option) (*workspaces.CreateWorkspacesOutput, error)
 	CreateWorkspacesRequest(*workspaces.CreateWorkspacesInput) (*request.Request, *workspaces.CreateWorkspacesOutput)
+
+	DeleteConnectionAlias(*workspaces.DeleteConnectionAliasInput) (*workspaces.DeleteConnectionAliasOutput, error)
+	DeleteConnectionAliasWithContext(aws.Context, *workspaces.DeleteConnectionAliasInput, ...request.Option) (*workspaces.DeleteConnectionAliasOutput, error)
+	DeleteConnectionAliasRequest(*workspaces.DeleteConnectionAliasInput) (*request.Request, *workspaces.DeleteConnectionAliasOutput)
 
 	DeleteIpGroup(*workspaces.DeleteIpGroupInput) (*workspaces.DeleteIpGroupOutput, error)
 	DeleteIpGroupWithContext(aws.Context, *workspaces.DeleteIpGroupInput, ...request.Option) (*workspaces.DeleteIpGroupOutput, error)
@@ -91,6 +107,10 @@ type WorkSpacesAPI interface {
 	DeleteTags(*workspaces.DeleteTagsInput) (*workspaces.DeleteTagsOutput, error)
 	DeleteTagsWithContext(aws.Context, *workspaces.DeleteTagsInput, ...request.Option) (*workspaces.DeleteTagsOutput, error)
 	DeleteTagsRequest(*workspaces.DeleteTagsInput) (*request.Request, *workspaces.DeleteTagsOutput)
+
+	DeleteWorkspaceBundle(*workspaces.DeleteWorkspaceBundleInput) (*workspaces.DeleteWorkspaceBundleOutput, error)
+	DeleteWorkspaceBundleWithContext(aws.Context, *workspaces.DeleteWorkspaceBundleInput, ...request.Option) (*workspaces.DeleteWorkspaceBundleOutput, error)
+	DeleteWorkspaceBundleRequest(*workspaces.DeleteWorkspaceBundleInput) (*request.Request, *workspaces.DeleteWorkspaceBundleOutput)
 
 	DeleteWorkspaceImage(*workspaces.DeleteWorkspaceImageInput) (*workspaces.DeleteWorkspaceImageOutput, error)
 	DeleteWorkspaceImageWithContext(aws.Context, *workspaces.DeleteWorkspaceImageInput, ...request.Option) (*workspaces.DeleteWorkspaceImageOutput, error)
@@ -111,6 +131,14 @@ type WorkSpacesAPI interface {
 	DescribeClientProperties(*workspaces.DescribeClientPropertiesInput) (*workspaces.DescribeClientPropertiesOutput, error)
 	DescribeClientPropertiesWithContext(aws.Context, *workspaces.DescribeClientPropertiesInput, ...request.Option) (*workspaces.DescribeClientPropertiesOutput, error)
 	DescribeClientPropertiesRequest(*workspaces.DescribeClientPropertiesInput) (*request.Request, *workspaces.DescribeClientPropertiesOutput)
+
+	DescribeConnectionAliasPermissions(*workspaces.DescribeConnectionAliasPermissionsInput) (*workspaces.DescribeConnectionAliasPermissionsOutput, error)
+	DescribeConnectionAliasPermissionsWithContext(aws.Context, *workspaces.DescribeConnectionAliasPermissionsInput, ...request.Option) (*workspaces.DescribeConnectionAliasPermissionsOutput, error)
+	DescribeConnectionAliasPermissionsRequest(*workspaces.DescribeConnectionAliasPermissionsInput) (*request.Request, *workspaces.DescribeConnectionAliasPermissionsOutput)
+
+	DescribeConnectionAliases(*workspaces.DescribeConnectionAliasesInput) (*workspaces.DescribeConnectionAliasesOutput, error)
+	DescribeConnectionAliasesWithContext(aws.Context, *workspaces.DescribeConnectionAliasesInput, ...request.Option) (*workspaces.DescribeConnectionAliasesOutput, error)
+	DescribeConnectionAliasesRequest(*workspaces.DescribeConnectionAliasesInput) (*request.Request, *workspaces.DescribeConnectionAliasesOutput)
 
 	DescribeIpGroups(*workspaces.DescribeIpGroupsInput) (*workspaces.DescribeIpGroupsOutput, error)
 	DescribeIpGroupsWithContext(aws.Context, *workspaces.DescribeIpGroupsInput, ...request.Option) (*workspaces.DescribeIpGroupsOutput, error)
@@ -134,6 +162,10 @@ type WorkSpacesAPI interface {
 	DescribeWorkspaceDirectoriesPages(*workspaces.DescribeWorkspaceDirectoriesInput, func(*workspaces.DescribeWorkspaceDirectoriesOutput, bool) bool) error
 	DescribeWorkspaceDirectoriesPagesWithContext(aws.Context, *workspaces.DescribeWorkspaceDirectoriesInput, func(*workspaces.DescribeWorkspaceDirectoriesOutput, bool) bool, ...request.Option) error
 
+	DescribeWorkspaceImagePermissions(*workspaces.DescribeWorkspaceImagePermissionsInput) (*workspaces.DescribeWorkspaceImagePermissionsOutput, error)
+	DescribeWorkspaceImagePermissionsWithContext(aws.Context, *workspaces.DescribeWorkspaceImagePermissionsInput, ...request.Option) (*workspaces.DescribeWorkspaceImagePermissionsOutput, error)
+	DescribeWorkspaceImagePermissionsRequest(*workspaces.DescribeWorkspaceImagePermissionsInput) (*request.Request, *workspaces.DescribeWorkspaceImagePermissionsOutput)
+
 	DescribeWorkspaceImages(*workspaces.DescribeWorkspaceImagesInput) (*workspaces.DescribeWorkspaceImagesOutput, error)
 	DescribeWorkspaceImagesWithContext(aws.Context, *workspaces.DescribeWorkspaceImagesInput, ...request.Option) (*workspaces.DescribeWorkspaceImagesOutput, error)
 	DescribeWorkspaceImagesRequest(*workspaces.DescribeWorkspaceImagesInput) (*request.Request, *workspaces.DescribeWorkspaceImagesOutput)
@@ -152,6 +184,10 @@ type WorkSpacesAPI interface {
 	DescribeWorkspacesConnectionStatus(*workspaces.DescribeWorkspacesConnectionStatusInput) (*workspaces.DescribeWorkspacesConnectionStatusOutput, error)
 	DescribeWorkspacesConnectionStatusWithContext(aws.Context, *workspaces.DescribeWorkspacesConnectionStatusInput, ...request.Option) (*workspaces.DescribeWorkspacesConnectionStatusOutput, error)
 	DescribeWorkspacesConnectionStatusRequest(*workspaces.DescribeWorkspacesConnectionStatusInput) (*request.Request, *workspaces.DescribeWorkspacesConnectionStatusOutput)
+
+	DisassociateConnectionAlias(*workspaces.DisassociateConnectionAliasInput) (*workspaces.DisassociateConnectionAliasOutput, error)
+	DisassociateConnectionAliasWithContext(aws.Context, *workspaces.DisassociateConnectionAliasInput, ...request.Option) (*workspaces.DisassociateConnectionAliasOutput, error)
+	DisassociateConnectionAliasRequest(*workspaces.DisassociateConnectionAliasInput) (*request.Request, *workspaces.DisassociateConnectionAliasOutput)
 
 	DisassociateIpGroups(*workspaces.DisassociateIpGroupsInput) (*workspaces.DisassociateIpGroupsOutput, error)
 	DisassociateIpGroupsWithContext(aws.Context, *workspaces.DisassociateIpGroupsInput, ...request.Option) (*workspaces.DisassociateIpGroupsOutput, error)
@@ -229,9 +265,21 @@ type WorkSpacesAPI interface {
 	TerminateWorkspacesWithContext(aws.Context, *workspaces.TerminateWorkspacesInput, ...request.Option) (*workspaces.TerminateWorkspacesOutput, error)
 	TerminateWorkspacesRequest(*workspaces.TerminateWorkspacesInput) (*request.Request, *workspaces.TerminateWorkspacesOutput)
 
+	UpdateConnectionAliasPermission(*workspaces.UpdateConnectionAliasPermissionInput) (*workspaces.UpdateConnectionAliasPermissionOutput, error)
+	UpdateConnectionAliasPermissionWithContext(aws.Context, *workspaces.UpdateConnectionAliasPermissionInput, ...request.Option) (*workspaces.UpdateConnectionAliasPermissionOutput, error)
+	UpdateConnectionAliasPermissionRequest(*workspaces.UpdateConnectionAliasPermissionInput) (*request.Request, *workspaces.UpdateConnectionAliasPermissionOutput)
+
 	UpdateRulesOfIpGroup(*workspaces.UpdateRulesOfIpGroupInput) (*workspaces.UpdateRulesOfIpGroupOutput, error)
 	UpdateRulesOfIpGroupWithContext(aws.Context, *workspaces.UpdateRulesOfIpGroupInput, ...request.Option) (*workspaces.UpdateRulesOfIpGroupOutput, error)
 	UpdateRulesOfIpGroupRequest(*workspaces.UpdateRulesOfIpGroupInput) (*request.Request, *workspaces.UpdateRulesOfIpGroupOutput)
+
+	UpdateWorkspaceBundle(*workspaces.UpdateWorkspaceBundleInput) (*workspaces.UpdateWorkspaceBundleOutput, error)
+	UpdateWorkspaceBundleWithContext(aws.Context, *workspaces.UpdateWorkspaceBundleInput, ...request.Option) (*workspaces.UpdateWorkspaceBundleOutput, error)
+	UpdateWorkspaceBundleRequest(*workspaces.UpdateWorkspaceBundleInput) (*request.Request, *workspaces.UpdateWorkspaceBundleOutput)
+
+	UpdateWorkspaceImagePermission(*workspaces.UpdateWorkspaceImagePermissionInput) (*workspaces.UpdateWorkspaceImagePermissionOutput, error)
+	UpdateWorkspaceImagePermissionWithContext(aws.Context, *workspaces.UpdateWorkspaceImagePermissionInput, ...request.Option) (*workspaces.UpdateWorkspaceImagePermissionOutput, error)
+	UpdateWorkspaceImagePermissionRequest(*workspaces.UpdateWorkspaceImagePermissionInput) (*request.Request, *workspaces.UpdateWorkspaceImagePermissionOutput)
 }
 
 var _ WorkSpacesAPI = (*workspaces.WorkSpaces)(nil)

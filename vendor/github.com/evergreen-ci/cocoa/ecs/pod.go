@@ -126,8 +126,8 @@ func (p *BasicECSPod) Info(ctx context.Context) (*cocoa.ECSPodInfo, error) {
 // Stop stops the running pod without cleaning up any of its underlying
 // resources.
 func (p *BasicECSPod) Stop(ctx context.Context) error {
-	if p.status != cocoa.Running {
-		return errors.Errorf("pod can only be stopped when status is '%s', but current status is '%s'", cocoa.Running, p.status)
+	if p.status != cocoa.RunningStatus {
+		return errors.Errorf("pod can only be stopped when status is '%s', but current status is '%s'", cocoa.RunningStatus, p.status)
 	}
 
 	stopTask := &ecs.StopTaskInput{}
@@ -137,7 +137,7 @@ func (p *BasicECSPod) Stop(ctx context.Context) error {
 		return errors.Wrap(err, "stopping pod")
 	}
 
-	p.status = cocoa.Stopped
+	p.status = cocoa.StoppedStatus
 
 	return nil
 }
@@ -165,7 +165,7 @@ func (p *BasicECSPod) Delete(ctx context.Context) error {
 		}
 	}
 
-	p.status = cocoa.Deleted
+	p.status = cocoa.DeletedStatus
 
 	return nil
 }

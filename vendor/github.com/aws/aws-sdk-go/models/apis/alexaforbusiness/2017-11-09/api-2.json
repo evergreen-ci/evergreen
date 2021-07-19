@@ -810,6 +810,7 @@
       "errors":[
         {"shape":"LimitExceededException"},
         {"shape":"ConcurrentModificationException"},
+        {"shape":"NotFoundException"},
         {"shape":"InvalidDeviceException"}
       ]
     },
@@ -1343,6 +1344,7 @@
     },
     "BusinessReportContentRange":{
       "type":"structure",
+      "required":["Interval"],
       "members":{
         "Interval":{"shape":"BusinessReportInterval"}
       }
@@ -1564,7 +1566,8 @@
         "ClientRequestToken":{
           "shape":"ClientRequestToken",
           "idempotencyToken":true
-        }
+        },
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateAddressBookResponse":{
@@ -1589,7 +1592,8 @@
         "ClientRequestToken":{
           "shape":"ClientRequestToken",
           "idempotencyToken":true
-        }
+        },
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateBusinessReportScheduleResponse":{
@@ -1614,7 +1618,8 @@
         "ClientRequestToken":{
           "shape":"ClientRequestToken",
           "idempotencyToken":true
-        }
+        },
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateConferenceProviderResponse":{
@@ -1636,7 +1641,8 @@
         "ClientRequestToken":{
           "shape":"ClientRequestToken",
           "idempotencyToken":true
-        }
+        },
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateContactResponse":{
@@ -1670,7 +1676,8 @@
         "ClientRequestToken":{
           "shape":"ClientRequestToken",
           "idempotencyToken":true
-        }
+        },
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateGatewayGroupResponse":{
@@ -1720,7 +1727,8 @@
         "ClientRequestToken":{
           "shape":"ClientRequestToken",
           "idempotencyToken":true
-        }
+        },
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateNetworkProfileResponse":{
@@ -1754,7 +1762,9 @@
         "SetupModeDisabled":{"shape":"Boolean"},
         "MaxVolumeLimit":{"shape":"MaxVolumeLimit"},
         "PSTNEnabled":{"shape":"Boolean"},
-        "MeetingRoomConfiguration":{"shape":"CreateMeetingRoomConfiguration"}
+        "DataRetentionOptIn":{"shape":"Boolean"},
+        "MeetingRoomConfiguration":{"shape":"CreateMeetingRoomConfiguration"},
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateProfileResponse":{
@@ -1804,7 +1814,8 @@
         "ClientRequestToken":{
           "shape":"ClientRequestToken",
           "idempotencyToken":true
-        }
+        },
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateSkillGroupResponse":{
@@ -2063,7 +2074,7 @@
         "NetworkProfileArn":{"shape":"Arn"},
         "NetworkProfileName":{"shape":"NetworkProfileName"},
         "RoomArn":{"shape":"Arn"},
-        "RoomName":{"shape":"RoomName"},
+        "RoomName":{"shape":"DeviceRoomName"},
         "DeviceStatusInfo":{"shape":"DeviceStatusInfo"},
         "CreatedTime":{"shape":"DeviceDataCreatedTime"}
       }
@@ -2120,6 +2131,12 @@
       },
       "exception":true
     },
+    "DeviceRoomName":{
+      "type":"string",
+      "max":100,
+      "min":1,
+      "pattern":"[\\u0009\\u000A\\u000D\\u0020-\\u007E\\u0085\\u00A0-\\uD7FF\\uE000-\\uFFFD\\u10000-\\u10FFFF]*"
+    },
     "DeviceSerialNumber":{
       "type":"string",
       "pattern":"[a-zA-Z0-9]{1,200}"
@@ -2162,7 +2179,9 @@
         "INVALID_CERTIFICATE_AUTHORITY",
         "NETWORK_PROFILE_NOT_FOUND",
         "INVALID_PASSWORD_STATE",
-        "PASSWORD_NOT_FOUND"
+        "PASSWORD_NOT_FOUND",
+        "PASSWORD_MANAGER_ACCESS_DENIED",
+        "CERTIFICATE_AUTHORITY_ACCESS_DENIED"
       ]
     },
     "DeviceStatusDetails":{
@@ -3048,6 +3067,7 @@
         "SetupModeDisabled":{"shape":"Boolean"},
         "MaxVolumeLimit":{"shape":"MaxVolumeLimit"},
         "PSTNEnabled":{"shape":"Boolean"},
+        "DataRetentionOptIn":{"shape":"Boolean"},
         "AddressBookArn":{"shape":"Arn"},
         "MeetingRoomConfiguration":{"shape":"MeetingRoomConfiguration"}
       }
@@ -3154,7 +3174,6 @@
         "ClientId",
         "UserCode",
         "ProductId",
-        "DeviceSerialNumber",
         "AmazonId"
       ],
       "members":{
@@ -3162,7 +3181,9 @@
         "UserCode":{"shape":"UserCode"},
         "ProductId":{"shape":"ProductId"},
         "DeviceSerialNumber":{"shape":"DeviceSerialNumberForAVS"},
-        "AmazonId":{"shape":"AmazonId"}
+        "AmazonId":{"shape":"AmazonId"},
+        "RoomArn":{"shape":"Arn"},
+        "Tags":{"shape":"TagList"}
       }
     },
     "RegisterAVSDeviceResponse":{
@@ -4028,6 +4049,7 @@
         "SetupModeDisabled":{"shape":"Boolean"},
         "MaxVolumeLimit":{"shape":"MaxVolumeLimit"},
         "PSTNEnabled":{"shape":"Boolean"},
+        "DataRetentionOptIn":{"shape":"Boolean"},
         "MeetingRoomConfiguration":{"shape":"UpdateMeetingRoomConfiguration"}
       }
     },

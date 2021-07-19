@@ -49,6 +49,8 @@ func (a *API) customizationPasses() error {
 		"s3control":  s3ControlCustomizations,
 		"cloudfront": cloudfrontCustomizations,
 		"rds":        rdsCustomizations,
+		"neptune":    neptuneCustomizations,
+		"docdb":      docdbCustomizations,
 
 		// Disable endpoint resolving for services that require customer
 		// to provide endpoint them selves.
@@ -94,6 +96,10 @@ func supressSmokeTest(a *API) error {
 
 // Customizes the API generation to replace values specific to S3.
 func s3Customizations(a *API) error {
+
+	// back-fill signing name as 's3'
+	a.Metadata.SigningName = "s3"
+
 	var strExpires *Shape
 
 	var keepContentMD5Ref = map[string]struct{}{
@@ -198,15 +204,72 @@ func s3CustRemoveHeadObjectModeledErrors(a *API) {
 // S3 service operations with an AccountId need accessors to be generated for
 // them so the fields can be dynamically accessed without reflection.
 func s3ControlCustomizations(a *API) error {
-	for opName, op := range a.Operations {
-		// Add moving AccountId into the hostname instead of header.
-		if ref, ok := op.InputRef.Shape.MemberRefs["AccountId"]; ok {
-			if op.Endpoint != nil {
-				fmt.Fprintf(os.Stderr, "S3 Control, %s, model already defining endpoint trait, remove this customization.\n", opName)
+	for _, s := range a.Shapes {
+		// Generate a endpointARN method for the BucketName shape if this is used as an operation input
+		if s.UsedAsInput {
+			if s.ShapeName == "CreateBucketInput" || s.ShapeName == "ListRegionalBucketsInput" {
+				// For operations CreateBucketInput and ListRegionalBuckets the OutpostID shape
+				// needs to be decorated
+				var outpostIDMemberShape *ShapeRef
+				for memberName, ref := range s.MemberRefs {
+					if memberName != "OutpostId" || ref.Shape.Type != "string" {
+						continue
+					}
+					if outpostIDMemberShape != nil {
+						return fmt.Errorf("more then one OutpostID shape present on shape")
+					}
+					ref.OutpostIDMember = true
+					outpostIDMemberShape = ref
+				}
+				if outpostIDMemberShape != nil {
+					s.HasOutpostIDMember = true
+					a.HasOutpostID = true
+				}
+				continue
 			}
 
-			op.Endpoint = &EndpointTrait{HostPrefix: "{AccountId}."}
-			ref.HostLabel = true
+			// List of input shapes that use accesspoint names as arnable fields
+			accessPointNameArnables := map[string]struct{}{
+				"GetAccessPointInput":          {},
+				"DeleteAccessPointInput":       {},
+				"PutAccessPointPolicyInput":    {},
+				"GetAccessPointPolicyInput":    {},
+				"DeleteAccessPointPolicyInput": {},
+			}
+
+			var endpointARNShape *ShapeRef
+			for _, ref := range s.MemberRefs {
+				// Operations that have AccessPointName field that takes in an ARN as input
+				if _, ok := accessPointNameArnables[s.ShapeName]; ok {
+					if ref.OrigShapeName != "AccessPointName" || ref.Shape.Type != "string" {
+						continue
+					}
+				} else if ref.OrigShapeName != "BucketName" || ref.Shape.Type != "string" {
+					// All other operations currently allow BucketName field to take in ARN.
+					// Exceptions for these are CreateBucket and ListRegionalBucket which use
+					// Outpost id and are handled above separately.
+					continue
+				}
+
+				if endpointARNShape != nil {
+					return fmt.Errorf("more then one member present on shape takes arn as input")
+				}
+				ref.EndpointARN = true
+				endpointARNShape = ref
+			}
+			if endpointARNShape != nil {
+				s.HasEndpointARNMember = true
+				a.HasEndpointARN = true
+
+				for _, ref := range s.MemberRefs {
+					// check for account id customization
+					if ref.OrigShapeName == "AccountId" && ref.Shape.Type == "string" {
+						ref.AccountIDMemberWithARN = true
+						s.HasAccountIdMemberWithARN = true
+						a.HasAccountIdWithARN = true
+					}
+				}
+			}
 		}
 	}
 
@@ -256,15 +319,44 @@ func mergeServicesCustomizations(a *API) error {
 	return nil
 }
 
-// rdsCustomizations are customization for the service/rds. This adds non-modeled fields used for presigning.
+// rdsCustomizations are customization for the service/rds. This adds
+// non-modeled fields used for presigning.
 func rdsCustomizations(a *API) error {
 	inputs := []string{
 		"CopyDBSnapshotInput",
 		"CreateDBInstanceReadReplicaInput",
 		"CopyDBClusterSnapshotInput",
 		"CreateDBClusterInput",
+		"StartDBInstanceAutomatedBackupsReplicationInput",
 	}
-	for _, input := range inputs {
+	generatePresignedURL(a, inputs)
+	return nil
+}
+
+// neptuneCustomizations are customization for the service/neptune. This adds
+// non-modeled fields used for presigning.
+func neptuneCustomizations(a *API) error {
+	inputs := []string{
+		"CopyDBClusterSnapshotInput",
+		"CreateDBClusterInput",
+	}
+	generatePresignedURL(a, inputs)
+	return nil
+}
+
+// neptuneCustomizations are customization for the service/neptune. This adds
+// non-modeled fields used for presigning.
+func docdbCustomizations(a *API) error {
+	inputs := []string{
+		"CopyDBClusterSnapshotInput",
+		"CreateDBClusterInput",
+	}
+	generatePresignedURL(a, inputs)
+	return nil
+}
+
+func generatePresignedURL(a *API, inputShapes []string) {
+	for _, input := range inputShapes {
 		if ref, ok := a.Shapes[input]; ok {
 			ref.MemberRefs["SourceRegion"] = &ShapeRef{
 				Documentation: docstring(`SourceRegion is the source region where the resource exists. This is not sent over the wire and is only used for presigning. This value should always have the same region as the source ARN.`),
@@ -279,8 +371,6 @@ func rdsCustomizations(a *API) error {
 			}
 		}
 	}
-
-	return nil
 }
 
 func disableEndpointResolving(a *API) error {

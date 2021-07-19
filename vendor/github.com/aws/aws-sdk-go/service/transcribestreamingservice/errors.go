@@ -11,9 +11,10 @@ const (
 	// ErrCodeBadRequestException for service response error code
 	// "BadRequestException".
 	//
-	// One or more arguments to the StartStreamTranscription operation was invalid.
-	// For example, MediaEncoding was not set to pcm or LanguageCode was not set
-	// to a valid code. Check the parameters and try your request again.
+	// One or more arguments to the StartStreamTranscription or StartMedicalStreamTranscription
+	// operation was invalid. For example, MediaEncoding was not set to a valid
+	// encoding, or LanguageCode was not set to a valid code. Check the parameters
+	// and try your request again.
 	ErrCodeBadRequestException = "BadRequestException"
 
 	// ErrCodeConflictException for service response error code
@@ -26,8 +27,8 @@ const (
 	// ErrCodeInternalFailureException for service response error code
 	// "InternalFailureException".
 	//
-	// A problem occurred while processing the audio. Amazon Transcribe terminated
-	// processing. Try your request again.
+	// A problem occurred while processing the audio. Amazon Transcribe or Amazon
+	// Transcribe Medical terminated processing. Try your request again.
 	ErrCodeInternalFailureException = "InternalFailureException"
 
 	// ErrCodeLimitExceededException for service response error code
@@ -38,11 +39,18 @@ const (
 	// of 4 hours. Wait until a stream has finished processing, or break your audio
 	// stream into smaller chunks and try your request again.
 	ErrCodeLimitExceededException = "LimitExceededException"
+
+	// ErrCodeServiceUnavailableException for service response error code
+	// "ServiceUnavailableException".
+	//
+	// Service is currently unavailable. Try your request later.
+	ErrCodeServiceUnavailableException = "ServiceUnavailableException"
 )
 
 var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
-	"BadRequestException":      newErrorBadRequestException,
-	"ConflictException":        newErrorConflictException,
-	"InternalFailureException": newErrorInternalFailureException,
-	"LimitExceededException":   newErrorLimitExceededException,
+	"BadRequestException":         newErrorBadRequestException,
+	"ConflictException":           newErrorConflictException,
+	"InternalFailureException":    newErrorInternalFailureException,
+	"LimitExceededException":      newErrorLimitExceededException,
+	"ServiceUnavailableException": newErrorServiceUnavailableException,
 }

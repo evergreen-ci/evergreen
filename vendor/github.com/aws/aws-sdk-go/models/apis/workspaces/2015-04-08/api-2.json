@@ -12,6 +12,23 @@
     "uid":"workspaces-2015-04-08"
   },
   "operations":{
+    "AssociateConnectionAlias":{
+      "name":"AssociateConnectionAlias",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"AssociateConnectionAliasRequest"},
+      "output":{"shape":"AssociateConnectionAliasResult"},
+      "errors":[
+        {"shape":"ResourceAssociatedException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"InvalidResourceStateException"},
+        {"shape":"OperationNotSupportedException"}
+      ]
+    },
     "AssociateIpGroups":{
       "name":"AssociateIpGroups",
       "http":{
@@ -63,6 +80,23 @@
         {"shape":"InvalidParameterValuesException"}
       ]
     },
+    "CreateConnectionAlias":{
+      "name":"CreateConnectionAlias",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateConnectionAliasRequest"},
+      "output":{"shape":"CreateConnectionAliasResult"},
+      "errors":[
+        {"shape":"ResourceAlreadyExistsException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"ResourceLimitExceededException"},
+        {"shape":"InvalidResourceStateException"},
+        {"shape":"OperationNotSupportedException"}
+      ]
+    },
     "CreateIpGroup":{
       "name":"CreateIpGroup",
       "http":{
@@ -93,6 +127,23 @@
         {"shape":"ResourceLimitExceededException"}
       ]
     },
+    "CreateWorkspaceBundle":{
+      "name":"CreateWorkspaceBundle",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateWorkspaceBundleRequest"},
+      "output":{"shape":"CreateWorkspaceBundleResult"},
+      "errors":[
+        {"shape":"ResourceUnavailableException"},
+        {"shape":"ResourceAlreadyExistsException"},
+        {"shape":"ResourceLimitExceededException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"AccessDeniedException"}
+      ]
+    },
     "CreateWorkspaces":{
       "name":"CreateWorkspaces",
       "http":{
@@ -104,6 +155,23 @@
       "errors":[
         {"shape":"ResourceLimitExceededException"},
         {"shape":"InvalidParameterValuesException"}
+      ]
+    },
+    "DeleteConnectionAlias":{
+      "name":"DeleteConnectionAlias",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteConnectionAliasRequest"},
+      "output":{"shape":"DeleteConnectionAliasResult"},
+      "errors":[
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"ResourceAssociatedException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"InvalidResourceStateException"},
+        {"shape":"OperationNotSupportedException"}
       ]
     },
     "DeleteIpGroup":{
@@ -132,6 +200,21 @@
       "errors":[
         {"shape":"ResourceNotFoundException"},
         {"shape":"InvalidParameterValuesException"}
+      ]
+    },
+    "DeleteWorkspaceBundle":{
+      "name":"DeleteWorkspaceBundle",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteWorkspaceBundleRequest"},
+      "output":{"shape":"DeleteWorkspaceBundleResult"},
+      "errors":[
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"ResourceAssociatedException"},
+        {"shape":"AccessDeniedException"}
       ]
     },
     "DeleteWorkspaceImage":{
@@ -202,6 +285,35 @@
         {"shape":"AccessDeniedException"}
       ]
     },
+    "DescribeConnectionAliasPermissions":{
+      "name":"DescribeConnectionAliasPermissions",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DescribeConnectionAliasPermissionsRequest"},
+      "output":{"shape":"DescribeConnectionAliasPermissionsResult"},
+      "errors":[
+        {"shape":"AccessDeniedException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"OperationNotSupportedException"}
+      ]
+    },
+    "DescribeConnectionAliases":{
+      "name":"DescribeConnectionAliases",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DescribeConnectionAliasesRequest"},
+      "output":{"shape":"DescribeConnectionAliasesResult"},
+      "errors":[
+        {"shape":"AccessDeniedException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"OperationNotSupportedException"}
+      ]
+    },
     "DescribeIpGroups":{
       "name":"DescribeIpGroups",
       "http":{
@@ -248,6 +360,20 @@
       "input":{"shape":"DescribeWorkspaceDirectoriesRequest"},
       "output":{"shape":"DescribeWorkspaceDirectoriesResult"},
       "errors":[
+        {"shape":"InvalidParameterValuesException"}
+      ]
+    },
+    "DescribeWorkspaceImagePermissions":{
+      "name":"DescribeWorkspaceImagePermissions",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DescribeWorkspaceImagePermissionsRequest"},
+      "output":{"shape":"DescribeWorkspaceImagePermissionsResult"},
+      "errors":[
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"AccessDeniedException"},
         {"shape":"InvalidParameterValuesException"}
       ]
     },
@@ -300,6 +426,22 @@
       "output":{"shape":"DescribeWorkspacesConnectionStatusResult"},
       "errors":[
         {"shape":"InvalidParameterValuesException"}
+      ]
+    },
+    "DisassociateConnectionAlias":{
+      "name":"DisassociateConnectionAlias",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DisassociateConnectionAliasRequest"},
+      "output":{"shape":"DisassociateConnectionAliasResult"},
+      "errors":[
+        {"shape":"AccessDeniedException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"InvalidResourceStateException"},
+        {"shape":"OperationNotSupportedException"}
       ]
     },
     "DisassociateIpGroups":{
@@ -432,7 +574,8 @@
       "errors":[
         {"shape":"AccessDeniedException"},
         {"shape":"InvalidParameterValuesException"},
-        {"shape":"ResourceNotFoundException"}
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"OperationNotSupportedException"}
       ]
     },
     "ModifyWorkspaceProperties":{
@@ -560,6 +703,24 @@
       "input":{"shape":"TerminateWorkspacesRequest"},
       "output":{"shape":"TerminateWorkspacesResult"}
     },
+    "UpdateConnectionAliasPermission":{
+      "name":"UpdateConnectionAliasPermission",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateConnectionAliasPermissionRequest"},
+      "output":{"shape":"UpdateConnectionAliasPermissionResult"},
+      "errors":[
+        {"shape":"AccessDeniedException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"ResourceLimitExceededException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"ResourceAssociatedException"},
+        {"shape":"InvalidResourceStateException"},
+        {"shape":"OperationNotSupportedException"}
+      ]
+    },
     "UpdateRulesOfIpGroup":{
       "name":"UpdateRulesOfIpGroup",
       "http":{
@@ -574,6 +735,37 @@
         {"shape":"ResourceLimitExceededException"},
         {"shape":"InvalidResourceStateException"},
         {"shape":"AccessDeniedException"}
+      ]
+    },
+    "UpdateWorkspaceBundle":{
+      "name":"UpdateWorkspaceBundle",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateWorkspaceBundleRequest"},
+      "output":{"shape":"UpdateWorkspaceBundleResult"},
+      "errors":[
+        {"shape":"AccessDeniedException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"ResourceUnavailableException"}
+      ]
+    },
+    "UpdateWorkspaceImagePermission":{
+      "name":"UpdateWorkspaceImagePermission",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateWorkspaceImagePermissionRequest"},
+      "output":{"shape":"UpdateWorkspaceImagePermissionResult"},
+      "errors":[
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"ResourceUnavailableException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"InvalidParameterValuesException"},
+        {"shape":"OperationNotSupportedException"}
       ]
     }
   },
@@ -612,6 +804,36 @@
       "member":{"shape":"AccountModification"}
     },
     "Alias":{"type":"string"},
+    "Application":{
+      "type":"string",
+      "enum":[
+        "Microsoft_Office_2016",
+        "Microsoft_Office_2019"
+      ]
+    },
+    "ApplicationList":{
+      "type":"list",
+      "member":{"shape":"Application"},
+      "max":5,
+      "min":1
+    },
+    "AssociateConnectionAliasRequest":{
+      "type":"structure",
+      "required":[
+        "AliasId",
+        "ResourceId"
+      ],
+      "members":{
+        "AliasId":{"shape":"ConnectionAliasId"},
+        "ResourceId":{"shape":"NonEmptyString"}
+      }
+    },
+    "AssociateConnectionAliasResult":{
+      "type":"structure",
+      "members":{
+        "ConnectionIdentifier":{"shape":"ConnectionIdentifier"}
+      }
+    },
     "AssociateIpGroupsRequest":{
       "type":"structure",
       "required":[
@@ -628,6 +850,16 @@
       "members":{
       }
     },
+    "AssociationStatus":{
+      "type":"string",
+      "enum":[
+        "NOT_ASSOCIATED",
+        "ASSOCIATED_WITH_OWNER_ACCOUNT",
+        "ASSOCIATED_WITH_SHARED_ACCOUNT",
+        "PENDING_ASSOCIATION",
+        "PENDING_DISASSOCIATION"
+      ]
+    },
     "AuthorizeIpRulesRequest":{
       "type":"structure",
       "required":[
@@ -643,6 +875,10 @@
       "type":"structure",
       "members":{
       }
+    },
+    "AwsAccount":{
+      "type":"string",
+      "pattern":"^\\d{12}$"
     },
     "BooleanObject":{"type":"boolean"},
     "BundleId":{
@@ -696,6 +932,80 @@
       }
     },
     "ComputerName":{"type":"string"},
+    "ConnectionAlias":{
+      "type":"structure",
+      "members":{
+        "ConnectionString":{"shape":"ConnectionString"},
+        "AliasId":{"shape":"ConnectionAliasId"},
+        "State":{"shape":"ConnectionAliasState"},
+        "OwnerAccountId":{"shape":"AwsAccount"},
+        "Associations":{"shape":"ConnectionAliasAssociationList"}
+      }
+    },
+    "ConnectionAliasAssociation":{
+      "type":"structure",
+      "members":{
+        "AssociationStatus":{"shape":"AssociationStatus"},
+        "AssociatedAccountId":{"shape":"AwsAccount"},
+        "ResourceId":{"shape":"NonEmptyString"},
+        "ConnectionIdentifier":{"shape":"ConnectionIdentifier"}
+      }
+    },
+    "ConnectionAliasAssociationList":{
+      "type":"list",
+      "member":{"shape":"ConnectionAliasAssociation"},
+      "max":25,
+      "min":1
+    },
+    "ConnectionAliasId":{
+      "type":"string",
+      "max":68,
+      "min":13,
+      "pattern":"^wsca-[0-9a-z]{8,63}$"
+    },
+    "ConnectionAliasIdList":{
+      "type":"list",
+      "member":{"shape":"ConnectionAliasId"},
+      "max":25,
+      "min":1
+    },
+    "ConnectionAliasList":{
+      "type":"list",
+      "member":{"shape":"ConnectionAlias"},
+      "max":25,
+      "min":1
+    },
+    "ConnectionAliasPermission":{
+      "type":"structure",
+      "required":[
+        "SharedAccountId",
+        "AllowAssociation"
+      ],
+      "members":{
+        "SharedAccountId":{"shape":"AwsAccount"},
+        "AllowAssociation":{"shape":"BooleanObject"}
+      }
+    },
+    "ConnectionAliasPermissions":{
+      "type":"list",
+      "member":{"shape":"ConnectionAliasPermission"},
+      "max":25,
+      "min":1
+    },
+    "ConnectionAliasState":{
+      "type":"string",
+      "enum":[
+        "CREATING",
+        "CREATED",
+        "DELETING"
+      ]
+    },
+    "ConnectionIdentifier":{
+      "type":"string",
+      "max":20,
+      "min":1,
+      "pattern":"^[a-zA-Z0-9]+$"
+    },
     "ConnectionState":{
       "type":"string",
       "enum":[
@@ -703,6 +1013,12 @@
         "DISCONNECTED",
         "UNKNOWN"
       ]
+    },
+    "ConnectionString":{
+      "type":"string",
+      "max":255,
+      "min":1,
+      "pattern":"^[.0-9a-zA-Z\\-]{1,255}$"
     },
     "CopyWorkspaceImageRequest":{
       "type":"structure",
@@ -723,6 +1039,20 @@
       "type":"structure",
       "members":{
         "ImageId":{"shape":"WorkspaceImageId"}
+      }
+    },
+    "CreateConnectionAliasRequest":{
+      "type":"structure",
+      "required":["ConnectionString"],
+      "members":{
+        "ConnectionString":{"shape":"ConnectionString"},
+        "Tags":{"shape":"TagList"}
+      }
+    },
+    "CreateConnectionAliasResult":{
+      "type":"structure",
+      "members":{
+        "AliasId":{"shape":"ConnectionAliasId"}
       }
     },
     "CreateIpGroupRequest":{
@@ -755,6 +1085,31 @@
     "CreateTagsResult":{
       "type":"structure",
       "members":{
+      }
+    },
+    "CreateWorkspaceBundleRequest":{
+      "type":"structure",
+      "required":[
+        "BundleName",
+        "BundleDescription",
+        "ImageId",
+        "ComputeType",
+        "UserStorage"
+      ],
+      "members":{
+        "BundleName":{"shape":"WorkspaceBundleName"},
+        "BundleDescription":{"shape":"WorkspaceBundleDescription"},
+        "ImageId":{"shape":"WorkspaceImageId"},
+        "ComputeType":{"shape":"ComputeType"},
+        "UserStorage":{"shape":"UserStorage"},
+        "RootStorage":{"shape":"RootStorage"},
+        "Tags":{"shape":"TagList"}
+      }
+    },
+    "CreateWorkspaceBundleResult":{
+      "type":"structure",
+      "members":{
+        "WorkspaceBundle":{"shape":"WorkspaceBundle"}
       }
     },
     "CreateWorkspacesRequest":{
@@ -810,6 +1165,18 @@
         "EnableMaintenanceMode":{"shape":"BooleanObject"}
       }
     },
+    "DeleteConnectionAliasRequest":{
+      "type":"structure",
+      "required":["AliasId"],
+      "members":{
+        "AliasId":{"shape":"ConnectionAliasId"}
+      }
+    },
+    "DeleteConnectionAliasResult":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "DeleteIpGroupRequest":{
       "type":"structure",
       "required":["GroupId"],
@@ -834,6 +1201,17 @@
       }
     },
     "DeleteTagsResult":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DeleteWorkspaceBundleRequest":{
+      "type":"structure",
+      "members":{
+        "BundleId":{"shape":"BundleId"}
+      }
+    },
+    "DeleteWorkspaceBundleResult":{
       "type":"structure",
       "members":{
       }
@@ -900,6 +1278,39 @@
         "ClientPropertiesList":{"shape":"ClientPropertiesList"}
       }
     },
+    "DescribeConnectionAliasPermissionsRequest":{
+      "type":"structure",
+      "required":["AliasId"],
+      "members":{
+        "AliasId":{"shape":"ConnectionAliasId"},
+        "NextToken":{"shape":"PaginationToken"},
+        "MaxResults":{"shape":"Limit"}
+      }
+    },
+    "DescribeConnectionAliasPermissionsResult":{
+      "type":"structure",
+      "members":{
+        "AliasId":{"shape":"ConnectionAliasId"},
+        "ConnectionAliasPermissions":{"shape":"ConnectionAliasPermissions"},
+        "NextToken":{"shape":"PaginationToken"}
+      }
+    },
+    "DescribeConnectionAliasesRequest":{
+      "type":"structure",
+      "members":{
+        "AliasIds":{"shape":"ConnectionAliasIdList"},
+        "ResourceId":{"shape":"NonEmptyString"},
+        "Limit":{"shape":"Limit"},
+        "NextToken":{"shape":"PaginationToken"}
+      }
+    },
+    "DescribeConnectionAliasesResult":{
+      "type":"structure",
+      "members":{
+        "ConnectionAliases":{"shape":"ConnectionAliasList"},
+        "NextToken":{"shape":"PaginationToken"}
+      }
+    },
     "DescribeIpGroupsRequest":{
       "type":"structure",
       "members":{
@@ -958,10 +1369,28 @@
         "NextToken":{"shape":"PaginationToken"}
       }
     },
+    "DescribeWorkspaceImagePermissionsRequest":{
+      "type":"structure",
+      "required":["ImageId"],
+      "members":{
+        "ImageId":{"shape":"WorkspaceImageId"},
+        "NextToken":{"shape":"PaginationToken"},
+        "MaxResults":{"shape":"Limit"}
+      }
+    },
+    "DescribeWorkspaceImagePermissionsResult":{
+      "type":"structure",
+      "members":{
+        "ImageId":{"shape":"WorkspaceImageId"},
+        "ImagePermissions":{"shape":"ImagePermissions"},
+        "NextToken":{"shape":"PaginationToken"}
+      }
+    },
     "DescribeWorkspaceImagesRequest":{
       "type":"structure",
       "members":{
         "ImageIds":{"shape":"WorkspaceImageIdList"},
+        "ImageType":{"shape":"ImageType"},
         "NextToken":{"shape":"PaginationToken"},
         "MaxResults":{"shape":"Limit"}
       }
@@ -1037,6 +1466,18 @@
       "member":{"shape":"WorkspaceDirectory"}
     },
     "DirectoryName":{"type":"string"},
+    "DisassociateConnectionAliasRequest":{
+      "type":"structure",
+      "required":["AliasId"],
+      "members":{
+        "AliasId":{"shape":"ConnectionAliasId"}
+      }
+    },
+    "DisassociateConnectionAliasResult":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "DisassociateIpGroupsRequest":{
       "type":"structure",
       "required":[
@@ -1103,6 +1544,23 @@
         "ErrorMessage":{"shape":"Description"}
       }
     },
+    "ImagePermission":{
+      "type":"structure",
+      "members":{
+        "SharedAccountId":{"shape":"AwsAccount"}
+      }
+    },
+    "ImagePermissions":{
+      "type":"list",
+      "member":{"shape":"ImagePermission"}
+    },
+    "ImageType":{
+      "type":"string",
+      "enum":[
+        "OWNED",
+        "SHARED"
+      ]
+    },
     "ImportWorkspaceImageRequest":{
       "type":"structure",
       "required":[
@@ -1116,7 +1574,8 @@
         "IngestionProcess":{"shape":"WorkspaceImageIngestionProcess"},
         "ImageName":{"shape":"WorkspaceImageName"},
         "ImageDescription":{"shape":"WorkspaceImageDescription"},
-        "Tags":{"shape":"TagList"}
+        "Tags":{"shape":"TagList"},
+        "Applications":{"shape":"ApplicationList"}
       }
     },
     "ImportWorkspaceImageResult":{
@@ -1382,7 +1841,7 @@
     },
     "PaginationToken":{
       "type":"string",
-      "max":63,
+      "max":2048,
       "min":1
     },
     "RebootRequest":{
@@ -1735,6 +2194,22 @@
       },
       "exception":true
     },
+    "UpdateConnectionAliasPermissionRequest":{
+      "type":"structure",
+      "required":[
+        "AliasId",
+        "ConnectionAliasPermission"
+      ],
+      "members":{
+        "AliasId":{"shape":"ConnectionAliasId"},
+        "ConnectionAliasPermission":{"shape":"ConnectionAliasPermission"}
+      }
+    },
+    "UpdateConnectionAliasPermissionResult":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "UpdateRulesOfIpGroupRequest":{
       "type":"structure",
       "required":[
@@ -1747,6 +2222,36 @@
       }
     },
     "UpdateRulesOfIpGroupResult":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "UpdateWorkspaceBundleRequest":{
+      "type":"structure",
+      "members":{
+        "BundleId":{"shape":"BundleId"},
+        "ImageId":{"shape":"WorkspaceImageId"}
+      }
+    },
+    "UpdateWorkspaceBundleResult":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "UpdateWorkspaceImagePermissionRequest":{
+      "type":"structure",
+      "required":[
+        "ImageId",
+        "AllowCopyImage",
+        "SharedAccountId"
+      ],
+      "members":{
+        "ImageId":{"shape":"WorkspaceImageId"},
+        "AllowCopyImage":{"shape":"BooleanObject"},
+        "SharedAccountId":{"shape":"AwsAccount"}
+      }
+    },
+    "UpdateWorkspaceImagePermissionResult":{
       "type":"structure",
       "members":{
       }
@@ -1793,7 +2298,8 @@
         "DeviceTypeIos":{"shape":"AccessPropertyValue"},
         "DeviceTypeAndroid":{"shape":"AccessPropertyValue"},
         "DeviceTypeChromeOs":{"shape":"AccessPropertyValue"},
-        "DeviceTypeZeroClient":{"shape":"AccessPropertyValue"}
+        "DeviceTypeZeroClient":{"shape":"AccessPropertyValue"},
+        "DeviceTypeLinux":{"shape":"AccessPropertyValue"}
       }
     },
     "WorkspaceBundle":{
@@ -1807,8 +2313,21 @@
         "RootStorage":{"shape":"RootStorage"},
         "UserStorage":{"shape":"UserStorage"},
         "ComputeType":{"shape":"ComputeType"},
-        "LastUpdatedTime":{"shape":"Timestamp"}
+        "LastUpdatedTime":{"shape":"Timestamp"},
+        "CreationTime":{"shape":"Timestamp"}
       }
+    },
+    "WorkspaceBundleDescription":{
+      "type":"string",
+      "max":255,
+      "min":1,
+      "pattern":"^[a-zA-Z0-9_./() -]+$"
+    },
+    "WorkspaceBundleName":{
+      "type":"string",
+      "max":64,
+      "min":1,
+      "pattern":"^[a-zA-Z0-9_./()\\\\-]+$"
     },
     "WorkspaceConnectionStatus":{
       "type":"structure",
@@ -1826,6 +2345,7 @@
     "WorkspaceCreationProperties":{
       "type":"structure",
       "members":{
+        "EnableWorkDocs":{"shape":"BooleanObject"},
         "EnableInternetAccess":{"shape":"BooleanObject"},
         "DefaultOu":{"shape":"DefaultOu"},
         "CustomSecurityGroupId":{"shape":"SecurityGroupId"},
@@ -1892,7 +2412,9 @@
         "State":{"shape":"WorkspaceImageState"},
         "RequiredTenancy":{"shape":"WorkspaceImageRequiredTenancy"},
         "ErrorCode":{"shape":"WorkspaceImageErrorCode"},
-        "ErrorMessage":{"shape":"Description"}
+        "ErrorMessage":{"shape":"Description"},
+        "Created":{"shape":"Timestamp"},
+        "OwnerAccountId":{"shape":"AwsAccount"}
       }
     },
     "WorkspaceImageDescription":{
@@ -1917,7 +2439,8 @@
       "enum":[
         "BYOL_REGULAR",
         "BYOL_GRAPHICS",
-        "BYOL_GRAPHICSPRO"
+        "BYOL_GRAPHICSPRO",
+        "BYOL_REGULAR_WSP"
       ]
     },
     "WorkspaceImageList":{

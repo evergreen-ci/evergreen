@@ -72,6 +72,10 @@ type PersonalizeAPI interface {
 	CreateDatasetWithContext(aws.Context, *personalize.CreateDatasetInput, ...request.Option) (*personalize.CreateDatasetOutput, error)
 	CreateDatasetRequest(*personalize.CreateDatasetInput) (*request.Request, *personalize.CreateDatasetOutput)
 
+	CreateDatasetExportJob(*personalize.CreateDatasetExportJobInput) (*personalize.CreateDatasetExportJobOutput, error)
+	CreateDatasetExportJobWithContext(aws.Context, *personalize.CreateDatasetExportJobInput, ...request.Option) (*personalize.CreateDatasetExportJobOutput, error)
+	CreateDatasetExportJobRequest(*personalize.CreateDatasetExportJobInput) (*request.Request, *personalize.CreateDatasetExportJobOutput)
+
 	CreateDatasetGroup(*personalize.CreateDatasetGroupInput) (*personalize.CreateDatasetGroupOutput, error)
 	CreateDatasetGroupWithContext(aws.Context, *personalize.CreateDatasetGroupInput, ...request.Option) (*personalize.CreateDatasetGroupOutput, error)
 	CreateDatasetGroupRequest(*personalize.CreateDatasetGroupInput) (*request.Request, *personalize.CreateDatasetGroupOutput)
@@ -83,6 +87,10 @@ type PersonalizeAPI interface {
 	CreateEventTracker(*personalize.CreateEventTrackerInput) (*personalize.CreateEventTrackerOutput, error)
 	CreateEventTrackerWithContext(aws.Context, *personalize.CreateEventTrackerInput, ...request.Option) (*personalize.CreateEventTrackerOutput, error)
 	CreateEventTrackerRequest(*personalize.CreateEventTrackerInput) (*request.Request, *personalize.CreateEventTrackerOutput)
+
+	CreateFilter(*personalize.CreateFilterInput) (*personalize.CreateFilterOutput, error)
+	CreateFilterWithContext(aws.Context, *personalize.CreateFilterInput, ...request.Option) (*personalize.CreateFilterOutput, error)
+	CreateFilterRequest(*personalize.CreateFilterInput) (*request.Request, *personalize.CreateFilterOutput)
 
 	CreateSchema(*personalize.CreateSchemaInput) (*personalize.CreateSchemaOutput, error)
 	CreateSchemaWithContext(aws.Context, *personalize.CreateSchemaInput, ...request.Option) (*personalize.CreateSchemaOutput, error)
@@ -112,6 +120,10 @@ type PersonalizeAPI interface {
 	DeleteEventTrackerWithContext(aws.Context, *personalize.DeleteEventTrackerInput, ...request.Option) (*personalize.DeleteEventTrackerOutput, error)
 	DeleteEventTrackerRequest(*personalize.DeleteEventTrackerInput) (*request.Request, *personalize.DeleteEventTrackerOutput)
 
+	DeleteFilter(*personalize.DeleteFilterInput) (*personalize.DeleteFilterOutput, error)
+	DeleteFilterWithContext(aws.Context, *personalize.DeleteFilterInput, ...request.Option) (*personalize.DeleteFilterOutput, error)
+	DeleteFilterRequest(*personalize.DeleteFilterInput) (*request.Request, *personalize.DeleteFilterOutput)
+
 	DeleteSchema(*personalize.DeleteSchemaInput) (*personalize.DeleteSchemaOutput, error)
 	DeleteSchemaWithContext(aws.Context, *personalize.DeleteSchemaInput, ...request.Option) (*personalize.DeleteSchemaOutput, error)
 	DeleteSchemaRequest(*personalize.DeleteSchemaInput) (*request.Request, *personalize.DeleteSchemaOutput)
@@ -136,6 +148,10 @@ type PersonalizeAPI interface {
 	DescribeDatasetWithContext(aws.Context, *personalize.DescribeDatasetInput, ...request.Option) (*personalize.DescribeDatasetOutput, error)
 	DescribeDatasetRequest(*personalize.DescribeDatasetInput) (*request.Request, *personalize.DescribeDatasetOutput)
 
+	DescribeDatasetExportJob(*personalize.DescribeDatasetExportJobInput) (*personalize.DescribeDatasetExportJobOutput, error)
+	DescribeDatasetExportJobWithContext(aws.Context, *personalize.DescribeDatasetExportJobInput, ...request.Option) (*personalize.DescribeDatasetExportJobOutput, error)
+	DescribeDatasetExportJobRequest(*personalize.DescribeDatasetExportJobInput) (*request.Request, *personalize.DescribeDatasetExportJobOutput)
+
 	DescribeDatasetGroup(*personalize.DescribeDatasetGroupInput) (*personalize.DescribeDatasetGroupOutput, error)
 	DescribeDatasetGroupWithContext(aws.Context, *personalize.DescribeDatasetGroupInput, ...request.Option) (*personalize.DescribeDatasetGroupOutput, error)
 	DescribeDatasetGroupRequest(*personalize.DescribeDatasetGroupInput) (*request.Request, *personalize.DescribeDatasetGroupOutput)
@@ -151,6 +167,10 @@ type PersonalizeAPI interface {
 	DescribeFeatureTransformation(*personalize.DescribeFeatureTransformationInput) (*personalize.DescribeFeatureTransformationOutput, error)
 	DescribeFeatureTransformationWithContext(aws.Context, *personalize.DescribeFeatureTransformationInput, ...request.Option) (*personalize.DescribeFeatureTransformationOutput, error)
 	DescribeFeatureTransformationRequest(*personalize.DescribeFeatureTransformationInput) (*request.Request, *personalize.DescribeFeatureTransformationOutput)
+
+	DescribeFilter(*personalize.DescribeFilterInput) (*personalize.DescribeFilterOutput, error)
+	DescribeFilterWithContext(aws.Context, *personalize.DescribeFilterInput, ...request.Option) (*personalize.DescribeFilterOutput, error)
+	DescribeFilterRequest(*personalize.DescribeFilterInput) (*request.Request, *personalize.DescribeFilterOutput)
 
 	DescribeRecipe(*personalize.DescribeRecipeInput) (*personalize.DescribeRecipeOutput, error)
 	DescribeRecipeWithContext(aws.Context, *personalize.DescribeRecipeInput, ...request.Option) (*personalize.DescribeRecipeOutput, error)
@@ -186,6 +206,13 @@ type PersonalizeAPI interface {
 	ListCampaignsPages(*personalize.ListCampaignsInput, func(*personalize.ListCampaignsOutput, bool) bool) error
 	ListCampaignsPagesWithContext(aws.Context, *personalize.ListCampaignsInput, func(*personalize.ListCampaignsOutput, bool) bool, ...request.Option) error
 
+	ListDatasetExportJobs(*personalize.ListDatasetExportJobsInput) (*personalize.ListDatasetExportJobsOutput, error)
+	ListDatasetExportJobsWithContext(aws.Context, *personalize.ListDatasetExportJobsInput, ...request.Option) (*personalize.ListDatasetExportJobsOutput, error)
+	ListDatasetExportJobsRequest(*personalize.ListDatasetExportJobsInput) (*request.Request, *personalize.ListDatasetExportJobsOutput)
+
+	ListDatasetExportJobsPages(*personalize.ListDatasetExportJobsInput, func(*personalize.ListDatasetExportJobsOutput, bool) bool) error
+	ListDatasetExportJobsPagesWithContext(aws.Context, *personalize.ListDatasetExportJobsInput, func(*personalize.ListDatasetExportJobsOutput, bool) bool, ...request.Option) error
+
 	ListDatasetGroups(*personalize.ListDatasetGroupsInput) (*personalize.ListDatasetGroupsOutput, error)
 	ListDatasetGroupsWithContext(aws.Context, *personalize.ListDatasetGroupsInput, ...request.Option) (*personalize.ListDatasetGroupsOutput, error)
 	ListDatasetGroupsRequest(*personalize.ListDatasetGroupsInput) (*request.Request, *personalize.ListDatasetGroupsOutput)
@@ -214,6 +241,13 @@ type PersonalizeAPI interface {
 	ListEventTrackersPages(*personalize.ListEventTrackersInput, func(*personalize.ListEventTrackersOutput, bool) bool) error
 	ListEventTrackersPagesWithContext(aws.Context, *personalize.ListEventTrackersInput, func(*personalize.ListEventTrackersOutput, bool) bool, ...request.Option) error
 
+	ListFilters(*personalize.ListFiltersInput) (*personalize.ListFiltersOutput, error)
+	ListFiltersWithContext(aws.Context, *personalize.ListFiltersInput, ...request.Option) (*personalize.ListFiltersOutput, error)
+	ListFiltersRequest(*personalize.ListFiltersInput) (*request.Request, *personalize.ListFiltersOutput)
+
+	ListFiltersPages(*personalize.ListFiltersInput, func(*personalize.ListFiltersOutput, bool) bool) error
+	ListFiltersPagesWithContext(aws.Context, *personalize.ListFiltersInput, func(*personalize.ListFiltersOutput, bool) bool, ...request.Option) error
+
 	ListRecipes(*personalize.ListRecipesInput) (*personalize.ListRecipesOutput, error)
 	ListRecipesWithContext(aws.Context, *personalize.ListRecipesInput, ...request.Option) (*personalize.ListRecipesOutput, error)
 	ListRecipesRequest(*personalize.ListRecipesInput) (*request.Request, *personalize.ListRecipesOutput)
@@ -241,6 +275,10 @@ type PersonalizeAPI interface {
 
 	ListSolutionsPages(*personalize.ListSolutionsInput, func(*personalize.ListSolutionsOutput, bool) bool) error
 	ListSolutionsPagesWithContext(aws.Context, *personalize.ListSolutionsInput, func(*personalize.ListSolutionsOutput, bool) bool, ...request.Option) error
+
+	StopSolutionVersionCreation(*personalize.StopSolutionVersionCreationInput) (*personalize.StopSolutionVersionCreationOutput, error)
+	StopSolutionVersionCreationWithContext(aws.Context, *personalize.StopSolutionVersionCreationInput, ...request.Option) (*personalize.StopSolutionVersionCreationOutput, error)
+	StopSolutionVersionCreationRequest(*personalize.StopSolutionVersionCreationInput) (*request.Request, *personalize.StopSolutionVersionCreationOutput)
 
 	UpdateCampaign(*personalize.UpdateCampaignInput) (*personalize.UpdateCampaignOutput, error)
 	UpdateCampaignWithContext(aws.Context, *personalize.UpdateCampaignInput, ...request.Option) (*personalize.UpdateCampaignOutput, error)

@@ -90,7 +90,7 @@ func (m *BasicECSPodCreator) CreatePod(ctx context.Context, opts ...*cocoa.ECSPo
 	options := NewBasicECSPodOptions().
 		SetClient(m.client).
 		SetVault(m.vault).
-		SetStatus(cocoa.Running).
+		SetStatus(cocoa.RunningStatus).
 		SetResources(*resources)
 
 	p, err := NewBasicECSPod(options)
@@ -133,8 +133,9 @@ func (m *BasicECSPodCreator) createSecrets(ctx context.Context, secrets []cocoa.
 			if err != nil {
 				return err
 			}
+			// Pods must use the secret's ARN once the secret is created
+			// because that uniquely identifies the resource.
 			secret.SetName(arn)
-			secret.PodSecret.SetName(arn)
 		}
 	}
 

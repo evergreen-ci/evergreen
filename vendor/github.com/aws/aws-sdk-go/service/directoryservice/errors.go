@@ -11,7 +11,7 @@ const (
 	// ErrCodeAccessDeniedException for service response error code
 	// "AccessDeniedException".
 	//
-	// You do not have sufficient access to perform this action.
+	// Client authentication is not available in this region at this time.
 	ErrCodeAccessDeniedException = "AccessDeniedException"
 
 	// ErrCodeAuthenticationFailedException for service response error code
@@ -51,6 +51,13 @@ const (
 	//
 	// A client exception has occurred.
 	ErrCodeClientException = "ClientException"
+
+	// ErrCodeDirectoryAlreadyInRegionException for service response error code
+	// "DirectoryAlreadyInRegionException".
+	//
+	// The Region you specified is the same Region where the AWS Managed Microsoft
+	// AD directory was created. Specify a different Region and try again.
+	ErrCodeDirectoryAlreadyInRegionException = "DirectoryAlreadyInRegionException"
 
 	// ErrCodeDirectoryAlreadySharedException for service response error code
 	// "DirectoryAlreadySharedException".
@@ -115,6 +122,12 @@ const (
 	// The certificate PEM that was provided has incorrect encoding.
 	ErrCodeInvalidCertificateException = "InvalidCertificateException"
 
+	// ErrCodeInvalidClientAuthStatusException for service response error code
+	// "InvalidClientAuthStatusException".
+	//
+	// Client authentication is already enabled.
+	ErrCodeInvalidClientAuthStatusException = "InvalidClientAuthStatusException"
+
 	// ErrCodeInvalidLDAPSStatusException for service response error code
 	// "InvalidLDAPSStatusException".
 	//
@@ -157,8 +170,8 @@ const (
 	// ErrCodeNoAvailableCertificateException for service response error code
 	// "NoAvailableCertificateException".
 	//
-	// The LDAP activities could not be performed because at least one valid certificate
-	// must be registered with the system.
+	// Client authentication setup could not be completed because at least one valid
+	// certificate must be registered in the system.
 	ErrCodeNoAvailableCertificateException = "NoAvailableCertificateException"
 
 	// ErrCodeOrganizationsException for service response error code
@@ -166,6 +179,13 @@ const (
 	//
 	// Exception encountered while trying to access your AWS organization.
 	ErrCodeOrganizationsException = "OrganizationsException"
+
+	// ErrCodeRegionLimitExceededException for service response error code
+	// "RegionLimitExceededException".
+	//
+	// You have reached the limit for maximum number of simultaneous Region replications
+	// per directory.
+	ErrCodeRegionLimitExceededException = "RegionLimitExceededException"
 
 	// ErrCodeServiceException for service response error code
 	// "ServiceException".
@@ -215,6 +235,7 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"CertificateInUseException":              newErrorCertificateInUseException,
 	"CertificateLimitExceededException":      newErrorCertificateLimitExceededException,
 	"ClientException":                        newErrorClientException,
+	"DirectoryAlreadyInRegionException":      newErrorDirectoryAlreadyInRegionException,
 	"DirectoryAlreadySharedException":        newErrorDirectoryAlreadySharedException,
 	"DirectoryDoesNotExistException":         newErrorDirectoryDoesNotExistException,
 	"DirectoryLimitExceededException":        newErrorDirectoryLimitExceededException,
@@ -225,6 +246,7 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"EntityDoesNotExistException":            newErrorEntityDoesNotExistException,
 	"InsufficientPermissionsException":       newErrorInsufficientPermissionsException,
 	"InvalidCertificateException":            newErrorInvalidCertificateException,
+	"InvalidClientAuthStatusException":       newErrorInvalidClientAuthStatusException,
 	"InvalidLDAPSStatusException":            newErrorInvalidLDAPSStatusException,
 	"InvalidNextTokenException":              newErrorInvalidNextTokenException,
 	"InvalidParameterException":              newErrorInvalidParameterException,
@@ -233,6 +255,7 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"IpRouteLimitExceededException":          newErrorIpRouteLimitExceededException,
 	"NoAvailableCertificateException":        newErrorNoAvailableCertificateException,
 	"OrganizationsException":                 newErrorOrganizationsException,
+	"RegionLimitExceededException":           newErrorRegionLimitExceededException,
 	"ServiceException":                       newErrorServiceException,
 	"ShareLimitExceededException":            newErrorShareLimitExceededException,
 	"SnapshotLimitExceededException":         newErrorSnapshotLimitExceededException,

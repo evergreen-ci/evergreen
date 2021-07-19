@@ -42,6 +42,24 @@ const (
 	// it.
 	ErrCodeAssociatedListenerFoundException = "AssociatedListenerFoundException"
 
+	// ErrCodeByoipCidrNotFoundException for service response error code
+	// "ByoipCidrNotFoundException".
+	//
+	// The CIDR that you specified was not found or is incorrect.
+	ErrCodeByoipCidrNotFoundException = "ByoipCidrNotFoundException"
+
+	// ErrCodeConflictException for service response error code
+	// "ConflictException".
+	//
+	// You can't use both of those options.
+	ErrCodeConflictException = "ConflictException"
+
+	// ErrCodeEndpointAlreadyExistsException for service response error code
+	// "EndpointAlreadyExistsException".
+	//
+	// The endpoint that you specified doesn't exist.
+	ErrCodeEndpointAlreadyExistsException = "EndpointAlreadyExistsException"
+
 	// ErrCodeEndpointGroupAlreadyExistsException for service response error code
 	// "EndpointGroupAlreadyExistsException".
 	//
@@ -53,6 +71,19 @@ const (
 	//
 	// The endpoint group that you specified doesn't exist.
 	ErrCodeEndpointGroupNotFoundException = "EndpointGroupNotFoundException"
+
+	// ErrCodeEndpointNotFoundException for service response error code
+	// "EndpointNotFoundException".
+	//
+	// The endpoint that you specified doesn't exist.
+	ErrCodeEndpointNotFoundException = "EndpointNotFoundException"
+
+	// ErrCodeIncorrectCidrStateException for service response error code
+	// "IncorrectCidrStateException".
+	//
+	// The CIDR that you specified is not valid for this action. For example, the
+	// state of the CIDR might be incorrect for this action.
+	ErrCodeIncorrectCidrStateException = "IncorrectCidrStateException"
 
 	// ErrCodeInternalServiceErrorException for service response error code
 	// "InternalServiceErrorException".
@@ -99,8 +130,13 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"AccessDeniedException":                 newErrorAccessDeniedException,
 	"AssociatedEndpointGroupFoundException": newErrorAssociatedEndpointGroupFoundException,
 	"AssociatedListenerFoundException":      newErrorAssociatedListenerFoundException,
+	"ByoipCidrNotFoundException":            newErrorByoipCidrNotFoundException,
+	"ConflictException":                     newErrorConflictException,
+	"EndpointAlreadyExistsException":        newErrorEndpointAlreadyExistsException,
 	"EndpointGroupAlreadyExistsException":   newErrorEndpointGroupAlreadyExistsException,
 	"EndpointGroupNotFoundException":        newErrorEndpointGroupNotFoundException,
+	"EndpointNotFoundException":             newErrorEndpointNotFoundException,
+	"IncorrectCidrStateException":           newErrorIncorrectCidrStateException,
 	"InternalServiceErrorException":         newErrorInternalServiceErrorException,
 	"InvalidArgumentException":              newErrorInvalidArgumentException,
 	"InvalidNextTokenException":             newErrorInvalidNextTokenException,
