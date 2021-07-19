@@ -2810,6 +2810,7 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		taskNamesAsRegex := strings.Join(taskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
+	// Activated Time is needed to filter out generated tasks that have been activated but will not run
 	match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	match[VersionKey] = versionID
 	const tempParentKey = "_parent"
