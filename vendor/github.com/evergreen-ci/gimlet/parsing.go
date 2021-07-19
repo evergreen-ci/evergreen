@@ -5,7 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
+	"net/url"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
@@ -18,7 +18,15 @@ const maxRequestSize = 16 * 1024 * 1024 // 16 MB
 // passed to the method in the URL. Use this helper function when
 // writing handler functions.
 func GetVars(r *http.Request) map[string]string {
-	return mux.Vars(r)
+	vars := mux.Vars(r)
+	for k, v := range vars {
+		unescapedVar, err := url.PathUnescape(v)
+		if(err != nil){
+			return nil
+		}
+		vars[k] = unescapedVar
+	}
+	return vars
 }
 
 // SetURLVars sets URL variables for testing purposes only.
