@@ -164,7 +164,7 @@ func RemoveAll(collection string, query interface{}) error {
 // FindOne finds one item from the specified collection and unmarshals it into the
 // provided interface, which must be a pointer.
 func FindOne(collection string, query interface{},
-	projection interface{}, sort []string, out interface{}) error {
+	projection interface{}, sort []string, hint interface{}, out interface{}) error {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -183,7 +183,7 @@ func FindOne(collection string, query interface{},
 // FindAll finds the items from the specified collection and unmarshals them into the
 // provided interface, which must be a slice.
 func FindAll(collection string, query interface{},
-	projection interface{}, sort []string, skip int, limit int,
+	projection interface{}, sort []string, skip int, limit int, hint interface{},
 	out interface{}) error {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()

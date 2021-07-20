@@ -85,7 +85,7 @@ func (j *manualMigrationJob) Run(ctx context.Context) {
 		coll := client.Database(j.Definition.Namespace.DB).Collection(j.Definition.Namespace.Collection)
 
 		res := coll.FindOne(ctx, bson.M{"_id": j.Definition.ID})
-		if err := res.Err(); err != nil {
+		if err = res.Err(); err != nil {
 			j.AddError(err)
 			return
 		}

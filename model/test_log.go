@@ -41,15 +41,8 @@ func TestLogFilter(ts time.Time) map[string]interface{} {
 
 func FindOneTestLogById(id string) (*TestLog, error) {
 	tl := &TestLog{}
-	err := db.FindOne(
-		TestLogCollection,
-		bson.M{
-			TestLogIdKey: id,
-		},
-		db.NoProjection,
-		db.NoSort,
-		tl,
-	)
+	q := db.Query(bson.M{TestLogIdKey: id})
+	err := db.FindOneQ(TestLogCollection, q, tl)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -60,17 +53,12 @@ func FindOneTestLogById(id string) (*TestLog, error) {
 // and execution.
 func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
 	tl := &TestLog{}
-	err := db.FindOne(
-		TestLogCollection,
-		bson.M{
-			TestLogNameKey:          name,
-			TestLogTaskKey:          task,
-			TestLogTaskExecutionKey: execution,
-		},
-		db.NoProjection,
-		db.NoSort,
-		tl,
-	)
+	q := db.Query(bson.M{
+		TestLogNameKey:          name,
+		TestLogTaskKey:          task,
+		TestLogTaskExecutionKey: execution,
+	})
+	err := db.FindOneQ(TestLogCollection, q, tl)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

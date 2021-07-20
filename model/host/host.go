@@ -1664,7 +1664,21 @@ func FindHostsToTerminate() ([]Host, error) {
 			},
 		},
 	}
-	hosts, err := Find(db.Query(query))
+
+	// In some cases, the query planner will choose a very slow plan for this
+	// query. The hint guarantees that the query will use the host status index.
+	hint := bson.D{
+		{
+			Key:   StatusKey,
+			Value: 1,
+		},
+		{
+			Key:   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey),
+			Value: 1,
+		},
+	}
+
+	hosts, err := Find(db.Query(query).Hint(hint))
 
 	if adb.ResultsNotFound(err) {
 		return []Host{}, nil

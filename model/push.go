@@ -79,13 +79,8 @@ func (self *PushLog) UpdateStatus(newStatus string) error {
 func FindOnePushLog(query interface{}, projection interface{},
 	sort []string) (*PushLog, error) {
 	pushLog := &PushLog{}
-	err := db.FindOne(
-		PushlogCollection,
-		query,
-		projection,
-		sort,
-		pushLog,
-	)
+	q := db.Query(query).Project(projection).Sort(sort)
+	err := db.FindOneQ(PushlogCollection, q, pushLog)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
