@@ -288,7 +288,7 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 
 	// set the patch status to the collective status between the parent and child patches
 	if patchDoc.IsParent() {
-		allPatches := []patch.Patch{*patchDoc}
+		allStatuses := []string{patchDoc.Status}
 		for _, childPatchId := range patchDoc.Triggers.ChildPatches {
 			cp, err := patch.FindOneId(childPatchId)
 			if err != nil {
@@ -303,10 +303,10 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 					Message:    fmt.Sprintf("child patch with id %s not found", childPatchId),
 				}
 			}
-			allPatches = append(allPatches, *cp)
+			allStatuses = append(allStatuses, cp.Status)
 		}
 
-		collectiveStatus := patch.GetCollectiveStatus(allPatches)
+		collectiveStatus := patch.GetCollectiveStatus(allStatuses)
 		patchDoc.Status = collectiveStatus
 	}
 

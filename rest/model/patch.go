@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -192,10 +191,11 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 	// set the patch status to the collective status between the parent and child patches
 	if len(childPatches) > 0 {
-		allPatches := []APIPatch{*apiPatch}
-		allPatches = append(allPatches, childPatches...)
-		collectiveStatus := getCollectiveStatus(allPatches)
-		apiPatch.Status = &collectiveStatus
+		allStatuses := []string{*apiPatch.Status}
+		for _, cp := range childPatches {
+			allStatuses = append(allStatuses, *cp.Status)
+		}
+		apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatus(allStatuses))
 
 	}
 
@@ -208,46 +208,6 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	}
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
-}
-
-// getCollectiveStatus answers the question of what the patch status should be
-// when the patch status and the status of it's children are different
-func getCollectiveStatus(allPatches []APIPatch) string {
-	hasCreated := false
-	hasFailure := false
-	hasSuccess := false
-
-	for _, p := range allPatches {
-		switch *p.Status {
-		case evergreen.PatchStarted:
-			return evergreen.PatchStarted
-		case evergreen.PatchCreated:
-			hasCreated = true
-		case evergreen.PatchFailed:
-			hasFailure = true
-		case evergreen.PatchSucceeded:
-			hasSuccess = true
-		}
-	}
-
-	if !(hasCreated || hasFailure || hasSuccess) {
-		grip.Critical(message.Fields{
-			"message": "An unknown patch status was found",
-			"cause":   "Programmer error: new statuses should be added to GetCollectiveStatus().",
-			"patches": allPatches,
-		})
-	}
-
-	if hasCreated && (hasFailure || hasSuccess) {
-		return evergreen.PatchStarted
-	} else if hasCreated {
-		return evergreen.PatchCreated
-	} else if hasFailure {
-		return evergreen.PatchFailed
-	} else if hasSuccess {
-		return evergreen.PatchSucceeded
-	}
-	return evergreen.PatchCreated
 }
 
 func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {

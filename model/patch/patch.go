@@ -976,13 +976,15 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-func GetCollectiveStatus(allPatches []Patch) string {
+// GetCollectiveStatus answers the question of what the patch status should be
+// when the patch status and the status of it's children are different
+func GetCollectiveStatus(statuses []string) string {
 	hasCreated := false
 	hasFailure := false
 	hasSuccess := false
 
-	for _, p := range allPatches {
-		switch p.Status {
+	for _, s := range statuses {
+		switch s {
 		case evergreen.PatchStarted:
 			return evergreen.PatchStarted
 		case evergreen.PatchCreated:
@@ -996,9 +998,9 @@ func GetCollectiveStatus(allPatches []Patch) string {
 
 	if !(hasCreated || hasFailure || hasSuccess) {
 		grip.Critical(message.Fields{
-			"message": "An unknown patch status was found",
-			"cause":   "Programmer error: new statuses should be added to GetCollectiveStatus().",
-			"patches": allPatches,
+			"message":  "An unknown patch status was found",
+			"cause":    "Programmer error: new statuses should be added to patch.getCollectiveStatus().",
+			"statuses": statuses,
 		})
 	}
 
