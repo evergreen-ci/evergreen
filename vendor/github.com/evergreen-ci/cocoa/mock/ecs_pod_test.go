@@ -45,5 +45,4 @@ func TestECSPod(t *testing.T) {
 			tCase(tctx, t, v, podCreator)
 		})
 	}
-
 }

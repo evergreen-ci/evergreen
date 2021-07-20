@@ -79,7 +79,7 @@ func (c *ForecastService) CreateDatasetRequest(input *CreateDatasetInput) (req *
 // To get a list of all your datasets, use the ListDatasets operation.
 //
 // For example Forecast datasets, see the Amazon Forecast Sample GitHub repository
-// (https://github.com/aws-samples/amazon-forecast-samples/tree/master/data).
+// (https://github.com/aws-samples/amazon-forecast-samples).
 //
 // The Status of a dataset must be ACTIVE before you can import training data.
 // Use the DescribeDataset operation to get the status.
@@ -177,8 +177,8 @@ func (c *ForecastService) CreateDatasetGroupRequest(input *CreateDatasetGroupInp
 //
 // To get a list of all your datasets groups, use the ListDatasetGroups operation.
 //
-// The Status of a dataset group must be ACTIVE before you can create use the
-// dataset group to create a predictor. To get the status, use the DescribeDatasetGroup
+// The Status of a dataset group must be ACTIVE before you can use the dataset
+// group to create a predictor. To get the status, use the DescribeDatasetGroup
 // operation.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -278,14 +278,21 @@ func (c *ForecastService) CreateDatasetImportJobRequest(input *CreateDatasetImpo
 // to import the data to.
 //
 // You must specify a DataSource object that includes an AWS Identity and Access
-// Management (IAM) role that Amazon Forecast can assume to access the data.
-// For more information, see aws-forecast-iam-roles.
+// Management (IAM) role that Amazon Forecast can assume to access the data,
+// as Amazon Forecast makes a copy of your data and processes it in an internal
+// AWS system. For more information, see aws-forecast-iam-roles.
 //
 // The training data must be in CSV format. The delimiter must be a comma (,).
 //
 // You can specify the path to a specific CSV file, the S3 bucket, or to a folder
 // in the S3 bucket. For the latter two cases, Amazon Forecast imports all files
 // up to the limit of 10,000 files.
+//
+// Because dataset imports are not aggregated, your most recent dataset import
+// is the one that is used when training a predictor or generating a forecast.
+// Make sure that your most recent dataset import contains all of the data you
+// want to model off of, and not just the new data collected since the previous
+// import.
 //
 // To get a list of all your dataset import jobs, filtered by specified criteria,
 // use the ListDatasetImportJobs operation.
@@ -388,9 +395,8 @@ func (c *ForecastService) CreateForecastRequest(input *CreateForecastInput) (req
 // use the CreateForecastExportJob operation.
 //
 // The range of the forecast is determined by the ForecastHorizon value, which
-// you specify in the CreatePredictor request, multiplied by the DataFrequency
-// value, which you specify in the CreateDataset request. When you query a forecast,
-// you can request a specific date range within the forecast.
+// you specify in the CreatePredictor request. When you query a forecast, you
+// can request a specific date range within the forecast.
 //
 // To get a list of all your forecasts, use the ListForecasts operation.
 //
@@ -497,7 +503,7 @@ func (c *ForecastService) CreateForecastExportJobRequest(input *CreateForecastEx
 // Simple Storage Service (Amazon S3) bucket. The forecast file name will match
 // the following conventions:
 //
-// <ForecastExportJobName>_<ExportTimestamp>_<PageNumber>
+// <ForecastExportJobName>_<ExportTimestamp>_<PartNumber>
 //
 // where the <ExportTimestamp> component is in Java SimpleDateFormat (yyyy-MM-ddTHH-mm-ssZ).
 //
@@ -607,34 +613,36 @@ func (c *ForecastService) CreatePredictorRequest(input *CreatePredictorInput) (r
 //
 // Creates an Amazon Forecast predictor.
 //
-// In the request, you provide a dataset group and either specify an algorithm
-// or let Amazon Forecast choose the algorithm for you using AutoML. If you
-// specify an algorithm, you also can override algorithm-specific hyperparameters.
+// In the request, provide a dataset group and either specify an algorithm or
+// let Amazon Forecast choose an algorithm for you using AutoML. If you specify
+// an algorithm, you also can override algorithm-specific hyperparameters.
 //
-// Amazon Forecast uses the chosen algorithm to train a model using the latest
-// version of the datasets in the specified dataset group. The result is called
-// a predictor. You then generate a forecast using the CreateForecast operation.
+// Amazon Forecast uses the algorithm to train a predictor using the latest
+// version of the datasets in the specified dataset group. You can then generate
+// a forecast using the CreateForecast operation.
 //
-// After training a model, the CreatePredictor operation also evaluates it.
-// To see the evaluation metrics, use the GetAccuracyMetrics operation. Always
-// review the evaluation metrics before deciding to use the predictor to generate
-// a forecast.
+// To see the evaluation metrics, use the GetAccuracyMetrics operation.
 //
-// Optionally, you can specify a featurization configuration to fill and aggregate
-// the data fields in the TARGET_TIME_SERIES dataset to improve model training.
-// For more information, see FeaturizationConfig.
+// You can specify a featurization configuration to fill and aggregate the data
+// fields in the TARGET_TIME_SERIES dataset to improve model training. For more
+// information, see FeaturizationConfig.
 //
 // For RELATED_TIME_SERIES datasets, CreatePredictor verifies that the DataFrequency
 // specified when the dataset was created matches the ForecastFrequency. TARGET_TIME_SERIES
 // datasets don't have this restriction. Amazon Forecast also verifies the delimiter
 // and timestamp format. For more information, see howitworks-datasets-groups.
 //
+// By default, predictors are trained and evaluated at the 0.1 (P10), 0.5 (P50),
+// and 0.9 (P90) quantiles. You can choose custom forecast types to train and
+// evaluate your predictor by setting the ForecastTypes.
+//
 // AutoML
 //
 // If you want Amazon Forecast to evaluate each algorithm and choose the one
 // that minimizes the objective function, set PerformAutoML to true. The objective
-// function is defined as the mean of the weighted p10, p50, and p90 quantile
-// losses. For more information, see EvaluationResult.
+// function is defined as the mean of the weighted losses over the forecast
+// types. By default, these are the p10, p50, and p90 quantile losses. For more
+// information, see EvaluationResult.
 //
 // When AutoML is enabled, the following properties are disallowed:
 //
@@ -699,6 +707,115 @@ func (c *ForecastService) CreatePredictorWithContext(ctx aws.Context, input *Cre
 	return out, req.Send()
 }
 
+const opCreatePredictorBacktestExportJob = "CreatePredictorBacktestExportJob"
+
+// CreatePredictorBacktestExportJobRequest generates a "aws/request.Request" representing the
+// client's request for the CreatePredictorBacktestExportJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See CreatePredictorBacktestExportJob for more information on using the CreatePredictorBacktestExportJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the CreatePredictorBacktestExportJobRequest method.
+//    req, resp := client.CreatePredictorBacktestExportJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/CreatePredictorBacktestExportJob
+func (c *ForecastService) CreatePredictorBacktestExportJobRequest(input *CreatePredictorBacktestExportJobInput) (req *request.Request, output *CreatePredictorBacktestExportJobOutput) {
+	op := &request.Operation{
+		Name:       opCreatePredictorBacktestExportJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &CreatePredictorBacktestExportJobInput{}
+	}
+
+	output = &CreatePredictorBacktestExportJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// CreatePredictorBacktestExportJob API operation for Amazon Forecast Service.
+//
+// Exports backtest forecasts and accuracy metrics generated by the CreatePredictor
+// operation. Two folders containing CSV files are exported to your specified
+// S3 bucket.
+//
+// The export file names will match the following conventions:
+//
+// <ExportJobName>_<ExportTimestamp>_<PartNumber>.csv
+//
+// The <ExportTimestamp> component is in Java SimpleDate format (yyyy-MM-ddTHH-mm-ssZ).
+//
+// You must specify a DataDestination object that includes an Amazon S3 bucket
+// and an AWS Identity and Access Management (IAM) role that Amazon Forecast
+// can assume to access the Amazon S3 bucket. For more information, see aws-forecast-iam-roles.
+//
+// The Status of the export job must be ACTIVE before you can access the export
+// in your Amazon S3 bucket. To get the status, use the DescribePredictorBacktestExportJob
+// operation.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation CreatePredictorBacktestExportJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+//   * ResourceAlreadyExistsException
+//   There is already a resource with this name. Try again with a different name.
+//
+//   * ResourceNotFoundException
+//   We can't find a resource with that Amazon Resource Name (ARN). Check the
+//   ARN and try again.
+//
+//   * ResourceInUseException
+//   The specified resource is in use.
+//
+//   * LimitExceededException
+//   The limit on the number of resources per account has been exceeded.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/CreatePredictorBacktestExportJob
+func (c *ForecastService) CreatePredictorBacktestExportJob(input *CreatePredictorBacktestExportJobInput) (*CreatePredictorBacktestExportJobOutput, error) {
+	req, out := c.CreatePredictorBacktestExportJobRequest(input)
+	return out, req.Send()
+}
+
+// CreatePredictorBacktestExportJobWithContext is the same as CreatePredictorBacktestExportJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See CreatePredictorBacktestExportJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) CreatePredictorBacktestExportJobWithContext(ctx aws.Context, input *CreatePredictorBacktestExportJobInput, opts ...request.Option) (*CreatePredictorBacktestExportJobOutput, error) {
+	req, out := c.CreatePredictorBacktestExportJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opDeleteDataset = "DeleteDataset"
 
 // DeleteDatasetRequest generates a "aws/request.Request" representing the
@@ -747,6 +864,10 @@ func (c *ForecastService) DeleteDatasetRequest(input *DeleteDatasetInput) (req *
 // Deletes an Amazon Forecast dataset that was created using the CreateDataset
 // operation. You can only delete datasets that have a status of ACTIVE or CREATE_FAILED.
 // To get the status use the DescribeDataset operation.
+//
+// Forecast does not automatically update any dataset groups that contain the
+// deleted dataset. In order to update the dataset group, use the operation,
+// omitting the deleted dataset's ARN.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1239,6 +1360,202 @@ func (c *ForecastService) DeletePredictor(input *DeletePredictorInput) (*DeleteP
 // for more information on using Contexts.
 func (c *ForecastService) DeletePredictorWithContext(ctx aws.Context, input *DeletePredictorInput, opts ...request.Option) (*DeletePredictorOutput, error) {
 	req, out := c.DeletePredictorRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeletePredictorBacktestExportJob = "DeletePredictorBacktestExportJob"
+
+// DeletePredictorBacktestExportJobRequest generates a "aws/request.Request" representing the
+// client's request for the DeletePredictorBacktestExportJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeletePredictorBacktestExportJob for more information on using the DeletePredictorBacktestExportJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeletePredictorBacktestExportJobRequest method.
+//    req, resp := client.DeletePredictorBacktestExportJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/DeletePredictorBacktestExportJob
+func (c *ForecastService) DeletePredictorBacktestExportJobRequest(input *DeletePredictorBacktestExportJobInput) (req *request.Request, output *DeletePredictorBacktestExportJobOutput) {
+	op := &request.Operation{
+		Name:       opDeletePredictorBacktestExportJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeletePredictorBacktestExportJobInput{}
+	}
+
+	output = &DeletePredictorBacktestExportJobOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// DeletePredictorBacktestExportJob API operation for Amazon Forecast Service.
+//
+// Deletes a predictor backtest export job.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation DeletePredictorBacktestExportJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+//   * ResourceNotFoundException
+//   We can't find a resource with that Amazon Resource Name (ARN). Check the
+//   ARN and try again.
+//
+//   * ResourceInUseException
+//   The specified resource is in use.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/DeletePredictorBacktestExportJob
+func (c *ForecastService) DeletePredictorBacktestExportJob(input *DeletePredictorBacktestExportJobInput) (*DeletePredictorBacktestExportJobOutput, error) {
+	req, out := c.DeletePredictorBacktestExportJobRequest(input)
+	return out, req.Send()
+}
+
+// DeletePredictorBacktestExportJobWithContext is the same as DeletePredictorBacktestExportJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeletePredictorBacktestExportJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) DeletePredictorBacktestExportJobWithContext(ctx aws.Context, input *DeletePredictorBacktestExportJobInput, opts ...request.Option) (*DeletePredictorBacktestExportJobOutput, error) {
+	req, out := c.DeletePredictorBacktestExportJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeleteResourceTree = "DeleteResourceTree"
+
+// DeleteResourceTreeRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteResourceTree operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteResourceTree for more information on using the DeleteResourceTree
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteResourceTreeRequest method.
+//    req, resp := client.DeleteResourceTreeRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/DeleteResourceTree
+func (c *ForecastService) DeleteResourceTreeRequest(input *DeleteResourceTreeInput) (req *request.Request, output *DeleteResourceTreeOutput) {
+	op := &request.Operation{
+		Name:       opDeleteResourceTree,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteResourceTreeInput{}
+	}
+
+	output = &DeleteResourceTreeOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// DeleteResourceTree API operation for Amazon Forecast Service.
+//
+// Deletes an entire resource tree. This operation will delete the parent resource
+// and its child resources.
+//
+// Child resources are resources that were created from another resource. For
+// example, when a forecast is generated from a predictor, the forecast is the
+// child resource and the predictor is the parent resource.
+//
+// Amazon Forecast resources possess the following parent-child resource hierarchies:
+//
+//    * Dataset: dataset import jobs
+//
+//    * Dataset Group: predictors, predictor backtest export jobs, forecasts,
+//    forecast export jobs
+//
+//    * Predictor: predictor backtest export jobs, forecasts, forecast export
+//    jobs
+//
+//    * Forecast: forecast export jobs
+//
+// DeleteResourceTree will only delete Amazon Forecast resources, and will not
+// delete datasets or exported files stored in Amazon S3.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation DeleteResourceTree for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+//   * ResourceNotFoundException
+//   We can't find a resource with that Amazon Resource Name (ARN). Check the
+//   ARN and try again.
+//
+//   * ResourceInUseException
+//   The specified resource is in use.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/DeleteResourceTree
+func (c *ForecastService) DeleteResourceTree(input *DeleteResourceTreeInput) (*DeleteResourceTreeOutput, error) {
+	req, out := c.DeleteResourceTreeRequest(input)
+	return out, req.Send()
+}
+
+// DeleteResourceTreeWithContext is the same as DeleteResourceTree with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteResourceTree for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) DeleteResourceTreeWithContext(ctx aws.Context, input *DeleteResourceTreeInput, opts ...request.Option) (*DeleteResourceTreeOutput, error) {
+	req, out := c.DeleteResourceTreeRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1825,6 +2142,102 @@ func (c *ForecastService) DescribePredictorWithContext(ctx aws.Context, input *D
 	return out, req.Send()
 }
 
+const opDescribePredictorBacktestExportJob = "DescribePredictorBacktestExportJob"
+
+// DescribePredictorBacktestExportJobRequest generates a "aws/request.Request" representing the
+// client's request for the DescribePredictorBacktestExportJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribePredictorBacktestExportJob for more information on using the DescribePredictorBacktestExportJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribePredictorBacktestExportJobRequest method.
+//    req, resp := client.DescribePredictorBacktestExportJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/DescribePredictorBacktestExportJob
+func (c *ForecastService) DescribePredictorBacktestExportJobRequest(input *DescribePredictorBacktestExportJobInput) (req *request.Request, output *DescribePredictorBacktestExportJobOutput) {
+	op := &request.Operation{
+		Name:       opDescribePredictorBacktestExportJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribePredictorBacktestExportJobInput{}
+	}
+
+	output = &DescribePredictorBacktestExportJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribePredictorBacktestExportJob API operation for Amazon Forecast Service.
+//
+// Describes a predictor backtest export job created using the CreatePredictorBacktestExportJob
+// operation.
+//
+// In addition to listing the properties provided by the user in the CreatePredictorBacktestExportJob
+// request, this operation lists the following properties:
+//
+//    * CreationTime
+//
+//    * LastModificationTime
+//
+//    * Status
+//
+//    * Message (if an error occurred)
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation DescribePredictorBacktestExportJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+//   * ResourceNotFoundException
+//   We can't find a resource with that Amazon Resource Name (ARN). Check the
+//   ARN and try again.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/DescribePredictorBacktestExportJob
+func (c *ForecastService) DescribePredictorBacktestExportJob(input *DescribePredictorBacktestExportJobInput) (*DescribePredictorBacktestExportJobOutput, error) {
+	req, out := c.DescribePredictorBacktestExportJobRequest(input)
+	return out, req.Send()
+}
+
+// DescribePredictorBacktestExportJobWithContext is the same as DescribePredictorBacktestExportJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribePredictorBacktestExportJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) DescribePredictorBacktestExportJobWithContext(ctx aws.Context, input *DescribePredictorBacktestExportJobInput, opts ...request.Option) (*DescribePredictorBacktestExportJobOutput, error) {
+	req, out := c.DescribePredictorBacktestExportJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opGetAccuracyMetrics = "GetAccuracyMetrics"
 
 // GetAccuracyMetricsRequest generates a "aws/request.Request" representing the
@@ -1872,7 +2285,7 @@ func (c *ForecastService) GetAccuracyMetricsRequest(input *GetAccuracyMetricsInp
 // Provides metrics on the accuracy of the models that were trained by the CreatePredictor
 // operation. Use metrics to see how well the model performed and to decide
 // whether to use the predictor to generate a forecast. For more information,
-// see metrics.
+// see Predictor Metrics (https://docs.aws.amazon.com/forecast/latest/dg/metrics.html).
 //
 // This operation generates metrics for each backtest window that was evaluated.
 // The number of backtest windows (NumberOfBacktestWindows) is specified using
@@ -2646,6 +3059,152 @@ func (c *ForecastService) ListForecastsPagesWithContext(ctx aws.Context, input *
 	return p.Err()
 }
 
+const opListPredictorBacktestExportJobs = "ListPredictorBacktestExportJobs"
+
+// ListPredictorBacktestExportJobsRequest generates a "aws/request.Request" representing the
+// client's request for the ListPredictorBacktestExportJobs operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListPredictorBacktestExportJobs for more information on using the ListPredictorBacktestExportJobs
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListPredictorBacktestExportJobsRequest method.
+//    req, resp := client.ListPredictorBacktestExportJobsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/ListPredictorBacktestExportJobs
+func (c *ForecastService) ListPredictorBacktestExportJobsRequest(input *ListPredictorBacktestExportJobsInput) (req *request.Request, output *ListPredictorBacktestExportJobsOutput) {
+	op := &request.Operation{
+		Name:       opListPredictorBacktestExportJobs,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxResults",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &ListPredictorBacktestExportJobsInput{}
+	}
+
+	output = &ListPredictorBacktestExportJobsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListPredictorBacktestExportJobs API operation for Amazon Forecast Service.
+//
+// Returns a list of predictor backtest export jobs created using the CreatePredictorBacktestExportJob
+// operation. This operation returns a summary for each backtest export job.
+// You can filter the list using an array of Filter objects.
+//
+// To retrieve the complete set of properties for a particular backtest export
+// job, use the ARN with the DescribePredictorBacktestExportJob operation.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation ListPredictorBacktestExportJobs for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidNextTokenException
+//   The token is not valid. Tokens expire after 24 hours.
+//
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/ListPredictorBacktestExportJobs
+func (c *ForecastService) ListPredictorBacktestExportJobs(input *ListPredictorBacktestExportJobsInput) (*ListPredictorBacktestExportJobsOutput, error) {
+	req, out := c.ListPredictorBacktestExportJobsRequest(input)
+	return out, req.Send()
+}
+
+// ListPredictorBacktestExportJobsWithContext is the same as ListPredictorBacktestExportJobs with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListPredictorBacktestExportJobs for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) ListPredictorBacktestExportJobsWithContext(ctx aws.Context, input *ListPredictorBacktestExportJobsInput, opts ...request.Option) (*ListPredictorBacktestExportJobsOutput, error) {
+	req, out := c.ListPredictorBacktestExportJobsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// ListPredictorBacktestExportJobsPages iterates over the pages of a ListPredictorBacktestExportJobs operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListPredictorBacktestExportJobs method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListPredictorBacktestExportJobs operation.
+//    pageNum := 0
+//    err := client.ListPredictorBacktestExportJobsPages(params,
+//        func(page *forecastservice.ListPredictorBacktestExportJobsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ForecastService) ListPredictorBacktestExportJobsPages(input *ListPredictorBacktestExportJobsInput, fn func(*ListPredictorBacktestExportJobsOutput, bool) bool) error {
+	return c.ListPredictorBacktestExportJobsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListPredictorBacktestExportJobsPagesWithContext same as ListPredictorBacktestExportJobsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) ListPredictorBacktestExportJobsPagesWithContext(ctx aws.Context, input *ListPredictorBacktestExportJobsInput, fn func(*ListPredictorBacktestExportJobsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListPredictorBacktestExportJobsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListPredictorBacktestExportJobsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListPredictorBacktestExportJobsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opListPredictors = "ListPredictors"
 
 // ListPredictorsRequest generates a "aws/request.Request" representing the
@@ -2789,6 +3348,370 @@ func (c *ForecastService) ListPredictorsPagesWithContext(ctx aws.Context, input 
 	}
 
 	return p.Err()
+}
+
+const opListTagsForResource = "ListTagsForResource"
+
+// ListTagsForResourceRequest generates a "aws/request.Request" representing the
+// client's request for the ListTagsForResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListTagsForResource for more information on using the ListTagsForResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListTagsForResourceRequest method.
+//    req, resp := client.ListTagsForResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/ListTagsForResource
+func (c *ForecastService) ListTagsForResourceRequest(input *ListTagsForResourceInput) (req *request.Request, output *ListTagsForResourceOutput) {
+	op := &request.Operation{
+		Name:       opListTagsForResource,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ListTagsForResourceInput{}
+	}
+
+	output = &ListTagsForResourceOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListTagsForResource API operation for Amazon Forecast Service.
+//
+// Lists the tags for an Amazon Forecast resource.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation ListTagsForResource for usage and error information.
+//
+// Returned Error Types:
+//   * ResourceNotFoundException
+//   We can't find a resource with that Amazon Resource Name (ARN). Check the
+//   ARN and try again.
+//
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/ListTagsForResource
+func (c *ForecastService) ListTagsForResource(input *ListTagsForResourceInput) (*ListTagsForResourceOutput, error) {
+	req, out := c.ListTagsForResourceRequest(input)
+	return out, req.Send()
+}
+
+// ListTagsForResourceWithContext is the same as ListTagsForResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListTagsForResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) ListTagsForResourceWithContext(ctx aws.Context, input *ListTagsForResourceInput, opts ...request.Option) (*ListTagsForResourceOutput, error) {
+	req, out := c.ListTagsForResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStopResource = "StopResource"
+
+// StopResourceRequest generates a "aws/request.Request" representing the
+// client's request for the StopResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StopResource for more information on using the StopResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StopResourceRequest method.
+//    req, resp := client.StopResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/StopResource
+func (c *ForecastService) StopResourceRequest(input *StopResourceInput) (req *request.Request, output *StopResourceOutput) {
+	op := &request.Operation{
+		Name:       opStopResource,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StopResourceInput{}
+	}
+
+	output = &StopResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// StopResource API operation for Amazon Forecast Service.
+//
+// Stops a resource.
+//
+// The resource undergoes the following states: CREATE_STOPPING and CREATE_STOPPED.
+// You cannot resume a resource once it has been stopped.
+//
+// This operation can be applied to the following resources (and their corresponding
+// child resources):
+//
+//    * Dataset Import Job
+//
+//    * Predictor Job
+//
+//    * Forecast Job
+//
+//    * Forecast Export Job
+//
+//    * Predictor Backtest Export Job
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation StopResource for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+//   * LimitExceededException
+//   The limit on the number of resources per account has been exceeded.
+//
+//   * ResourceNotFoundException
+//   We can't find a resource with that Amazon Resource Name (ARN). Check the
+//   ARN and try again.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/StopResource
+func (c *ForecastService) StopResource(input *StopResourceInput) (*StopResourceOutput, error) {
+	req, out := c.StopResourceRequest(input)
+	return out, req.Send()
+}
+
+// StopResourceWithContext is the same as StopResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StopResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) StopResourceWithContext(ctx aws.Context, input *StopResourceInput, opts ...request.Option) (*StopResourceOutput, error) {
+	req, out := c.StopResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opTagResource = "TagResource"
+
+// TagResourceRequest generates a "aws/request.Request" representing the
+// client's request for the TagResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See TagResource for more information on using the TagResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the TagResourceRequest method.
+//    req, resp := client.TagResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/TagResource
+func (c *ForecastService) TagResourceRequest(input *TagResourceInput) (req *request.Request, output *TagResourceOutput) {
+	op := &request.Operation{
+		Name:       opTagResource,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &TagResourceInput{}
+	}
+
+	output = &TagResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// TagResource API operation for Amazon Forecast Service.
+//
+// Associates the specified tags to a resource with the specified resourceArn.
+// If existing tags on a resource are not specified in the request parameters,
+// they are not changed. When a resource is deleted, the tags associated with
+// that resource are also deleted.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation TagResource for usage and error information.
+//
+// Returned Error Types:
+//   * ResourceNotFoundException
+//   We can't find a resource with that Amazon Resource Name (ARN). Check the
+//   ARN and try again.
+//
+//   * LimitExceededException
+//   The limit on the number of resources per account has been exceeded.
+//
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/TagResource
+func (c *ForecastService) TagResource(input *TagResourceInput) (*TagResourceOutput, error) {
+	req, out := c.TagResourceRequest(input)
+	return out, req.Send()
+}
+
+// TagResourceWithContext is the same as TagResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See TagResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) TagResourceWithContext(ctx aws.Context, input *TagResourceInput, opts ...request.Option) (*TagResourceOutput, error) {
+	req, out := c.TagResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opUntagResource = "UntagResource"
+
+// UntagResourceRequest generates a "aws/request.Request" representing the
+// client's request for the UntagResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UntagResource for more information on using the UntagResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UntagResourceRequest method.
+//    req, resp := client.UntagResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/UntagResource
+func (c *ForecastService) UntagResourceRequest(input *UntagResourceInput) (req *request.Request, output *UntagResourceOutput) {
+	op := &request.Operation{
+		Name:       opUntagResource,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &UntagResourceInput{}
+	}
+
+	output = &UntagResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// UntagResource API operation for Amazon Forecast Service.
+//
+// Deletes the specified tags from a resource.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Forecast Service's
+// API operation UntagResource for usage and error information.
+//
+// Returned Error Types:
+//   * ResourceNotFoundException
+//   We can't find a resource with that Amazon Resource Name (ARN). Check the
+//   ARN and try again.
+//
+//   * InvalidInputException
+//   We can't process the request because it includes an invalid value or a value
+//   that exceeds the valid range.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/forecast-2018-06-26/UntagResource
+func (c *ForecastService) UntagResource(input *UntagResourceInput) (*UntagResourceOutput, error) {
+	req, out := c.UntagResourceRequest(input)
+	return out, req.Send()
+}
+
+// UntagResourceWithContext is the same as UntagResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UntagResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ForecastService) UntagResourceWithContext(ctx aws.Context, input *UntagResourceInput, opts ...request.Option) (*UntagResourceOutput, error) {
+	req, out := c.UntagResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
 }
 
 const opUpdateDatasetGroup = "UpdateDatasetGroup"
@@ -3076,6 +3999,37 @@ type CreateDatasetGroupInput struct {
 	//
 	// Domain is a required field
 	Domain *string `type:"string" required:"true" enum:"Domain"`
+
+	// The optional metadata that you apply to the dataset group to help you categorize
+	// and organize them. Each tag consists of a key and an optional value, both
+	// of which you define.
+	//
+	// The following basic restrictions apply to tags:
+	//
+	//    * Maximum number of tags per resource - 50.
+	//
+	//    * For each resource, each tag key must be unique, and each tag key can
+	//    have only one value.
+	//
+	//    * Maximum key length - 128 Unicode characters in UTF-8.
+	//
+	//    * Maximum value length - 256 Unicode characters in UTF-8.
+	//
+	//    * If your tagging schema is used across multiple services and resources,
+	//    remember that other services may have restrictions on allowed characters.
+	//    Generally allowed characters are: letters, numbers, and spaces representable
+	//    in UTF-8, and the following characters: + - = . _ : / @.
+	//
+	//    * Tag keys and values are case sensitive.
+	//
+	//    * Do not use aws:, AWS:, or any upper or lowercase combination of such
+	//    as a prefix for keys as it is reserved for AWS use. You cannot edit or
+	//    delete tag keys with this prefix. Values can have this prefix. If a tag
+	//    value has aws as its prefix but the key does not, then Forecast considers
+	//    it to be a user tag and will count against the limit of 50 tags. Tags
+	//    with only the key prefix of aws do not count against your tags per resource
+	//    limit.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -3100,6 +4054,16 @@ func (s *CreateDatasetGroupInput) Validate() error {
 	if s.Domain == nil {
 		invalidParams.Add(request.NewErrParamRequired("Domain"))
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3122,6 +4086,12 @@ func (s *CreateDatasetGroupInput) SetDatasetGroupName(v string) *CreateDatasetGr
 // SetDomain sets the Domain field's value.
 func (s *CreateDatasetGroupInput) SetDomain(v string) *CreateDatasetGroupInput {
 	s.Domain = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateDatasetGroupInput) SetTags(v []*Tag) *CreateDatasetGroupInput {
+	s.Tags = v
 	return s
 }
 
@@ -3176,6 +4146,54 @@ type CreateDatasetImportJobInput struct {
 	// DatasetImportJobName is a required field
 	DatasetImportJobName *string `min:"1" type:"string" required:"true"`
 
+	// The format of the geolocation attribute. The geolocation attribute can be
+	// formatted in one of two ways:
+	//
+	//    * LAT_LONG - the latitude and longitude in decimal format (Example: 47.61_-122.33).
+	//
+	//    * CC_POSTALCODE (US Only) - the country code (US), followed by the 5-digit
+	//    ZIP code (Example: US_98121).
+	GeolocationFormat *string `type:"string"`
+
+	// The optional metadata that you apply to the dataset import job to help you
+	// categorize and organize them. Each tag consists of a key and an optional
+	// value, both of which you define.
+	//
+	// The following basic restrictions apply to tags:
+	//
+	//    * Maximum number of tags per resource - 50.
+	//
+	//    * For each resource, each tag key must be unique, and each tag key can
+	//    have only one value.
+	//
+	//    * Maximum key length - 128 Unicode characters in UTF-8.
+	//
+	//    * Maximum value length - 256 Unicode characters in UTF-8.
+	//
+	//    * If your tagging schema is used across multiple services and resources,
+	//    remember that other services may have restrictions on allowed characters.
+	//    Generally allowed characters are: letters, numbers, and spaces representable
+	//    in UTF-8, and the following characters: + - = . _ : / @.
+	//
+	//    * Tag keys and values are case sensitive.
+	//
+	//    * Do not use aws:, AWS:, or any upper or lowercase combination of such
+	//    as a prefix for keys as it is reserved for AWS use. You cannot edit or
+	//    delete tag keys with this prefix. Values can have this prefix. If a tag
+	//    value has aws as its prefix but the key does not, then Forecast considers
+	//    it to be a user tag and will count against the limit of 50 tags. Tags
+	//    with only the key prefix of aws do not count against your tags per resource
+	//    limit.
+	Tags []*Tag `type:"list"`
+
+	// A single time zone for every item in your dataset. This option is ideal for
+	// datasets with all timestamps within a single time zone, or if all timestamps
+	// are normalized to a single time zone.
+	//
+	// Refer to the Joda-Time API (http://joda-time.sourceforge.net/timezones.html)
+	// for a complete list of valid time zone names.
+	TimeZone *string `type:"string"`
+
 	// The format of timestamps in the dataset. The format that you specify depends
 	// on the DataFrequency specified when the dataset was created. The following
 	// formats are supported
@@ -3188,6 +4206,11 @@ type CreateDatasetImportJobInput struct {
 	// If the format isn't specified, Amazon Forecast expects the format to be "yyyy-MM-dd
 	// HH:mm:ss".
 	TimestampFormat *string `type:"string"`
+
+	// Automatically derive time zone information from the geolocation attribute.
+	// This option is ideal for datasets that contain timestamps in multiple time
+	// zones and those timestamps are expressed in local time.
+	UseGeolocationForTimeZone *bool `type:"boolean"`
 }
 
 // String returns the string representation
@@ -3220,6 +4243,16 @@ func (s *CreateDatasetImportJobInput) Validate() error {
 			invalidParams.AddNested("DataSource", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3245,9 +4278,33 @@ func (s *CreateDatasetImportJobInput) SetDatasetImportJobName(v string) *CreateD
 	return s
 }
 
+// SetGeolocationFormat sets the GeolocationFormat field's value.
+func (s *CreateDatasetImportJobInput) SetGeolocationFormat(v string) *CreateDatasetImportJobInput {
+	s.GeolocationFormat = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateDatasetImportJobInput) SetTags(v []*Tag) *CreateDatasetImportJobInput {
+	s.Tags = v
+	return s
+}
+
+// SetTimeZone sets the TimeZone field's value.
+func (s *CreateDatasetImportJobInput) SetTimeZone(v string) *CreateDatasetImportJobInput {
+	s.TimeZone = &v
+	return s
+}
+
 // SetTimestampFormat sets the TimestampFormat field's value.
 func (s *CreateDatasetImportJobInput) SetTimestampFormat(v string) *CreateDatasetImportJobInput {
 	s.TimestampFormat = &v
+	return s
+}
+
+// SetUseGeolocationForTimeZone sets the UseGeolocationForTimeZone field's value.
+func (s *CreateDatasetImportJobInput) SetUseGeolocationForTimeZone(v bool) *CreateDatasetImportJobInput {
+	s.UseGeolocationForTimeZone = &v
 	return s
 }
 
@@ -3320,6 +4377,37 @@ type CreateDatasetInput struct {
 	//
 	// Schema is a required field
 	Schema *Schema `type:"structure" required:"true"`
+
+	// The optional metadata that you apply to the dataset to help you categorize
+	// and organize them. Each tag consists of a key and an optional value, both
+	// of which you define.
+	//
+	// The following basic restrictions apply to tags:
+	//
+	//    * Maximum number of tags per resource - 50.
+	//
+	//    * For each resource, each tag key must be unique, and each tag key can
+	//    have only one value.
+	//
+	//    * Maximum key length - 128 Unicode characters in UTF-8.
+	//
+	//    * Maximum value length - 256 Unicode characters in UTF-8.
+	//
+	//    * If your tagging schema is used across multiple services and resources,
+	//    remember that other services may have restrictions on allowed characters.
+	//    Generally allowed characters are: letters, numbers, and spaces representable
+	//    in UTF-8, and the following characters: + - = . _ : / @.
+	//
+	//    * Tag keys and values are case sensitive.
+	//
+	//    * Do not use aws:, AWS:, or any upper or lowercase combination of such
+	//    as a prefix for keys as it is reserved for AWS use. You cannot edit or
+	//    delete tag keys with this prefix. Values can have this prefix. If a tag
+	//    value has aws as its prefix but the key does not, then Forecast considers
+	//    it to be a user tag and will count against the limit of 50 tags. Tags
+	//    with only the key prefix of aws do not count against your tags per resource
+	//    limit.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -3358,6 +4446,16 @@ func (s *CreateDatasetInput) Validate() error {
 	if s.Schema != nil {
 		if err := s.Schema.Validate(); err != nil {
 			invalidParams.AddNested("Schema", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
 		}
 	}
 
@@ -3400,6 +4498,12 @@ func (s *CreateDatasetInput) SetEncryptionConfig(v *EncryptionConfig) *CreateDat
 // SetSchema sets the Schema field's value.
 func (s *CreateDatasetInput) SetSchema(v *Schema) *CreateDatasetInput {
 	s.Schema = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateDatasetInput) SetTags(v []*Tag) *CreateDatasetInput {
+	s.Tags = v
 	return s
 }
 
@@ -3449,6 +4553,37 @@ type CreateForecastExportJobInput struct {
 	//
 	// ForecastExportJobName is a required field
 	ForecastExportJobName *string `min:"1" type:"string" required:"true"`
+
+	// The optional metadata that you apply to the forecast export job to help you
+	// categorize and organize them. Each tag consists of a key and an optional
+	// value, both of which you define.
+	//
+	// The following basic restrictions apply to tags:
+	//
+	//    * Maximum number of tags per resource - 50.
+	//
+	//    * For each resource, each tag key must be unique, and each tag key can
+	//    have only one value.
+	//
+	//    * Maximum key length - 128 Unicode characters in UTF-8.
+	//
+	//    * Maximum value length - 256 Unicode characters in UTF-8.
+	//
+	//    * If your tagging schema is used across multiple services and resources,
+	//    remember that other services may have restrictions on allowed characters.
+	//    Generally allowed characters are: letters, numbers, and spaces representable
+	//    in UTF-8, and the following characters: + - = . _ : / @.
+	//
+	//    * Tag keys and values are case sensitive.
+	//
+	//    * Do not use aws:, AWS:, or any upper or lowercase combination of such
+	//    as a prefix for keys as it is reserved for AWS use. You cannot edit or
+	//    delete tag keys with this prefix. Values can have this prefix. If a tag
+	//    value has aws as its prefix but the key does not, then Forecast considers
+	//    it to be a user tag and will count against the limit of 50 tags. Tags
+	//    with only the key prefix of aws do not count against your tags per resource
+	//    limit.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -3481,6 +4616,16 @@ func (s *CreateForecastExportJobInput) Validate() error {
 			invalidParams.AddNested("Destination", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3503,6 +4648,12 @@ func (s *CreateForecastExportJobInput) SetForecastArn(v string) *CreateForecastE
 // SetForecastExportJobName sets the ForecastExportJobName field's value.
 func (s *CreateForecastExportJobInput) SetForecastExportJobName(v string) *CreateForecastExportJobInput {
 	s.ForecastExportJobName = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateForecastExportJobInput) SetTags(v []*Tag) *CreateForecastExportJobInput {
+	s.Tags = v
 	return s
 }
 
@@ -3537,17 +4688,48 @@ type CreateForecastInput struct {
 	// ForecastName is a required field
 	ForecastName *string `min:"1" type:"string" required:"true"`
 
-	// The quantiles at which probabilistic forecasts are generated. You can specify
-	// up to 5 quantiles per forecast. Accepted values include 0.01 to 0.99 (increments
-	// of .01 only) and mean. The mean forecast is different from the median (0.50)
-	// when the distribution is not symmetric (e.g. Beta, Negative Binomial). The
-	// default value is ["0.1", "0.5", "0.9"].
+	// The quantiles at which probabilistic forecasts are generated. You can currently
+	// specify up to 5 quantiles per forecast. Accepted values include 0.01 to 0.99
+	// (increments of .01 only) and mean. The mean forecast is different from the
+	// median (0.50) when the distribution is not symmetric (for example, Beta and
+	// Negative Binomial). The default value is ["0.1", "0.5", "0.9"].
 	ForecastTypes []*string `min:"1" type:"list"`
 
 	// The Amazon Resource Name (ARN) of the predictor to use to generate the forecast.
 	//
 	// PredictorArn is a required field
 	PredictorArn *string `type:"string" required:"true"`
+
+	// The optional metadata that you apply to the forecast to help you categorize
+	// and organize them. Each tag consists of a key and an optional value, both
+	// of which you define.
+	//
+	// The following basic restrictions apply to tags:
+	//
+	//    * Maximum number of tags per resource - 50.
+	//
+	//    * For each resource, each tag key must be unique, and each tag key can
+	//    have only one value.
+	//
+	//    * Maximum key length - 128 Unicode characters in UTF-8.
+	//
+	//    * Maximum value length - 256 Unicode characters in UTF-8.
+	//
+	//    * If your tagging schema is used across multiple services and resources,
+	//    remember that other services may have restrictions on allowed characters.
+	//    Generally allowed characters are: letters, numbers, and spaces representable
+	//    in UTF-8, and the following characters: + - = . _ : / @.
+	//
+	//    * Tag keys and values are case sensitive.
+	//
+	//    * Do not use aws:, AWS:, or any upper or lowercase combination of such
+	//    as a prefix for keys as it is reserved for AWS use. You cannot edit or
+	//    delete tag keys with this prefix. Values can have this prefix. If a tag
+	//    value has aws as its prefix but the key does not, then Forecast considers
+	//    it to be a user tag and will count against the limit of 50 tags. Tags
+	//    with only the key prefix of aws do not count against your tags per resource
+	//    limit.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -3575,6 +4757,16 @@ func (s *CreateForecastInput) Validate() error {
 	if s.PredictorArn == nil {
 		invalidParams.Add(request.NewErrParamRequired("PredictorArn"))
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3597,6 +4789,12 @@ func (s *CreateForecastInput) SetForecastTypes(v []*string) *CreateForecastInput
 // SetPredictorArn sets the PredictorArn field's value.
 func (s *CreateForecastInput) SetPredictorArn(v string) *CreateForecastInput {
 	s.PredictorArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateForecastInput) SetTags(v []*Tag) *CreateForecastInput {
+	s.Tags = v
 	return s
 }
 
@@ -3623,6 +4821,150 @@ func (s *CreateForecastOutput) SetForecastArn(v string) *CreateForecastOutput {
 	return s
 }
 
+type CreatePredictorBacktestExportJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The destination for an export job. Provide an S3 path, an AWS Identity and
+	// Access Management (IAM) role that allows Amazon Forecast to access the location,
+	// and an AWS Key Management Service (KMS) key (optional).
+	//
+	// Destination is a required field
+	Destination *DataDestination `type:"structure" required:"true"`
+
+	// The Amazon Resource Name (ARN) of the predictor that you want to export.
+	//
+	// PredictorArn is a required field
+	PredictorArn *string `type:"string" required:"true"`
+
+	// The name for the backtest export job.
+	//
+	// PredictorBacktestExportJobName is a required field
+	PredictorBacktestExportJobName *string `min:"1" type:"string" required:"true"`
+
+	// Optional metadata to help you categorize and organize your backtests. Each
+	// tag consists of a key and an optional value, both of which you define. Tag
+	// keys and values are case sensitive.
+	//
+	// The following restrictions apply to tags:
+	//
+	//    * For each resource, each tag key must be unique and each tag key must
+	//    have one value.
+	//
+	//    * Maximum number of tags per resource: 50.
+	//
+	//    * Maximum key length: 128 Unicode characters in UTF-8.
+	//
+	//    * Maximum value length: 256 Unicode characters in UTF-8.
+	//
+	//    * Accepted characters: all letters and numbers, spaces representable in
+	//    UTF-8, and + - = . _ : / @. If your tagging schema is used across other
+	//    services and resources, the character restrictions of those services also
+	//    apply.
+	//
+	//    * Key prefixes cannot include any upper or lowercase combination of aws:
+	//    or AWS:. Values can have this prefix. If a tag value has aws as its prefix
+	//    but the key does not, Forecast considers it to be a user tag and will
+	//    count against the limit of 50 tags. Tags with only the key prefix of aws
+	//    do not count against your tags per resource limit. You cannot edit or
+	//    delete tag keys with this prefix.
+	Tags []*Tag `type:"list"`
+}
+
+// String returns the string representation
+func (s CreatePredictorBacktestExportJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreatePredictorBacktestExportJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreatePredictorBacktestExportJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreatePredictorBacktestExportJobInput"}
+	if s.Destination == nil {
+		invalidParams.Add(request.NewErrParamRequired("Destination"))
+	}
+	if s.PredictorArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("PredictorArn"))
+	}
+	if s.PredictorBacktestExportJobName == nil {
+		invalidParams.Add(request.NewErrParamRequired("PredictorBacktestExportJobName"))
+	}
+	if s.PredictorBacktestExportJobName != nil && len(*s.PredictorBacktestExportJobName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("PredictorBacktestExportJobName", 1))
+	}
+	if s.Destination != nil {
+		if err := s.Destination.Validate(); err != nil {
+			invalidParams.AddNested("Destination", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDestination sets the Destination field's value.
+func (s *CreatePredictorBacktestExportJobInput) SetDestination(v *DataDestination) *CreatePredictorBacktestExportJobInput {
+	s.Destination = v
+	return s
+}
+
+// SetPredictorArn sets the PredictorArn field's value.
+func (s *CreatePredictorBacktestExportJobInput) SetPredictorArn(v string) *CreatePredictorBacktestExportJobInput {
+	s.PredictorArn = &v
+	return s
+}
+
+// SetPredictorBacktestExportJobName sets the PredictorBacktestExportJobName field's value.
+func (s *CreatePredictorBacktestExportJobInput) SetPredictorBacktestExportJobName(v string) *CreatePredictorBacktestExportJobInput {
+	s.PredictorBacktestExportJobName = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreatePredictorBacktestExportJobInput) SetTags(v []*Tag) *CreatePredictorBacktestExportJobInput {
+	s.Tags = v
+	return s
+}
+
+type CreatePredictorBacktestExportJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the predictor backtest export job that
+	// you want to export.
+	PredictorBacktestExportJobArn *string `type:"string"`
+}
+
+// String returns the string representation
+func (s CreatePredictorBacktestExportJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreatePredictorBacktestExportJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetPredictorBacktestExportJobArn sets the PredictorBacktestExportJobArn field's value.
+func (s *CreatePredictorBacktestExportJobOutput) SetPredictorBacktestExportJobArn(v string) *CreatePredictorBacktestExportJobOutput {
+	s.PredictorBacktestExportJobArn = &v
+	return s
+}
+
 type CreatePredictorInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3633,8 +4975,9 @@ type CreatePredictorInput struct {
 	//
 	//    * arn:aws:forecast:::algorithm/ARIMA
 	//
-	//    * arn:aws:forecast:::algorithm/Deep_AR_Plus Supports hyperparameter optimization
-	//    (HPO)
+	//    * arn:aws:forecast:::algorithm/CNN-QR
+	//
+	//    * arn:aws:forecast:::algorithm/Deep_AR_Plus
 	//
 	//    * arn:aws:forecast:::algorithm/ETS
 	//
@@ -3642,6 +4985,12 @@ type CreatePredictorInput struct {
 	//
 	//    * arn:aws:forecast:::algorithm/Prophet
 	AlgorithmArn *string `type:"string"`
+
+	// Used to overide the default AutoML strategy, which is to optimize predictor
+	// accuracy. To apply an AutoML strategy that minimizes training time, use LatencyOptimized.
+	//
+	// This parameter is only valid for predictors trained using AutoML.
+	AutoMLOverrideStrategy *string `type:"string" enum:"AutoMLOverrideStrategy"`
 
 	// An AWS Key Management Service (KMS) key and the AWS Identity and Access Management
 	// (IAM) role that Amazon Forecast can assume to access the key.
@@ -3670,6 +5019,14 @@ type CreatePredictorInput struct {
 	//
 	// ForecastHorizon is a required field
 	ForecastHorizon *int64 `type:"integer" required:"true"`
+
+	// Specifies the forecast types used to train a predictor. You can specify up
+	// to five forecast types. Forecast types can be quantiles from 0.01 to 0.99,
+	// by increments of 0.01 or higher. You can also specify the mean forecast with
+	// mean.
+	//
+	// The default value is ["0.10", "0.50", "0.9"].
+	ForecastTypes []*string `min:"1" type:"list"`
 
 	// Provides hyperparameter override values for the algorithm. If you don't provide
 	// this parameter, Amazon Forecast uses default values. The individual algorithms
@@ -3709,15 +5066,48 @@ type CreatePredictorInput struct {
 	// for each tunable hyperparameter. In this case, you are required to specify
 	// an algorithm and PerformAutoML must be false.
 	//
-	// The following algorithm supports HPO:
+	// The following algorithms support HPO:
 	//
 	//    * DeepAR+
+	//
+	//    * CNN-QR
 	PerformHPO *bool `type:"boolean"`
 
 	// A name for the predictor.
 	//
 	// PredictorName is a required field
 	PredictorName *string `min:"1" type:"string" required:"true"`
+
+	// The optional metadata that you apply to the predictor to help you categorize
+	// and organize them. Each tag consists of a key and an optional value, both
+	// of which you define.
+	//
+	// The following basic restrictions apply to tags:
+	//
+	//    * Maximum number of tags per resource - 50.
+	//
+	//    * For each resource, each tag key must be unique, and each tag key can
+	//    have only one value.
+	//
+	//    * Maximum key length - 128 Unicode characters in UTF-8.
+	//
+	//    * Maximum value length - 256 Unicode characters in UTF-8.
+	//
+	//    * If your tagging schema is used across multiple services and resources,
+	//    remember that other services may have restrictions on allowed characters.
+	//    Generally allowed characters are: letters, numbers, and spaces representable
+	//    in UTF-8, and the following characters: + - = . _ : / @.
+	//
+	//    * Tag keys and values are case sensitive.
+	//
+	//    * Do not use aws:, AWS:, or any upper or lowercase combination of such
+	//    as a prefix for keys as it is reserved for AWS use. You cannot edit or
+	//    delete tag keys with this prefix. Values can have this prefix. If a tag
+	//    value has aws as its prefix but the key does not, then Forecast considers
+	//    it to be a user tag and will count against the limit of 50 tags. Tags
+	//    with only the key prefix of aws do not count against your tags per resource
+	//    limit.
+	Tags []*Tag `type:"list"`
 
 	// The hyperparameters to override for model training. The hyperparameters that
 	// you can override are listed in the individual algorithms. For the list of
@@ -3743,6 +5133,9 @@ func (s *CreatePredictorInput) Validate() error {
 	}
 	if s.ForecastHorizon == nil {
 		invalidParams.Add(request.NewErrParamRequired("ForecastHorizon"))
+	}
+	if s.ForecastTypes != nil && len(s.ForecastTypes) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ForecastTypes", 1))
 	}
 	if s.InputDataConfig == nil {
 		invalidParams.Add(request.NewErrParamRequired("InputDataConfig"))
@@ -3773,6 +5166,16 @@ func (s *CreatePredictorInput) Validate() error {
 			invalidParams.AddNested("InputDataConfig", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3783,6 +5186,12 @@ func (s *CreatePredictorInput) Validate() error {
 // SetAlgorithmArn sets the AlgorithmArn field's value.
 func (s *CreatePredictorInput) SetAlgorithmArn(v string) *CreatePredictorInput {
 	s.AlgorithmArn = &v
+	return s
+}
+
+// SetAutoMLOverrideStrategy sets the AutoMLOverrideStrategy field's value.
+func (s *CreatePredictorInput) SetAutoMLOverrideStrategy(v string) *CreatePredictorInput {
+	s.AutoMLOverrideStrategy = &v
 	return s
 }
 
@@ -3807,6 +5216,12 @@ func (s *CreatePredictorInput) SetFeaturizationConfig(v *FeaturizationConfig) *C
 // SetForecastHorizon sets the ForecastHorizon field's value.
 func (s *CreatePredictorInput) SetForecastHorizon(v int64) *CreatePredictorInput {
 	s.ForecastHorizon = &v
+	return s
+}
+
+// SetForecastTypes sets the ForecastTypes field's value.
+func (s *CreatePredictorInput) SetForecastTypes(v []*string) *CreatePredictorInput {
+	s.ForecastTypes = v
 	return s
 }
 
@@ -3840,6 +5255,12 @@ func (s *CreatePredictorInput) SetPredictorName(v string) *CreatePredictorInput 
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreatePredictorInput) SetTags(v []*Tag) *CreatePredictorInput {
+	s.Tags = v
+	return s
+}
+
 // SetTrainingParameters sets the TrainingParameters field's value.
 func (s *CreatePredictorInput) SetTrainingParameters(v map[string]*string) *CreatePredictorInput {
 	s.TrainingParameters = v
@@ -3869,10 +5290,9 @@ func (s *CreatePredictorOutput) SetPredictorArn(v string) *CreatePredictorOutput
 	return s
 }
 
-// The destination for an exported forecast, an AWS Identity and Access Management
-// (IAM) role that allows Amazon Forecast to access the location and, optionally,
-// an AWS Key Management Service (KMS) key. This object is submitted in the
-// CreateForecastExportJob request.
+// The destination for an export job. Provide an S3 path, an AWS Identity and
+// Access Management (IAM) role that allows Amazon Forecast to access the location,
+// and an AWS Key Management Service (KMS) key (optional).
 type DataDestination struct {
 	_ struct{} `type:"structure"`
 
@@ -4043,12 +5463,16 @@ type DatasetImportJobSummary struct {
 	// The name of the dataset import job.
 	DatasetImportJobName *string `min:"1" type:"string"`
 
-	// The last time that the dataset was modified. The time depends on the status
-	// of the job, as follows:
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
 	//
-	//    * CREATE_PENDING - The same time as CreationTime.
+	//    * CREATE_PENDING - The CreationTime.
 	//
 	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
 	//
 	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
 	LastModificationTime *time.Time `type:"timestamp"`
@@ -4056,15 +5480,15 @@ type DatasetImportJobSummary struct {
 	// If an error occurred, an informational message about the error.
 	Message *string `type:"string"`
 
-	// The status of the dataset import job. The status is reflected in the status
-	// of the dataset. For example, when the import job status is CREATE_IN_PROGRESS,
-	// the status of the dataset is UPDATE_IN_PROGRESS. States include:
+	// The status of the dataset import job. States include:
 	//
 	//    * ACTIVE
 	//
 	//    * CREATE_PENDING, CREATE_IN_PROGRESS, CREATE_FAILED
 	//
 	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
+	//
+	//    * CREATE_STOPPING, CREATE_STOPPED
 	Status *string `type:"string"`
 }
 
@@ -4454,6 +5878,58 @@ func (s DeleteForecastOutput) GoString() string {
 	return s.String()
 }
 
+type DeletePredictorBacktestExportJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the predictor backtest export job to delete.
+	//
+	// PredictorBacktestExportJobArn is a required field
+	PredictorBacktestExportJobArn *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeletePredictorBacktestExportJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeletePredictorBacktestExportJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeletePredictorBacktestExportJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeletePredictorBacktestExportJobInput"}
+	if s.PredictorBacktestExportJobArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("PredictorBacktestExportJobArn"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetPredictorBacktestExportJobArn sets the PredictorBacktestExportJobArn field's value.
+func (s *DeletePredictorBacktestExportJobInput) SetPredictorBacktestExportJobArn(v string) *DeletePredictorBacktestExportJobInput {
+	s.PredictorBacktestExportJobArn = &v
+	return s
+}
+
+type DeletePredictorBacktestExportJobOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeletePredictorBacktestExportJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeletePredictorBacktestExportJobOutput) GoString() string {
+	return s.String()
+}
+
 type DeletePredictorInput struct {
 	_ struct{} `type:"structure"`
 
@@ -4503,6 +5979,59 @@ func (s DeletePredictorOutput) String() string {
 
 // GoString returns the string representation
 func (s DeletePredictorOutput) GoString() string {
+	return s.String()
+}
+
+type DeleteResourceTreeInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the parent resource to delete. All child
+	// resources of the parent resource will also be deleted.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteResourceTreeInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteResourceTreeInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteResourceTreeInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteResourceTreeInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *DeleteResourceTreeInput) SetResourceArn(v string) *DeleteResourceTreeInput {
+	s.ResourceArn = &v
+	return s
+}
+
+type DeleteResourceTreeOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteResourceTreeOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteResourceTreeOutput) GoString() string {
 	return s.String()
 }
 
@@ -4701,15 +6230,25 @@ type DescribeDatasetImportJobOutput struct {
 	// The name of the dataset import job.
 	DatasetImportJobName *string `min:"1" type:"string"`
 
+	// The estimated time remaining in minutes for the dataset import job to complete.
+	EstimatedTimeRemainingInMinutes *int64 `type:"long"`
+
 	// Statistical information about each field in the input data.
 	FieldStatistics map[string]*Statistics `type:"map"`
 
-	// The last time that the dataset was modified. The time depends on the status
-	// of the job, as follows:
+	// The format of the geolocation attribute. Valid Values:"LAT_LONG" and "CC_POSTALCODE".
+	GeolocationFormat *string `type:"string"`
+
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
 	//
-	//    * CREATE_PENDING - The same time as CreationTime.
+	//    * CREATE_PENDING - The CreationTime.
 	//
 	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
 	//
 	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
 	LastModificationTime *time.Time `type:"timestamp"`
@@ -4717,16 +6256,19 @@ type DescribeDatasetImportJobOutput struct {
 	// If an error occurred, an informational message about the error.
 	Message *string `type:"string"`
 
-	// The status of the dataset import job. The status is reflected in the status
-	// of the dataset. For example, when the import job status is CREATE_IN_PROGRESS,
-	// the status of the dataset is UPDATE_IN_PROGRESS. States include:
+	// The status of the dataset import job. States include:
 	//
 	//    * ACTIVE
 	//
 	//    * CREATE_PENDING, CREATE_IN_PROGRESS, CREATE_FAILED
 	//
 	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
+	//
+	//    * CREATE_STOPPING, CREATE_STOPPED
 	Status *string `type:"string"`
+
+	// The single time zone applied to every item in the dataset
+	TimeZone *string `type:"string"`
 
 	// The format of timestamps in the dataset. The format that you specify depends
 	// on the DataFrequency specified when the dataset was created. The following
@@ -4737,6 +6279,9 @@ type DescribeDatasetImportJobOutput struct {
 	//    * "yyyy-MM-dd HH:mm:ss" For the following data frequencies: H, 30min,
 	//    15min, and 1min; and optionally, for: Y, M, W, and D
 	TimestampFormat *string `type:"string"`
+
+	// Whether TimeZone is automatically derived from the geolocation attribute.
+	UseGeolocationForTimeZone *bool `type:"boolean"`
 }
 
 // String returns the string representation
@@ -4785,9 +6330,21 @@ func (s *DescribeDatasetImportJobOutput) SetDatasetImportJobName(v string) *Desc
 	return s
 }
 
+// SetEstimatedTimeRemainingInMinutes sets the EstimatedTimeRemainingInMinutes field's value.
+func (s *DescribeDatasetImportJobOutput) SetEstimatedTimeRemainingInMinutes(v int64) *DescribeDatasetImportJobOutput {
+	s.EstimatedTimeRemainingInMinutes = &v
+	return s
+}
+
 // SetFieldStatistics sets the FieldStatistics field's value.
 func (s *DescribeDatasetImportJobOutput) SetFieldStatistics(v map[string]*Statistics) *DescribeDatasetImportJobOutput {
 	s.FieldStatistics = v
+	return s
+}
+
+// SetGeolocationFormat sets the GeolocationFormat field's value.
+func (s *DescribeDatasetImportJobOutput) SetGeolocationFormat(v string) *DescribeDatasetImportJobOutput {
+	s.GeolocationFormat = &v
 	return s
 }
 
@@ -4809,9 +6366,21 @@ func (s *DescribeDatasetImportJobOutput) SetStatus(v string) *DescribeDatasetImp
 	return s
 }
 
+// SetTimeZone sets the TimeZone field's value.
+func (s *DescribeDatasetImportJobOutput) SetTimeZone(v string) *DescribeDatasetImportJobOutput {
+	s.TimeZone = &v
+	return s
+}
+
 // SetTimestampFormat sets the TimestampFormat field's value.
 func (s *DescribeDatasetImportJobOutput) SetTimestampFormat(v string) *DescribeDatasetImportJobOutput {
 	s.TimestampFormat = &v
+	return s
+}
+
+// SetUseGeolocationForTimeZone sets the UseGeolocationForTimeZone field's value.
+func (s *DescribeDatasetImportJobOutput) SetUseGeolocationForTimeZone(v bool) *DescribeDatasetImportJobOutput {
+	s.UseGeolocationForTimeZone = &v
 	return s
 }
 
@@ -5040,7 +6609,18 @@ type DescribeForecastExportJobOutput struct {
 	// The name of the forecast export job.
 	ForecastExportJobName *string `min:"1" type:"string"`
 
-	// When the last successful export job finished.
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
+	//
+	//    * CREATE_PENDING - The CreationTime.
+	//
+	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
+	//
+	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
 	LastModificationTime *time.Time `type:"timestamp"`
 
 	// If an error occurred, an informational message about the error.
@@ -5051,6 +6631,8 @@ type DescribeForecastExportJobOutput struct {
 	//    * ACTIVE
 	//
 	//    * CREATE_PENDING, CREATE_IN_PROGRESS, CREATE_FAILED
+	//
+	//    * CREATE_STOPPING, CREATE_STOPPED
 	//
 	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
 	//
@@ -5164,19 +6746,30 @@ type DescribeForecastOutput struct {
 	// The ARN of the dataset group that provided the data used to train the predictor.
 	DatasetGroupArn *string `type:"string"`
 
+	// The estimated time remaining in minutes for the forecast job to complete.
+	EstimatedTimeRemainingInMinutes *int64 `type:"long"`
+
 	// The forecast ARN as specified in the request.
 	ForecastArn *string `type:"string"`
 
 	// The name of the forecast.
 	ForecastName *string `min:"1" type:"string"`
 
-	// The quantiles at which proababilistic forecasts were generated.
+	// The quantiles at which probabilistic forecasts were generated.
 	ForecastTypes []*string `min:"1" type:"list"`
 
-	// Initially, the same as CreationTime (status is CREATE_PENDING). Updated when
-	// inference (creating the forecast) starts (status changed to CREATE_IN_PROGRESS),
-	// and when inference is complete (status changed to ACTIVE) or fails (status
-	// changed to CREATE_FAILED).
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
+	//
+	//    * CREATE_PENDING - The CreationTime.
+	//
+	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
+	//
+	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
 	LastModificationTime *time.Time `type:"timestamp"`
 
 	// If an error occurred, an informational message about the error.
@@ -5190,6 +6783,8 @@ type DescribeForecastOutput struct {
 	//    * ACTIVE
 	//
 	//    * CREATE_PENDING, CREATE_IN_PROGRESS, CREATE_FAILED
+	//
+	//    * CREATE_STOPPING, CREATE_STOPPED
 	//
 	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
 	//
@@ -5217,6 +6812,12 @@ func (s *DescribeForecastOutput) SetCreationTime(v time.Time) *DescribeForecastO
 // SetDatasetGroupArn sets the DatasetGroupArn field's value.
 func (s *DescribeForecastOutput) SetDatasetGroupArn(v string) *DescribeForecastOutput {
 	s.DatasetGroupArn = &v
+	return s
+}
+
+// SetEstimatedTimeRemainingInMinutes sets the EstimatedTimeRemainingInMinutes field's value.
+func (s *DescribeForecastOutput) SetEstimatedTimeRemainingInMinutes(v int64) *DescribeForecastOutput {
+	s.EstimatedTimeRemainingInMinutes = &v
 	return s
 }
 
@@ -5258,6 +6859,151 @@ func (s *DescribeForecastOutput) SetPredictorArn(v string) *DescribeForecastOutp
 
 // SetStatus sets the Status field's value.
 func (s *DescribeForecastOutput) SetStatus(v string) *DescribeForecastOutput {
+	s.Status = &v
+	return s
+}
+
+type DescribePredictorBacktestExportJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the predictor backtest export job.
+	//
+	// PredictorBacktestExportJobArn is a required field
+	PredictorBacktestExportJobArn *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribePredictorBacktestExportJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribePredictorBacktestExportJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribePredictorBacktestExportJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribePredictorBacktestExportJobInput"}
+	if s.PredictorBacktestExportJobArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("PredictorBacktestExportJobArn"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetPredictorBacktestExportJobArn sets the PredictorBacktestExportJobArn field's value.
+func (s *DescribePredictorBacktestExportJobInput) SetPredictorBacktestExportJobArn(v string) *DescribePredictorBacktestExportJobInput {
+	s.PredictorBacktestExportJobArn = &v
+	return s
+}
+
+type DescribePredictorBacktestExportJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// When the predictor backtest export job was created.
+	CreationTime *time.Time `type:"timestamp"`
+
+	// The destination for an export job. Provide an S3 path, an AWS Identity and
+	// Access Management (IAM) role that allows Amazon Forecast to access the location,
+	// and an AWS Key Management Service (KMS) key (optional).
+	Destination *DataDestination `type:"structure"`
+
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
+	//
+	//    * CREATE_PENDING - The CreationTime.
+	//
+	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
+	//
+	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
+	LastModificationTime *time.Time `type:"timestamp"`
+
+	// Information about any errors that may have occurred during the backtest export.
+	Message *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) of the predictor.
+	PredictorArn *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) of the predictor backtest export job.
+	PredictorBacktestExportJobArn *string `type:"string"`
+
+	// The name of the predictor backtest export job.
+	PredictorBacktestExportJobName *string `min:"1" type:"string"`
+
+	// The status of the predictor backtest export job. States include:
+	//
+	//    * ACTIVE
+	//
+	//    * CREATE_PENDING, CREATE_IN_PROGRESS, CREATE_FAILED
+	//
+	//    * CREATE_STOPPING, CREATE_STOPPED
+	//
+	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
+	Status *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DescribePredictorBacktestExportJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribePredictorBacktestExportJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetCreationTime sets the CreationTime field's value.
+func (s *DescribePredictorBacktestExportJobOutput) SetCreationTime(v time.Time) *DescribePredictorBacktestExportJobOutput {
+	s.CreationTime = &v
+	return s
+}
+
+// SetDestination sets the Destination field's value.
+func (s *DescribePredictorBacktestExportJobOutput) SetDestination(v *DataDestination) *DescribePredictorBacktestExportJobOutput {
+	s.Destination = v
+	return s
+}
+
+// SetLastModificationTime sets the LastModificationTime field's value.
+func (s *DescribePredictorBacktestExportJobOutput) SetLastModificationTime(v time.Time) *DescribePredictorBacktestExportJobOutput {
+	s.LastModificationTime = &v
+	return s
+}
+
+// SetMessage sets the Message field's value.
+func (s *DescribePredictorBacktestExportJobOutput) SetMessage(v string) *DescribePredictorBacktestExportJobOutput {
+	s.Message = &v
+	return s
+}
+
+// SetPredictorArn sets the PredictorArn field's value.
+func (s *DescribePredictorBacktestExportJobOutput) SetPredictorArn(v string) *DescribePredictorBacktestExportJobOutput {
+	s.PredictorArn = &v
+	return s
+}
+
+// SetPredictorBacktestExportJobArn sets the PredictorBacktestExportJobArn field's value.
+func (s *DescribePredictorBacktestExportJobOutput) SetPredictorBacktestExportJobArn(v string) *DescribePredictorBacktestExportJobOutput {
+	s.PredictorBacktestExportJobArn = &v
+	return s
+}
+
+// SetPredictorBacktestExportJobName sets the PredictorBacktestExportJobName field's value.
+func (s *DescribePredictorBacktestExportJobOutput) SetPredictorBacktestExportJobName(v string) *DescribePredictorBacktestExportJobOutput {
+	s.PredictorBacktestExportJobName = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *DescribePredictorBacktestExportJobOutput) SetStatus(v string) *DescribePredictorBacktestExportJobOutput {
 	s.Status = &v
 	return s
 }
@@ -5310,6 +7056,12 @@ type DescribePredictorOutput struct {
 	// When PerformAutoML is specified, the ARN of the chosen algorithm.
 	AutoMLAlgorithmArns []*string `type:"list"`
 
+	// The AutoML strategy used to train the predictor. Unless LatencyOptimized
+	// is specified, the AutoML strategy optimizes predictor accuracy.
+	//
+	// This parameter is only valid for predictors trained using AutoML.
+	AutoMLOverrideStrategy *string `type:"string" enum:"AutoMLOverrideStrategy"`
+
 	// When the model training task was created.
 	CreationTime *time.Time `type:"timestamp"`
 
@@ -5320,6 +7072,10 @@ type DescribePredictorOutput struct {
 	// An AWS Key Management Service (KMS) key and the AWS Identity and Access Management
 	// (IAM) role that Amazon Forecast can assume to access the key.
 	EncryptionConfig *EncryptionConfig `type:"structure"`
+
+	// The estimated time remaining in minutes for the predictor training job to
+	// complete.
+	EstimatedTimeRemainingInMinutes *int64 `type:"long"`
 
 	// Used to override the default evaluation parameters of the specified algorithm.
 	// Amazon Forecast evaluates a predictor by splitting a dataset into training
@@ -5334,16 +7090,27 @@ type DescribePredictorOutput struct {
 	// the prediction length.
 	ForecastHorizon *int64 `type:"integer"`
 
+	// The forecast types used during predictor training. Default value is ["0.1","0.5","0.9"]
+	ForecastTypes []*string `min:"1" type:"list"`
+
 	// The hyperparameter override values for the algorithm.
 	HPOConfig *HyperParameterTuningJobConfig `type:"structure"`
 
 	// Describes the dataset group that contains the data to use to train the predictor.
 	InputDataConfig *InputDataConfig `type:"structure"`
 
-	// Initially, the same as CreationTime (when the status is CREATE_PENDING).
-	// This value is updated when training starts (when the status changes to CREATE_IN_PROGRESS),
-	// and when training has completed (when the status changes to ACTIVE) or fails
-	// (when the status changes to CREATE_FAILED).
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
+	//
+	//    * CREATE_PENDING - The CreationTime.
+	//
+	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
+	//
+	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
 	LastModificationTime *time.Time `type:"timestamp"`
 
 	// If an error occurred, an informational message about the error.
@@ -5374,16 +7141,16 @@ type DescribePredictorOutput struct {
 	//
 	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
 	//
-	//    * UPDATE_PENDING, UPDATE_IN_PROGRESS, UPDATE_FAILED
+	//    * CREATE_STOPPING, CREATE_STOPPED
 	//
 	// The Status of the predictor must be ACTIVE before you can use the predictor
 	// to create a forecast.
 	Status *string `type:"string"`
 
 	// The default training parameters or overrides selected during model training.
-	// If using the AutoML algorithm or if HPO is turned on while using the DeepAR+
-	// algorithms, the optimized values for the chosen hyperparameters are returned.
-	// For more information, see aws-forecast-choosing-recipes.
+	// When running AutoML or choosing HPO with CNN-QR or DeepAR+, the optimized
+	// values for the chosen hyperparameters are returned. For more information,
+	// see aws-forecast-choosing-recipes.
 	TrainingParameters map[string]*string `type:"map"`
 }
 
@@ -5409,6 +7176,12 @@ func (s *DescribePredictorOutput) SetAutoMLAlgorithmArns(v []*string) *DescribeP
 	return s
 }
 
+// SetAutoMLOverrideStrategy sets the AutoMLOverrideStrategy field's value.
+func (s *DescribePredictorOutput) SetAutoMLOverrideStrategy(v string) *DescribePredictorOutput {
+	s.AutoMLOverrideStrategy = &v
+	return s
+}
+
 // SetCreationTime sets the CreationTime field's value.
 func (s *DescribePredictorOutput) SetCreationTime(v time.Time) *DescribePredictorOutput {
 	s.CreationTime = &v
@@ -5427,6 +7200,12 @@ func (s *DescribePredictorOutput) SetEncryptionConfig(v *EncryptionConfig) *Desc
 	return s
 }
 
+// SetEstimatedTimeRemainingInMinutes sets the EstimatedTimeRemainingInMinutes field's value.
+func (s *DescribePredictorOutput) SetEstimatedTimeRemainingInMinutes(v int64) *DescribePredictorOutput {
+	s.EstimatedTimeRemainingInMinutes = &v
+	return s
+}
+
 // SetEvaluationParameters sets the EvaluationParameters field's value.
 func (s *DescribePredictorOutput) SetEvaluationParameters(v *EvaluationParameters) *DescribePredictorOutput {
 	s.EvaluationParameters = v
@@ -5442,6 +7221,12 @@ func (s *DescribePredictorOutput) SetFeaturizationConfig(v *FeaturizationConfig)
 // SetForecastHorizon sets the ForecastHorizon field's value.
 func (s *DescribePredictorOutput) SetForecastHorizon(v int64) *DescribePredictorOutput {
 	s.ForecastHorizon = &v
+	return s
+}
+
+// SetForecastTypes sets the ForecastTypes field's value.
+func (s *DescribePredictorOutput) SetForecastTypes(v []*string) *DescribePredictorOutput {
+	s.ForecastTypes = v
 	return s
 }
 
@@ -5570,6 +7355,49 @@ func (s *EncryptionConfig) SetRoleArn(v string) *EncryptionConfig {
 	return s
 }
 
+// Provides detailed error metrics to evaluate the performance of a predictor.
+// This object is part of the Metrics object.
+type ErrorMetric struct {
+	_ struct{} `type:"structure"`
+
+	// The Forecast type used to compute WAPE and RMSE.
+	ForecastType *string `type:"string"`
+
+	// The root-mean-square error (RMSE).
+	RMSE *float64 `type:"double"`
+
+	// The weighted absolute percentage error (WAPE).
+	WAPE *float64 `type:"double"`
+}
+
+// String returns the string representation
+func (s ErrorMetric) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ErrorMetric) GoString() string {
+	return s.String()
+}
+
+// SetForecastType sets the ForecastType field's value.
+func (s *ErrorMetric) SetForecastType(v string) *ErrorMetric {
+	s.ForecastType = &v
+	return s
+}
+
+// SetRMSE sets the RMSE field's value.
+func (s *ErrorMetric) SetRMSE(v float64) *ErrorMetric {
+	s.RMSE = &v
+	return s
+}
+
+// SetWAPE sets the WAPE field's value.
+func (s *ErrorMetric) SetWAPE(v float64) *ErrorMetric {
+	s.WAPE = &v
+	return s
+}
+
 // Parameters that define how to split a dataset into training data and testing
 // data, and the number of iterations to perform. These parameters are specified
 // in the predefined algorithms but you can override them in the CreatePredictor
@@ -5673,9 +7501,10 @@ type Featurization struct {
 	_ struct{} `type:"structure"`
 
 	// The name of the schema attribute that specifies the data field to be featurized.
-	// Only the target field of the TARGET_TIME_SERIES dataset type is supported.
-	// For example, for the RETAIL domain, the target is demand, and for the CUSTOM
-	// domain, the target is target_value.
+	// Amazon Forecast supports the target field of the TARGET_TIME_SERIES and the
+	// RELATED_TIME_SERIES datasets. For example, for the RETAIL domain, the target
+	// is demand, and for the CUSTOM domain, the target is target_value. For more
+	// information, see howitworks-missing-values.
 	//
 	// AttributeName is a required field
 	AttributeName *string `min:"1" type:"string" required:"true"`
@@ -5744,8 +7573,8 @@ func (s *Featurization) SetFeaturizationPipeline(v []*FeaturizationMethod) *Feat
 // You define featurization using the FeaturizationConfig object. You specify
 // an array of transformations, one for each field that you want to featurize.
 // You then include the FeaturizationConfig object in your CreatePredictor request.
-// Amazon Forecast applies the featurization to the TARGET_TIME_SERIES dataset
-// before model training.
+// Amazon Forecast applies the featurization to the TARGET_TIME_SERIES and RELATED_TIME_SERIES
+// datasets before model training.
 //
 // You can create multiple featurization configurations. For example, you might
 // call the CreatePredictor operation twice by specifying different featurization
@@ -5754,7 +7583,7 @@ type FeaturizationConfig struct {
 	_ struct{} `type:"structure"`
 
 	// An array of featurization (transformation) information for the fields of
-	// a dataset. Only a single featurization is supported.
+	// a dataset.
 	Featurizations []*Featurization `min:"1" type:"list"`
 
 	// An array of dimension (field) names that specify how to group the generated
@@ -5847,8 +7676,7 @@ func (s *FeaturizationConfig) SetForecastFrequency(v string) *FeaturizationConfi
 
 // Provides information about the method that featurizes (transforms) a dataset
 // field. The method is part of the FeaturizationPipeline of the Featurization
-// object. If you don't specify FeaturizationMethodParameters, Amazon Forecast
-// uses default parameters.
+// object.
 //
 // The following is an example of how you specify a FeaturizationMethod object.
 //
@@ -5856,7 +7684,8 @@ func (s *FeaturizationConfig) SetForecastFrequency(v string) *FeaturizationConfi
 //
 // "FeaturizationMethodName": "filling",
 //
-// "FeaturizationMethodParameters": {"aggregation": "avg", "backfill": "nan"}
+// "FeaturizationMethodParameters": {"aggregation": "sum", "middlefill": "zero",
+// "backfill": "zero"}
 //
 // }
 type FeaturizationMethod struct {
@@ -5867,17 +7696,35 @@ type FeaturizationMethod struct {
 	// FeaturizationMethodName is a required field
 	FeaturizationMethodName *string `type:"string" required:"true" enum:"FeaturizationMethodName"`
 
-	// The method parameters (key-value pairs). Specify these parameters to override
-	// the default values. The following list shows the parameters and their valid
-	// values. Bold signifies the default value.
+	// The method parameters (key-value pairs), which are a map of override parameters.
+	// Specify these parameters to override the default values. Related Time Series
+	// attributes do not accept aggregation parameters.
+	//
+	// The following list shows the parameters and their valid values for the "filling"
+	// featurization method for a Target Time Series dataset. Bold signifies the
+	// default value.
 	//
 	//    * aggregation: sum, avg, first, min, max
 	//
 	//    * frontfill: none
 	//
-	//    * middlefill: zero, nan (not a number)
+	//    * middlefill: zero, nan (not a number), value, median, mean, min, max
 	//
-	//    * backfill: zero, nan
+	//    * backfill: zero, nan, value, median, mean, min, max
+	//
+	// The following list shows the parameters and their valid values for a Related
+	// Time Series featurization method (there are no defaults):
+	//
+	//    * middlefill: zero, value, median, mean, min, max
+	//
+	//    * backfill: zero, value, median, mean, min, max
+	//
+	//    * futurefill: zero, value, median, mean, min, max
+	//
+	// To set a filling method to a specific value, set the fill parameter to value
+	// and define the value in a corresponding _value parameter. For example, to
+	// set backfilling to a value of 2, include the following: "backfill": "value"
+	// and "backfill_value":"2".
 	FeaturizationMethodParameters map[string]*string `min:"1" type:"map"`
 }
 
@@ -6009,7 +7856,18 @@ type ForecastExportJobSummary struct {
 	// The name of the forecast export job.
 	ForecastExportJobName *string `min:"1" type:"string"`
 
-	// When the last successful export job finished.
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
+	//
+	//    * CREATE_PENDING - The CreationTime.
+	//
+	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
+	//
+	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
 	LastModificationTime *time.Time `type:"timestamp"`
 
 	// If an error occurred, an informational message about the error.
@@ -6020,6 +7878,8 @@ type ForecastExportJobSummary struct {
 	//    * ACTIVE
 	//
 	//    * CREATE_PENDING, CREATE_IN_PROGRESS, CREATE_FAILED
+	//
+	//    * CREATE_STOPPING, CREATE_STOPPED
 	//
 	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
 	//
@@ -6099,10 +7959,18 @@ type ForecastSummary struct {
 	// The name of the forecast.
 	ForecastName *string `min:"1" type:"string"`
 
-	// Initially, the same as CreationTime (status is CREATE_PENDING). Updated when
-	// inference (creating the forecast) starts (status changed to CREATE_IN_PROGRESS),
-	// and when inference is complete (status changed to ACTIVE) or fails (status
-	// changed to CREATE_FAILED).
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
+	//
+	//    * CREATE_PENDING - The CreationTime.
+	//
+	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
+	//
+	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
 	LastModificationTime *time.Time `type:"timestamp"`
 
 	// If an error occurred, an informational message about the error.
@@ -6116,6 +7984,8 @@ type ForecastSummary struct {
 	//    * ACTIVE
 	//
 	//    * CREATE_PENDING, CREATE_IN_PROGRESS, CREATE_FAILED
+	//
+	//    * CREATE_STOPPING, CREATE_STOPPED
 	//
 	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
 	//
@@ -6223,6 +8093,12 @@ func (s *GetAccuracyMetricsInput) SetPredictorArn(v string) *GetAccuracyMetricsI
 type GetAccuracyMetricsOutput struct {
 	_ struct{} `type:"structure"`
 
+	// The AutoML strategy used to train the predictor. Unless LatencyOptimized
+	// is specified, the AutoML strategy optimizes predictor accuracy.
+	//
+	// This parameter is only valid for predictors trained using AutoML.
+	AutoMLOverrideStrategy *string `type:"string" enum:"AutoMLOverrideStrategy"`
+
 	// An array of results from evaluating the predictor.
 	PredictorEvaluationResults []*EvaluationResult `type:"list"`
 }
@@ -6235,6 +8111,12 @@ func (s GetAccuracyMetricsOutput) String() string {
 // GoString returns the string representation
 func (s GetAccuracyMetricsOutput) GoString() string {
 	return s.String()
+}
+
+// SetAutoMLOverrideStrategy sets the AutoMLOverrideStrategy field's value.
+func (s *GetAccuracyMetricsOutput) SetAutoMLOverrideStrategy(v string) *GetAccuracyMetricsOutput {
+	s.AutoMLOverrideStrategy = &v
+	return s
 }
 
 // SetPredictorEvaluationResults sets the PredictorEvaluationResults field's value.
@@ -6469,8 +8351,8 @@ func (s *IntegerParameterRange) SetScalingType(v string) *IntegerParameterRange 
 // We can't process the request because it includes an invalid value or a value
 // that exceeds the valid range.
 type InvalidInputException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -6487,17 +8369,17 @@ func (s InvalidInputException) GoString() string {
 
 func newErrorInvalidInputException(v protocol.ResponseMetadata) error {
 	return &InvalidInputException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidInputException) Code() string {
+func (s *InvalidInputException) Code() string {
 	return "InvalidInputException"
 }
 
 // Message returns the exception's message.
-func (s InvalidInputException) Message() string {
+func (s *InvalidInputException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6505,28 +8387,28 @@ func (s InvalidInputException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidInputException) OrigErr() error {
+func (s *InvalidInputException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidInputException) Error() string {
+func (s *InvalidInputException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidInputException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidInputException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidInputException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidInputException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The token is not valid. Tokens expire after 24 hours.
 type InvalidNextTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -6543,17 +8425,17 @@ func (s InvalidNextTokenException) GoString() string {
 
 func newErrorInvalidNextTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidNextTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidNextTokenException) Code() string {
+func (s *InvalidNextTokenException) Code() string {
 	return "InvalidNextTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidNextTokenException) Message() string {
+func (s *InvalidNextTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6561,28 +8443,28 @@ func (s InvalidNextTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidNextTokenException) OrigErr() error {
+func (s *InvalidNextTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidNextTokenException) Error() string {
+func (s *InvalidNextTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidNextTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidNextTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidNextTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidNextTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The limit on the number of resources per account has been exceeded.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -6599,17 +8481,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6617,22 +8499,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListDatasetGroupsInput struct {
@@ -7166,6 +9048,124 @@ func (s *ListForecastsOutput) SetNextToken(v string) *ListForecastsOutput {
 	return s
 }
 
+type ListPredictorBacktestExportJobsInput struct {
+	_ struct{} `type:"structure"`
+
+	// An array of filters. For each filter, provide a condition and a match statement.
+	// The condition is either IS or IS_NOT, which specifies whether to include
+	// or exclude the predictor backtest export jobs that match the statement from
+	// the list. The match statement consists of a key and a value.
+	//
+	// Filter properties
+	//
+	//    * Condition - The condition to apply. Valid values are IS and IS_NOT.
+	//    To include the predictor backtest export jobs that match the statement,
+	//    specify IS. To exclude matching predictor backtest export jobs, specify
+	//    IS_NOT.
+	//
+	//    * Key - The name of the parameter to filter on. Valid values are PredictorArn
+	//    and Status.
+	//
+	//    * Value - The value to match.
+	Filters []*Filter `type:"list"`
+
+	// The number of items to return in the response.
+	MaxResults *int64 `min:"1" type:"integer"`
+
+	// If the result of the previous request was truncated, the response includes
+	// a NextToken. To retrieve the next set of results, use the token in the next
+	// request. Tokens expire after 24 hours.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListPredictorBacktestExportJobsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListPredictorBacktestExportJobsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListPredictorBacktestExportJobsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListPredictorBacktestExportJobsInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
+	}
+	if s.Filters != nil {
+		for i, v := range s.Filters {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Filters", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetFilters sets the Filters field's value.
+func (s *ListPredictorBacktestExportJobsInput) SetFilters(v []*Filter) *ListPredictorBacktestExportJobsInput {
+	s.Filters = v
+	return s
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListPredictorBacktestExportJobsInput) SetMaxResults(v int64) *ListPredictorBacktestExportJobsInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListPredictorBacktestExportJobsInput) SetNextToken(v string) *ListPredictorBacktestExportJobsInput {
+	s.NextToken = &v
+	return s
+}
+
+type ListPredictorBacktestExportJobsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Returns this token if the response is truncated. To retrieve the next set
+	// of results, use the token in the next request.
+	NextToken *string `min:"1" type:"string"`
+
+	// An array of objects that summarize the properties of each predictor backtest
+	// export job.
+	PredictorBacktestExportJobs []*PredictorBacktestExportJobSummary `type:"list"`
+}
+
+// String returns the string representation
+func (s ListPredictorBacktestExportJobsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListPredictorBacktestExportJobsOutput) GoString() string {
+	return s.String()
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListPredictorBacktestExportJobsOutput) SetNextToken(v string) *ListPredictorBacktestExportJobsOutput {
+	s.NextToken = &v
+	return s
+}
+
+// SetPredictorBacktestExportJobs sets the PredictorBacktestExportJobs field's value.
+func (s *ListPredictorBacktestExportJobsOutput) SetPredictorBacktestExportJobs(v []*PredictorBacktestExportJobSummary) *ListPredictorBacktestExportJobsOutput {
+	s.PredictorBacktestExportJobs = v
+	return s
+}
+
 type ListPredictorsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7286,13 +9286,83 @@ func (s *ListPredictorsOutput) SetPredictors(v []*PredictorSummary) *ListPredict
 	return s
 }
 
+type ListTagsForResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) that identifies the resource for which to
+	// list the tags. Currently, the supported resources are Forecast dataset groups,
+	// datasets, dataset import jobs, predictors, forecasts, and forecast export
+	// jobs.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ListTagsForResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListTagsForResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListTagsForResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListTagsForResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *ListTagsForResourceInput) SetResourceArn(v string) *ListTagsForResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+type ListTagsForResourceOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The tags for the resource.
+	Tags []*Tag `type:"list"`
+}
+
+// String returns the string representation
+func (s ListTagsForResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListTagsForResourceOutput) GoString() string {
+	return s.String()
+}
+
+// SetTags sets the Tags field's value.
+func (s *ListTagsForResourceOutput) SetTags(v []*Tag) *ListTagsForResourceOutput {
+	s.Tags = v
+	return s
+}
+
 // Provides metrics that are used to evaluate the performance of a predictor.
 // This object is part of the WindowSummary object.
 type Metrics struct {
 	_ struct{} `type:"structure"`
 
-	// The root mean square error (RMSE).
-	RMSE *float64 `type:"double"`
+	// Provides detailed error metrics on forecast type, root-mean square-error
+	// (RMSE), and weighted average percentage error (WAPE).
+	ErrorMetrics []*ErrorMetric `type:"list"`
+
+	// The root-mean-square error (RMSE).
+	//
+	// Deprecated: This property is deprecated, please refer to ErrorMetrics for both RMSE and WAPE
+	RMSE *float64 `deprecated:"true" type:"double"`
 
 	// An array of weighted quantile losses. Quantiles divide a probability distribution
 	// into regions of equal probability. The distribution in this case is the loss
@@ -7308,6 +9378,12 @@ func (s Metrics) String() string {
 // GoString returns the string representation
 func (s Metrics) GoString() string {
 	return s.String()
+}
+
+// SetErrorMetrics sets the ErrorMetrics field's value.
+func (s *Metrics) SetErrorMetrics(v []*ErrorMetric) *Metrics {
+	s.ErrorMetrics = v
+	return s
 }
 
 // SetRMSE sets the RMSE field's value.
@@ -7416,6 +9492,108 @@ func (s *ParameterRanges) SetIntegerParameterRanges(v []*IntegerParameterRange) 
 	return s
 }
 
+// Provides a summary of the predictor backtest export job properties used in
+// the ListPredictorBacktestExportJobs operation. To get a complete set of properties,
+// call the DescribePredictorBacktestExportJob operation, and provide the listed
+// PredictorBacktestExportJobArn.
+type PredictorBacktestExportJobSummary struct {
+	_ struct{} `type:"structure"`
+
+	// When the predictor backtest export job was created.
+	CreationTime *time.Time `type:"timestamp"`
+
+	// The destination for an export job. Provide an S3 path, an AWS Identity and
+	// Access Management (IAM) role that allows Amazon Forecast to access the location,
+	// and an AWS Key Management Service (KMS) key (optional).
+	Destination *DataDestination `type:"structure"`
+
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
+	//
+	//    * CREATE_PENDING - The CreationTime.
+	//
+	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
+	//
+	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
+	LastModificationTime *time.Time `type:"timestamp"`
+
+	// Information about any errors that may have occurred during the backtest export.
+	Message *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) of the predictor backtest export job.
+	PredictorBacktestExportJobArn *string `type:"string"`
+
+	// The name of the predictor backtest export job.
+	PredictorBacktestExportJobName *string `min:"1" type:"string"`
+
+	// The status of the predictor backtest export job. States include:
+	//
+	//    * ACTIVE
+	//
+	//    * CREATE_PENDING, CREATE_IN_PROGRESS, CREATE_FAILED
+	//
+	//    * CREATE_STOPPING, CREATE_STOPPED
+	//
+	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
+	Status *string `type:"string"`
+}
+
+// String returns the string representation
+func (s PredictorBacktestExportJobSummary) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PredictorBacktestExportJobSummary) GoString() string {
+	return s.String()
+}
+
+// SetCreationTime sets the CreationTime field's value.
+func (s *PredictorBacktestExportJobSummary) SetCreationTime(v time.Time) *PredictorBacktestExportJobSummary {
+	s.CreationTime = &v
+	return s
+}
+
+// SetDestination sets the Destination field's value.
+func (s *PredictorBacktestExportJobSummary) SetDestination(v *DataDestination) *PredictorBacktestExportJobSummary {
+	s.Destination = v
+	return s
+}
+
+// SetLastModificationTime sets the LastModificationTime field's value.
+func (s *PredictorBacktestExportJobSummary) SetLastModificationTime(v time.Time) *PredictorBacktestExportJobSummary {
+	s.LastModificationTime = &v
+	return s
+}
+
+// SetMessage sets the Message field's value.
+func (s *PredictorBacktestExportJobSummary) SetMessage(v string) *PredictorBacktestExportJobSummary {
+	s.Message = &v
+	return s
+}
+
+// SetPredictorBacktestExportJobArn sets the PredictorBacktestExportJobArn field's value.
+func (s *PredictorBacktestExportJobSummary) SetPredictorBacktestExportJobArn(v string) *PredictorBacktestExportJobSummary {
+	s.PredictorBacktestExportJobArn = &v
+	return s
+}
+
+// SetPredictorBacktestExportJobName sets the PredictorBacktestExportJobName field's value.
+func (s *PredictorBacktestExportJobSummary) SetPredictorBacktestExportJobName(v string) *PredictorBacktestExportJobSummary {
+	s.PredictorBacktestExportJobName = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *PredictorBacktestExportJobSummary) SetStatus(v string) *PredictorBacktestExportJobSummary {
+	s.Status = &v
+	return s
+}
+
 // The algorithm used to perform a backtest and the status of those tests.
 type PredictorExecution struct {
 	_ struct{} `type:"structure"`
@@ -7492,9 +9670,18 @@ type PredictorSummary struct {
 	// used to train the predictor.
 	DatasetGroupArn *string `type:"string"`
 
-	// Initially, the same as CreationTime (status is CREATE_PENDING). Updated when
-	// training starts (status changed to CREATE_IN_PROGRESS), and when training
-	// is complete (status changed to ACTIVE) or fails (status changed to CREATE_FAILED).
+	// The last time the resource was modified. The timestamp depends on the status
+	// of the job:
+	//
+	//    * CREATE_PENDING - The CreationTime.
+	//
+	//    * CREATE_IN_PROGRESS - The current timestamp.
+	//
+	//    * CREATE_STOPPING - The current timestamp.
+	//
+	//    * CREATE_STOPPED - When the job stopped.
+	//
+	//    * ACTIVE or CREATE_FAILED - When the job finished or failed.
 	LastModificationTime *time.Time `type:"timestamp"`
 
 	// If an error occurred, an informational message about the error.
@@ -7514,7 +9701,7 @@ type PredictorSummary struct {
 	//
 	//    * DELETE_PENDING, DELETE_IN_PROGRESS, DELETE_FAILED
 	//
-	//    * UPDATE_PENDING, UPDATE_IN_PROGRESS, UPDATE_FAILED
+	//    * CREATE_STOPPING, CREATE_STOPPED
 	//
 	// The Status of the predictor must be ACTIVE before you can use the predictor
 	// to create a forecast.
@@ -7575,8 +9762,8 @@ func (s *PredictorSummary) SetStatus(v string) *PredictorSummary {
 
 // There is already a resource with this name. Try again with a different name.
 type ResourceAlreadyExistsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -7593,17 +9780,17 @@ func (s ResourceAlreadyExistsException) GoString() string {
 
 func newErrorResourceAlreadyExistsException(v protocol.ResponseMetadata) error {
 	return &ResourceAlreadyExistsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceAlreadyExistsException) Code() string {
+func (s *ResourceAlreadyExistsException) Code() string {
 	return "ResourceAlreadyExistsException"
 }
 
 // Message returns the exception's message.
-func (s ResourceAlreadyExistsException) Message() string {
+func (s *ResourceAlreadyExistsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7611,28 +9798,28 @@ func (s ResourceAlreadyExistsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceAlreadyExistsException) OrigErr() error {
+func (s *ResourceAlreadyExistsException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceAlreadyExistsException) Error() string {
+func (s *ResourceAlreadyExistsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceAlreadyExistsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceAlreadyExistsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceAlreadyExistsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceAlreadyExistsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified resource is in use.
 type ResourceInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -7649,17 +9836,17 @@ func (s ResourceInUseException) GoString() string {
 
 func newErrorResourceInUseException(v protocol.ResponseMetadata) error {
 	return &ResourceInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceInUseException) Code() string {
+func (s *ResourceInUseException) Code() string {
 	return "ResourceInUseException"
 }
 
 // Message returns the exception's message.
-func (s ResourceInUseException) Message() string {
+func (s *ResourceInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7667,29 +9854,29 @@ func (s ResourceInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceInUseException) OrigErr() error {
+func (s *ResourceInUseException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceInUseException) Error() string {
+func (s *ResourceInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // We can't find a resource with that Amazon Resource Name (ARN). Check the
 // ARN and try again.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -7706,17 +9893,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7724,30 +9911,29 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The path to the file(s) in an Amazon Simple Storage Service (Amazon S3) bucket,
 // and an AWS Identity and Access Management (IAM) role that Amazon Forecast
 // can assume to access the file(s). Optionally, includes an AWS Key Management
 // Service (KMS) key. This object is part of the DataSource object that is submitted
-// in the CreateDatasetImportJob request, and part of the DataDestination object
-// that is submitted in the CreateForecastExportJob request.
+// in the CreateDatasetImportJob request, and part of the DataDestination object.
 type S3Config struct {
 	_ struct{} `type:"structure"`
 
@@ -7821,7 +10007,7 @@ type Schema struct {
 	_ struct{} `type:"structure"`
 
 	// An array of attributes specifying the name and type of each field in a dataset.
-	Attributes []*SchemaAttribute `type:"list"`
+	Attributes []*SchemaAttribute `min:"1" type:"list"`
 }
 
 // String returns the string representation
@@ -7837,6 +10023,9 @@ func (s Schema) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *Schema) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "Schema"}
+	if s.Attributes != nil && len(s.Attributes) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Attributes", 1))
+	}
 	if s.Attributes != nil {
 		for i, v := range s.Attributes {
 			if v == nil {
@@ -7916,17 +10105,37 @@ type Statistics struct {
 	// For a numeric field, the average value in the field.
 	Avg *float64 `type:"double"`
 
-	// The number of values in the field.
+	// The number of values in the field. If the response value is -1, refer to
+	// CountLong.
 	Count *int64 `type:"integer"`
 
-	// The number of distinct values in the field.
+	// The number of distinct values in the field. If the response value is -1,
+	// refer to CountDistinctLong.
 	CountDistinct *int64 `type:"integer"`
 
-	// The number of NAN (not a number) values in the field.
+	// The number of distinct values in the field. CountDistinctLong is used instead
+	// of CountDistinct if the value is greater than 2,147,483,647.
+	CountDistinctLong *int64 `type:"long"`
+
+	// The number of values in the field. CountLong is used instead of Count if
+	// the value is greater than 2,147,483,647.
+	CountLong *int64 `type:"long"`
+
+	// The number of NAN (not a number) values in the field. If the response value
+	// is -1, refer to CountNanLong.
 	CountNan *int64 `type:"integer"`
 
-	// The number of null values in the field.
+	// The number of NAN (not a number) values in the field. CountNanLong is used
+	// instead of CountNan if the value is greater than 2,147,483,647.
+	CountNanLong *int64 `type:"long"`
+
+	// The number of null values in the field. If the response value is -1, refer
+	// to CountNullLong.
 	CountNull *int64 `type:"integer"`
+
+	// The number of null values in the field. CountNullLong is used instead of
+	// CountNull if the value is greater than 2,147,483,647.
+	CountNullLong *int64 `type:"long"`
 
 	// For a numeric field, the maximum value in the field.
 	Max *string `type:"string"`
@@ -7966,15 +10175,39 @@ func (s *Statistics) SetCountDistinct(v int64) *Statistics {
 	return s
 }
 
+// SetCountDistinctLong sets the CountDistinctLong field's value.
+func (s *Statistics) SetCountDistinctLong(v int64) *Statistics {
+	s.CountDistinctLong = &v
+	return s
+}
+
+// SetCountLong sets the CountLong field's value.
+func (s *Statistics) SetCountLong(v int64) *Statistics {
+	s.CountLong = &v
+	return s
+}
+
 // SetCountNan sets the CountNan field's value.
 func (s *Statistics) SetCountNan(v int64) *Statistics {
 	s.CountNan = &v
 	return s
 }
 
+// SetCountNanLong sets the CountNanLong field's value.
+func (s *Statistics) SetCountNanLong(v int64) *Statistics {
+	s.CountNanLong = &v
+	return s
+}
+
 // SetCountNull sets the CountNull field's value.
 func (s *Statistics) SetCountNull(v int64) *Statistics {
 	s.CountNull = &v
+	return s
+}
+
+// SetCountNullLong sets the CountNullLong field's value.
+func (s *Statistics) SetCountNullLong(v int64) *Statistics {
+	s.CountNullLong = &v
 	return s
 }
 
@@ -7996,32 +10229,227 @@ func (s *Statistics) SetStddev(v float64) *Statistics {
 	return s
 }
 
+type StopResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) that identifies the resource to stop. The
+	// supported ARNs are DatasetImportJobArn, PredictorArn, PredictorBacktestExportJobArn,
+	// ForecastArn, and ForecastExportJobArn.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StopResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StopResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StopResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *StopResourceInput) SetResourceArn(v string) *StopResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+type StopResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s StopResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopResourceOutput) GoString() string {
+	return s.String()
+}
+
 // Describes a supplementary feature of a dataset group. This object is part
-// of the InputDataConfig object.
+// of the InputDataConfig object. Forecast supports the Weather Index and Holidays
+// built-in featurizations.
 //
-// The only supported feature is a holiday calendar. If you use the calendar,
-// all data in the datasets should belong to the same country as the calendar.
-// For the holiday calendar data, see the Jollyday (http://jollyday.sourceforge.net/data.html)
-// web site.
+// Weather Index
+//
+// The Amazon Forecast Weather Index is a built-in featurization that incorporates
+// historical and projected weather information into your model. The Weather
+// Index supplements your datasets with over two years of historical weather
+// data and up to 14 days of projected weather data. For more information, see
+// Amazon Forecast Weather Index (https://docs.aws.amazon.com/forecast/latest/dg/weather.html).
+//
+// Holidays
+//
+// Holidays is a built-in featurization that incorporates a feature-engineered
+// dataset of national holiday information into your model. It provides native
+// support for the holiday calendars of 66 countries. To view the holiday calendars,
+// refer to the Jollyday (http://jollyday.sourceforge.net/data.html) library.
+// For more information, see Holidays Featurization (https://docs.aws.amazon.com/forecast/latest/dg/holidays.html).
 type SupplementaryFeature struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the feature. This must be "holiday".
+	// The name of the feature. Valid values: "holiday" and "weather".
 	//
 	// Name is a required field
 	Name *string `min:"1" type:"string" required:"true"`
 
-	// One of the following 2 letter country codes:
+	// Weather Index
+	//
+	// To enable the Weather Index, set the value to "true"
+	//
+	// Holidays
+	//
+	// To enable Holidays, specify a country with one of the following two-letter
+	// country codes:
+	//
+	//    * "AL" - ALBANIA
+	//
+	//    * "AR" - ARGENTINA
+	//
+	//    * "AT" - AUSTRIA
 	//
 	//    * "AU" - AUSTRALIA
 	//
+	//    * "BA" - BOSNIA HERZEGOVINA
+	//
+	//    * "BE" - BELGIUM
+	//
+	//    * "BG" - BULGARIA
+	//
+	//    * "BO" - BOLIVIA
+	//
+	//    * "BR" - BRAZIL
+	//
+	//    * "BY" - BELARUS
+	//
+	//    * "CA" - CANADA
+	//
+	//    * "CL" - CHILE
+	//
+	//    * "CO" - COLOMBIA
+	//
+	//    * "CR" - COSTA RICA
+	//
+	//    * "HR" - CROATIA
+	//
+	//    * "CZ" - CZECH REPUBLIC
+	//
+	//    * "DK" - DENMARK
+	//
+	//    * "EC" - ECUADOR
+	//
+	//    * "EE" - ESTONIA
+	//
+	//    * "ET" - ETHIOPIA
+	//
+	//    * "FI" - FINLAND
+	//
+	//    * "FR" - FRANCE
+	//
 	//    * "DE" - GERMANY
+	//
+	//    * "GR" - GREECE
+	//
+	//    * "HU" - HUNGARY
+	//
+	//    * "IS" - ICELAND
+	//
+	//    * "IN" - INDIA
+	//
+	//    * "IE" - IRELAND
+	//
+	//    * "IT" - ITALY
 	//
 	//    * "JP" - JAPAN
 	//
-	//    * "US" - UNITED_STATES
+	//    * "KZ" - KAZAKHSTAN
 	//
-	//    * "UK" - UNITED_KINGDOM
+	//    * "KR" - KOREA
+	//
+	//    * "LV" - LATVIA
+	//
+	//    * "LI" - LIECHTENSTEIN
+	//
+	//    * "LT" - LITHUANIA
+	//
+	//    * "LU" - LUXEMBOURG
+	//
+	//    * "MK" - MACEDONIA
+	//
+	//    * "MT" - MALTA
+	//
+	//    * "MX" - MEXICO
+	//
+	//    * "MD" - MOLDOVA
+	//
+	//    * "ME" - MONTENEGRO
+	//
+	//    * "NL" - NETHERLANDS
+	//
+	//    * "NZ" - NEW ZEALAND
+	//
+	//    * "NI" - NICARAGUA
+	//
+	//    * "NG" - NIGERIA
+	//
+	//    * "NO" - NORWAY
+	//
+	//    * "PA" - PANAMA
+	//
+	//    * "PY" - PARAGUAY
+	//
+	//    * "PE" - PERU
+	//
+	//    * "PL" - POLAND
+	//
+	//    * "PT" - PORTUGAL
+	//
+	//    * "RO" - ROMANIA
+	//
+	//    * "RU" - RUSSIA
+	//
+	//    * "RS" - SERBIA
+	//
+	//    * "SK" - SLOVAKIA
+	//
+	//    * "SI" - SLOVENIA
+	//
+	//    * "ZA" - SOUTH AFRICA
+	//
+	//    * "ES" - SPAIN
+	//
+	//    * "SE" - SWEDEN
+	//
+	//    * "CH" - SWITZERLAND
+	//
+	//    * "UA" - UKRAINE
+	//
+	//    * "AE" - UNITED ARAB EMIRATES
+	//
+	//    * "US" - UNITED STATES
+	//
+	//    * "UK" - UNITED KINGDOM
+	//
+	//    * "UY" - URUGUAY
+	//
+	//    * "VE" - VENEZUELA
 	//
 	// Value is a required field
 	Value *string `type:"string" required:"true"`
@@ -8066,6 +10494,197 @@ func (s *SupplementaryFeature) SetName(v string) *SupplementaryFeature {
 func (s *SupplementaryFeature) SetValue(v string) *SupplementaryFeature {
 	s.Value = &v
 	return s
+}
+
+// The optional metadata that you apply to a resource to help you categorize
+// and organize them. Each tag consists of a key and an optional value, both
+// of which you define.
+//
+// The following basic restrictions apply to tags:
+//
+//    * Maximum number of tags per resource - 50.
+//
+//    * For each resource, each tag key must be unique, and each tag key can
+//    have only one value.
+//
+//    * Maximum key length - 128 Unicode characters in UTF-8.
+//
+//    * Maximum value length - 256 Unicode characters in UTF-8.
+//
+//    * If your tagging schema is used across multiple services and resources,
+//    remember that other services may have restrictions on allowed characters.
+//    Generally allowed characters are: letters, numbers, and spaces representable
+//    in UTF-8, and the following characters: + - = . _ : / @.
+//
+//    * Tag keys and values are case sensitive.
+//
+//    * Do not use aws:, AWS:, or any upper or lowercase combination of such
+//    as a prefix for keys as it is reserved for AWS use. You cannot edit or
+//    delete tag keys with this prefix. Values can have this prefix. If a tag
+//    value has aws as its prefix but the key does not, then Forecast considers
+//    it to be a user tag and will count against the limit of 50 tags. Tags
+//    with only the key prefix of aws do not count against your tags per resource
+//    limit.
+type Tag struct {
+	_ struct{} `type:"structure"`
+
+	// One part of a key-value pair that makes up a tag. A key is a general label
+	// that acts like a category for more specific tag values.
+	//
+	// Key is a required field
+	Key *string `min:"1" type:"string" required:"true" sensitive:"true"`
+
+	// The optional part of a key-value pair that makes up a tag. A value acts as
+	// a descriptor within a tag category (key).
+	//
+	// Value is a required field
+	Value *string `type:"string" required:"true" sensitive:"true"`
+}
+
+// String returns the string representation
+func (s Tag) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s Tag) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *Tag) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "Tag"}
+	if s.Key == nil {
+		invalidParams.Add(request.NewErrParamRequired("Key"))
+	}
+	if s.Key != nil && len(*s.Key) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Key", 1))
+	}
+	if s.Value == nil {
+		invalidParams.Add(request.NewErrParamRequired("Value"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetKey sets the Key field's value.
+func (s *Tag) SetKey(v string) *Tag {
+	s.Key = &v
+	return s
+}
+
+// SetValue sets the Value field's value.
+func (s *Tag) SetValue(v string) *Tag {
+	s.Value = &v
+	return s
+}
+
+type TagResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) that identifies the resource for which to
+	// list the tags. Currently, the supported resources are Forecast dataset groups,
+	// datasets, dataset import jobs, predictors, forecasts, and forecast export
+	// jobs.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `type:"string" required:"true"`
+
+	// The tags to add to the resource. A tag is an array of key-value pairs.
+	//
+	// The following basic restrictions apply to tags:
+	//
+	//    * Maximum number of tags per resource - 50.
+	//
+	//    * For each resource, each tag key must be unique, and each tag key can
+	//    have only one value.
+	//
+	//    * Maximum key length - 128 Unicode characters in UTF-8.
+	//
+	//    * Maximum value length - 256 Unicode characters in UTF-8.
+	//
+	//    * If your tagging schema is used across multiple services and resources,
+	//    remember that other services may have restrictions on allowed characters.
+	//    Generally allowed characters are: letters, numbers, and spaces representable
+	//    in UTF-8, and the following characters: + - = . _ : / @.
+	//
+	//    * Tag keys and values are case sensitive.
+	//
+	//    * Do not use aws:, AWS:, or any upper or lowercase combination of such
+	//    as a prefix for keys as it is reserved for AWS use. You cannot edit or
+	//    delete tag keys with this prefix. Values can have this prefix. If a tag
+	//    value has aws as its prefix but the key does not, then Forecast considers
+	//    it to be a user tag and will count against the limit of 50 tags. Tags
+	//    with only the key prefix of aws do not count against your tags per resource
+	//    limit.
+	//
+	// Tags is a required field
+	Tags []*Tag `type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s TagResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TagResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *TagResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "TagResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.Tags == nil {
+		invalidParams.Add(request.NewErrParamRequired("Tags"))
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *TagResourceInput) SetResourceArn(v string) *TagResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *TagResourceInput) SetTags(v []*Tag) *TagResourceInput {
+	s.Tags = v
+	return s
+}
+
+type TagResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s TagResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TagResourceOutput) GoString() string {
+	return s.String()
 }
 
 // The status, start time, and end time of a backtest, as well as a failure
@@ -8124,6 +10743,74 @@ func (s *TestWindowSummary) SetTestWindowEnd(v time.Time) *TestWindowSummary {
 func (s *TestWindowSummary) SetTestWindowStart(v time.Time) *TestWindowSummary {
 	s.TestWindowStart = &v
 	return s
+}
+
+type UntagResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) that identifies the resource for which to
+	// list the tags. Currently, the supported resources are Forecast dataset groups,
+	// datasets, dataset import jobs, predictors, forecasts, and forecast exports.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `type:"string" required:"true"`
+
+	// The keys of the tags to be removed.
+	//
+	// TagKeys is a required field
+	TagKeys []*string `type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s UntagResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UntagResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UntagResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UntagResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.TagKeys == nil {
+		invalidParams.Add(request.NewErrParamRequired("TagKeys"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *UntagResourceInput) SetResourceArn(v string) *UntagResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+// SetTagKeys sets the TagKeys field's value.
+func (s *UntagResourceInput) SetTagKeys(v []*string) *UntagResourceInput {
+	s.TagKeys = v
+	return s
+}
+
+type UntagResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s UntagResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UntagResourceOutput) GoString() string {
+	return s.String()
 }
 
 type UpdateDatasetGroupInput struct {
@@ -8310,7 +10997,33 @@ const (
 
 	// AttributeTypeTimestamp is a AttributeType enum value
 	AttributeTypeTimestamp = "timestamp"
+
+	// AttributeTypeGeolocation is a AttributeType enum value
+	AttributeTypeGeolocation = "geolocation"
 )
+
+// AttributeType_Values returns all elements of the AttributeType enum
+func AttributeType_Values() []string {
+	return []string{
+		AttributeTypeString,
+		AttributeTypeInteger,
+		AttributeTypeFloat,
+		AttributeTypeTimestamp,
+		AttributeTypeGeolocation,
+	}
+}
+
+const (
+	// AutoMLOverrideStrategyLatencyOptimized is a AutoMLOverrideStrategy enum value
+	AutoMLOverrideStrategyLatencyOptimized = "LatencyOptimized"
+)
+
+// AutoMLOverrideStrategy_Values returns all elements of the AutoMLOverrideStrategy enum
+func AutoMLOverrideStrategy_Values() []string {
+	return []string{
+		AutoMLOverrideStrategyLatencyOptimized,
+	}
+}
 
 const (
 	// DatasetTypeTargetTimeSeries is a DatasetType enum value
@@ -8322,6 +11035,15 @@ const (
 	// DatasetTypeItemMetadata is a DatasetType enum value
 	DatasetTypeItemMetadata = "ITEM_METADATA"
 )
+
+// DatasetType_Values returns all elements of the DatasetType enum
+func DatasetType_Values() []string {
+	return []string{
+		DatasetTypeTargetTimeSeries,
+		DatasetTypeRelatedTimeSeries,
+		DatasetTypeItemMetadata,
+	}
+}
 
 const (
 	// DomainRetail is a Domain enum value
@@ -8346,6 +11068,19 @@ const (
 	DomainMetrics = "METRICS"
 )
 
+// Domain_Values returns all elements of the Domain enum
+func Domain_Values() []string {
+	return []string{
+		DomainRetail,
+		DomainCustom,
+		DomainInventoryPlanning,
+		DomainEc2Capacity,
+		DomainWorkForce,
+		DomainWebTraffic,
+		DomainMetrics,
+	}
+}
+
 const (
 	// EvaluationTypeSummary is a EvaluationType enum value
 	EvaluationTypeSummary = "SUMMARY"
@@ -8354,10 +11089,25 @@ const (
 	EvaluationTypeComputed = "COMPUTED"
 )
 
+// EvaluationType_Values returns all elements of the EvaluationType enum
+func EvaluationType_Values() []string {
+	return []string{
+		EvaluationTypeSummary,
+		EvaluationTypeComputed,
+	}
+}
+
 const (
 	// FeaturizationMethodNameFilling is a FeaturizationMethodName enum value
 	FeaturizationMethodNameFilling = "filling"
 )
+
+// FeaturizationMethodName_Values returns all elements of the FeaturizationMethodName enum
+func FeaturizationMethodName_Values() []string {
+	return []string{
+		FeaturizationMethodNameFilling,
+	}
+}
 
 const (
 	// FilterConditionStringIs is a FilterConditionString enum value
@@ -8366,6 +11116,14 @@ const (
 	// FilterConditionStringIsNot is a FilterConditionString enum value
 	FilterConditionStringIsNot = "IS_NOT"
 )
+
+// FilterConditionString_Values returns all elements of the FilterConditionString enum
+func FilterConditionString_Values() []string {
+	return []string{
+		FilterConditionStringIs,
+		FilterConditionStringIsNot,
+	}
+}
 
 const (
 	// ScalingTypeAuto is a ScalingType enum value
@@ -8380,3 +11138,13 @@ const (
 	// ScalingTypeReverseLogarithmic is a ScalingType enum value
 	ScalingTypeReverseLogarithmic = "ReverseLogarithmic"
 )
+
+// ScalingType_Values returns all elements of the ScalingType enum
+func ScalingType_Values() []string {
+	return []string{
+		ScalingTypeAuto,
+		ScalingTypeLinear,
+		ScalingTypeLogarithmic,
+		ScalingTypeReverseLogarithmic,
+	}
+}

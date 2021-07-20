@@ -219,11 +219,30 @@ const (
 	// account in the specified AWS Region.
 	ErrCodeDBProxyAlreadyExistsFault = "DBProxyAlreadyExistsFault"
 
+	// ErrCodeDBProxyEndpointAlreadyExistsFault for service response error code
+	// "DBProxyEndpointAlreadyExistsFault".
+	//
+	// The specified DB proxy endpoint name must be unique for all DB proxy endpoints
+	// owned by your AWS account in the specified AWS Region.
+	ErrCodeDBProxyEndpointAlreadyExistsFault = "DBProxyEndpointAlreadyExistsFault"
+
+	// ErrCodeDBProxyEndpointNotFoundFault for service response error code
+	// "DBProxyEndpointNotFoundFault".
+	//
+	// The DB proxy endpoint doesn't exist.
+	ErrCodeDBProxyEndpointNotFoundFault = "DBProxyEndpointNotFoundFault"
+
+	// ErrCodeDBProxyEndpointQuotaExceededFault for service response error code
+	// "DBProxyEndpointQuotaExceededFault".
+	//
+	// The DB proxy already has the maximum number of endpoints.
+	ErrCodeDBProxyEndpointQuotaExceededFault = "DBProxyEndpointQuotaExceededFault"
+
 	// ErrCodeDBProxyNotFoundFault for service response error code
 	// "DBProxyNotFoundFault".
 	//
 	// The specified proxy name doesn't correspond to a proxy owned by your AWS
-	// accoutn in the specified AWS Region.
+	// account in the specified AWS Region.
 	ErrCodeDBProxyNotFoundFault = "DBProxyNotFoundFault"
 
 	// ErrCodeDBProxyQuotaExceededFault for service response error code
@@ -364,14 +383,23 @@ const (
 
 	// ErrCodeGlobalClusterAlreadyExistsFault for service response error code
 	// "GlobalClusterAlreadyExistsFault".
+	//
+	// The GlobalClusterIdentifier already exists. Choose a new global database
+	// identifier (unique name) to create a new global database cluster.
 	ErrCodeGlobalClusterAlreadyExistsFault = "GlobalClusterAlreadyExistsFault"
 
 	// ErrCodeGlobalClusterNotFoundFault for service response error code
 	// "GlobalClusterNotFoundFault".
+	//
+	// The GlobalClusterIdentifier doesn't refer to an existing global database
+	// cluster.
 	ErrCodeGlobalClusterNotFoundFault = "GlobalClusterNotFoundFault"
 
 	// ErrCodeGlobalClusterQuotaExceededFault for service response error code
 	// "GlobalClusterQuotaExceededFault".
+	//
+	// The number of global database clusters for this account is already at the
+	// maximum allowed.
 	ErrCodeGlobalClusterQuotaExceededFault = "GlobalClusterQuotaExceededFault"
 
 	// ErrCodeIamRoleMissingPermissionsFault for service response error code
@@ -403,6 +431,14 @@ const (
 	//
 	// The request would result in the user exceeding the allowed number of DB instances.
 	ErrCodeInstanceQuotaExceededFault = "InstanceQuotaExceeded"
+
+	// ErrCodeInsufficientAvailableIPsInSubnetFault for service response error code
+	// "InsufficientAvailableIPsInSubnetFault".
+	//
+	// The requested operation can't be performed because there aren't enough available
+	// IP addresses in the proxy's subnets. Add more CIDR blocks to the VPC or remove
+	// IP address that aren't required from the subnets.
+	ErrCodeInsufficientAvailableIPsInSubnetFault = "InsufficientAvailableIPsInSubnetFault"
 
 	// ErrCodeInsufficientDBClusterCapacityFault for service response error code
 	// "InsufficientDBClusterCapacityFault".
@@ -472,6 +508,13 @@ const (
 	// is in this state.
 	ErrCodeInvalidDBParameterGroupStateFault = "InvalidDBParameterGroupState"
 
+	// ErrCodeInvalidDBProxyEndpointStateFault for service response error code
+	// "InvalidDBProxyEndpointStateFault".
+	//
+	// You can't perform this operation while the DB proxy endpoint is in a particular
+	// state.
+	ErrCodeInvalidDBProxyEndpointStateFault = "InvalidDBProxyEndpointStateFault"
+
 	// ErrCodeInvalidDBProxyStateFault for service response error code
 	// "InvalidDBProxyStateFault".
 	//
@@ -537,6 +580,9 @@ const (
 
 	// ErrCodeInvalidGlobalClusterStateFault for service response error code
 	// "InvalidGlobalClusterStateFault".
+	//
+	// The global cluster is in an invalid state and can't perform the requested
+	// operation.
 	ErrCodeInvalidGlobalClusterStateFault = "InvalidGlobalClusterStateFault"
 
 	// ErrCodeInvalidOptionGroupStateFault for service response error code

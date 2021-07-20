@@ -64,6 +64,22 @@ type EventBridgeAPI interface {
 	ActivateEventSourceWithContext(aws.Context, *eventbridge.ActivateEventSourceInput, ...request.Option) (*eventbridge.ActivateEventSourceOutput, error)
 	ActivateEventSourceRequest(*eventbridge.ActivateEventSourceInput) (*request.Request, *eventbridge.ActivateEventSourceOutput)
 
+	CancelReplay(*eventbridge.CancelReplayInput) (*eventbridge.CancelReplayOutput, error)
+	CancelReplayWithContext(aws.Context, *eventbridge.CancelReplayInput, ...request.Option) (*eventbridge.CancelReplayOutput, error)
+	CancelReplayRequest(*eventbridge.CancelReplayInput) (*request.Request, *eventbridge.CancelReplayOutput)
+
+	CreateApiDestination(*eventbridge.CreateApiDestinationInput) (*eventbridge.CreateApiDestinationOutput, error)
+	CreateApiDestinationWithContext(aws.Context, *eventbridge.CreateApiDestinationInput, ...request.Option) (*eventbridge.CreateApiDestinationOutput, error)
+	CreateApiDestinationRequest(*eventbridge.CreateApiDestinationInput) (*request.Request, *eventbridge.CreateApiDestinationOutput)
+
+	CreateArchive(*eventbridge.CreateArchiveInput) (*eventbridge.CreateArchiveOutput, error)
+	CreateArchiveWithContext(aws.Context, *eventbridge.CreateArchiveInput, ...request.Option) (*eventbridge.CreateArchiveOutput, error)
+	CreateArchiveRequest(*eventbridge.CreateArchiveInput) (*request.Request, *eventbridge.CreateArchiveOutput)
+
+	CreateConnection(*eventbridge.CreateConnectionInput) (*eventbridge.CreateConnectionOutput, error)
+	CreateConnectionWithContext(aws.Context, *eventbridge.CreateConnectionInput, ...request.Option) (*eventbridge.CreateConnectionOutput, error)
+	CreateConnectionRequest(*eventbridge.CreateConnectionInput) (*request.Request, *eventbridge.CreateConnectionOutput)
+
 	CreateEventBus(*eventbridge.CreateEventBusInput) (*eventbridge.CreateEventBusOutput, error)
 	CreateEventBusWithContext(aws.Context, *eventbridge.CreateEventBusInput, ...request.Option) (*eventbridge.CreateEventBusOutput, error)
 	CreateEventBusRequest(*eventbridge.CreateEventBusInput) (*request.Request, *eventbridge.CreateEventBusOutput)
@@ -75,6 +91,22 @@ type EventBridgeAPI interface {
 	DeactivateEventSource(*eventbridge.DeactivateEventSourceInput) (*eventbridge.DeactivateEventSourceOutput, error)
 	DeactivateEventSourceWithContext(aws.Context, *eventbridge.DeactivateEventSourceInput, ...request.Option) (*eventbridge.DeactivateEventSourceOutput, error)
 	DeactivateEventSourceRequest(*eventbridge.DeactivateEventSourceInput) (*request.Request, *eventbridge.DeactivateEventSourceOutput)
+
+	DeauthorizeConnection(*eventbridge.DeauthorizeConnectionInput) (*eventbridge.DeauthorizeConnectionOutput, error)
+	DeauthorizeConnectionWithContext(aws.Context, *eventbridge.DeauthorizeConnectionInput, ...request.Option) (*eventbridge.DeauthorizeConnectionOutput, error)
+	DeauthorizeConnectionRequest(*eventbridge.DeauthorizeConnectionInput) (*request.Request, *eventbridge.DeauthorizeConnectionOutput)
+
+	DeleteApiDestination(*eventbridge.DeleteApiDestinationInput) (*eventbridge.DeleteApiDestinationOutput, error)
+	DeleteApiDestinationWithContext(aws.Context, *eventbridge.DeleteApiDestinationInput, ...request.Option) (*eventbridge.DeleteApiDestinationOutput, error)
+	DeleteApiDestinationRequest(*eventbridge.DeleteApiDestinationInput) (*request.Request, *eventbridge.DeleteApiDestinationOutput)
+
+	DeleteArchive(*eventbridge.DeleteArchiveInput) (*eventbridge.DeleteArchiveOutput, error)
+	DeleteArchiveWithContext(aws.Context, *eventbridge.DeleteArchiveInput, ...request.Option) (*eventbridge.DeleteArchiveOutput, error)
+	DeleteArchiveRequest(*eventbridge.DeleteArchiveInput) (*request.Request, *eventbridge.DeleteArchiveOutput)
+
+	DeleteConnection(*eventbridge.DeleteConnectionInput) (*eventbridge.DeleteConnectionOutput, error)
+	DeleteConnectionWithContext(aws.Context, *eventbridge.DeleteConnectionInput, ...request.Option) (*eventbridge.DeleteConnectionOutput, error)
+	DeleteConnectionRequest(*eventbridge.DeleteConnectionInput) (*request.Request, *eventbridge.DeleteConnectionOutput)
 
 	DeleteEventBus(*eventbridge.DeleteEventBusInput) (*eventbridge.DeleteEventBusOutput, error)
 	DeleteEventBusWithContext(aws.Context, *eventbridge.DeleteEventBusInput, ...request.Option) (*eventbridge.DeleteEventBusOutput, error)
@@ -88,6 +120,18 @@ type EventBridgeAPI interface {
 	DeleteRuleWithContext(aws.Context, *eventbridge.DeleteRuleInput, ...request.Option) (*eventbridge.DeleteRuleOutput, error)
 	DeleteRuleRequest(*eventbridge.DeleteRuleInput) (*request.Request, *eventbridge.DeleteRuleOutput)
 
+	DescribeApiDestination(*eventbridge.DescribeApiDestinationInput) (*eventbridge.DescribeApiDestinationOutput, error)
+	DescribeApiDestinationWithContext(aws.Context, *eventbridge.DescribeApiDestinationInput, ...request.Option) (*eventbridge.DescribeApiDestinationOutput, error)
+	DescribeApiDestinationRequest(*eventbridge.DescribeApiDestinationInput) (*request.Request, *eventbridge.DescribeApiDestinationOutput)
+
+	DescribeArchive(*eventbridge.DescribeArchiveInput) (*eventbridge.DescribeArchiveOutput, error)
+	DescribeArchiveWithContext(aws.Context, *eventbridge.DescribeArchiveInput, ...request.Option) (*eventbridge.DescribeArchiveOutput, error)
+	DescribeArchiveRequest(*eventbridge.DescribeArchiveInput) (*request.Request, *eventbridge.DescribeArchiveOutput)
+
+	DescribeConnection(*eventbridge.DescribeConnectionInput) (*eventbridge.DescribeConnectionOutput, error)
+	DescribeConnectionWithContext(aws.Context, *eventbridge.DescribeConnectionInput, ...request.Option) (*eventbridge.DescribeConnectionOutput, error)
+	DescribeConnectionRequest(*eventbridge.DescribeConnectionInput) (*request.Request, *eventbridge.DescribeConnectionOutput)
+
 	DescribeEventBus(*eventbridge.DescribeEventBusInput) (*eventbridge.DescribeEventBusOutput, error)
 	DescribeEventBusWithContext(aws.Context, *eventbridge.DescribeEventBusInput, ...request.Option) (*eventbridge.DescribeEventBusOutput, error)
 	DescribeEventBusRequest(*eventbridge.DescribeEventBusInput) (*request.Request, *eventbridge.DescribeEventBusOutput)
@@ -100,6 +144,10 @@ type EventBridgeAPI interface {
 	DescribePartnerEventSourceWithContext(aws.Context, *eventbridge.DescribePartnerEventSourceInput, ...request.Option) (*eventbridge.DescribePartnerEventSourceOutput, error)
 	DescribePartnerEventSourceRequest(*eventbridge.DescribePartnerEventSourceInput) (*request.Request, *eventbridge.DescribePartnerEventSourceOutput)
 
+	DescribeReplay(*eventbridge.DescribeReplayInput) (*eventbridge.DescribeReplayOutput, error)
+	DescribeReplayWithContext(aws.Context, *eventbridge.DescribeReplayInput, ...request.Option) (*eventbridge.DescribeReplayOutput, error)
+	DescribeReplayRequest(*eventbridge.DescribeReplayInput) (*request.Request, *eventbridge.DescribeReplayOutput)
+
 	DescribeRule(*eventbridge.DescribeRuleInput) (*eventbridge.DescribeRuleOutput, error)
 	DescribeRuleWithContext(aws.Context, *eventbridge.DescribeRuleInput, ...request.Option) (*eventbridge.DescribeRuleOutput, error)
 	DescribeRuleRequest(*eventbridge.DescribeRuleInput) (*request.Request, *eventbridge.DescribeRuleOutput)
@@ -111,6 +159,18 @@ type EventBridgeAPI interface {
 	EnableRule(*eventbridge.EnableRuleInput) (*eventbridge.EnableRuleOutput, error)
 	EnableRuleWithContext(aws.Context, *eventbridge.EnableRuleInput, ...request.Option) (*eventbridge.EnableRuleOutput, error)
 	EnableRuleRequest(*eventbridge.EnableRuleInput) (*request.Request, *eventbridge.EnableRuleOutput)
+
+	ListApiDestinations(*eventbridge.ListApiDestinationsInput) (*eventbridge.ListApiDestinationsOutput, error)
+	ListApiDestinationsWithContext(aws.Context, *eventbridge.ListApiDestinationsInput, ...request.Option) (*eventbridge.ListApiDestinationsOutput, error)
+	ListApiDestinationsRequest(*eventbridge.ListApiDestinationsInput) (*request.Request, *eventbridge.ListApiDestinationsOutput)
+
+	ListArchives(*eventbridge.ListArchivesInput) (*eventbridge.ListArchivesOutput, error)
+	ListArchivesWithContext(aws.Context, *eventbridge.ListArchivesInput, ...request.Option) (*eventbridge.ListArchivesOutput, error)
+	ListArchivesRequest(*eventbridge.ListArchivesInput) (*request.Request, *eventbridge.ListArchivesOutput)
+
+	ListConnections(*eventbridge.ListConnectionsInput) (*eventbridge.ListConnectionsOutput, error)
+	ListConnectionsWithContext(aws.Context, *eventbridge.ListConnectionsInput, ...request.Option) (*eventbridge.ListConnectionsOutput, error)
+	ListConnectionsRequest(*eventbridge.ListConnectionsInput) (*request.Request, *eventbridge.ListConnectionsOutput)
 
 	ListEventBuses(*eventbridge.ListEventBusesInput) (*eventbridge.ListEventBusesOutput, error)
 	ListEventBusesWithContext(aws.Context, *eventbridge.ListEventBusesInput, ...request.Option) (*eventbridge.ListEventBusesOutput, error)
@@ -127,6 +187,10 @@ type EventBridgeAPI interface {
 	ListPartnerEventSources(*eventbridge.ListPartnerEventSourcesInput) (*eventbridge.ListPartnerEventSourcesOutput, error)
 	ListPartnerEventSourcesWithContext(aws.Context, *eventbridge.ListPartnerEventSourcesInput, ...request.Option) (*eventbridge.ListPartnerEventSourcesOutput, error)
 	ListPartnerEventSourcesRequest(*eventbridge.ListPartnerEventSourcesInput) (*request.Request, *eventbridge.ListPartnerEventSourcesOutput)
+
+	ListReplays(*eventbridge.ListReplaysInput) (*eventbridge.ListReplaysOutput, error)
+	ListReplaysWithContext(aws.Context, *eventbridge.ListReplaysInput, ...request.Option) (*eventbridge.ListReplaysOutput, error)
+	ListReplaysRequest(*eventbridge.ListReplaysInput) (*request.Request, *eventbridge.ListReplaysOutput)
 
 	ListRuleNamesByTarget(*eventbridge.ListRuleNamesByTargetInput) (*eventbridge.ListRuleNamesByTargetOutput, error)
 	ListRuleNamesByTargetWithContext(aws.Context, *eventbridge.ListRuleNamesByTargetInput, ...request.Option) (*eventbridge.ListRuleNamesByTargetOutput, error)
@@ -172,6 +236,10 @@ type EventBridgeAPI interface {
 	RemoveTargetsWithContext(aws.Context, *eventbridge.RemoveTargetsInput, ...request.Option) (*eventbridge.RemoveTargetsOutput, error)
 	RemoveTargetsRequest(*eventbridge.RemoveTargetsInput) (*request.Request, *eventbridge.RemoveTargetsOutput)
 
+	StartReplay(*eventbridge.StartReplayInput) (*eventbridge.StartReplayOutput, error)
+	StartReplayWithContext(aws.Context, *eventbridge.StartReplayInput, ...request.Option) (*eventbridge.StartReplayOutput, error)
+	StartReplayRequest(*eventbridge.StartReplayInput) (*request.Request, *eventbridge.StartReplayOutput)
+
 	TagResource(*eventbridge.TagResourceInput) (*eventbridge.TagResourceOutput, error)
 	TagResourceWithContext(aws.Context, *eventbridge.TagResourceInput, ...request.Option) (*eventbridge.TagResourceOutput, error)
 	TagResourceRequest(*eventbridge.TagResourceInput) (*request.Request, *eventbridge.TagResourceOutput)
@@ -183,6 +251,18 @@ type EventBridgeAPI interface {
 	UntagResource(*eventbridge.UntagResourceInput) (*eventbridge.UntagResourceOutput, error)
 	UntagResourceWithContext(aws.Context, *eventbridge.UntagResourceInput, ...request.Option) (*eventbridge.UntagResourceOutput, error)
 	UntagResourceRequest(*eventbridge.UntagResourceInput) (*request.Request, *eventbridge.UntagResourceOutput)
+
+	UpdateApiDestination(*eventbridge.UpdateApiDestinationInput) (*eventbridge.UpdateApiDestinationOutput, error)
+	UpdateApiDestinationWithContext(aws.Context, *eventbridge.UpdateApiDestinationInput, ...request.Option) (*eventbridge.UpdateApiDestinationOutput, error)
+	UpdateApiDestinationRequest(*eventbridge.UpdateApiDestinationInput) (*request.Request, *eventbridge.UpdateApiDestinationOutput)
+
+	UpdateArchive(*eventbridge.UpdateArchiveInput) (*eventbridge.UpdateArchiveOutput, error)
+	UpdateArchiveWithContext(aws.Context, *eventbridge.UpdateArchiveInput, ...request.Option) (*eventbridge.UpdateArchiveOutput, error)
+	UpdateArchiveRequest(*eventbridge.UpdateArchiveInput) (*request.Request, *eventbridge.UpdateArchiveOutput)
+
+	UpdateConnection(*eventbridge.UpdateConnectionInput) (*eventbridge.UpdateConnectionOutput, error)
+	UpdateConnectionWithContext(aws.Context, *eventbridge.UpdateConnectionInput, ...request.Option) (*eventbridge.UpdateConnectionOutput, error)
+	UpdateConnectionRequest(*eventbridge.UpdateConnectionInput) (*request.Request, *eventbridge.UpdateConnectionOutput)
 }
 
 var _ EventBridgeAPI = (*eventbridge.EventBridge)(nil)

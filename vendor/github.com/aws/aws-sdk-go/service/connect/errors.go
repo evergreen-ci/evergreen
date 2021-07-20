@@ -8,6 +8,12 @@ import (
 
 const (
 
+	// ErrCodeContactFlowNotPublishedException for service response error code
+	// "ContactFlowNotPublishedException".
+	//
+	// The contact flow has not been published.
+	ErrCodeContactFlowNotPublishedException = "ContactFlowNotPublishedException"
+
 	// ErrCodeContactNotFoundException for service response error code
 	// "ContactNotFoundException".
 	//
@@ -29,8 +35,14 @@ const (
 	// ErrCodeInternalServiceException for service response error code
 	// "InternalServiceException".
 	//
-	// Request processing failed due to an error or failure with the service.
+	// Request processing failed because of an error or failure with the service.
 	ErrCodeInternalServiceException = "InternalServiceException"
+
+	// ErrCodeInvalidContactFlowException for service response error code
+	// "InvalidContactFlowException".
+	//
+	// The contact flow is not valid.
+	ErrCodeInvalidContactFlowException = "InvalidContactFlowException"
 
 	// ErrCodeInvalidParameterException for service response error code
 	// "InvalidParameterException".
@@ -56,11 +68,29 @@ const (
 	// The contact is not permitted.
 	ErrCodeOutboundContactNotPermittedException = "OutboundContactNotPermittedException"
 
+	// ErrCodeResourceConflictException for service response error code
+	// "ResourceConflictException".
+	//
+	// A resource already has that name.
+	ErrCodeResourceConflictException = "ResourceConflictException"
+
+	// ErrCodeResourceInUseException for service response error code
+	// "ResourceInUseException".
+	//
+	// That resource is already in use. Please try another.
+	ErrCodeResourceInUseException = "ResourceInUseException"
+
 	// ErrCodeResourceNotFoundException for service response error code
 	// "ResourceNotFoundException".
 	//
 	// The specified resource was not found.
 	ErrCodeResourceNotFoundException = "ResourceNotFoundException"
+
+	// ErrCodeServiceQuotaExceededException for service response error code
+	// "ServiceQuotaExceededException".
+	//
+	// The service quota has been exceeded.
+	ErrCodeServiceQuotaExceededException = "ServiceQuotaExceededException"
 
 	// ErrCodeThrottlingException for service response error code
 	// "ThrottlingException".
@@ -76,15 +106,20 @@ const (
 )
 
 var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
+	"ContactFlowNotPublishedException":     newErrorContactFlowNotPublishedException,
 	"ContactNotFoundException":             newErrorContactNotFoundException,
 	"DestinationNotAllowedException":       newErrorDestinationNotAllowedException,
 	"DuplicateResourceException":           newErrorDuplicateResourceException,
 	"InternalServiceException":             newErrorInternalServiceException,
+	"InvalidContactFlowException":          newErrorInvalidContactFlowException,
 	"InvalidParameterException":            newErrorInvalidParameterException,
 	"InvalidRequestException":              newErrorInvalidRequestException,
 	"LimitExceededException":               newErrorLimitExceededException,
 	"OutboundContactNotPermittedException": newErrorOutboundContactNotPermittedException,
+	"ResourceConflictException":            newErrorResourceConflictException,
+	"ResourceInUseException":               newErrorResourceInUseException,
 	"ResourceNotFoundException":            newErrorResourceNotFoundException,
+	"ServiceQuotaExceededException":        newErrorServiceQuotaExceededException,
 	"ThrottlingException":                  newErrorThrottlingException,
 	"UserNotFoundException":                newErrorUserNotFoundException,
 }

@@ -91,6 +91,22 @@
         {"shape":"RequestFailedException"}
       ]
     },
+    "DeletePolicy":{
+      "name":"DeletePolicy",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeletePolicyRequest"},
+      "errors":[
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"InvalidArnException"},
+        {"shape":"InvalidStateException"},
+        {"shape":"LockoutPreventedException"},
+        {"shape":"RequestFailedException"},
+        {"shape":"ResourceNotFoundException"}
+      ]
+    },
     "DescribeCertificateAuthority":{
       "name":"DescribeCertificateAuthority",
       "http":{
@@ -162,6 +178,21 @@
         {"shape":"ResourceNotFoundException"},
         {"shape":"InvalidArnException"},
         {"shape":"InvalidStateException"}
+      ]
+    },
+    "GetPolicy":{
+      "name":"GetPolicy",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetPolicyRequest"},
+      "output":{"shape":"GetPolicyResponse"},
+      "errors":[
+        {"shape":"InvalidArnException"},
+        {"shape":"InvalidStateException"},
+        {"shape":"RequestFailedException"},
+        {"shape":"ResourceNotFoundException"}
       ]
     },
     "ImportCertificateAuthorityCertificate":{
@@ -243,6 +274,23 @@
         {"shape":"InvalidStateException"}
       ]
     },
+    "PutPolicy":{
+      "name":"PutPolicy",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"PutPolicyRequest"},
+      "errors":[
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"InvalidArnException"},
+        {"shape":"InvalidStateException"},
+        {"shape":"InvalidPolicyException"},
+        {"shape":"LockoutPreventedException"},
+        {"shape":"RequestFailedException"},
+        {"shape":"ResourceNotFoundException"}
+      ]
+    },
     "RestoreCertificateAuthority":{
       "name":"RestoreCertificateAuthority",
       "http":{
@@ -322,16 +370,22 @@
     }
   },
   "shapes":{
+    "ASN1PrintableString64":{
+      "type":"string",
+      "max":64,
+      "min":0,
+      "pattern":"[a-zA-Z0-9'()+-.?:/= ]*"
+    },
     "ASN1Subject":{
       "type":"structure",
       "members":{
         "Country":{"shape":"CountryCodeString"},
         "Organization":{"shape":"String64"},
         "OrganizationalUnit":{"shape":"String64"},
-        "DistinguishedNameQualifier":{"shape":"DistinguishedNameQualifierString"},
+        "DistinguishedNameQualifier":{"shape":"ASN1PrintableString64"},
         "State":{"shape":"String128"},
         "CommonName":{"shape":"String64"},
-        "SerialNumber":{"shape":"String64"},
+        "SerialNumber":{"shape":"ASN1PrintableString64"},
         "Locality":{"shape":"String128"},
         "Title":{"shape":"String64"},
         "Surname":{"shape":"String40"},
@@ -340,6 +394,43 @@
         "Pseudonym":{"shape":"String128"},
         "GenerationQualifier":{"shape":"String3"}
       }
+    },
+    "AWSPolicy":{
+      "type":"string",
+      "max":20480,
+      "min":1,
+      "pattern":"[\\u0009\\u000A\\u000D\\u0020-\\u00FF]+"
+    },
+    "AccessDescription":{
+      "type":"structure",
+      "required":[
+        "AccessMethod",
+        "AccessLocation"
+      ],
+      "members":{
+        "AccessMethod":{"shape":"AccessMethod"},
+        "AccessLocation":{"shape":"GeneralName"}
+      },
+      "box":true
+    },
+    "AccessDescriptionList":{
+      "type":"list",
+      "member":{"shape":"AccessDescription"}
+    },
+    "AccessMethod":{
+      "type":"structure",
+      "members":{
+        "CustomObjectIdentifier":{"shape":"CustomObjectIdentifier"},
+        "AccessMethodType":{"shape":"AccessMethodType"}
+      }
+    },
+    "AccessMethodType":{
+      "type":"string",
+      "enum":[
+        "CA_REPOSITORY",
+        "RESOURCE_PKI_MANIFEST",
+        "RESOURCE_PKI_NOTIFY"
+      ]
     },
     "AccountId":{
       "type":"string",
@@ -361,11 +452,18 @@
         "ListPermissions"
       ]
     },
+    "ApiPassthrough":{
+      "type":"structure",
+      "members":{
+        "Extensions":{"shape":"Extensions"},
+        "Subject":{"shape":"ASN1Subject"}
+      }
+    },
     "Arn":{
       "type":"string",
       "max":200,
       "min":5,
-      "pattern":"arn:[\\w+=/,.@-]+:[\\w+=/,.@-]+:[\\w+=/,.@-]*:[0-9]*:[\\w+=,.@-]+(/[\\w+=/,.@-]+)*"
+      "pattern":"arn:[\\w+=/,.@-]+:[\\w+=/,.@-]+:[\\w+=/,.@-]*:[0-9]*:[\\w+=,.@-]+(/[\\w+=,.@-]+)*"
     },
     "AuditReportId":{
       "type":"string",
@@ -397,6 +495,7 @@
       "type":"structure",
       "members":{
         "Arn":{"shape":"Arn"},
+        "OwnerAccount":{"shape":"AccountId"},
         "CreatedAt":{"shape":"TStamp"},
         "LastStateChangeAt":{"shape":"TStamp"},
         "Type":{"shape":"CertificateAuthorityType"},
@@ -407,7 +506,8 @@
         "FailureReason":{"shape":"FailureReason"},
         "CertificateAuthorityConfiguration":{"shape":"CertificateAuthorityConfiguration"},
         "RevocationConfiguration":{"shape":"RevocationConfiguration"},
-        "RestorableUntil":{"shape":"TStamp"}
+        "RestorableUntil":{"shape":"TStamp"},
+        "KeyStorageSecurityStandard":{"shape":"KeyStorageSecurityStandard"}
       }
     },
     "CertificateAuthorityConfiguration":{
@@ -420,7 +520,8 @@
       "members":{
         "KeyAlgorithm":{"shape":"KeyAlgorithm"},
         "SigningAlgorithm":{"shape":"SigningAlgorithm"},
-        "Subject":{"shape":"ASN1Subject"}
+        "Subject":{"shape":"ASN1Subject"},
+        "CsrExtensions":{"shape":"CsrExtensions"}
       }
     },
     "CertificateAuthorityStatus":{
@@ -461,6 +562,12 @@
       },
       "exception":true
     },
+    "CertificatePolicyList":{
+      "type":"list",
+      "member":{"shape":"PolicyInformation"},
+      "max":20,
+      "min":1
+    },
     "ConcurrentModificationException":{
       "type":"structure",
       "members":{
@@ -470,6 +577,8 @@
     },
     "CountryCodeString":{
       "type":"string",
+      "max":2,
+      "min":2,
       "pattern":"[A-Za-z]{2}"
     },
     "CreateCertificateAuthorityAuditReportRequest":{
@@ -481,7 +590,7 @@
       ],
       "members":{
         "CertificateAuthorityArn":{"shape":"Arn"},
-        "S3BucketName":{"shape":"String"},
+        "S3BucketName":{"shape":"S3BucketName"},
         "AuditReportResponseFormat":{"shape":"AuditReportResponseFormat"}
       }
     },
@@ -489,7 +598,7 @@
       "type":"structure",
       "members":{
         "AuditReportId":{"shape":"AuditReportId"},
-        "S3Key":{"shape":"String"}
+        "S3Key":{"shape":"S3Key"}
       }
     },
     "CreateCertificateAuthorityRequest":{
@@ -503,6 +612,7 @@
         "RevocationConfiguration":{"shape":"RevocationConfiguration"},
         "CertificateAuthorityType":{"shape":"CertificateAuthorityType"},
         "IdempotencyToken":{"shape":"IdempotencyToken"},
+        "KeyStorageSecurityStandard":{"shape":"KeyStorageSecurityStandard"},
         "Tags":{"shape":"TagList"}
       }
     },
@@ -539,7 +649,8 @@
           "box":true
         },
         "CustomCname":{"shape":"String253"},
-        "S3BucketName":{"shape":"String3To255"}
+        "S3BucketName":{"shape":"String3To255"},
+        "S3ObjectAcl":{"shape":"S3ObjectAcl"}
       }
     },
     "CsrBlob":{
@@ -548,6 +659,19 @@
       "min":1
     },
     "CsrBody":{"type":"string"},
+    "CsrExtensions":{
+      "type":"structure",
+      "members":{
+        "KeyUsage":{"shape":"KeyUsage"},
+        "SubjectInformationAccess":{"shape":"AccessDescriptionList"}
+      }
+    },
+    "CustomObjectIdentifier":{
+      "type":"string",
+      "max":64,
+      "min":0,
+      "pattern":"^([0-2])\\.([0-9]|([0-3][0-9]))((\\.([0-9]+)){0,126})$"
+    },
     "DeleteCertificateAuthorityRequest":{
       "type":"structure",
       "required":["CertificateAuthorityArn"],
@@ -568,6 +692,13 @@
         "SourceAccount":{"shape":"AccountId"}
       }
     },
+    "DeletePolicyRequest":{
+      "type":"structure",
+      "required":["ResourceArn"],
+      "members":{
+        "ResourceArn":{"shape":"Arn"}
+      }
+    },
     "DescribeCertificateAuthorityAuditReportRequest":{
       "type":"structure",
       "required":[
@@ -583,8 +714,8 @@
       "type":"structure",
       "members":{
         "AuditReportStatus":{"shape":"AuditReportStatus"},
-        "S3BucketName":{"shape":"String"},
-        "S3Key":{"shape":"String"},
+        "S3BucketName":{"shape":"S3BucketName"},
+        "S3Key":{"shape":"S3Key"},
         "CreatedAt":{"shape":"TStamp"}
       }
     },
@@ -601,11 +732,49 @@
         "CertificateAuthority":{"shape":"CertificateAuthority"}
       }
     },
-    "DistinguishedNameQualifierString":{
+    "EdiPartyName":{
+      "type":"structure",
+      "required":["PartyName"],
+      "members":{
+        "PartyName":{"shape":"String256"},
+        "NameAssigner":{"shape":"String256"}
+      }
+    },
+    "ExtendedKeyUsage":{
+      "type":"structure",
+      "members":{
+        "ExtendedKeyUsageType":{"shape":"ExtendedKeyUsageType"},
+        "ExtendedKeyUsageObjectIdentifier":{"shape":"CustomObjectIdentifier"}
+      }
+    },
+    "ExtendedKeyUsageList":{
+      "type":"list",
+      "member":{"shape":"ExtendedKeyUsage"},
+      "max":20,
+      "min":1
+    },
+    "ExtendedKeyUsageType":{
       "type":"string",
-      "max":64,
-      "min":0,
-      "pattern":"[a-zA-Z0-9'()+-.?:/= ]*"
+      "enum":[
+        "SERVER_AUTH",
+        "CLIENT_AUTH",
+        "CODE_SIGNING",
+        "EMAIL_PROTECTION",
+        "TIME_STAMPING",
+        "OCSP_SIGNING",
+        "SMART_CARD_LOGIN",
+        "DOCUMENT_SIGNING",
+        "CERTIFICATE_TRANSPARENCY"
+      ]
+    },
+    "Extensions":{
+      "type":"structure",
+      "members":{
+        "CertificatePolicies":{"shape":"CertificatePolicyList"},
+        "ExtendedKeyUsage":{"shape":"ExtendedKeyUsageList"},
+        "KeyUsage":{"shape":"KeyUsage"},
+        "SubjectAlternativeNames":{"shape":"GeneralNameList"}
+      }
     },
     "FailureReason":{
       "type":"string",
@@ -614,6 +783,25 @@
         "UNSUPPORTED_ALGORITHM",
         "OTHER"
       ]
+    },
+    "GeneralName":{
+      "type":"structure",
+      "members":{
+        "OtherName":{"shape":"OtherName"},
+        "Rfc822Name":{"shape":"String256"},
+        "DnsName":{"shape":"String253"},
+        "DirectoryName":{"shape":"ASN1Subject"},
+        "EdiPartyName":{"shape":"EdiPartyName"},
+        "UniformResourceIdentifier":{"shape":"String253"},
+        "IpAddress":{"shape":"String39"},
+        "RegisteredId":{"shape":"CustomObjectIdentifier"}
+      }
+    },
+    "GeneralNameList":{
+      "type":"list",
+      "member":{"shape":"GeneralName"},
+      "max":20,
+      "min":1
     },
     "GetCertificateAuthorityCertificateRequest":{
       "type":"structure",
@@ -658,6 +846,19 @@
       "members":{
         "Certificate":{"shape":"CertificateBody"},
         "CertificateChain":{"shape":"CertificateChain"}
+      }
+    },
+    "GetPolicyRequest":{
+      "type":"structure",
+      "required":["ResourceArn"],
+      "members":{
+        "ResourceArn":{"shape":"Arn"}
+      }
+    },
+    "GetPolicyResponse":{
+      "type":"structure",
+      "members":{
+        "Policy":{"shape":"AWSPolicy"}
       }
     },
     "IdempotencyToken":{
@@ -741,11 +942,13 @@
         "Validity"
       ],
       "members":{
+        "ApiPassthrough":{"shape":"ApiPassthrough"},
         "CertificateAuthorityArn":{"shape":"Arn"},
         "Csr":{"shape":"CsrBlob"},
         "SigningAlgorithm":{"shape":"SigningAlgorithm"},
         "TemplateArn":{"shape":"Arn"},
         "Validity":{"shape":"Validity"},
+        "ValidityNotBefore":{"shape":"Validity"},
         "IdempotencyToken":{"shape":"IdempotencyToken"}
       }
     },
@@ -764,6 +967,27 @@
         "EC_secp384r1"
       ]
     },
+    "KeyStorageSecurityStandard":{
+      "type":"string",
+      "enum":[
+        "FIPS_140_2_LEVEL_2_OR_HIGHER",
+        "FIPS_140_2_LEVEL_3_OR_HIGHER"
+      ]
+    },
+    "KeyUsage":{
+      "type":"structure",
+      "members":{
+        "DigitalSignature":{"shape":"Boolean"},
+        "NonRepudiation":{"shape":"Boolean"},
+        "KeyEncipherment":{"shape":"Boolean"},
+        "DataEncipherment":{"shape":"Boolean"},
+        "KeyAgreement":{"shape":"Boolean"},
+        "KeyCertSign":{"shape":"Boolean"},
+        "CRLSign":{"shape":"Boolean"},
+        "EncipherOnly":{"shape":"Boolean"},
+        "DecipherOnly":{"shape":"Boolean"}
+      }
+    },
     "LimitExceededException":{
       "type":"structure",
       "members":{
@@ -775,7 +999,8 @@
       "type":"structure",
       "members":{
         "NextToken":{"shape":"NextToken"},
-        "MaxResults":{"shape":"MaxResults"}
+        "MaxResults":{"shape":"MaxResults"},
+        "ResourceOwner":{"shape":"ResourceOwner"}
       }
     },
     "ListCertificateAuthoritiesResponse":{
@@ -817,6 +1042,13 @@
         "NextToken":{"shape":"NextToken"}
       }
     },
+    "LockoutPreventedException":{
+      "type":"structure",
+      "members":{
+        "message":{"shape":"String"}
+      },
+      "exception":true
+    },
     "MalformedCSRException":{
       "type":"structure",
       "members":{
@@ -841,6 +1073,17 @@
       "max":500,
       "min":1
     },
+    "OtherName":{
+      "type":"structure",
+      "required":[
+        "TypeId",
+        "Value"
+      ],
+      "members":{
+        "TypeId":{"shape":"CustomObjectIdentifier"},
+        "Value":{"shape":"String256"}
+      }
+    },
     "PermanentDeletionTimeInDays":{
       "type":"integer",
       "max":30,
@@ -851,10 +1094,10 @@
       "members":{
         "CertificateAuthorityArn":{"shape":"Arn"},
         "CreatedAt":{"shape":"TStamp"},
-        "Principal":{"shape":"String"},
-        "SourceAccount":{"shape":"String"},
+        "Principal":{"shape":"Principal"},
+        "SourceAccount":{"shape":"AccountId"},
         "Actions":{"shape":"ActionList"},
-        "Policy":{"shape":"String"}
+        "Policy":{"shape":"AWSPolicy"}
       }
     },
     "PermissionAlreadyExistsException":{
@@ -869,6 +1112,35 @@
       "member":{"shape":"Permission"},
       "min":0
     },
+    "PolicyInformation":{
+      "type":"structure",
+      "required":["CertPolicyId"],
+      "members":{
+        "CertPolicyId":{"shape":"CustomObjectIdentifier"},
+        "PolicyQualifiers":{"shape":"PolicyQualifierInfoList"}
+      }
+    },
+    "PolicyQualifierId":{
+      "type":"string",
+      "enum":["CPS"]
+    },
+    "PolicyQualifierInfo":{
+      "type":"structure",
+      "required":[
+        "PolicyQualifierId",
+        "Qualifier"
+      ],
+      "members":{
+        "PolicyQualifierId":{"shape":"PolicyQualifierId"},
+        "Qualifier":{"shape":"Qualifier"}
+      }
+    },
+    "PolicyQualifierInfoList":{
+      "type":"list",
+      "member":{"shape":"PolicyQualifierInfo"},
+      "max":20,
+      "min":1
+    },
     "PositiveLong":{
       "type":"long",
       "min":1
@@ -878,6 +1150,24 @@
       "max":128,
       "min":0,
       "pattern":"^[^*]+$"
+    },
+    "PutPolicyRequest":{
+      "type":"structure",
+      "required":[
+        "ResourceArn",
+        "Policy"
+      ],
+      "members":{
+        "ResourceArn":{"shape":"Arn"},
+        "Policy":{"shape":"AWSPolicy"}
+      }
+    },
+    "Qualifier":{
+      "type":"structure",
+      "required":["CpsUri"],
+      "members":{
+        "CpsUri":{"shape":"String256"}
+      }
     },
     "RequestAlreadyProcessedException":{
       "type":"structure",
@@ -906,6 +1196,13 @@
         "message":{"shape":"String"}
       },
       "exception":true
+    },
+    "ResourceOwner":{
+      "type":"string",
+      "enum":[
+        "SELF",
+        "OTHER_ACCOUNTS"
+      ]
     },
     "RestoreCertificateAuthorityRequest":{
       "type":"structure",
@@ -946,6 +1243,22 @@
         "RevocationReason":{"shape":"RevocationReason"}
       }
     },
+    "S3BucketName":{
+      "type":"string",
+      "max":63,
+      "min":3
+    },
+    "S3Key":{
+      "type":"string",
+      "max":1024
+    },
+    "S3ObjectAcl":{
+      "type":"string",
+      "enum":[
+        "PUBLIC_READ",
+        "BUCKET_OWNER_FULL_CONTROL"
+      ]
+    },
     "SigningAlgorithm":{
       "type":"string",
       "enum":[
@@ -973,9 +1286,19 @@
       "max":253,
       "min":0
     },
+    "String256":{
+      "type":"string",
+      "max":256,
+      "min":0
+    },
     "String3":{
       "type":"string",
       "max":3,
+      "min":0
+    },
+    "String39":{
+      "type":"string",
+      "max":39,
       "min":0
     },
     "String3To255":{

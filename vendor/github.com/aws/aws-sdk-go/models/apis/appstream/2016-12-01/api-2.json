@@ -39,7 +39,8 @@
       "input":{"shape":"BatchAssociateUserStackRequest"},
       "output":{"shape":"BatchAssociateUserStackResult"},
       "errors":[
-        {"shape":"OperationNotPermittedException"}
+        {"shape":"OperationNotPermittedException"},
+        {"shape":"InvalidParameterCombinationException"}
       ]
     },
     "BatchDisassociateUserStack":{
@@ -49,7 +50,11 @@
         "requestUri":"/"
       },
       "input":{"shape":"BatchDisassociateUserStackRequest"},
-      "output":{"shape":"BatchDisassociateUserStackResult"}
+      "output":{"shape":"BatchDisassociateUserStackResult"},
+      "errors":[
+        {"shape":"OperationNotPermittedException"},
+        {"shape":"InvalidParameterCombinationException"}
+      ]
     },
     "CopyImage":{
       "name":"CopyImage",
@@ -77,9 +82,12 @@
       "input":{"shape":"CreateDirectoryConfigRequest"},
       "output":{"shape":"CreateDirectoryConfigResult"},
       "errors":[
+        {"shape":"ResourceNotFoundException"},
         {"shape":"ResourceAlreadyExistsException"},
         {"shape":"LimitExceededException"},
-        {"shape":"InvalidAccountStatusException"}
+        {"shape":"InvalidAccountStatusException"},
+        {"shape":"OperationNotPermittedException"},
+        {"shape":"InvalidRoleException"}
       ]
     },
     "CreateFleet":{
@@ -95,6 +103,7 @@
         {"shape":"ResourceNotAvailableException"},
         {"shape":"ResourceNotFoundException"},
         {"shape":"LimitExceededException"},
+        {"shape":"RequestLimitExceededException"},
         {"shape":"InvalidAccountStatusException"},
         {"shape":"InvalidRoleException"},
         {"shape":"ConcurrentModificationException"},
@@ -113,6 +122,7 @@
       "output":{"shape":"CreateImageBuilderResult"},
       "errors":[
         {"shape":"LimitExceededException"},
+        {"shape":"RequestLimitExceededException"},
         {"shape":"InvalidAccountStatusException"},
         {"shape":"ResourceAlreadyExistsException"},
         {"shape":"ResourceNotAvailableException"},
@@ -168,6 +178,24 @@
         {"shape":"ResourceNotAvailableException"},
         {"shape":"OperationNotPermittedException"},
         {"shape":"InvalidParameterCombinationException"}
+      ]
+    },
+    "CreateUpdatedImage":{
+      "name":"CreateUpdatedImage",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateUpdatedImageRequest"},
+      "output":{"shape":"CreateUpdatedImageResult"},
+      "errors":[
+        {"shape":"LimitExceededException"},
+        {"shape":"InvalidAccountStatusException"},
+        {"shape":"OperationNotPermittedException"},
+        {"shape":"ResourceAlreadyExistsException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"IncompatibleImageException"}
       ]
     },
     "CreateUsageReportSubscription":{
@@ -415,7 +443,8 @@
       "input":{"shape":"DescribeUserStackAssociationsRequest"},
       "output":{"shape":"DescribeUserStackAssociationsResult"},
       "errors":[
-        {"shape":"InvalidParameterCombinationException"}
+        {"shape":"InvalidParameterCombinationException"},
+        {"shape":"OperationNotPermittedException"}
       ]
     },
     "DescribeUsers":{
@@ -454,7 +483,8 @@
       "errors":[
         {"shape":"ResourceInUseException"},
         {"shape":"ResourceNotFoundException"},
-        {"shape":"ConcurrentModificationException"}
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"OperationNotPermittedException"}
       ]
     },
     "EnableUser":{
@@ -521,6 +551,7 @@
         {"shape":"ResourceNotFoundException"},
         {"shape":"OperationNotPermittedException"},
         {"shape":"LimitExceededException"},
+        {"shape":"RequestLimitExceededException"},
         {"shape":"InvalidAccountStatusException"},
         {"shape":"ConcurrentModificationException"},
         {"shape":"ResourceNotAvailableException"},
@@ -607,7 +638,9 @@
       "errors":[
         {"shape":"ResourceInUseException"},
         {"shape":"ResourceNotFoundException"},
-        {"shape":"ConcurrentModificationException"}
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"OperationNotPermittedException"},
+        {"shape":"InvalidRoleException"}
       ]
     },
     "UpdateFleet":{
@@ -621,6 +654,7 @@
       "errors":[
         {"shape":"ResourceInUseException"},
         {"shape":"LimitExceededException"},
+        {"shape":"RequestLimitExceededException"},
         {"shape":"InvalidAccountStatusException"},
         {"shape":"InvalidRoleException"},
         {"shape":"ResourceNotFoundException"},
@@ -703,7 +737,9 @@
         "CLIPBOARD_COPY_TO_LOCAL_DEVICE",
         "FILE_UPLOAD",
         "FILE_DOWNLOAD",
-        "PRINTING_TO_LOCAL_DEVICE"
+        "PRINTING_TO_LOCAL_DEVICE",
+        "DOMAIN_PASSWORD_SIGNIN",
+        "DOMAIN_SMART_CARD_SIGNIN"
       ]
     },
     "Application":{
@@ -745,7 +781,7 @@
     },
     "Arn":{
       "type":"string",
-      "pattern":"^arn:aws:[A-Za-z0-9][A-Za-z0-9_/.-]{0,62}:[A-Za-z0-9_/.-]{0,63}:[A-Za-z0-9_/.-]{0,63}:[A-Za-z0-9][A-Za-z0-9:_/+=,@.-]{0,1023}$"
+      "pattern":"^arn:aws(?:\\-cn|\\-iso\\-b|\\-iso|\\-us\\-gov)?:[A-Za-z0-9][A-Za-z0-9_/.-]{0,62}:[A-Za-z0-9_/.-]{0,63}:[A-Za-z0-9_/.-]{0,63}:[A-Za-z0-9][A-Za-z0-9:_/+=,@.\\\\-]{0,1023}$"
     },
     "ArnList":{
       "type":"list",
@@ -861,8 +897,7 @@
       "type":"structure",
       "required":[
         "DirectoryName",
-        "OrganizationalUnitDistinguishedNames",
-        "ServiceAccountCredentials"
+        "OrganizationalUnitDistinguishedNames"
       ],
       "members":{
         "DirectoryName":{"shape":"DirectoryName"},
@@ -899,7 +934,8 @@
         "DomainJoinInfo":{"shape":"DomainJoinInfo"},
         "Tags":{"shape":"Tags"},
         "IdleDisconnectTimeoutInSeconds":{"shape":"Integer"},
-        "IamRoleArn":{"shape":"Arn"}
+        "IamRoleArn":{"shape":"Arn"},
+        "StreamView":{"shape":"StreamView"}
       }
     },
     "CreateFleetResult":{
@@ -995,6 +1031,28 @@
       "members":{
         "StreamingURL":{"shape":"String"},
         "Expires":{"shape":"Timestamp"}
+      }
+    },
+    "CreateUpdatedImageRequest":{
+      "type":"structure",
+      "required":[
+        "existingImageName",
+        "newImageName"
+      ],
+      "members":{
+        "existingImageName":{"shape":"Name"},
+        "newImageName":{"shape":"Name"},
+        "newImageDescription":{"shape":"Description"},
+        "newImageDisplayName":{"shape":"DisplayName"},
+        "newImageTags":{"shape":"Tags"},
+        "dryRun":{"shape":"Boolean"}
+      }
+    },
+    "CreateUpdatedImageResult":{
+      "type":"structure",
+      "members":{
+        "image":{"shape":"Image"},
+        "canUpdateImage":{"shape":"Boolean"}
       }
     },
     "CreateUsageReportSubscriptionRequest":{
@@ -1374,7 +1432,7 @@
     "DomainList":{
       "type":"list",
       "member":{"shape":"Domain"},
-      "max":10
+      "max":50
     },
     "EmbedHostDomain":{
       "type":"string",
@@ -1448,7 +1506,8 @@
         "EnableDefaultInternetAccess":{"shape":"BooleanObject"},
         "DomainJoinInfo":{"shape":"DomainJoinInfo"},
         "IdleDisconnectTimeoutInSeconds":{"shape":"Integer"},
-        "IamRoleArn":{"shape":"Arn"}
+        "IamRoleArn":{"shape":"Arn"},
+        "StreamView":{"shape":"StreamView"}
       }
     },
     "FleetAttribute":{
@@ -1490,6 +1549,8 @@
         "SECURITY_GROUPS_NOT_FOUND",
         "IGW_NOT_ATTACHED",
         "IAM_SERVICE_ROLE_MISSING_DESCRIBE_SECURITY_GROUPS_ACTION",
+        "FLEET_STOPPED",
+        "FLEET_INSTANCE_PROVISIONING_FAILURE",
         "DOMAIN_JOIN_ERROR_FILE_NOT_FOUND",
         "DOMAIN_JOIN_ERROR_ACCESS_DENIED",
         "DOMAIN_JOIN_ERROR_LOGON_FAILURE",
@@ -1547,7 +1608,8 @@
         "CreatedTime":{"shape":"Timestamp"},
         "PublicBaseImageReleasedDate":{"shape":"Timestamp"},
         "AppstreamAgentVersion":{"shape":"AppstreamAgentVersion"},
-        "ImagePermissions":{"shape":"ImagePermissions"}
+        "ImagePermissions":{"shape":"ImagePermissions"},
+        "ImageErrors":{"shape":"ResourceErrors"}
       }
     },
     "ImageBuilder":{
@@ -1589,7 +1651,9 @@
         "REBOOTING",
         "SNAPSHOTTING",
         "DELETING",
-        "FAILED"
+        "FAILED",
+        "UPDATING",
+        "PENDING_QUALIFICATION"
       ]
     },
     "ImageBuilderStateChangeReason":{
@@ -1624,7 +1688,9 @@
         "AVAILABLE",
         "FAILED",
         "COPYING",
-        "DELETING"
+        "DELETING",
+        "CREATING",
+        "IMPORTING"
       ]
     },
     "ImageStateChangeReason":{
@@ -1801,6 +1867,13 @@
       "max":32,
       "min":1
     },
+    "RequestLimitExceededException":{
+      "type":"structure",
+      "members":{
+        "Message":{"shape":"ErrorMessage"}
+      },
+      "exception":true
+    },
     "ResourceAlreadyExistsException":{
       "type":"structure",
       "members":{
@@ -1822,6 +1895,7 @@
     },
     "ResourceIdentifier":{
       "type":"string",
+      "max":2048,
       "min":1
     },
     "ResourceInUseException":{
@@ -2054,6 +2128,13 @@
         "ONE_DRIVE"
       ]
     },
+    "StreamView":{
+      "type":"string",
+      "enum":[
+        "APP",
+        "DESKTOP"
+      ]
+    },
     "StreamingUrlUserId":{
       "type":"string",
       "max":32,
@@ -2166,7 +2247,8 @@
         "DomainJoinInfo":{"shape":"DomainJoinInfo"},
         "IdleDisconnectTimeoutInSeconds":{"shape":"Integer"},
         "AttributesToDelete":{"shape":"FleetAttributes"},
-        "IamRoleArn":{"shape":"Arn"}
+        "IamRoleArn":{"shape":"Arn"},
+        "StreamView":{"shape":"StreamView"}
       }
     },
     "UpdateFleetResult":{
@@ -2267,7 +2349,7 @@
     },
     "UserId":{
       "type":"string",
-      "max":32,
+      "max":128,
       "min":2
     },
     "UserList":{
@@ -2317,6 +2399,7 @@
       "enum":[
         "STACK_NOT_FOUND",
         "USER_NAME_NOT_FOUND",
+        "DIRECTORY_NOT_FOUND",
         "INTERNAL_ERROR"
       ]
     },

@@ -176,6 +176,13 @@ type ServiceCatalogAPI interface {
 	DescribePortfolioShareStatusWithContext(aws.Context, *servicecatalog.DescribePortfolioShareStatusInput, ...request.Option) (*servicecatalog.DescribePortfolioShareStatusOutput, error)
 	DescribePortfolioShareStatusRequest(*servicecatalog.DescribePortfolioShareStatusInput) (*request.Request, *servicecatalog.DescribePortfolioShareStatusOutput)
 
+	DescribePortfolioShares(*servicecatalog.DescribePortfolioSharesInput) (*servicecatalog.DescribePortfolioSharesOutput, error)
+	DescribePortfolioSharesWithContext(aws.Context, *servicecatalog.DescribePortfolioSharesInput, ...request.Option) (*servicecatalog.DescribePortfolioSharesOutput, error)
+	DescribePortfolioSharesRequest(*servicecatalog.DescribePortfolioSharesInput) (*request.Request, *servicecatalog.DescribePortfolioSharesOutput)
+
+	DescribePortfolioSharesPages(*servicecatalog.DescribePortfolioSharesInput, func(*servicecatalog.DescribePortfolioSharesOutput, bool) bool) error
+	DescribePortfolioSharesPagesWithContext(aws.Context, *servicecatalog.DescribePortfolioSharesInput, func(*servicecatalog.DescribePortfolioSharesOutput, bool) bool, ...request.Option) error
+
 	DescribeProduct(*servicecatalog.DescribeProductInput) (*servicecatalog.DescribeProductOutput, error)
 	DescribeProductWithContext(aws.Context, *servicecatalog.DescribeProductInput, ...request.Option) (*servicecatalog.DescribeProductOutput, error)
 	DescribeProductRequest(*servicecatalog.DescribeProductInput) (*request.Request, *servicecatalog.DescribeProductOutput)
@@ -260,6 +267,17 @@ type ServiceCatalogAPI interface {
 	GetAWSOrganizationsAccessStatusWithContext(aws.Context, *servicecatalog.GetAWSOrganizationsAccessStatusInput, ...request.Option) (*servicecatalog.GetAWSOrganizationsAccessStatusOutput, error)
 	GetAWSOrganizationsAccessStatusRequest(*servicecatalog.GetAWSOrganizationsAccessStatusInput) (*request.Request, *servicecatalog.GetAWSOrganizationsAccessStatusOutput)
 
+	GetProvisionedProductOutputs(*servicecatalog.GetProvisionedProductOutputsInput) (*servicecatalog.GetProvisionedProductOutputsOutput, error)
+	GetProvisionedProductOutputsWithContext(aws.Context, *servicecatalog.GetProvisionedProductOutputsInput, ...request.Option) (*servicecatalog.GetProvisionedProductOutputsOutput, error)
+	GetProvisionedProductOutputsRequest(*servicecatalog.GetProvisionedProductOutputsInput) (*request.Request, *servicecatalog.GetProvisionedProductOutputsOutput)
+
+	GetProvisionedProductOutputsPages(*servicecatalog.GetProvisionedProductOutputsInput, func(*servicecatalog.GetProvisionedProductOutputsOutput, bool) bool) error
+	GetProvisionedProductOutputsPagesWithContext(aws.Context, *servicecatalog.GetProvisionedProductOutputsInput, func(*servicecatalog.GetProvisionedProductOutputsOutput, bool) bool, ...request.Option) error
+
+	ImportAsProvisionedProduct(*servicecatalog.ImportAsProvisionedProductInput) (*servicecatalog.ImportAsProvisionedProductOutput, error)
+	ImportAsProvisionedProductWithContext(aws.Context, *servicecatalog.ImportAsProvisionedProductInput, ...request.Option) (*servicecatalog.ImportAsProvisionedProductOutput, error)
+	ImportAsProvisionedProductRequest(*servicecatalog.ImportAsProvisionedProductInput) (*request.Request, *servicecatalog.ImportAsProvisionedProductOutput)
+
 	ListAcceptedPortfolioShares(*servicecatalog.ListAcceptedPortfolioSharesInput) (*servicecatalog.ListAcceptedPortfolioSharesOutput, error)
 	ListAcceptedPortfolioSharesWithContext(aws.Context, *servicecatalog.ListAcceptedPortfolioSharesInput, ...request.Option) (*servicecatalog.ListAcceptedPortfolioSharesOutput, error)
 	ListAcceptedPortfolioSharesRequest(*servicecatalog.ListAcceptedPortfolioSharesInput) (*request.Request, *servicecatalog.ListAcceptedPortfolioSharesOutput)
@@ -298,6 +316,9 @@ type ServiceCatalogAPI interface {
 	ListPortfolioAccess(*servicecatalog.ListPortfolioAccessInput) (*servicecatalog.ListPortfolioAccessOutput, error)
 	ListPortfolioAccessWithContext(aws.Context, *servicecatalog.ListPortfolioAccessInput, ...request.Option) (*servicecatalog.ListPortfolioAccessOutput, error)
 	ListPortfolioAccessRequest(*servicecatalog.ListPortfolioAccessInput) (*request.Request, *servicecatalog.ListPortfolioAccessOutput)
+
+	ListPortfolioAccessPages(*servicecatalog.ListPortfolioAccessInput, func(*servicecatalog.ListPortfolioAccessOutput, bool) bool) error
+	ListPortfolioAccessPagesWithContext(aws.Context, *servicecatalog.ListPortfolioAccessInput, func(*servicecatalog.ListPortfolioAccessOutput, bool) bool, ...request.Option) error
 
 	ListPortfolios(*servicecatalog.ListPortfoliosInput) (*servicecatalog.ListPortfoliosOutput, error)
 	ListPortfoliosWithContext(aws.Context, *servicecatalog.ListPortfoliosInput, ...request.Option) (*servicecatalog.ListPortfoliosOutput, error)
@@ -415,6 +436,10 @@ type ServiceCatalogAPI interface {
 	UpdatePortfolio(*servicecatalog.UpdatePortfolioInput) (*servicecatalog.UpdatePortfolioOutput, error)
 	UpdatePortfolioWithContext(aws.Context, *servicecatalog.UpdatePortfolioInput, ...request.Option) (*servicecatalog.UpdatePortfolioOutput, error)
 	UpdatePortfolioRequest(*servicecatalog.UpdatePortfolioInput) (*request.Request, *servicecatalog.UpdatePortfolioOutput)
+
+	UpdatePortfolioShare(*servicecatalog.UpdatePortfolioShareInput) (*servicecatalog.UpdatePortfolioShareOutput, error)
+	UpdatePortfolioShareWithContext(aws.Context, *servicecatalog.UpdatePortfolioShareInput, ...request.Option) (*servicecatalog.UpdatePortfolioShareOutput, error)
+	UpdatePortfolioShareRequest(*servicecatalog.UpdatePortfolioShareInput) (*request.Request, *servicecatalog.UpdatePortfolioShareOutput)
 
 	UpdateProduct(*servicecatalog.UpdateProductInput) (*servicecatalog.UpdateProductOutput, error)
 	UpdateProductWithContext(aws.Context, *servicecatalog.UpdateProductInput, ...request.Option) (*servicecatalog.UpdateProductOutput, error)

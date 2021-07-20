@@ -635,11 +635,143 @@ func (c *LexRuntimeService) PutSessionWithContext(ctx aws.Context, input *PutSes
 	return out, req.Send()
 }
 
+// A context is a variable that contains information about the current state
+// of the conversation between a user and Amazon Lex. Context can be set automatically
+// by Amazon Lex when an intent is fulfilled, or it can be set at runtime using
+// the PutContent, PutText, or PutSession operation.
+type ActiveContext struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the context.
+	//
+	// Name is a required field
+	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
+
+	// State variables for the current context. You can use these values as default
+	// values for slots in subsequent events.
+	//
+	// Parameters is a required field
+	Parameters map[string]*string `locationName:"parameters" type:"map" required:"true"`
+
+	// The length of time or number of turns that a context remains active.
+	//
+	// TimeToLive is a required field
+	TimeToLive *ActiveContextTimeToLive `locationName:"timeToLive" type:"structure" required:"true"`
+}
+
+// String returns the string representation
+func (s ActiveContext) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActiveContext) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActiveContext) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActiveContext"}
+	if s.Name == nil {
+		invalidParams.Add(request.NewErrParamRequired("Name"))
+	}
+	if s.Name != nil && len(*s.Name) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
+	}
+	if s.Parameters == nil {
+		invalidParams.Add(request.NewErrParamRequired("Parameters"))
+	}
+	if s.TimeToLive == nil {
+		invalidParams.Add(request.NewErrParamRequired("TimeToLive"))
+	}
+	if s.TimeToLive != nil {
+		if err := s.TimeToLive.Validate(); err != nil {
+			invalidParams.AddNested("TimeToLive", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetName sets the Name field's value.
+func (s *ActiveContext) SetName(v string) *ActiveContext {
+	s.Name = &v
+	return s
+}
+
+// SetParameters sets the Parameters field's value.
+func (s *ActiveContext) SetParameters(v map[string]*string) *ActiveContext {
+	s.Parameters = v
+	return s
+}
+
+// SetTimeToLive sets the TimeToLive field's value.
+func (s *ActiveContext) SetTimeToLive(v *ActiveContextTimeToLive) *ActiveContext {
+	s.TimeToLive = v
+	return s
+}
+
+// The length of time or number of turns that a context remains active.
+type ActiveContextTimeToLive struct {
+	_ struct{} `type:"structure"`
+
+	// The number of seconds that the context should be active after it is first
+	// sent in a PostContent or PostText response. You can set the value between
+	// 5 and 86,400 seconds (24 hours).
+	TimeToLiveInSeconds *int64 `locationName:"timeToLiveInSeconds" min:"5" type:"integer"`
+
+	// The number of conversation turns that the context should be active. A conversation
+	// turn is one PostContent or PostText request and the corresponding response
+	// from Amazon Lex.
+	TurnsToLive *int64 `locationName:"turnsToLive" min:"1" type:"integer"`
+}
+
+// String returns the string representation
+func (s ActiveContextTimeToLive) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActiveContextTimeToLive) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActiveContextTimeToLive) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActiveContextTimeToLive"}
+	if s.TimeToLiveInSeconds != nil && *s.TimeToLiveInSeconds < 5 {
+		invalidParams.Add(request.NewErrParamMinValue("TimeToLiveInSeconds", 5))
+	}
+	if s.TurnsToLive != nil && *s.TurnsToLive < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("TurnsToLive", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetTimeToLiveInSeconds sets the TimeToLiveInSeconds field's value.
+func (s *ActiveContextTimeToLive) SetTimeToLiveInSeconds(v int64) *ActiveContextTimeToLive {
+	s.TimeToLiveInSeconds = &v
+	return s
+}
+
+// SetTurnsToLive sets the TurnsToLive field's value.
+func (s *ActiveContextTimeToLive) SetTurnsToLive(v int64) *ActiveContextTimeToLive {
+	s.TurnsToLive = &v
+	return s
+}
+
 // Either the Amazon Lex bot is still building, or one of the dependent services
 // (Amazon Polly, AWS Lambda) failed with an internal service error.
 type BadGatewayException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -656,17 +788,17 @@ func (s BadGatewayException) GoString() string {
 
 func newErrorBadGatewayException(v protocol.ResponseMetadata) error {
 	return &BadGatewayException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BadGatewayException) Code() string {
+func (s *BadGatewayException) Code() string {
 	return "BadGatewayException"
 }
 
 // Message returns the exception's message.
-func (s BadGatewayException) Message() string {
+func (s *BadGatewayException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -674,29 +806,29 @@ func (s BadGatewayException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BadGatewayException) OrigErr() error {
+func (s *BadGatewayException) OrigErr() error {
 	return nil
 }
 
-func (s BadGatewayException) Error() string {
+func (s *BadGatewayException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BadGatewayException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BadGatewayException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BadGatewayException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BadGatewayException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Request validation failed, there is no usable message in the context, or
 // the bot build failed, is still in progress, or contains unbuilt changes.
 type BadRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -713,17 +845,17 @@ func (s BadRequestException) GoString() string {
 
 func newErrorBadRequestException(v protocol.ResponseMetadata) error {
 	return &BadRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BadRequestException) Code() string {
+func (s *BadRequestException) Code() string {
 	return "BadRequestException"
 }
 
 // Message returns the exception's message.
-func (s BadRequestException) Message() string {
+func (s *BadRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -731,22 +863,22 @@ func (s BadRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BadRequestException) OrigErr() error {
+func (s *BadRequestException) OrigErr() error {
 	return nil
 }
 
-func (s BadRequestException) Error() string {
+func (s *BadRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BadRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BadRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BadRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BadRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents an option to be shown on the client platform (Facebook, Slack,
@@ -791,8 +923,8 @@ func (s *Button) SetValue(v string) *Button {
 
 // Two clients are using the same AWS account, Amazon Lex bot, and user ID.
 type ConflictException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -809,17 +941,17 @@ func (s ConflictException) GoString() string {
 
 func newErrorConflictException(v protocol.ResponseMetadata) error {
 	return &ConflictException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConflictException) Code() string {
+func (s *ConflictException) Code() string {
 	return "ConflictException"
 }
 
 // Message returns the exception's message.
-func (s ConflictException) Message() string {
+func (s *ConflictException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -827,22 +959,22 @@ func (s ConflictException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConflictException) OrigErr() error {
+func (s *ConflictException) OrigErr() error {
 	return nil
 }
 
-func (s ConflictException) Error() string {
+func (s *ConflictException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConflictException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConflictException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type DeleteSessionInput struct {
@@ -981,8 +1113,8 @@ func (s *DeleteSessionOutput) SetUserId(v string) *DeleteSessionOutput {
 //    * If a fulfillment Lambda function returns a Delegate dialog action without
 //    removing any slot values.
 type DependencyFailedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -999,17 +1131,17 @@ func (s DependencyFailedException) GoString() string {
 
 func newErrorDependencyFailedException(v protocol.ResponseMetadata) error {
 	return &DependencyFailedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s DependencyFailedException) Code() string {
+func (s *DependencyFailedException) Code() string {
 	return "DependencyFailedException"
 }
 
 // Message returns the exception's message.
-func (s DependencyFailedException) Message() string {
+func (s *DependencyFailedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1017,22 +1149,22 @@ func (s DependencyFailedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s DependencyFailedException) OrigErr() error {
+func (s *DependencyFailedException) OrigErr() error {
 	return nil
 }
 
-func (s DependencyFailedException) Error() string {
+func (s *DependencyFailedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s DependencyFailedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *DependencyFailedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s DependencyFailedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *DependencyFailedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Describes the next action that the bot should take in its interaction with
@@ -1323,6 +1455,13 @@ func (s *GetSessionInput) SetUserId(v string) *GetSessionInput {
 type GetSessionOutput struct {
 	_ struct{} `type:"structure"`
 
+	// A list of active contexts for the session. A context can be set when an intent
+	// is fulfilled or by calling the PostContent, PostText, or PutSession operation.
+	//
+	// You can use a context to control the intents that can follow up an intent,
+	// or to modify the operation of your application.
+	ActiveContexts []*ActiveContext `locationName:"activeContexts" type:"list" sensitive:"true"`
+
 	// Describes the current state of the bot.
 	DialogAction *DialogAction `locationName:"dialogAction" type:"structure"`
 
@@ -1354,6 +1493,12 @@ func (s GetSessionOutput) GoString() string {
 	return s.String()
 }
 
+// SetActiveContexts sets the ActiveContexts field's value.
+func (s *GetSessionOutput) SetActiveContexts(v []*ActiveContext) *GetSessionOutput {
+	s.ActiveContexts = v
+	return s
+}
+
 // SetDialogAction sets the DialogAction field's value.
 func (s *GetSessionOutput) SetDialogAction(v *DialogAction) *GetSessionOutput {
 	s.DialogAction = v
@@ -1375,6 +1520,33 @@ func (s *GetSessionOutput) SetSessionAttributes(v map[string]*string) *GetSessio
 // SetSessionId sets the SessionId field's value.
 func (s *GetSessionOutput) SetSessionId(v string) *GetSessionOutput {
 	s.SessionId = &v
+	return s
+}
+
+// Provides a score that indicates the confidence that Amazon Lex has that an
+// intent is the one that satisfies the user's intent.
+type IntentConfidence struct {
+	_ struct{} `type:"structure"`
+
+	// A score that indicates how confident Amazon Lex is that an intent satisfies
+	// the user's intent. Ranges between 0.00 and 1.00. Higher scores indicate higher
+	// confidence.
+	Score *float64 `locationName:"score" type:"double"`
+}
+
+// String returns the string representation
+func (s IntentConfidence) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s IntentConfidence) GoString() string {
+	return s.String()
+}
+
+// SetScore sets the Score field's value.
+func (s *IntentConfidence) SetScore(v float64) *IntentConfidence {
+	s.Score = &v
 	return s
 }
 
@@ -1518,8 +1690,8 @@ func (s *IntentSummary) SetSlots(v map[string]*string) *IntentSummary {
 
 // Internal service error. Retry the call.
 type InternalFailureException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1536,17 +1708,17 @@ func (s InternalFailureException) GoString() string {
 
 func newErrorInternalFailureException(v protocol.ResponseMetadata) error {
 	return &InternalFailureException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalFailureException) Code() string {
+func (s *InternalFailureException) Code() string {
 	return "InternalFailureException"
 }
 
 // Message returns the exception's message.
-func (s InternalFailureException) Message() string {
+func (s *InternalFailureException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1554,28 +1726,28 @@ func (s InternalFailureException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalFailureException) OrigErr() error {
+func (s *InternalFailureException) OrigErr() error {
 	return nil
 }
 
-func (s InternalFailureException) Error() string {
+func (s *InternalFailureException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalFailureException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalFailureException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalFailureException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalFailureException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Exceeded a limit.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -1594,17 +1766,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1612,28 +1784,28 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // This exception is not used.
 type LoopDetectedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1650,17 +1822,17 @@ func (s LoopDetectedException) GoString() string {
 
 func newErrorLoopDetectedException(v protocol.ResponseMetadata) error {
 	return &LoopDetectedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LoopDetectedException) Code() string {
+func (s *LoopDetectedException) Code() string {
 	return "LoopDetectedException"
 }
 
 // Message returns the exception's message.
-func (s LoopDetectedException) Message() string {
+func (s *LoopDetectedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1668,28 +1840,28 @@ func (s LoopDetectedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LoopDetectedException) OrigErr() error {
+func (s *LoopDetectedException) OrigErr() error {
 	return nil
 }
 
-func (s LoopDetectedException) Error() string {
+func (s *LoopDetectedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LoopDetectedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LoopDetectedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LoopDetectedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LoopDetectedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The accept header in the request does not have a valid value.
 type NotAcceptableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1706,17 +1878,17 @@ func (s NotAcceptableException) GoString() string {
 
 func newErrorNotAcceptableException(v protocol.ResponseMetadata) error {
 	return &NotAcceptableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotAcceptableException) Code() string {
+func (s *NotAcceptableException) Code() string {
 	return "NotAcceptableException"
 }
 
 // Message returns the exception's message.
-func (s NotAcceptableException) Message() string {
+func (s *NotAcceptableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1724,29 +1896,29 @@ func (s NotAcceptableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotAcceptableException) OrigErr() error {
+func (s *NotAcceptableException) OrigErr() error {
 	return nil
 }
 
-func (s NotAcceptableException) Error() string {
+func (s *NotAcceptableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotAcceptableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotAcceptableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotAcceptableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotAcceptableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The resource (such as the Amazon Lex bot or an alias) that is referred to
 // is not found.
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1763,17 +1935,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1781,22 +1953,22 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type PostContentInput struct {
@@ -1821,6 +1993,14 @@ type PostContentInput struct {
 	//    * The following are the accepted values: audio/mpeg audio/ogg audio/pcm
 	//    text/plain; charset=utf-8 audio/* (defaults to mpeg)
 	Accept *string `location:"header" locationName:"Accept" type:"string"`
+
+	// A list of contexts active for the request. A context can be activated when
+	// a previous intent is fulfilled, or by including the context in the request,
+	//
+	// If you don't specify a list of contexts, Amazon Lex will use the current
+	// list of contexts for the session. If you specify an empty list, all contexts
+	// for the session are cleared.
+	ActiveContexts aws.JSONValue `location:"header" locationName:"x-amz-lex-active-contexts" type:"jsonvalue"`
 
 	// Alias of the Amazon Lex bot.
 	//
@@ -1965,6 +2145,12 @@ func (s *PostContentInput) SetAccept(v string) *PostContentInput {
 	return s
 }
 
+// SetActiveContexts sets the ActiveContexts field's value.
+func (s *PostContentInput) SetActiveContexts(v aws.JSONValue) *PostContentInput {
+	s.ActiveContexts = v
+	return s
+}
+
 // SetBotAlias sets the BotAlias field's value.
 func (s *PostContentInput) SetBotAlias(v string) *PostContentInput {
 	s.BotAlias = &v
@@ -2010,6 +2196,20 @@ func (s *PostContentInput) SetUserId(v string) *PostContentInput {
 type PostContentOutput struct {
 	_ struct{} `type:"structure" payload:"AudioStream"`
 
+	// A list of active contexts for the session. A context can be set when an intent
+	// is fulfilled or by calling the PostContent, PostText, or PutSession operation.
+	//
+	// You can use a context to control the intents that can follow up an intent,
+	// or to modify the operation of your application.
+	ActiveContexts aws.JSONValue `location:"header" locationName:"x-amz-lex-active-contexts" type:"jsonvalue"`
+
+	// One to four alternative intents that may be applicable to the user's intent.
+	//
+	// Each alternative includes a score that indicates how confident Amazon Lex
+	// is that the intent matches the user's intent. The intents are sorted by the
+	// confidence score.
+	AlternativeIntents aws.JSONValue `location:"header" locationName:"x-amz-lex-alternative-intents" type:"jsonvalue"`
+
 	// The prompt (or statement) to convey to the user. This is based on the bot
 	// configuration and context. For example, if Amazon Lex did not understand
 	// the user intent, it sends the clarificationPrompt configured for the bot.
@@ -2018,6 +2218,11 @@ type PostContentOutput struct {
 	// function successfully fulfilled the intent, and sent a message to convey
 	// to the user. Then Amazon Lex sends that message in the response.
 	AudioStream io.ReadCloser `locationName:"audioStream" type:"blob"`
+
+	// The version of the bot that responded to the conversation. You can use this
+	// information to help determine if one version of a bot is performing better
+	// than another version.
+	BotVersion *string `location:"header" locationName:"x-amz-lex-bot-version" min:"1" type:"string"`
 
 	// Content type as specified in the Accept HTTP header in the request.
 	ContentType *string `location:"header" locationName:"Content-Type" type:"string"`
@@ -2060,14 +2265,14 @@ type PostContentOutput struct {
 
 	// The text used to process the request.
 	//
-	// If the input was an audio stream, the inputTranscript field contains the
-	// text extracted from the audio stream. This is the text that is actually processed
-	// to recognize intents and slot values. You can use this information to determine
-	// if Amazon Lex is correctly processing the audio that you send.
-	InputTranscript *string `location:"header" locationName:"x-amz-lex-input-transcript" type:"string"`
-
-	// Current user intent that Amazon Lex is aware of.
-	IntentName *string `location:"header" locationName:"x-amz-lex-intent-name" type:"string"`
+	// If the input was an audio stream, the encodedInputTranscript field contains
+	// the text extracted from the audio stream. This is the text that is actually
+	// processed to recognize intents and slot values. You can use this information
+	// to determine if Amazon Lex is correctly processing the audio that you send.
+	//
+	// The encodedInputTranscript field is base-64 encoded. You must decode the
+	// field before you can use the value.
+	EncodedInputTranscript *string `location:"header" locationName:"x-amz-lex-encoded-input-transcript" type:"string" sensitive:"true"`
 
 	// The message to convey to the user. The message can come from the bot's configuration
 	// or from a Lambda function.
@@ -2087,7 +2292,53 @@ type PostContentOutput struct {
 	//
 	// If the Lambda function returns a message, Amazon Lex passes it to the client
 	// in its response.
-	Message *string `location:"header" locationName:"x-amz-lex-message" min:"1" type:"string" sensitive:"true"`
+	//
+	// The encodedMessage field is base-64 encoded. You must decode the field before
+	// you can use the value.
+	EncodedMessage *string `location:"header" locationName:"x-amz-lex-encoded-message" min:"1" type:"string" sensitive:"true"`
+
+	// The text used to process the request.
+	//
+	// You can use this field only in the de-DE, en-AU, en-GB, en-US, es-419, es-ES,
+	// es-US, fr-CA, fr-FR, and it-IT locales. In all other locales, the inputTranscript
+	// field is null. You should use the encodedInputTranscript field instead.
+	//
+	// If the input was an audio stream, the inputTranscript field contains the
+	// text extracted from the audio stream. This is the text that is actually processed
+	// to recognize intents and slot values. You can use this information to determine
+	// if Amazon Lex is correctly processing the audio that you send.
+	//
+	// Deprecated: The inputTranscript field is deprecated, use the encodedInputTranscript field instead. The inputTranscript field is available only in the de-DE, en-AU, en-GB, en-US, es-419, es-ES, es-US, fr-CA, fr-FR and it-IT locales.
+	InputTranscript *string `location:"header" locationName:"x-amz-lex-input-transcript" deprecated:"true" type:"string"`
+
+	// Current user intent that Amazon Lex is aware of.
+	IntentName *string `location:"header" locationName:"x-amz-lex-intent-name" type:"string"`
+
+	// You can only use this field in the de-DE, en-AU, en-GB, en-US, es-419, es-ES,
+	// es-US, fr-CA, fr-FR, and it-IT locales. In all other locales, the message
+	// field is null. You should use the encodedMessage field instead.
+	//
+	// The message to convey to the user. The message can come from the bot's configuration
+	// or from a Lambda function.
+	//
+	// If the intent is not configured with a Lambda function, or if the Lambda
+	// function returned Delegate as the dialogAction.type in its response, Amazon
+	// Lex decides on the next course of action and selects an appropriate message
+	// from the bot's configuration based on the current interaction context. For
+	// example, if Amazon Lex isn't able to understand user input, it uses a clarification
+	// prompt message.
+	//
+	// When you create an intent you can assign messages to groups. When messages
+	// are assigned to groups Amazon Lex returns one message from each group in
+	// the response. The message field is an escaped JSON string containing the
+	// messages. For more information about the structure of the JSON string returned,
+	// see msg-prompts-formats.
+	//
+	// If the Lambda function returns a message, Amazon Lex passes it to the client
+	// in its response.
+	//
+	// Deprecated: The message field is deprecated, use the encodedMessage field instead. The message field is available only in the de-DE, en-AU, en-GB, en-US, es-419, es-ES, es-US, fr-CA, fr-FR and it-IT locales.
+	Message *string `location:"header" locationName:"x-amz-lex-message" min:"1" deprecated:"true" type:"string" sensitive:"true"`
 
 	// The format of the response message. One of the following values:
 	//
@@ -2102,7 +2353,15 @@ type PostContentOutput struct {
 	//    intent was created.
 	MessageFormat *string `location:"header" locationName:"x-amz-lex-message-format" type:"string" enum:"MessageFormatType"`
 
-	// The sentiment expressed in and utterance.
+	// Provides a score that indicates how confident Amazon Lex is that the returned
+	// intent is the one that matches the user's intent. The score is between 0.0
+	// and 1.0.
+	//
+	// The score is a relative score, not an absolute score. The score may change
+	// based on improvements to Amazon Lex.
+	NluIntentConfidence aws.JSONValue `location:"header" locationName:"x-amz-lex-nlu-intent-confidence" type:"jsonvalue"`
+
+	// The sentiment expressed in an utterance.
 	//
 	// When the bot is configured to send utterances to Amazon Comprehend for sentiment
 	// analysis, this field contains the result of the analysis.
@@ -2142,9 +2401,27 @@ func (s PostContentOutput) GoString() string {
 	return s.String()
 }
 
+// SetActiveContexts sets the ActiveContexts field's value.
+func (s *PostContentOutput) SetActiveContexts(v aws.JSONValue) *PostContentOutput {
+	s.ActiveContexts = v
+	return s
+}
+
+// SetAlternativeIntents sets the AlternativeIntents field's value.
+func (s *PostContentOutput) SetAlternativeIntents(v aws.JSONValue) *PostContentOutput {
+	s.AlternativeIntents = v
+	return s
+}
+
 // SetAudioStream sets the AudioStream field's value.
 func (s *PostContentOutput) SetAudioStream(v io.ReadCloser) *PostContentOutput {
 	s.AudioStream = v
+	return s
+}
+
+// SetBotVersion sets the BotVersion field's value.
+func (s *PostContentOutput) SetBotVersion(v string) *PostContentOutput {
+	s.BotVersion = &v
 	return s
 }
 
@@ -2157,6 +2434,18 @@ func (s *PostContentOutput) SetContentType(v string) *PostContentOutput {
 // SetDialogState sets the DialogState field's value.
 func (s *PostContentOutput) SetDialogState(v string) *PostContentOutput {
 	s.DialogState = &v
+	return s
+}
+
+// SetEncodedInputTranscript sets the EncodedInputTranscript field's value.
+func (s *PostContentOutput) SetEncodedInputTranscript(v string) *PostContentOutput {
+	s.EncodedInputTranscript = &v
+	return s
+}
+
+// SetEncodedMessage sets the EncodedMessage field's value.
+func (s *PostContentOutput) SetEncodedMessage(v string) *PostContentOutput {
+	s.EncodedMessage = &v
 	return s
 }
 
@@ -2181,6 +2470,12 @@ func (s *PostContentOutput) SetMessage(v string) *PostContentOutput {
 // SetMessageFormat sets the MessageFormat field's value.
 func (s *PostContentOutput) SetMessageFormat(v string) *PostContentOutput {
 	s.MessageFormat = &v
+	return s
+}
+
+// SetNluIntentConfidence sets the NluIntentConfidence field's value.
+func (s *PostContentOutput) SetNluIntentConfidence(v aws.JSONValue) *PostContentOutput {
+	s.NluIntentConfidence = v
 	return s
 }
 
@@ -2216,6 +2511,14 @@ func (s *PostContentOutput) SetSlots(v aws.JSONValue) *PostContentOutput {
 
 type PostTextInput struct {
 	_ struct{} `type:"structure"`
+
+	// A list of contexts active for the request. A context can be activated when
+	// a previous intent is fulfilled, or by including the context in the request,
+	//
+	// If you don't specify a list of contexts, Amazon Lex will use the current
+	// list of contexts for the session. If you specify an empty list, all contexts
+	// for the session are cleared.
+	ActiveContexts []*ActiveContext `locationName:"activeContexts" type:"list" sensitive:"true"`
 
 	// The alias of the Amazon Lex bot.
 	//
@@ -2310,11 +2613,27 @@ func (s *PostTextInput) Validate() error {
 	if s.UserId != nil && len(*s.UserId) < 2 {
 		invalidParams.Add(request.NewErrParamMinLen("UserId", 2))
 	}
+	if s.ActiveContexts != nil {
+		for i, v := range s.ActiveContexts {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "ActiveContexts", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetActiveContexts sets the ActiveContexts field's value.
+func (s *PostTextInput) SetActiveContexts(v []*ActiveContext) *PostTextInput {
+	s.ActiveContexts = v
+	return s
 }
 
 // SetBotAlias sets the BotAlias field's value.
@@ -2355,6 +2674,25 @@ func (s *PostTextInput) SetUserId(v string) *PostTextInput {
 
 type PostTextOutput struct {
 	_ struct{} `type:"structure"`
+
+	// A list of active contexts for the session. A context can be set when an intent
+	// is fulfilled or by calling the PostContent, PostText, or PutSession operation.
+	//
+	// You can use a context to control the intents that can follow up an intent,
+	// or to modify the operation of your application.
+	ActiveContexts []*ActiveContext `locationName:"activeContexts" type:"list" sensitive:"true"`
+
+	// One to four alternative intents that may be applicable to the user's intent.
+	//
+	// Each alternative includes a score that indicates how confident Amazon Lex
+	// is that the intent matches the user's intent. The intents are sorted by the
+	// confidence score.
+	AlternativeIntents []*PredictedIntent `locationName:"alternativeIntents" type:"list"`
+
+	// The version of the bot that responded to the conversation. You can use this
+	// information to help determine if one version of a bot is performing better
+	// than another version.
+	BotVersion *string `locationName:"botVersion" min:"1" type:"string"`
 
 	// Identifies the current state of the user interaction. Amazon Lex returns
 	// one of the following values as dialogState. The client can optionally use
@@ -2429,6 +2767,14 @@ type PostTextOutput struct {
 	//    intent was created.
 	MessageFormat *string `locationName:"messageFormat" type:"string" enum:"MessageFormatType"`
 
+	// Provides a score that indicates how confident Amazon Lex is that the returned
+	// intent is the one that matches the user's intent. The score is between 0.0
+	// and 1.0. For more information, see Confidence Scores (https://docs.aws.amazon.com/lex/latest/dg/confidence-scores.html).
+	//
+	// The score is a relative score, not an absolute score. The score may change
+	// based on improvements to Amazon Lex.
+	NluIntentConfidence *IntentConfidence `locationName:"nluIntentConfidence" type:"structure"`
+
 	// Represents the options that the user has to respond to the current prompt.
 	// Response Card can come from the bot configuration (in the Amazon Lex console,
 	// choose the settings button next to a slot) or from a code hook (Lambda function).
@@ -2473,6 +2819,24 @@ func (s PostTextOutput) GoString() string {
 	return s.String()
 }
 
+// SetActiveContexts sets the ActiveContexts field's value.
+func (s *PostTextOutput) SetActiveContexts(v []*ActiveContext) *PostTextOutput {
+	s.ActiveContexts = v
+	return s
+}
+
+// SetAlternativeIntents sets the AlternativeIntents field's value.
+func (s *PostTextOutput) SetAlternativeIntents(v []*PredictedIntent) *PostTextOutput {
+	s.AlternativeIntents = v
+	return s
+}
+
+// SetBotVersion sets the BotVersion field's value.
+func (s *PostTextOutput) SetBotVersion(v string) *PostTextOutput {
+	s.BotVersion = &v
+	return s
+}
+
 // SetDialogState sets the DialogState field's value.
 func (s *PostTextOutput) SetDialogState(v string) *PostTextOutput {
 	s.DialogState = &v
@@ -2494,6 +2858,12 @@ func (s *PostTextOutput) SetMessage(v string) *PostTextOutput {
 // SetMessageFormat sets the MessageFormat field's value.
 func (s *PostTextOutput) SetMessageFormat(v string) *PostTextOutput {
 	s.MessageFormat = &v
+	return s
+}
+
+// SetNluIntentConfidence sets the NluIntentConfidence field's value.
+func (s *PostTextOutput) SetNluIntentConfidence(v *IntentConfidence) *PostTextOutput {
+	s.NluIntentConfidence = v
 	return s
 }
 
@@ -2533,6 +2903,51 @@ func (s *PostTextOutput) SetSlots(v map[string]*string) *PostTextOutput {
 	return s
 }
 
+// An intent that Amazon Lex suggests satisfies the user's intent. Includes
+// the name of the intent, the confidence that Amazon Lex has that the user's
+// intent is satisfied, and the slots defined for the intent.
+type PredictedIntent struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the intent that Amazon Lex suggests satisfies the user's intent.
+	IntentName *string `locationName:"intentName" type:"string"`
+
+	// Indicates how confident Amazon Lex is that an intent satisfies the user's
+	// intent.
+	NluIntentConfidence *IntentConfidence `locationName:"nluIntentConfidence" type:"structure"`
+
+	// The slot and slot values associated with the predicted intent.
+	Slots map[string]*string `locationName:"slots" type:"map" sensitive:"true"`
+}
+
+// String returns the string representation
+func (s PredictedIntent) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PredictedIntent) GoString() string {
+	return s.String()
+}
+
+// SetIntentName sets the IntentName field's value.
+func (s *PredictedIntent) SetIntentName(v string) *PredictedIntent {
+	s.IntentName = &v
+	return s
+}
+
+// SetNluIntentConfidence sets the NluIntentConfidence field's value.
+func (s *PredictedIntent) SetNluIntentConfidence(v *IntentConfidence) *PredictedIntent {
+	s.NluIntentConfidence = v
+	return s
+}
+
+// SetSlots sets the Slots field's value.
+func (s *PredictedIntent) SetSlots(v map[string]*string) *PredictedIntent {
+	s.Slots = v
+	return s
+}
+
 type PutSessionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2553,6 +2968,14 @@ type PutSessionInput struct {
 	//    * The following are the accepted values: audio/mpeg audio/ogg audio/pcm
 	//    audio/* (defaults to mpeg) text/plain; charset=utf-8
 	Accept *string `location:"header" locationName:"Accept" type:"string"`
+
+	// A list of contexts active for the request. A context can be activated when
+	// a previous intent is fulfilled, or by including the context in the request,
+	//
+	// If you don't specify a list of contexts, Amazon Lex will use the current
+	// list of contexts for the session. If you specify an empty list, all contexts
+	// for the session are cleared.
+	ActiveContexts []*ActiveContext `locationName:"activeContexts" type:"list" sensitive:"true"`
 
 	// The alias in use for the bot that contains the session data.
 	//
@@ -2631,6 +3054,16 @@ func (s *PutSessionInput) Validate() error {
 	if s.UserId != nil && len(*s.UserId) < 2 {
 		invalidParams.Add(request.NewErrParamMinLen("UserId", 2))
 	}
+	if s.ActiveContexts != nil {
+		for i, v := range s.ActiveContexts {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "ActiveContexts", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 	if s.DialogAction != nil {
 		if err := s.DialogAction.Validate(); err != nil {
 			invalidParams.AddNested("DialogAction", err.(request.ErrInvalidParams))
@@ -2656,6 +3089,12 @@ func (s *PutSessionInput) Validate() error {
 // SetAccept sets the Accept field's value.
 func (s *PutSessionInput) SetAccept(v string) *PutSessionInput {
 	s.Accept = &v
+	return s
+}
+
+// SetActiveContexts sets the ActiveContexts field's value.
+func (s *PutSessionInput) SetActiveContexts(v []*ActiveContext) *PutSessionInput {
+	s.ActiveContexts = v
 	return s
 }
 
@@ -2698,6 +3137,9 @@ func (s *PutSessionInput) SetUserId(v string) *PutSessionInput {
 type PutSessionOutput struct {
 	_ struct{} `type:"structure" payload:"AudioStream"`
 
+	// A list of active contexts for the session.
+	ActiveContexts aws.JSONValue `location:"header" locationName:"x-amz-lex-active-contexts" type:"jsonvalue"`
+
 	// The audio version of the message to convey to the user.
 	AudioStream io.ReadCloser `locationName:"audioStream" type:"blob"`
 
@@ -2723,11 +3165,23 @@ type PutSessionOutput struct {
 	//    * ReadyForFulfillment - Conveys that the client has to fulfill the intent.
 	DialogState *string `location:"header" locationName:"x-amz-lex-dialog-state" type:"string" enum:"DialogState"`
 
+	// The next message that should be presented to the user.
+	//
+	// The encodedMessage field is base-64 encoded. You must decode the field before
+	// you can use the value.
+	EncodedMessage *string `location:"header" locationName:"x-amz-lex-encoded-message" min:"1" type:"string" sensitive:"true"`
+
 	// The name of the current intent.
 	IntentName *string `location:"header" locationName:"x-amz-lex-intent-name" type:"string"`
 
 	// The next message that should be presented to the user.
-	Message *string `location:"header" locationName:"x-amz-lex-message" min:"1" type:"string" sensitive:"true"`
+	//
+	// You can only use this field in the de-DE, en-AU, en-GB, en-US, es-419, es-ES,
+	// es-US, fr-CA, fr-FR, and it-IT locales. In all other locales, the message
+	// field is null. You should use the encodedMessage field instead.
+	//
+	// Deprecated: The message field is deprecated, use the encodedMessage field instead. The message field is available only in the de-DE, en-AU, en-GB, en-US, es-419, es-ES, es-US, fr-CA, fr-FR and it-IT locales.
+	Message *string `location:"header" locationName:"x-amz-lex-message" min:"1" deprecated:"true" type:"string" sensitive:"true"`
 
 	// The format of the response message. One of the following values:
 	//
@@ -2776,6 +3230,12 @@ func (s PutSessionOutput) GoString() string {
 	return s.String()
 }
 
+// SetActiveContexts sets the ActiveContexts field's value.
+func (s *PutSessionOutput) SetActiveContexts(v aws.JSONValue) *PutSessionOutput {
+	s.ActiveContexts = v
+	return s
+}
+
 // SetAudioStream sets the AudioStream field's value.
 func (s *PutSessionOutput) SetAudioStream(v io.ReadCloser) *PutSessionOutput {
 	s.AudioStream = v
@@ -2791,6 +3251,12 @@ func (s *PutSessionOutput) SetContentType(v string) *PutSessionOutput {
 // SetDialogState sets the DialogState field's value.
 func (s *PutSessionOutput) SetDialogState(v string) *PutSessionOutput {
 	s.DialogState = &v
+	return s
+}
+
+// SetEncodedMessage sets the EncodedMessage field's value.
+func (s *PutSessionOutput) SetEncodedMessage(v string) *PutSessionOutput {
+	s.EncodedMessage = &v
 	return s
 }
 
@@ -2838,8 +3304,8 @@ func (s *PutSessionOutput) SetSlots(v aws.JSONValue) *PutSessionOutput {
 
 // The input speech is too long.
 type RequestTimeoutException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2856,17 +3322,17 @@ func (s RequestTimeoutException) GoString() string {
 
 func newErrorRequestTimeoutException(v protocol.ResponseMetadata) error {
 	return &RequestTimeoutException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s RequestTimeoutException) Code() string {
+func (s *RequestTimeoutException) Code() string {
 	return "RequestTimeoutException"
 }
 
 // Message returns the exception's message.
-func (s RequestTimeoutException) Message() string {
+func (s *RequestTimeoutException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2874,22 +3340,22 @@ func (s RequestTimeoutException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s RequestTimeoutException) OrigErr() error {
+func (s *RequestTimeoutException) OrigErr() error {
 	return nil
 }
 
-func (s RequestTimeoutException) Error() string {
+func (s *RequestTimeoutException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s RequestTimeoutException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *RequestTimeoutException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s RequestTimeoutException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *RequestTimeoutException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // If you configure a response card when creating your bots, Amazon Lex substitutes
@@ -2976,8 +3442,8 @@ func (s *SentimentResponse) SetSentimentScore(v string) *SentimentResponse {
 
 // The Content-Type header (PostContent API) has an invalid value.
 type UnsupportedMediaTypeException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2994,17 +3460,17 @@ func (s UnsupportedMediaTypeException) GoString() string {
 
 func newErrorUnsupportedMediaTypeException(v protocol.ResponseMetadata) error {
 	return &UnsupportedMediaTypeException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnsupportedMediaTypeException) Code() string {
+func (s *UnsupportedMediaTypeException) Code() string {
 	return "UnsupportedMediaTypeException"
 }
 
 // Message returns the exception's message.
-func (s UnsupportedMediaTypeException) Message() string {
+func (s *UnsupportedMediaTypeException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3012,22 +3478,22 @@ func (s UnsupportedMediaTypeException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnsupportedMediaTypeException) OrigErr() error {
+func (s *UnsupportedMediaTypeException) OrigErr() error {
 	return nil
 }
 
-func (s UnsupportedMediaTypeException) Error() string {
+func (s *UnsupportedMediaTypeException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnsupportedMediaTypeException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnsupportedMediaTypeException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnsupportedMediaTypeException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnsupportedMediaTypeException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -3041,10 +3507,26 @@ const (
 	ConfirmationStatusDenied = "Denied"
 )
 
+// ConfirmationStatus_Values returns all elements of the ConfirmationStatus enum
+func ConfirmationStatus_Values() []string {
+	return []string{
+		ConfirmationStatusNone,
+		ConfirmationStatusConfirmed,
+		ConfirmationStatusDenied,
+	}
+}
+
 const (
 	// ContentTypeApplicationVndAmazonawsCardGeneric is a ContentType enum value
 	ContentTypeApplicationVndAmazonawsCardGeneric = "application/vnd.amazonaws.card.generic"
 )
+
+// ContentType_Values returns all elements of the ContentType enum
+func ContentType_Values() []string {
+	return []string{
+		ContentTypeApplicationVndAmazonawsCardGeneric,
+	}
+}
 
 const (
 	// DialogActionTypeElicitIntent is a DialogActionType enum value
@@ -3062,6 +3544,17 @@ const (
 	// DialogActionTypeDelegate is a DialogActionType enum value
 	DialogActionTypeDelegate = "Delegate"
 )
+
+// DialogActionType_Values returns all elements of the DialogActionType enum
+func DialogActionType_Values() []string {
+	return []string{
+		DialogActionTypeElicitIntent,
+		DialogActionTypeConfirmIntent,
+		DialogActionTypeElicitSlot,
+		DialogActionTypeClose,
+		DialogActionTypeDelegate,
+	}
+}
 
 const (
 	// DialogStateElicitIntent is a DialogState enum value
@@ -3083,6 +3576,18 @@ const (
 	DialogStateFailed = "Failed"
 )
 
+// DialogState_Values returns all elements of the DialogState enum
+func DialogState_Values() []string {
+	return []string{
+		DialogStateElicitIntent,
+		DialogStateConfirmIntent,
+		DialogStateElicitSlot,
+		DialogStateFulfilled,
+		DialogStateReadyForFulfillment,
+		DialogStateFailed,
+	}
+}
+
 const (
 	// FulfillmentStateFulfilled is a FulfillmentState enum value
 	FulfillmentStateFulfilled = "Fulfilled"
@@ -3093,6 +3598,15 @@ const (
 	// FulfillmentStateReadyForFulfillment is a FulfillmentState enum value
 	FulfillmentStateReadyForFulfillment = "ReadyForFulfillment"
 )
+
+// FulfillmentState_Values returns all elements of the FulfillmentState enum
+func FulfillmentState_Values() []string {
+	return []string{
+		FulfillmentStateFulfilled,
+		FulfillmentStateFailed,
+		FulfillmentStateReadyForFulfillment,
+	}
+}
 
 const (
 	// MessageFormatTypePlainText is a MessageFormatType enum value
@@ -3107,3 +3621,13 @@ const (
 	// MessageFormatTypeComposite is a MessageFormatType enum value
 	MessageFormatTypeComposite = "Composite"
 )
+
+// MessageFormatType_Values returns all elements of the MessageFormatType enum
+func MessageFormatType_Values() []string {
+	return []string{
+		MessageFormatTypePlainText,
+		MessageFormatTypeCustomPayload,
+		MessageFormatTypeSsml,
+		MessageFormatTypeComposite,
+	}
+}

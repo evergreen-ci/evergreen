@@ -4624,6 +4624,9 @@ func (c *APIGateway) GetDeploymentsRequest(input *GetDeploymentsInput) (req *req
 //   The submitted request is not valid, for example, the input is incomplete
 //   or incorrect. See the accompanying error message for details.
 //
+//   * NotFoundException
+//   The requested resource is not found. Make sure that the request URI is correct.
+//
 //   * UnauthorizedException
 //   The request is denied because the caller has insufficient permissions.
 //
@@ -11339,7 +11342,9 @@ func (c *APIGateway) UpdateVpcLinkWithContext(ctx aws.Context, input *UpdateVpcL
 type AccessLogSettings struct {
 	_ struct{} `type:"structure"`
 
-	// The ARN of the CloudWatch Logs log group to receive access logs.
+	// The Amazon Resource Name (ARN) of the CloudWatch Logs log group or Kinesis
+	// Data Firehose delivery stream to receive access logs. If you specify a Kinesis
+	// Data Firehose delivery stream, the stream name must begin with amazon-apigateway-.
 	DestinationArn *string `locationName:"destinationArn" type:"string"`
 
 	// A single line format of the access logs of data, as specified by selected
@@ -11767,8 +11772,8 @@ func (s *Authorizer) SetType(v string) *Authorizer {
 // The submitted request is not valid, for example, the input is incomplete
 // or incorrect. See the accompanying error message for details.
 type BadRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -11785,17 +11790,17 @@ func (s BadRequestException) GoString() string {
 
 func newErrorBadRequestException(v protocol.ResponseMetadata) error {
 	return &BadRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BadRequestException) Code() string {
+func (s *BadRequestException) Code() string {
 	return "BadRequestException"
 }
 
 // Message returns the exception's message.
-func (s BadRequestException) Message() string {
+func (s *BadRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -11803,22 +11808,22 @@ func (s BadRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BadRequestException) OrigErr() error {
+func (s *BadRequestException) OrigErr() error {
 	return nil
 }
 
-func (s BadRequestException) Error() string {
+func (s *BadRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BadRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BadRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BadRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BadRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the base path that callers of the API must provide as part of
@@ -12004,8 +12009,8 @@ func (s *ClientCertificate) SetTags(v map[string]*string) *ClientCertificate {
 // The request configuration has conflicts. For details, see the accompanying
 // error message.
 type ConflictException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -12022,17 +12027,17 @@ func (s ConflictException) GoString() string {
 
 func newErrorConflictException(v protocol.ResponseMetadata) error {
 	return &ConflictException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConflictException) Code() string {
+func (s *ConflictException) Code() string {
 	return "ConflictException"
 }
 
 // Message returns the exception's message.
-func (s ConflictException) Message() string {
+func (s *ConflictException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12040,22 +12045,22 @@ func (s ConflictException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConflictException) OrigErr() error {
+func (s *ConflictException) OrigErr() error {
 	return nil
 }
 
-func (s ConflictException) Error() string {
+func (s *ConflictException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConflictException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConflictException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Request to create an ApiKey resource.
@@ -12073,7 +12078,8 @@ type CreateApiKeyInput struct {
 	Enabled *bool `locationName:"enabled" type:"boolean"`
 
 	// Specifies whether (true) or not (false) the key identifier is distinct from
-	// the created API key value.
+	// the created API key value. This parameter is deprecated and should not be
+	// used.
 	GenerateDistinctId *bool `locationName:"generateDistinctId" type:"boolean"`
 
 	// The name of the ApiKey.
@@ -12346,8 +12352,8 @@ type CreateBasePathMappingInput struct {
 	RestApiId *string `locationName:"restApiId" type:"string" required:"true"`
 
 	// The name of the API's stage that you want to use for this mapping. Specify
-	// '(none)' if you do not want callers to explicitly specify the stage name
-	// after any base path name.
+	// '(none)' if you want callers to explicitly specify the stage name after any
+	// base path name.
 	Stage *string `locationName:"stage" type:"string"`
 }
 
@@ -12713,6 +12719,11 @@ type CreateDomainNameInput struct {
 	// of the domain name.
 	EndpointConfiguration *EndpointConfiguration `locationName:"endpointConfiguration" type:"structure"`
 
+	// If specified, API Gateway performs two-way authentication between the client
+	// and the server. Clients must present a trusted certificate to access your
+	// custom domain name.
+	MutualTlsAuthentication *MutualTlsAuthenticationInput `locationName:"mutualTlsAuthentication" type:"structure"`
+
 	// The reference to an AWS-managed certificate that will be used by regional
 	// endpoint for this domain name. AWS Certificate Manager is the only supported
 	// source.
@@ -12794,6 +12805,12 @@ func (s *CreateDomainNameInput) SetDomainName(v string) *CreateDomainNameInput {
 // SetEndpointConfiguration sets the EndpointConfiguration field's value.
 func (s *CreateDomainNameInput) SetEndpointConfiguration(v *EndpointConfiguration) *CreateDomainNameInput {
 	s.EndpointConfiguration = v
+	return s
+}
+
+// SetMutualTlsAuthentication sets the MutualTlsAuthentication field's value.
+func (s *CreateDomainNameInput) SetMutualTlsAuthentication(v *MutualTlsAuthenticationInput) *CreateDomainNameInput {
+	s.MutualTlsAuthentication = v
 	return s
 }
 
@@ -13076,6 +13093,12 @@ type CreateRestApiInput struct {
 	// The description of the RestApi.
 	Description *string `locationName:"description" type:"string"`
 
+	// Specifies whether clients can invoke your API by using the default execute-api
+	// endpoint. By default, clients can invoke your API with the default https://{api_id}.execute-api.{region}.amazonaws.com
+	// endpoint. To require that clients use a custom domain name to invoke your
+	// API, disable the default endpoint.
+	DisableExecuteApiEndpoint *bool `locationName:"disableExecuteApiEndpoint" type:"boolean"`
+
 	// The endpoint configuration of this RestApi showing the endpoint types of
 	// the API.
 	EndpointConfiguration *EndpointConfiguration `locationName:"endpointConfiguration" type:"structure"`
@@ -13149,6 +13172,12 @@ func (s *CreateRestApiInput) SetCloneFrom(v string) *CreateRestApiInput {
 // SetDescription sets the Description field's value.
 func (s *CreateRestApiInput) SetDescription(v string) *CreateRestApiInput {
 	s.Description = &v
+	return s
+}
+
+// SetDisableExecuteApiEndpoint sets the DisableExecuteApiEndpoint field's value.
+func (s *CreateRestApiInput) SetDisableExecuteApiEndpoint(v bool) *CreateRestApiInput {
+	s.DisableExecuteApiEndpoint = &v
 	return s
 }
 
@@ -13516,8 +13545,8 @@ type CreateVpcLinkInput struct {
 	// tag value can be up to 256 characters.
 	Tags map[string]*string `locationName:"tags" type:"map"`
 
-	// [Required] The ARNs of network load balancers of the VPC targeted by the
-	// VPC link. The network load balancers must be owned by the same AWS account
+	// [Required] The ARN of the network load balancer of the VPC targeted by the
+	// VPC link. The network load balancer must be owned by the same AWS account
 	// of the API owner.
 	//
 	// TargetArns is a required field
@@ -15533,6 +15562,12 @@ type DomainName struct {
 	// of the domain name.
 	EndpointConfiguration *EndpointConfiguration `locationName:"endpointConfiguration" type:"structure"`
 
+	// The mutual TLS authentication configuration for a custom domain name. If
+	// specified, API Gateway performs two-way authentication between the client
+	// and the server. Clients must present a trusted certificate to access your
+	// API.
+	MutualTlsAuthentication *MutualTlsAuthentication `locationName:"mutualTlsAuthentication" type:"structure"`
+
 	// The reference to an AWS-managed certificate that will be used for validating
 	// the regional domain name. AWS Certificate Manager is the only supported source.
 	RegionalCertificateArn *string `locationName:"regionalCertificateArn" type:"string"`
@@ -15621,6 +15656,12 @@ func (s *DomainName) SetDomainNameStatusMessage(v string) *DomainName {
 // SetEndpointConfiguration sets the EndpointConfiguration field's value.
 func (s *DomainName) SetEndpointConfiguration(v *EndpointConfiguration) *DomainName {
 	s.EndpointConfiguration = v
+	return s
+}
+
+// SetMutualTlsAuthentication sets the MutualTlsAuthentication field's value.
+func (s *DomainName) SetMutualTlsAuthentication(v *MutualTlsAuthentication) *DomainName {
+	s.MutualTlsAuthentication = v
 	return s
 }
 
@@ -17444,7 +17485,6 @@ func (s *GetGatewayResponsesInput) SetRestApiId(v string) *GetGatewayResponsesIn
 //  AWS4-HMAC-SHA256 Credential={access-key-id}/20170503/us-east-1/apigateway/aws4_request,
 //  SignedHeaders=content-type;host;x-amz-date, Signature=59b42fe54a76a5de8adf2c67baa6d39206f8e9ad49a1d77ccc6a5da3103a398a
 //  Cache-Control: no-cache Postman-Token: 5637af27-dc29-fc5c-9dfe-0645d52cb515
-//
 // Response
 //
 // The successful operation returns the 200 OK status code and a payload similar
@@ -18092,7 +18132,7 @@ func (s *GetModelTemplateInput) SetRestApiId(v string) *GetModelTemplateInput {
 type GetModelTemplateOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The Apache Velocity Template Language (VTL) (https://velocity.apache.org/engine/devel/vtl-reference-guide.html)
+	// The Apache Velocity Template Language (VTL) (https://velocity.apache.org/engine/devel/vtl-reference.html)
 	// template content used for the template resource.
 	Value *string `locationName:"value" type:"string"`
 }
@@ -19047,8 +19087,7 @@ type GetTagsInput struct {
 	// set.
 	Position *string `location:"querystring" locationName:"position" type:"string"`
 
-	// [Required] The ARN of a resource that can be tagged. The resource ARN must
-	// be URL-encoded.
+	// [Required] The ARN of a resource that can be tagged.
 	//
 	// ResourceArn is a required field
 	ResourceArn *string `location:"uri" locationName:"resource_arn" type:"string" required:"true"`
@@ -19845,7 +19884,7 @@ type ImportRestApiInput struct {
 
 	// [Required] The POST request body containing external API definitions. Currently,
 	// only OpenAPI definition JSON/YAML files are supported. The maximum size of
-	// the API definition file is 2MB.
+	// the API definition file is 6MB.
 	//
 	// Body is a required field
 	Body []byte `locationName:"body" type:"blob" required:"true"`
@@ -19934,9 +19973,10 @@ type Integration struct {
 	// Method requestParameters.
 	CacheKeyParameters []*string `locationName:"cacheKeyParameters" type:"list"`
 
-	// An API-specific tag group of related cached parameters. To be valid values
-	// for cacheKeyParameters, these parameters must also be specified for Method
-	// requestParameters.
+	// Specifies a group of related cached parameters. By default, API Gateway uses
+	// the resource ID as the cacheNamespace. You can specify the same cacheNamespace
+	// across resources to return the same cached data for requests to different
+	// resources.
 	CacheNamespace *string `locationName:"cacheNamespace" type:"string"`
 
 	// The (id (https://docs.aws.amazon.com/apigateway/api-reference/resource/vpc-link/#id))
@@ -20040,6 +20080,9 @@ type Integration struct {
 	// Custom timeout between 50 and 29,000 milliseconds. The default value is 29,000
 	// milliseconds or 29 seconds.
 	TimeoutInMillis *int64 `locationName:"timeoutInMillis" type:"integer"`
+
+	// Specifies the TLS configuration for an integration.
+	TlsConfig *TlsConfig `locationName:"tlsConfig" type:"structure"`
 
 	// Specifies an API method integration type. The valid value is one of the following:
 	//
@@ -20176,6 +20219,12 @@ func (s *Integration) SetTimeoutInMillis(v int64) *Integration {
 	return s
 }
 
+// SetTlsConfig sets the TlsConfig field's value.
+func (s *Integration) SetTlsConfig(v *TlsConfig) *Integration {
+	s.TlsConfig = v
+	return s
+}
+
 // SetType sets the Type field's value.
 func (s *Integration) SetType(v string) *Integration {
 	s.Type = &v
@@ -20283,8 +20332,8 @@ func (s *IntegrationResponse) SetStatusCode(v string) *IntegrationResponse {
 
 // The request exceeded the rate limit. Retry after the specified time period.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -20303,17 +20352,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -20321,22 +20370,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents a client-facing interface by which the client calls the API to
@@ -20720,7 +20769,9 @@ type MethodSetting struct {
 
 	// Specifies the logging level for this method, which affects the log entries
 	// pushed to Amazon CloudWatch Logs. The PATCH path for this setting is /{method_setting_key}/logging/loglevel,
-	// and the available levels are OFF, ERROR, and INFO.
+	// and the available levels are OFF, ERROR, and INFO. Choose ERROR to write
+	// only error-level entries to CloudWatch Logs, or choose INFO to include all
+	// ERROR events as well as extra informational events.
 	LoggingLevel *string `locationName:"loggingLevel" type:"string"`
 
 	// Specifies whether Amazon CloudWatch metrics are enabled for this method.
@@ -20928,10 +20979,104 @@ func (s *Model) SetSchema(v string) *Model {
 	return s
 }
 
+// If specified, API Gateway performs two-way authentication between the client
+// and the server. Clients must present a trusted certificate to access your
+// custom domain name.
+type MutualTlsAuthentication struct {
+	_ struct{} `type:"structure"`
+
+	// An Amazon S3 URL that specifies the truststore for mutual TLS authentication,
+	// for example s3://bucket-name/key-name. The truststore can contain certificates
+	// from public or private certificate authorities. To update the truststore,
+	// upload a new version to S3, and then update your custom domain name to use
+	// the new version. To update the truststore, you must have permissions to access
+	// the S3 object.
+	TruststoreUri *string `locationName:"truststoreUri" type:"string"`
+
+	// The version of the S3 object that contains your truststore. To specify a
+	// version, you must have versioning enabled for the S3 bucket.
+	TruststoreVersion *string `locationName:"truststoreVersion" type:"string"`
+
+	// A list of warnings that API Gateway returns while processing your truststore.
+	// Invalid certificates produce warnings. Mutual TLS is still enabled, but some
+	// clients might not be able to access your API. To resolve warnings, upload
+	// a new truststore to S3, and then update you domain name to use the new version.
+	TruststoreWarnings []*string `locationName:"truststoreWarnings" type:"list"`
+}
+
+// String returns the string representation
+func (s MutualTlsAuthentication) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s MutualTlsAuthentication) GoString() string {
+	return s.String()
+}
+
+// SetTruststoreUri sets the TruststoreUri field's value.
+func (s *MutualTlsAuthentication) SetTruststoreUri(v string) *MutualTlsAuthentication {
+	s.TruststoreUri = &v
+	return s
+}
+
+// SetTruststoreVersion sets the TruststoreVersion field's value.
+func (s *MutualTlsAuthentication) SetTruststoreVersion(v string) *MutualTlsAuthentication {
+	s.TruststoreVersion = &v
+	return s
+}
+
+// SetTruststoreWarnings sets the TruststoreWarnings field's value.
+func (s *MutualTlsAuthentication) SetTruststoreWarnings(v []*string) *MutualTlsAuthentication {
+	s.TruststoreWarnings = v
+	return s
+}
+
+// If specified, API Gateway performs two-way authentication between the client
+// and the server. Clients must present a trusted certificate to access your
+// custom domain name.
+type MutualTlsAuthenticationInput struct {
+	_ struct{} `type:"structure"`
+
+	// An Amazon S3 resource ARN that specifies the truststore for mutual TLS authentication,
+	// for example, s3://bucket-name/key-name. The truststore can contain certificates
+	// from public or private certificate authorities. To update the truststore,
+	// upload a new version to S3, and then update your custom domain name to use
+	// the new version. To update the truststore, you must have permissions to access
+	// the S3 object.
+	TruststoreUri *string `locationName:"truststoreUri" type:"string"`
+
+	// The version of the S3 object that contains your truststore. To specify a
+	// version, you must have versioning enabled for the S3 bucket.
+	TruststoreVersion *string `locationName:"truststoreVersion" type:"string"`
+}
+
+// String returns the string representation
+func (s MutualTlsAuthenticationInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s MutualTlsAuthenticationInput) GoString() string {
+	return s.String()
+}
+
+// SetTruststoreUri sets the TruststoreUri field's value.
+func (s *MutualTlsAuthenticationInput) SetTruststoreUri(v string) *MutualTlsAuthenticationInput {
+	s.TruststoreUri = &v
+	return s
+}
+
+// SetTruststoreVersion sets the TruststoreVersion field's value.
+func (s *MutualTlsAuthenticationInput) SetTruststoreVersion(v string) *MutualTlsAuthenticationInput {
+	s.TruststoreVersion = &v
+	return s
+}
+
 // The requested resource is not found. Make sure that the request URI is correct.
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -20948,17 +21093,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -20966,22 +21111,22 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A single patch operation to apply to the specified resource. Please refer
@@ -21188,10 +21333,15 @@ func (s *PutGatewayResponseInput) SetStatusCode(v string) *PutGatewayResponseInp
 type PutIntegrationInput struct {
 	_ struct{} `type:"structure"`
 
-	// An API-specific tag group of related cached parameters.
+	// A list of request parameters whose values API Gateway caches. To be valid
+	// values for cacheKeyParameters, these parameters must also be specified for
+	// Method requestParameters.
 	CacheKeyParameters []*string `locationName:"cacheKeyParameters" type:"list"`
 
-	// A list of request parameters whose values are to be cached.
+	// Specifies a group of related cached parameters. By default, API Gateway uses
+	// the resource ID as the cacheNamespace. You can specify the same cacheNamespace
+	// across resources to return the same cached data for requests to different
+	// resources.
 	CacheNamespace *string `locationName:"cacheNamespace" type:"string"`
 
 	// The (id (https://docs.aws.amazon.com/apigateway/api-reference/resource/vpc-link/#id))
@@ -21275,6 +21425,8 @@ type PutIntegrationInput struct {
 	// Custom timeout between 50 and 29,000 milliseconds. The default value is 29,000
 	// milliseconds or 29 seconds.
 	TimeoutInMillis *int64 `locationName:"timeoutInMillis" type:"integer"`
+
+	TlsConfig *TlsConfig `locationName:"tlsConfig" type:"structure"`
 
 	// [Required] Specifies a put integration input's type.
 	//
@@ -21427,6 +21579,12 @@ func (s *PutIntegrationInput) SetRestApiId(v string) *PutIntegrationInput {
 // SetTimeoutInMillis sets the TimeoutInMillis field's value.
 func (s *PutIntegrationInput) SetTimeoutInMillis(v int64) *PutIntegrationInput {
 	s.TimeoutInMillis = &v
+	return s
+}
+
+// SetTlsConfig sets the TlsConfig field's value.
+func (s *PutIntegrationInput) SetTlsConfig(v *TlsConfig) *PutIntegrationInput {
+	s.TlsConfig = v
 	return s
 }
 
@@ -21896,7 +22054,7 @@ type PutRestApiInput struct {
 
 	// [Required] The PUT request body containing external API definitions. Currently,
 	// only OpenAPI definition JSON/YAML files are supported. The maximum size of
-	// the API definition file is 2MB.
+	// the API definition file is 6MB.
 	//
 	// Body is a required field
 	Body []byte `locationName:"body" type:"blob" required:"true"`
@@ -21987,8 +22145,8 @@ type QuotaSettings struct {
 	// The maximum number of requests that can be made in a given time period.
 	Limit *int64 `locationName:"limit" type:"integer"`
 
-	// The number of requests subtracted from the given limit in the initial time
-	// period.
+	// The day that a time period starts. For example, with a time period of WEEK,
+	// an offset of 0 starts on Sunday, and an offset of 1 starts on Monday.
 	Offset *int64 `locationName:"offset" type:"integer"`
 
 	// The time period in which the limit applies. Valid values are "DAY", "WEEK"
@@ -22165,6 +22323,12 @@ type RestApi struct {
 	// The API's description.
 	Description *string `locationName:"description" type:"string"`
 
+	// Specifies whether clients can invoke your API by using the default execute-api
+	// endpoint. By default, clients can invoke your API with the default https://{api_id}.execute-api.{region}.amazonaws.com
+	// endpoint. To require that clients use a custom domain name to invoke your
+	// API, disable the default endpoint.
+	DisableExecuteApiEndpoint *bool `locationName:"disableExecuteApiEndpoint" type:"boolean"`
+
 	// The endpoint configuration of this RestApi showing the endpoint types of
 	// the API.
 	EndpointConfiguration *EndpointConfiguration `locationName:"endpointConfiguration" type:"structure"`
@@ -22229,6 +22393,12 @@ func (s *RestApi) SetCreatedDate(v time.Time) *RestApi {
 // SetDescription sets the Description field's value.
 func (s *RestApi) SetDescription(v string) *RestApi {
 	s.Description = &v
+	return s
+}
+
+// SetDisableExecuteApiEndpoint sets the DisableExecuteApiEndpoint field's value.
+func (s *RestApi) SetDisableExecuteApiEndpoint(v bool) *RestApi {
+	s.DisableExecuteApiEndpoint = &v
 	return s
 }
 
@@ -22395,8 +22565,8 @@ func (s *SdkType) SetId(v string) *SdkType {
 // The requested service is not available. For details see the accompanying
 // error message. Retry after the specified time period.
 type ServiceUnavailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -22415,17 +22585,17 @@ func (s ServiceUnavailableException) GoString() string {
 
 func newErrorServiceUnavailableException(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailableException) Code() string {
+func (s *ServiceUnavailableException) Code() string {
 	return "ServiceUnavailableException"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailableException) Message() string {
+func (s *ServiceUnavailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -22433,22 +22603,22 @@ func (s ServiceUnavailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailableException) OrigErr() error {
+func (s *ServiceUnavailableException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailableException) Error() string {
+func (s *ServiceUnavailableException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents a unique identifier for a version of a deployed RestApi that is
@@ -22666,8 +22836,7 @@ func (s *StageKey) SetStageName(v string) *StageKey {
 type TagResourceInput struct {
 	_ struct{} `type:"structure"`
 
-	// [Required] The ARN of a resource that can be tagged. The resource ARN must
-	// be URL-encoded.
+	// [Required] The ARN of a resource that can be tagged.
 	//
 	// ResourceArn is a required field
 	ResourceArn *string `location:"uri" locationName:"resource_arn" type:"string" required:"true"`
@@ -23175,11 +23344,41 @@ func (s *ThrottleSettings) SetRateLimit(v float64) *ThrottleSettings {
 	return s
 }
 
+type TlsConfig struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies whether or not API Gateway skips verification that the certificate
+	// for an integration endpoint is issued by a supported certificate authority
+	// (https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-supported-certificate-authorities-for-http-endpoints.html).
+	// This isn’t recommended, but it enables you to use certificates that are
+	// signed by private certificate authorities, or certificates that are self-signed.
+	// If enabled, API Gateway still performs basic certificate validation, which
+	// includes checking the certificate's expiration date, hostname, and presence
+	// of a root certificate authority. Supported only for HTTP and HTTP_PROXY integrations.
+	InsecureSkipVerification *bool `locationName:"insecureSkipVerification" type:"boolean"`
+}
+
+// String returns the string representation
+func (s TlsConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TlsConfig) GoString() string {
+	return s.String()
+}
+
+// SetInsecureSkipVerification sets the InsecureSkipVerification field's value.
+func (s *TlsConfig) SetInsecureSkipVerification(v bool) *TlsConfig {
+	s.InsecureSkipVerification = &v
+	return s
+}
+
 // The request has reached its throttling limit. Retry after the specified time
 // period.
 type TooManyRequestsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -23198,17 +23397,17 @@ func (s TooManyRequestsException) GoString() string {
 
 func newErrorTooManyRequestsException(v protocol.ResponseMetadata) error {
 	return &TooManyRequestsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyRequestsException) Code() string {
+func (s *TooManyRequestsException) Code() string {
 	return "TooManyRequestsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyRequestsException) Message() string {
+func (s *TooManyRequestsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -23216,28 +23415,28 @@ func (s TooManyRequestsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyRequestsException) OrigErr() error {
+func (s *TooManyRequestsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyRequestsException) Error() string {
+func (s *TooManyRequestsException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyRequestsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyRequestsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyRequestsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyRequestsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The request is denied because the caller has insufficient permissions.
 type UnauthorizedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -23254,17 +23453,17 @@ func (s UnauthorizedException) GoString() string {
 
 func newErrorUnauthorizedException(v protocol.ResponseMetadata) error {
 	return &UnauthorizedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnauthorizedException) Code() string {
+func (s *UnauthorizedException) Code() string {
 	return "UnauthorizedException"
 }
 
 // Message returns the exception's message.
-func (s UnauthorizedException) Message() string {
+func (s *UnauthorizedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -23272,30 +23471,29 @@ func (s UnauthorizedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnauthorizedException) OrigErr() error {
+func (s *UnauthorizedException) OrigErr() error {
 	return nil
 }
 
-func (s UnauthorizedException) Error() string {
+func (s *UnauthorizedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnauthorizedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnauthorizedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnauthorizedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnauthorizedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Removes a tag from a given resource.
 type UntagResourceInput struct {
 	_ struct{} `type:"structure"`
 
-	// [Required] The ARN of a resource that can be tagged. The resource ARN must
-	// be URL-encoded.
+	// [Required] The ARN of a resource that can be tagged.
 	//
 	// ResourceArn is a required field
 	ResourceArn *string `location:"uri" locationName:"resource_arn" type:"string" required:"true"`
@@ -25083,7 +25281,7 @@ func (s *UpdateVpcLinkInput) SetVpcLinkId(v string) *UpdateVpcLinkInput {
 	return s
 }
 
-// A API Gateway VPC link for a RestApi to access resources in an Amazon Virtual
+// An API Gateway VPC link for a RestApi to access resources in an Amazon Virtual
 // Private Cloud (VPC).
 //
 // To enable access to a resource in an Amazon Virtual Private Cloud through
@@ -25117,8 +25315,9 @@ type UpdateVpcLinkOutput struct {
 	// The collection of tags. Each tag element is associated with a given resource.
 	Tags map[string]*string `locationName:"tags" type:"map"`
 
-	// The ARNs of network load balancers of the VPC targeted by the VPC link. The
-	// network load balancers must be owned by the same AWS account of the API owner.
+	// The ARN of the network load balancer of the VPC targeted by the VPC link.
+	// The network load balancer must be owned by the same AWS account of the API
+	// owner.
 	TargetArns []*string `locationName:"targetArns" type:"list"`
 }
 
@@ -25400,10 +25599,25 @@ const (
 	ApiKeySourceTypeAuthorizer = "AUTHORIZER"
 )
 
+// ApiKeySourceType_Values returns all elements of the ApiKeySourceType enum
+func ApiKeySourceType_Values() []string {
+	return []string{
+		ApiKeySourceTypeHeader,
+		ApiKeySourceTypeAuthorizer,
+	}
+}
+
 const (
 	// ApiKeysFormatCsv is a ApiKeysFormat enum value
 	ApiKeysFormatCsv = "csv"
 )
+
+// ApiKeysFormat_Values returns all elements of the ApiKeysFormat enum
+func ApiKeysFormat_Values() []string {
+	return []string{
+		ApiKeysFormatCsv,
+	}
+}
 
 // The authorizer type. Valid values are TOKEN for a Lambda function using a
 // single authorization token submitted in a custom header, REQUEST for a Lambda
@@ -25419,6 +25633,15 @@ const (
 	// AuthorizerTypeCognitoUserPools is a AuthorizerType enum value
 	AuthorizerTypeCognitoUserPools = "COGNITO_USER_POOLS"
 )
+
+// AuthorizerType_Values returns all elements of the AuthorizerType enum
+func AuthorizerType_Values() []string {
+	return []string{
+		AuthorizerTypeToken,
+		AuthorizerTypeRequest,
+		AuthorizerTypeCognitoUserPools,
+	}
+}
 
 // Returns the size of the CacheCluster.
 const (
@@ -25447,6 +25670,20 @@ const (
 	CacheClusterSize237 = "237"
 )
 
+// CacheClusterSize_Values returns all elements of the CacheClusterSize enum
+func CacheClusterSize_Values() []string {
+	return []string{
+		CacheClusterSize05,
+		CacheClusterSize16,
+		CacheClusterSize61,
+		CacheClusterSize135,
+		CacheClusterSize284,
+		CacheClusterSize582,
+		CacheClusterSize118,
+		CacheClusterSize237,
+	}
+}
+
 // Returns the status of the CacheCluster.
 const (
 	// CacheClusterStatusCreateInProgress is a CacheClusterStatus enum value
@@ -25465,6 +25702,17 @@ const (
 	CacheClusterStatusFlushInProgress = "FLUSH_IN_PROGRESS"
 )
 
+// CacheClusterStatus_Values returns all elements of the CacheClusterStatus enum
+func CacheClusterStatus_Values() []string {
+	return []string{
+		CacheClusterStatusCreateInProgress,
+		CacheClusterStatusAvailable,
+		CacheClusterStatusDeleteInProgress,
+		CacheClusterStatusNotAvailable,
+		CacheClusterStatusFlushInProgress,
+	}
+}
+
 const (
 	// ConnectionTypeInternet is a ConnectionType enum value
 	ConnectionTypeInternet = "INTERNET"
@@ -25473,6 +25721,14 @@ const (
 	ConnectionTypeVpcLink = "VPC_LINK"
 )
 
+// ConnectionType_Values returns all elements of the ConnectionType enum
+func ConnectionType_Values() []string {
+	return []string{
+		ConnectionTypeInternet,
+		ConnectionTypeVpcLink,
+	}
+}
+
 const (
 	// ContentHandlingStrategyConvertToBinary is a ContentHandlingStrategy enum value
 	ContentHandlingStrategyConvertToBinary = "CONVERT_TO_BINARY"
@@ -25480,6 +25736,14 @@ const (
 	// ContentHandlingStrategyConvertToText is a ContentHandlingStrategy enum value
 	ContentHandlingStrategyConvertToText = "CONVERT_TO_TEXT"
 )
+
+// ContentHandlingStrategy_Values returns all elements of the ContentHandlingStrategy enum
+func ContentHandlingStrategy_Values() []string {
+	return []string{
+		ContentHandlingStrategyConvertToBinary,
+		ContentHandlingStrategyConvertToText,
+	}
+}
 
 const (
 	// DocumentationPartTypeApi is a DocumentationPartType enum value
@@ -25519,6 +25783,24 @@ const (
 	DocumentationPartTypeResponseBody = "RESPONSE_BODY"
 )
 
+// DocumentationPartType_Values returns all elements of the DocumentationPartType enum
+func DocumentationPartType_Values() []string {
+	return []string{
+		DocumentationPartTypeApi,
+		DocumentationPartTypeAuthorizer,
+		DocumentationPartTypeModel,
+		DocumentationPartTypeResource,
+		DocumentationPartTypeMethod,
+		DocumentationPartTypePathParameter,
+		DocumentationPartTypeQueryParameter,
+		DocumentationPartTypeRequestHeader,
+		DocumentationPartTypeRequestBody,
+		DocumentationPartTypeResponse,
+		DocumentationPartTypeResponseHeader,
+		DocumentationPartTypeResponseBody,
+	}
+}
+
 const (
 	// DomainNameStatusAvailable is a DomainNameStatus enum value
 	DomainNameStatusAvailable = "AVAILABLE"
@@ -25529,6 +25811,15 @@ const (
 	// DomainNameStatusPending is a DomainNameStatus enum value
 	DomainNameStatusPending = "PENDING"
 )
+
+// DomainNameStatus_Values returns all elements of the DomainNameStatus enum
+func DomainNameStatus_Values() []string {
+	return []string{
+		DomainNameStatusAvailable,
+		DomainNameStatusUpdating,
+		DomainNameStatusPending,
+	}
+}
 
 // The endpoint type. The valid values are EDGE for edge-optimized API setup,
 // most suitable for mobile applications; REGIONAL for regional API endpoint
@@ -25544,6 +25835,15 @@ const (
 	// EndpointTypePrivate is a EndpointType enum value
 	EndpointTypePrivate = "PRIVATE"
 )
+
+// EndpointType_Values returns all elements of the EndpointType enum
+func EndpointType_Values() []string {
+	return []string{
+		EndpointTypeRegional,
+		EndpointTypeEdge,
+		EndpointTypePrivate,
+	}
+}
 
 const (
 	// GatewayResponseTypeDefault4xx is a GatewayResponseType enum value
@@ -25607,6 +25907,32 @@ const (
 	GatewayResponseTypeQuotaExceeded = "QUOTA_EXCEEDED"
 )
 
+// GatewayResponseType_Values returns all elements of the GatewayResponseType enum
+func GatewayResponseType_Values() []string {
+	return []string{
+		GatewayResponseTypeDefault4xx,
+		GatewayResponseTypeDefault5xx,
+		GatewayResponseTypeResourceNotFound,
+		GatewayResponseTypeUnauthorized,
+		GatewayResponseTypeInvalidApiKey,
+		GatewayResponseTypeAccessDenied,
+		GatewayResponseTypeAuthorizerFailure,
+		GatewayResponseTypeAuthorizerConfigurationError,
+		GatewayResponseTypeInvalidSignature,
+		GatewayResponseTypeExpiredToken,
+		GatewayResponseTypeMissingAuthenticationToken,
+		GatewayResponseTypeIntegrationFailure,
+		GatewayResponseTypeIntegrationTimeout,
+		GatewayResponseTypeApiConfigurationError,
+		GatewayResponseTypeUnsupportedMediaType,
+		GatewayResponseTypeBadRequestParameters,
+		GatewayResponseTypeBadRequestBody,
+		GatewayResponseTypeRequestTooLarge,
+		GatewayResponseTypeThrottled,
+		GatewayResponseTypeQuotaExceeded,
+	}
+}
+
 // The integration type. The valid value is HTTP for integrating an API method
 // with an HTTP backend; AWS with any AWS service endpoints; MOCK for testing
 // without actually invoking the backend; HTTP_PROXY for integrating with the
@@ -25628,6 +25954,17 @@ const (
 	IntegrationTypeAwsProxy = "AWS_PROXY"
 )
 
+// IntegrationType_Values returns all elements of the IntegrationType enum
+func IntegrationType_Values() []string {
+	return []string{
+		IntegrationTypeHttp,
+		IntegrationTypeAws,
+		IntegrationTypeMock,
+		IntegrationTypeHttpProxy,
+		IntegrationTypeAwsProxy,
+	}
+}
+
 const (
 	// LocationStatusTypeDocumented is a LocationStatusType enum value
 	LocationStatusTypeDocumented = "DOCUMENTED"
@@ -25635,6 +25972,14 @@ const (
 	// LocationStatusTypeUndocumented is a LocationStatusType enum value
 	LocationStatusTypeUndocumented = "UNDOCUMENTED"
 )
+
+// LocationStatusType_Values returns all elements of the LocationStatusType enum
+func LocationStatusType_Values() []string {
+	return []string{
+		LocationStatusTypeDocumented,
+		LocationStatusTypeUndocumented,
+	}
+}
 
 const (
 	// OpAdd is a Op enum value
@@ -25656,6 +26001,18 @@ const (
 	OpTest = "test"
 )
 
+// Op_Values returns all elements of the Op enum
+func Op_Values() []string {
+	return []string{
+		OpAdd,
+		OpRemove,
+		OpReplace,
+		OpMove,
+		OpCopy,
+		OpTest,
+	}
+}
+
 const (
 	// PutModeMerge is a PutMode enum value
 	PutModeMerge = "merge"
@@ -25663,6 +26020,14 @@ const (
 	// PutModeOverwrite is a PutMode enum value
 	PutModeOverwrite = "overwrite"
 )
+
+// PutMode_Values returns all elements of the PutMode enum
+func PutMode_Values() []string {
+	return []string{
+		PutModeMerge,
+		PutModeOverwrite,
+	}
+}
 
 const (
 	// QuotaPeriodTypeDay is a QuotaPeriodType enum value
@@ -25675,6 +26040,15 @@ const (
 	QuotaPeriodTypeMonth = "MONTH"
 )
 
+// QuotaPeriodType_Values returns all elements of the QuotaPeriodType enum
+func QuotaPeriodType_Values() []string {
+	return []string{
+		QuotaPeriodTypeDay,
+		QuotaPeriodTypeWeek,
+		QuotaPeriodTypeMonth,
+	}
+}
+
 const (
 	// SecurityPolicyTls10 is a SecurityPolicy enum value
 	SecurityPolicyTls10 = "TLS_1_0"
@@ -25682,6 +26056,14 @@ const (
 	// SecurityPolicyTls12 is a SecurityPolicy enum value
 	SecurityPolicyTls12 = "TLS_1_2"
 )
+
+// SecurityPolicy_Values returns all elements of the SecurityPolicy enum
+func SecurityPolicy_Values() []string {
+	return []string{
+		SecurityPolicyTls10,
+		SecurityPolicyTls12,
+	}
+}
 
 const (
 	// UnauthorizedCacheControlHeaderStrategyFailWith403 is a UnauthorizedCacheControlHeaderStrategy enum value
@@ -25693,6 +26075,15 @@ const (
 	// UnauthorizedCacheControlHeaderStrategySucceedWithoutResponseHeader is a UnauthorizedCacheControlHeaderStrategy enum value
 	UnauthorizedCacheControlHeaderStrategySucceedWithoutResponseHeader = "SUCCEED_WITHOUT_RESPONSE_HEADER"
 )
+
+// UnauthorizedCacheControlHeaderStrategy_Values returns all elements of the UnauthorizedCacheControlHeaderStrategy enum
+func UnauthorizedCacheControlHeaderStrategy_Values() []string {
+	return []string{
+		UnauthorizedCacheControlHeaderStrategyFailWith403,
+		UnauthorizedCacheControlHeaderStrategySucceedWithResponseHeader,
+		UnauthorizedCacheControlHeaderStrategySucceedWithoutResponseHeader,
+	}
+}
 
 const (
 	// VpcLinkStatusAvailable is a VpcLinkStatus enum value
@@ -25707,3 +26098,13 @@ const (
 	// VpcLinkStatusFailed is a VpcLinkStatus enum value
 	VpcLinkStatusFailed = "FAILED"
 )
+
+// VpcLinkStatus_Values returns all elements of the VpcLinkStatus enum
+func VpcLinkStatus_Values() []string {
+	return []string{
+		VpcLinkStatusAvailable,
+		VpcLinkStatusPending,
+		VpcLinkStatusDeleting,
+		VpcLinkStatusFailed,
+	}
+}

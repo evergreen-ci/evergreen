@@ -12,7 +12,7 @@ const (
 	// "BadRequestException".
 	//
 	// Your request didn't pass one or more validation tests. For example, if the
-	// transcription you're trying to delete doesn't exist or if it is in a non-terminal
+	// entity that you're trying to delete doesn't exist or if it is in a non-terminal
 	// state (for example, it's "in progress"). See the exception Message field
 	// for more information.
 	ErrCodeBadRequestException = "BadRequestException"
@@ -20,12 +20,7 @@ const (
 	// ErrCodeConflictException for service response error code
 	// "ConflictException".
 	//
-	// When you are using the CreateVocabulary operation, the JobName field is a
-	// duplicate of a previously entered job name. Resend your request with a different
-	// name.
-	//
-	// When you are using the UpdateVocabulary operation, there are two jobs running
-	// at the same time. Resend the second request later.
+	// There is already a resource with that name.
 	ErrCodeConflictException = "ConflictException"
 
 	// ErrCodeInternalFailureException for service response error code

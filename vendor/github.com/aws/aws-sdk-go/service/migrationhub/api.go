@@ -83,6 +83,9 @@ func (c *MigrationHub) AssociateCreatedArtifactRequest(input *AssociateCreatedAr
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -192,6 +195,9 @@ func (c *MigrationHub) AssociateDiscoveredResourceRequest(input *AssociateDiscov
 // Returned Error Types:
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
 //
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
@@ -310,6 +316,9 @@ func (c *MigrationHub) CreateProgressUpdateStreamRequest(input *CreateProgressUp
 // Returned Error Types:
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
 //
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
@@ -436,6 +445,9 @@ func (c *MigrationHub) DeleteProgressUpdateStreamRequest(input *DeleteProgressUp
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -544,6 +556,9 @@ func (c *MigrationHub) DescribeApplicationStateRequest(input *DescribeApplicatio
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -648,6 +663,9 @@ func (c *MigrationHub) DescribeMigrationTaskRequest(input *DescribeMigrationTask
 // Returned Error Types:
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
 //
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
@@ -762,6 +780,9 @@ func (c *MigrationHub) DisassociateCreatedArtifactRequest(input *DisassociateCre
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -871,6 +892,9 @@ func (c *MigrationHub) DisassociateDiscoveredResourceRequest(input *Disassociate
 // Returned Error Types:
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
 //
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
@@ -985,6 +1009,9 @@ func (c *MigrationHub) ImportMigrationTaskRequest(input *ImportMigrationTaskInpu
 // Returned Error Types:
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
 //
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
@@ -1101,6 +1128,9 @@ func (c *MigrationHub) ListApplicationStatesRequest(input *ListApplicationStates
 // Returned Error Types:
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
 //
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
@@ -1262,6 +1292,9 @@ func (c *MigrationHub) ListCreatedArtifactsRequest(input *ListCreatedArtifactsIn
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -1419,6 +1452,9 @@ func (c *MigrationHub) ListDiscoveredResourcesRequest(input *ListDiscoveredResou
 // Returned Error Types:
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
 //
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
@@ -1586,6 +1622,9 @@ func (c *MigrationHub) ListMigrationTasksRequest(input *ListMigrationTasksInput)
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -1750,6 +1789,9 @@ func (c *MigrationHub) ListProgressUpdateStreamsRequest(input *ListProgressUpdat
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -1899,6 +1941,9 @@ func (c *MigrationHub) NotifyApplicationStateRequest(input *NotifyApplicationSta
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -2021,6 +2066,9 @@ func (c *MigrationHub) NotifyMigrationTaskStateRequest(input *NotifyMigrationTas
 // Returned Error Types:
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
 //
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
@@ -2147,6 +2195,9 @@ func (c *MigrationHub) PutResourceAttributesRequest(input *PutResourceAttributes
 //   * AccessDeniedException
 //   You do not have sufficient access to perform this action.
 //
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
 //   * InternalServerError
 //   Exception raised when an internal, configuration, or dependency error is
 //   encountered.
@@ -2200,8 +2251,8 @@ func (c *MigrationHub) PutResourceAttributesWithContext(ctx aws.Context, input *
 
 // You do not have sufficient access to perform this action.
 type AccessDeniedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -2218,17 +2269,17 @@ func (s AccessDeniedException) GoString() string {
 
 func newErrorAccessDeniedException(v protocol.ResponseMetadata) error {
 	return &AccessDeniedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s AccessDeniedException) Code() string {
+func (s *AccessDeniedException) Code() string {
 	return "AccessDeniedException"
 }
 
 // Message returns the exception's message.
-func (s AccessDeniedException) Message() string {
+func (s *AccessDeniedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2236,22 +2287,22 @@ func (s AccessDeniedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s AccessDeniedException) OrigErr() error {
+func (s *AccessDeniedException) OrigErr() error {
 	return nil
 }
 
-func (s AccessDeniedException) Error() string {
+func (s *AccessDeniedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s AccessDeniedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *AccessDeniedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s AccessDeniedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *AccessDeniedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The state of an application discovered through Migration Hub import, the
@@ -3101,8 +3152,8 @@ func (s *DiscoveredResource) SetDescription(v string) *DiscoveredResource {
 // Exception raised to indicate a successfully authorized action when the DryRun
 // flag is set to "true".
 type DryRunOperation struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3119,17 +3170,17 @@ func (s DryRunOperation) GoString() string {
 
 func newErrorDryRunOperation(v protocol.ResponseMetadata) error {
 	return &DryRunOperation{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s DryRunOperation) Code() string {
+func (s *DryRunOperation) Code() string {
 	return "DryRunOperation"
 }
 
 // Message returns the exception's message.
-func (s DryRunOperation) Message() string {
+func (s *DryRunOperation) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3137,28 +3188,28 @@ func (s DryRunOperation) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s DryRunOperation) OrigErr() error {
+func (s *DryRunOperation) OrigErr() error {
 	return nil
 }
 
-func (s DryRunOperation) Error() string {
+func (s *DryRunOperation) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s DryRunOperation) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *DryRunOperation) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s DryRunOperation) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *DryRunOperation) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The home region is not set. Set the home region to continue.
 type HomeRegionNotSetException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3175,17 +3226,17 @@ func (s HomeRegionNotSetException) GoString() string {
 
 func newErrorHomeRegionNotSetException(v protocol.ResponseMetadata) error {
 	return &HomeRegionNotSetException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s HomeRegionNotSetException) Code() string {
+func (s *HomeRegionNotSetException) Code() string {
 	return "HomeRegionNotSetException"
 }
 
 // Message returns the exception's message.
-func (s HomeRegionNotSetException) Message() string {
+func (s *HomeRegionNotSetException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3193,22 +3244,22 @@ func (s HomeRegionNotSetException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s HomeRegionNotSetException) OrigErr() error {
+func (s *HomeRegionNotSetException) OrigErr() error {
 	return nil
 }
 
-func (s HomeRegionNotSetException) Error() string {
+func (s *HomeRegionNotSetException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s HomeRegionNotSetException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *HomeRegionNotSetException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s HomeRegionNotSetException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *HomeRegionNotSetException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ImportMigrationTaskInput struct {
@@ -3297,8 +3348,8 @@ func (s ImportMigrationTaskOutput) GoString() string {
 // Exception raised when an internal, configuration, or dependency error is
 // encountered.
 type InternalServerError struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3315,17 +3366,17 @@ func (s InternalServerError) GoString() string {
 
 func newErrorInternalServerError(v protocol.ResponseMetadata) error {
 	return &InternalServerError{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerError) Code() string {
+func (s *InternalServerError) Code() string {
 	return "InternalServerError"
 }
 
 // Message returns the exception's message.
-func (s InternalServerError) Message() string {
+func (s *InternalServerError) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3333,29 +3384,29 @@ func (s InternalServerError) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerError) OrigErr() error {
+func (s *InternalServerError) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerError) Error() string {
+func (s *InternalServerError) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerError) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerError) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerError) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerError) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Exception raised when the provided input violates a policy constraint or
 // is entered in the wrong format or data type.
 type InvalidInputException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3372,17 +3423,17 @@ func (s InvalidInputException) GoString() string {
 
 func newErrorInvalidInputException(v protocol.ResponseMetadata) error {
 	return &InvalidInputException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidInputException) Code() string {
+func (s *InvalidInputException) Code() string {
 	return "InvalidInputException"
 }
 
 // Message returns the exception's message.
-func (s InvalidInputException) Message() string {
+func (s *InvalidInputException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3390,22 +3441,22 @@ func (s InvalidInputException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidInputException) OrigErr() error {
+func (s *InvalidInputException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidInputException) Error() string {
+func (s *InvalidInputException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidInputException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidInputException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidInputException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidInputException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListApplicationStatesInput struct {
@@ -4265,8 +4316,8 @@ func (s NotifyMigrationTaskStateOutput) GoString() string {
 // Service (Application Discovery Service); most likely due to a misconfigured
 // policy or the migrationhub-discovery role is missing or not configured correctly.
 type PolicyErrorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -4283,17 +4334,17 @@ func (s PolicyErrorException) GoString() string {
 
 func newErrorPolicyErrorException(v protocol.ResponseMetadata) error {
 	return &PolicyErrorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s PolicyErrorException) Code() string {
+func (s *PolicyErrorException) Code() string {
 	return "PolicyErrorException"
 }
 
 // Message returns the exception's message.
-func (s PolicyErrorException) Message() string {
+func (s *PolicyErrorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4301,22 +4352,22 @@ func (s PolicyErrorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s PolicyErrorException) OrigErr() error {
+func (s *PolicyErrorException) OrigErr() error {
 	return nil
 }
 
-func (s PolicyErrorException) Error() string {
+func (s *PolicyErrorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s PolicyErrorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *PolicyErrorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s PolicyErrorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *PolicyErrorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Summary of the AWS resource used for access control that is implicitly linked
@@ -4556,8 +4607,8 @@ func (s *ResourceAttribute) SetValue(v string) *ResourceAttribute {
 // exist in Application Discovery Service (Application Discovery Service) or
 // in Migration Hub's repository.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -4574,17 +4625,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4592,29 +4643,29 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Exception raised when there is an internal, configuration, or dependency
 // error encountered.
 type ServiceUnavailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -4631,17 +4682,17 @@ func (s ServiceUnavailableException) GoString() string {
 
 func newErrorServiceUnavailableException(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailableException) Code() string {
+func (s *ServiceUnavailableException) Code() string {
 	return "ServiceUnavailableException"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailableException) Message() string {
+func (s *ServiceUnavailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4649,22 +4700,22 @@ func (s ServiceUnavailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailableException) OrigErr() error {
+func (s *ServiceUnavailableException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailableException) Error() string {
+func (s *ServiceUnavailableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Task object encapsulating task information.
@@ -4726,11 +4777,71 @@ func (s *Task) SetStatusDetail(v string) *Task {
 	return s
 }
 
+// The request was denied due to request throttling.
+type ThrottlingException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	// A message that provides information about the exception.
+	Message_ *string `locationName:"Message" type:"string"`
+
+	// The number of seconds the caller should wait before retrying.
+	RetryAfterSeconds *int64 `type:"integer"`
+}
+
+// String returns the string representation
+func (s ThrottlingException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ThrottlingException) GoString() string {
+	return s.String()
+}
+
+func newErrorThrottlingException(v protocol.ResponseMetadata) error {
+	return &ThrottlingException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *ThrottlingException) Code() string {
+	return "ThrottlingException"
+}
+
+// Message returns the exception's message.
+func (s *ThrottlingException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *ThrottlingException) OrigErr() error {
+	return nil
+}
+
+func (s *ThrottlingException) Error() string {
+	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *ThrottlingException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *ThrottlingException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
 // Exception raised to indicate a request was not authorized when the DryRun
 // flag is set to "true".
 type UnauthorizedOperation struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -4747,17 +4858,17 @@ func (s UnauthorizedOperation) GoString() string {
 
 func newErrorUnauthorizedOperation(v protocol.ResponseMetadata) error {
 	return &UnauthorizedOperation{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnauthorizedOperation) Code() string {
+func (s *UnauthorizedOperation) Code() string {
 	return "UnauthorizedOperation"
 }
 
 // Message returns the exception's message.
-func (s UnauthorizedOperation) Message() string {
+func (s *UnauthorizedOperation) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4765,22 +4876,22 @@ func (s UnauthorizedOperation) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnauthorizedOperation) OrigErr() error {
+func (s *UnauthorizedOperation) OrigErr() error {
 	return nil
 }
 
-func (s UnauthorizedOperation) Error() string {
+func (s *UnauthorizedOperation) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnauthorizedOperation) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnauthorizedOperation) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnauthorizedOperation) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnauthorizedOperation) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -4793,6 +4904,15 @@ const (
 	// ApplicationStatusCompleted is a ApplicationStatus enum value
 	ApplicationStatusCompleted = "COMPLETED"
 )
+
+// ApplicationStatus_Values returns all elements of the ApplicationStatus enum
+func ApplicationStatus_Values() []string {
+	return []string{
+		ApplicationStatusNotStarted,
+		ApplicationStatusInProgress,
+		ApplicationStatusCompleted,
+	}
+}
 
 const (
 	// ResourceAttributeTypeIpv4Address is a ResourceAttributeType enum value
@@ -4826,6 +4946,22 @@ const (
 	ResourceAttributeTypeMotherboardSerialNumber = "MOTHERBOARD_SERIAL_NUMBER"
 )
 
+// ResourceAttributeType_Values returns all elements of the ResourceAttributeType enum
+func ResourceAttributeType_Values() []string {
+	return []string{
+		ResourceAttributeTypeIpv4Address,
+		ResourceAttributeTypeIpv6Address,
+		ResourceAttributeTypeMacAddress,
+		ResourceAttributeTypeFqdn,
+		ResourceAttributeTypeVmManagerId,
+		ResourceAttributeTypeVmManagedObjectReference,
+		ResourceAttributeTypeVmName,
+		ResourceAttributeTypeVmPath,
+		ResourceAttributeTypeBiosId,
+		ResourceAttributeTypeMotherboardSerialNumber,
+	}
+}
+
 const (
 	// StatusNotStarted is a Status enum value
 	StatusNotStarted = "NOT_STARTED"
@@ -4839,3 +4975,13 @@ const (
 	// StatusCompleted is a Status enum value
 	StatusCompleted = "COMPLETED"
 )
+
+// Status_Values returns all elements of the Status enum
+func Status_Values() []string {
+	return []string{
+		StatusNotStarted,
+		StatusInProgress,
+		StatusFailed,
+		StatusCompleted,
+	}
+}

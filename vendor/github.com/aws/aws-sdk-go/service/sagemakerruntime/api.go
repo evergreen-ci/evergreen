@@ -67,13 +67,13 @@ func (c *SageMakerRuntime) InvokeEndpointRequest(input *InvokeEndpointInput) (re
 //
 // Calls to InvokeEndpoint are authenticated by using AWS Signature Version
 // 4. For information, see Authenticating Requests (AWS Signature Version 4)
-// (http://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html)
+// (https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html)
 // in the Amazon S3 API Reference.
 //
 // A customer's model containers must respond to requests within 60 seconds.
 // The model itself can have a maximum processing time of 60 seconds before
-// responding to the /invocations. If your model is going to take 50-60 seconds
-// of processing time, the SDK socket timeout should be set to be 70 seconds.
+// responding to invocations. If your model is going to take 50-60 seconds of
+// processing time, the SDK socket timeout should be set to be 70 seconds.
 //
 // Endpoints are scoped to an individual account, and are not public. The URL
 // does not contain the account ID, but Amazon SageMaker determines the account
@@ -124,8 +124,8 @@ func (c *SageMakerRuntime) InvokeEndpointWithContext(ctx aws.Context, input *Inv
 
 // An internal failure occurred.
 type InternalFailure struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -142,17 +142,17 @@ func (s InternalFailure) GoString() string {
 
 func newErrorInternalFailure(v protocol.ResponseMetadata) error {
 	return &InternalFailure{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalFailure) Code() string {
+func (s *InternalFailure) Code() string {
 	return "InternalFailure"
 }
 
 // Message returns the exception's message.
-func (s InternalFailure) Message() string {
+func (s *InternalFailure) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -160,22 +160,22 @@ func (s InternalFailure) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalFailure) OrigErr() error {
+func (s *InternalFailure) OrigErr() error {
 	return nil
 }
 
-func (s InternalFailure) Error() string {
+func (s *InternalFailure) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalFailure) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalFailure) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalFailure) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalFailure) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type InvokeEndpointInput struct {
@@ -187,7 +187,7 @@ type InvokeEndpointInput struct {
 	// Provides input data, in the format specified in the ContentType request header.
 	// Amazon SageMaker passes all of the data in the body to the model.
 	//
-	// For information about the format of the request body, see Common Data Formats—Inference
+	// For information about the format of the request body, see Common Data Formats-Inference
 	// (https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-inference.html).
 	//
 	// Body is a required field
@@ -203,8 +203,16 @@ type InvokeEndpointInput struct {
 	// metadata that a service endpoint was programmed to process. The value must
 	// consist of no more than 1024 visible US-ASCII characters as specified in
 	// Section 3.3.6. Field Value Components (https://tools.ietf.org/html/rfc7230#section-3.2.6)
-	// of the Hypertext Transfer Protocol (HTTP/1.1). This feature is currently
-	// supported in the AWS SDKs but not in the Amazon SageMaker Python SDK.
+	// of the Hypertext Transfer Protocol (HTTP/1.1).
+	//
+	// The code in your model is responsible for setting or updating any custom
+	// attributes in the response. If your code does not set this value in the response,
+	// an empty value is returned. For example, if a custom attribute represents
+	// the trace ID, your model can prepend the custom attribute with Trace ID:
+	// in your post-processing function.
+	//
+	// This feature is currently supported in the AWS SDKs but not in the Amazon
+	// SageMaker Python SDK.
 	CustomAttributes *string `location:"header" locationName:"X-Amzn-SageMaker-Custom-Attributes" type:"string" sensitive:"true"`
 
 	// The name of the endpoint that you specified when you created the endpoint
@@ -214,9 +222,26 @@ type InvokeEndpointInput struct {
 	// EndpointName is a required field
 	EndpointName *string `location:"uri" locationName:"EndpointName" type:"string" required:"true"`
 
-	// Specifies the model to be requested for an inference when invoking a multi-model
-	// endpoint.
+	// If you provide a value, it is added to the captured data when you enable
+	// data capture on the endpoint. For information about data capture, see Capture
+	// Data (https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-data-capture.html).
+	InferenceId *string `location:"header" locationName:"X-Amzn-SageMaker-Inference-Id" min:"1" type:"string"`
+
+	// If the endpoint hosts multiple containers and is configured to use direct
+	// invocation, this parameter specifies the host name of the container to invoke.
+	TargetContainerHostname *string `location:"header" locationName:"X-Amzn-SageMaker-Target-Container-Hostname" type:"string"`
+
+	// The model to request for inference when invoking a multi-model endpoint.
 	TargetModel *string `location:"header" locationName:"X-Amzn-SageMaker-Target-Model" min:"1" type:"string"`
+
+	// Specify the production variant to send the inference request to when invoking
+	// an endpoint that is running two or more variants. Note that this parameter
+	// overrides the default behavior for the endpoint, which is to distribute the
+	// invocation traffic based on the variant weights.
+	//
+	// For information about how to use variant targeting to perform a/b testing,
+	// see Test models in production (https://docs.aws.amazon.com/sagemaker/latest/dg/model-ab-testing.html)
+	TargetVariant *string `location:"header" locationName:"X-Amzn-SageMaker-Target-Variant" type:"string"`
 }
 
 // String returns the string representation
@@ -240,6 +265,9 @@ func (s *InvokeEndpointInput) Validate() error {
 	}
 	if s.EndpointName != nil && len(*s.EndpointName) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("EndpointName", 1))
+	}
+	if s.InferenceId != nil && len(*s.InferenceId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("InferenceId", 1))
 	}
 	if s.TargetModel != nil && len(*s.TargetModel) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("TargetModel", 1))
@@ -281,9 +309,27 @@ func (s *InvokeEndpointInput) SetEndpointName(v string) *InvokeEndpointInput {
 	return s
 }
 
+// SetInferenceId sets the InferenceId field's value.
+func (s *InvokeEndpointInput) SetInferenceId(v string) *InvokeEndpointInput {
+	s.InferenceId = &v
+	return s
+}
+
+// SetTargetContainerHostname sets the TargetContainerHostname field's value.
+func (s *InvokeEndpointInput) SetTargetContainerHostname(v string) *InvokeEndpointInput {
+	s.TargetContainerHostname = &v
+	return s
+}
+
 // SetTargetModel sets the TargetModel field's value.
 func (s *InvokeEndpointInput) SetTargetModel(v string) *InvokeEndpointInput {
 	s.TargetModel = &v
+	return s
+}
+
+// SetTargetVariant sets the TargetVariant field's value.
+func (s *InvokeEndpointInput) SetTargetVariant(v string) *InvokeEndpointInput {
+	s.TargetVariant = &v
 	return s
 }
 
@@ -292,7 +338,7 @@ type InvokeEndpointOutput struct {
 
 	// Includes the inference provided by the model.
 	//
-	// For information about the format of the response body, see Common Data Formats—Inference
+	// For information about the format of the response body, see Common Data Formats-Inference
 	// (https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-inference.html).
 	//
 	// Body is a required field
@@ -311,6 +357,12 @@ type InvokeEndpointOutput struct {
 	// of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the
 	// custom attribute returned, the model must set the custom attribute to be
 	// included on the way back.
+	//
+	// The code in your model is responsible for setting or updating any custom
+	// attributes in the response. If your code does not set this value in the response,
+	// an empty value is returned. For example, if a custom attribute represents
+	// the trace ID, your model can prepend the custom attribute with Trace ID:
+	// in your post-processing function.
 	//
 	// This feature is currently supported in the AWS SDKs but not in the Amazon
 	// SageMaker Python SDK.
@@ -357,8 +409,8 @@ func (s *InvokeEndpointOutput) SetInvokedProductionVariant(v string) *InvokeEndp
 // Model (owned by the customer in the container) returned 4xx or 5xx error
 // code.
 type ModelError struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The Amazon Resource Name (ARN) of the log stream.
 	LogStreamArn *string `type:"string"`
@@ -384,17 +436,17 @@ func (s ModelError) GoString() string {
 
 func newErrorModelError(v protocol.ResponseMetadata) error {
 	return &ModelError{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ModelError) Code() string {
+func (s *ModelError) Code() string {
 	return "ModelError"
 }
 
 // Message returns the exception's message.
-func (s ModelError) Message() string {
+func (s *ModelError) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -402,28 +454,28 @@ func (s ModelError) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ModelError) OrigErr() error {
+func (s *ModelError) OrigErr() error {
 	return nil
 }
 
-func (s ModelError) Error() string {
+func (s *ModelError) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ModelError) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ModelError) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ModelError) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ModelError) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The service is unavailable. Try your call again.
 type ServiceUnavailable struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -440,17 +492,17 @@ func (s ServiceUnavailable) GoString() string {
 
 func newErrorServiceUnavailable(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailable{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailable) Code() string {
+func (s *ServiceUnavailable) Code() string {
 	return "ServiceUnavailable"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailable) Message() string {
+func (s *ServiceUnavailable) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -458,28 +510,28 @@ func (s ServiceUnavailable) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailable) OrigErr() error {
+func (s *ServiceUnavailable) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailable) Error() string {
+func (s *ServiceUnavailable) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailable) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailable) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailable) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailable) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Inspect your request and try again.
 type ValidationError struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -496,17 +548,17 @@ func (s ValidationError) GoString() string {
 
 func newErrorValidationError(v protocol.ResponseMetadata) error {
 	return &ValidationError{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationError) Code() string {
+func (s *ValidationError) Code() string {
 	return "ValidationError"
 }
 
 // Message returns the exception's message.
-func (s ValidationError) Message() string {
+func (s *ValidationError) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -514,20 +566,20 @@ func (s ValidationError) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationError) OrigErr() error {
+func (s *ValidationError) OrigErr() error {
 	return nil
 }
 
-func (s ValidationError) Error() string {
+func (s *ValidationError) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationError) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationError) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationError) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationError) RequestID() string {
+	return s.RespMetadata.RequestID
 }

@@ -57,12 +57,12 @@ func (c *CloudHSM) AddTagsToResourceRequest(input *AddTagsToResourceInput) (req 
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Adds or overwrites one or more tags for the specified AWS CloudHSM resource.
 //
@@ -153,12 +153,12 @@ func (c *CloudHSM) CreateHapgRequest(input *CreateHapgInput) (req *request.Reque
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Creates a high-availability partition group. A high-availability partition
 // group is a group of partitions that spans multiple physical HSMs.
@@ -248,12 +248,12 @@ func (c *CloudHSM) CreateHsmRequest(input *CreateHsmInput) (req *request.Request
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Creates an uninitialized HSM instance.
 //
@@ -352,12 +352,12 @@ func (c *CloudHSM) CreateLunaClientRequest(input *CreateLunaClientInput) (req *r
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Creates an HSM client.
 //
@@ -446,12 +446,12 @@ func (c *CloudHSM) DeleteHapgRequest(input *DeleteHapgInput) (req *request.Reque
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Deletes a high-availability partition group.
 //
@@ -540,12 +540,12 @@ func (c *CloudHSM) DeleteHsmRequest(input *DeleteHsmInput) (req *request.Request
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Deletes an HSM. After completion, this operation cannot be undone and your
 // key material cannot be recovered.
@@ -635,12 +635,12 @@ func (c *CloudHSM) DeleteLunaClientRequest(input *DeleteLunaClientInput) (req *r
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Deletes a client.
 //
@@ -729,12 +729,12 @@ func (c *CloudHSM) DescribeHapgRequest(input *DescribeHapgInput) (req *request.R
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Retrieves information about a high-availability partition group.
 //
@@ -823,12 +823,12 @@ func (c *CloudHSM) DescribeHsmRequest(input *DescribeHsmInput) (req *request.Req
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Retrieves information about an HSM. You can identify the HSM by its ARN or
 // its serial number.
@@ -918,12 +918,12 @@ func (c *CloudHSM) DescribeLunaClientRequest(input *DescribeLunaClientInput) (re
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Retrieves information about an HSM client.
 //
@@ -1012,12 +1012,12 @@ func (c *CloudHSM) GetConfigRequest(input *GetConfigInput) (req *request.Request
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Gets the configuration files necessary to connect to all high availability
 // partition groups the client is associated with.
@@ -1107,12 +1107,12 @@ func (c *CloudHSM) ListAvailableZonesRequest(input *ListAvailableZonesInput) (re
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Lists the Availability Zones that have available AWS CloudHSM capacity.
 //
@@ -1201,12 +1201,12 @@ func (c *CloudHSM) ListHapgsRequest(input *ListHapgsInput) (req *request.Request
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Lists the high-availability partition groups for the account.
 //
@@ -1300,12 +1300,12 @@ func (c *CloudHSM) ListHsmsRequest(input *ListHsmsInput) (req *request.Request, 
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Retrieves the identifiers of all of the HSMs provisioned for the current
 // customer.
@@ -1400,12 +1400,12 @@ func (c *CloudHSM) ListLunaClientsRequest(input *ListLunaClientsInput) (req *req
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Lists all of the clients.
 //
@@ -1499,12 +1499,12 @@ func (c *CloudHSM) ListTagsForResourceRequest(input *ListTagsForResourceInput) (
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Returns a list of all tags for the specified AWS CloudHSM resource.
 //
@@ -1593,12 +1593,12 @@ func (c *CloudHSM) ModifyHapgRequest(input *ModifyHapgInput) (req *request.Reque
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Modifies an existing high-availability partition group.
 //
@@ -1687,12 +1687,12 @@ func (c *CloudHSM) ModifyHsmRequest(input *ModifyHsmInput) (req *request.Request
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Modifies an HSM.
 //
@@ -1787,12 +1787,12 @@ func (c *CloudHSM) ModifyLunaClientRequest(input *ModifyLunaClientInput) (req *r
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Modifies the certificate used by the client.
 //
@@ -1878,12 +1878,12 @@ func (c *CloudHSM) RemoveTagsFromResourceRequest(input *RemoveTagsFromResourceIn
 //
 // This is documentation for AWS CloudHSM Classic. For more information, see
 // AWS CloudHSM Classic FAQs (http://aws.amazon.com/cloudhsm/faqs-classic/),
-// the AWS CloudHSM Classic User Guide (http://docs.aws.amazon.com/cloudhsm/classic/userguide/),
-// and the AWS CloudHSM Classic API Reference (http://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
+// the AWS CloudHSM Classic User Guide (https://docs.aws.amazon.com/cloudhsm/classic/userguide/),
+// and the AWS CloudHSM Classic API Reference (https://docs.aws.amazon.com/cloudhsm/classic/APIReference/).
 //
 // For information about the current version of AWS CloudHSM, see AWS CloudHSM
-// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (http://docs.aws.amazon.com/cloudhsm/latest/userguide/),
-// and the AWS CloudHSM API Reference (http://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
+// (http://aws.amazon.com/cloudhsm/), the AWS CloudHSM User Guide (https://docs.aws.amazon.com/cloudhsm/latest/userguide/),
+// and the AWS CloudHSM API Reference (https://docs.aws.amazon.com/cloudhsm/latest/APIReference/).
 //
 // Removes one or more tags from the specified AWS CloudHSM resource.
 //
@@ -2018,8 +2018,8 @@ func (s *AddTagsToResourceOutput) SetStatus(v string) *AddTagsToResourceOutput {
 
 // Indicates that an internal error occurred.
 type CloudHsmInternalException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2036,17 +2036,17 @@ func (s CloudHsmInternalException) GoString() string {
 
 func newErrorCloudHsmInternalException(v protocol.ResponseMetadata) error {
 	return &CloudHsmInternalException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s CloudHsmInternalException) Code() string {
+func (s *CloudHsmInternalException) Code() string {
 	return "CloudHsmInternalException"
 }
 
 // Message returns the exception's message.
-func (s CloudHsmInternalException) Message() string {
+func (s *CloudHsmInternalException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2054,28 +2054,28 @@ func (s CloudHsmInternalException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s CloudHsmInternalException) OrigErr() error {
+func (s *CloudHsmInternalException) OrigErr() error {
 	return nil
 }
 
-func (s CloudHsmInternalException) Error() string {
+func (s *CloudHsmInternalException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s CloudHsmInternalException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *CloudHsmInternalException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s CloudHsmInternalException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *CloudHsmInternalException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Indicates that an exception occurred in the AWS CloudHSM service.
 type CloudHsmServiceException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// Additional information about the error.
 	Message_ *string `locationName:"message" type:"string"`
@@ -2096,17 +2096,17 @@ func (s CloudHsmServiceException) GoString() string {
 
 func newErrorCloudHsmServiceException(v protocol.ResponseMetadata) error {
 	return &CloudHsmServiceException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s CloudHsmServiceException) Code() string {
+func (s *CloudHsmServiceException) Code() string {
 	return "CloudHsmServiceException"
 }
 
 // Message returns the exception's message.
-func (s CloudHsmServiceException) Message() string {
+func (s *CloudHsmServiceException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2114,22 +2114,22 @@ func (s CloudHsmServiceException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s CloudHsmServiceException) OrigErr() error {
+func (s *CloudHsmServiceException) OrigErr() error {
 	return nil
 }
 
-func (s CloudHsmServiceException) Error() string {
+func (s *CloudHsmServiceException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s CloudHsmServiceException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *CloudHsmServiceException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s CloudHsmServiceException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *CloudHsmServiceException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains the inputs for the CreateHapgRequest action.
@@ -2197,36 +2197,36 @@ func (s *CreateHapgOutput) SetHapgArn(v string) *CreateHapgOutput {
 
 // Contains the inputs for the CreateHsm operation.
 type CreateHsmInput struct {
-	_ struct{} `locationName:"CreateHsmRequest" type:"structure"`
+	_ struct{} `type:"structure"`
 
 	// A user-defined token to ensure idempotence. Subsequent calls to this operation
 	// with the same token will be ignored.
-	ClientToken *string `locationName:"ClientToken" type:"string"`
+	ClientToken *string `type:"string"`
 
 	// The IP address to assign to the HSM's ENI.
 	//
 	// If an IP address is not specified, an IP address will be randomly chosen
 	// from the CIDR range of the subnet.
-	EniIp *string `locationName:"EniIp" type:"string"`
+	EniIp *string `type:"string"`
 
 	// The external ID from IamRoleArn, if present.
-	ExternalId *string `locationName:"ExternalId" type:"string"`
+	ExternalId *string `type:"string"`
 
 	// The ARN of an IAM role to enable the AWS CloudHSM service to allocate an
 	// ENI on your behalf.
 	//
 	// IamRoleArn is a required field
-	IamRoleArn *string `locationName:"IamRoleArn" type:"string" required:"true"`
+	IamRoleArn *string `type:"string" required:"true"`
 
 	// The SSH public key to install on the HSM.
 	//
 	// SshKey is a required field
-	SshKey *string `locationName:"SshKey" type:"string" required:"true"`
+	SshKey *string `type:"string" required:"true"`
 
 	// The identifier of the subnet in your VPC in which to place the HSM.
 	//
 	// SubnetId is a required field
-	SubnetId *string `locationName:"SubnetId" type:"string" required:"true"`
+	SubnetId *string `type:"string" required:"true"`
 
 	// Specifies the type of subscription for the HSM.
 	//
@@ -2235,11 +2235,11 @@ type CreateHsmInput struct {
 	//    * TRIAL - The HSM is being used in a product trial.
 	//
 	// SubscriptionType is a required field
-	SubscriptionType *string `locationName:"SubscriptionType" type:"string" required:"true" enum:"SubscriptionType"`
+	SubscriptionType *string `type:"string" required:"true" enum:"SubscriptionType"`
 
 	// The IP address for the syslog monitoring server. The AWS CloudHSM service
 	// only supports one syslog monitoring server.
-	SyslogIp *string `locationName:"SyslogIp" type:"string"`
+	SyslogIp *string `type:"string"`
 }
 
 // String returns the string representation
@@ -2489,12 +2489,12 @@ func (s *DeleteHapgOutput) SetStatus(v string) *DeleteHapgOutput {
 
 // Contains the inputs for the DeleteHsm operation.
 type DeleteHsmInput struct {
-	_ struct{} `locationName:"DeleteHsmRequest" type:"structure"`
+	_ struct{} `type:"structure"`
 
 	// The ARN of the HSM to delete.
 	//
 	// HsmArn is a required field
-	HsmArn *string `locationName:"HsmArn" type:"string" required:"true"`
+	HsmArn *string `type:"string" required:"true"`
 }
 
 // String returns the string representation
@@ -3195,8 +3195,8 @@ func (s *GetConfigOutput) SetConfigType(v string) *GetConfigOutput {
 
 // Indicates that one or more of the request parameters are not valid.
 type InvalidRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3213,17 +3213,17 @@ func (s InvalidRequestException) GoString() string {
 
 func newErrorInvalidRequestException(v protocol.ResponseMetadata) error {
 	return &InvalidRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidRequestException) Code() string {
+func (s *InvalidRequestException) Code() string {
 	return "InvalidRequestException"
 }
 
 // Message returns the exception's message.
-func (s InvalidRequestException) Message() string {
+func (s *InvalidRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3231,22 +3231,22 @@ func (s InvalidRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidRequestException) OrigErr() error {
+func (s *InvalidRequestException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidRequestException) Error() string {
+func (s *InvalidRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains the inputs for the ListAvailableZones action.
@@ -3608,33 +3608,33 @@ func (s *ModifyHapgOutput) SetHapgArn(v string) *ModifyHapgOutput {
 
 // Contains the inputs for the ModifyHsm operation.
 type ModifyHsmInput struct {
-	_ struct{} `locationName:"ModifyHsmRequest" type:"structure"`
+	_ struct{} `type:"structure"`
 
 	// The new IP address for the elastic network interface (ENI) attached to the
 	// HSM.
 	//
 	// If the HSM is moved to a different subnet, and an IP address is not specified,
 	// an IP address will be randomly chosen from the CIDR range of the new subnet.
-	EniIp *string `locationName:"EniIp" type:"string"`
+	EniIp *string `type:"string"`
 
 	// The new external ID.
-	ExternalId *string `locationName:"ExternalId" type:"string"`
+	ExternalId *string `type:"string"`
 
 	// The ARN of the HSM to modify.
 	//
 	// HsmArn is a required field
-	HsmArn *string `locationName:"HsmArn" type:"string" required:"true"`
+	HsmArn *string `type:"string" required:"true"`
 
 	// The new IAM role ARN.
-	IamRoleArn *string `locationName:"IamRoleArn" type:"string"`
+	IamRoleArn *string `type:"string"`
 
 	// The new identifier of the subnet that the HSM is in. The new subnet must
 	// be in the same Availability Zone as the current subnet.
-	SubnetId *string `locationName:"SubnetId" type:"string"`
+	SubnetId *string `type:"string"`
 
 	// The new IP address for the syslog monitoring server. The AWS CloudHSM service
 	// only supports one syslog monitoring server.
-	SyslogIp *string `locationName:"SyslogIp" type:"string"`
+	SyslogIp *string `type:"string"`
 }
 
 // String returns the string representation
@@ -3943,6 +3943,14 @@ const (
 	ClientVersion53 = "5.3"
 )
 
+// ClientVersion_Values returns all elements of the ClientVersion enum
+func ClientVersion_Values() []string {
+	return []string{
+		ClientVersion51,
+		ClientVersion53,
+	}
+}
+
 const (
 	// CloudHsmObjectStateReady is a CloudHsmObjectState enum value
 	CloudHsmObjectStateReady = "READY"
@@ -3953,6 +3961,15 @@ const (
 	// CloudHsmObjectStateDegraded is a CloudHsmObjectState enum value
 	CloudHsmObjectStateDegraded = "DEGRADED"
 )
+
+// CloudHsmObjectState_Values returns all elements of the CloudHsmObjectState enum
+func CloudHsmObjectState_Values() []string {
+	return []string{
+		CloudHsmObjectStateReady,
+		CloudHsmObjectStateUpdating,
+		CloudHsmObjectStateDegraded,
+	}
+}
 
 const (
 	// HsmStatusPending is a HsmStatus enum value
@@ -3977,6 +3994,19 @@ const (
 	HsmStatusDegraded = "DEGRADED"
 )
 
+// HsmStatus_Values returns all elements of the HsmStatus enum
+func HsmStatus_Values() []string {
+	return []string{
+		HsmStatusPending,
+		HsmStatusRunning,
+		HsmStatusUpdating,
+		HsmStatusSuspended,
+		HsmStatusTerminating,
+		HsmStatusTerminated,
+		HsmStatusDegraded,
+	}
+}
+
 // Specifies the type of subscription for the HSM.
 //
 //    * PRODUCTION - The HSM is being used in a production environment.
@@ -3986,3 +4016,10 @@ const (
 	// SubscriptionTypeProduction is a SubscriptionType enum value
 	SubscriptionTypeProduction = "PRODUCTION"
 )
+
+// SubscriptionType_Values returns all elements of the SubscriptionType enum
+func SubscriptionType_Values() []string {
+	return []string{
+		SubscriptionTypeProduction,
+	}
+}
