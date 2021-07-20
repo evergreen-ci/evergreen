@@ -352,7 +352,7 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 
 //Option to set default parameters no longer supported to prevent unwanted parameters from persisting within future patches
 func (p *patchParams) loadParameters(conf *ClientSettings) error {
-	if len(p.Parameters) != 0 {
+	if len(p.Parameters) == 0 {
 		p.Parameters = conf.FindDefaultParameters(p.Project)
 	}
 	return nil

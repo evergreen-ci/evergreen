@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
-	"github.com/evergreen-ci/cocoa/internal/awsutil"
+	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/utility"
 )
 

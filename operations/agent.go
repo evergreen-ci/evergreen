@@ -51,12 +51,14 @@ func Agent() cli.Command {
 				Usage: "secret for the current host (applies only to host mode)",
 			},
 			cli.StringFlag{
-				Name:  podIDFlagName,
-				Usage: "the ID of the pod that the agent is running on (applies only to pod mode)",
+				Name:   podIDFlagName,
+				Usage:  "the ID of the pod that the agent is running on (applies only to pod mode)",
+				EnvVar: "POD_ID",
 			},
 			cli.StringFlag{
-				Name:  podSecretFlagName,
-				Usage: "the secret for the pod that the agent is running on (applies only to pod mode)",
+				Name:   podSecretFlagName,
+				Usage:  "the secret for the pod that the agent is running on (applies only to pod mode)",
+				EnvVar: "POD_SECRET",
 			},
 			cli.StringFlag{
 				Name:  agentAPIServerURLFlagName,

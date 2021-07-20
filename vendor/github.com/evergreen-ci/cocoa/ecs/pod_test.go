@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/cocoa"
-	"github.com/evergreen-ci/cocoa/internal/awsutil"
+	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/internal/testcase"
 	"github.com/evergreen-ci/cocoa/internal/testutil"
 	"github.com/evergreen-ci/cocoa/secret"
@@ -17,11 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestECSPodInterface(t *testing.T) {
+func TestBasicECSPod(t *testing.T) {
 	assert.Implements(t, (*cocoa.ECSPod)(nil), &BasicECSPod{})
-}
 
-func TestECSPodBasics(t *testing.T) {
 	testutil.CheckAWSEnvVarsForECSAndSecretsManager(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -36,7 +34,7 @@ func TestECSPodBasics(t *testing.T) {
 		},
 		"InfoIsPopulated": func(ctx context.Context, t *testing.T, c cocoa.ECSClient) {
 			res := cocoa.NewECSPodResources().SetTaskID("task_id")
-			stat := cocoa.Starting
+			stat := cocoa.StartingStatus
 			opts := NewBasicECSPodOptions().SetClient(c).SetResources(*res).SetStatus(stat)
 
 			p, err := NewBasicECSPod(opts)
@@ -148,7 +146,7 @@ func TestBasicECSPodOptions(t *testing.T) {
 		assert.Equal(t, *res, *opts.Resources)
 	})
 	t.Run("SetStatus", func(t *testing.T) {
-		stat := cocoa.Starting
+		stat := cocoa.StartingStatus
 		opts := NewBasicECSPodOptions().SetStatus(stat)
 		require.NotNil(t, opts.Status)
 		assert.Equal(t, stat, *opts.Status)
@@ -170,7 +168,7 @@ func TestBasicECSPodOptions(t *testing.T) {
 				SetClient(ecsClient).
 				SetVault(v).
 				SetResources(*res).
-				SetStatus(cocoa.Starting)
+				SetStatus(cocoa.StartingStatus)
 			assert.NoError(t, opts.Validate())
 		})
 		t.Run("MissingClientIsInvalid", func(t *testing.T) {
@@ -182,7 +180,7 @@ func TestBasicECSPodOptions(t *testing.T) {
 			opts := NewBasicECSPodOptions().
 				SetVault(v).
 				SetResources(*res).
-				SetStatus(cocoa.Starting)
+				SetStatus(cocoa.StartingStatus)
 			assert.Error(t, opts.Validate())
 		})
 		t.Run("MissingVaultIsValid", func(t *testing.T) {
@@ -193,7 +191,7 @@ func TestBasicECSPodOptions(t *testing.T) {
 			opts := NewBasicECSPodOptions().
 				SetClient(ecsClient).
 				SetResources(*res).
-				SetStatus(cocoa.Starting)
+				SetStatus(cocoa.StartingStatus)
 			assert.NoError(t, opts.Validate())
 		})
 		t.Run("MissingResourcesIsInvalid", func(t *testing.T) {
@@ -205,7 +203,7 @@ func TestBasicECSPodOptions(t *testing.T) {
 			opts := NewBasicECSPodOptions().
 				SetVault(v).
 				SetResources(*res).
-				SetStatus(cocoa.Starting)
+				SetStatus(cocoa.StartingStatus)
 			assert.Error(t, opts.Validate())
 		})
 		t.Run("BadResourcesIsInvalid", func(t *testing.T) {
@@ -215,7 +213,7 @@ func TestBasicECSPodOptions(t *testing.T) {
 			v := secret.NewBasicSecretsManager(smClient)
 			opts := NewBasicECSPodOptions().
 				SetVault(v).
-				SetStatus(cocoa.Starting)
+				SetStatus(cocoa.StartingStatus)
 			assert.Error(t, opts.Validate())
 		})
 		t.Run("MissingStatusIsInvalid", func(t *testing.T) {

@@ -360,8 +360,8 @@ func (s *BucketInfo) SetBuckets(v []*Bucket) *BucketInfo {
 
 // Information about any problems encountered while processing an upload request.
 type DocumentServiceException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The description of the errors returned by the document service.
 	Message_ *string `locationName:"message" type:"string"`
@@ -382,17 +382,17 @@ func (s DocumentServiceException) GoString() string {
 
 func newErrorDocumentServiceException(v protocol.ResponseMetadata) error {
 	return &DocumentServiceException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s DocumentServiceException) Code() string {
+func (s *DocumentServiceException) Code() string {
 	return "DocumentServiceException"
 }
 
 // Message returns the exception's message.
-func (s DocumentServiceException) Message() string {
+func (s *DocumentServiceException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -400,22 +400,22 @@ func (s DocumentServiceException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s DocumentServiceException) OrigErr() error {
+func (s *DocumentServiceException) OrigErr() error {
 	return nil
 }
 
-func (s DocumentServiceException) Error() string {
+func (s *DocumentServiceException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s DocumentServiceException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *DocumentServiceException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s DocumentServiceException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *DocumentServiceException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A warning returned by the document service when an issue is discovered while
@@ -657,8 +657,8 @@ func (s *Hits) SetStart(v int64) *Hits {
 
 // Information about any problems encountered while processing a search request.
 type SearchException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// A description of the error returned by the search service.
 	Message_ *string `locationName:"message" type:"string"`
@@ -676,17 +676,17 @@ func (s SearchException) GoString() string {
 
 func newErrorSearchException(v protocol.ResponseMetadata) error {
 	return &SearchException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s SearchException) Code() string {
+func (s *SearchException) Code() string {
 	return "SearchException"
 }
 
 // Message returns the exception's message.
-func (s SearchException) Message() string {
+func (s *SearchException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -694,22 +694,22 @@ func (s SearchException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s SearchException) OrigErr() error {
+func (s *SearchException) OrigErr() error {
 	return nil
 }
 
-func (s SearchException) Error() string {
+func (s *SearchException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s SearchException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *SearchException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s SearchException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *SearchException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Container for the parameters to the Search request.
@@ -1551,6 +1551,14 @@ const (
 	ContentTypeApplicationXml = "application/xml"
 )
 
+// ContentType_Values returns all elements of the ContentType enum
+func ContentType_Values() []string {
+	return []string{
+		ContentTypeApplicationJson,
+		ContentTypeApplicationXml,
+	}
+}
+
 const (
 	// QueryParserSimple is a QueryParser enum value
 	QueryParserSimple = "simple"
@@ -1564,3 +1572,13 @@ const (
 	// QueryParserDismax is a QueryParser enum value
 	QueryParserDismax = "dismax"
 )
+
+// QueryParser_Values returns all elements of the QueryParser enum
+func QueryParser_Values() []string {
+	return []string{
+		QueryParserSimple,
+		QueryParserStructured,
+		QueryParserLucene,
+		QueryParserDismax,
+	}
+}

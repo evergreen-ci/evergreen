@@ -65,11 +65,9 @@ func (c *ApplicationAutoScaling) DeleteScalingPolicyRequest(input *DeleteScaling
 // not delete the CloudWatch alarm associated with the scaling policy, even
 // if it no longer has an associated action.
 //
-// For more information, see Delete a Step Scaling Policy (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-step-scaling-policies.html#delete-step-scaling-policy)
-// and Delete a Target Tracking Scaling Policy (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-target-tracking.html#delete-target-tracking-policy)
+// For more information, see Delete a step scaling policy (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-step-scaling-policies.html#delete-step-scaling-policy)
+// and Delete a target tracking scaling policy (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-target-tracking.html#delete-target-tracking-policy)
 // in the Application Auto Scaling User Guide.
-//
-// To create a scaling policy or update an existing one, see PutScalingPolicy.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -167,7 +165,7 @@ func (c *ApplicationAutoScaling) DeleteScheduledActionRequest(input *DeleteSched
 // Deletes the specified scheduled action for an Application Auto Scaling scalable
 // target.
 //
-// For more information, see Delete a Scheduled Action (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-scheduled-scaling.html#delete-scheduled-action)
+// For more information, see Delete a scheduled action (https://docs.aws.amazon.com/autoscaling/application/userguide/scheduled-scaling-additional-cli-commands.html#delete-scheduled-action)
 // in the Application Auto Scaling User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -263,12 +261,12 @@ func (c *ApplicationAutoScaling) DeregisterScalableTargetRequest(input *Deregist
 
 // DeregisterScalableTarget API operation for Application Auto Scaling.
 //
-// Deregisters an Application Auto Scaling scalable target.
+// Deregisters an Application Auto Scaling scalable target when you have finished
+// using it. To see which resources have been registered, use DescribeScalableTargets
+// (https://docs.aws.amazon.com/autoscaling/application/APIReference/API_DescribeScalableTargets.html).
 //
-// Deregistering a scalable target deletes the scaling policies that are associated
-// with it.
-//
-// To create a scalable target or update an existing one, see RegisterScalableTarget.
+// Deregistering a scalable target deletes the scaling policies and the scheduled
+// actions that are associated with it.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -371,10 +369,6 @@ func (c *ApplicationAutoScaling) DescribeScalableTargetsRequest(input *DescribeS
 // Gets information about the scalable targets in the specified namespace.
 //
 // You can filter the results using ResourceIds and ScalableDimension.
-//
-// To create a scalable target or update an existing one, see RegisterScalableTarget.
-// If you are no longer using a scalable target, you can deregister it using
-// DeregisterScalableTarget.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -527,11 +521,6 @@ func (c *ApplicationAutoScaling) DescribeScalingActivitiesRequest(input *Describ
 //
 // You can filter the results using ResourceId and ScalableDimension.
 //
-// Scaling activities are triggered by CloudWatch alarms that are associated
-// with scaling policies. To view the scaling policies for a service namespace,
-// see DescribeScalingPolicies. To create a scaling policy or update an existing
-// one, see PutScalingPolicy.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -683,8 +672,9 @@ func (c *ApplicationAutoScaling) DescribeScalingPoliciesRequest(input *DescribeS
 //
 // You can filter the results using ResourceId, ScalableDimension, and PolicyNames.
 //
-// To create a scaling policy or update an existing one, see PutScalingPolicy.
-// If you are no longer using a scaling policy, you can delete it using DeleteScalingPolicy.
+// For more information, see Target tracking scaling policies (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-target-tracking.html)
+// and Step scaling policies (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-step-scaling-policies.html)
+// in the Application Auto Scaling User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -846,8 +836,9 @@ func (c *ApplicationAutoScaling) DescribeScheduledActionsRequest(input *Describe
 // You can filter the results using the ResourceId, ScalableDimension, and ScheduledActionNames
 // parameters.
 //
-// To create a scheduled action or update an existing one, see PutScheduledAction.
-// If you are no longer using a scheduled action, you can delete it using DeleteScheduledAction.
+// For more information, see Scheduled scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-scheduled-scaling.html)
+// and Managing scheduled scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/scheduled-scaling-additional-cli-commands.html)
+// in the Application Auto Scaling User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -989,19 +980,13 @@ func (c *ApplicationAutoScaling) PutScalingPolicyRequest(input *PutScalingPolicy
 
 // PutScalingPolicy API operation for Application Auto Scaling.
 //
-// Creates or updates a policy for an Application Auto Scaling scalable target.
+// Creates or updates a scaling policy for an Application Auto Scaling scalable
+// target.
 //
 // Each scalable target is identified by a service namespace, resource ID, and
 // scalable dimension. A scaling policy applies to the scalable target identified
 // by those three attributes. You cannot create a scaling policy until you have
-// registered the resource as a scalable target using RegisterScalableTarget.
-//
-// To update a policy, specify its policy name and the parameters that you want
-// to change. Any parameters that you don't specify are not changed by this
-// update request.
-//
-// You can view the scaling policies for a service namespace using DescribeScalingPolicies.
-// If you are no longer using a scaling policy, you can delete it using DeleteScalingPolicy.
+// registered the resource as a scalable target.
 //
 // Multiple scaling policies can be in force at the same time for the same scalable
 // target. You can have one or more target tracking scaling policies, one or
@@ -1014,8 +999,21 @@ func (c *ApplicationAutoScaling) PutScalingPolicyRequest(input *PutScalingPolicy
 // uses the policy with the highest calculated capacity (200% of 10 = 20) and
 // scales out to 30.
 //
-// Learn more about how to work with scaling policies in the Application Auto
-// Scaling User Guide (https://docs.aws.amazon.com/autoscaling/application/userguide/what-is-application-auto-scaling.html).
+// We recommend caution, however, when using target tracking scaling policies
+// with step scaling policies because conflicts between these policies can cause
+// undesirable behavior. For example, if the step scaling policy initiates a
+// scale-in activity before the target tracking policy is ready to scale in,
+// the scale-in activity will not be blocked. After the scale-in activity completes,
+// the target tracking policy could instruct the scalable target to scale out
+// again.
+//
+// For more information, see Target tracking scaling policies (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-target-tracking.html)
+// and Step scaling policies (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-step-scaling-policies.html)
+// in the Application Auto Scaling User Guide.
+//
+// If a scalable target is deregistered, the scalable target is no longer available
+// to execute scaling policies. Any scaling policies that were specified for
+// the scalable target are deleted.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1031,7 +1029,7 @@ func (c *ApplicationAutoScaling) PutScalingPolicyRequest(input *PutScalingPolicy
 //
 //   * LimitExceededException
 //   A per-account resource limit is exceeded. For more information, see Application
-//   Auto Scaling Limits (https://docs.aws.amazon.com/ApplicationAutoScaling/latest/userguide/application-auto-scaling-limits.html).
+//   Auto Scaling service quotas (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-limits.html).
 //
 //   * ObjectNotFoundException
 //   The specified object could not be found. For any operation that depends on
@@ -1128,18 +1126,21 @@ func (c *ApplicationAutoScaling) PutScheduledActionRequest(input *PutScheduledAc
 // Each scalable target is identified by a service namespace, resource ID, and
 // scalable dimension. A scheduled action applies to the scalable target identified
 // by those three attributes. You cannot create a scheduled action until you
-// have registered the resource as a scalable target using RegisterScalableTarget.
+// have registered the resource as a scalable target.
 //
-// To update an action, specify its name and the parameters that you want to
-// change. If you don't specify start and end times, the old values are deleted.
-// Any other parameters that you don't specify are not changed by this update
-// request.
+// When start and end times are specified with a recurring schedule using a
+// cron expression or rates, they form the boundaries for when the recurring
+// action starts and stops.
 //
-// You can view the scheduled actions using DescribeScheduledActions. If you
-// are no longer using a scheduled action, you can delete it using DeleteScheduledAction.
+// To update a scheduled action, specify the parameters that you want to change.
+// If you don't specify start and end times, the old values are deleted.
 //
-// Learn more about how to work with scheduled actions in the Application Auto
-// Scaling User Guide (https://docs.aws.amazon.com/autoscaling/application/userguide/what-is-application-auto-scaling.html).
+// For more information, see Scheduled scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-scheduled-scaling.html)
+// in the Application Auto Scaling User Guide.
+//
+// If a scalable target is deregistered, the scalable target is no longer available
+// to run scheduled actions. Any scheduled actions that were specified for the
+// scalable target are deleted.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1155,7 +1156,7 @@ func (c *ApplicationAutoScaling) PutScheduledActionRequest(input *PutScheduledAc
 //
 //   * LimitExceededException
 //   A per-account resource limit is exceeded. For more information, see Application
-//   Auto Scaling Limits (https://docs.aws.amazon.com/ApplicationAutoScaling/latest/userguide/application-auto-scaling-limits.html).
+//   Auto Scaling service quotas (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-limits.html).
 //
 //   * ObjectNotFoundException
 //   The specified object could not be found. For any operation that depends on
@@ -1238,26 +1239,29 @@ func (c *ApplicationAutoScaling) RegisterScalableTargetRequest(input *RegisterSc
 
 // RegisterScalableTarget API operation for Application Auto Scaling.
 //
-// Registers or updates a scalable target. A scalable target is a resource that
-// Application Auto Scaling can scale out and scale in. Scalable targets are
-// uniquely identified by the combination of resource ID, scalable dimension,
-// and namespace.
+// Registers or updates a scalable target.
+//
+// A scalable target is a resource that Application Auto Scaling can scale out
+// and scale in. Scalable targets are uniquely identified by the combination
+// of resource ID, scalable dimension, and namespace.
 //
 // When you register a new scalable target, you must specify values for minimum
-// and maximum capacity. Application Auto Scaling will not scale capacity to
-// values that are outside of this range.
-//
-// To update a scalable target, specify the parameter that you want to change
-// as well as the following parameters that identify the scalable target: resource
-// ID, scalable dimension, and namespace. Any parameters that you don't specify
-// are not changed by this update request.
+// and maximum capacity. Current capacity will be adjusted within the specified
+// range when scaling starts. Application Auto Scaling scaling policies will
+// not scale capacity to values that are outside of this range.
 //
 // After you register a scalable target, you do not need to register it again
 // to use other Application Auto Scaling operations. To see which resources
-// have been registered, use DescribeScalableTargets. You can also view the
-// scaling policies for a service namespace by using DescribeScalableTargets.
+// have been registered, use DescribeScalableTargets (https://docs.aws.amazon.com/autoscaling/application/APIReference/API_DescribeScalableTargets.html).
+// You can also view the scaling policies for a service namespace by using DescribeScalableTargets
+// (https://docs.aws.amazon.com/autoscaling/application/APIReference/API_DescribeScalableTargets.html).
+// If you no longer need a scalable target, you can deregister it by using DeregisterScalableTarget
+// (https://docs.aws.amazon.com/autoscaling/application/APIReference/API_DeregisterScalableTarget.html).
 //
-// If you no longer need a scalable target, you can deregister it by using DeregisterScalableTarget.
+// To update a scalable target, specify the parameters that you want to change.
+// Include the parameters that identify the scalable target: resource ID, scalable
+// dimension, and namespace. Any parameters that you don't specify are not changed
+// by this update request.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1273,7 +1277,7 @@ func (c *ApplicationAutoScaling) RegisterScalableTargetRequest(input *RegisterSc
 //
 //   * LimitExceededException
 //   A per-account resource limit is exceeded. For more information, see Application
-//   Auto Scaling Limits (https://docs.aws.amazon.com/ApplicationAutoScaling/latest/userguide/application-auto-scaling-limits.html).
+//   Auto Scaling service quotas (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-limits.html).
 //
 //   * ConcurrentUpdateException
 //   Concurrent updates caused an exception, for example, if you request an update
@@ -1344,8 +1348,8 @@ func (s *Alarm) SetAlarmName(v string) *Alarm {
 // Concurrent updates caused an exception, for example, if you request an update
 // to an Application Auto Scaling resource that already has a pending update.
 type ConcurrentUpdateException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1362,17 +1366,17 @@ func (s ConcurrentUpdateException) GoString() string {
 
 func newErrorConcurrentUpdateException(v protocol.ResponseMetadata) error {
 	return &ConcurrentUpdateException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConcurrentUpdateException) Code() string {
+func (s *ConcurrentUpdateException) Code() string {
 	return "ConcurrentUpdateException"
 }
 
 // Message returns the exception's message.
-func (s ConcurrentUpdateException) Message() string {
+func (s *ConcurrentUpdateException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1380,26 +1384,30 @@ func (s ConcurrentUpdateException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConcurrentUpdateException) OrigErr() error {
+func (s *ConcurrentUpdateException) OrigErr() error {
 	return nil
 }
 
-func (s ConcurrentUpdateException) Error() string {
+func (s *ConcurrentUpdateException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConcurrentUpdateException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConcurrentUpdateException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConcurrentUpdateException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConcurrentUpdateException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents a CloudWatch metric of your choosing for a target tracking scaling
 // policy to use with Application Auto Scaling.
+//
+// For information about the available metrics for a service, see AWS Services
+// That Publish CloudWatch Metrics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/aws-services-cloudwatch-metrics.html)
+// in the Amazon CloudWatch User Guide.
 //
 // To create your customized metric specification:
 //
@@ -1412,7 +1420,7 @@ func (s ConcurrentUpdateException) RequestID() string {
 //    * Choose a metric that changes proportionally with capacity. The value
 //    of the metric should increase or decrease in inverse proportion to the
 //    number of capacity units. That is, the value of the metric should decrease
-//    when capacity increases.
+//    when capacity increases, and increase when capacity decreases.
 //
 // For more information about CloudWatch, see Amazon CloudWatch Concepts (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html).
 type CustomizedMetricSpecification struct {
@@ -1555,10 +1563,19 @@ type DeleteScalingPolicyInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -1603,16 +1620,26 @@ type DeleteScalingPolicyInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -1732,10 +1759,19 @@ type DeleteScheduledActionInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -1780,8 +1816,20 @@ type DeleteScheduledActionInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
@@ -1791,10 +1839,8 @@ type DeleteScheduledActionInput struct {
 	// ScheduledActionName is a required field
 	ScheduledActionName *string `min:"1" type:"string" required:"true"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -1914,10 +1960,19 @@ type DeregisterScalableTargetInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -1962,16 +2017,26 @@ type DeregisterScalableTargetInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -2057,8 +2122,7 @@ type DescribeScalableTargetsInput struct {
 	NextToken *string `type:"string"`
 
 	// The identifier of the resource associated with the scalable target. This
-	// string consists of the resource type and unique identifier. If you specify
-	// a scalable dimension, you must also specify a resource ID.
+	// string consists of the resource type and unique identifier.
 	//
 	//    * ECS service - The resource type is service and the unique identifier
 	//    is the cluster name and service name. Example: service/default/sample-webapp.
@@ -2092,10 +2156,19 @@ type DescribeScalableTargetsInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	ResourceIds []*string `type:"list"`
 
 	// The scalable dimension associated with the scalable target. This string consists
@@ -2139,14 +2212,24 @@ type DescribeScalableTargetsInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	ScalableDimension *string `type:"string" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -2254,8 +2337,7 @@ type DescribeScalingActivitiesInput struct {
 	NextToken *string `type:"string"`
 
 	// The identifier of the resource associated with the scaling activity. This
-	// string consists of the resource type and unique identifier. If you specify
-	// a scalable dimension, you must also specify a resource ID.
+	// string consists of the resource type and unique identifier.
 	//
 	//    * ECS service - The resource type is service and the unique identifier
 	//    is the cluster name and service name. Example: service/default/sample-webapp.
@@ -2289,10 +2371,19 @@ type DescribeScalingActivitiesInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	ResourceId *string `min:"1" type:"string"`
 
 	// The scalable dimension. This string consists of the service namespace, resource
@@ -2336,14 +2427,24 @@ type DescribeScalingActivitiesInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	ScalableDimension *string `type:"string" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -2457,8 +2558,7 @@ type DescribeScalingPoliciesInput struct {
 	PolicyNames []*string `type:"list"`
 
 	// The identifier of the resource associated with the scaling policy. This string
-	// consists of the resource type and unique identifier. If you specify a scalable
-	// dimension, you must also specify a resource ID.
+	// consists of the resource type and unique identifier.
 	//
 	//    * ECS service - The resource type is service and the unique identifier
 	//    is the cluster name and service name. Example: service/default/sample-webapp.
@@ -2492,10 +2592,19 @@ type DescribeScalingPoliciesInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	ResourceId *string `min:"1" type:"string"`
 
 	// The scalable dimension. This string consists of the service namespace, resource
@@ -2539,14 +2648,24 @@ type DescribeScalingPoliciesInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	ScalableDimension *string `type:"string" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -2663,8 +2782,7 @@ type DescribeScheduledActionsInput struct {
 	NextToken *string `type:"string"`
 
 	// The identifier of the resource associated with the scheduled action. This
-	// string consists of the resource type and unique identifier. If you specify
-	// a scalable dimension, you must also specify a resource ID.
+	// string consists of the resource type and unique identifier.
 	//
 	//    * ECS service - The resource type is service and the unique identifier
 	//    is the cluster name and service name. Example: service/default/sample-webapp.
@@ -2698,10 +2816,19 @@ type DescribeScheduledActionsInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	ResourceId *string `min:"1" type:"string"`
 
 	// The scalable dimension. This string consists of the service namespace, resource
@@ -2745,17 +2872,27 @@ type DescribeScheduledActionsInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	ScalableDimension *string `type:"string" enum:"ScalableDimension"`
 
 	// The names of the scheduled actions to describe.
 	ScheduledActionNames []*string `type:"list"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -2863,8 +3000,8 @@ func (s *DescribeScheduledActionsOutput) SetScheduledActions(v []*ScheduledActio
 // DescribeAlarms (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeAlarms.html)
 // on your behalf.
 type FailedResourceAccessException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -2881,17 +3018,17 @@ func (s FailedResourceAccessException) GoString() string {
 
 func newErrorFailedResourceAccessException(v protocol.ResponseMetadata) error {
 	return &FailedResourceAccessException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s FailedResourceAccessException) Code() string {
+func (s *FailedResourceAccessException) Code() string {
 	return "FailedResourceAccessException"
 }
 
 // Message returns the exception's message.
-func (s FailedResourceAccessException) Message() string {
+func (s *FailedResourceAccessException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2899,28 +3036,28 @@ func (s FailedResourceAccessException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s FailedResourceAccessException) OrigErr() error {
+func (s *FailedResourceAccessException) OrigErr() error {
 	return nil
 }
 
-func (s FailedResourceAccessException) Error() string {
+func (s *FailedResourceAccessException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s FailedResourceAccessException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *FailedResourceAccessException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s FailedResourceAccessException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *FailedResourceAccessException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The service encountered an internal error.
 type InternalServiceException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -2937,17 +3074,17 @@ func (s InternalServiceException) GoString() string {
 
 func newErrorInternalServiceException(v protocol.ResponseMetadata) error {
 	return &InternalServiceException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServiceException) Code() string {
+func (s *InternalServiceException) Code() string {
 	return "InternalServiceException"
 }
 
 // Message returns the exception's message.
-func (s InternalServiceException) Message() string {
+func (s *InternalServiceException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2955,28 +3092,28 @@ func (s InternalServiceException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServiceException) OrigErr() error {
+func (s *InternalServiceException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServiceException) Error() string {
+func (s *InternalServiceException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServiceException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServiceException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServiceException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServiceException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The next token supplied was invalid.
 type InvalidNextTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -2993,17 +3130,17 @@ func (s InvalidNextTokenException) GoString() string {
 
 func newErrorInvalidNextTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidNextTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidNextTokenException) Code() string {
+func (s *InvalidNextTokenException) Code() string {
 	return "InvalidNextTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidNextTokenException) Message() string {
+func (s *InvalidNextTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3011,29 +3148,29 @@ func (s InvalidNextTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidNextTokenException) OrigErr() error {
+func (s *InvalidNextTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidNextTokenException) Error() string {
+func (s *InvalidNextTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidNextTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidNextTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidNextTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidNextTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A per-account resource limit is exceeded. For more information, see Application
-// Auto Scaling Limits (https://docs.aws.amazon.com/ApplicationAutoScaling/latest/userguide/application-auto-scaling-limits.html).
+// Auto Scaling service quotas (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-limits.html).
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3050,17 +3187,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3068,22 +3205,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Describes the dimension names and values associated with a metric.
@@ -3145,8 +3282,8 @@ func (s *MetricDimension) SetValue(v string) *MetricDimension {
 // does not exist. For any operation that deletes or deregisters a resource,
 // this exception is thrown if the resource cannot be found.
 type ObjectNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3163,17 +3300,17 @@ func (s ObjectNotFoundException) GoString() string {
 
 func newErrorObjectNotFoundException(v protocol.ResponseMetadata) error {
 	return &ObjectNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ObjectNotFoundException) Code() string {
+func (s *ObjectNotFoundException) Code() string {
 	return "ObjectNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ObjectNotFoundException) Message() string {
+func (s *ObjectNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3181,26 +3318,32 @@ func (s ObjectNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ObjectNotFoundException) OrigErr() error {
+func (s *ObjectNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ObjectNotFoundException) Error() string {
+func (s *ObjectNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ObjectNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ObjectNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ObjectNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ObjectNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents a predefined metric for a target tracking scaling policy to use
 // with Application Auto Scaling.
+//
+// Only the AWS services that you're using send metrics to Amazon CloudWatch.
+// To determine whether a desired metric already exists by looking up its namespace
+// and dimension using the CloudWatch metrics dashboard in the console, follow
+// the procedure in Building dashboards with CloudWatch (https://docs.aws.amazon.com/autoscaling/application/userguide/monitoring-cloudwatch.html)
+// in the Application Auto Scaling User Guide.
 type PredefinedMetricSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -3214,7 +3357,9 @@ type PredefinedMetricSpecification struct {
 	// a resource label unless the metric type is ALBRequestCountPerTarget and there
 	// is a target group attached to the Spot Fleet request or ECS service.
 	//
-	// The format is app/<load-balancer-name>/<load-balancer-id>/targetgroup/<target-group-name>/<target-group-id>,
+	// You create the resource label by appending the final portion of the load
+	// balancer ARN and the final portion of the target group ARN into a single
+	// value, separated by a forward slash (/). The format is app/<load-balancer-name>/<load-balancer-id>/targetgroup/<target-group-name>/<target-group-id>,
 	// where:
 	//
 	//    * app/<load-balancer-name>/<load-balancer-id> is the final portion of
@@ -3222,6 +3367,14 @@ type PredefinedMetricSpecification struct {
 	//
 	//    * targetgroup/<target-group-name>/<target-group-id> is the final portion
 	//    of the target group ARN.
+	//
+	// This is an example: app/EC2Co-EcsEl-1TKLTMITMM0EO/f37c06a68c1748aa/targetgroup/EC2Co-Defau-LDNM7Q3ZH1ZN/6d4ea56ca2d6a18d.
+	//
+	// To find the ARN for an Application Load Balancer, use the DescribeLoadBalancers
+	// (https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DescribeLoadBalancers.html)
+	// API operation. To find the ARN for the target group, use the DescribeTargetGroups
+	// (https://docs.aws.amazon.com/elasticloadbalancing/latest/APIReference/API_DescribeTargetGroups.html)
+	// API operation.
 	ResourceLabel *string `min:"1" type:"string"`
 }
 
@@ -3278,10 +3431,11 @@ type PutScalingPolicyInput struct {
 	//
 	// TargetTrackingScaling—Not supported for Amazon EMR
 	//
-	// StepScaling—Not supported for DynamoDB, Amazon Comprehend, or AWS Lambda
+	// StepScaling—Not supported for DynamoDB, Amazon Comprehend, Lambda, Amazon
+	// Keyspaces (for Apache Cassandra), or Amazon MSK.
 	//
-	// For more information, see Target Tracking Scaling Policies (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-target-tracking.html)
-	// and Step Scaling Policies (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-step-scaling-policies.html)
+	// For more information, see Target tracking scaling policies (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-target-tracking.html)
+	// and Step scaling policies (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-step-scaling-policies.html)
 	// in the Application Auto Scaling User Guide.
 	PolicyType *string `type:"string" enum:"PolicyType"`
 
@@ -3320,10 +3474,19 @@ type PutScalingPolicyInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -3368,16 +3531,26 @@ type PutScalingPolicyInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -3523,7 +3696,7 @@ func (s *PutScalingPolicyOutput) SetPolicyARN(v string) *PutScalingPolicyOutput 
 type PutScheduledActionInput struct {
 	_ struct{} `type:"structure"`
 
-	// The date and time for the scheduled action to end.
+	// The date and time for the recurring schedule to end, in UTC.
 	EndTime *time.Time `type:"timestamp"`
 
 	// The identifier of the resource associated with the scheduled action. This
@@ -3561,10 +3734,19 @@ type PutScheduledActionInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -3609,14 +3791,26 @@ type PutScheduledActionInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
 
 	// The new minimum and maximum capacity. You can set both values or just one.
-	// During the scheduled time, if the current capacity is below the minimum capacity,
+	// At the scheduled time, if the current capacity is below the minimum capacity,
 	// Application Auto Scaling scales out to the minimum capacity. If the current
 	// capacity is above the maximum capacity, Application Auto Scaling scales in
 	// to the maximum capacity.
@@ -3630,30 +3824,46 @@ type PutScheduledActionInput struct {
 	//
 	//    * Cron expressions - "cron(fields)"
 	//
-	// At expressions are useful for one-time schedules. Specify the time, in UTC.
+	// At expressions are useful for one-time schedules. Cron expressions are useful
+	// for scheduled actions that run periodically at a specified date and time,
+	// and rate expressions are useful for scheduled actions that run at a regular
+	// interval.
+	//
+	// At and cron expressions use Universal Coordinated Time (UTC) by default.
+	//
+	// The cron format consists of six fields separated by white spaces: [Minutes]
+	// [Hours] [Day_of_Month] [Month] [Day_of_Week] [Year].
 	//
 	// For rate expressions, value is a positive integer and unit is minute | minutes
 	// | hour | hours | day | days.
 	//
-	// For more information about cron expressions, see Cron Expressions (https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions)
-	// in the Amazon CloudWatch Events User Guide.
+	// For more information and examples, see Example scheduled actions for Application
+	// Auto Scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/examples-scheduled-actions.html)
+	// in the Application Auto Scaling User Guide.
 	Schedule *string `min:"1" type:"string"`
 
-	// The name of the scheduled action.
+	// The name of the scheduled action. This name must be unique among all other
+	// scheduled actions on the specified scalable target.
 	//
 	// ScheduledActionName is a required field
 	ScheduledActionName *string `min:"1" type:"string" required:"true"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
 
-	// The date and time for the scheduled action to start.
+	// The date and time for this scheduled action to start, in UTC.
 	StartTime *time.Time `type:"timestamp"`
+
+	// Specifies the time zone used when setting a scheduled action by using an
+	// at or cron expression. If a time zone is not provided, UTC is used by default.
+	//
+	// Valid values are the canonical names of the IANA time zones supported by
+	// Joda-Time (such as Etc/GMT+9 or Pacific/Tahiti). For more information, see
+	// https://www.joda.org/joda-time/timezones.html (https://www.joda.org/joda-time/timezones.html).
+	Timezone *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -3689,6 +3899,9 @@ func (s *PutScheduledActionInput) Validate() error {
 	}
 	if s.ServiceNamespace == nil {
 		invalidParams.Add(request.NewErrParamRequired("ServiceNamespace"))
+	}
+	if s.Timezone != nil && len(*s.Timezone) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Timezone", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -3745,6 +3958,12 @@ func (s *PutScheduledActionInput) SetStartTime(v time.Time) *PutScheduledActionI
 	return s
 }
 
+// SetTimezone sets the Timezone field's value.
+func (s *PutScheduledActionInput) SetTimezone(v string) *PutScheduledActionInput {
+	s.Timezone = &v
+	return s
+}
+
 type PutScheduledActionOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -3762,12 +3981,29 @@ func (s PutScheduledActionOutput) GoString() string {
 type RegisterScalableTargetInput struct {
 	_ struct{} `type:"structure"`
 
-	// The maximum value to scale to in response to a scale-out event. MaxCapacity
-	// is required to register a scalable target.
+	// The maximum value that you plan to scale out to. When a scaling policy is
+	// in effect, Application Auto Scaling can scale out (expand) as needed to the
+	// maximum capacity limit in response to changing demand. This property is required
+	// when registering a new scalable target.
+	//
+	// Although you can specify a large maximum capacity, note that service quotas
+	// may impose lower limits. Each service has its own default quotas for the
+	// maximum capacity of the resource. If you want to specify a higher limit,
+	// you can request an increase. For more information, consult the documentation
+	// for that service. For information about the default quotas for each service,
+	// see Service Endpoints and Quotas (https://docs.aws.amazon.com/general/latest/gr/aws-service-information.html)
+	// in the Amazon Web Services General Reference.
 	MaxCapacity *int64 `type:"integer"`
 
-	// The minimum value to scale to in response to a scale-in event. MinCapacity
-	// is required to register a scalable target.
+	// The minimum value that you plan to scale in to. When a scaling policy is
+	// in effect, Application Auto Scaling can scale in (contract) as needed to
+	// the minimum capacity limit in response to changing demand. This property
+	// is required when registering a new scalable target.
+	//
+	// For certain resources, the minimum value allowed is 0. This includes Lambda
+	// provisioned concurrency, Spot Fleet, ECS services, Aurora DB clusters, EMR
+	// clusters, and custom resources. For all other resources, the minimum value
+	// allowed is 1.
 	MinCapacity *int64 `type:"integer"`
 
 	// The identifier of the resource that is associated with the scalable target.
@@ -3805,21 +4041,30 @@ type RegisterScalableTargetInput struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
 	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
+	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
 
-	// Application Auto Scaling creates a service-linked role that grants it permissions
-	// to modify the scalable target on your behalf. For more information, see Service-Linked
-	// Roles for Application Auto Scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-service-linked-roles.html).
+	// This parameter is required for services that do not support service-linked
+	// roles (such as Amazon EMR), and it must specify the ARN of an IAM role that
+	// allows Application Auto Scaling to modify the scalable target on your behalf.
 	//
-	// For Amazon EMR, this parameter is required, and it must specify the ARN of
-	// an IAM role that allows Application Auto Scaling to modify the scalable target
-	// on your behalf.
+	// If the service supports service-linked roles, Application Auto Scaling uses
+	// a service-linked role, which it creates if it does not yet exist. For more
+	// information, see Application Auto Scaling IAM roles (https://docs.aws.amazon.com/autoscaling/application/userguide/security_iam_service-with-iam.html#security_iam_service-with-iam-roles).
 	RoleARN *string `min:"1" type:"string"`
 
 	// The scalable dimension associated with the scalable target. This string consists
@@ -3862,16 +4107,26 @@ type RegisterScalableTargetInput struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource. For a resource
+	// provided by your own application or service, use custom-resource instead.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -3892,7 +4147,7 @@ type RegisterScalableTargetInput struct {
 	//    * For ScheduledScalingSuspended, while a suspension is in effect, all
 	//    scaling activities that involve scheduled actions are suspended.
 	//
-	// For more information, see Suspending and Resuming Scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-suspend-resume-scaling.html)
+	// For more information, see Suspending and resuming scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/application-auto-scaling-suspend-resume-scaling.html)
 	// in the Application Auto Scaling User Guide.
 	SuspendedState *SuspendedState `type:"structure"`
 }
@@ -3997,12 +4252,12 @@ type ScalableTarget struct {
 	// CreationTime is a required field
 	CreationTime *time.Time `type:"timestamp" required:"true"`
 
-	// The maximum value to scale to in response to a scale-out event.
+	// The maximum value to scale to in response to a scale-out activity.
 	//
 	// MaxCapacity is a required field
 	MaxCapacity *int64 `type:"integer" required:"true"`
 
-	// The minimum value to scale to in response to a scale-in event.
+	// The minimum value to scale to in response to a scale-in activity.
 	//
 	// MinCapacity is a required field
 	MinCapacity *int64 `type:"integer" required:"true"`
@@ -4042,10 +4297,19 @@ type ScalableTarget struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -4096,16 +4360,25 @@ type ScalableTarget struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource, or a custom-resource.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -4178,9 +4451,22 @@ type ScalableTargetAction struct {
 	_ struct{} `type:"structure"`
 
 	// The maximum capacity.
+	//
+	// Although you can specify a large maximum capacity, note that service quotas
+	// may impose lower limits. Each service has its own default quotas for the
+	// maximum capacity of the resource. If you want to specify a higher limit,
+	// you can request an increase. For more information, consult the documentation
+	// for that service. For information about the default quotas for each service,
+	// see Service Endpoints and Quotas (https://docs.aws.amazon.com/general/latest/gr/aws-service-information.html)
+	// in the Amazon Web Services General Reference.
 	MaxCapacity *int64 `type:"integer"`
 
 	// The minimum capacity.
+	//
+	// For certain resources, the minimum value allowed is 0. This includes Lambda
+	// provisioned concurrency, Spot Fleet, ECS services, Aurora DB clusters, EMR
+	// clusters, and custom resources. For all other resources, the minimum value
+	// allowed is 1.
 	MinCapacity *int64 `type:"integer"`
 }
 
@@ -4266,10 +4552,19 @@ type ScalingActivity struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -4314,16 +4609,25 @@ type ScalingActivity struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource, or a custom-resource.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -4419,6 +4723,10 @@ func (s *ScalingActivity) SetStatusMessage(v string) *ScalingActivity {
 }
 
 // Represents a scaling policy to use with Application Auto Scaling.
+//
+// For more information about configuring scaling policies for a specific service,
+// see Getting started with Application Auto Scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/getting-started.html)
+// in the Application Auto Scaling User Guide.
 type ScalingPolicy struct {
 	_ struct{} `type:"structure"`
 
@@ -4480,10 +4788,19 @@ type ScalingPolicy struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -4528,16 +4845,25 @@ type ScalingPolicy struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	//
 	// ScalableDimension is a required field
 	ScalableDimension *string `type:"string" required:"true" enum:"ScalableDimension"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource, or a custom-resource.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
@@ -4628,7 +4954,7 @@ type ScheduledAction struct {
 	// CreationTime is a required field
 	CreationTime *time.Time `type:"timestamp" required:"true"`
 
-	// The date and time that the action is scheduled to end.
+	// The date and time that the action is scheduled to end, in UTC.
 	EndTime *time.Time `type:"timestamp"`
 
 	// The identifier of the resource associated with the scaling policy. This string
@@ -4666,10 +4992,19 @@ type ScheduledAction struct {
 	//    * Amazon Comprehend document classification endpoint - The resource type
 	//    and unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:document-classifier-endpoint/EXAMPLE.
 	//
+	//    * Amazon Comprehend entity recognizer endpoint - The resource type and
+	//    unique identifier are specified using the endpoint ARN. Example: arn:aws:comprehend:us-west-2:123456789012:entity-recognizer-endpoint/EXAMPLE.
+	//
 	//    * Lambda provisioned concurrency - The resource type is function and the
 	//    unique identifier is the function name with a function version or alias
 	//    name suffix that is not $LATEST. Example: function:my-function:prod or
 	//    function:my-function:1.
+	//
+	//    * Amazon Keyspaces table - The resource type is table and the unique identifier
+	//    is the table name. Example: keyspace/mykeyspace/table/mytable.
+	//
+	//    * Amazon MSK cluster - The resource type and unique identifier are specified
+	//    using the cluster ARN. Example: arn:aws:kafka:us-east-1:123456789012:cluster/demo-cluster-1/6357e0b2-0e6a-4b86-a0b4-70df934c2e31-5.
 	//
 	// ResourceId is a required field
 	ResourceId *string `min:"1" type:"string" required:"true"`
@@ -4714,12 +5049,24 @@ type ScheduledAction struct {
 	//    number of inference units for an Amazon Comprehend document classification
 	//    endpoint.
 	//
+	//    * comprehend:entity-recognizer-endpoint:DesiredInferenceUnits - The number
+	//    of inference units for an Amazon Comprehend entity recognizer endpoint.
+	//
 	//    * lambda:function:ProvisionedConcurrency - The provisioned concurrency
 	//    for a Lambda function.
+	//
+	//    * cassandra:table:ReadCapacityUnits - The provisioned read capacity for
+	//    an Amazon Keyspaces table.
+	//
+	//    * cassandra:table:WriteCapacityUnits - The provisioned write capacity
+	//    for an Amazon Keyspaces table.
+	//
+	//    * kafka:broker-storage:VolumeSize - The provisioned volume size (in GiB)
+	//    for brokers in an Amazon MSK cluster.
 	ScalableDimension *string `type:"string" enum:"ScalableDimension"`
 
 	// The new minimum and maximum capacity. You can set both values or just one.
-	// During the scheduled time, if the current capacity is below the minimum capacity,
+	// At the scheduled time, if the current capacity is below the minimum capacity,
 	// Application Auto Scaling scales out to the minimum capacity. If the current
 	// capacity is above the maximum capacity, Application Auto Scaling scales in
 	// to the maximum capacity.
@@ -4733,13 +5080,22 @@ type ScheduledAction struct {
 	//
 	//    * Cron expressions - "cron(fields)"
 	//
-	// At expressions are useful for one-time schedules. Specify the time, in UTC.
+	// At expressions are useful for one-time schedules. Cron expressions are useful
+	// for scheduled actions that run periodically at a specified date and time,
+	// and rate expressions are useful for scheduled actions that run at a regular
+	// interval.
+	//
+	// At and cron expressions use Universal Coordinated Time (UTC) by default.
+	//
+	// The cron format consists of six fields separated by white spaces: [Minutes]
+	// [Hours] [Day_of_Month] [Month] [Day_of_Week] [Year].
 	//
 	// For rate expressions, value is a positive integer and unit is minute | minutes
 	// | hour | hours | day | days.
 	//
-	// For more information about cron expressions, see Cron Expressions (https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions)
-	// in the Amazon CloudWatch Events User Guide.
+	// For more information and examples, see Example scheduled actions for Application
+	// Auto Scaling (https://docs.aws.amazon.com/autoscaling/application/userguide/examples-scheduled-actions.html)
+	// in the Application Auto Scaling User Guide.
 	//
 	// Schedule is a required field
 	Schedule *string `min:"1" type:"string" required:"true"`
@@ -4754,16 +5110,17 @@ type ScheduledAction struct {
 	// ScheduledActionName is a required field
 	ScheduledActionName *string `min:"1" type:"string" required:"true"`
 
-	// The namespace of the AWS service that provides the resource or custom-resource
-	// for a resource provided by your own application or service. For more information,
-	// see AWS Service Namespaces (http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#genref-aws-service-namespaces)
-	// in the Amazon Web Services General Reference.
+	// The namespace of the AWS service that provides the resource, or a custom-resource.
 	//
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `type:"string" required:"true" enum:"ServiceNamespace"`
 
-	// The date and time that the action is scheduled to begin.
+	// The date and time that the action is scheduled to begin, in UTC.
 	StartTime *time.Time `type:"timestamp"`
+
+	// The time zone used when referring to the date and time of a scheduled action,
+	// when the scheduled action uses an at or cron expression.
+	Timezone *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -4836,9 +5193,16 @@ func (s *ScheduledAction) SetStartTime(v time.Time) *ScheduledAction {
 	return s
 }
 
-// Represents a step adjustment for a StepScalingPolicyConfiguration. Describes
-// an adjustment based on the difference between the value of the aggregated
-// CloudWatch metric and the breach threshold that you've defined for the alarm.
+// SetTimezone sets the Timezone field's value.
+func (s *ScheduledAction) SetTimezone(v string) *ScheduledAction {
+	s.Timezone = &v
+	return s
+}
+
+// Represents a step adjustment for a StepScalingPolicyConfiguration (https://docs.aws.amazon.com/autoscaling/application/APIReference/API_StepScalingPolicyConfiguration.html).
+// Describes an adjustment based on the difference between the value of the
+// aggregated CloudWatch metric and the breach threshold that you've defined
+// for the alarm.
 //
 // For the following examples, suppose that you have an alarm with a breach
 // threshold of 50:
@@ -4885,8 +5249,8 @@ type StepAdjustment struct {
 	MetricIntervalUpperBound *float64 `type:"double"`
 
 	// The amount by which to scale, based on the specified adjustment type. A positive
-	// value adds to the current scalable dimension while a negative number removes
-	// from the current scalable dimension.
+	// value adds to the current capacity while a negative number removes from the
+	// current capacity. For exact capacity, you must specify a positive value.
 	//
 	// ScalingAdjustment is a required field
 	ScalingAdjustment *int64 `type:"integer" required:"true"`
@@ -4938,31 +5302,66 @@ func (s *StepAdjustment) SetScalingAdjustment(v int64) *StepAdjustment {
 type StepScalingPolicyConfiguration struct {
 	_ struct{} `type:"structure"`
 
-	// Specifies whether the ScalingAdjustment value in a StepAdjustment is an absolute
-	// number or a percentage of the current capacity.
+	// Specifies how the ScalingAdjustment value in a StepAdjustment (https://docs.aws.amazon.com/autoscaling/application/APIReference/API_StepAdjustment.html)
+	// is interpreted (for example, an absolute number or a percentage). The valid
+	// values are ChangeInCapacity, ExactCapacity, and PercentChangeInCapacity.
+	//
+	// AdjustmentType is required if you are adding a new step scaling policy configuration.
 	AdjustmentType *string `type:"string" enum:"AdjustmentType"`
 
-	// The amount of time, in seconds, after a scaling activity completes where
-	// previous trigger-related scaling activities can influence future scaling
-	// events.
+	// The amount of time, in seconds, to wait for a previous scaling activity to
+	// take effect.
 	//
-	// For scale-out policies, while the cooldown period is in effect, the capacity
-	// that has been added by the previous scale-out event that initiated the cooldown
-	// is calculated as part of the desired capacity for the next scale out. The
-	// intention is to continuously (but not excessively) scale out. For example,
-	// an alarm triggers a step scaling policy to scale out an Amazon ECS service
-	// by 2 tasks, the scaling activity completes successfully, and a cooldown period
-	// of 5 minutes starts. During the cooldown period, if the alarm triggers the
-	// same policy again but at a more aggressive step adjustment to scale out the
-	// service by 3 tasks, the 2 tasks that were added in the previous scale-out
-	// event are considered part of that capacity and only 1 additional task is
-	// added to the desired count.
+	// With scale-out policies, the intention is to continuously (but not excessively)
+	// scale out. After Application Auto Scaling successfully scales out using a
+	// step scaling policy, it starts to calculate the cooldown time. The scaling
+	// policy won't increase the desired capacity again unless either a larger scale
+	// out is triggered or the cooldown period ends. While the cooldown period is
+	// in effect, capacity added by the initiating scale-out activity is calculated
+	// as part of the desired capacity for the next scale-out activity. For example,
+	// when an alarm triggers a step scaling policy to increase the capacity by
+	// 2, the scaling activity completes successfully, and a cooldown period starts.
+	// If the alarm triggers again during the cooldown period but at a more aggressive
+	// step adjustment of 3, the previous increase of 2 is considered part of the
+	// current capacity. Therefore, only 1 is added to the capacity.
 	//
-	// For scale-in policies, the cooldown period is used to block subsequent scale-in
-	// requests until it has expired. The intention is to scale in conservatively
-	// to protect your application's availability. However, if another alarm triggers
-	// a scale-out policy during the cooldown period after a scale-in, Application
-	// Auto Scaling scales out your scalable target immediately.
+	// With scale-in policies, the intention is to scale in conservatively to protect
+	// your application’s availability, so scale-in activities are blocked until
+	// the cooldown period has expired. However, if another alarm triggers a scale-out
+	// activity during the cooldown period after a scale-in activity, Application
+	// Auto Scaling scales out the target immediately. In this case, the cooldown
+	// period for the scale-in activity stops and doesn't complete.
+	//
+	// Application Auto Scaling provides a default value of 300 for the following
+	// scalable targets:
+	//
+	//    * ECS services
+	//
+	//    * Spot Fleet requests
+	//
+	//    * EMR clusters
+	//
+	//    * AppStream 2.0 fleets
+	//
+	//    * Aurora DB clusters
+	//
+	//    * Amazon SageMaker endpoint variants
+	//
+	//    * Custom resources
+	//
+	// For all other scalable targets, the default value is 0:
+	//
+	//    * DynamoDB tables
+	//
+	//    * DynamoDB global secondary indexes
+	//
+	//    * Amazon Comprehend document classification and entity recognizer endpoints
+	//
+	//    * Lambda provisioned concurrency
+	//
+	//    * Amazon Keyspaces tables
+	//
+	//    * Amazon MSK broker storage
 	Cooldown *int64 `type:"integer"`
 
 	// The aggregation type for the CloudWatch metrics. Valid values are Minimum,
@@ -4970,10 +5369,7 @@ type StepScalingPolicyConfiguration struct {
 	// as Average.
 	MetricAggregationType *string `type:"string" enum:"MetricAggregationType"`
 
-	// The minimum number to adjust your scalable dimension as a result of a scaling
-	// activity. If the adjustment type is PercentChangeInCapacity, the scaling
-	// policy changes the scalable dimension of the scalable target by this amount.
-	//
+	// The minimum value to scale by when the adjustment type is PercentChangeInCapacity.
 	// For example, suppose that you create a step scaling policy to scale out an
 	// Amazon ECS service by 25 percent and you specify a MinAdjustmentMagnitude
 	// of 2. If the service has 4 tasks and the scaling policy is performed, 25
@@ -4983,6 +5379,9 @@ type StepScalingPolicyConfiguration struct {
 
 	// A set of adjustments that enable you to scale based on the size of the alarm
 	// breach.
+	//
+	// At least one step adjustment is required if you are adding a new step scaling
+	// policy configuration.
 	StepAdjustments []*StepAdjustment `type:"list"`
 }
 
@@ -5106,9 +5505,9 @@ type TargetTrackingScalingPolicyConfiguration struct {
 
 	// Indicates whether scale in by the target tracking scaling policy is disabled.
 	// If the value is true, scale in is disabled and the target tracking scaling
-	// policy won't remove capacity from the scalable resource. Otherwise, scale
-	// in is enabled and the target tracking scaling policy can remove capacity
-	// from the scalable resource. The default value is false.
+	// policy won't remove capacity from the scalable target. Otherwise, scale in
+	// is enabled and the target tracking scaling policy can remove capacity from
+	// the scalable target. The default value is false.
 	DisableScaleIn *bool `type:"boolean"`
 
 	// A predefined metric. You can specify either a predefined metric or a customized
@@ -5116,26 +5515,97 @@ type TargetTrackingScalingPolicyConfiguration struct {
 	PredefinedMetricSpecification *PredefinedMetricSpecification `type:"structure"`
 
 	// The amount of time, in seconds, after a scale-in activity completes before
-	// another scale in activity can start.
+	// another scale-in activity can start.
 	//
-	// The cooldown period is used to block subsequent scale-in requests until it
-	// has expired. The intention is to scale in conservatively to protect your
-	// application's availability. However, if another alarm triggers a scale-out
-	// policy during the cooldown period after a scale-in, Application Auto Scaling
-	// scales out your scalable target immediately.
+	// With the scale-in cooldown period, the intention is to scale in conservatively
+	// to protect your application’s availability, so scale-in activities are
+	// blocked until the cooldown period has expired. However, if another alarm
+	// triggers a scale-out activity during the scale-in cooldown period, Application
+	// Auto Scaling scales out the target immediately. In this case, the scale-in
+	// cooldown period stops and doesn't complete.
+	//
+	// Application Auto Scaling provides a default value of 300 for the following
+	// scalable targets:
+	//
+	//    * ECS services
+	//
+	//    * Spot Fleet requests
+	//
+	//    * EMR clusters
+	//
+	//    * AppStream 2.0 fleets
+	//
+	//    * Aurora DB clusters
+	//
+	//    * Amazon SageMaker endpoint variants
+	//
+	//    * Custom resources
+	//
+	// For all other scalable targets, the default value is 0:
+	//
+	//    * DynamoDB tables
+	//
+	//    * DynamoDB global secondary indexes
+	//
+	//    * Amazon Comprehend document classification and entity recognizer endpoints
+	//
+	//    * Lambda provisioned concurrency
+	//
+	//    * Amazon Keyspaces tables
+	//
+	//    * Amazon MSK broker storage
 	ScaleInCooldown *int64 `type:"integer"`
 
-	// The amount of time, in seconds, after a scale-out activity completes before
-	// another scale-out activity can start.
+	// The amount of time, in seconds, to wait for a previous scale-out activity
+	// to take effect.
 	//
-	// While the cooldown period is in effect, the capacity that has been added
-	// by the previous scale-out event that initiated the cooldown is calculated
-	// as part of the desired capacity for the next scale out. The intention is
-	// to continuously (but not excessively) scale out.
+	// With the scale-out cooldown period, the intention is to continuously (but
+	// not excessively) scale out. After Application Auto Scaling successfully scales
+	// out using a target tracking scaling policy, it starts to calculate the cooldown
+	// time. The scaling policy won't increase the desired capacity again unless
+	// either a larger scale out is triggered or the cooldown period ends. While
+	// the cooldown period is in effect, the capacity added by the initiating scale-out
+	// activity is calculated as part of the desired capacity for the next scale-out
+	// activity.
+	//
+	// Application Auto Scaling provides a default value of 300 for the following
+	// scalable targets:
+	//
+	//    * ECS services
+	//
+	//    * Spot Fleet requests
+	//
+	//    * EMR clusters
+	//
+	//    * AppStream 2.0 fleets
+	//
+	//    * Aurora DB clusters
+	//
+	//    * Amazon SageMaker endpoint variants
+	//
+	//    * Custom resources
+	//
+	// For all other scalable targets, the default value is 0:
+	//
+	//    * DynamoDB tables
+	//
+	//    * DynamoDB global secondary indexes
+	//
+	//    * Amazon Comprehend document classification and entity recognizer endpoints
+	//
+	//    * Lambda provisioned concurrency
+	//
+	//    * Amazon Keyspaces tables
+	//
+	//    * Amazon MSK broker storage
 	ScaleOutCooldown *int64 `type:"integer"`
 
-	// The target value for the metric. The range is 8.515920e-109 to 1.174271e+108
-	// (Base 10) or 2e-360 to 2e360 (Base 2).
+	// The target value for the metric. Although this property accepts numbers of
+	// type Double, it won't accept values that are either too small or too large.
+	// Values must be in the range of -2^360 to 2^360. The value must be a valid
+	// number based on the choice of metric. For example, if the metric is CPU utilization,
+	// then the target value is a percent value that represents how much of the
+	// CPU can be used before scaling out.
 	//
 	// TargetValue is a required field
 	TargetValue *float64 `type:"double" required:"true"`
@@ -5213,8 +5683,8 @@ func (s *TargetTrackingScalingPolicyConfiguration) SetTargetValue(v float64) *Ta
 // An exception was thrown for a validation issue. Review the available parameters
 // for the API request.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -5231,17 +5701,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5249,22 +5719,22 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -5278,6 +5748,15 @@ const (
 	AdjustmentTypeExactCapacity = "ExactCapacity"
 )
 
+// AdjustmentType_Values returns all elements of the AdjustmentType enum
+func AdjustmentType_Values() []string {
+	return []string{
+		AdjustmentTypeChangeInCapacity,
+		AdjustmentTypePercentChangeInCapacity,
+		AdjustmentTypeExactCapacity,
+	}
+}
+
 const (
 	// MetricAggregationTypeAverage is a MetricAggregationType enum value
 	MetricAggregationTypeAverage = "Average"
@@ -5288,6 +5767,15 @@ const (
 	// MetricAggregationTypeMaximum is a MetricAggregationType enum value
 	MetricAggregationTypeMaximum = "Maximum"
 )
+
+// MetricAggregationType_Values returns all elements of the MetricAggregationType enum
+func MetricAggregationType_Values() []string {
+	return []string{
+		MetricAggregationTypeAverage,
+		MetricAggregationTypeMinimum,
+		MetricAggregationTypeMaximum,
+	}
+}
 
 const (
 	// MetricStatisticAverage is a MetricStatistic enum value
@@ -5305,6 +5793,17 @@ const (
 	// MetricStatisticSum is a MetricStatistic enum value
 	MetricStatisticSum = "Sum"
 )
+
+// MetricStatistic_Values returns all elements of the MetricStatistic enum
+func MetricStatistic_Values() []string {
+	return []string{
+		MetricStatisticAverage,
+		MetricStatisticMinimum,
+		MetricStatisticMaximum,
+		MetricStatisticSampleCount,
+		MetricStatisticSum,
+	}
+}
 
 const (
 	// MetricTypeDynamoDbreadCapacityUtilization is a MetricType enum value
@@ -5348,7 +5847,39 @@ const (
 
 	// MetricTypeLambdaProvisionedConcurrencyUtilization is a MetricType enum value
 	MetricTypeLambdaProvisionedConcurrencyUtilization = "LambdaProvisionedConcurrencyUtilization"
+
+	// MetricTypeCassandraReadCapacityUtilization is a MetricType enum value
+	MetricTypeCassandraReadCapacityUtilization = "CassandraReadCapacityUtilization"
+
+	// MetricTypeCassandraWriteCapacityUtilization is a MetricType enum value
+	MetricTypeCassandraWriteCapacityUtilization = "CassandraWriteCapacityUtilization"
+
+	// MetricTypeKafkaBrokerStorageUtilization is a MetricType enum value
+	MetricTypeKafkaBrokerStorageUtilization = "KafkaBrokerStorageUtilization"
 )
+
+// MetricType_Values returns all elements of the MetricType enum
+func MetricType_Values() []string {
+	return []string{
+		MetricTypeDynamoDbreadCapacityUtilization,
+		MetricTypeDynamoDbwriteCapacityUtilization,
+		MetricTypeAlbrequestCountPerTarget,
+		MetricTypeRdsreaderAverageCpuutilization,
+		MetricTypeRdsreaderAverageDatabaseConnections,
+		MetricTypeEc2spotFleetRequestAverageCpuutilization,
+		MetricTypeEc2spotFleetRequestAverageNetworkIn,
+		MetricTypeEc2spotFleetRequestAverageNetworkOut,
+		MetricTypeSageMakerVariantInvocationsPerInstance,
+		MetricTypeEcsserviceAverageCpuutilization,
+		MetricTypeEcsserviceAverageMemoryUtilization,
+		MetricTypeAppStreamAverageCapacityUtilization,
+		MetricTypeComprehendInferenceUtilization,
+		MetricTypeLambdaProvisionedConcurrencyUtilization,
+		MetricTypeCassandraReadCapacityUtilization,
+		MetricTypeCassandraWriteCapacityUtilization,
+		MetricTypeKafkaBrokerStorageUtilization,
+	}
+}
 
 const (
 	// PolicyTypeStepScaling is a PolicyType enum value
@@ -5357,6 +5888,14 @@ const (
 	// PolicyTypeTargetTrackingScaling is a PolicyType enum value
 	PolicyTypeTargetTrackingScaling = "TargetTrackingScaling"
 )
+
+// PolicyType_Values returns all elements of the PolicyType enum
+func PolicyType_Values() []string {
+	return []string{
+		PolicyTypeStepScaling,
+		PolicyTypeTargetTrackingScaling,
+	}
+}
 
 const (
 	// ScalableDimensionEcsServiceDesiredCount is a ScalableDimension enum value
@@ -5395,9 +5934,44 @@ const (
 	// ScalableDimensionComprehendDocumentClassifierEndpointDesiredInferenceUnits is a ScalableDimension enum value
 	ScalableDimensionComprehendDocumentClassifierEndpointDesiredInferenceUnits = "comprehend:document-classifier-endpoint:DesiredInferenceUnits"
 
+	// ScalableDimensionComprehendEntityRecognizerEndpointDesiredInferenceUnits is a ScalableDimension enum value
+	ScalableDimensionComprehendEntityRecognizerEndpointDesiredInferenceUnits = "comprehend:entity-recognizer-endpoint:DesiredInferenceUnits"
+
 	// ScalableDimensionLambdaFunctionProvisionedConcurrency is a ScalableDimension enum value
 	ScalableDimensionLambdaFunctionProvisionedConcurrency = "lambda:function:ProvisionedConcurrency"
+
+	// ScalableDimensionCassandraTableReadCapacityUnits is a ScalableDimension enum value
+	ScalableDimensionCassandraTableReadCapacityUnits = "cassandra:table:ReadCapacityUnits"
+
+	// ScalableDimensionCassandraTableWriteCapacityUnits is a ScalableDimension enum value
+	ScalableDimensionCassandraTableWriteCapacityUnits = "cassandra:table:WriteCapacityUnits"
+
+	// ScalableDimensionKafkaBrokerStorageVolumeSize is a ScalableDimension enum value
+	ScalableDimensionKafkaBrokerStorageVolumeSize = "kafka:broker-storage:VolumeSize"
 )
+
+// ScalableDimension_Values returns all elements of the ScalableDimension enum
+func ScalableDimension_Values() []string {
+	return []string{
+		ScalableDimensionEcsServiceDesiredCount,
+		ScalableDimensionEc2SpotFleetRequestTargetCapacity,
+		ScalableDimensionElasticmapreduceInstancegroupInstanceCount,
+		ScalableDimensionAppstreamFleetDesiredCapacity,
+		ScalableDimensionDynamodbTableReadCapacityUnits,
+		ScalableDimensionDynamodbTableWriteCapacityUnits,
+		ScalableDimensionDynamodbIndexReadCapacityUnits,
+		ScalableDimensionDynamodbIndexWriteCapacityUnits,
+		ScalableDimensionRdsClusterReadReplicaCount,
+		ScalableDimensionSagemakerVariantDesiredInstanceCount,
+		ScalableDimensionCustomResourceResourceTypeProperty,
+		ScalableDimensionComprehendDocumentClassifierEndpointDesiredInferenceUnits,
+		ScalableDimensionComprehendEntityRecognizerEndpointDesiredInferenceUnits,
+		ScalableDimensionLambdaFunctionProvisionedConcurrency,
+		ScalableDimensionCassandraTableReadCapacityUnits,
+		ScalableDimensionCassandraTableWriteCapacityUnits,
+		ScalableDimensionKafkaBrokerStorageVolumeSize,
+	}
+}
 
 const (
 	// ScalingActivityStatusCodePending is a ScalingActivityStatusCode enum value
@@ -5418,6 +5992,18 @@ const (
 	// ScalingActivityStatusCodeFailed is a ScalingActivityStatusCode enum value
 	ScalingActivityStatusCodeFailed = "Failed"
 )
+
+// ScalingActivityStatusCode_Values returns all elements of the ScalingActivityStatusCode enum
+func ScalingActivityStatusCode_Values() []string {
+	return []string{
+		ScalingActivityStatusCodePending,
+		ScalingActivityStatusCodeInProgress,
+		ScalingActivityStatusCodeSuccessful,
+		ScalingActivityStatusCodeOverridden,
+		ScalingActivityStatusCodeUnfulfilled,
+		ScalingActivityStatusCodeFailed,
+	}
+}
 
 const (
 	// ServiceNamespaceEcs is a ServiceNamespace enum value
@@ -5449,4 +6035,28 @@ const (
 
 	// ServiceNamespaceLambda is a ServiceNamespace enum value
 	ServiceNamespaceLambda = "lambda"
+
+	// ServiceNamespaceCassandra is a ServiceNamespace enum value
+	ServiceNamespaceCassandra = "cassandra"
+
+	// ServiceNamespaceKafka is a ServiceNamespace enum value
+	ServiceNamespaceKafka = "kafka"
 )
+
+// ServiceNamespace_Values returns all elements of the ServiceNamespace enum
+func ServiceNamespace_Values() []string {
+	return []string{
+		ServiceNamespaceEcs,
+		ServiceNamespaceElasticmapreduce,
+		ServiceNamespaceEc2,
+		ServiceNamespaceAppstream,
+		ServiceNamespaceDynamodb,
+		ServiceNamespaceRds,
+		ServiceNamespaceSagemaker,
+		ServiceNamespaceCustomResource,
+		ServiceNamespaceComprehend,
+		ServiceNamespaceLambda,
+		ServiceNamespaceCassandra,
+		ServiceNamespaceKafka,
+	}
+}

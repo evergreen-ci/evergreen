@@ -1,7 +1,7 @@
 name := cocoa
 projectPath := github.com/evergreen-ci/cocoa
 buildDir := build
-testPackages := $(name) ecs secret mock internal-awsutil
+testPackages := $(name) ecs secret mock awsutil
 allPackages := $(testPackages) internal-testcase internal-testutil
 lintPackages := $(allPackages)
 

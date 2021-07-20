@@ -105,6 +105,99 @@ func (c *ComprehendMedical) DescribeEntitiesDetectionV2JobWithContext(ctx aws.Co
 	return out, req.Send()
 }
 
+const opDescribeICD10CMInferenceJob = "DescribeICD10CMInferenceJob"
+
+// DescribeICD10CMInferenceJobRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeICD10CMInferenceJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeICD10CMInferenceJob for more information on using the DescribeICD10CMInferenceJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeICD10CMInferenceJobRequest method.
+//    req, resp := client.DescribeICD10CMInferenceJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/DescribeICD10CMInferenceJob
+func (c *ComprehendMedical) DescribeICD10CMInferenceJobRequest(input *DescribeICD10CMInferenceJobInput) (req *request.Request, output *DescribeICD10CMInferenceJobOutput) {
+	op := &request.Operation{
+		Name:       opDescribeICD10CMInferenceJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribeICD10CMInferenceJobInput{}
+	}
+
+	output = &DescribeICD10CMInferenceJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeICD10CMInferenceJob API operation for AWS Comprehend Medical.
+//
+// Gets the properties associated with an InferICD10CM job. Use this operation
+// to get the status of an inference job.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Comprehend Medical's
+// API operation DescribeICD10CMInferenceJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request that you made is invalid. Check your request to determine why
+//   it's invalid and then retry the request.
+//
+//   * TooManyRequestsException
+//   You have made too many requests within a short period of time. Wait for a
+//   short time and then try your request again. Contact customer support for
+//   more information about a service limit increase.
+//
+//   * ResourceNotFoundException
+//   The resource identified by the specified Amazon Resource Name (ARN) was not
+//   found. Check the ARN and try your request again.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/DescribeICD10CMInferenceJob
+func (c *ComprehendMedical) DescribeICD10CMInferenceJob(input *DescribeICD10CMInferenceJobInput) (*DescribeICD10CMInferenceJobOutput, error) {
+	req, out := c.DescribeICD10CMInferenceJobRequest(input)
+	return out, req.Send()
+}
+
+// DescribeICD10CMInferenceJobWithContext is the same as DescribeICD10CMInferenceJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeICD10CMInferenceJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ComprehendMedical) DescribeICD10CMInferenceJobWithContext(ctx aws.Context, input *DescribeICD10CMInferenceJobInput, opts ...request.Option) (*DescribeICD10CMInferenceJobOutput, error) {
+	req, out := c.DescribeICD10CMInferenceJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opDescribePHIDetectionJob = "DescribePHIDetectionJob"
 
 // DescribePHIDetectionJobRequest generates a "aws/request.Request" representing the
@@ -193,6 +286,99 @@ func (c *ComprehendMedical) DescribePHIDetectionJob(input *DescribePHIDetectionJ
 // for more information on using Contexts.
 func (c *ComprehendMedical) DescribePHIDetectionJobWithContext(ctx aws.Context, input *DescribePHIDetectionJobInput, opts ...request.Option) (*DescribePHIDetectionJobOutput, error) {
 	req, out := c.DescribePHIDetectionJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDescribeRxNormInferenceJob = "DescribeRxNormInferenceJob"
+
+// DescribeRxNormInferenceJobRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeRxNormInferenceJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeRxNormInferenceJob for more information on using the DescribeRxNormInferenceJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeRxNormInferenceJobRequest method.
+//    req, resp := client.DescribeRxNormInferenceJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/DescribeRxNormInferenceJob
+func (c *ComprehendMedical) DescribeRxNormInferenceJobRequest(input *DescribeRxNormInferenceJobInput) (req *request.Request, output *DescribeRxNormInferenceJobOutput) {
+	op := &request.Operation{
+		Name:       opDescribeRxNormInferenceJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribeRxNormInferenceJobInput{}
+	}
+
+	output = &DescribeRxNormInferenceJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeRxNormInferenceJob API operation for AWS Comprehend Medical.
+//
+// Gets the properties associated with an InferRxNorm job. Use this operation
+// to get the status of an inference job.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Comprehend Medical's
+// API operation DescribeRxNormInferenceJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request that you made is invalid. Check your request to determine why
+//   it's invalid and then retry the request.
+//
+//   * TooManyRequestsException
+//   You have made too many requests within a short period of time. Wait for a
+//   short time and then try your request again. Contact customer support for
+//   more information about a service limit increase.
+//
+//   * ResourceNotFoundException
+//   The resource identified by the specified Amazon Resource Name (ARN) was not
+//   found. Check the ARN and try your request again.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/DescribeRxNormInferenceJob
+func (c *ComprehendMedical) DescribeRxNormInferenceJob(input *DescribeRxNormInferenceJobInput) (*DescribeRxNormInferenceJobOutput, error) {
+	req, out := c.DescribeRxNormInferenceJobRequest(input)
+	return out, req.Send()
+}
+
+// DescribeRxNormInferenceJobWithContext is the same as DescribeRxNormInferenceJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeRxNormInferenceJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ComprehendMedical) DescribeRxNormInferenceJobWithContext(ctx aws.Context, input *DescribeRxNormInferenceJobInput, opts ...request.Option) (*DescribeRxNormInferenceJobOutput, error) {
+	req, out := c.DescribeRxNormInferenceJobRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -358,7 +544,8 @@ func (c *ComprehendMedical) DetectEntitiesV2Request(input *DetectEntitiesV2Input
 //
 // Inspects the clinical text for a variety of medical entities and returns
 // specific information about them such as entity category, location, and confidence
-// score on that information.
+// score on that information. Amazon Comprehend Medical only detects medical
+// entities in English language texts.
 //
 // The DetectEntitiesV2 operation replaces the DetectEntities operation. This
 // new action uses a different model for determining the entities in your medical
@@ -467,7 +654,9 @@ func (c *ComprehendMedical) DetectPHIRequest(input *DetectPHIInput) (req *reques
 // DetectPHI API operation for AWS Comprehend Medical.
 //
 // Inspects the clinical text for protected health information (PHI) entities
-// and entity category, location, and confidence score on that information.
+// and returns the entity category, location, and confidence score for each
+// entity. Amazon Comprehend Medical only detects entities in English language
+// texts.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -569,7 +758,8 @@ func (c *ComprehendMedical) InferICD10CMRequest(input *InferICD10CMInput) (req *
 //
 // InferICD10CM detects medical conditions as entities listed in a patient record
 // and links those entities to normalized concept identifiers in the ICD-10-CM
-// knowledge base from the Centers for Disease Control.
+// knowledge base from the Centers for Disease Control. Amazon Comprehend Medical
+// only detects medical entities in English language texts.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -671,7 +861,8 @@ func (c *ComprehendMedical) InferRxNormRequest(input *InferRxNormInput) (req *re
 //
 // InferRxNorm detects medications as entities listed in a patient record and
 // links to the normalized concept identifiers in the RxNorm database from the
-// National Library of Medicine.
+// National Library of Medicine. Amazon Comprehend Medical only detects medical
+// entities in English language texts.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -819,6 +1010,98 @@ func (c *ComprehendMedical) ListEntitiesDetectionV2JobsWithContext(ctx aws.Conte
 	return out, req.Send()
 }
 
+const opListICD10CMInferenceJobs = "ListICD10CMInferenceJobs"
+
+// ListICD10CMInferenceJobsRequest generates a "aws/request.Request" representing the
+// client's request for the ListICD10CMInferenceJobs operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListICD10CMInferenceJobs for more information on using the ListICD10CMInferenceJobs
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListICD10CMInferenceJobsRequest method.
+//    req, resp := client.ListICD10CMInferenceJobsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/ListICD10CMInferenceJobs
+func (c *ComprehendMedical) ListICD10CMInferenceJobsRequest(input *ListICD10CMInferenceJobsInput) (req *request.Request, output *ListICD10CMInferenceJobsOutput) {
+	op := &request.Operation{
+		Name:       opListICD10CMInferenceJobs,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ListICD10CMInferenceJobsInput{}
+	}
+
+	output = &ListICD10CMInferenceJobsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListICD10CMInferenceJobs API operation for AWS Comprehend Medical.
+//
+// Gets a list of InferICD10CM jobs that you have submitted.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Comprehend Medical's
+// API operation ListICD10CMInferenceJobs for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request that you made is invalid. Check your request to determine why
+//   it's invalid and then retry the request.
+//
+//   * ValidationException
+//   The filter that you specified for the operation is invalid. Check the filter
+//   values that you entered and try your request again.
+//
+//   * TooManyRequestsException
+//   You have made too many requests within a short period of time. Wait for a
+//   short time and then try your request again. Contact customer support for
+//   more information about a service limit increase.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/ListICD10CMInferenceJobs
+func (c *ComprehendMedical) ListICD10CMInferenceJobs(input *ListICD10CMInferenceJobsInput) (*ListICD10CMInferenceJobsOutput, error) {
+	req, out := c.ListICD10CMInferenceJobsRequest(input)
+	return out, req.Send()
+}
+
+// ListICD10CMInferenceJobsWithContext is the same as ListICD10CMInferenceJobs with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListICD10CMInferenceJobs for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ComprehendMedical) ListICD10CMInferenceJobsWithContext(ctx aws.Context, input *ListICD10CMInferenceJobsInput, opts ...request.Option) (*ListICD10CMInferenceJobsOutput, error) {
+	req, out := c.ListICD10CMInferenceJobsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opListPHIDetectionJobs = "ListPHIDetectionJobs"
 
 // ListPHIDetectionJobsRequest generates a "aws/request.Request" representing the
@@ -907,6 +1190,98 @@ func (c *ComprehendMedical) ListPHIDetectionJobs(input *ListPHIDetectionJobsInpu
 // for more information on using Contexts.
 func (c *ComprehendMedical) ListPHIDetectionJobsWithContext(ctx aws.Context, input *ListPHIDetectionJobsInput, opts ...request.Option) (*ListPHIDetectionJobsOutput, error) {
 	req, out := c.ListPHIDetectionJobsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opListRxNormInferenceJobs = "ListRxNormInferenceJobs"
+
+// ListRxNormInferenceJobsRequest generates a "aws/request.Request" representing the
+// client's request for the ListRxNormInferenceJobs operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListRxNormInferenceJobs for more information on using the ListRxNormInferenceJobs
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListRxNormInferenceJobsRequest method.
+//    req, resp := client.ListRxNormInferenceJobsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/ListRxNormInferenceJobs
+func (c *ComprehendMedical) ListRxNormInferenceJobsRequest(input *ListRxNormInferenceJobsInput) (req *request.Request, output *ListRxNormInferenceJobsOutput) {
+	op := &request.Operation{
+		Name:       opListRxNormInferenceJobs,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ListRxNormInferenceJobsInput{}
+	}
+
+	output = &ListRxNormInferenceJobsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListRxNormInferenceJobs API operation for AWS Comprehend Medical.
+//
+// Gets a list of InferRxNorm jobs that you have submitted.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Comprehend Medical's
+// API operation ListRxNormInferenceJobs for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request that you made is invalid. Check your request to determine why
+//   it's invalid and then retry the request.
+//
+//   * ValidationException
+//   The filter that you specified for the operation is invalid. Check the filter
+//   values that you entered and try your request again.
+//
+//   * TooManyRequestsException
+//   You have made too many requests within a short period of time. Wait for a
+//   short time and then try your request again. Contact customer support for
+//   more information about a service limit increase.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/ListRxNormInferenceJobs
+func (c *ComprehendMedical) ListRxNormInferenceJobs(input *ListRxNormInferenceJobsInput) (*ListRxNormInferenceJobsOutput, error) {
+	req, out := c.ListRxNormInferenceJobsRequest(input)
+	return out, req.Send()
+}
+
+// ListRxNormInferenceJobsWithContext is the same as ListRxNormInferenceJobs with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListRxNormInferenceJobs for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ComprehendMedical) ListRxNormInferenceJobsWithContext(ctx aws.Context, input *ListRxNormInferenceJobsInput, opts ...request.Option) (*ListRxNormInferenceJobsOutput, error) {
+	req, out := c.ListRxNormInferenceJobsRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1006,6 +1381,100 @@ func (c *ComprehendMedical) StartEntitiesDetectionV2JobWithContext(ctx aws.Conte
 	return out, req.Send()
 }
 
+const opStartICD10CMInferenceJob = "StartICD10CMInferenceJob"
+
+// StartICD10CMInferenceJobRequest generates a "aws/request.Request" representing the
+// client's request for the StartICD10CMInferenceJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StartICD10CMInferenceJob for more information on using the StartICD10CMInferenceJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StartICD10CMInferenceJobRequest method.
+//    req, resp := client.StartICD10CMInferenceJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/StartICD10CMInferenceJob
+func (c *ComprehendMedical) StartICD10CMInferenceJobRequest(input *StartICD10CMInferenceJobInput) (req *request.Request, output *StartICD10CMInferenceJobOutput) {
+	op := &request.Operation{
+		Name:       opStartICD10CMInferenceJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StartICD10CMInferenceJobInput{}
+	}
+
+	output = &StartICD10CMInferenceJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StartICD10CMInferenceJob API operation for AWS Comprehend Medical.
+//
+// Starts an asynchronous job to detect medical conditions and link them to
+// the ICD-10-CM ontology. Use the DescribeICD10CMInferenceJob operation to
+// track the status of a job.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Comprehend Medical's
+// API operation StartICD10CMInferenceJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request that you made is invalid. Check your request to determine why
+//   it's invalid and then retry the request.
+//
+//   * TooManyRequestsException
+//   You have made too many requests within a short period of time. Wait for a
+//   short time and then try your request again. Contact customer support for
+//   more information about a service limit increase.
+//
+//   * ResourceNotFoundException
+//   The resource identified by the specified Amazon Resource Name (ARN) was not
+//   found. Check the ARN and try your request again.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/StartICD10CMInferenceJob
+func (c *ComprehendMedical) StartICD10CMInferenceJob(input *StartICD10CMInferenceJobInput) (*StartICD10CMInferenceJobOutput, error) {
+	req, out := c.StartICD10CMInferenceJobRequest(input)
+	return out, req.Send()
+}
+
+// StartICD10CMInferenceJobWithContext is the same as StartICD10CMInferenceJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StartICD10CMInferenceJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ComprehendMedical) StartICD10CMInferenceJobWithContext(ctx aws.Context, input *StartICD10CMInferenceJobInput, opts ...request.Option) (*StartICD10CMInferenceJobOutput, error) {
+	req, out := c.StartICD10CMInferenceJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opStartPHIDetectionJob = "StartPHIDetectionJob"
 
 // StartPHIDetectionJobRequest generates a "aws/request.Request" representing the
@@ -1099,6 +1568,100 @@ func (c *ComprehendMedical) StartPHIDetectionJobWithContext(ctx aws.Context, inp
 	return out, req.Send()
 }
 
+const opStartRxNormInferenceJob = "StartRxNormInferenceJob"
+
+// StartRxNormInferenceJobRequest generates a "aws/request.Request" representing the
+// client's request for the StartRxNormInferenceJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StartRxNormInferenceJob for more information on using the StartRxNormInferenceJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StartRxNormInferenceJobRequest method.
+//    req, resp := client.StartRxNormInferenceJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/StartRxNormInferenceJob
+func (c *ComprehendMedical) StartRxNormInferenceJobRequest(input *StartRxNormInferenceJobInput) (req *request.Request, output *StartRxNormInferenceJobOutput) {
+	op := &request.Operation{
+		Name:       opStartRxNormInferenceJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StartRxNormInferenceJobInput{}
+	}
+
+	output = &StartRxNormInferenceJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StartRxNormInferenceJob API operation for AWS Comprehend Medical.
+//
+// Starts an asynchronous job to detect medication entities and link them to
+// the RxNorm ontology. Use the DescribeRxNormInferenceJob operation to track
+// the status of a job.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Comprehend Medical's
+// API operation StartRxNormInferenceJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request that you made is invalid. Check your request to determine why
+//   it's invalid and then retry the request.
+//
+//   * TooManyRequestsException
+//   You have made too many requests within a short period of time. Wait for a
+//   short time and then try your request again. Contact customer support for
+//   more information about a service limit increase.
+//
+//   * ResourceNotFoundException
+//   The resource identified by the specified Amazon Resource Name (ARN) was not
+//   found. Check the ARN and try your request again.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/StartRxNormInferenceJob
+func (c *ComprehendMedical) StartRxNormInferenceJob(input *StartRxNormInferenceJobInput) (*StartRxNormInferenceJobOutput, error) {
+	req, out := c.StartRxNormInferenceJobRequest(input)
+	return out, req.Send()
+}
+
+// StartRxNormInferenceJobWithContext is the same as StartRxNormInferenceJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StartRxNormInferenceJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ComprehendMedical) StartRxNormInferenceJobWithContext(ctx aws.Context, input *StartRxNormInferenceJobInput, opts ...request.Option) (*StartRxNormInferenceJobOutput, error) {
+	req, out := c.StartRxNormInferenceJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opStopEntitiesDetectionV2Job = "StopEntitiesDetectionV2Job"
 
 // StopEntitiesDetectionV2JobRequest generates a "aws/request.Request" representing the
@@ -1181,6 +1744,93 @@ func (c *ComprehendMedical) StopEntitiesDetectionV2Job(input *StopEntitiesDetect
 // for more information on using Contexts.
 func (c *ComprehendMedical) StopEntitiesDetectionV2JobWithContext(ctx aws.Context, input *StopEntitiesDetectionV2JobInput, opts ...request.Option) (*StopEntitiesDetectionV2JobOutput, error) {
 	req, out := c.StopEntitiesDetectionV2JobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStopICD10CMInferenceJob = "StopICD10CMInferenceJob"
+
+// StopICD10CMInferenceJobRequest generates a "aws/request.Request" representing the
+// client's request for the StopICD10CMInferenceJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StopICD10CMInferenceJob for more information on using the StopICD10CMInferenceJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StopICD10CMInferenceJobRequest method.
+//    req, resp := client.StopICD10CMInferenceJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/StopICD10CMInferenceJob
+func (c *ComprehendMedical) StopICD10CMInferenceJobRequest(input *StopICD10CMInferenceJobInput) (req *request.Request, output *StopICD10CMInferenceJobOutput) {
+	op := &request.Operation{
+		Name:       opStopICD10CMInferenceJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StopICD10CMInferenceJobInput{}
+	}
+
+	output = &StopICD10CMInferenceJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StopICD10CMInferenceJob API operation for AWS Comprehend Medical.
+//
+// Stops an InferICD10CM inference job in progress.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Comprehend Medical's
+// API operation StopICD10CMInferenceJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request that you made is invalid. Check your request to determine why
+//   it's invalid and then retry the request.
+//
+//   * ResourceNotFoundException
+//   The resource identified by the specified Amazon Resource Name (ARN) was not
+//   found. Check the ARN and try your request again.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/StopICD10CMInferenceJob
+func (c *ComprehendMedical) StopICD10CMInferenceJob(input *StopICD10CMInferenceJobInput) (*StopICD10CMInferenceJobOutput, error) {
+	req, out := c.StopICD10CMInferenceJobRequest(input)
+	return out, req.Send()
+}
+
+// StopICD10CMInferenceJobWithContext is the same as StopICD10CMInferenceJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StopICD10CMInferenceJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ComprehendMedical) StopICD10CMInferenceJobWithContext(ctx aws.Context, input *StopICD10CMInferenceJobInput, opts ...request.Option) (*StopICD10CMInferenceJobOutput, error) {
+	req, out := c.StopICD10CMInferenceJobRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1273,6 +1923,93 @@ func (c *ComprehendMedical) StopPHIDetectionJobWithContext(ctx aws.Context, inpu
 	return out, req.Send()
 }
 
+const opStopRxNormInferenceJob = "StopRxNormInferenceJob"
+
+// StopRxNormInferenceJobRequest generates a "aws/request.Request" representing the
+// client's request for the StopRxNormInferenceJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StopRxNormInferenceJob for more information on using the StopRxNormInferenceJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StopRxNormInferenceJobRequest method.
+//    req, resp := client.StopRxNormInferenceJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/StopRxNormInferenceJob
+func (c *ComprehendMedical) StopRxNormInferenceJobRequest(input *StopRxNormInferenceJobInput) (req *request.Request, output *StopRxNormInferenceJobOutput) {
+	op := &request.Operation{
+		Name:       opStopRxNormInferenceJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StopRxNormInferenceJobInput{}
+	}
+
+	output = &StopRxNormInferenceJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StopRxNormInferenceJob API operation for AWS Comprehend Medical.
+//
+// Stops an InferRxNorm inference job in progress.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Comprehend Medical's
+// API operation StopRxNormInferenceJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request that you made is invalid. Check your request to determine why
+//   it's invalid and then retry the request.
+//
+//   * ResourceNotFoundException
+//   The resource identified by the specified Amazon Resource Name (ARN) was not
+//   found. Check the ARN and try your request again.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehendmedical-2018-10-30/StopRxNormInferenceJob
+func (c *ComprehendMedical) StopRxNormInferenceJob(input *StopRxNormInferenceJobInput) (*StopRxNormInferenceJobOutput, error) {
+	req, out := c.StopRxNormInferenceJobRequest(input)
+	return out, req.Send()
+}
+
+// StopRxNormInferenceJobWithContext is the same as StopRxNormInferenceJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StopRxNormInferenceJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ComprehendMedical) StopRxNormInferenceJobWithContext(ctx aws.Context, input *StopRxNormInferenceJobInput, opts ...request.Option) (*StopRxNormInferenceJobOutput, error) {
+	req, out := c.StopRxNormInferenceJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 // An extracted segment of the text that is an attribute of an entity, or otherwise
 // related to an entity, such as the dosage of a medication taken. It contains
 // information about the attribute such as id, begin and end offset within the
@@ -1283,6 +2020,9 @@ type Attribute struct {
 	// The 0-based character offset in the input text that shows where the attribute
 	// begins. The offset returns the UTF-8 code point in the string.
 	BeginOffset *int64 `type:"integer"`
+
+	// The category of attribute.
+	Category *string `type:"string" enum:"EntityType"`
 
 	// The 0-based character offset in the input text that shows where the attribute
 	// ends. The offset returns the UTF-8 code point in the string.
@@ -1295,6 +2035,10 @@ type Attribute struct {
 	// The level of confidence that Amazon Comprehend Medical has that this attribute
 	// is correctly related to this entity.
 	RelationshipScore *float64 `type:"float"`
+
+	// The type of relationship between the entity and attribute. Type for the relationship
+	// is OVERLAP, indicating that the entity occurred at the same time as the Date_Expression.
+	RelationshipType *string `type:"string" enum:"RelationshipType"`
 
 	// The level of confidence that Amazon Comprehend Medical has that the segment
 	// of text is correctly recognized as an attribute.
@@ -1326,6 +2070,12 @@ func (s *Attribute) SetBeginOffset(v int64) *Attribute {
 	return s
 }
 
+// SetCategory sets the Category field's value.
+func (s *Attribute) SetCategory(v string) *Attribute {
+	s.Category = &v
+	return s
+}
+
 // SetEndOffset sets the EndOffset field's value.
 func (s *Attribute) SetEndOffset(v int64) *Attribute {
 	s.EndOffset = &v
@@ -1341,6 +2091,12 @@ func (s *Attribute) SetId(v int64) *Attribute {
 // SetRelationshipScore sets the RelationshipScore field's value.
 func (s *Attribute) SetRelationshipScore(v float64) *Attribute {
 	s.RelationshipScore = &v
+	return s
+}
+
+// SetRelationshipType sets the RelationshipType field's value.
+func (s *Attribute) SetRelationshipType(v string) *Attribute {
+	s.RelationshipType = &v
 	return s
 }
 
@@ -1652,6 +2408,71 @@ func (s *DescribeEntitiesDetectionV2JobOutput) SetComprehendMedicalAsyncJobPrope
 	return s
 }
 
+type DescribeICD10CMInferenceJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier that Amazon Comprehend Medical generated for the job. The
+	// StartICD10CMInferenceJob operation returns this identifier in its response.
+	//
+	// JobId is a required field
+	JobId *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribeICD10CMInferenceJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeICD10CMInferenceJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeICD10CMInferenceJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeICD10CMInferenceJobInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *DescribeICD10CMInferenceJobInput) SetJobId(v string) *DescribeICD10CMInferenceJobInput {
+	s.JobId = &v
+	return s
+}
+
+type DescribeICD10CMInferenceJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// An object that contains the properties associated with a detection job.
+	ComprehendMedicalAsyncJobProperties *ComprehendMedicalAsyncJobProperties `type:"structure"`
+}
+
+// String returns the string representation
+func (s DescribeICD10CMInferenceJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeICD10CMInferenceJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetComprehendMedicalAsyncJobProperties sets the ComprehendMedicalAsyncJobProperties field's value.
+func (s *DescribeICD10CMInferenceJobOutput) SetComprehendMedicalAsyncJobProperties(v *ComprehendMedicalAsyncJobProperties) *DescribeICD10CMInferenceJobOutput {
+	s.ComprehendMedicalAsyncJobProperties = v
+	return s
+}
+
 type DescribePHIDetectionJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1713,6 +2534,71 @@ func (s DescribePHIDetectionJobOutput) GoString() string {
 
 // SetComprehendMedicalAsyncJobProperties sets the ComprehendMedicalAsyncJobProperties field's value.
 func (s *DescribePHIDetectionJobOutput) SetComprehendMedicalAsyncJobProperties(v *ComprehendMedicalAsyncJobProperties) *DescribePHIDetectionJobOutput {
+	s.ComprehendMedicalAsyncJobProperties = v
+	return s
+}
+
+type DescribeRxNormInferenceJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier that Amazon Comprehend Medical generated for the job. The
+	// StartRxNormInferenceJob operation returns this identifier in its response.
+	//
+	// JobId is a required field
+	JobId *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribeRxNormInferenceJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeRxNormInferenceJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeRxNormInferenceJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeRxNormInferenceJobInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *DescribeRxNormInferenceJobInput) SetJobId(v string) *DescribeRxNormInferenceJobInput {
+	s.JobId = &v
+	return s
+}
+
+type DescribeRxNormInferenceJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// An object that contains the properties associated with a detection job.
+	ComprehendMedicalAsyncJobProperties *ComprehendMedicalAsyncJobProperties `type:"structure"`
+}
+
+// String returns the string representation
+func (s DescribeRxNormInferenceJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeRxNormInferenceJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetComprehendMedicalAsyncJobProperties sets the ComprehendMedicalAsyncJobProperties field's value.
+func (s *DescribeRxNormInferenceJobOutput) SetComprehendMedicalAsyncJobProperties(v *ComprehendMedicalAsyncJobProperties) *DescribeRxNormInferenceJobOutput {
 	s.ComprehendMedicalAsyncJobProperties = v
 	return s
 }
@@ -2128,6 +3014,9 @@ type ICD10CMAttribute struct {
 	// begins. The offset returns the UTF-8 code point in the string.
 	BeginOffset *int64 `type:"integer"`
 
+	// The category of attribute. Can be either of DX_NAME or TIME_EXPRESSION.
+	Category *string `type:"string" enum:"ICD10CMEntityType"`
+
 	// The 0-based character offset in the input text that shows where the attribute
 	// ends. The offset returns the UTF-8 code point in the string.
 	EndOffset *int64 `type:"integer"`
@@ -2139,6 +3028,10 @@ type ICD10CMAttribute struct {
 	// The level of confidence that Amazon Comprehend Medical has that this attribute
 	// is correctly related to this entity.
 	RelationshipScore *float64 `type:"float"`
+
+	// The type of relationship between the entity and attribute. Type for the relationship
+	// can be either of OVERLAP or SYSTEM_ORGAN_SITE.
+	RelationshipType *string `type:"string" enum:"ICD10CMRelationshipType"`
 
 	// The level of confidence that Amazon Comprehend Medical has that the segment
 	// of text is correctly recognized as an attribute.
@@ -2171,6 +3064,12 @@ func (s *ICD10CMAttribute) SetBeginOffset(v int64) *ICD10CMAttribute {
 	return s
 }
 
+// SetCategory sets the Category field's value.
+func (s *ICD10CMAttribute) SetCategory(v string) *ICD10CMAttribute {
+	s.Category = &v
+	return s
+}
+
 // SetEndOffset sets the EndOffset field's value.
 func (s *ICD10CMAttribute) SetEndOffset(v int64) *ICD10CMAttribute {
 	s.EndOffset = &v
@@ -2186,6 +3085,12 @@ func (s *ICD10CMAttribute) SetId(v int64) *ICD10CMAttribute {
 // SetRelationshipScore sets the RelationshipScore field's value.
 func (s *ICD10CMAttribute) SetRelationshipScore(v float64) *ICD10CMAttribute {
 	s.RelationshipScore = &v
+	return s
+}
+
+// SetRelationshipType sets the RelationshipType field's value.
+func (s *ICD10CMAttribute) SetRelationshipType(v string) *ICD10CMAttribute {
+	s.RelationshipType = &v
 	return s
 }
 
@@ -2303,7 +3208,7 @@ type ICD10CMEntity struct {
 	Traits []*ICD10CMTrait `type:"list"`
 
 	// Describes the specific type of entity with category of entities. InferICD10CM
-	// detects entities of the type DX_NAME.
+	// detects entities of the type DX_NAME and TIME_EXPRESSION.
 	Type *string `type:"string" enum:"ICD10CMEntityType"`
 }
 
@@ -2592,7 +3497,8 @@ func (s *InferRxNormOutput) SetPaginationToken(v string) *InferRxNormOutput {
 	return s
 }
 
-// The input properties for an entities detection job
+// The input properties for an entities detection job. This includes the name
+// of the S3 bucket and the path to the files to be analyzed.
 type InputDataConfig struct {
 	_ struct{} `type:"structure"`
 
@@ -2649,8 +3555,8 @@ func (s *InputDataConfig) SetS3Key(v string) *InputDataConfig {
 
 // An internal server error occurred. Retry your request.
 type InternalServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -2667,17 +3573,17 @@ func (s InternalServerException) GoString() string {
 
 func newErrorInternalServerException(v protocol.ResponseMetadata) error {
 	return &InternalServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerException) Code() string {
+func (s *InternalServerException) Code() string {
 	return "InternalServerException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerException) Message() string {
+func (s *InternalServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2685,29 +3591,29 @@ func (s InternalServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerException) OrigErr() error {
+func (s *InternalServerException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerException) Error() string {
+func (s *InternalServerException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The input text was not in valid UTF-8 character encoding. Check your text
 // then retry your request.
 type InvalidEncodingException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -2724,17 +3630,17 @@ func (s InvalidEncodingException) GoString() string {
 
 func newErrorInvalidEncodingException(v protocol.ResponseMetadata) error {
 	return &InvalidEncodingException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidEncodingException) Code() string {
+func (s *InvalidEncodingException) Code() string {
 	return "InvalidEncodingException"
 }
 
 // Message returns the exception's message.
-func (s InvalidEncodingException) Message() string {
+func (s *InvalidEncodingException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2742,29 +3648,29 @@ func (s InvalidEncodingException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidEncodingException) OrigErr() error {
+func (s *InvalidEncodingException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidEncodingException) Error() string {
+func (s *InvalidEncodingException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidEncodingException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidEncodingException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidEncodingException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidEncodingException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The request that you made is invalid. Check your request to determine why
 // it's invalid and then retry the request.
 type InvalidRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -2781,17 +3687,17 @@ func (s InvalidRequestException) GoString() string {
 
 func newErrorInvalidRequestException(v protocol.ResponseMetadata) error {
 	return &InvalidRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidRequestException) Code() string {
+func (s *InvalidRequestException) Code() string {
 	return "InvalidRequestException"
 }
 
 // Message returns the exception's message.
-func (s InvalidRequestException) Message() string {
+func (s *InvalidRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2799,22 +3705,22 @@ func (s InvalidRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidRequestException) OrigErr() error {
+func (s *InvalidRequestException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidRequestException) Error() string {
+func (s *InvalidRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListEntitiesDetectionV2JobsInput struct {
@@ -2909,6 +3815,102 @@ func (s *ListEntitiesDetectionV2JobsOutput) SetComprehendMedicalAsyncJobProperti
 
 // SetNextToken sets the NextToken field's value.
 func (s *ListEntitiesDetectionV2JobsOutput) SetNextToken(v string) *ListEntitiesDetectionV2JobsOutput {
+	s.NextToken = &v
+	return s
+}
+
+type ListICD10CMInferenceJobsInput struct {
+	_ struct{} `type:"structure"`
+
+	// Filters the jobs that are returned. You can filter jobs based on their names,
+	// status, or the date and time that they were submitted. You can only set one
+	// filter at a time.
+	Filter *ComprehendMedicalAsyncJobFilter `type:"structure"`
+
+	// The maximum number of results to return in each page. The default is 100.
+	MaxResults *int64 `min:"1" type:"integer"`
+
+	// Identifies the next page of results to return.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListICD10CMInferenceJobsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListICD10CMInferenceJobsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListICD10CMInferenceJobsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListICD10CMInferenceJobsInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
+	}
+	if s.Filter != nil {
+		if err := s.Filter.Validate(); err != nil {
+			invalidParams.AddNested("Filter", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetFilter sets the Filter field's value.
+func (s *ListICD10CMInferenceJobsInput) SetFilter(v *ComprehendMedicalAsyncJobFilter) *ListICD10CMInferenceJobsInput {
+	s.Filter = v
+	return s
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListICD10CMInferenceJobsInput) SetMaxResults(v int64) *ListICD10CMInferenceJobsInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListICD10CMInferenceJobsInput) SetNextToken(v string) *ListICD10CMInferenceJobsInput {
+	s.NextToken = &v
+	return s
+}
+
+type ListICD10CMInferenceJobsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A list containing the properties of each job that is returned.
+	ComprehendMedicalAsyncJobPropertiesList []*ComprehendMedicalAsyncJobProperties `type:"list"`
+
+	// Identifies the next page of results to return.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListICD10CMInferenceJobsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListICD10CMInferenceJobsOutput) GoString() string {
+	return s.String()
+}
+
+// SetComprehendMedicalAsyncJobPropertiesList sets the ComprehendMedicalAsyncJobPropertiesList field's value.
+func (s *ListICD10CMInferenceJobsOutput) SetComprehendMedicalAsyncJobPropertiesList(v []*ComprehendMedicalAsyncJobProperties) *ListICD10CMInferenceJobsOutput {
+	s.ComprehendMedicalAsyncJobPropertiesList = v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListICD10CMInferenceJobsOutput) SetNextToken(v string) *ListICD10CMInferenceJobsOutput {
 	s.NextToken = &v
 	return s
 }
@@ -3009,6 +4011,102 @@ func (s *ListPHIDetectionJobsOutput) SetNextToken(v string) *ListPHIDetectionJob
 	return s
 }
 
+type ListRxNormInferenceJobsInput struct {
+	_ struct{} `type:"structure"`
+
+	// Filters the jobs that are returned. You can filter jobs based on their names,
+	// status, or the date and time that they were submitted. You can only set one
+	// filter at a time.
+	Filter *ComprehendMedicalAsyncJobFilter `type:"structure"`
+
+	// Identifies the next page of results to return.
+	MaxResults *int64 `min:"1" type:"integer"`
+
+	// Identifies the next page of results to return.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListRxNormInferenceJobsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListRxNormInferenceJobsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListRxNormInferenceJobsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListRxNormInferenceJobsInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
+	}
+	if s.Filter != nil {
+		if err := s.Filter.Validate(); err != nil {
+			invalidParams.AddNested("Filter", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetFilter sets the Filter field's value.
+func (s *ListRxNormInferenceJobsInput) SetFilter(v *ComprehendMedicalAsyncJobFilter) *ListRxNormInferenceJobsInput {
+	s.Filter = v
+	return s
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListRxNormInferenceJobsInput) SetMaxResults(v int64) *ListRxNormInferenceJobsInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListRxNormInferenceJobsInput) SetNextToken(v string) *ListRxNormInferenceJobsInput {
+	s.NextToken = &v
+	return s
+}
+
+type ListRxNormInferenceJobsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The maximum number of results to return in each page. The default is 100.
+	ComprehendMedicalAsyncJobPropertiesList []*ComprehendMedicalAsyncJobProperties `type:"list"`
+
+	// Identifies the next page of results to return.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListRxNormInferenceJobsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListRxNormInferenceJobsOutput) GoString() string {
+	return s.String()
+}
+
+// SetComprehendMedicalAsyncJobPropertiesList sets the ComprehendMedicalAsyncJobPropertiesList field's value.
+func (s *ListRxNormInferenceJobsOutput) SetComprehendMedicalAsyncJobPropertiesList(v []*ComprehendMedicalAsyncJobProperties) *ListRxNormInferenceJobsOutput {
+	s.ComprehendMedicalAsyncJobPropertiesList = v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListRxNormInferenceJobsOutput) SetNextToken(v string) *ListRxNormInferenceJobsOutput {
+	s.NextToken = &v
+	return s
+}
+
 // The output properties for a detection job.
 type OutputDataConfig struct {
 	_ struct{} `type:"structure"`
@@ -3068,8 +4166,8 @@ func (s *OutputDataConfig) SetS3Key(v string) *OutputDataConfig {
 // The resource identified by the specified Amazon Resource Name (ARN) was not
 // found. Check the ARN and try your request again.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -3086,17 +4184,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3104,22 +4202,22 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The extracted attributes that relate to this entity. The attributes recognized
@@ -3417,8 +4515,8 @@ func (s *RxNormTrait) SetScore(v float64) *RxNormTrait {
 // The Amazon Comprehend Medical service is temporarily unavailable. Please
 // wait and then retry your request.
 type ServiceUnavailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -3435,17 +4533,17 @@ func (s ServiceUnavailableException) GoString() string {
 
 func newErrorServiceUnavailableException(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailableException) Code() string {
+func (s *ServiceUnavailableException) Code() string {
 	return "ServiceUnavailableException"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailableException) Message() string {
+func (s *ServiceUnavailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3453,22 +4551,22 @@ func (s ServiceUnavailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailableException) OrigErr() error {
+func (s *ServiceUnavailableException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailableException) Error() string {
+func (s *ServiceUnavailableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type StartEntitiesDetectionV2JobInput struct {
@@ -3625,6 +4723,164 @@ func (s StartEntitiesDetectionV2JobOutput) GoString() string {
 
 // SetJobId sets the JobId field's value.
 func (s *StartEntitiesDetectionV2JobOutput) SetJobId(v string) *StartEntitiesDetectionV2JobOutput {
+	s.JobId = &v
+	return s
+}
+
+type StartICD10CMInferenceJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier for the request. If you don't set the client request
+	// token, Amazon Comprehend Medical generates one.
+	ClientRequestToken *string `min:"1" type:"string" idempotencyToken:"true"`
+
+	// The Amazon Resource Name (ARN) of the AWS Identity and Access Management
+	// (IAM) role that grants Amazon Comprehend Medical read access to your input
+	// data. For more information, see Role-Based Permissions Required for Asynchronous
+	// Operations (https://docs.aws.amazon.com/comprehend/latest/dg/access-control-managing-permissions-med.html#auth-role-permissions-med).
+	//
+	// DataAccessRoleArn is a required field
+	DataAccessRoleArn *string `min:"20" type:"string" required:"true"`
+
+	// Specifies the format and location of the input data for the job.
+	//
+	// InputDataConfig is a required field
+	InputDataConfig *InputDataConfig `type:"structure" required:"true"`
+
+	// The identifier of the job.
+	JobName *string `min:"1" type:"string"`
+
+	// An AWS Key Management Service key to encrypt your output files. If you do
+	// not specify a key, the files are written in plain text.
+	KMSKey *string `min:"1" type:"string"`
+
+	// The language of the input documents. All documents must be in the same language.
+	//
+	// LanguageCode is a required field
+	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
+
+	// Specifies where to send the output files.
+	//
+	// OutputDataConfig is a required field
+	OutputDataConfig *OutputDataConfig `type:"structure" required:"true"`
+}
+
+// String returns the string representation
+func (s StartICD10CMInferenceJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartICD10CMInferenceJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StartICD10CMInferenceJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StartICD10CMInferenceJobInput"}
+	if s.ClientRequestToken != nil && len(*s.ClientRequestToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ClientRequestToken", 1))
+	}
+	if s.DataAccessRoleArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("DataAccessRoleArn"))
+	}
+	if s.DataAccessRoleArn != nil && len(*s.DataAccessRoleArn) < 20 {
+		invalidParams.Add(request.NewErrParamMinLen("DataAccessRoleArn", 20))
+	}
+	if s.InputDataConfig == nil {
+		invalidParams.Add(request.NewErrParamRequired("InputDataConfig"))
+	}
+	if s.JobName != nil && len(*s.JobName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobName", 1))
+	}
+	if s.KMSKey != nil && len(*s.KMSKey) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("KMSKey", 1))
+	}
+	if s.LanguageCode == nil {
+		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
+	}
+	if s.OutputDataConfig == nil {
+		invalidParams.Add(request.NewErrParamRequired("OutputDataConfig"))
+	}
+	if s.InputDataConfig != nil {
+		if err := s.InputDataConfig.Validate(); err != nil {
+			invalidParams.AddNested("InputDataConfig", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.OutputDataConfig != nil {
+		if err := s.OutputDataConfig.Validate(); err != nil {
+			invalidParams.AddNested("OutputDataConfig", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetClientRequestToken sets the ClientRequestToken field's value.
+func (s *StartICD10CMInferenceJobInput) SetClientRequestToken(v string) *StartICD10CMInferenceJobInput {
+	s.ClientRequestToken = &v
+	return s
+}
+
+// SetDataAccessRoleArn sets the DataAccessRoleArn field's value.
+func (s *StartICD10CMInferenceJobInput) SetDataAccessRoleArn(v string) *StartICD10CMInferenceJobInput {
+	s.DataAccessRoleArn = &v
+	return s
+}
+
+// SetInputDataConfig sets the InputDataConfig field's value.
+func (s *StartICD10CMInferenceJobInput) SetInputDataConfig(v *InputDataConfig) *StartICD10CMInferenceJobInput {
+	s.InputDataConfig = v
+	return s
+}
+
+// SetJobName sets the JobName field's value.
+func (s *StartICD10CMInferenceJobInput) SetJobName(v string) *StartICD10CMInferenceJobInput {
+	s.JobName = &v
+	return s
+}
+
+// SetKMSKey sets the KMSKey field's value.
+func (s *StartICD10CMInferenceJobInput) SetKMSKey(v string) *StartICD10CMInferenceJobInput {
+	s.KMSKey = &v
+	return s
+}
+
+// SetLanguageCode sets the LanguageCode field's value.
+func (s *StartICD10CMInferenceJobInput) SetLanguageCode(v string) *StartICD10CMInferenceJobInput {
+	s.LanguageCode = &v
+	return s
+}
+
+// SetOutputDataConfig sets the OutputDataConfig field's value.
+func (s *StartICD10CMInferenceJobInput) SetOutputDataConfig(v *OutputDataConfig) *StartICD10CMInferenceJobInput {
+	s.OutputDataConfig = v
+	return s
+}
+
+type StartICD10CMInferenceJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier generated for the job. To get the status of a job, use this
+	// identifier with the StartICD10CMInferenceJob operation.
+	JobId *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s StartICD10CMInferenceJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartICD10CMInferenceJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StartICD10CMInferenceJobOutput) SetJobId(v string) *StartICD10CMInferenceJobOutput {
 	s.JobId = &v
 	return s
 }
@@ -3787,6 +5043,163 @@ func (s *StartPHIDetectionJobOutput) SetJobId(v string) *StartPHIDetectionJobOut
 	return s
 }
 
+type StartRxNormInferenceJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier for the request. If you don't set the client request
+	// token, Amazon Comprehend Medical generates one.
+	ClientRequestToken *string `min:"1" type:"string" idempotencyToken:"true"`
+
+	// The Amazon Resource Name (ARN) of the AWS Identity and Access Management
+	// (IAM) role that grants Amazon Comprehend Medical read access to your input
+	// data. For more information, see Role-Based Permissions Required for Asynchronous
+	// Operations (https://docs.aws.amazon.com/comprehend/latest/dg/access-control-managing-permissions-med.html#auth-role-permissions-med).
+	//
+	// DataAccessRoleArn is a required field
+	DataAccessRoleArn *string `min:"20" type:"string" required:"true"`
+
+	// Specifies the format and location of the input data for the job.
+	//
+	// InputDataConfig is a required field
+	InputDataConfig *InputDataConfig `type:"structure" required:"true"`
+
+	// The identifier of the job.
+	JobName *string `min:"1" type:"string"`
+
+	// An AWS Key Management Service key to encrypt your output files. If you do
+	// not specify a key, the files are written in plain text.
+	KMSKey *string `min:"1" type:"string"`
+
+	// The language of the input documents. All documents must be in the same language.
+	//
+	// LanguageCode is a required field
+	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
+
+	// Specifies where to send the output files.
+	//
+	// OutputDataConfig is a required field
+	OutputDataConfig *OutputDataConfig `type:"structure" required:"true"`
+}
+
+// String returns the string representation
+func (s StartRxNormInferenceJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartRxNormInferenceJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StartRxNormInferenceJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StartRxNormInferenceJobInput"}
+	if s.ClientRequestToken != nil && len(*s.ClientRequestToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ClientRequestToken", 1))
+	}
+	if s.DataAccessRoleArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("DataAccessRoleArn"))
+	}
+	if s.DataAccessRoleArn != nil && len(*s.DataAccessRoleArn) < 20 {
+		invalidParams.Add(request.NewErrParamMinLen("DataAccessRoleArn", 20))
+	}
+	if s.InputDataConfig == nil {
+		invalidParams.Add(request.NewErrParamRequired("InputDataConfig"))
+	}
+	if s.JobName != nil && len(*s.JobName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobName", 1))
+	}
+	if s.KMSKey != nil && len(*s.KMSKey) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("KMSKey", 1))
+	}
+	if s.LanguageCode == nil {
+		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
+	}
+	if s.OutputDataConfig == nil {
+		invalidParams.Add(request.NewErrParamRequired("OutputDataConfig"))
+	}
+	if s.InputDataConfig != nil {
+		if err := s.InputDataConfig.Validate(); err != nil {
+			invalidParams.AddNested("InputDataConfig", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.OutputDataConfig != nil {
+		if err := s.OutputDataConfig.Validate(); err != nil {
+			invalidParams.AddNested("OutputDataConfig", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetClientRequestToken sets the ClientRequestToken field's value.
+func (s *StartRxNormInferenceJobInput) SetClientRequestToken(v string) *StartRxNormInferenceJobInput {
+	s.ClientRequestToken = &v
+	return s
+}
+
+// SetDataAccessRoleArn sets the DataAccessRoleArn field's value.
+func (s *StartRxNormInferenceJobInput) SetDataAccessRoleArn(v string) *StartRxNormInferenceJobInput {
+	s.DataAccessRoleArn = &v
+	return s
+}
+
+// SetInputDataConfig sets the InputDataConfig field's value.
+func (s *StartRxNormInferenceJobInput) SetInputDataConfig(v *InputDataConfig) *StartRxNormInferenceJobInput {
+	s.InputDataConfig = v
+	return s
+}
+
+// SetJobName sets the JobName field's value.
+func (s *StartRxNormInferenceJobInput) SetJobName(v string) *StartRxNormInferenceJobInput {
+	s.JobName = &v
+	return s
+}
+
+// SetKMSKey sets the KMSKey field's value.
+func (s *StartRxNormInferenceJobInput) SetKMSKey(v string) *StartRxNormInferenceJobInput {
+	s.KMSKey = &v
+	return s
+}
+
+// SetLanguageCode sets the LanguageCode field's value.
+func (s *StartRxNormInferenceJobInput) SetLanguageCode(v string) *StartRxNormInferenceJobInput {
+	s.LanguageCode = &v
+	return s
+}
+
+// SetOutputDataConfig sets the OutputDataConfig field's value.
+func (s *StartRxNormInferenceJobInput) SetOutputDataConfig(v *OutputDataConfig) *StartRxNormInferenceJobInput {
+	s.OutputDataConfig = v
+	return s
+}
+
+type StartRxNormInferenceJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the job.
+	JobId *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s StartRxNormInferenceJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartRxNormInferenceJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StartRxNormInferenceJobOutput) SetJobId(v string) *StartRxNormInferenceJobOutput {
+	s.JobId = &v
+	return s
+}
+
 type StopEntitiesDetectionV2JobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3847,6 +5260,71 @@ func (s StopEntitiesDetectionV2JobOutput) GoString() string {
 
 // SetJobId sets the JobId field's value.
 func (s *StopEntitiesDetectionV2JobOutput) SetJobId(v string) *StopEntitiesDetectionV2JobOutput {
+	s.JobId = &v
+	return s
+}
+
+type StopICD10CMInferenceJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the job.
+	//
+	// JobId is a required field
+	JobId *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StopICD10CMInferenceJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopICD10CMInferenceJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StopICD10CMInferenceJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StopICD10CMInferenceJobInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StopICD10CMInferenceJobInput) SetJobId(v string) *StopICD10CMInferenceJobInput {
+	s.JobId = &v
+	return s
+}
+
+type StopICD10CMInferenceJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier generated for the job. To get the status of job, use this
+	// identifier with the DescribeICD10CMInferenceJob operation.
+	JobId *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s StopICD10CMInferenceJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopICD10CMInferenceJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StopICD10CMInferenceJobOutput) SetJobId(v string) *StopICD10CMInferenceJobOutput {
 	s.JobId = &v
 	return s
 }
@@ -3915,11 +5393,76 @@ func (s *StopPHIDetectionJobOutput) SetJobId(v string) *StopPHIDetectionJobOutpu
 	return s
 }
 
+type StopRxNormInferenceJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the job.
+	//
+	// JobId is a required field
+	JobId *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StopRxNormInferenceJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopRxNormInferenceJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StopRxNormInferenceJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StopRxNormInferenceJobInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StopRxNormInferenceJobInput) SetJobId(v string) *StopRxNormInferenceJobInput {
+	s.JobId = &v
+	return s
+}
+
+type StopRxNormInferenceJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier generated for the job. To get the status of job, use this
+	// identifier with the DescribeRxNormInferenceJob operation.
+	JobId *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s StopRxNormInferenceJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopRxNormInferenceJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StopRxNormInferenceJobOutput) SetJobId(v string) *StopRxNormInferenceJobOutput {
+	s.JobId = &v
+	return s
+}
+
 // The size of the text you submitted exceeds the size limit. Reduce the size
 // of the text or use a smaller document and then retry your request.
 type TextSizeLimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -3936,17 +5479,17 @@ func (s TextSizeLimitExceededException) GoString() string {
 
 func newErrorTextSizeLimitExceededException(v protocol.ResponseMetadata) error {
 	return &TextSizeLimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TextSizeLimitExceededException) Code() string {
+func (s *TextSizeLimitExceededException) Code() string {
 	return "TextSizeLimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s TextSizeLimitExceededException) Message() string {
+func (s *TextSizeLimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3954,30 +5497,30 @@ func (s TextSizeLimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TextSizeLimitExceededException) OrigErr() error {
+func (s *TextSizeLimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s TextSizeLimitExceededException) Error() string {
+func (s *TextSizeLimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TextSizeLimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TextSizeLimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TextSizeLimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TextSizeLimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have made too many requests within a short period of time. Wait for a
 // short time and then try your request again. Contact customer support for
 // more information about a service limit increase.
 type TooManyRequestsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -3994,17 +5537,17 @@ func (s TooManyRequestsException) GoString() string {
 
 func newErrorTooManyRequestsException(v protocol.ResponseMetadata) error {
 	return &TooManyRequestsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyRequestsException) Code() string {
+func (s *TooManyRequestsException) Code() string {
 	return "TooManyRequestsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyRequestsException) Message() string {
+func (s *TooManyRequestsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4012,22 +5555,22 @@ func (s TooManyRequestsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyRequestsException) OrigErr() error {
+func (s *TooManyRequestsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyRequestsException) Error() string {
+func (s *TooManyRequestsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyRequestsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyRequestsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyRequestsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyRequestsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Provides contextual information about the extracted entity.
@@ -4101,8 +5644,8 @@ func (s *UnmappedAttribute) SetType(v string) *UnmappedAttribute {
 // The filter that you specified for the operation is invalid. Check the filter
 // values that you entered and try your request again.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -4119,17 +5662,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4137,22 +5680,22 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -4168,6 +5711,16 @@ const (
 	// AttributeNameNegation is a AttributeName enum value
 	AttributeNameNegation = "NEGATION"
 )
+
+// AttributeName_Values returns all elements of the AttributeName enum
+func AttributeName_Values() []string {
+	return []string{
+		AttributeNameSign,
+		AttributeNameSymptom,
+		AttributeNameDiagnosis,
+		AttributeNameNegation,
+	}
+}
 
 const (
 	// EntitySubTypeName is a EntitySubType enum value
@@ -4253,7 +5806,65 @@ const (
 
 	// EntitySubTypeQuantity is a EntitySubType enum value
 	EntitySubTypeQuantity = "QUANTITY"
+
+	// EntitySubTypeTimeExpression is a EntitySubType enum value
+	EntitySubTypeTimeExpression = "TIME_EXPRESSION"
+
+	// EntitySubTypeTimeToMedicationName is a EntitySubType enum value
+	EntitySubTypeTimeToMedicationName = "TIME_TO_MEDICATION_NAME"
+
+	// EntitySubTypeTimeToDxName is a EntitySubType enum value
+	EntitySubTypeTimeToDxName = "TIME_TO_DX_NAME"
+
+	// EntitySubTypeTimeToTestName is a EntitySubType enum value
+	EntitySubTypeTimeToTestName = "TIME_TO_TEST_NAME"
+
+	// EntitySubTypeTimeToProcedureName is a EntitySubType enum value
+	EntitySubTypeTimeToProcedureName = "TIME_TO_PROCEDURE_NAME"
+
+	// EntitySubTypeTimeToTreatmentName is a EntitySubType enum value
+	EntitySubTypeTimeToTreatmentName = "TIME_TO_TREATMENT_NAME"
 )
+
+// EntitySubType_Values returns all elements of the EntitySubType enum
+func EntitySubType_Values() []string {
+	return []string{
+		EntitySubTypeName,
+		EntitySubTypeDosage,
+		EntitySubTypeRouteOrMode,
+		EntitySubTypeForm,
+		EntitySubTypeFrequency,
+		EntitySubTypeDuration,
+		EntitySubTypeGenericName,
+		EntitySubTypeBrandName,
+		EntitySubTypeStrength,
+		EntitySubTypeRate,
+		EntitySubTypeAcuity,
+		EntitySubTypeTestName,
+		EntitySubTypeTestValue,
+		EntitySubTypeTestUnits,
+		EntitySubTypeProcedureName,
+		EntitySubTypeTreatmentName,
+		EntitySubTypeDate,
+		EntitySubTypeAge,
+		EntitySubTypeContactPoint,
+		EntitySubTypeEmail,
+		EntitySubTypeIdentifier,
+		EntitySubTypeUrl,
+		EntitySubTypeAddress,
+		EntitySubTypeProfession,
+		EntitySubTypeSystemOrganSite,
+		EntitySubTypeDirection,
+		EntitySubTypeQuality,
+		EntitySubTypeQuantity,
+		EntitySubTypeTimeExpression,
+		EntitySubTypeTimeToMedicationName,
+		EntitySubTypeTimeToDxName,
+		EntitySubTypeTimeToTestName,
+		EntitySubTypeTimeToProcedureName,
+		EntitySubTypeTimeToTreatmentName,
+	}
+}
 
 const (
 	// EntityTypeMedication is a EntityType enum value
@@ -4270,7 +5881,22 @@ const (
 
 	// EntityTypeAnatomy is a EntityType enum value
 	EntityTypeAnatomy = "ANATOMY"
+
+	// EntityTypeTimeExpression is a EntityType enum value
+	EntityTypeTimeExpression = "TIME_EXPRESSION"
 )
+
+// EntityType_Values returns all elements of the EntityType enum
+func EntityType_Values() []string {
+	return []string{
+		EntityTypeMedication,
+		EntityTypeMedicalCondition,
+		EntityTypeProtectedHealthInformation,
+		EntityTypeTestTreatmentProcedure,
+		EntityTypeAnatomy,
+		EntityTypeTimeExpression,
+	}
+}
 
 const (
 	// ICD10CMAttributeTypeAcuity is a ICD10CMAttributeType enum value
@@ -4287,17 +5913,70 @@ const (
 
 	// ICD10CMAttributeTypeQuantity is a ICD10CMAttributeType enum value
 	ICD10CMAttributeTypeQuantity = "QUANTITY"
+
+	// ICD10CMAttributeTypeTimeToDxName is a ICD10CMAttributeType enum value
+	ICD10CMAttributeTypeTimeToDxName = "TIME_TO_DX_NAME"
+
+	// ICD10CMAttributeTypeTimeExpression is a ICD10CMAttributeType enum value
+	ICD10CMAttributeTypeTimeExpression = "TIME_EXPRESSION"
 )
+
+// ICD10CMAttributeType_Values returns all elements of the ICD10CMAttributeType enum
+func ICD10CMAttributeType_Values() []string {
+	return []string{
+		ICD10CMAttributeTypeAcuity,
+		ICD10CMAttributeTypeDirection,
+		ICD10CMAttributeTypeSystemOrganSite,
+		ICD10CMAttributeTypeQuality,
+		ICD10CMAttributeTypeQuantity,
+		ICD10CMAttributeTypeTimeToDxName,
+		ICD10CMAttributeTypeTimeExpression,
+	}
+}
 
 const (
 	// ICD10CMEntityCategoryMedicalCondition is a ICD10CMEntityCategory enum value
 	ICD10CMEntityCategoryMedicalCondition = "MEDICAL_CONDITION"
 )
 
+// ICD10CMEntityCategory_Values returns all elements of the ICD10CMEntityCategory enum
+func ICD10CMEntityCategory_Values() []string {
+	return []string{
+		ICD10CMEntityCategoryMedicalCondition,
+	}
+}
+
 const (
 	// ICD10CMEntityTypeDxName is a ICD10CMEntityType enum value
 	ICD10CMEntityTypeDxName = "DX_NAME"
+
+	// ICD10CMEntityTypeTimeExpression is a ICD10CMEntityType enum value
+	ICD10CMEntityTypeTimeExpression = "TIME_EXPRESSION"
 )
+
+// ICD10CMEntityType_Values returns all elements of the ICD10CMEntityType enum
+func ICD10CMEntityType_Values() []string {
+	return []string{
+		ICD10CMEntityTypeDxName,
+		ICD10CMEntityTypeTimeExpression,
+	}
+}
+
+const (
+	// ICD10CMRelationshipTypeOverlap is a ICD10CMRelationshipType enum value
+	ICD10CMRelationshipTypeOverlap = "OVERLAP"
+
+	// ICD10CMRelationshipTypeSystemOrganSite is a ICD10CMRelationshipType enum value
+	ICD10CMRelationshipTypeSystemOrganSite = "SYSTEM_ORGAN_SITE"
+)
+
+// ICD10CMRelationshipType_Values returns all elements of the ICD10CMRelationshipType enum
+func ICD10CMRelationshipType_Values() []string {
+	return []string{
+		ICD10CMRelationshipTypeOverlap,
+		ICD10CMRelationshipTypeSystemOrganSite,
+	}
+}
 
 const (
 	// ICD10CMTraitNameNegation is a ICD10CMTraitName enum value
@@ -4312,6 +5991,16 @@ const (
 	// ICD10CMTraitNameSymptom is a ICD10CMTraitName enum value
 	ICD10CMTraitNameSymptom = "SYMPTOM"
 )
+
+// ICD10CMTraitName_Values returns all elements of the ICD10CMTraitName enum
+func ICD10CMTraitName_Values() []string {
+	return []string{
+		ICD10CMTraitNameNegation,
+		ICD10CMTraitNameDiagnosis,
+		ICD10CMTraitNameSign,
+		ICD10CMTraitNameSymptom,
+	}
+}
 
 const (
 	// JobStatusSubmitted is a JobStatus enum value
@@ -4336,10 +6025,110 @@ const (
 	JobStatusStopped = "STOPPED"
 )
 
+// JobStatus_Values returns all elements of the JobStatus enum
+func JobStatus_Values() []string {
+	return []string{
+		JobStatusSubmitted,
+		JobStatusInProgress,
+		JobStatusCompleted,
+		JobStatusPartialSuccess,
+		JobStatusFailed,
+		JobStatusStopRequested,
+		JobStatusStopped,
+	}
+}
+
 const (
 	// LanguageCodeEn is a LanguageCode enum value
 	LanguageCodeEn = "en"
 )
+
+// LanguageCode_Values returns all elements of the LanguageCode enum
+func LanguageCode_Values() []string {
+	return []string{
+		LanguageCodeEn,
+	}
+}
+
+const (
+	// RelationshipTypeEvery is a RelationshipType enum value
+	RelationshipTypeEvery = "EVERY"
+
+	// RelationshipTypeWithDosage is a RelationshipType enum value
+	RelationshipTypeWithDosage = "WITH_DOSAGE"
+
+	// RelationshipTypeAdministeredVia is a RelationshipType enum value
+	RelationshipTypeAdministeredVia = "ADMINISTERED_VIA"
+
+	// RelationshipTypeFor is a RelationshipType enum value
+	RelationshipTypeFor = "FOR"
+
+	// RelationshipTypeNegative is a RelationshipType enum value
+	RelationshipTypeNegative = "NEGATIVE"
+
+	// RelationshipTypeOverlap is a RelationshipType enum value
+	RelationshipTypeOverlap = "OVERLAP"
+
+	// RelationshipTypeDosage is a RelationshipType enum value
+	RelationshipTypeDosage = "DOSAGE"
+
+	// RelationshipTypeRouteOrMode is a RelationshipType enum value
+	RelationshipTypeRouteOrMode = "ROUTE_OR_MODE"
+
+	// RelationshipTypeForm is a RelationshipType enum value
+	RelationshipTypeForm = "FORM"
+
+	// RelationshipTypeFrequency is a RelationshipType enum value
+	RelationshipTypeFrequency = "FREQUENCY"
+
+	// RelationshipTypeDuration is a RelationshipType enum value
+	RelationshipTypeDuration = "DURATION"
+
+	// RelationshipTypeStrength is a RelationshipType enum value
+	RelationshipTypeStrength = "STRENGTH"
+
+	// RelationshipTypeRate is a RelationshipType enum value
+	RelationshipTypeRate = "RATE"
+
+	// RelationshipTypeAcuity is a RelationshipType enum value
+	RelationshipTypeAcuity = "ACUITY"
+
+	// RelationshipTypeTestValue is a RelationshipType enum value
+	RelationshipTypeTestValue = "TEST_VALUE"
+
+	// RelationshipTypeTestUnits is a RelationshipType enum value
+	RelationshipTypeTestUnits = "TEST_UNITS"
+
+	// RelationshipTypeDirection is a RelationshipType enum value
+	RelationshipTypeDirection = "DIRECTION"
+
+	// RelationshipTypeSystemOrganSite is a RelationshipType enum value
+	RelationshipTypeSystemOrganSite = "SYSTEM_ORGAN_SITE"
+)
+
+// RelationshipType_Values returns all elements of the RelationshipType enum
+func RelationshipType_Values() []string {
+	return []string{
+		RelationshipTypeEvery,
+		RelationshipTypeWithDosage,
+		RelationshipTypeAdministeredVia,
+		RelationshipTypeFor,
+		RelationshipTypeNegative,
+		RelationshipTypeOverlap,
+		RelationshipTypeDosage,
+		RelationshipTypeRouteOrMode,
+		RelationshipTypeForm,
+		RelationshipTypeFrequency,
+		RelationshipTypeDuration,
+		RelationshipTypeStrength,
+		RelationshipTypeRate,
+		RelationshipTypeAcuity,
+		RelationshipTypeTestValue,
+		RelationshipTypeTestUnits,
+		RelationshipTypeDirection,
+		RelationshipTypeSystemOrganSite,
+	}
+}
 
 const (
 	// RxNormAttributeTypeDosage is a RxNormAttributeType enum value
@@ -4364,10 +6153,30 @@ const (
 	RxNormAttributeTypeStrength = "STRENGTH"
 )
 
+// RxNormAttributeType_Values returns all elements of the RxNormAttributeType enum
+func RxNormAttributeType_Values() []string {
+	return []string{
+		RxNormAttributeTypeDosage,
+		RxNormAttributeTypeDuration,
+		RxNormAttributeTypeForm,
+		RxNormAttributeTypeFrequency,
+		RxNormAttributeTypeRate,
+		RxNormAttributeTypeRouteOrMode,
+		RxNormAttributeTypeStrength,
+	}
+}
+
 const (
 	// RxNormEntityCategoryMedication is a RxNormEntityCategory enum value
 	RxNormEntityCategoryMedication = "MEDICATION"
 )
+
+// RxNormEntityCategory_Values returns all elements of the RxNormEntityCategory enum
+func RxNormEntityCategory_Values() []string {
+	return []string{
+		RxNormEntityCategoryMedication,
+	}
+}
 
 const (
 	// RxNormEntityTypeBrandName is a RxNormEntityType enum value
@@ -4377,7 +6186,22 @@ const (
 	RxNormEntityTypeGenericName = "GENERIC_NAME"
 )
 
+// RxNormEntityType_Values returns all elements of the RxNormEntityType enum
+func RxNormEntityType_Values() []string {
+	return []string{
+		RxNormEntityTypeBrandName,
+		RxNormEntityTypeGenericName,
+	}
+}
+
 const (
 	// RxNormTraitNameNegation is a RxNormTraitName enum value
 	RxNormTraitNameNegation = "NEGATION"
 )
+
+// RxNormTraitName_Values returns all elements of the RxNormTraitName enum
+func RxNormTraitName_Values() []string {
+	return []string{
+		RxNormTraitNameNegation,
+	}
+}

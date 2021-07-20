@@ -71,6 +71,10 @@ func (es *EventStream) StreamUnmarshalerForEventName() string {
 	return "unmarshalerFor" + es.Name + "Event"
 }
 
+func (es *EventStream) StreamUnknownEventName() string {
+	return es.Name + "UnknownEvent"
+}
+
 // Event is a single EventStream event that can be sent or received in an
 // EventStream.
 type Event struct {
@@ -213,7 +217,10 @@ func (es *EventStreams) GetStream(topShape *Shape, streamShape *Shape) *EventStr
 	}
 
 	if topShape.API.Metadata.Protocol == "json" {
-		topShape.EventFor = append(topShape.EventFor, stream)
+		if topShape.EventFor == nil {
+			topShape.EventFor = map[string]*EventStream{}
+		}
+		topShape.EventFor[stream.Name] = stream
 	}
 
 	return stream
@@ -272,7 +279,10 @@ func setupEventStream(s *Shape) *EventStream {
 
 		updateEventPayloadRef(eventRef.Shape)
 
-		eventRef.Shape.EventFor = append(eventRef.Shape.EventFor, eventStream)
+		if eventRef.Shape.EventFor == nil {
+			eventRef.Shape.EventFor = map[string]*EventStream{}
+		}
+		eventRef.Shape.EventFor[eventStream.Name] = eventStream
 
 		// Exceptions and events are two different lists to allow the SDK
 		// to easily generate code with the two handled differently.

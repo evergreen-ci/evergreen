@@ -21,6 +21,10 @@ func renderEventStreamAPI(w io.Writer, op *Operation) error {
 	op.API.AddSDKImport("private/protocol/eventstream")
 	op.API.AddSDKImport("private/protocol/eventstream/eventstreamapi")
 
+	w.Write([]byte(`
+var _ awserr.Error
+`))
+
 	return eventStreamAPITmpl.Execute(w, op)
 }
 
@@ -45,6 +49,10 @@ const eventStreamAPITmplDef = `
 {{- $inputStream := $esapi.InputStream }}
 
 // {{ $esapi.Name }} provides the event stream handling for the {{ $.ExportedName }}.
+//
+// For testing and mocking the event stream this type should be initialized via
+// the New{{ $esapi.Name }} constructor function. Using the functional options
+// to pass in nested mock behavior.
 type {{ $esapi.Name }} struct {
 	{{- if $inputStream }}
 
@@ -91,11 +99,46 @@ type {{ $esapi.Name }} struct {
 	err       *eventstreamapi.OnceError
 }
 
-func new{{ $esapi.Name }}() *{{ $esapi.Name }} {
-	return &{{ $esapi.Name }} {
+// New{{ $esapi.Name }} initializes an {{ $esapi.Name }}.
+// This function should only be used for testing and mocking the {{ $esapi.Name }}
+// stream within your application.
+{{- if $inputStream }}
+//
+// The Writer member must be set before writing events to the stream.
+{{- end }}
+{{- if $outputStream }}
+//
+// The Reader member must be set before reading events from the stream.
+{{- end }}
+{{- if $esapi.Legacy }}
+//
+// The StreamCloser member should be set to the underlying io.Closer,
+// (e.g. http.Response.Body), that will be closed when the stream Close method
+// is called.
+{{- end }}
+//
+//   es := New{{ $esapi.Name }}(func(o *{{ $esapi.Name}}{
+{{- if $inputStream }}
+//       es.Writer = myMockStreamWriter
+{{- end }}
+{{- if $outputStream }}
+//       es.Reader = myMockStreamReader
+{{- end }}
+{{- if $esapi.Legacy }}
+//       es.StreamCloser = myMockStreamCloser
+{{- end }}
+//   })
+func New{{ $esapi.Name }}(opts ...func(*{{ $esapi.Name}})) *{{ $esapi.Name }} {
+	es := &{{ $esapi.Name }} {
 		done: make(chan struct{}),
 		err: eventstreamapi.NewOnceError(),
 	}
+
+	for _, fn := range opts {
+		fn(es)
+	}
+
+	return es
 }
 
 {{- if $esapi.Legacy }}
@@ -170,6 +213,14 @@ func (es *{{ $esapi.Name }}) waitStreamPartClose() {
 			r.SetStreamingBody(inputReader)
 			es.inputWriter = inputWriter
 	}
+
+	// Closes the input-pipe writer
+	func (es *{{ $esapi.Name }}) closeInputPipe() error {
+		if es.inputWriter != nil {
+			return es.inputWriter.Close()
+		}
+		return nil
+	}	
 
 	// Send writes the event to the stream blocking until the event is written.
 	// Returns an error if the event was not written.
@@ -254,6 +305,7 @@ func (es *{{ $esapi.Name }}) waitStreamPartClose() {
 	// {{ range $_, $event := $outputStream.Events }}
 	//     * {{ $event.Shape.ShapeName }}
 	{{- end }}
+    //     * {{ $outputStream.StreamUnknownEventName }}
 	func (es *{{ $esapi.Name }}) Events() <-chan {{ $outputStream.EventGroupName }} {
 		return es.Reader.Events()
 	}
@@ -323,7 +375,7 @@ func (es *{{ $esapi.Name }}) waitStreamPartClose() {
 {{- if $inputStream }}
 //
 // Will close the underlying EventStream writer, and no more events can be
-// sent. 
+// sent.
 {{- end }}
 {{- if $outputStream }}
 //
@@ -356,8 +408,8 @@ func (es *{{ $esapi.Name }}) safeClose() {
 		case <-t.C:
 		case <-writeCloseDone:
 		}
-		if es.inputWriter != nil {
-			es.inputWriter.Close()
+		if err := es.closeInputPipe(); err != nil {
+			es.err.SetError(err)
 		}
 	{{- end }}
 
@@ -584,6 +636,8 @@ func (s *{{ $.ShapeName }}) UnmarshalEvent(
 	return nil
 }
 
+// MarshalEvent marshals the type into an stream event value. This method
+// should only used internally within the SDK's EventStream handling.
 func (s *{{ $.ShapeName}}) MarshalEvent(pm protocol.PayloadMarshaler) (msg eventstream.Message, err error) {
 	msg.Headers.Set(eventstreamapi.MessageTypeHeader, eventstream.StringValue({{ ShapeMessageType $ }}))
 

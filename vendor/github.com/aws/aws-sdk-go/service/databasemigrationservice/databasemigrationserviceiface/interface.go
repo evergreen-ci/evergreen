@@ -68,6 +68,10 @@ type DatabaseMigrationServiceAPI interface {
 	ApplyPendingMaintenanceActionWithContext(aws.Context, *databasemigrationservice.ApplyPendingMaintenanceActionInput, ...request.Option) (*databasemigrationservice.ApplyPendingMaintenanceActionOutput, error)
 	ApplyPendingMaintenanceActionRequest(*databasemigrationservice.ApplyPendingMaintenanceActionInput) (*request.Request, *databasemigrationservice.ApplyPendingMaintenanceActionOutput)
 
+	CancelReplicationTaskAssessmentRun(*databasemigrationservice.CancelReplicationTaskAssessmentRunInput) (*databasemigrationservice.CancelReplicationTaskAssessmentRunOutput, error)
+	CancelReplicationTaskAssessmentRunWithContext(aws.Context, *databasemigrationservice.CancelReplicationTaskAssessmentRunInput, ...request.Option) (*databasemigrationservice.CancelReplicationTaskAssessmentRunOutput, error)
+	CancelReplicationTaskAssessmentRunRequest(*databasemigrationservice.CancelReplicationTaskAssessmentRunInput) (*request.Request, *databasemigrationservice.CancelReplicationTaskAssessmentRunOutput)
+
 	CreateEndpoint(*databasemigrationservice.CreateEndpointInput) (*databasemigrationservice.CreateEndpointOutput, error)
 	CreateEndpointWithContext(aws.Context, *databasemigrationservice.CreateEndpointInput, ...request.Option) (*databasemigrationservice.CreateEndpointOutput, error)
 	CreateEndpointRequest(*databasemigrationservice.CreateEndpointInput) (*request.Request, *databasemigrationservice.CreateEndpointOutput)
@@ -116,9 +120,20 @@ type DatabaseMigrationServiceAPI interface {
 	DeleteReplicationTaskWithContext(aws.Context, *databasemigrationservice.DeleteReplicationTaskInput, ...request.Option) (*databasemigrationservice.DeleteReplicationTaskOutput, error)
 	DeleteReplicationTaskRequest(*databasemigrationservice.DeleteReplicationTaskInput) (*request.Request, *databasemigrationservice.DeleteReplicationTaskOutput)
 
+	DeleteReplicationTaskAssessmentRun(*databasemigrationservice.DeleteReplicationTaskAssessmentRunInput) (*databasemigrationservice.DeleteReplicationTaskAssessmentRunOutput, error)
+	DeleteReplicationTaskAssessmentRunWithContext(aws.Context, *databasemigrationservice.DeleteReplicationTaskAssessmentRunInput, ...request.Option) (*databasemigrationservice.DeleteReplicationTaskAssessmentRunOutput, error)
+	DeleteReplicationTaskAssessmentRunRequest(*databasemigrationservice.DeleteReplicationTaskAssessmentRunInput) (*request.Request, *databasemigrationservice.DeleteReplicationTaskAssessmentRunOutput)
+
 	DescribeAccountAttributes(*databasemigrationservice.DescribeAccountAttributesInput) (*databasemigrationservice.DescribeAccountAttributesOutput, error)
 	DescribeAccountAttributesWithContext(aws.Context, *databasemigrationservice.DescribeAccountAttributesInput, ...request.Option) (*databasemigrationservice.DescribeAccountAttributesOutput, error)
 	DescribeAccountAttributesRequest(*databasemigrationservice.DescribeAccountAttributesInput) (*request.Request, *databasemigrationservice.DescribeAccountAttributesOutput)
+
+	DescribeApplicableIndividualAssessments(*databasemigrationservice.DescribeApplicableIndividualAssessmentsInput) (*databasemigrationservice.DescribeApplicableIndividualAssessmentsOutput, error)
+	DescribeApplicableIndividualAssessmentsWithContext(aws.Context, *databasemigrationservice.DescribeApplicableIndividualAssessmentsInput, ...request.Option) (*databasemigrationservice.DescribeApplicableIndividualAssessmentsOutput, error)
+	DescribeApplicableIndividualAssessmentsRequest(*databasemigrationservice.DescribeApplicableIndividualAssessmentsInput) (*request.Request, *databasemigrationservice.DescribeApplicableIndividualAssessmentsOutput)
+
+	DescribeApplicableIndividualAssessmentsPages(*databasemigrationservice.DescribeApplicableIndividualAssessmentsInput, func(*databasemigrationservice.DescribeApplicableIndividualAssessmentsOutput, bool) bool) error
+	DescribeApplicableIndividualAssessmentsPagesWithContext(aws.Context, *databasemigrationservice.DescribeApplicableIndividualAssessmentsInput, func(*databasemigrationservice.DescribeApplicableIndividualAssessmentsOutput, bool) bool, ...request.Option) error
 
 	DescribeCertificates(*databasemigrationservice.DescribeCertificatesInput) (*databasemigrationservice.DescribeCertificatesOutput, error)
 	DescribeCertificatesWithContext(aws.Context, *databasemigrationservice.DescribeCertificatesInput, ...request.Option) (*databasemigrationservice.DescribeCertificatesOutput, error)
@@ -133,6 +148,13 @@ type DatabaseMigrationServiceAPI interface {
 
 	DescribeConnectionsPages(*databasemigrationservice.DescribeConnectionsInput, func(*databasemigrationservice.DescribeConnectionsOutput, bool) bool) error
 	DescribeConnectionsPagesWithContext(aws.Context, *databasemigrationservice.DescribeConnectionsInput, func(*databasemigrationservice.DescribeConnectionsOutput, bool) bool, ...request.Option) error
+
+	DescribeEndpointSettings(*databasemigrationservice.DescribeEndpointSettingsInput) (*databasemigrationservice.DescribeEndpointSettingsOutput, error)
+	DescribeEndpointSettingsWithContext(aws.Context, *databasemigrationservice.DescribeEndpointSettingsInput, ...request.Option) (*databasemigrationservice.DescribeEndpointSettingsOutput, error)
+	DescribeEndpointSettingsRequest(*databasemigrationservice.DescribeEndpointSettingsInput) (*request.Request, *databasemigrationservice.DescribeEndpointSettingsOutput)
+
+	DescribeEndpointSettingsPages(*databasemigrationservice.DescribeEndpointSettingsInput, func(*databasemigrationservice.DescribeEndpointSettingsOutput, bool) bool) error
+	DescribeEndpointSettingsPagesWithContext(aws.Context, *databasemigrationservice.DescribeEndpointSettingsInput, func(*databasemigrationservice.DescribeEndpointSettingsOutput, bool) bool, ...request.Option) error
 
 	DescribeEndpointTypes(*databasemigrationservice.DescribeEndpointTypesInput) (*databasemigrationservice.DescribeEndpointTypesOutput, error)
 	DescribeEndpointTypesWithContext(aws.Context, *databasemigrationservice.DescribeEndpointTypesInput, ...request.Option) (*databasemigrationservice.DescribeEndpointTypesOutput, error)
@@ -212,6 +234,20 @@ type DatabaseMigrationServiceAPI interface {
 	DescribeReplicationTaskAssessmentResultsPages(*databasemigrationservice.DescribeReplicationTaskAssessmentResultsInput, func(*databasemigrationservice.DescribeReplicationTaskAssessmentResultsOutput, bool) bool) error
 	DescribeReplicationTaskAssessmentResultsPagesWithContext(aws.Context, *databasemigrationservice.DescribeReplicationTaskAssessmentResultsInput, func(*databasemigrationservice.DescribeReplicationTaskAssessmentResultsOutput, bool) bool, ...request.Option) error
 
+	DescribeReplicationTaskAssessmentRuns(*databasemigrationservice.DescribeReplicationTaskAssessmentRunsInput) (*databasemigrationservice.DescribeReplicationTaskAssessmentRunsOutput, error)
+	DescribeReplicationTaskAssessmentRunsWithContext(aws.Context, *databasemigrationservice.DescribeReplicationTaskAssessmentRunsInput, ...request.Option) (*databasemigrationservice.DescribeReplicationTaskAssessmentRunsOutput, error)
+	DescribeReplicationTaskAssessmentRunsRequest(*databasemigrationservice.DescribeReplicationTaskAssessmentRunsInput) (*request.Request, *databasemigrationservice.DescribeReplicationTaskAssessmentRunsOutput)
+
+	DescribeReplicationTaskAssessmentRunsPages(*databasemigrationservice.DescribeReplicationTaskAssessmentRunsInput, func(*databasemigrationservice.DescribeReplicationTaskAssessmentRunsOutput, bool) bool) error
+	DescribeReplicationTaskAssessmentRunsPagesWithContext(aws.Context, *databasemigrationservice.DescribeReplicationTaskAssessmentRunsInput, func(*databasemigrationservice.DescribeReplicationTaskAssessmentRunsOutput, bool) bool, ...request.Option) error
+
+	DescribeReplicationTaskIndividualAssessments(*databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsInput) (*databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsOutput, error)
+	DescribeReplicationTaskIndividualAssessmentsWithContext(aws.Context, *databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsInput, ...request.Option) (*databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsOutput, error)
+	DescribeReplicationTaskIndividualAssessmentsRequest(*databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsInput) (*request.Request, *databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsOutput)
+
+	DescribeReplicationTaskIndividualAssessmentsPages(*databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsInput, func(*databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsOutput, bool) bool) error
+	DescribeReplicationTaskIndividualAssessmentsPagesWithContext(aws.Context, *databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsInput, func(*databasemigrationservice.DescribeReplicationTaskIndividualAssessmentsOutput, bool) bool, ...request.Option) error
+
 	DescribeReplicationTasks(*databasemigrationservice.DescribeReplicationTasksInput) (*databasemigrationservice.DescribeReplicationTasksOutput, error)
 	DescribeReplicationTasksWithContext(aws.Context, *databasemigrationservice.DescribeReplicationTasksInput, ...request.Option) (*databasemigrationservice.DescribeReplicationTasksOutput, error)
 	DescribeReplicationTasksRequest(*databasemigrationservice.DescribeReplicationTasksInput) (*request.Request, *databasemigrationservice.DescribeReplicationTasksOutput)
@@ -261,6 +297,10 @@ type DatabaseMigrationServiceAPI interface {
 	ModifyReplicationTaskWithContext(aws.Context, *databasemigrationservice.ModifyReplicationTaskInput, ...request.Option) (*databasemigrationservice.ModifyReplicationTaskOutput, error)
 	ModifyReplicationTaskRequest(*databasemigrationservice.ModifyReplicationTaskInput) (*request.Request, *databasemigrationservice.ModifyReplicationTaskOutput)
 
+	MoveReplicationTask(*databasemigrationservice.MoveReplicationTaskInput) (*databasemigrationservice.MoveReplicationTaskOutput, error)
+	MoveReplicationTaskWithContext(aws.Context, *databasemigrationservice.MoveReplicationTaskInput, ...request.Option) (*databasemigrationservice.MoveReplicationTaskOutput, error)
+	MoveReplicationTaskRequest(*databasemigrationservice.MoveReplicationTaskInput) (*request.Request, *databasemigrationservice.MoveReplicationTaskOutput)
+
 	RebootReplicationInstance(*databasemigrationservice.RebootReplicationInstanceInput) (*databasemigrationservice.RebootReplicationInstanceOutput, error)
 	RebootReplicationInstanceWithContext(aws.Context, *databasemigrationservice.RebootReplicationInstanceInput, ...request.Option) (*databasemigrationservice.RebootReplicationInstanceOutput, error)
 	RebootReplicationInstanceRequest(*databasemigrationservice.RebootReplicationInstanceInput) (*request.Request, *databasemigrationservice.RebootReplicationInstanceOutput)
@@ -284,6 +324,10 @@ type DatabaseMigrationServiceAPI interface {
 	StartReplicationTaskAssessment(*databasemigrationservice.StartReplicationTaskAssessmentInput) (*databasemigrationservice.StartReplicationTaskAssessmentOutput, error)
 	StartReplicationTaskAssessmentWithContext(aws.Context, *databasemigrationservice.StartReplicationTaskAssessmentInput, ...request.Option) (*databasemigrationservice.StartReplicationTaskAssessmentOutput, error)
 	StartReplicationTaskAssessmentRequest(*databasemigrationservice.StartReplicationTaskAssessmentInput) (*request.Request, *databasemigrationservice.StartReplicationTaskAssessmentOutput)
+
+	StartReplicationTaskAssessmentRun(*databasemigrationservice.StartReplicationTaskAssessmentRunInput) (*databasemigrationservice.StartReplicationTaskAssessmentRunOutput, error)
+	StartReplicationTaskAssessmentRunWithContext(aws.Context, *databasemigrationservice.StartReplicationTaskAssessmentRunInput, ...request.Option) (*databasemigrationservice.StartReplicationTaskAssessmentRunOutput, error)
+	StartReplicationTaskAssessmentRunRequest(*databasemigrationservice.StartReplicationTaskAssessmentRunInput) (*request.Request, *databasemigrationservice.StartReplicationTaskAssessmentRunOutput)
 
 	StopReplicationTask(*databasemigrationservice.StopReplicationTaskInput) (*databasemigrationservice.StopReplicationTaskOutput, error)
 	StopReplicationTaskWithContext(aws.Context, *databasemigrationservice.StopReplicationTaskInput, ...request.Option) (*databasemigrationservice.StopReplicationTaskOutput, error)

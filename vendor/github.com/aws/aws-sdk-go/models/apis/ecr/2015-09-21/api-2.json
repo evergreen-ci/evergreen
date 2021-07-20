@@ -72,7 +72,8 @@
         {"shape":"InvalidLayerException"},
         {"shape":"LayerPartTooSmallException"},
         {"shape":"LayerAlreadyExistsException"},
-        {"shape":"EmptyUploadException"}
+        {"shape":"EmptyUploadException"},
+        {"shape":"KmsException"}
       ]
     },
     "CreateRepository":{
@@ -89,7 +90,8 @@
         {"shape":"InvalidTagParameterException"},
         {"shape":"TooManyTagsException"},
         {"shape":"RepositoryAlreadyExistsException"},
-        {"shape":"LimitExceededException"}
+        {"shape":"LimitExceededException"},
+        {"shape":"KmsException"}
       ]
     },
     "DeleteLifecyclePolicy":{
@@ -107,6 +109,20 @@
         {"shape":"LifecyclePolicyNotFoundException"}
       ]
     },
+    "DeleteRegistryPolicy":{
+      "name":"DeleteRegistryPolicy",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteRegistryPolicyRequest"},
+      "output":{"shape":"DeleteRegistryPolicyResponse"},
+      "errors":[
+        {"shape":"ServerException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"RegistryPolicyNotFoundException"}
+      ]
+    },
     "DeleteRepository":{
       "name":"DeleteRepository",
       "http":{
@@ -119,7 +135,8 @@
         {"shape":"ServerException"},
         {"shape":"InvalidParameterException"},
         {"shape":"RepositoryNotFoundException"},
-        {"shape":"RepositoryNotEmptyException"}
+        {"shape":"RepositoryNotEmptyException"},
+        {"shape":"KmsException"}
       ]
     },
     "DeleteRepositoryPolicy":{
@@ -166,6 +183,20 @@
         {"shape":"InvalidParameterException"},
         {"shape":"RepositoryNotFoundException"},
         {"shape":"ImageNotFoundException"}
+      ]
+    },
+    "DescribeRegistry":{
+      "name":"DescribeRegistry",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DescribeRegistryRequest"},
+      "output":{"shape":"DescribeRegistryResponse"},
+      "errors":[
+        {"shape":"ServerException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"ValidationException"}
       ]
     },
     "DescribeRepositories":{
@@ -241,6 +272,20 @@
         {"shape":"LifecyclePolicyPreviewNotFoundException"}
       ]
     },
+    "GetRegistryPolicy":{
+      "name":"GetRegistryPolicy",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetRegistryPolicyRequest"},
+      "output":{"shape":"GetRegistryPolicyResponse"},
+      "errors":[
+        {"shape":"ServerException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"RegistryPolicyNotFoundException"}
+      ]
+    },
     "GetRepositoryPolicy":{
       "name":"GetRepositoryPolicy",
       "http":{
@@ -267,7 +312,8 @@
       "errors":[
         {"shape":"ServerException"},
         {"shape":"InvalidParameterException"},
-        {"shape":"RepositoryNotFoundException"}
+        {"shape":"RepositoryNotFoundException"},
+        {"shape":"KmsException"}
       ]
     },
     "ListImages":{
@@ -312,8 +358,11 @@
         {"shape":"RepositoryNotFoundException"},
         {"shape":"ImageAlreadyExistsException"},
         {"shape":"LayersNotFoundException"},
+        {"shape":"ReferencedImagesNotFoundException"},
         {"shape":"LimitExceededException"},
-        {"shape":"ImageTagAlreadyExistsException"}
+        {"shape":"ImageTagAlreadyExistsException"},
+        {"shape":"ImageDigestDoesNotMatchException"},
+        {"shape":"KmsException"}
       ]
     },
     "PutImageScanningConfiguration":{
@@ -358,6 +407,33 @@
         {"shape":"RepositoryNotFoundException"}
       ]
     },
+    "PutRegistryPolicy":{
+      "name":"PutRegistryPolicy",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"PutRegistryPolicyRequest"},
+      "output":{"shape":"PutRegistryPolicyResponse"},
+      "errors":[
+        {"shape":"ServerException"},
+        {"shape":"InvalidParameterException"}
+      ]
+    },
+    "PutReplicationConfiguration":{
+      "name":"PutReplicationConfiguration",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"PutReplicationConfigurationRequest"},
+      "output":{"shape":"PutReplicationConfigurationResponse"},
+      "errors":[
+        {"shape":"ServerException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"ValidationException"}
+      ]
+    },
     "SetRepositoryPolicy":{
       "name":"SetRepositoryPolicy",
       "http":{
@@ -383,6 +459,8 @@
       "errors":[
         {"shape":"ServerException"},
         {"shape":"InvalidParameterException"},
+        {"shape":"UnsupportedImageTypeException"},
+        {"shape":"LimitExceededException"},
         {"shape":"RepositoryNotFoundException"},
         {"shape":"ImageNotFoundException"}
       ]
@@ -449,7 +527,8 @@
         {"shape":"InvalidLayerPartException"},
         {"shape":"RepositoryNotFoundException"},
         {"shape":"UploadNotFoundException"},
-        {"shape":"LimitExceededException"}
+        {"shape":"LimitExceededException"},
+        {"shape":"KmsException"}
       ]
     }
   },
@@ -594,7 +673,8 @@
         "repositoryName":{"shape":"RepositoryName"},
         "tags":{"shape":"TagList"},
         "imageTagMutability":{"shape":"ImageTagMutability"},
-        "imageScanningConfiguration":{"shape":"ImageScanningConfiguration"}
+        "imageScanningConfiguration":{"shape":"ImageScanningConfiguration"},
+        "encryptionConfiguration":{"shape":"EncryptionConfiguration"}
       }
     },
     "CreateRepositoryResponse":{
@@ -619,6 +699,18 @@
         "repositoryName":{"shape":"RepositoryName"},
         "lifecyclePolicyText":{"shape":"LifecyclePolicyText"},
         "lastEvaluatedAt":{"shape":"EvaluationTimestamp"}
+      }
+    },
+    "DeleteRegistryPolicyRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DeleteRegistryPolicyResponse":{
+      "type":"structure",
+      "members":{
+        "registryId":{"shape":"RegistryId"},
+        "policyText":{"shape":"RegistryPolicyText"}
       }
     },
     "DeleteRepositoryPolicyRequest":{
@@ -702,6 +794,18 @@
         "nextToken":{"shape":"NextToken"}
       }
     },
+    "DescribeRegistryRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DescribeRegistryResponse":{
+      "type":"structure",
+      "members":{
+        "registryId":{"shape":"RegistryId"},
+        "replicationConfiguration":{"shape":"ReplicationConfiguration"}
+      }
+    },
     "DescribeRepositoriesRequest":{
       "type":"structure",
       "members":{
@@ -724,6 +828,21 @@
         "message":{"shape":"ExceptionMessage"}
       },
       "exception":true
+    },
+    "EncryptionConfiguration":{
+      "type":"structure",
+      "required":["encryptionType"],
+      "members":{
+        "encryptionType":{"shape":"EncryptionType"},
+        "kmsKey":{"shape":"KmsKey"}
+      }
+    },
+    "EncryptionType":{
+      "type":"string",
+      "enum":[
+        "AES256",
+        "KMS"
+      ]
     },
     "EvaluationTimestamp":{"type":"timestamp"},
     "ExceptionMessage":{"type":"string"},
@@ -756,7 +875,11 @@
     "GetAuthorizationTokenRequest":{
       "type":"structure",
       "members":{
-        "registryIds":{"shape":"GetAuthorizationTokenRegistryIdList"}
+        "registryIds":{
+          "shape":"GetAuthorizationTokenRegistryIdList",
+          "deprecated":true,
+          "deprecatedMessage":"This field is deprecated. The returned authorization token can be used to access any Amazon ECR registry that the IAM principal has access to, specifying a registry ID doesn't change the permissions scope of the authorization token."
+        }
       }
     },
     "GetAuthorizationTokenResponse":{
@@ -825,6 +948,18 @@
         "lastEvaluatedAt":{"shape":"EvaluationTimestamp"}
       }
     },
+    "GetRegistryPolicyRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "GetRegistryPolicyResponse":{
+      "type":"structure",
+      "members":{
+        "registryId":{"shape":"RegistryId"},
+        "policyText":{"shape":"RegistryPolicyText"}
+      }
+    },
     "GetRepositoryPolicyRequest":{
       "type":"structure",
       "required":["repositoryName"],
@@ -847,7 +982,8 @@
         "registryId":{"shape":"RegistryId"},
         "repositoryName":{"shape":"RepositoryName"},
         "imageId":{"shape":"ImageIdentifier"},
-        "imageManifest":{"shape":"ImageManifest"}
+        "imageManifest":{"shape":"ImageManifest"},
+        "imageManifestMediaType":{"shape":"MediaType"}
       }
     },
     "ImageActionType":{
@@ -875,7 +1011,9 @@
         "imageSizeInBytes":{"shape":"ImageSizeInBytes"},
         "imagePushedAt":{"shape":"PushTimestamp"},
         "imageScanStatus":{"shape":"ImageScanStatus"},
-        "imageScanFindingsSummary":{"shape":"ImageScanFindingsSummary"}
+        "imageScanFindingsSummary":{"shape":"ImageScanFindingsSummary"},
+        "imageManifestMediaType":{"shape":"MediaType"},
+        "artifactMediaType":{"shape":"MediaType"}
       }
     },
     "ImageDetailList":{
@@ -883,6 +1021,13 @@
       "member":{"shape":"ImageDetail"}
     },
     "ImageDigest":{"type":"string"},
+    "ImageDigestDoesNotMatchException":{
+      "type":"structure",
+      "members":{
+        "message":{"shape":"ExceptionMessage"}
+      },
+      "exception":true
+    },
     "ImageFailure":{
       "type":"structure",
       "members":{
@@ -898,7 +1043,9 @@
         "InvalidImageTag",
         "ImageTagDoesNotMatchDigest",
         "ImageNotFound",
-        "MissingDigestAndTag"
+        "MissingDigestAndTag",
+        "ImageReferencedByManifestList",
+        "KmsError"
       ]
     },
     "ImageFailureList":{
@@ -1049,6 +1196,20 @@
         "message":{"shape":"ExceptionMessage"}
       },
       "exception":true
+    },
+    "KmsError":{"type":"string"},
+    "KmsException":{
+      "type":"structure",
+      "members":{
+        "message":{"shape":"ExceptionMessage"},
+        "kmsError":{"shape":"KmsError"}
+      },
+      "exception":true
+    },
+    "KmsKey":{
+      "type":"string",
+      "max":2048,
+      "min":1
     },
     "Layer":{
       "type":"structure",
@@ -1283,7 +1444,9 @@
         "registryId":{"shape":"RegistryId"},
         "repositoryName":{"shape":"RepositoryName"},
         "imageManifest":{"shape":"ImageManifest"},
-        "imageTag":{"shape":"ImageTag"}
+        "imageManifestMediaType":{"shape":"MediaType"},
+        "imageTag":{"shape":"ImageTag"},
+        "imageDigest":{"shape":"ImageDigest"}
       }
     },
     "PutImageResponse":{
@@ -1352,9 +1515,98 @@
         "lifecyclePolicyText":{"shape":"LifecyclePolicyText"}
       }
     },
+    "PutRegistryPolicyRequest":{
+      "type":"structure",
+      "required":["policyText"],
+      "members":{
+        "policyText":{"shape":"RegistryPolicyText"}
+      }
+    },
+    "PutRegistryPolicyResponse":{
+      "type":"structure",
+      "members":{
+        "registryId":{"shape":"RegistryId"},
+        "policyText":{"shape":"RegistryPolicyText"}
+      }
+    },
+    "PutReplicationConfigurationRequest":{
+      "type":"structure",
+      "required":["replicationConfiguration"],
+      "members":{
+        "replicationConfiguration":{"shape":"ReplicationConfiguration"}
+      }
+    },
+    "PutReplicationConfigurationResponse":{
+      "type":"structure",
+      "members":{
+        "replicationConfiguration":{"shape":"ReplicationConfiguration"}
+      }
+    },
+    "ReferencedImagesNotFoundException":{
+      "type":"structure",
+      "members":{
+        "message":{"shape":"ExceptionMessage"}
+      },
+      "exception":true
+    },
+    "Region":{
+      "type":"string",
+      "max":25,
+      "min":2,
+      "pattern":"[0-9a-z-]{2,25}"
+    },
     "RegistryId":{
       "type":"string",
       "pattern":"[0-9]{12}"
+    },
+    "RegistryPolicyNotFoundException":{
+      "type":"structure",
+      "members":{
+        "message":{"shape":"ExceptionMessage"}
+      },
+      "exception":true
+    },
+    "RegistryPolicyText":{
+      "type":"string",
+      "max":10240,
+      "min":0
+    },
+    "ReplicationConfiguration":{
+      "type":"structure",
+      "required":["rules"],
+      "members":{
+        "rules":{"shape":"ReplicationRuleList"}
+      }
+    },
+    "ReplicationDestination":{
+      "type":"structure",
+      "required":[
+        "region",
+        "registryId"
+      ],
+      "members":{
+        "region":{"shape":"Region"},
+        "registryId":{"shape":"RegistryId"}
+      }
+    },
+    "ReplicationDestinationList":{
+      "type":"list",
+      "member":{"shape":"ReplicationDestination"},
+      "max":25,
+      "min":0
+    },
+    "ReplicationRule":{
+      "type":"structure",
+      "required":["destinations"],
+      "members":{
+        "destinations":{"shape":"ReplicationDestinationList"}
+      }
+    },
+    "ReplicationRuleList":{
+      "type":"list",
+      "member":{"shape":"ReplicationRule"},
+      "max":1,
+      "min":0
     },
     "Repository":{
       "type":"structure",
@@ -1365,7 +1617,8 @@
         "repositoryUri":{"shape":"Url"},
         "createdAt":{"shape":"CreationTimestamp"},
         "imageTagMutability":{"shape":"ImageTagMutability"},
-        "imageScanningConfiguration":{"shape":"ImageScanningConfiguration"}
+        "imageScanningConfiguration":{"shape":"ImageScanningConfiguration"},
+        "encryptionConfiguration":{"shape":"EncryptionConfiguration"}
       }
     },
     "RepositoryAlreadyExistsException":{
@@ -1555,6 +1808,13 @@
       },
       "exception":true
     },
+    "UnsupportedImageTypeException":{
+      "type":"structure",
+      "members":{
+        "message":{"shape":"ExceptionMessage"}
+      },
+      "exception":true
+    },
     "UntagResourceRequest":{
       "type":"structure",
       "required":[
@@ -1610,6 +1870,13 @@
       "exception":true
     },
     "Url":{"type":"string"},
+    "ValidationException":{
+      "type":"structure",
+      "members":{
+        "message":{"shape":"ExceptionMessage"}
+      },
+      "exception":true
+    },
     "VulnerabilitySourceUpdateTimestamp":{"type":"timestamp"}
   }
 }

@@ -49,6 +49,38 @@
         {"shape":"ResourceNotFoundException"}
       ]
     },
+    "AssociateHealthCheck":{
+      "name":"AssociateHealthCheck",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"AssociateHealthCheckRequest"},
+      "output":{"shape":"AssociateHealthCheckResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"LimitsExceededException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"OptimisticLockException"}
+      ]
+    },
+    "AssociateProactiveEngagementDetails":{
+      "name":"AssociateProactiveEngagementDetails",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"AssociateProactiveEngagementDetailsRequest"},
+      "output":{"shape":"AssociateProactiveEngagementDetailsResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"InvalidOperationException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"OptimisticLockException"}
+      ]
+    },
     "CreateProtection":{
       "name":"CreateProtection",
       "http":{
@@ -64,7 +96,25 @@
         {"shape":"LimitsExceededException"},
         {"shape":"ResourceAlreadyExistsException"},
         {"shape":"OptimisticLockException"},
-        {"shape":"ResourceNotFoundException"}
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"InvalidParameterException"}
+      ]
+    },
+    "CreateProtectionGroup":{
+      "name":"CreateProtectionGroup",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateProtectionGroupRequest"},
+      "output":{"shape":"CreateProtectionGroupResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"ResourceAlreadyExistsException"},
+        {"shape":"OptimisticLockException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"LimitsExceededException"}
       ]
     },
     "CreateSubscription":{
@@ -94,6 +144,20 @@
         {"shape":"OptimisticLockException"}
       ]
     },
+    "DeleteProtectionGroup":{
+      "name":"DeleteProtectionGroup",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteProtectionGroupRequest"},
+      "output":{"shape":"DeleteProtectionGroupResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"OptimisticLockException"},
+        {"shape":"ResourceNotFoundException"}
+      ]
+    },
     "DeleteSubscription":{
       "name":"DeleteSubscription",
       "http":{
@@ -120,6 +184,18 @@
       "errors":[
         {"shape":"InternalErrorException"},
         {"shape":"AccessDeniedException"}
+      ]
+    },
+    "DescribeAttackStatistics":{
+      "name":"DescribeAttackStatistics",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DescribeAttackStatisticsRequest"},
+      "output":{"shape":"DescribeAttackStatisticsResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"}
       ]
     },
     "DescribeDRTAccess":{
@@ -162,6 +238,19 @@
         {"shape":"ResourceNotFoundException"}
       ]
     },
+    "DescribeProtectionGroup":{
+      "name":"DescribeProtectionGroup",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DescribeProtectionGroupRequest"},
+      "output":{"shape":"DescribeProtectionGroupResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"ResourceNotFoundException"}
+      ]
+    },
     "DescribeSubscription":{
       "name":"DescribeSubscription",
       "http":{
@@ -173,6 +262,22 @@
       "errors":[
         {"shape":"InternalErrorException"},
         {"shape":"ResourceNotFoundException"}
+      ]
+    },
+    "DisableProactiveEngagement":{
+      "name":"DisableProactiveEngagement",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DisableProactiveEngagementRequest"},
+      "output":{"shape":"DisableProactiveEngagementResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"InvalidOperationException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"OptimisticLockException"}
       ]
     },
     "DisassociateDRTLogBucket":{
@@ -207,6 +312,37 @@
         {"shape":"ResourceNotFoundException"}
       ]
     },
+    "DisassociateHealthCheck":{
+      "name":"DisassociateHealthCheck",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DisassociateHealthCheckRequest"},
+      "output":{"shape":"DisassociateHealthCheckResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"OptimisticLockException"}
+      ]
+    },
+    "EnableProactiveEngagement":{
+      "name":"EnableProactiveEngagement",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"EnableProactiveEngagementRequest"},
+      "output":{"shape":"EnableProactiveEngagementResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"InvalidOperationException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"OptimisticLockException"}
+      ]
+    },
     "GetSubscriptionState":{
       "name":"GetSubscriptionState",
       "http":{
@@ -233,6 +369,20 @@
         {"shape":"InvalidOperationException"}
       ]
     },
+    "ListProtectionGroups":{
+      "name":"ListProtectionGroups",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListProtectionGroupsRequest"},
+      "output":{"shape":"ListProtectionGroupsResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"InvalidPaginationTokenException"}
+      ]
+    },
     "ListProtections":{
       "name":"ListProtections",
       "http":{
@@ -245,6 +395,64 @@
         {"shape":"InternalErrorException"},
         {"shape":"ResourceNotFoundException"},
         {"shape":"InvalidPaginationTokenException"}
+      ]
+    },
+    "ListResourcesInProtectionGroup":{
+      "name":"ListResourcesInProtectionGroup",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListResourcesInProtectionGroupRequest"},
+      "output":{"shape":"ListResourcesInProtectionGroupResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"InvalidPaginationTokenException"}
+      ]
+    },
+    "ListTagsForResource":{
+      "name":"ListTagsForResource",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListTagsForResourceRequest"},
+      "output":{"shape":"ListTagsForResourceResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"InvalidResourceException"},
+        {"shape":"ResourceNotFoundException"}
+      ]
+    },
+    "TagResource":{
+      "name":"TagResource",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"TagResourceRequest"},
+      "output":{"shape":"TagResourceResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"InvalidResourceException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"ResourceNotFoundException"}
+      ]
+    },
+    "UntagResource":{
+      "name":"UntagResource",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UntagResourceRequest"},
+      "output":{"shape":"UntagResourceResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"InvalidResourceException"},
+        {"shape":"InvalidParameterException"},
+        {"shape":"ResourceNotFoundException"}
       ]
     },
     "UpdateEmergencyContactSettings":{
@@ -260,6 +468,21 @@
         {"shape":"InvalidParameterException"},
         {"shape":"OptimisticLockException"},
         {"shape":"ResourceNotFoundException"}
+      ]
+    },
+    "UpdateProtectionGroup":{
+      "name":"UpdateProtectionGroup",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateProtectionGroupRequest"},
+      "output":{"shape":"UpdateProtectionGroupResponse"},
+      "errors":[
+        {"shape":"InternalErrorException"},
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"OptimisticLockException"},
+        {"shape":"InvalidParameterException"}
       ]
     },
     "UpdateSubscription":{
@@ -318,6 +541,34 @@
       "members":{
       }
     },
+    "AssociateHealthCheckRequest":{
+      "type":"structure",
+      "required":[
+        "ProtectionId",
+        "HealthCheckArn"
+      ],
+      "members":{
+        "ProtectionId":{"shape":"ProtectionId"},
+        "HealthCheckArn":{"shape":"HealthCheckArn"}
+      }
+    },
+    "AssociateHealthCheckResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "AssociateProactiveEngagementDetailsRequest":{
+      "type":"structure",
+      "required":["EmergencyContactList"],
+      "members":{
+        "EmergencyContactList":{"shape":"EmergencyContactList"}
+      }
+    },
+    "AssociateProactiveEngagementDetailsResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "AttackDetail":{
       "type":"structure",
       "members":{
@@ -371,6 +622,18 @@
         "WORDPRESS_PINGBACK_SOURCE"
       ]
     },
+    "AttackStatisticsDataItem":{
+      "type":"structure",
+      "required":["AttackCount"],
+      "members":{
+        "AttackVolume":{"shape":"AttackVolume"},
+        "AttackCount":{"shape":"Long"}
+      }
+    },
+    "AttackStatisticsDataList":{
+      "type":"list",
+      "member":{"shape":"AttackStatisticsDataItem"}
+    },
     "AttackSummaries":{
       "type":"list",
       "member":{"shape":"AttackSummary"}
@@ -397,6 +660,21 @@
       "type":"list",
       "member":{"shape":"AttackVectorDescription"}
     },
+    "AttackVolume":{
+      "type":"structure",
+      "members":{
+        "BitsPerSecond":{"shape":"AttackVolumeStatistics"},
+        "PacketsPerSecond":{"shape":"AttackVolumeStatistics"},
+        "RequestsPerSecond":{"shape":"AttackVolumeStatistics"}
+      }
+    },
+    "AttackVolumeStatistics":{
+      "type":"structure",
+      "required":["Max"],
+      "members":{
+        "Max":{"shape":"Double"}
+      }
+    },
     "AutoRenew":{
       "type":"string",
       "enum":[
@@ -404,11 +682,38 @@
         "DISABLED"
       ]
     },
+    "ContactNotes":{
+      "type":"string",
+      "max":1024,
+      "min":1,
+      "pattern":"^[\\w\\s\\.\\-,:/()+@]*$"
+    },
     "Contributor":{
       "type":"structure",
       "members":{
         "Name":{"shape":"String"},
         "Value":{"shape":"Long"}
+      }
+    },
+    "CreateProtectionGroupRequest":{
+      "type":"structure",
+      "required":[
+        "ProtectionGroupId",
+        "Aggregation",
+        "Pattern"
+      ],
+      "members":{
+        "ProtectionGroupId":{"shape":"ProtectionGroupId"},
+        "Aggregation":{"shape":"ProtectionGroupAggregation"},
+        "Pattern":{"shape":"ProtectionGroupPattern"},
+        "ResourceType":{"shape":"ProtectedResourceType"},
+        "Members":{"shape":"ProtectionGroupMembers"},
+        "Tags":{"shape":"TagList"}
+      }
+    },
+    "CreateProtectionGroupResponse":{
+      "type":"structure",
+      "members":{
       }
     },
     "CreateProtectionRequest":{
@@ -419,7 +724,8 @@
       ],
       "members":{
         "Name":{"shape":"ProtectionName"},
-        "ResourceArn":{"shape":"ResourceArn"}
+        "ResourceArn":{"shape":"ResourceArn"},
+        "Tags":{"shape":"TagList"}
       }
     },
     "CreateProtectionResponse":{
@@ -434,6 +740,18 @@
       }
     },
     "CreateSubscriptionResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DeleteProtectionGroupRequest":{
+      "type":"structure",
+      "required":["ProtectionGroupId"],
+      "members":{
+        "ProtectionGroupId":{"shape":"ProtectionGroupId"}
+      }
+    },
+    "DeleteProtectionGroupResponse":{
       "type":"structure",
       "members":{
       }
@@ -475,6 +793,22 @@
         "Attack":{"shape":"AttackDetail"}
       }
     },
+    "DescribeAttackStatisticsRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DescribeAttackStatisticsResponse":{
+      "type":"structure",
+      "required":[
+        "TimeRange",
+        "DataItems"
+      ],
+      "members":{
+        "TimeRange":{"shape":"TimeRange"},
+        "DataItems":{"shape":"AttackStatisticsDataList"}
+      }
+    },
     "DescribeDRTAccessRequest":{
       "type":"structure",
       "members":{
@@ -496,6 +830,20 @@
       "type":"structure",
       "members":{
         "EmergencyContactList":{"shape":"EmergencyContactList"}
+      }
+    },
+    "DescribeProtectionGroupRequest":{
+      "type":"structure",
+      "required":["ProtectionGroupId"],
+      "members":{
+        "ProtectionGroupId":{"shape":"ProtectionGroupId"}
+      }
+    },
+    "DescribeProtectionGroupResponse":{
+      "type":"structure",
+      "required":["ProtectionGroup"],
+      "members":{
+        "ProtectionGroup":{"shape":"ProtectionGroup"}
       }
     },
     "DescribeProtectionRequest":{
@@ -522,6 +870,16 @@
         "Subscription":{"shape":"Subscription"}
       }
     },
+    "DisableProactiveEngagementRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DisableProactiveEngagementResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "DisassociateDRTLogBucketRequest":{
       "type":"structure",
       "required":["LogBucket"],
@@ -544,6 +902,22 @@
       "members":{
       }
     },
+    "DisassociateHealthCheckRequest":{
+      "type":"structure",
+      "required":[
+        "ProtectionId",
+        "HealthCheckArn"
+      ],
+      "members":{
+        "ProtectionId":{"shape":"ProtectionId"},
+        "HealthCheckArn":{"shape":"HealthCheckArn"}
+      }
+    },
+    "DisassociateHealthCheckResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "Double":{"type":"double"},
     "DurationInSeconds":{
       "type":"long",
@@ -559,7 +933,9 @@
       "type":"structure",
       "required":["EmailAddress"],
       "members":{
-        "EmailAddress":{"shape":"EmailAddress"}
+        "EmailAddress":{"shape":"EmailAddress"},
+        "PhoneNumber":{"shape":"PhoneNumber"},
+        "ContactNotes":{"shape":"ContactNotes"}
       }
     },
     "EmergencyContactList":{
@@ -567,6 +943,16 @@
       "member":{"shape":"EmergencyContact"},
       "max":10,
       "min":0
+    },
+    "EnableProactiveEngagementRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "EnableProactiveEngagementResponse":{
+      "type":"structure",
+      "members":{
+      }
     },
     "GetSubscriptionStateRequest":{
       "type":"structure",
@@ -579,6 +965,17 @@
       "members":{
         "SubscriptionState":{"shape":"SubscriptionState"}
       }
+    },
+    "HealthCheckArn":{
+      "type":"string",
+      "max":2048,
+      "min":1,
+      "pattern":"^arn:aws:route53:::healthcheck/\\S{36}$"
+    },
+    "HealthCheckId":{"type":"string"},
+    "HealthCheckIds":{
+      "type":"list",
+      "member":{"shape":"HealthCheckId"}
     },
     "Integer":{"type":"integer"},
     "InternalErrorException":{
@@ -606,7 +1003,9 @@
     "InvalidParameterException":{
       "type":"structure",
       "members":{
-        "message":{"shape":"errorMessage"}
+        "message":{"shape":"errorMessage"},
+        "reason":{"shape":"ValidationExceptionReason"},
+        "fields":{"shape":"ValidationExceptionFieldList"}
       },
       "exception":true
     },
@@ -656,6 +1055,21 @@
         "NextToken":{"shape":"Token"}
       }
     },
+    "ListProtectionGroupsRequest":{
+      "type":"structure",
+      "members":{
+        "NextToken":{"shape":"Token"},
+        "MaxResults":{"shape":"MaxResults"}
+      }
+    },
+    "ListProtectionGroupsResponse":{
+      "type":"structure",
+      "required":["ProtectionGroups"],
+      "members":{
+        "ProtectionGroups":{"shape":"ProtectionGroups"},
+        "NextToken":{"shape":"Token"}
+      }
+    },
     "ListProtectionsRequest":{
       "type":"structure",
       "members":{
@@ -668,6 +1082,36 @@
       "members":{
         "Protections":{"shape":"Protections"},
         "NextToken":{"shape":"Token"}
+      }
+    },
+    "ListResourcesInProtectionGroupRequest":{
+      "type":"structure",
+      "required":["ProtectionGroupId"],
+      "members":{
+        "ProtectionGroupId":{"shape":"ProtectionGroupId"},
+        "NextToken":{"shape":"Token"},
+        "MaxResults":{"shape":"MaxResults"}
+      }
+    },
+    "ListResourcesInProtectionGroupResponse":{
+      "type":"structure",
+      "required":["ResourceArns"],
+      "members":{
+        "ResourceArns":{"shape":"ResourceArnList"},
+        "NextToken":{"shape":"Token"}
+      }
+    },
+    "ListTagsForResourceRequest":{
+      "type":"structure",
+      "required":["ResourceARN"],
+      "members":{
+        "ResourceARN":{"shape":"ResourceArn"}
+      }
+    },
+    "ListTagsForResourceResponse":{
+      "type":"structure",
+      "members":{
+        "Tags":{"shape":"TagList"}
       }
     },
     "LockedSubscriptionException":{
@@ -720,19 +1164,127 @@
       },
       "exception":true
     },
+    "PhoneNumber":{
+      "type":"string",
+      "max":16,
+      "min":1,
+      "pattern":"^\\+[1-9]\\d{1,14}$"
+    },
+    "ProactiveEngagementStatus":{
+      "type":"string",
+      "enum":[
+        "ENABLED",
+        "DISABLED",
+        "PENDING"
+      ]
+    },
+    "ProtectedResourceType":{
+      "type":"string",
+      "enum":[
+        "CLOUDFRONT_DISTRIBUTION",
+        "ROUTE_53_HOSTED_ZONE",
+        "ELASTIC_IP_ALLOCATION",
+        "CLASSIC_LOAD_BALANCER",
+        "APPLICATION_LOAD_BALANCER",
+        "GLOBAL_ACCELERATOR"
+      ]
+    },
     "Protection":{
       "type":"structure",
       "members":{
         "Id":{"shape":"ProtectionId"},
         "Name":{"shape":"ProtectionName"},
-        "ResourceArn":{"shape":"ResourceArn"}
+        "ResourceArn":{"shape":"ResourceArn"},
+        "HealthCheckIds":{"shape":"HealthCheckIds"},
+        "ProtectionArn":{"shape":"ResourceArn"}
       }
+    },
+    "ProtectionGroup":{
+      "type":"structure",
+      "required":[
+        "ProtectionGroupId",
+        "Aggregation",
+        "Pattern",
+        "Members"
+      ],
+      "members":{
+        "ProtectionGroupId":{"shape":"ProtectionGroupId"},
+        "Aggregation":{"shape":"ProtectionGroupAggregation"},
+        "Pattern":{"shape":"ProtectionGroupPattern"},
+        "ResourceType":{"shape":"ProtectedResourceType"},
+        "Members":{"shape":"ProtectionGroupMembers"},
+        "ProtectionGroupArn":{"shape":"ResourceArn"}
+      }
+    },
+    "ProtectionGroupAggregation":{
+      "type":"string",
+      "enum":[
+        "SUM",
+        "MEAN",
+        "MAX"
+      ]
+    },
+    "ProtectionGroupArbitraryPatternLimits":{
+      "type":"structure",
+      "required":["MaxMembers"],
+      "members":{
+        "MaxMembers":{"shape":"Long"}
+      }
+    },
+    "ProtectionGroupId":{
+      "type":"string",
+      "max":36,
+      "min":1,
+      "pattern":"[a-zA-Z0-9\\\\-]*"
+    },
+    "ProtectionGroupLimits":{
+      "type":"structure",
+      "required":[
+        "MaxProtectionGroups",
+        "PatternTypeLimits"
+      ],
+      "members":{
+        "MaxProtectionGroups":{"shape":"Long"},
+        "PatternTypeLimits":{"shape":"ProtectionGroupPatternTypeLimits"}
+      }
+    },
+    "ProtectionGroupMembers":{
+      "type":"list",
+      "member":{"shape":"ResourceArn"},
+      "max":10000,
+      "min":0
+    },
+    "ProtectionGroupPattern":{
+      "type":"string",
+      "enum":[
+        "ALL",
+        "ARBITRARY",
+        "BY_RESOURCE_TYPE"
+      ]
+    },
+    "ProtectionGroupPatternTypeLimits":{
+      "type":"structure",
+      "required":["ArbitraryPatternLimits"],
+      "members":{
+        "ArbitraryPatternLimits":{"shape":"ProtectionGroupArbitraryPatternLimits"}
+      }
+    },
+    "ProtectionGroups":{
+      "type":"list",
+      "member":{"shape":"ProtectionGroup"}
     },
     "ProtectionId":{
       "type":"string",
       "max":36,
       "min":1,
       "pattern":"[a-zA-Z0-9\\\\-]*"
+    },
+    "ProtectionLimits":{
+      "type":"structure",
+      "required":["ProtectedResourceTypeLimits"],
+      "members":{
+        "ProtectedResourceTypeLimits":{"shape":"Limits"}
+      }
     },
     "ProtectionName":{
       "type":"string",
@@ -747,7 +1299,8 @@
     "ResourceAlreadyExistsException":{
       "type":"structure",
       "members":{
-        "message":{"shape":"errorMessage"}
+        "message":{"shape":"errorMessage"},
+        "resourceType":{"shape":"String"}
       },
       "exception":true
     },
@@ -761,10 +1314,15 @@
       "type":"list",
       "member":{"shape":"ResourceArn"}
     },
+    "ResourceArnList":{
+      "type":"list",
+      "member":{"shape":"ResourceArn"}
+    },
     "ResourceNotFoundException":{
       "type":"structure",
       "members":{
-        "message":{"shape":"errorMessage"}
+        "message":{"shape":"errorMessage"},
+        "resourceType":{"shape":"String"}
       },
       "exception":true
     },
@@ -797,12 +1355,27 @@
     },
     "Subscription":{
       "type":"structure",
+      "required":["SubscriptionLimits"],
       "members":{
         "StartTime":{"shape":"Timestamp"},
         "EndTime":{"shape":"Timestamp"},
         "TimeCommitmentInSeconds":{"shape":"DurationInSeconds"},
         "AutoRenew":{"shape":"AutoRenew"},
-        "Limits":{"shape":"Limits"}
+        "Limits":{"shape":"Limits"},
+        "ProactiveEngagementStatus":{"shape":"ProactiveEngagementStatus"},
+        "SubscriptionLimits":{"shape":"SubscriptionLimits"},
+        "SubscriptionArn":{"shape":"ResourceArn"}
+      }
+    },
+    "SubscriptionLimits":{
+      "type":"structure",
+      "required":[
+        "ProtectionLimits",
+        "ProtectionGroupLimits"
+      ],
+      "members":{
+        "ProtectionLimits":{"shape":"ProtectionLimits"},
+        "ProtectionGroupLimits":{"shape":"ProtectionGroupLimits"}
       }
     },
     "SubscriptionState":{
@@ -839,6 +1412,51 @@
       "type":"list",
       "member":{"shape":"SummarizedCounter"}
     },
+    "Tag":{
+      "type":"structure",
+      "members":{
+        "Key":{"shape":"TagKey"},
+        "Value":{"shape":"TagValue"}
+      }
+    },
+    "TagKey":{
+      "type":"string",
+      "max":128,
+      "min":1
+    },
+    "TagKeyList":{
+      "type":"list",
+      "member":{"shape":"TagKey"},
+      "max":200,
+      "min":0
+    },
+    "TagList":{
+      "type":"list",
+      "member":{"shape":"Tag"},
+      "max":200,
+      "min":0
+    },
+    "TagResourceRequest":{
+      "type":"structure",
+      "required":[
+        "ResourceARN",
+        "Tags"
+      ],
+      "members":{
+        "ResourceARN":{"shape":"ResourceArn"},
+        "Tags":{"shape":"TagList"}
+      }
+    },
+    "TagResourceResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "TagValue":{
+      "type":"string",
+      "max":256,
+      "min":0
+    },
     "TimeRange":{
       "type":"structure",
       "members":{
@@ -866,6 +1484,22 @@
         "REQUESTS"
       ]
     },
+    "UntagResourceRequest":{
+      "type":"structure",
+      "required":[
+        "ResourceARN",
+        "TagKeys"
+      ],
+      "members":{
+        "ResourceARN":{"shape":"ResourceArn"},
+        "TagKeys":{"shape":"TagKeyList"}
+      }
+    },
+    "UntagResourceResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "UpdateEmergencyContactSettingsRequest":{
       "type":"structure",
       "members":{
@@ -873,6 +1507,26 @@
       }
     },
     "UpdateEmergencyContactSettingsResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "UpdateProtectionGroupRequest":{
+      "type":"structure",
+      "required":[
+        "ProtectionGroupId",
+        "Aggregation",
+        "Pattern"
+      ],
+      "members":{
+        "ProtectionGroupId":{"shape":"ProtectionGroupId"},
+        "Aggregation":{"shape":"ProtectionGroupAggregation"},
+        "Pattern":{"shape":"ProtectionGroupPattern"},
+        "ResourceType":{"shape":"ProtectedResourceType"},
+        "Members":{"shape":"ProtectionGroupMembers"}
+      }
+    },
+    "UpdateProtectionGroupResponse":{
       "type":"structure",
       "members":{
       }
@@ -887,6 +1541,28 @@
       "type":"structure",
       "members":{
       }
+    },
+    "ValidationExceptionField":{
+      "type":"structure",
+      "required":[
+        "name",
+        "message"
+      ],
+      "members":{
+        "name":{"shape":"String"},
+        "message":{"shape":"String"}
+      }
+    },
+    "ValidationExceptionFieldList":{
+      "type":"list",
+      "member":{"shape":"ValidationExceptionField"}
+    },
+    "ValidationExceptionReason":{
+      "type":"string",
+      "enum":[
+        "FIELD_VALIDATION_FAILED",
+        "OTHER"
+      ]
     },
     "errorMessage":{"type":"string"}
   }

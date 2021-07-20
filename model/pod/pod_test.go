@@ -2,13 +2,12 @@ package pod
 
 import (
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -16,7 +15,7 @@ func init() {
 }
 
 func TestInsertAndFindOneByID(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T){
+	for tName, tCase := range map[string]func(t *testing.T){
 		"FindOneByIDReturnsNoResultForNonexistentPod": func(t *testing.T) {
 			p, err := FindOneByID("foo")
 			assert.NoError(t, err)
@@ -24,15 +23,19 @@ func TestInsertAndFindOneByID(t *testing.T) {
 		},
 		"InsertSucceedsAndIsFoundByID": func(t *testing.T) {
 			p := Pod{
-				ID:         "id",
-				ExternalID: "external_id",
+				ID:     "id",
+				Secret: "secret",
+				Status: RunningStatus,
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
 					Image:    "alpine",
 					MemoryMB: 128,
 					CPU:      128,
 				},
-				TimeInfo: TimeInfo{
-					Initialized: utility.BSONTime(time.Now()),
+				Resources: ResourceInfo{
+					ID:           "task_id",
+					DefinitionID: "task_definition_id",
+					Cluster:      "cluster",
+					SecretIDs:    []string{"secret0", "secret1"},
 				},
 			}
 			require.NoError(t, p.Insert())
@@ -42,23 +45,24 @@ func TestInsertAndFindOneByID(t *testing.T) {
 			require.NotNil(t, dbPod)
 
 			assert.Equal(t, p.ID, dbPod.ID)
-			assert.Equal(t, p.ExternalID, dbPod.ExternalID)
+			assert.Equal(t, p.Status, dbPod.Status)
+			assert.Equal(t, p.Secret, dbPod.Secret)
+			assert.Equal(t, p.Resources, dbPod.Resources)
 			assert.Equal(t, p.TaskContainerCreationOpts, dbPod.TaskContainerCreationOpts)
-			assert.Equal(t, p.TimeInfo, dbPod.TimeInfo)
 		},
 	} {
-		t.Run(testName, func(t *testing.T) {
+		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(Collection))
 			}()
-			testCase(t)
+			tCase(t)
 		})
 	}
 }
 
-func TestDelete(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T){
+func TestRemove(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
 		"NoopsWithNonexistentPod": func(t *testing.T) {
 			p := Pod{
 				ID: "nonexistent",
@@ -86,12 +90,93 @@ func TestDelete(t *testing.T) {
 			assert.Zero(t, dbPod)
 		},
 	} {
-		t.Run(testName, func(t *testing.T) {
+		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(Collection))
 			}()
-			testCase(t)
+			tCase(t)
+		})
+	}
+}
+
+func TestUpdateStatus(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, p Pod){
+		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(InitializingStatus))
+			assert.Equal(t, InitializingStatus, p.Status)
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, p.Status, dbPod.Status)
+		},
+		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(StartingStatus))
+			assert.Equal(t, StartingStatus, p.Status)
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, p.Status, dbPod.Status)
+		},
+		"SucceedsWithRunningStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(RunningStatus))
+			assert.Equal(t, RunningStatus, p.Status)
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, p.Status, dbPod.Status)
+		},
+		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(TerminatedStatus))
+			assert.Equal(t, TerminatedStatus, p.Status)
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, p.Status, dbPod.Status)
+		},
+		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
+			assert.Error(t, p.UpdateStatus(TerminatedStatus))
+
+			dbPod, err := FindOneByID(p.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPod)
+		},
+		"FailsWithChangedPodStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, UpdateOne(ByID(p.ID), bson.M{
+				"$set": bson.M{StatusKey: InitializingStatus},
+			}))
+
+			assert.Error(t, p.UpdateStatus(TerminatedStatus))
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, InitializingStatus, dbPod.Status)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			tCase(t, Pod{
+				ID:     "id",
+				Status: RunningStatus,
+			})
 		})
 	}
 }

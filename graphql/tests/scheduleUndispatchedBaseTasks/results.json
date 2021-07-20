@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "query_file": "successful-restart.graphql",
+      "result": { "data": { "scheduleUndispatchedBaseTasks": [
+          {
+              "id": "base-task-2",
+              "execution": 0,
+              "status": "will-run"
+          }
+      ] } }
+    },
+        {
+      "query_file": "generated-tasks.graphql",
+      "result": { "data": { "scheduleUndispatchedBaseTasks": [
+        {
+          "id": "base_generated_task",
+          "execution": 0,
+          "status": "will-run"
+        },
+        {
+          "id": "base_generator_task",
+          "execution": 0,
+          "status": "will-run"
+        }
+      ] } }
+    }
+]
+}

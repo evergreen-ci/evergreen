@@ -2211,8 +2211,8 @@ func (c *DataExchange) UpdateRevisionWithContext(ctx aws.Context, input *UpdateR
 
 // Access to the resource is denied.
 type AccessDeniedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// Access to the resource is denied.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -2230,17 +2230,17 @@ func (s AccessDeniedException) GoString() string {
 
 func newErrorAccessDeniedException(v protocol.ResponseMetadata) error {
 	return &AccessDeniedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s AccessDeniedException) Code() string {
+func (s *AccessDeniedException) Code() string {
 	return "AccessDeniedException"
 }
 
 // Message returns the exception's message.
-func (s AccessDeniedException) Message() string {
+func (s *AccessDeniedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2248,22 +2248,22 @@ func (s AccessDeniedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s AccessDeniedException) OrigErr() error {
+func (s *AccessDeniedException) OrigErr() error {
 	return nil
 }
 
-func (s AccessDeniedException) Error() string {
+func (s *AccessDeniedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s AccessDeniedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *AccessDeniedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s AccessDeniedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *AccessDeniedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The destination for the asset.
@@ -2591,8 +2591,8 @@ func (s CancelJobOutput) GoString() string {
 // The request couldn't be completed because it conflicted with the current
 // state of the resource.
 type ConflictException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The request couldn't be completed because it conflicted with the current
 	// state of the resource.
@@ -2617,17 +2617,17 @@ func (s ConflictException) GoString() string {
 
 func newErrorConflictException(v protocol.ResponseMetadata) error {
 	return &ConflictException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConflictException) Code() string {
+func (s *ConflictException) Code() string {
 	return "ConflictException"
 }
 
 // Message returns the exception's message.
-func (s ConflictException) Message() string {
+func (s *ConflictException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2635,22 +2635,22 @@ func (s ConflictException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConflictException) OrigErr() error {
+func (s *ConflictException) OrigErr() error {
 	return nil
 }
 
-func (s ConflictException) Error() string {
+func (s *ConflictException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConflictException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConflictException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A request to create a data set that contains one or more revisions.
@@ -2851,8 +2851,8 @@ func (s *CreateDataSetOutput) SetUpdatedAt(v time.Time) *CreateDataSetOutput {
 
 // The CreateJob request. AWS Data Exchange Jobs are asynchronous import or
 // export operations used to create or copy assets. A data set owner can both
-// import and export as they see fit. Someone with an entitlement to a data
-// set can only export. Jobs are deleted 90 days after they are created. Created
+// import and export assets. A subscriber with an entitlement to a data set
+// can only export. Jobs are deleted 90 days after they are created. Created
 // jobs must be started with the StartJob operation.
 type CreateJobInput struct {
 	_ struct{} `type:"structure"`
@@ -3658,6 +3658,9 @@ type ExportAssetsToS3RequestDetails struct {
 	// DataSetId is a required field
 	DataSetId *string `type:"string" required:"true"`
 
+	// Encryption configuration for the export job.
+	Encryption *ExportServerSideEncryption `type:"structure"`
+
 	// The unique identifier for the revision associated with this export request.
 	//
 	// RevisionId is a required field
@@ -3696,6 +3699,11 @@ func (s *ExportAssetsToS3RequestDetails) Validate() error {
 			}
 		}
 	}
+	if s.Encryption != nil {
+		if err := s.Encryption.Validate(); err != nil {
+			invalidParams.AddNested("Encryption", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3712,6 +3720,12 @@ func (s *ExportAssetsToS3RequestDetails) SetAssetDestinations(v []*AssetDestinat
 // SetDataSetId sets the DataSetId field's value.
 func (s *ExportAssetsToS3RequestDetails) SetDataSetId(v string) *ExportAssetsToS3RequestDetails {
 	s.DataSetId = &v
+	return s
+}
+
+// SetEncryption sets the Encryption field's value.
+func (s *ExportAssetsToS3RequestDetails) SetEncryption(v *ExportServerSideEncryption) *ExportAssetsToS3RequestDetails {
+	s.Encryption = v
 	return s
 }
 
@@ -3734,6 +3748,9 @@ type ExportAssetsToS3ResponseDetails struct {
 	//
 	// DataSetId is a required field
 	DataSetId *string `type:"string" required:"true"`
+
+	// Encryption configuration of the export job.
+	Encryption *ExportServerSideEncryption `type:"structure"`
 
 	// The unique identifier for the revision associated with this export response.
 	//
@@ -3763,9 +3780,191 @@ func (s *ExportAssetsToS3ResponseDetails) SetDataSetId(v string) *ExportAssetsTo
 	return s
 }
 
+// SetEncryption sets the Encryption field's value.
+func (s *ExportAssetsToS3ResponseDetails) SetEncryption(v *ExportServerSideEncryption) *ExportAssetsToS3ResponseDetails {
+	s.Encryption = v
+	return s
+}
+
 // SetRevisionId sets the RevisionId field's value.
 func (s *ExportAssetsToS3ResponseDetails) SetRevisionId(v string) *ExportAssetsToS3ResponseDetails {
 	s.RevisionId = &v
+	return s
+}
+
+// Details of the operation to be performed by the job.
+type ExportRevisionsToS3RequestDetails struct {
+	_ struct{} `type:"structure"`
+
+	// The unique identifier for the data set associated with this export job.
+	//
+	// DataSetId is a required field
+	DataSetId *string `type:"string" required:"true"`
+
+	// Encryption configuration for the export job.
+	Encryption *ExportServerSideEncryption `type:"structure"`
+
+	// The destination for the revision.
+	//
+	// RevisionDestinations is a required field
+	RevisionDestinations []*RevisionDestinationEntry `type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s ExportRevisionsToS3RequestDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ExportRevisionsToS3RequestDetails) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ExportRevisionsToS3RequestDetails) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ExportRevisionsToS3RequestDetails"}
+	if s.DataSetId == nil {
+		invalidParams.Add(request.NewErrParamRequired("DataSetId"))
+	}
+	if s.RevisionDestinations == nil {
+		invalidParams.Add(request.NewErrParamRequired("RevisionDestinations"))
+	}
+	if s.Encryption != nil {
+		if err := s.Encryption.Validate(); err != nil {
+			invalidParams.AddNested("Encryption", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.RevisionDestinations != nil {
+		for i, v := range s.RevisionDestinations {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "RevisionDestinations", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDataSetId sets the DataSetId field's value.
+func (s *ExportRevisionsToS3RequestDetails) SetDataSetId(v string) *ExportRevisionsToS3RequestDetails {
+	s.DataSetId = &v
+	return s
+}
+
+// SetEncryption sets the Encryption field's value.
+func (s *ExportRevisionsToS3RequestDetails) SetEncryption(v *ExportServerSideEncryption) *ExportRevisionsToS3RequestDetails {
+	s.Encryption = v
+	return s
+}
+
+// SetRevisionDestinations sets the RevisionDestinations field's value.
+func (s *ExportRevisionsToS3RequestDetails) SetRevisionDestinations(v []*RevisionDestinationEntry) *ExportRevisionsToS3RequestDetails {
+	s.RevisionDestinations = v
+	return s
+}
+
+// Details about the export revisions to Amazon S3 response.
+type ExportRevisionsToS3ResponseDetails struct {
+	_ struct{} `type:"structure"`
+
+	// The unique identifier for the data set associated with this export job.
+	//
+	// DataSetId is a required field
+	DataSetId *string `type:"string" required:"true"`
+
+	// Encryption configuration of the export job.
+	Encryption *ExportServerSideEncryption `type:"structure"`
+
+	// The destination in Amazon S3 where the revision is exported.
+	//
+	// RevisionDestinations is a required field
+	RevisionDestinations []*RevisionDestinationEntry `type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s ExportRevisionsToS3ResponseDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ExportRevisionsToS3ResponseDetails) GoString() string {
+	return s.String()
+}
+
+// SetDataSetId sets the DataSetId field's value.
+func (s *ExportRevisionsToS3ResponseDetails) SetDataSetId(v string) *ExportRevisionsToS3ResponseDetails {
+	s.DataSetId = &v
+	return s
+}
+
+// SetEncryption sets the Encryption field's value.
+func (s *ExportRevisionsToS3ResponseDetails) SetEncryption(v *ExportServerSideEncryption) *ExportRevisionsToS3ResponseDetails {
+	s.Encryption = v
+	return s
+}
+
+// SetRevisionDestinations sets the RevisionDestinations field's value.
+func (s *ExportRevisionsToS3ResponseDetails) SetRevisionDestinations(v []*RevisionDestinationEntry) *ExportRevisionsToS3ResponseDetails {
+	s.RevisionDestinations = v
+	return s
+}
+
+// Encryption configuration of the export job. Includes the encryption type
+// as well as the AWS KMS key. The KMS key is only necessary if you chose the
+// KMS encryption type.
+type ExportServerSideEncryption struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the the AWS KMS key you want to use to
+	// encrypt the Amazon S3 objects. This parameter is required if you choose aws:kms
+	// as an encryption type.
+	KmsKeyArn *string `type:"string"`
+
+	// The type of server side encryption used for encrypting the objects in Amazon
+	// S3.
+	//
+	// Type is a required field
+	Type *string `type:"string" required:"true" enum:"ServerSideEncryptionTypes"`
+}
+
+// String returns the string representation
+func (s ExportServerSideEncryption) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ExportServerSideEncryption) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ExportServerSideEncryption) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ExportServerSideEncryption"}
+	if s.Type == nil {
+		invalidParams.Add(request.NewErrParamRequired("Type"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetKmsKeyArn sets the KmsKeyArn field's value.
+func (s *ExportServerSideEncryption) SetKmsKeyArn(v string) *ExportServerSideEncryption {
+	s.KmsKeyArn = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *ExportServerSideEncryption) SetType(v string) *ExportServerSideEncryption {
+	s.Type = &v
 	return s
 }
 
@@ -4683,8 +4882,8 @@ func (s *ImportAssetsFromS3ResponseDetails) SetRevisionId(v string) *ImportAsset
 
 // An exception occurred with the service.
 type InternalServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The message identifying the service exception that occurred.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -4702,17 +4901,17 @@ func (s InternalServerException) GoString() string {
 
 func newErrorInternalServerException(v protocol.ResponseMetadata) error {
 	return &InternalServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerException) Code() string {
+func (s *InternalServerException) Code() string {
 	return "InternalServerException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerException) Message() string {
+func (s *InternalServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4720,22 +4919,22 @@ func (s InternalServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerException) OrigErr() error {
+func (s *InternalServerException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerException) Error() string {
+func (s *InternalServerException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // AWS Data Exchange Jobs are asynchronous import or export operations used
@@ -4865,7 +5064,7 @@ type JobError struct {
 	// Message is a required field
 	Message *string `type:"string" required:"true"`
 
-	// The unqiue identifier for the resource related to the error.
+	// The unique identifier for the resource related to the error.
 	ResourceId *string `type:"string"`
 
 	// The type of resource related to the error.
@@ -5387,6 +5586,9 @@ type RequestDetails struct {
 	// Details about the export to Amazon S3 request.
 	ExportAssetsToS3 *ExportAssetsToS3RequestDetails `type:"structure"`
 
+	// Details about the export to Amazon S3 request.
+	ExportRevisionsToS3 *ExportRevisionsToS3RequestDetails `type:"structure"`
+
 	// Details about the import from signed URL request.
 	ImportAssetFromSignedUrl *ImportAssetFromSignedUrlRequestDetails `type:"structure"`
 
@@ -5415,6 +5617,11 @@ func (s *RequestDetails) Validate() error {
 	if s.ExportAssetsToS3 != nil {
 		if err := s.ExportAssetsToS3.Validate(); err != nil {
 			invalidParams.AddNested("ExportAssetsToS3", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.ExportRevisionsToS3 != nil {
+		if err := s.ExportRevisionsToS3.Validate(); err != nil {
+			invalidParams.AddNested("ExportRevisionsToS3", err.(request.ErrInvalidParams))
 		}
 	}
 	if s.ImportAssetFromSignedUrl != nil {
@@ -5446,6 +5653,12 @@ func (s *RequestDetails) SetExportAssetsToS3(v *ExportAssetsToS3RequestDetails) 
 	return s
 }
 
+// SetExportRevisionsToS3 sets the ExportRevisionsToS3 field's value.
+func (s *RequestDetails) SetExportRevisionsToS3(v *ExportRevisionsToS3RequestDetails) *RequestDetails {
+	s.ExportRevisionsToS3 = v
+	return s
+}
+
 // SetImportAssetFromSignedUrl sets the ImportAssetFromSignedUrl field's value.
 func (s *RequestDetails) SetImportAssetFromSignedUrl(v *ImportAssetFromSignedUrlRequestDetails) *RequestDetails {
 	s.ImportAssetFromSignedUrl = v
@@ -5460,8 +5673,8 @@ func (s *RequestDetails) SetImportAssetsFromS3(v *ImportAssetsFromS3RequestDetai
 
 // The resource couldn't be found.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The resource couldn't be found.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -5485,17 +5698,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5503,22 +5716,22 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Details for the response.
@@ -5530,6 +5743,9 @@ type ResponseDetails struct {
 
 	// Details for the export to Amazon S3 response.
 	ExportAssetsToS3 *ExportAssetsToS3ResponseDetails `type:"structure"`
+
+	// Details for the export revisions to Amazon S3 response.
+	ExportRevisionsToS3 *ExportRevisionsToS3ResponseDetails `type:"structure"`
 
 	// Details for the import from signed URL response.
 	ImportAssetFromSignedUrl *ImportAssetFromSignedUrlResponseDetails `type:"structure"`
@@ -5560,6 +5776,12 @@ func (s *ResponseDetails) SetExportAssetsToS3(v *ExportAssetsToS3ResponseDetails
 	return s
 }
 
+// SetExportRevisionsToS3 sets the ExportRevisionsToS3 field's value.
+func (s *ResponseDetails) SetExportRevisionsToS3(v *ExportRevisionsToS3ResponseDetails) *ResponseDetails {
+	s.ExportRevisionsToS3 = v
+	return s
+}
+
 // SetImportAssetFromSignedUrl sets the ImportAssetFromSignedUrl field's value.
 func (s *ResponseDetails) SetImportAssetFromSignedUrl(v *ImportAssetFromSignedUrlResponseDetails) *ResponseDetails {
 	s.ImportAssetFromSignedUrl = v
@@ -5569,6 +5791,70 @@ func (s *ResponseDetails) SetImportAssetFromSignedUrl(v *ImportAssetFromSignedUr
 // SetImportAssetsFromS3 sets the ImportAssetsFromS3 field's value.
 func (s *ResponseDetails) SetImportAssetsFromS3(v *ImportAssetsFromS3ResponseDetails) *ResponseDetails {
 	s.ImportAssetsFromS3 = v
+	return s
+}
+
+// The destination where the assets in the revision will be exported.
+type RevisionDestinationEntry struct {
+	_ struct{} `type:"structure"`
+
+	// The S3 bucket that is the destination for the assets in the revision.
+	//
+	// Bucket is a required field
+	Bucket *string `type:"string" required:"true"`
+
+	// A string representing the pattern for generated names of the individual assets
+	// in the revision. For more information about key patterns, see Key patterns
+	// when exporting revisions (https://docs.aws.amazon.com/data-exchange/latest/userguide/jobs.html#revision-export-keypatterns).
+	KeyPattern *string `type:"string"`
+
+	// The unique identifier for the revision.
+	//
+	// RevisionId is a required field
+	RevisionId *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s RevisionDestinationEntry) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RevisionDestinationEntry) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RevisionDestinationEntry) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RevisionDestinationEntry"}
+	if s.Bucket == nil {
+		invalidParams.Add(request.NewErrParamRequired("Bucket"))
+	}
+	if s.RevisionId == nil {
+		invalidParams.Add(request.NewErrParamRequired("RevisionId"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetBucket sets the Bucket field's value.
+func (s *RevisionDestinationEntry) SetBucket(v string) *RevisionDestinationEntry {
+	s.Bucket = &v
+	return s
+}
+
+// SetKeyPattern sets the KeyPattern field's value.
+func (s *RevisionDestinationEntry) SetKeyPattern(v string) *RevisionDestinationEntry {
+	s.KeyPattern = &v
+	return s
+}
+
+// SetRevisionId sets the RevisionId field's value.
+func (s *RevisionDestinationEntry) SetRevisionId(v string) *RevisionDestinationEntry {
+	s.RevisionId = &v
 	return s
 }
 
@@ -5707,8 +5993,8 @@ func (s *S3SnapshotAsset) SetSize(v float64) *S3SnapshotAsset {
 
 // The request has exceeded the quotas imposed by the service.
 type ServiceLimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	LimitName *string `type:"string" enum:"LimitName"`
 
@@ -5729,17 +6015,17 @@ func (s ServiceLimitExceededException) GoString() string {
 
 func newErrorServiceLimitExceededException(v protocol.ResponseMetadata) error {
 	return &ServiceLimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceLimitExceededException) Code() string {
+func (s *ServiceLimitExceededException) Code() string {
 	return "ServiceLimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s ServiceLimitExceededException) Message() string {
+func (s *ServiceLimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5747,22 +6033,22 @@ func (s ServiceLimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceLimitExceededException) OrigErr() error {
+func (s *ServiceLimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceLimitExceededException) Error() string {
+func (s *ServiceLimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceLimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceLimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceLimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceLimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type StartJobInput struct {
@@ -5885,8 +6171,8 @@ func (s TagResourceOutput) GoString() string {
 
 // The limit on the number of requests per second was exceeded.
 type ThrottlingException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The limit on the number of requests per second was exceeded.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -5904,17 +6190,17 @@ func (s ThrottlingException) GoString() string {
 
 func newErrorThrottlingException(v protocol.ResponseMetadata) error {
 	return &ThrottlingException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ThrottlingException) Code() string {
+func (s *ThrottlingException) Code() string {
 	return "ThrottlingException"
 }
 
 // Message returns the exception's message.
-func (s ThrottlingException) Message() string {
+func (s *ThrottlingException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5922,22 +6208,22 @@ func (s ThrottlingException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ThrottlingException) OrigErr() error {
+func (s *ThrottlingException) OrigErr() error {
 	return nil
 }
 
-func (s ThrottlingException) Error() string {
+func (s *ThrottlingException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ThrottlingException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ThrottlingException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ThrottlingException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ThrottlingException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
@@ -6523,8 +6809,8 @@ func (s *UpdateRevisionOutput) SetUpdatedAt(v time.Time) *UpdateRevisionOutput {
 
 // The request was invalid.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The message that informs you about what was invalid about the request.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -6542,17 +6828,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6560,22 +6846,22 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The type of file your data is stored in. Currently, the supported asset type
@@ -6584,6 +6870,13 @@ const (
 	// AssetTypeS3Snapshot is a AssetType enum value
 	AssetTypeS3Snapshot = "S3_SNAPSHOT"
 )
+
+// AssetType_Values returns all elements of the AssetType enum
+func AssetType_Values() []string {
+	return []string{
+		AssetTypeS3Snapshot,
+	}
+}
 
 const (
 	// CodeAccessDeniedException is a Code enum value
@@ -6608,6 +6901,19 @@ const (
 	CodeMalwareScanEncryptedFile = "MALWARE_SCAN_ENCRYPTED_FILE"
 )
 
+// Code_Values returns all elements of the Code enum
+func Code_Values() []string {
+	return []string{
+		CodeAccessDeniedException,
+		CodeInternalServerException,
+		CodeMalwareDetected,
+		CodeResourceNotFoundException,
+		CodeServiceQuotaExceededException,
+		CodeValidationException,
+		CodeMalwareScanEncryptedFile,
+	}
+}
+
 // The name of the limit that was reached.
 const (
 	// JobErrorLimitNameAssetsperrevision is a JobErrorLimitName enum value
@@ -6617,6 +6923,14 @@ const (
 	JobErrorLimitNameAssetsizeinGb = "Asset size in GB"
 )
 
+// JobErrorLimitName_Values returns all elements of the JobErrorLimitName enum
+func JobErrorLimitName_Values() []string {
+	return []string{
+		JobErrorLimitNameAssetsperrevision,
+		JobErrorLimitNameAssetsizeinGb,
+	}
+}
+
 // The types of resource which the job error can apply to.
 const (
 	// JobErrorResourceTypesRevision is a JobErrorResourceTypes enum value
@@ -6625,6 +6939,14 @@ const (
 	// JobErrorResourceTypesAsset is a JobErrorResourceTypes enum value
 	JobErrorResourceTypesAsset = "ASSET"
 )
+
+// JobErrorResourceTypes_Values returns all elements of the JobErrorResourceTypes enum
+func JobErrorResourceTypes_Values() []string {
+	return []string{
+		JobErrorResourceTypesRevision,
+		JobErrorResourceTypesAsset,
+	}
+}
 
 const (
 	// LimitNameProductsperaccount is a LimitName enum value
@@ -6664,6 +6986,24 @@ const (
 	LimitNameConcurrentinprogressjobstoexportassetstoasignedUrl = "Concurrent in progress jobs to export assets to a signed URL"
 )
 
+// LimitName_Values returns all elements of the LimitName enum
+func LimitName_Values() []string {
+	return []string{
+		LimitNameProductsperaccount,
+		LimitNameDatasetsperaccount,
+		LimitNameDatasetsperproduct,
+		LimitNameRevisionsperdataset,
+		LimitNameAssetsperrevision,
+		LimitNameAssetsperimportjobfromAmazonS3,
+		LimitNameAssetperexportjobfromAmazonS3,
+		LimitNameAssetsizeinGb,
+		LimitNameConcurrentinprogressjobstoimportassetsfromAmazonS3,
+		LimitNameConcurrentinprogressjobstoimportassetsfromasignedUrl,
+		LimitNameConcurrentinprogressjobstoexportassetstoAmazonS3,
+		LimitNameConcurrentinprogressjobstoexportassetstoasignedUrl,
+	}
+}
+
 // A property that defines the data set as OWNED by the account (for providers)
 // or ENTITLED to the account (for subscribers). When an owned data set is published
 // in a product, AWS Data Exchange creates a copy of the data set. Subscribers
@@ -6675,6 +7015,14 @@ const (
 	// OriginEntitled is a Origin enum value
 	OriginEntitled = "ENTITLED"
 )
+
+// Origin_Values returns all elements of the Origin enum
+func Origin_Values() []string {
+	return []string{
+		OriginOwned,
+		OriginEntitled,
+	}
+}
 
 const (
 	// ResourceTypeDataSet is a ResourceType enum value
@@ -6689,6 +7037,33 @@ const (
 	// ResourceTypeJob is a ResourceType enum value
 	ResourceTypeJob = "JOB"
 )
+
+// ResourceType_Values returns all elements of the ResourceType enum
+func ResourceType_Values() []string {
+	return []string{
+		ResourceTypeDataSet,
+		ResourceTypeRevision,
+		ResourceTypeAsset,
+		ResourceTypeJob,
+	}
+}
+
+// The types of encryption supported in export jobs to Amazon S3.
+const (
+	// ServerSideEncryptionTypesAwsKms is a ServerSideEncryptionTypes enum value
+	ServerSideEncryptionTypesAwsKms = "aws:kms"
+
+	// ServerSideEncryptionTypesAes256 is a ServerSideEncryptionTypes enum value
+	ServerSideEncryptionTypesAes256 = "AES256"
+)
+
+// ServerSideEncryptionTypes_Values returns all elements of the ServerSideEncryptionTypes enum
+func ServerSideEncryptionTypes_Values() []string {
+	return []string{
+		ServerSideEncryptionTypesAwsKms,
+		ServerSideEncryptionTypesAes256,
+	}
+}
 
 const (
 	// StateWaiting is a State enum value
@@ -6710,6 +7085,18 @@ const (
 	StateTimedOut = "TIMED_OUT"
 )
 
+// State_Values returns all elements of the State enum
+func State_Values() []string {
+	return []string{
+		StateWaiting,
+		StateInProgress,
+		StateError,
+		StateCompleted,
+		StateCancelled,
+		StateTimedOut,
+	}
+}
+
 const (
 	// TypeImportAssetsFromS3 is a Type enum value
 	TypeImportAssetsFromS3 = "IMPORT_ASSETS_FROM_S3"
@@ -6722,4 +7109,18 @@ const (
 
 	// TypeExportAssetToSignedUrl is a Type enum value
 	TypeExportAssetToSignedUrl = "EXPORT_ASSET_TO_SIGNED_URL"
+
+	// TypeExportRevisionsToS3 is a Type enum value
+	TypeExportRevisionsToS3 = "EXPORT_REVISIONS_TO_S3"
 )
+
+// Type_Values returns all elements of the Type enum
+func Type_Values() []string {
+	return []string{
+		TypeImportAssetsFromS3,
+		TypeImportAssetFromSignedUrl,
+		TypeExportAssetsToS3,
+		TypeExportAssetToSignedUrl,
+		TypeExportRevisionsToS3,
+	}
+}

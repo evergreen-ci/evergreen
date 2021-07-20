@@ -266,6 +266,41 @@
         "shape" : "ConflictException"
       } ]
     },
+    "CreateVpcLink" : {
+      "name" : "CreateVpcLink",
+      "http" : {
+        "method" : "POST",
+        "requestUri" : "/v2/vpclinks",
+        "responseCode" : 201
+      },
+      "input" : {
+        "shape" : "CreateVpcLinkRequest"
+      },
+      "output" : {
+        "shape" : "CreateVpcLinkResponse"
+      },
+      "errors" : [ {
+        "shape" : "BadRequestException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      } ]
+    },
+    "DeleteAccessLogSettings" : {
+      "name" : "DeleteAccessLogSettings",
+      "http" : {
+        "method" : "DELETE",
+        "requestUri" : "/v2/apis/{apiId}/stages/{stageName}/accesslogsettings",
+        "responseCode" : 204
+      },
+      "input" : {
+        "shape" : "DeleteAccessLogSettingsRequest"
+      },
+      "errors" : [ {
+        "shape" : "NotFoundException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      } ]
+    },
     "DeleteApi" : {
       "name" : "DeleteApi",
       "http" : {
@@ -428,6 +463,22 @@
         "shape" : "TooManyRequestsException"
       } ]
     },
+    "DeleteRouteRequestParameter" : {
+      "name" : "DeleteRouteRequestParameter",
+      "http" : {
+        "method" : "DELETE",
+        "requestUri" : "/v2/apis/{apiId}/routes/{routeId}/requestparameters/{requestParameterKey}",
+        "responseCode" : 204
+      },
+      "input" : {
+        "shape" : "DeleteRouteRequestParameterRequest"
+      },
+      "errors" : [ {
+        "shape" : "NotFoundException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      } ]
+    },
     "DeleteRouteResponse" : {
       "name" : "DeleteRouteResponse",
       "http" : {
@@ -469,6 +520,62 @@
       },
       "input" : {
         "shape" : "DeleteStageRequest"
+      },
+      "errors" : [ {
+        "shape" : "NotFoundException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      } ]
+    },
+    "DeleteVpcLink" : {
+      "name" : "DeleteVpcLink",
+      "http" : {
+        "method" : "DELETE",
+        "requestUri" : "/v2/vpclinks/{vpcLinkId}",
+        "responseCode" : 202
+      },
+      "input" : {
+        "shape" : "DeleteVpcLinkRequest"
+      },
+      "output" : {
+        "shape" : "DeleteVpcLinkResponse"
+      },
+      "errors" : [ {
+        "shape" : "NotFoundException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      } ]
+    },
+    "ExportApi" : {
+      "name" : "ExportApi",
+      "http" : {
+        "method" : "GET",
+        "requestUri" : "/v2/apis/{apiId}/exports/{specification}",
+        "responseCode" : 200
+      },
+      "input" : {
+        "shape" : "ExportApiRequest"
+      },
+      "output" : {
+        "shape" : "ExportApiResponse"
+      },
+      "errors" : [ {
+        "shape" : "NotFoundException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      }, {
+        "shape" : "BadRequestException"
+      } ]
+    },
+    "ResetAuthorizersCache" : {
+      "name" : "ResetAuthorizersCache",
+      "http" : {
+        "method" : "DELETE",
+        "requestUri" : "/v2/apis/{apiId}/stages/{stageName}/cache/authorizers",
+        "responseCode" : 204
+      },
+      "input" : {
+        "shape" : "ResetAuthorizersCacheRequest"
       },
       "errors" : [ {
         "shape" : "NotFoundException"
@@ -960,6 +1067,44 @@
         "shape" : "ConflictException"
       } ]
     },
+    "GetVpcLink" : {
+      "name" : "GetVpcLink",
+      "http" : {
+        "method" : "GET",
+        "requestUri" : "/v2/vpclinks/{vpcLinkId}",
+        "responseCode" : 200
+      },
+      "input" : {
+        "shape" : "GetVpcLinkRequest"
+      },
+      "output" : {
+        "shape" : "GetVpcLinkResponse"
+      },
+      "errors" : [ {
+        "shape" : "NotFoundException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      } ]
+    },
+    "GetVpcLinks" : {
+      "name" : "GetVpcLinks",
+      "http" : {
+        "method" : "GET",
+        "requestUri" : "/v2/vpclinks",
+        "responseCode" : 200
+      },
+      "input" : {
+        "shape" : "GetVpcLinksRequest"
+      },
+      "output" : {
+        "shape" : "GetVpcLinksResponse"
+      },
+      "errors" : [ {
+        "shape" : "BadRequestException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      } ]
+    },
     "ImportApi" : {
       "name" : "ImportApi",
       "http" : {
@@ -1301,6 +1446,27 @@
       }, {
         "shape" : "ConflictException"
       } ]
+    },
+    "UpdateVpcLink" : {
+      "name" : "UpdateVpcLink",
+      "http" : {
+        "method" : "PATCH",
+        "requestUri" : "/v2/vpclinks/{vpcLinkId}",
+        "responseCode" : 200
+      },
+      "input" : {
+        "shape" : "UpdateVpcLinkRequest"
+      },
+      "output" : {
+        "shape" : "UpdateVpcLinkResponse"
+      },
+      "errors" : [ {
+        "shape" : "NotFoundException"
+      }, {
+        "shape" : "TooManyRequestsException"
+      }, {
+        "shape" : "BadRequestException"
+      } ]
     }
   },
   "shapes" : {
@@ -1337,6 +1503,10 @@
           "shape" : "__string",
           "locationName" : "apiEndpoint"
         },
+        "ApiGatewayManaged" : {
+          "shape" : "__boolean",
+          "locationName" : "apiGatewayManaged"
+        },
         "ApiId" : {
           "shape" : "Id",
           "locationName" : "apiId"
@@ -1360,6 +1530,10 @@
         "DisableSchemaValidation" : {
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
+        },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
         },
         "ImportInfo" : {
           "shape" : "__listOf__string",
@@ -1491,6 +1665,14 @@
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
+        },
+        "AuthorizerPayloadFormatVersion": {
+          "shape": "StringWithLengthBetween1And64",
+          "locationName": "authorizerPayloadFormatVersion"
+        },
+        "EnableSimpleResponses": {
+          "shape": "__boolean",
+          "locationName": "enableSimpleResponses"
         }
       },
       "required" : [ "Name" ]
@@ -1616,6 +1798,10 @@
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
         },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
+        },
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
@@ -1732,6 +1918,10 @@
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
         },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
+        },
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
@@ -1770,6 +1960,10 @@
           "shape" : "__string",
           "locationName" : "apiEndpoint"
         },
+        "ApiGatewayManaged" : {
+          "shape" : "__boolean",
+          "locationName" : "apiGatewayManaged"
+        },
         "ApiId" : {
           "shape" : "Id",
           "locationName" : "apiId"
@@ -1793,6 +1987,10 @@
         "DisableSchemaValidation" : {
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
+        },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
         },
         "ImportInfo" : {
           "shape" : "__listOf__string",
@@ -1858,6 +2056,14 @@
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
+        },
+        "AuthorizerPayloadFormatVersion": {
+          "shape": "StringWithLengthBetween1And64",
+          "locationName": "authorizerPayloadFormatVersion"
+        },
+        "EnableSimpleResponses": {
+          "shape": "__boolean",
+          "locationName": "enableSimpleResponses"
         }
       },
       "required" : [ "AuthorizerType", "IdentitySource", "Name" ]
@@ -1901,6 +2107,14 @@
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
+        },
+        "AuthorizerPayloadFormatVersion": {
+          "shape": "StringWithLengthBetween1And64",
+          "locationName": "authorizerPayloadFormatVersion"
+        },
+        "EnableSimpleResponses": {
+          "shape": "__boolean",
+          "locationName": "enableSimpleResponses"
         }
       },
       "required" : [ "ApiId", "AuthorizerType", "IdentitySource", "Name" ]
@@ -1943,6 +2157,14 @@
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
+        },
+        "AuthorizerPayloadFormatVersion": {
+          "shape": "StringWithLengthBetween1And64",
+          "locationName": "authorizerPayloadFormatVersion"
+        },
+        "EnableSimpleResponses": {
+          "shape": "__boolean",
+          "locationName": "enableSimpleResponses"
         }
       }
     },
@@ -2018,6 +2240,10 @@
           "shape" : "DomainNameConfigurations",
           "locationName" : "domainNameConfigurations"
         },
+        "MutualTlsAuthentication" : {
+          "shape" : "MutualTlsAuthenticationInput",
+          "locationName" : "mutualTlsAuthentication"
+        },
         "Tags" : {
           "shape" : "Tags",
           "locationName" : "tags"
@@ -2035,6 +2261,10 @@
         "DomainNameConfigurations" : {
           "shape" : "DomainNameConfigurations",
           "locationName" : "domainNameConfigurations"
+        },
+        "MutualTlsAuthentication" : {
+          "shape" : "MutualTlsAuthenticationInput",
+          "locationName" : "mutualTlsAuthentication"
         },
         "Tags" : {
           "shape" : "Tags",
@@ -2057,6 +2287,10 @@
         "DomainNameConfigurations" : {
           "shape" : "DomainNameConfigurations",
           "locationName" : "domainNameConfigurations"
+        },
+         "MutualTlsAuthentication" : {
+          "shape" : "MutualTlsAuthentication",
+          "locationName" : "mutualTlsAuthentication"
         },
         "Tags" : {
           "shape" : "Tags",
@@ -2091,6 +2325,10 @@
           "shape" : "StringWithLengthBetween1And64",
           "locationName" : "integrationMethod"
         },
+        "IntegrationSubtype" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "integrationSubtype"
+        },
         "IntegrationType" : {
           "shape" : "IntegrationType",
           "locationName" : "integrationType"
@@ -2111,6 +2349,10 @@
           "shape" : "IntegrationParameters",
           "locationName" : "requestParameters"
         },
+        "ResponseParameters" : {
+          "shape" : "ResponseParameters",
+          "locationName" : "responseParameters"
+        },
         "RequestTemplates" : {
           "shape" : "TemplateMap",
           "locationName" : "requestTemplates"
@@ -2120,8 +2362,12 @@
           "locationName" : "templateSelectionExpression"
         },
         "TimeoutInMillis" : {
-          "shape" : "IntegerWithLengthBetween50And29000",
+          "shape" : "IntegerWithLengthBetween50And30000",
           "locationName" : "timeoutInMillis"
+        },
+        "TlsConfig" : {
+          "shape" : "TlsConfigInput",
+          "locationName" : "tlsConfig"
         }
       },
       "required" : [ "IntegrationType" ]
@@ -2158,6 +2404,10 @@
           "shape" : "StringWithLengthBetween1And64",
           "locationName" : "integrationMethod"
         },
+        "IntegrationSubtype" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "integrationSubtype"
+        },
         "IntegrationType" : {
           "shape" : "IntegrationType",
           "locationName" : "integrationType"
@@ -2178,6 +2428,10 @@
           "shape" : "IntegrationParameters",
           "locationName" : "requestParameters"
         },
+        "ResponseParameters" : {
+          "shape" : "ResponseParameters",
+          "locationName" : "responseParameters"
+        },
         "RequestTemplates" : {
           "shape" : "TemplateMap",
           "locationName" : "requestTemplates"
@@ -2187,8 +2441,12 @@
           "locationName" : "templateSelectionExpression"
         },
         "TimeoutInMillis" : {
-          "shape" : "IntegerWithLengthBetween50And29000",
+          "shape" : "IntegerWithLengthBetween50And30000",
           "locationName" : "timeoutInMillis"
+        },
+        "TlsConfig" : {
+          "shape" : "TlsConfigInput",
+          "locationName" : "tlsConfig"
         }
       },
       "required" : [ "ApiId", "IntegrationType" ]
@@ -2232,6 +2490,10 @@
           "shape" : "SelectionExpression",
           "locationName" : "integrationResponseSelectionExpression"
         },
+        "IntegrationSubtype" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "integrationSubtype"
+        },
         "IntegrationType" : {
           "shape" : "IntegrationType",
           "locationName" : "integrationType"
@@ -2252,6 +2514,10 @@
           "shape" : "IntegrationParameters",
           "locationName" : "requestParameters"
         },
+        "ResponseParameters" : {
+          "shape" : "ResponseParameters",
+          "locationName" : "responseParameters"
+        },
         "RequestTemplates" : {
           "shape" : "TemplateMap",
           "locationName" : "requestTemplates"
@@ -2261,8 +2527,12 @@
           "locationName" : "templateSelectionExpression"
         },
         "TimeoutInMillis" : {
-          "shape" : "IntegerWithLengthBetween50And29000",
+          "shape" : "IntegerWithLengthBetween50And30000",
           "locationName" : "timeoutInMillis"
+        },
+        "TlsConfig" : {
+          "shape" : "TlsConfig",
+          "locationName" : "tlsConfig"
         }
       }
     },
@@ -2830,6 +3100,107 @@
         }
       }
     },
+    "CreateVpcLinkInput" : {
+      "type" : "structure",
+      "members" : {
+        "Name" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "name"
+        },
+        "SecurityGroupIds" : {
+          "shape" : "SecurityGroupIdList",
+          "locationName" : "securityGroupIds"
+        },
+        "SubnetIds" : {
+          "shape" : "SubnetIdList",
+          "locationName" : "subnetIds"
+        },
+        "Tags" : {
+          "shape" : "Tags",
+          "locationName" : "tags"
+        }
+      },
+      "required" : [ "SubnetIds", "Name" ]
+    },
+    "CreateVpcLinkRequest" : {
+      "type" : "structure",
+      "members" : {
+        "Name" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "name"
+        },
+        "SecurityGroupIds" : {
+          "shape" : "SecurityGroupIdList",
+          "locationName" : "securityGroupIds"
+        },
+        "SubnetIds" : {
+          "shape" : "SubnetIdList",
+          "locationName" : "subnetIds"
+        },
+        "Tags" : {
+          "shape" : "Tags",
+          "locationName" : "tags"
+        }
+      },
+      "required" : [ "SubnetIds", "Name" ]
+    },
+    "CreateVpcLinkResponse" : {
+      "type" : "structure",
+      "members" : {
+        "CreatedDate" : {
+          "shape" : "__timestampIso8601",
+          "locationName" : "createdDate"
+        },
+        "Name" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "name"
+        },
+        "SecurityGroupIds" : {
+          "shape" : "SecurityGroupIdList",
+          "locationName" : "securityGroupIds"
+        },
+        "SubnetIds" : {
+          "shape" : "SubnetIdList",
+          "locationName" : "subnetIds"
+        },
+        "Tags" : {
+          "shape" : "Tags",
+          "locationName" : "tags"
+        },
+        "VpcLinkId" : {
+          "shape" : "Id",
+          "locationName" : "vpcLinkId"
+        },
+        "VpcLinkStatus" : {
+          "shape" : "VpcLinkStatus",
+          "locationName" : "vpcLinkStatus"
+        },
+        "VpcLinkStatusMessage" : {
+          "shape" : "StringWithLengthBetween0And1024",
+          "locationName" : "vpcLinkStatusMessage"
+        },
+        "VpcLinkVersion" : {
+          "shape" : "VpcLinkVersion",
+          "locationName" : "vpcLinkVersion"
+        }
+      }
+    },
+    "DeleteAccessLogSettingsRequest" : {
+      "type" : "structure",
+      "members" : {
+        "ApiId" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "apiId"
+        },
+        "StageName" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "stageName"
+        }
+      },
+      "required" : [ "StageName", "ApiId" ]
+    },
     "DeleteApiMappingRequest" : {
       "type" : "structure",
       "members" : {
@@ -2980,6 +3351,27 @@
       },
       "required" : [ "ApiId", "RouteId" ]
     },
+    "DeleteRouteRequestParameterRequest" : {
+      "type" : "structure",
+      "members" : {
+        "ApiId" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "apiId"
+        },
+        "RequestParameterKey" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "requestParameterKey"
+        },
+        "RouteId" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "routeId"
+        }
+      },
+      "required" : [ "RequestParameterKey", "ApiId", "RouteId" ]
+    },
     "DeleteRouteResponseRequest" : {
       "type" : "structure",
       "members" : {
@@ -3010,7 +3402,7 @@
           "locationName" : "apiId"
         },
         "RouteKey" : {
-          "shape" : "SelectionKey",
+          "shape" : "__string",
           "location" : "uri",
           "locationName" : "routeKey"
         },
@@ -3020,7 +3412,7 @@
           "locationName" : "stageName"
         }
       },
-      "required" : [ "StageName", "ApiId", "RouteKey" ]
+      "required" : [ "StageName", "RouteKey", "ApiId" ]
     },
     "DeleteStageRequest" : {
       "type" : "structure",
@@ -3037,6 +3429,21 @@
         }
       },
       "required" : [ "StageName", "ApiId" ]
+    },
+    "DeleteVpcLinkRequest" : {
+      "type" : "structure",
+      "members" : {
+        "VpcLinkId" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "vpcLinkId"
+        }
+      },
+      "required" : [ "VpcLinkId" ]
+    },
+    "DeleteVpcLinkResponse" : {
+      "type" : "structure",
+      "members" : { }
     },
     "Deployment" : {
       "type" : "structure",
@@ -3098,6 +3505,10 @@
         "DomainNameConfigurations" : {
           "shape" : "DomainNameConfigurations",
           "locationName" : "domainNameConfigurations"
+        },
+        "MutualTlsAuthentication" : {
+          "shape" : "MutualTlsAuthentication",
+          "locationName" : "mutualTlsAuthentication"
         },
         "Tags" : {
           "shape" : "Tags",
@@ -3173,6 +3584,72 @@
     "EndpointType" : {
       "type" : "string",
       "enum" : [ "REGIONAL", "EDGE" ]
+    },
+    "ExportApiRequest" : {
+      "type" : "structure",
+      "members" : {
+        "ApiId" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "apiId"
+        },
+        "ExportVersion" : {
+          "shape" : "__string",
+          "location" : "querystring",
+          "locationName" : "exportVersion"
+        },
+        "IncludeExtensions" : {
+          "shape" : "__boolean",
+          "location" : "querystring",
+          "locationName" : "includeExtensions"
+        },
+        "OutputType" : {
+          "shape" : "__string",
+          "enum" : ["YAML", "JSON"],
+          "location" : "querystring",
+          "locationName" : "outputType"
+        },
+        "Specification" : {
+          "shape" : "__string",
+          "enum" : ["OAS30"],
+          "location" : "uri",
+          "locationName" : "specification"
+        },
+        "StageName" : {
+          "shape" : "__string",
+          "location" : "querystring",
+          "locationName" : "stageName"
+        }
+      },
+      "required" : [ "Specification", "OutputType", "ApiId" ]
+    },
+    "ExportApiResponse" : {
+      "type" : "structure",
+      "members" : { 
+        "body":{
+          "shape":"ExportedApi"
+        }
+      },
+      "payload":"body"
+    },
+    "ExportedApi" : {
+      "type" : "blob"
+    },
+    "ResetAuthorizersCacheRequest" : {
+      "type" : "structure",
+      "members" : {
+        "ApiId" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "apiId"
+        },
+        "StageName" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "stageName"
+        }
+      },
+      "required" : [ "StageName", "ApiId" ]
     },
     "GetApiMappingRequest" : {
       "type" : "structure",
@@ -3263,6 +3740,10 @@
           "shape" : "__string",
           "locationName" : "apiEndpoint"
         },
+        "ApiGatewayManaged" : {
+          "shape" : "__boolean",
+          "locationName" : "apiGatewayManaged"
+        },
         "ApiId" : {
           "shape" : "Id",
           "locationName" : "apiId"
@@ -3286,6 +3767,10 @@
         "DisableSchemaValidation" : {
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
+        },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
         },
         "ImportInfo" : {
           "shape" : "__listOf__string",
@@ -3399,6 +3884,14 @@
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
+        },
+        "AuthorizerPayloadFormatVersion": {
+          "shape": "StringWithLengthBetween1And64",
+          "locationName": "authorizerPayloadFormatVersion"
+        },
+        "EnableSimpleResponses": {
+          "shape": "__boolean",
+          "locationName": "enableSimpleResponses"
         }
       }
     },
@@ -3541,6 +4034,10 @@
           "shape" : "DomainNameConfigurations",
           "locationName" : "domainNameConfigurations"
         },
+        "MutualTlsAuthentication" : {
+          "shape" : "MutualTlsAuthentication",
+          "locationName" : "mutualTlsAuthentication"
+        },
         "Tags" : {
           "shape" : "Tags",
           "locationName" : "tags"
@@ -3630,6 +4127,10 @@
           "shape" : "SelectionExpression",
           "locationName" : "integrationResponseSelectionExpression"
         },
+        "IntegrationSubtype" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "integrationSubtype"
+        },
         "IntegrationType" : {
           "shape" : "IntegrationType",
           "locationName" : "integrationType"
@@ -3650,6 +4151,10 @@
           "shape" : "IntegrationParameters",
           "locationName" : "requestParameters"
         },
+        "ResponseParameters" : {
+          "shape" : "ResponseParameters",
+          "locationName" : "responseParameters"
+        },
         "RequestTemplates" : {
           "shape" : "TemplateMap",
           "locationName" : "requestTemplates"
@@ -3659,8 +4164,12 @@
           "locationName" : "templateSelectionExpression"
         },
         "TimeoutInMillis" : {
-          "shape" : "IntegerWithLengthBetween50And29000",
+          "shape" : "IntegerWithLengthBetween50And30000",
           "locationName" : "timeoutInMillis"
+        },
+        "TlsConfig" : {
+          "shape" : "TlsConfig",
+          "locationName" : "tlsConfig"
         }
       }
     },
@@ -4206,10 +4715,89 @@
       "members" : {
         "Tags" : {
           "shape" : "Tags",
-          "locationName" : "tags"
+          "locationName": "tags"
+        }
+      }
+    },
+    "GetVpcLinkRequest" : {
+      "type" : "structure",
+      "members" : {
+        "VpcLinkId" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "vpcLinkId"
         }
       },
-      "required" : [ "Tags" ]
+      "required" : [ "VpcLinkId" ]
+    },
+    "GetVpcLinkResponse" : {
+      "type" : "structure",
+      "members" : {
+        "CreatedDate" : {
+          "shape" : "__timestampIso8601",
+          "locationName" : "createdDate"
+        },
+        "Name" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "name"
+        },
+        "SecurityGroupIds" : {
+          "shape" : "SecurityGroupIdList",
+          "locationName" : "securityGroupIds"
+        },
+        "SubnetIds" : {
+          "shape" : "SubnetIdList",
+          "locationName" : "subnetIds"
+        },
+        "Tags" : {
+          "shape" : "Tags",
+          "locationName" : "tags"
+        },
+        "VpcLinkId" : {
+          "shape" : "Id",
+          "locationName" : "vpcLinkId"
+        },
+        "VpcLinkStatus" : {
+          "shape" : "VpcLinkStatus",
+          "locationName" : "vpcLinkStatus"
+        },
+        "VpcLinkStatusMessage" : {
+          "shape" : "StringWithLengthBetween0And1024",
+          "locationName" : "vpcLinkStatusMessage"
+        },
+        "VpcLinkVersion" : {
+          "shape" : "VpcLinkVersion",
+          "locationName" : "vpcLinkVersion"
+        }
+      }
+    },
+    "GetVpcLinksRequest" : {
+      "type" : "structure",
+      "members" : {
+        "MaxResults" : {
+          "shape" : "__string",
+          "location" : "querystring",
+          "locationName" : "maxResults"
+        },
+        "NextToken" : {
+          "shape" : "__string",
+          "location" : "querystring",
+          "locationName" : "nextToken"
+        }
+      }
+    },
+    "GetVpcLinksResponse" : {
+      "type" : "structure",
+      "members" : {
+        "Items" : {
+          "shape" : "__listOfVpcLink",
+          "locationName" : "items"
+        },
+        "NextToken" : {
+          "shape" : "NextToken",
+          "locationName" : "nextToken"
+        }
+      }
     },
     "Id" : {
       "type" : "string"
@@ -4257,6 +4845,10 @@
           "shape" : "__string",
           "locationName" : "apiEndpoint"
         },
+        "ApiGatewayManaged" : {
+          "shape" : "__boolean",
+          "locationName" : "apiGatewayManaged"
+        },
         "ApiId" : {
           "shape" : "Id",
           "locationName" : "apiId"
@@ -4280,6 +4872,10 @@
         "DisableSchemaValidation" : {
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
+        },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
         },
         "ImportInfo" : {
           "shape" : "__listOf__string",
@@ -4316,10 +4912,10 @@
       "min" : 0,
       "max" : 3600
     },
-    "IntegerWithLengthBetween50And29000" : {
+    "IntegerWithLengthBetween50And30000" : {
       "type" : "integer",
       "min" : 50,
-      "max" : 29000
+      "max" : 30000
     },
     "IntegerWithLengthBetweenMinus1And86400" : {
       "type" : "integer",
@@ -4365,6 +4961,10 @@
           "shape" : "SelectionExpression",
           "locationName" : "integrationResponseSelectionExpression"
         },
+        "IntegrationSubtype" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "integrationSubtype"
+        },
         "IntegrationType" : {
           "shape" : "IntegrationType",
           "locationName" : "integrationType"
@@ -4385,6 +4985,10 @@
           "shape" : "IntegrationParameters",
           "locationName" : "requestParameters"
         },
+        "ResponseParameters" : {
+          "shape" : "ResponseParameters",
+          "locationName" : "responseParameters"
+        },
         "RequestTemplates" : {
           "shape" : "TemplateMap",
           "locationName" : "requestTemplates"
@@ -4394,8 +4998,12 @@
           "locationName" : "templateSelectionExpression"
         },
         "TimeoutInMillis" : {
-          "shape" : "IntegerWithLengthBetween50And29000",
+          "shape" : "IntegerWithLengthBetween50And30000",
           "locationName" : "timeoutInMillis"
+        },
+        "TlsConfig" : {
+          "shape" : "TlsConfig",
+          "locationName" : "tlsConfig"
         }
       }
     },
@@ -4406,6 +5014,15 @@
       },
       "value" : {
         "shape" : "StringWithLengthBetween1And512"
+      }
+    },
+    "ResponseParameters" : {
+      "type" : "map",
+      "key" : {
+        "shape" : "__string"
+      },
+      "value" : {
+        "shape" : "IntegrationParameters"
       }
     },
     "IntegrationResponse" : {
@@ -4496,7 +5113,7 @@
     },
     "LoggingLevel" : {
       "type" : "string",
-      "enum" : [ "ERROR", "INFO", "false" ]
+      "enum" : [ "ERROR", "INFO", "OFF" ]
     },
     "Model" : {
       "type" : "structure",
@@ -4534,6 +5151,37 @@
         "NextToken" : {
           "shape" : "NextToken",
           "locationName" : "nextToken"
+        }
+      }
+    }
+    ,
+    "MutualTlsAuthentication" : {
+      "type" : "structure",
+      "members" : {
+        "TruststoreUri" : {
+          "shape" : "UriWithLengthBetween1And2048",
+          "locationName" : "truststoreUri"
+        },
+        "TruststoreVersion" : {
+          "shape" : "StringWithLengthBetween1And64",
+          "locationName" : "truststoreVersion"
+        },
+        "TruststoreWarnings" : {
+          "shape" : "__listOf__string",
+          "locationName" : "truststoreWarnings"
+        }
+      }
+    },
+    "MutualTlsAuthenticationInput" : {
+      "type" : "structure",
+      "members" : {
+        "TruststoreUri" : {
+          "shape" : "UriWithLengthBetween1And2048",
+          "locationName" : "truststoreUri"
+        },
+        "TruststoreVersion" : {
+          "shape" : "StringWithLengthBetween1And64",
+          "locationName" : "truststoreVersion"
         }
       }
     },
@@ -4616,6 +5264,10 @@
           "shape" : "__string",
           "locationName" : "apiEndpoint"
         },
+        "ApiGatewayManaged" : {
+          "shape" : "__boolean",
+          "locationName" : "apiGatewayManaged"
+        },
         "ApiId" : {
           "shape" : "Id",
           "locationName" : "apiId"
@@ -4639,6 +5291,10 @@
         "DisableSchemaValidation" : {
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
+        },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
         },
         "ImportInfo" : {
           "shape" : "__listOf__string",
@@ -4832,6 +5488,12 @@
         }
       }
     },
+    "SecurityGroupIdList" : {
+      "type" : "list",
+      "member" : {
+        "shape" : "__string"
+      }
+    },
     "SecurityPolicy" : {
       "type" : "string",
       "enum" : [ "TLS_1_0", "TLS_1_2" ]
@@ -4953,6 +5615,12 @@
     "StringWithLengthBetween1And64" : {
       "type" : "string"
     },
+    "SubnetIdList" : {
+      "type" : "list",
+      "member" : {
+        "shape" : "__string"
+      }
+    },
     "TagResourceInput" : {
       "type" : "structure",
       "members" : {
@@ -5006,6 +5674,24 @@
       },
       "value" : {
         "shape" : "StringWithLengthBetween0And32K"
+      }
+    },
+    "TlsConfig" : {
+      "type" : "structure",
+      "members" : {
+        "ServerNameToVerify" : {
+          "shape" : "StringWithLengthBetween1And512",
+          "locationName" : "serverNameToVerify"
+        }
+      }
+    },
+    "TlsConfigInput" : {
+      "type" : "structure",
+      "members" : {
+        "ServerNameToVerify" : {
+          "shape" : "StringWithLengthBetween1And512",
+          "locationName" : "serverNameToVerify"
+        }
       }
     },
     "TooManyRequestsException" : {
@@ -5063,6 +5749,10 @@
         "DisableSchemaValidation" : {
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
+        },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
         },
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
@@ -5180,6 +5870,10 @@
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
         },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
+        },
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
@@ -5210,6 +5904,10 @@
           "shape" : "__string",
           "locationName" : "apiEndpoint"
         },
+        "ApiGatewayManaged" : {
+          "shape" : "__boolean",
+          "locationName" : "apiGatewayManaged"
+        },
         "ApiId" : {
           "shape" : "Id",
           "locationName" : "apiId"
@@ -5233,6 +5931,10 @@
         "DisableSchemaValidation" : {
           "shape" : "__boolean",
           "locationName" : "disableSchemaValidation"
+        },
+        "DisableExecuteApiEndpoint" : {
+          "shape" : "__boolean",
+          "locationName" : "disableExecuteApiEndpoint"
         },
         "ImportInfo" : {
           "shape" : "__listOf__string",
@@ -5298,6 +6000,14 @@
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
+        },
+        "AuthorizerPayloadFormatVersion": {
+          "shape": "StringWithLengthBetween1And64",
+          "locationName": "authorizerPayloadFormatVersion"
+        },
+        "EnableSimpleResponses": {
+          "shape": "__boolean",
+          "locationName": "enableSimpleResponses"
         }
       }
     },
@@ -5345,6 +6055,14 @@
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
+        },
+        "AuthorizerPayloadFormatVersion": {
+          "shape": "StringWithLengthBetween1And64",
+          "locationName": "authorizerPayloadFormatVersion"
+        },
+        "EnableSimpleResponses": {
+          "shape": "__boolean",
+          "locationName": "enableSimpleResponses"
         }
       },
       "required" : [ "AuthorizerId", "ApiId" ]
@@ -5387,6 +6105,14 @@
         "Name" : {
           "shape" : "StringWithLengthBetween1And128",
           "locationName" : "name"
+        },
+        "AuthorizerPayloadFormatVersion": {
+          "shape": "StringWithLengthBetween1And64",
+          "locationName": "authorizerPayloadFormatVersion"
+        },
+        "EnableSimpleResponses": {
+          "shape": "__boolean",
+          "locationName": "enableSimpleResponses"
         }
       }
     },
@@ -5454,6 +6180,10 @@
         "DomainNameConfigurations" : {
           "shape" : "DomainNameConfigurations",
           "locationName" : "domainNameConfigurations"
+        },
+        "MutualTlsAuthentication" : {
+          "shape" : "MutualTlsAuthenticationInput",
+          "locationName" : "mutualTlsAuthentication"
         }
       }
     },
@@ -5468,6 +6198,10 @@
         "DomainNameConfigurations" : {
           "shape" : "DomainNameConfigurations",
           "locationName" : "domainNameConfigurations"
+        },
+        "MutualTlsAuthentication" : {
+          "shape" : "MutualTlsAuthenticationInput",
+          "locationName" : "mutualTlsAuthentication"
         }
       },
       "required" : [ "DomainName" ]
@@ -5486,6 +6220,10 @@
         "DomainNameConfigurations" : {
           "shape" : "DomainNameConfigurations",
           "locationName" : "domainNameConfigurations"
+        },
+        "MutualTlsAuthentication" : {
+          "shape" : "MutualTlsAuthentication",
+          "locationName" : "mutualTlsAuthentication"
         },
         "Tags" : {
           "shape" : "Tags",
@@ -5520,6 +6258,10 @@
           "shape" : "StringWithLengthBetween1And64",
           "locationName" : "integrationMethod"
         },
+        "IntegrationSubtype" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "integrationSubtype"
+        },
         "IntegrationType" : {
           "shape" : "IntegrationType",
           "locationName" : "integrationType"
@@ -5540,6 +6282,10 @@
           "shape" : "IntegrationParameters",
           "locationName" : "requestParameters"
         },
+        "ResponseParameters" : {
+          "shape" : "ResponseParameters",
+          "locationName" : "responseParameters"
+        },
         "RequestTemplates" : {
           "shape" : "TemplateMap",
           "locationName" : "requestTemplates"
@@ -5549,8 +6295,12 @@
           "locationName" : "templateSelectionExpression"
         },
         "TimeoutInMillis" : {
-          "shape" : "IntegerWithLengthBetween50And29000",
+          "shape" : "IntegerWithLengthBetween50And30000",
           "locationName" : "timeoutInMillis"
+        },
+        "TlsConfig" : {
+          "shape" : "TlsConfigInput",
+          "locationName" : "tlsConfig"
         }
       }
     },
@@ -5591,6 +6341,10 @@
           "shape" : "StringWithLengthBetween1And64",
           "locationName" : "integrationMethod"
         },
+        "IntegrationSubtype" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "integrationSubtype"
+        },
         "IntegrationType" : {
           "shape" : "IntegrationType",
           "locationName" : "integrationType"
@@ -5611,6 +6365,10 @@
           "shape" : "IntegrationParameters",
           "locationName" : "requestParameters"
         },
+        "ResponseParameters" : {
+          "shape" : "ResponseParameters",
+          "locationName" : "responseParameters"
+        },
         "RequestTemplates" : {
           "shape" : "TemplateMap",
           "locationName" : "requestTemplates"
@@ -5620,8 +6378,12 @@
           "locationName" : "templateSelectionExpression"
         },
         "TimeoutInMillis" : {
-          "shape" : "IntegerWithLengthBetween50And29000",
+          "shape" : "IntegerWithLengthBetween50And30000",
           "locationName" : "timeoutInMillis"
+        },
+        "TlsConfig" : {
+          "shape" : "TlsConfigInput",
+          "locationName" : "tlsConfig"
         }
       },
       "required" : [ "ApiId", "IntegrationId" ]
@@ -5665,6 +6427,10 @@
           "shape" : "SelectionExpression",
           "locationName" : "integrationResponseSelectionExpression"
         },
+        "IntegrationSubtype" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "integrationSubtype"
+        },
         "IntegrationType" : {
           "shape" : "IntegrationType",
           "locationName" : "integrationType"
@@ -5685,6 +6451,10 @@
           "shape" : "IntegrationParameters",
           "locationName" : "requestParameters"
         },
+        "ResponseParameters" : {
+          "shape" : "ResponseParameters",
+          "locationName" : "responseParameters"
+        },
         "RequestTemplates" : {
           "shape" : "TemplateMap",
           "locationName" : "requestTemplates"
@@ -5694,8 +6464,12 @@
           "locationName" : "templateSelectionExpression"
         },
         "TimeoutInMillis" : {
-          "shape" : "IntegerWithLengthBetween50And29000",
+          "shape" : "IntegerWithLengthBetween50And30000",
           "locationName" : "timeoutInMillis"
+        },
+        "TlsConfig" : {
+          "shape" : "TlsConfig",
+          "locationName" : "tlsConfig"
         }
       }
     },
@@ -6267,8 +7041,136 @@
         }
       }
     },
+    "UpdateVpcLinkInput" : {
+      "type" : "structure",
+      "members" : {
+        "Name" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "name"
+        }
+      }
+    },
+    "UpdateVpcLinkRequest" : {
+      "type" : "structure",
+      "members" : {
+        "Name" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "name"
+        },
+        "VpcLinkId" : {
+          "shape" : "__string",
+          "location" : "uri",
+          "locationName" : "vpcLinkId"
+        }
+      },
+      "required" : [ "VpcLinkId" ]
+    },
+    "UpdateVpcLinkResponse" : {
+      "type" : "structure",
+      "members" : {
+        "CreatedDate" : {
+          "shape" : "__timestampIso8601",
+          "locationName" : "createdDate"
+        },
+        "Name" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "name"
+        },
+        "SecurityGroupIds" : {
+          "shape" : "SecurityGroupIdList",
+          "locationName" : "securityGroupIds"
+        },
+        "SubnetIds" : {
+          "shape" : "SubnetIdList",
+          "locationName" : "subnetIds"
+        },
+        "Tags" : {
+          "shape" : "Tags",
+          "locationName" : "tags"
+        },
+        "VpcLinkId" : {
+          "shape" : "Id",
+          "locationName" : "vpcLinkId"
+        },
+        "VpcLinkStatus" : {
+          "shape" : "VpcLinkStatus",
+          "locationName" : "vpcLinkStatus"
+        },
+        "VpcLinkStatusMessage" : {
+          "shape" : "StringWithLengthBetween0And1024",
+          "locationName" : "vpcLinkStatusMessage"
+        },
+        "VpcLinkVersion" : {
+          "shape" : "VpcLinkVersion",
+          "locationName" : "vpcLinkVersion"
+        }
+      }
+    },
     "UriWithLengthBetween1And2048" : {
       "type" : "string"
+    },
+    "VpcLink" : {
+      "type" : "structure",
+      "members" : {
+        "CreatedDate" : {
+          "shape" : "__timestampIso8601",
+          "locationName" : "createdDate"
+        },
+        "Name" : {
+          "shape" : "StringWithLengthBetween1And128",
+          "locationName" : "name"
+        },
+        "SecurityGroupIds" : {
+          "shape" : "SecurityGroupIdList",
+          "locationName" : "securityGroupIds"
+        },
+        "SubnetIds" : {
+          "shape" : "SubnetIdList",
+          "locationName" : "subnetIds"
+        },
+        "Tags" : {
+          "shape" : "Tags",
+          "locationName" : "tags"
+        },
+        "VpcLinkId" : {
+          "shape" : "Id",
+          "locationName" : "vpcLinkId"
+        },
+        "VpcLinkStatus" : {
+          "shape" : "VpcLinkStatus",
+          "locationName" : "vpcLinkStatus"
+        },
+        "VpcLinkStatusMessage" : {
+          "shape" : "StringWithLengthBetween0And1024",
+          "locationName" : "vpcLinkStatusMessage"
+        },
+        "VpcLinkVersion" : {
+          "shape" : "VpcLinkVersion",
+          "locationName" : "vpcLinkVersion"
+        }
+      },
+      "required" : [ "VpcLinkId", "SecurityGroupIds", "SubnetIds", "Name" ]
+    },
+    "VpcLinkStatus" : {
+      "type" : "string",
+      "enum" : [ "PENDING", "AVAILABLE", "DELETING", "FAILED", "INACTIVE" ]
+    },
+    "VpcLinkVersion" : {
+      "type" : "string",
+      "enum" : [ "V2" ]
+    },
+    "VpcLinks" : {
+      "type" : "structure",
+      "members" : {
+        "Items" : {
+          "shape" : "__listOfVpcLink",
+          "locationName" : "items"
+        },
+        "NextToken" : {
+          "shape" : "NextToken",
+          "locationName" : "nextToken"
+        }
+      }
     },
     "__boolean" : {
       "type" : "boolean"
@@ -6345,6 +7247,12 @@
         "shape" : "Stage"
       }
     },
+    "__listOfVpcLink" : {
+      "type" : "list",
+      "member" : {
+        "shape" : "VpcLink"
+      }
+    },
     "__listOf__string" : {
       "type" : "list",
       "member" : {
@@ -6364,16 +7272,6 @@
     "__timestampUnix" : {
       "type" : "timestamp",
       "timestampFormat" : "unixTimestamp"
-    }
-  },
-  "authorizers" : {
-    "authorization_strategy" : {
-      "name" : "authorization_strategy",
-      "type" : "provided",
-      "placement" : {
-        "location" : "header",
-        "name" : "Authorization"
-      }
     }
   }
 }

@@ -235,6 +235,8 @@ func (c *Schemas) CreateSchemaRequest(input *CreateSchemaInput) (req *request.Re
 //
 // Creates a schema definition.
 //
+// Inactive schemas will be deleted after two years.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -446,6 +448,95 @@ func (c *Schemas) DeleteRegistry(input *DeleteRegistryInput) (*DeleteRegistryOut
 // for more information on using Contexts.
 func (c *Schemas) DeleteRegistryWithContext(ctx aws.Context, input *DeleteRegistryInput, opts ...request.Option) (*DeleteRegistryOutput, error) {
 	req, out := c.DeleteRegistryRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeleteResourcePolicy = "DeleteResourcePolicy"
+
+// DeleteResourcePolicyRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteResourcePolicy operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteResourcePolicy for more information on using the DeleteResourcePolicy
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteResourcePolicyRequest method.
+//    req, resp := client.DeleteResourcePolicyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/DeleteResourcePolicy
+func (c *Schemas) DeleteResourcePolicyRequest(input *DeleteResourcePolicyInput) (req *request.Request, output *DeleteResourcePolicyOutput) {
+	op := &request.Operation{
+		Name:       opDeleteResourcePolicy,
+		HTTPMethod: "DELETE",
+		HTTPPath:   "/v1/policy",
+	}
+
+	if input == nil {
+		input = &DeleteResourcePolicyInput{}
+	}
+
+	output = &DeleteResourcePolicyOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// DeleteResourcePolicy API operation for Schemas.
+//
+// Delete the resource-based policy attached to the specified registry.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Schemas's
+// API operation DeleteResourcePolicy for usage and error information.
+//
+// Returned Error Types:
+//   * BadRequestException
+//
+//   * UnauthorizedException
+//
+//   * InternalServerErrorException
+//
+//   * ForbiddenException
+//
+//   * NotFoundException
+//
+//   * ServiceUnavailableException
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/DeleteResourcePolicy
+func (c *Schemas) DeleteResourcePolicy(input *DeleteResourcePolicyInput) (*DeleteResourcePolicyOutput, error) {
+	req, out := c.DeleteResourcePolicyRequest(input)
+	return out, req.Send()
+}
+
+// DeleteResourcePolicyWithContext is the same as DeleteResourcePolicy with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteResourcePolicy for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Schemas) DeleteResourcePolicyWithContext(ctx aws.Context, input *DeleteResourcePolicyInput, opts ...request.Option) (*DeleteResourcePolicyOutput, error) {
+	req, out := c.DeleteResourcePolicyRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -981,6 +1072,96 @@ func (c *Schemas) DescribeSchemaWithContext(ctx aws.Context, input *DescribeSche
 	return out, req.Send()
 }
 
+const opExportSchema = "ExportSchema"
+
+// ExportSchemaRequest generates a "aws/request.Request" representing the
+// client's request for the ExportSchema operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ExportSchema for more information on using the ExportSchema
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ExportSchemaRequest method.
+//    req, resp := client.ExportSchemaRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/ExportSchema
+func (c *Schemas) ExportSchemaRequest(input *ExportSchemaInput) (req *request.Request, output *ExportSchemaOutput) {
+	op := &request.Operation{
+		Name:       opExportSchema,
+		HTTPMethod: "GET",
+		HTTPPath:   "/v1/registries/name/{registryName}/schemas/name/{schemaName}/export",
+	}
+
+	if input == nil {
+		input = &ExportSchemaInput{}
+	}
+
+	output = &ExportSchemaOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ExportSchema API operation for Schemas.
+//
+// Exports a schema to a different specification.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Schemas's
+// API operation ExportSchema for usage and error information.
+//
+// Returned Error Types:
+//   * BadRequestException
+//
+//   * UnauthorizedException
+//
+//   * InternalServerErrorException
+//
+//   * ForbiddenException
+//
+//   * NotFoundException
+//
+//   * ServiceUnavailableException
+//
+//   * TooManyRequestsException
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/ExportSchema
+func (c *Schemas) ExportSchema(input *ExportSchemaInput) (*ExportSchemaOutput, error) {
+	req, out := c.ExportSchemaRequest(input)
+	return out, req.Send()
+}
+
+// ExportSchemaWithContext is the same as ExportSchema with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ExportSchema for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Schemas) ExportSchemaWithContext(ctx aws.Context, input *ExportSchemaInput, opts ...request.Option) (*ExportSchemaOutput, error) {
+	req, out := c.ExportSchemaRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opGetCodeBindingSource = "GetCodeBindingSource"
 
 // GetCodeBindingSourceRequest generates a "aws/request.Request" representing the
@@ -1150,6 +1331,94 @@ func (c *Schemas) GetDiscoveredSchema(input *GetDiscoveredSchemaInput) (*GetDisc
 // for more information on using Contexts.
 func (c *Schemas) GetDiscoveredSchemaWithContext(ctx aws.Context, input *GetDiscoveredSchemaInput, opts ...request.Option) (*GetDiscoveredSchemaOutput, error) {
 	req, out := c.GetDiscoveredSchemaRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opGetResourcePolicy = "GetResourcePolicy"
+
+// GetResourcePolicyRequest generates a "aws/request.Request" representing the
+// client's request for the GetResourcePolicy operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetResourcePolicy for more information on using the GetResourcePolicy
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetResourcePolicyRequest method.
+//    req, resp := client.GetResourcePolicyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/GetResourcePolicy
+func (c *Schemas) GetResourcePolicyRequest(input *GetResourcePolicyInput) (req *request.Request, output *GetResourcePolicyOutput) {
+	op := &request.Operation{
+		Name:       opGetResourcePolicy,
+		HTTPMethod: "GET",
+		HTTPPath:   "/v1/policy",
+	}
+
+	if input == nil {
+		input = &GetResourcePolicyInput{}
+	}
+
+	output = &GetResourcePolicyOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetResourcePolicy API operation for Schemas.
+//
+// Retrieves the resource-based policy attached to a given registry.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Schemas's
+// API operation GetResourcePolicy for usage and error information.
+//
+// Returned Error Types:
+//   * BadRequestException
+//
+//   * UnauthorizedException
+//
+//   * InternalServerErrorException
+//
+//   * ForbiddenException
+//
+//   * NotFoundException
+//
+//   * ServiceUnavailableException
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/GetResourcePolicy
+func (c *Schemas) GetResourcePolicy(input *GetResourcePolicyInput) (*GetResourcePolicyOutput, error) {
+	req, out := c.GetResourcePolicyRequest(input)
+	return out, req.Send()
+}
+
+// GetResourcePolicyWithContext is the same as GetResourcePolicy with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetResourcePolicy for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Schemas) GetResourcePolicyWithContext(ctx aws.Context, input *GetResourcePolicyInput, opts ...request.Option) (*GetResourcePolicyOutput, error) {
+	req, out := c.GetResourcePolicyRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1817,90 +2086,6 @@ func (c *Schemas) ListTagsForResourceWithContext(ctx aws.Context, input *ListTag
 	return out, req.Send()
 }
 
-const opLockServiceLinkedRole = "LockServiceLinkedRole"
-
-// LockServiceLinkedRoleRequest generates a "aws/request.Request" representing the
-// client's request for the LockServiceLinkedRole operation. The "output" return
-// value will be populated with the request's response once the request completes
-// successfully.
-//
-// Use "Send" method on the returned Request to send the API call to the service.
-// the "output" return value is not valid until after Send returns without error.
-//
-// See LockServiceLinkedRole for more information on using the LockServiceLinkedRole
-// API call, and error handling.
-//
-// This method is useful when you want to inject custom logic or configuration
-// into the SDK's request lifecycle. Such as custom headers, or retry logic.
-//
-//
-//    // Example sending a request using the LockServiceLinkedRoleRequest method.
-//    req, resp := client.LockServiceLinkedRoleRequest(params)
-//
-//    err := req.Send()
-//    if err == nil { // resp is now filled
-//        fmt.Println(resp)
-//    }
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/LockServiceLinkedRole
-func (c *Schemas) LockServiceLinkedRoleRequest(input *LockServiceLinkedRoleInput) (req *request.Request, output *LockServiceLinkedRoleOutput) {
-	op := &request.Operation{
-		Name:       opLockServiceLinkedRole,
-		HTTPMethod: "POST",
-		HTTPPath:   "/slr-deletion/lock",
-	}
-
-	if input == nil {
-		input = &LockServiceLinkedRoleInput{}
-	}
-
-	output = &LockServiceLinkedRoleOutput{}
-	req = c.newRequest(op, input, output)
-	return
-}
-
-// LockServiceLinkedRole API operation for Schemas.
-//
-// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
-// with awserr.Error's Code and Message methods to get detailed information about
-// the error.
-//
-// See the AWS API reference guide for Schemas's
-// API operation LockServiceLinkedRole for usage and error information.
-//
-// Returned Error Types:
-//   * ServiceUnavailableException
-//
-//   * BadRequestException
-//
-//   * UnauthorizedException
-//
-//   * InternalServerErrorException
-//
-//   * ForbiddenException
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/LockServiceLinkedRole
-func (c *Schemas) LockServiceLinkedRole(input *LockServiceLinkedRoleInput) (*LockServiceLinkedRoleOutput, error) {
-	req, out := c.LockServiceLinkedRoleRequest(input)
-	return out, req.Send()
-}
-
-// LockServiceLinkedRoleWithContext is the same as LockServiceLinkedRole with the addition of
-// the ability to pass a context and additional request options.
-//
-// See LockServiceLinkedRole for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *Schemas) LockServiceLinkedRoleWithContext(ctx aws.Context, input *LockServiceLinkedRoleInput, opts ...request.Option) (*LockServiceLinkedRoleOutput, error) {
-	req, out := c.LockServiceLinkedRoleRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
-}
-
 const opPutCodeBinding = "PutCodeBinding"
 
 // PutCodeBindingRequest generates a "aws/request.Request" representing the
@@ -1986,6 +2171,96 @@ func (c *Schemas) PutCodeBinding(input *PutCodeBindingInput) (*PutCodeBindingOut
 // for more information on using Contexts.
 func (c *Schemas) PutCodeBindingWithContext(ctx aws.Context, input *PutCodeBindingInput, opts ...request.Option) (*PutCodeBindingOutput, error) {
 	req, out := c.PutCodeBindingRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opPutResourcePolicy = "PutResourcePolicy"
+
+// PutResourcePolicyRequest generates a "aws/request.Request" representing the
+// client's request for the PutResourcePolicy operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See PutResourcePolicy for more information on using the PutResourcePolicy
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the PutResourcePolicyRequest method.
+//    req, resp := client.PutResourcePolicyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/PutResourcePolicy
+func (c *Schemas) PutResourcePolicyRequest(input *PutResourcePolicyInput) (req *request.Request, output *PutResourcePolicyOutput) {
+	op := &request.Operation{
+		Name:       opPutResourcePolicy,
+		HTTPMethod: "PUT",
+		HTTPPath:   "/v1/policy",
+	}
+
+	if input == nil {
+		input = &PutResourcePolicyInput{}
+	}
+
+	output = &PutResourcePolicyOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// PutResourcePolicy API operation for Schemas.
+//
+// The name of the policy.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Schemas's
+// API operation PutResourcePolicy for usage and error information.
+//
+// Returned Error Types:
+//   * BadRequestException
+//
+//   * UnauthorizedException
+//
+//   * PreconditionFailedException
+//
+//   * InternalServerErrorException
+//
+//   * ForbiddenException
+//
+//   * NotFoundException
+//
+//   * ServiceUnavailableException
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/PutResourcePolicy
+func (c *Schemas) PutResourcePolicy(input *PutResourcePolicyInput) (*PutResourcePolicyOutput, error) {
+	req, out := c.PutResourcePolicyRequest(input)
+	return out, req.Send()
+}
+
+// PutResourcePolicyWithContext is the same as PutResourcePolicy with the addition of
+// the ability to pass a context and additional request options.
+//
+// See PutResourcePolicy for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Schemas) PutResourcePolicyWithContext(ctx aws.Context, input *PutResourcePolicyInput, opts ...request.Option) (*PutResourcePolicyOutput, error) {
+	req, out := c.PutResourcePolicyRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2396,91 +2671,6 @@ func (c *Schemas) TagResourceWithContext(ctx aws.Context, input *TagResourceInpu
 	return out, req.Send()
 }
 
-const opUnlockServiceLinkedRole = "UnlockServiceLinkedRole"
-
-// UnlockServiceLinkedRoleRequest generates a "aws/request.Request" representing the
-// client's request for the UnlockServiceLinkedRole operation. The "output" return
-// value will be populated with the request's response once the request completes
-// successfully.
-//
-// Use "Send" method on the returned Request to send the API call to the service.
-// the "output" return value is not valid until after Send returns without error.
-//
-// See UnlockServiceLinkedRole for more information on using the UnlockServiceLinkedRole
-// API call, and error handling.
-//
-// This method is useful when you want to inject custom logic or configuration
-// into the SDK's request lifecycle. Such as custom headers, or retry logic.
-//
-//
-//    // Example sending a request using the UnlockServiceLinkedRoleRequest method.
-//    req, resp := client.UnlockServiceLinkedRoleRequest(params)
-//
-//    err := req.Send()
-//    if err == nil { // resp is now filled
-//        fmt.Println(resp)
-//    }
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/UnlockServiceLinkedRole
-func (c *Schemas) UnlockServiceLinkedRoleRequest(input *UnlockServiceLinkedRoleInput) (req *request.Request, output *UnlockServiceLinkedRoleOutput) {
-	op := &request.Operation{
-		Name:       opUnlockServiceLinkedRole,
-		HTTPMethod: "POST",
-		HTTPPath:   "/slr-deletion/unlock",
-	}
-
-	if input == nil {
-		input = &UnlockServiceLinkedRoleInput{}
-	}
-
-	output = &UnlockServiceLinkedRoleOutput{}
-	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
-	return
-}
-
-// UnlockServiceLinkedRole API operation for Schemas.
-//
-// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
-// with awserr.Error's Code and Message methods to get detailed information about
-// the error.
-//
-// See the AWS API reference guide for Schemas's
-// API operation UnlockServiceLinkedRole for usage and error information.
-//
-// Returned Error Types:
-//   * ServiceUnavailableException
-//
-//   * BadRequestException
-//
-//   * UnauthorizedException
-//
-//   * InternalServerErrorException
-//
-//   * ForbiddenException
-//
-// See also, https://docs.aws.amazon.com/goto/WebAPI/schemas-2019-12-02/UnlockServiceLinkedRole
-func (c *Schemas) UnlockServiceLinkedRole(input *UnlockServiceLinkedRoleInput) (*UnlockServiceLinkedRoleOutput, error) {
-	req, out := c.UnlockServiceLinkedRoleRequest(input)
-	return out, req.Send()
-}
-
-// UnlockServiceLinkedRoleWithContext is the same as UnlockServiceLinkedRole with the addition of
-// the ability to pass a context and additional request options.
-//
-// See UnlockServiceLinkedRole for details on how to use this API operation.
-//
-// The context must be non-nil and will be used for request cancellation. If
-// the context is nil a panic will occur. In the future the SDK may create
-// sub-contexts for http.Requests. See https://golang.org/pkg/context/
-// for more information on using Contexts.
-func (c *Schemas) UnlockServiceLinkedRoleWithContext(ctx aws.Context, input *UnlockServiceLinkedRoleInput, opts ...request.Option) (*UnlockServiceLinkedRoleOutput, error) {
-	req, out := c.UnlockServiceLinkedRoleRequest(input)
-	req.SetContext(ctx)
-	req.ApplyOptions(opts...)
-	return out, req.Send()
-}
-
 const opUntagResource = "UntagResource"
 
 // UntagResourceRequest generates a "aws/request.Request" representing the
@@ -2788,6 +2978,8 @@ func (c *Schemas) UpdateSchemaRequest(input *UpdateSchemaInput) (req *request.Re
 //
 // Updates the schema definition
 //
+// Inactive schemas will be deleted after two years.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -2829,8 +3021,8 @@ func (c *Schemas) UpdateSchemaWithContext(ctx aws.Context, input *UpdateSchemaIn
 }
 
 type BadRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -2849,17 +3041,17 @@ func (s BadRequestException) GoString() string {
 
 func newErrorBadRequestException(v protocol.ResponseMetadata) error {
 	return &BadRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BadRequestException) Code() string {
+func (s *BadRequestException) Code() string {
 	return "BadRequestException"
 }
 
 // Message returns the exception's message.
-func (s BadRequestException) Message() string {
+func (s *BadRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2867,27 +3059,27 @@ func (s BadRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BadRequestException) OrigErr() error {
+func (s *BadRequestException) OrigErr() error {
 	return nil
 }
 
-func (s BadRequestException) Error() string {
+func (s *BadRequestException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BadRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BadRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BadRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BadRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ConflictException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -2906,17 +3098,17 @@ func (s ConflictException) GoString() string {
 
 func newErrorConflictException(v protocol.ResponseMetadata) error {
 	return &ConflictException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConflictException) Code() string {
+func (s *ConflictException) Code() string {
 	return "ConflictException"
 }
 
 // Message returns the exception's message.
-func (s ConflictException) Message() string {
+func (s *ConflictException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2924,22 +3116,22 @@ func (s ConflictException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConflictException) OrigErr() error {
+func (s *ConflictException) OrigErr() error {
 	return nil
 }
 
-func (s ConflictException) Error() string {
+func (s *ConflictException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConflictException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConflictException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type CreateDiscovererInput struct {
@@ -3444,6 +3636,42 @@ func (s DeleteRegistryOutput) String() string {
 
 // GoString returns the string representation
 func (s DeleteRegistryOutput) GoString() string {
+	return s.String()
+}
+
+type DeleteResourcePolicyInput struct {
+	_ struct{} `type:"structure"`
+
+	RegistryName *string `location:"querystring" locationName:"registryName" type:"string"`
+}
+
+// String returns the string representation
+func (s DeleteResourcePolicyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteResourcePolicyInput) GoString() string {
+	return s.String()
+}
+
+// SetRegistryName sets the RegistryName field's value.
+func (s *DeleteResourcePolicyInput) SetRegistryName(v string) *DeleteResourcePolicyInput {
+	s.RegistryName = &v
+	return s
+}
+
+type DeleteResourcePolicyOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteResourcePolicyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteResourcePolicyOutput) GoString() string {
 	return s.String()
 }
 
@@ -4070,6 +4298,7 @@ type DiscovererSummary struct {
 	// The ARN of the event bus.
 	SourceArn *string `type:"string"`
 
+	// The state of the discoverer.
 	State *string `type:"string" enum:"DiscovererState"`
 
 	// Tags associated with the resource.
@@ -4116,9 +4345,137 @@ func (s *DiscovererSummary) SetTags(v map[string]*string) *DiscovererSummary {
 	return s
 }
 
+type ExportSchemaInput struct {
+	_ struct{} `type:"structure"`
+
+	// RegistryName is a required field
+	RegistryName *string `location:"uri" locationName:"registryName" type:"string" required:"true"`
+
+	// SchemaName is a required field
+	SchemaName *string `location:"uri" locationName:"schemaName" type:"string" required:"true"`
+
+	SchemaVersion *string `location:"querystring" locationName:"schemaVersion" type:"string"`
+
+	// Type is a required field
+	Type *string `location:"querystring" locationName:"type" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ExportSchemaInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ExportSchemaInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ExportSchemaInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ExportSchemaInput"}
+	if s.RegistryName == nil {
+		invalidParams.Add(request.NewErrParamRequired("RegistryName"))
+	}
+	if s.RegistryName != nil && len(*s.RegistryName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("RegistryName", 1))
+	}
+	if s.SchemaName == nil {
+		invalidParams.Add(request.NewErrParamRequired("SchemaName"))
+	}
+	if s.SchemaName != nil && len(*s.SchemaName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("SchemaName", 1))
+	}
+	if s.Type == nil {
+		invalidParams.Add(request.NewErrParamRequired("Type"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetRegistryName sets the RegistryName field's value.
+func (s *ExportSchemaInput) SetRegistryName(v string) *ExportSchemaInput {
+	s.RegistryName = &v
+	return s
+}
+
+// SetSchemaName sets the SchemaName field's value.
+func (s *ExportSchemaInput) SetSchemaName(v string) *ExportSchemaInput {
+	s.SchemaName = &v
+	return s
+}
+
+// SetSchemaVersion sets the SchemaVersion field's value.
+func (s *ExportSchemaInput) SetSchemaVersion(v string) *ExportSchemaInput {
+	s.SchemaVersion = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *ExportSchemaInput) SetType(v string) *ExportSchemaInput {
+	s.Type = &v
+	return s
+}
+
+type ExportSchemaOutput struct {
+	_ struct{} `type:"structure"`
+
+	Content *string `type:"string"`
+
+	SchemaArn *string `type:"string"`
+
+	SchemaName *string `type:"string"`
+
+	SchemaVersion *string `type:"string"`
+
+	Type *string `type:"string"`
+}
+
+// String returns the string representation
+func (s ExportSchemaOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ExportSchemaOutput) GoString() string {
+	return s.String()
+}
+
+// SetContent sets the Content field's value.
+func (s *ExportSchemaOutput) SetContent(v string) *ExportSchemaOutput {
+	s.Content = &v
+	return s
+}
+
+// SetSchemaArn sets the SchemaArn field's value.
+func (s *ExportSchemaOutput) SetSchemaArn(v string) *ExportSchemaOutput {
+	s.SchemaArn = &v
+	return s
+}
+
+// SetSchemaName sets the SchemaName field's value.
+func (s *ExportSchemaOutput) SetSchemaName(v string) *ExportSchemaOutput {
+	s.SchemaName = &v
+	return s
+}
+
+// SetSchemaVersion sets the SchemaVersion field's value.
+func (s *ExportSchemaOutput) SetSchemaVersion(v string) *ExportSchemaOutput {
+	s.SchemaVersion = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *ExportSchemaOutput) SetType(v string) *ExportSchemaOutput {
+	s.Type = &v
+	return s
+}
+
 type ForbiddenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -4137,17 +4494,17 @@ func (s ForbiddenException) GoString() string {
 
 func newErrorForbiddenException(v protocol.ResponseMetadata) error {
 	return &ForbiddenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ForbiddenException) Code() string {
+func (s *ForbiddenException) Code() string {
 	return "ForbiddenException"
 }
 
 // Message returns the exception's message.
-func (s ForbiddenException) Message() string {
+func (s *ForbiddenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4155,22 +4512,22 @@ func (s ForbiddenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ForbiddenException) OrigErr() error {
+func (s *ForbiddenException) OrigErr() error {
 	return nil
 }
 
-func (s ForbiddenException) Error() string {
+func (s *ForbiddenException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ForbiddenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ForbiddenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ForbiddenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ForbiddenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type GetCodeBindingSourceInput struct {
@@ -4345,9 +4702,61 @@ func (s *GetDiscoveredSchemaOutput) SetContent(v string) *GetDiscoveredSchemaOut
 	return s
 }
 
+type GetResourcePolicyInput struct {
+	_ struct{} `type:"structure"`
+
+	RegistryName *string `location:"querystring" locationName:"registryName" type:"string"`
+}
+
+// String returns the string representation
+func (s GetResourcePolicyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetResourcePolicyInput) GoString() string {
+	return s.String()
+}
+
+// SetRegistryName sets the RegistryName field's value.
+func (s *GetResourcePolicyInput) SetRegistryName(v string) *GetResourcePolicyInput {
+	s.RegistryName = &v
+	return s
+}
+
+type GetResourcePolicyOutput struct {
+	_ struct{} `type:"structure"`
+
+	Policy aws.JSONValue `type:"jsonvalue"`
+
+	RevisionId *string `type:"string"`
+}
+
+// String returns the string representation
+func (s GetResourcePolicyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetResourcePolicyOutput) GoString() string {
+	return s.String()
+}
+
+// SetPolicy sets the Policy field's value.
+func (s *GetResourcePolicyOutput) SetPolicy(v aws.JSONValue) *GetResourcePolicyOutput {
+	s.Policy = v
+	return s
+}
+
+// SetRevisionId sets the RevisionId field's value.
+func (s *GetResourcePolicyOutput) SetRevisionId(v string) *GetResourcePolicyOutput {
+	s.RevisionId = &v
+	return s
+}
+
 type GoneException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -4366,17 +4775,17 @@ func (s GoneException) GoString() string {
 
 func newErrorGoneException(v protocol.ResponseMetadata) error {
 	return &GoneException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s GoneException) Code() string {
+func (s *GoneException) Code() string {
 	return "GoneException"
 }
 
 // Message returns the exception's message.
-func (s GoneException) Message() string {
+func (s *GoneException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4384,27 +4793,27 @@ func (s GoneException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s GoneException) OrigErr() error {
+func (s *GoneException) OrigErr() error {
 	return nil
 }
 
-func (s GoneException) Error() string {
+func (s *GoneException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s GoneException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *GoneException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s GoneException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *GoneException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type InternalServerErrorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -4423,17 +4832,17 @@ func (s InternalServerErrorException) GoString() string {
 
 func newErrorInternalServerErrorException(v protocol.ResponseMetadata) error {
 	return &InternalServerErrorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerErrorException) Code() string {
+func (s *InternalServerErrorException) Code() string {
 	return "InternalServerErrorException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerErrorException) Message() string {
+func (s *InternalServerErrorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4441,22 +4850,22 @@ func (s InternalServerErrorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerErrorException) OrigErr() error {
+func (s *InternalServerErrorException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerErrorException) Error() string {
+func (s *InternalServerErrorException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerErrorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerErrorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerErrorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerErrorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListDiscoverersInput struct {
@@ -4847,9 +5256,7 @@ type ListTagsForResourceOutput struct {
 	_ struct{} `type:"structure"`
 
 	// Key-value pairs associated with a resource.
-	//
-	// Tags is a required field
-	Tags map[string]*string `type:"map" required:"true"`
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -4868,101 +5275,9 @@ func (s *ListTagsForResourceOutput) SetTags(v map[string]*string) *ListTagsForRe
 	return s
 }
 
-type LockServiceLinkedRoleInput struct {
-	_ struct{} `type:"structure"`
-
-	// RoleArn is a required field
-	RoleArn *string `min:"1" type:"string" required:"true"`
-
-	// Timeout is a required field
-	Timeout *int64 `min:"1" type:"integer" required:"true"`
-}
-
-// String returns the string representation
-func (s LockServiceLinkedRoleInput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation
-func (s LockServiceLinkedRoleInput) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *LockServiceLinkedRoleInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "LockServiceLinkedRoleInput"}
-	if s.RoleArn == nil {
-		invalidParams.Add(request.NewErrParamRequired("RoleArn"))
-	}
-	if s.RoleArn != nil && len(*s.RoleArn) < 1 {
-		invalidParams.Add(request.NewErrParamMinLen("RoleArn", 1))
-	}
-	if s.Timeout == nil {
-		invalidParams.Add(request.NewErrParamRequired("Timeout"))
-	}
-	if s.Timeout != nil && *s.Timeout < 1 {
-		invalidParams.Add(request.NewErrParamMinValue("Timeout", 1))
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetRoleArn sets the RoleArn field's value.
-func (s *LockServiceLinkedRoleInput) SetRoleArn(v string) *LockServiceLinkedRoleInput {
-	s.RoleArn = &v
-	return s
-}
-
-// SetTimeout sets the Timeout field's value.
-func (s *LockServiceLinkedRoleInput) SetTimeout(v int64) *LockServiceLinkedRoleInput {
-	s.Timeout = &v
-	return s
-}
-
-type LockServiceLinkedRoleOutput struct {
-	_ struct{} `type:"structure"`
-
-	CanBeDeleted *bool `type:"boolean"`
-
-	ReasonOfFailure *string `min:"1" type:"string"`
-
-	RelatedResources []*DiscovererSummary `type:"list"`
-}
-
-// String returns the string representation
-func (s LockServiceLinkedRoleOutput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation
-func (s LockServiceLinkedRoleOutput) GoString() string {
-	return s.String()
-}
-
-// SetCanBeDeleted sets the CanBeDeleted field's value.
-func (s *LockServiceLinkedRoleOutput) SetCanBeDeleted(v bool) *LockServiceLinkedRoleOutput {
-	s.CanBeDeleted = &v
-	return s
-}
-
-// SetReasonOfFailure sets the ReasonOfFailure field's value.
-func (s *LockServiceLinkedRoleOutput) SetReasonOfFailure(v string) *LockServiceLinkedRoleOutput {
-	s.ReasonOfFailure = &v
-	return s
-}
-
-// SetRelatedResources sets the RelatedResources field's value.
-func (s *LockServiceLinkedRoleOutput) SetRelatedResources(v []*DiscovererSummary) *LockServiceLinkedRoleOutput {
-	s.RelatedResources = v
-	return s
-}
-
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -4981,17 +5296,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4999,22 +5314,79 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+type PreconditionFailedException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Code_ *string `locationName:"Code" type:"string"`
+
+	Message_ *string `locationName:"Message" type:"string"`
+}
+
+// String returns the string representation
+func (s PreconditionFailedException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PreconditionFailedException) GoString() string {
+	return s.String()
+}
+
+func newErrorPreconditionFailedException(v protocol.ResponseMetadata) error {
+	return &PreconditionFailedException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *PreconditionFailedException) Code() string {
+	return "PreconditionFailedException"
+}
+
+// Message returns the exception's message.
+func (s *PreconditionFailedException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *PreconditionFailedException) OrigErr() error {
+	return nil
+}
+
+func (s *PreconditionFailedException) Error() string {
+	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *PreconditionFailedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *PreconditionFailedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type PutCodeBindingInput struct {
@@ -5140,6 +5512,88 @@ func (s *PutCodeBindingOutput) SetStatus(v string) *PutCodeBindingOutput {
 	return s
 }
 
+type PutResourcePolicyInput struct {
+	_ struct{} `type:"structure"`
+
+	// Policy is a required field
+	Policy aws.JSONValue `type:"jsonvalue" required:"true"`
+
+	RegistryName *string `location:"querystring" locationName:"registryName" type:"string"`
+
+	RevisionId *string `type:"string"`
+}
+
+// String returns the string representation
+func (s PutResourcePolicyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutResourcePolicyInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PutResourcePolicyInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PutResourcePolicyInput"}
+	if s.Policy == nil {
+		invalidParams.Add(request.NewErrParamRequired("Policy"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetPolicy sets the Policy field's value.
+func (s *PutResourcePolicyInput) SetPolicy(v aws.JSONValue) *PutResourcePolicyInput {
+	s.Policy = v
+	return s
+}
+
+// SetRegistryName sets the RegistryName field's value.
+func (s *PutResourcePolicyInput) SetRegistryName(v string) *PutResourcePolicyInput {
+	s.RegistryName = &v
+	return s
+}
+
+// SetRevisionId sets the RevisionId field's value.
+func (s *PutResourcePolicyInput) SetRevisionId(v string) *PutResourcePolicyInput {
+	s.RevisionId = &v
+	return s
+}
+
+type PutResourcePolicyOutput struct {
+	_ struct{} `type:"structure"`
+
+	Policy aws.JSONValue `type:"jsonvalue"`
+
+	RevisionId *string `type:"string"`
+}
+
+// String returns the string representation
+func (s PutResourcePolicyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutResourcePolicyOutput) GoString() string {
+	return s.String()
+}
+
+// SetPolicy sets the Policy field's value.
+func (s *PutResourcePolicyOutput) SetPolicy(v aws.JSONValue) *PutResourcePolicyOutput {
+	s.Policy = v
+	return s
+}
+
+// SetRevisionId sets the RevisionId field's value.
+func (s *PutResourcePolicyOutput) SetRevisionId(v string) *PutResourcePolicyOutput {
+	s.RevisionId = &v
+	return s
+}
+
 type RegistrySummary struct {
 	_ struct{} `type:"structure"`
 
@@ -5252,6 +5706,8 @@ type SchemaVersionSummary struct {
 
 	// The version number of the schema.
 	SchemaVersion *string `type:"string"`
+
+	Type *string `type:"string"`
 }
 
 // String returns the string representation
@@ -5279,6 +5735,12 @@ func (s *SchemaVersionSummary) SetSchemaName(v string) *SchemaVersionSummary {
 // SetSchemaVersion sets the SchemaVersion field's value.
 func (s *SchemaVersionSummary) SetSchemaVersion(v string) *SchemaVersionSummary {
 	s.SchemaVersion = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *SchemaVersionSummary) SetType(v string) *SchemaVersionSummary {
+	s.Type = &v
 	return s
 }
 
@@ -5335,10 +5797,13 @@ func (s *SearchSchemaSummary) SetSchemaVersions(v []*SearchSchemaVersionSummary)
 type SearchSchemaVersionSummary struct {
 	_ struct{} `type:"structure"`
 
+	// The date the schema version was created.
 	CreatedDate *time.Time `type:"timestamp" timestampFormat:"iso8601"`
 
 	// The version number of the schema
 	SchemaVersion *string `type:"string"`
+
+	Type *string `type:"string"`
 }
 
 // String returns the string representation
@@ -5360,6 +5825,12 @@ func (s *SearchSchemaVersionSummary) SetCreatedDate(v time.Time) *SearchSchemaVe
 // SetSchemaVersion sets the SchemaVersion field's value.
 func (s *SearchSchemaVersionSummary) SetSchemaVersion(v string) *SearchSchemaVersionSummary {
 	s.SchemaVersion = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *SearchSchemaVersionSummary) SetType(v string) *SearchSchemaVersionSummary {
+	s.Type = &v
 	return s
 }
 
@@ -5461,8 +5932,8 @@ func (s *SearchSchemasOutput) SetSchemas(v []*SearchSchemaSummary) *SearchSchema
 }
 
 type ServiceUnavailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -5481,17 +5952,17 @@ func (s ServiceUnavailableException) GoString() string {
 
 func newErrorServiceUnavailableException(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailableException) Code() string {
+func (s *ServiceUnavailableException) Code() string {
 	return "ServiceUnavailableException"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailableException) Message() string {
+func (s *ServiceUnavailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5499,22 +5970,22 @@ func (s ServiceUnavailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailableException) OrigErr() error {
+func (s *ServiceUnavailableException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailableException) Error() string {
+func (s *ServiceUnavailableException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type StartDiscovererInput struct {
@@ -5723,8 +6194,8 @@ func (s TagResourceOutput) GoString() string {
 }
 
 type TooManyRequestsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -5743,17 +6214,17 @@ func (s TooManyRequestsException) GoString() string {
 
 func newErrorTooManyRequestsException(v protocol.ResponseMetadata) error {
 	return &TooManyRequestsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyRequestsException) Code() string {
+func (s *TooManyRequestsException) Code() string {
 	return "TooManyRequestsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyRequestsException) Message() string {
+func (s *TooManyRequestsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5761,27 +6232,27 @@ func (s TooManyRequestsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyRequestsException) OrigErr() error {
+func (s *TooManyRequestsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyRequestsException) Error() string {
+func (s *TooManyRequestsException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyRequestsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyRequestsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyRequestsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyRequestsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UnauthorizedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -5800,17 +6271,17 @@ func (s UnauthorizedException) GoString() string {
 
 func newErrorUnauthorizedException(v protocol.ResponseMetadata) error {
 	return &UnauthorizedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnauthorizedException) Code() string {
+func (s *UnauthorizedException) Code() string {
 	return "UnauthorizedException"
 }
 
 // Message returns the exception's message.
-func (s UnauthorizedException) Message() string {
+func (s *UnauthorizedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5818,75 +6289,22 @@ func (s UnauthorizedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnauthorizedException) OrigErr() error {
+func (s *UnauthorizedException) OrigErr() error {
 	return nil
 }
 
-func (s UnauthorizedException) Error() string {
+func (s *UnauthorizedException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnauthorizedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnauthorizedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnauthorizedException) RequestID() string {
-	return s.respMetadata.RequestID
-}
-
-type UnlockServiceLinkedRoleInput struct {
-	_ struct{} `type:"structure"`
-
-	// RoleArn is a required field
-	RoleArn *string `min:"1" type:"string" required:"true"`
-}
-
-// String returns the string representation
-func (s UnlockServiceLinkedRoleInput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation
-func (s UnlockServiceLinkedRoleInput) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *UnlockServiceLinkedRoleInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "UnlockServiceLinkedRoleInput"}
-	if s.RoleArn == nil {
-		invalidParams.Add(request.NewErrParamRequired("RoleArn"))
-	}
-	if s.RoleArn != nil && len(*s.RoleArn) < 1 {
-		invalidParams.Add(request.NewErrParamMinLen("RoleArn", 1))
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetRoleArn sets the RoleArn field's value.
-func (s *UnlockServiceLinkedRoleInput) SetRoleArn(v string) *UnlockServiceLinkedRoleInput {
-	s.RoleArn = &v
-	return s
-}
-
-type UnlockServiceLinkedRoleOutput struct {
-	_ struct{} `type:"structure"`
-}
-
-// String returns the string representation
-func (s UnlockServiceLinkedRoleOutput) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation
-func (s UnlockServiceLinkedRoleOutput) GoString() string {
-	return s.String()
+func (s *UnauthorizedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
@@ -6337,6 +6755,15 @@ const (
 	CodeGenerationStatusCreateFailed = "CREATE_FAILED"
 )
 
+// CodeGenerationStatus_Values returns all elements of the CodeGenerationStatus enum
+func CodeGenerationStatus_Values() []string {
+	return []string{
+		CodeGenerationStatusCreateInProgress,
+		CodeGenerationStatusCreateComplete,
+		CodeGenerationStatusCreateFailed,
+	}
+}
+
 const (
 	// DiscovererStateStarted is a DiscovererState enum value
 	DiscovererStateStarted = "STARTED"
@@ -6345,7 +6772,22 @@ const (
 	DiscovererStateStopped = "STOPPED"
 )
 
+// DiscovererState_Values returns all elements of the DiscovererState enum
+func DiscovererState_Values() []string {
+	return []string{
+		DiscovererStateStarted,
+		DiscovererStateStopped,
+	}
+}
+
 const (
 	// TypeOpenApi3 is a Type enum value
 	TypeOpenApi3 = "OpenApi3"
 )
+
+// Type_Values returns all elements of the Type enum
+func Type_Values() []string {
+	return []string{
+		TypeOpenApi3,
+	}
+}
