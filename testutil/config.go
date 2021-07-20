@@ -251,6 +251,8 @@ func MockConfig() *evergreen.Settings {
 					Region: "region",
 					ECS: evergreen.ECSConfig{
 						TaskDefinitionPrefix: "ecs_prefix",
+						TaskRole:             "task_role",
+						ExecutionRole:        "execution_role",
 						Clusters: []evergreen.ECSClusterConfig{
 							{
 								Name:     "cluster_name",

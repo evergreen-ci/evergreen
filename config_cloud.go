@@ -136,6 +136,8 @@ func (c *AWSPodConfig) Validate() error {
 type ECSConfig struct {
 	// TaskDefinitionPrefix is the prefix for the task definition families.
 	TaskDefinitionPrefix string `bson:"task_definition_prefix,omitempty" json:"task_definition_prefix,omitempty" yaml:"task_definition_prefix,omitempty"`
+	TaskRole             string `bson:"task_role,omitempty" json:"task_role,omitempty" yaml:"task_role,omitempty"`
+	ExecutionRole        string `bson:"execution_role,omitempty" json:"execution_role,omitempty" yaml:"execution_role,omitempty"`
 	// Clusters specify the configuration of each particular ECS cluster.
 	Clusters []ECSClusterConfig `bson:"clusters,omitempty" json:"clusters,omitempty" yaml:"clusters,omitempty"`
 }
