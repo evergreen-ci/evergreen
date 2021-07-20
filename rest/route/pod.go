@@ -160,7 +160,7 @@ func validateCreatePod(ctx context.Context, apiPod *model.APICreatePod, resource
 		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod"))
 	}
 
-	p, ok := i.(*pod.Pod)
+	p, ok := i.(pod.Pod)
 	if !ok {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -176,5 +176,5 @@ func validateCreatePod(ctx context.Context, apiPod *model.APICreatePod, resource
 		})
 	}
 
-	return p, nil
+	return &p, nil
 }

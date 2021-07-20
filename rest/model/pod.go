@@ -41,6 +41,9 @@ type APICreatePod struct {
 
 // fromAPIEnvVars converts a slice of APIPodEnvVars to a map of environment variables and a map of secrets.
 func fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]string, secrets map[string]string) {
+	envVars = make(map[string]string)
+	secrets = make(map[string]string)
+
 	for _, envVar := range api {
 		if envVar.SecretOpts == nil {
 			envVars[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)

@@ -1,12 +1,15 @@
 package route
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -157,6 +160,112 @@ func TestPodAgentCedarConfig(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r, s)
+		})
+	}
+}
+
+func TestPutPod(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podIDPutHandler){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+			copied := ph.Factory()
+			assert.NotZero(t, copied)
+			_, ok := copied.(*podIDPutHandler)
+			assert.True(t, ok)
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+			json := []byte(`{
+				"memory": 128,
+				"cpu": 128,
+				"image": "image",
+				"env_vars": [{
+					"name": "env_name",
+					"value": "env_val"
+				}],
+				"platform": "linux",
+				"secret": "secret"
+			}`)
+			req, err := http.NewRequest(http.MethodPut, "https://example.com/rest/v2/pods/123abc", bytes.NewBuffer(json))
+			require.NoError(t, err)
+			require.NoError(t, ph.Parse(ctx, req))
+		},
+		"ParseSucceedsWithSecrets": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+			json := []byte(`{
+				"memory": 128,
+				"cpu": 128,
+				"image": "image",
+				"env_vars": [{
+					"secret_opts": {
+						"name": "name",
+						"value": "value
+					}
+				}],
+				"platform": "linux",
+				"secret": "secret"
+			}`)
+			req, err := http.NewRequest(http.MethodPut, "https://example.com/rest/v2/pods/123abc", bytes.NewBuffer(json))
+			require.NoError(t, err)
+			require.NoError(t, ph.Parse(ctx, req))
+		},
+		"RunSucceedsWithValidInput": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+			json := []byte(`{
+					"memory": 128,
+					"cpu": 128,
+					"image": "image",
+					"env_vars": [{
+						"name": "env_name",
+						"value": "env_val"
+					}],
+					"platform": "linux",
+					"secret": "secret"
+				}`)
+			ph.podID = "pod4"
+			ph.body = json
+
+			resp := ph.Run(ctx)
+			require.NotNil(t, resp.Data())
+			assert.Equal(t, http.StatusCreated, resp.Status())
+		},
+		"RunFailsWithInvalidInput": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+			json := []byte(`{
+				"memory": "",
+				"cpu": 128,
+				"image": "image",
+				"env_vars": [{
+					"name": "env_name",
+					"value": "env_val"
+				}],
+				"platform": "linux",
+				"secret": "secret"
+			}`)
+			ph.podID = "pod4"
+			ph.body = json
+
+			resp := ph.Run(ctx)
+			require.NotNil(t, resp.Data())
+			assert.Equal(t, http.StatusInternalServerError, resp.Status())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			sc := &data.MockConnector{
+				MockPodConnector: data.MockPodConnector{
+					CachedPods: []pod.Pod{
+						{
+							ID: "pod1",
+						},
+						{
+							ID: "pod2",
+						},
+					},
+				},
+			}
+
+			p := makePutPod(sc)
+			require.NotZero(t, p)
+
+			tCase(ctx, t, p.(*podIDPutHandler))
 		})
 	}
 }
