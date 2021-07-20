@@ -3,7 +3,8 @@ package event
 import (
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 func init() {
@@ -27,7 +28,7 @@ type podData struct {
 }
 
 // LogPodEvent logs an event for a pod to the event log.
-func LogPodEvent(id string, kind PodEventType, data podData) error {
+func LogPodEvent(id string, kind PodEventType, data podData) {
 	e := EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceId:   id,
@@ -38,16 +39,20 @@ func LogPodEvent(id string, kind PodEventType, data podData) error {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&e); err != nil {
-		return errors.Wrap(err, "logging pod event")
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "failed to log pod event",
+			"pod":        id,
+			"event_type": kind,
+			"data":       data,
+			"source":     "event-log-fail",
+		}))
 	}
-
-	return nil
 }
 
 // LogPodStatusChanged logs an event indicating that the pod's status has been
 // updated.
-func LogPodStatusChanged(id, oldStatus, newStatus string) error {
-	return LogPodEvent(id, EventPodStatusChange, podData{
+func LogPodStatusChanged(id, oldStatus, newStatus string) {
+	LogPodEvent(id, EventPodStatusChange, podData{
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
 	})

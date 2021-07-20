@@ -14,7 +14,7 @@ func TestPodEvents(t *testing.T) {
 			id := "pod_id"
 			oldStatus := "initializing"
 			newStatus := "starting"
-			require.NoError(t, LogPodStatusChanged(id, oldStatus, newStatus))
+			LogPodStatusChanged(id, oldStatus, newStatus)
 
 			events, err := Find(AllLogCollection, MostRecentPodEvents(id, 10))
 			require.NoError(t, err)

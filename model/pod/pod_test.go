@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,6 +102,21 @@ func TestRemove(t *testing.T) {
 }
 
 func TestUpdateStatus(t *testing.T) {
+	checkStatus := func(t *testing.T, p Pod) {
+		dbPod, err := FindOneByID(p.ID)
+		require.NoError(t, err)
+		require.NotZero(t, dbPod)
+		assert.Equal(t, p.Status, dbPod.Status)
+
+	}
+	checkEventLog := func(t *testing.T, p Pod) {
+		events, err := event.Find(event.AllLogCollection, event.MostRecentPodEvents(p.ID, 10))
+		require.NoError(t, err)
+		require.Len(t, events, 1)
+		assert.Equal(t, p.ID, events[0].ResourceId)
+		assert.Equal(t, event.ResourceTypePod, events[0].ResourceType)
+		assert.Equal(t, string(event.EventPodStatusChange), events[0].EventType)
+	}
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
 		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
@@ -108,10 +124,8 @@ func TestUpdateStatus(t *testing.T) {
 			require.NoError(t, p.UpdateStatus(InitializingStatus))
 			assert.Equal(t, InitializingStatus, p.Status)
 
-			dbPod, err := FindOneByID(p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Equal(t, p.Status, dbPod.Status)
+			checkStatus(t, p)
+			checkEventLog(t, p)
 		},
 		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
@@ -119,10 +133,8 @@ func TestUpdateStatus(t *testing.T) {
 			require.NoError(t, p.UpdateStatus(StartingStatus))
 			assert.Equal(t, StartingStatus, p.Status)
 
-			dbPod, err := FindOneByID(p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Equal(t, p.Status, dbPod.Status)
+			checkStatus(t, p)
+			checkEventLog(t, p)
 		},
 		"SucceedsWithRunningStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
@@ -130,10 +142,8 @@ func TestUpdateStatus(t *testing.T) {
 			require.NoError(t, p.UpdateStatus(RunningStatus))
 			assert.Equal(t, RunningStatus, p.Status)
 
-			dbPod, err := FindOneByID(p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Equal(t, p.Status, dbPod.Status)
+			checkStatus(t, p)
+			checkEventLog(t, p)
 		},
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
@@ -141,10 +151,8 @@ func TestUpdateStatus(t *testing.T) {
 			require.NoError(t, p.UpdateStatus(TerminatedStatus))
 			assert.Equal(t, TerminatedStatus, p.Status)
 
-			dbPod, err := FindOneByID(p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Equal(t, p.Status, dbPod.Status)
+			checkStatus(t, p)
+			checkEventLog(t, p)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
 			assert.Error(t, p.UpdateStatus(TerminatedStatus))
@@ -169,9 +177,9 @@ func TestUpdateStatus(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.Clear(Collection))
+			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 			defer func() {
-				assert.NoError(t, db.Clear(Collection))
+				assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 			}()
 			tCase(t, Pod{
 				ID:     "id",
