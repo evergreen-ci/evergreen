@@ -10,13 +10,13 @@ import (
 
 // APISecretOpts is the model for secrets in a container.
 type APISecretOpts struct {
-	Name  *string `json:"name"` // 
+	Name  *string `json:"name"`
 	Value *string `json:"value"`
 }
 
 // APIPodEnvVar is the model for environment variables in a container.
 type APIPodEnvVar struct {
-	Name       *string        `json:"name"` // 
+	Name       *string        `json:"name"`
 	Value      *string        `json:"value"`
 	SecretOpts *APISecretOpts `json:"secret_opts"`
 }
@@ -33,7 +33,7 @@ type APICreatePod struct {
 	Name     *string         `json:"name"`
 	Memory   *int            `json:"memory"`
 	CPU      *int            `json:"cpu"`
-	Image    *string         `json:"image"` //
+	Image    *string         `json:"image"`
 	EnvVars  []*APIPodEnvVar `json:"env_vars"`
 	Platform *string         `json:"platform"`
 	Secret   *string         `json:"secret"`
