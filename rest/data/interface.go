@@ -297,7 +297,7 @@ type Connector interface {
 
 	CheckHostSecret(string, *http.Request) (int, error)
 
-	// CreatePod is a method to insert a given pod.
+	// CreatePod creates a new pod and returns the result of creating the pod.
 	CreatePod(restModel.APICreatePod) (string, error)
 	// CheckPodSecret checks that the ID and secret match the server's
 	// stored credentials for the pod.

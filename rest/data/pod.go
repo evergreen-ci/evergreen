@@ -14,9 +14,9 @@ import (
 // interactions with the database.
 type DBPodConnector struct{}
 
-// CreatePod inserts the given pod.Pod.
+// CreatePod creates a new pod from the given REST model and returns its ID.
 func (c *DBPodConnector) CreatePod(p restModel.APICreatePod) (string, error) {
-	podDB, err := validatePod(p)
+	podDB, err := translatePod(p)
 	if err != nil {
 		return "", err
 	}
@@ -54,19 +54,11 @@ type MockPodConnector struct {
 }
 
 func (c *MockPodConnector) CreatePod(apiPod restModel.APICreatePod) (string, error) {
-	for _, p := range c.CachedPods {
-		if p.ID == *apiPod.Name {
-			return "", gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("duplicate pod with id '%s' was not inserted", *apiPod.Name),
-			}
-		}
-	}
-
-	podDB, err := validatePod(apiPod)
+	podDB, err := translatePod(apiPod)
 	if err != nil {
 		return "", err
 	}
+
 	c.CachedPods = append(c.CachedPods, *podDB)
 
 	return podDB.ID, nil
@@ -84,32 +76,7 @@ func (c *MockPodConnector) CheckPodSecret(id, secret string) error {
 	return errors.New("pod does not exist")
 }
 
-func validatePod(p restModel.APICreatePod) (*pod.Pod, error) {
-	if p.Image == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Invalid API input: missing image"),
-		}
-	}
-
-	for _, envVar := range p.EnvVars {
-		if envVar.SecretOpts == nil {
-			if envVar.Name == nil {
-				return nil, gimlet.ErrorResponse{
-					StatusCode: http.StatusBadRequest,
-					Message:    fmt.Sprintf("Invalid API input: missing environment variable name"),
-				}
-			}
-		} else {
-			if envVar.SecretOpts.Name == nil {
-				return nil, gimlet.ErrorResponse{
-					StatusCode: http.StatusBadRequest,
-					Message:    fmt.Sprintf("Invalid API input: missing secret name"),
-				}
-			}
-		}
-	}
-
+func translatePod(p restModel.APICreatePod) (*pod.Pod, error) {
 	i, err := p.ToService()
 	if err != nil {
 		return nil, gimlet.ErrorResponse{

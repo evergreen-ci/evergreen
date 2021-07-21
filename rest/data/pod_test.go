@@ -3,6 +3,7 @@ package data
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -19,6 +20,10 @@ func TestPodConnectorSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
+func (s *podConnectorSuite) SetupTest() {
+	s.NoError(db.ClearCollections(pod.Collection))
+}
+
 func (s *podConnectorSuite) TestCreatePod() {
 	p := restModel.APICreatePod{
 		Name:   utility.ToStringPtr("name"),
@@ -27,14 +32,14 @@ func (s *podConnectorSuite) TestCreatePod() {
 		Image:  utility.ToStringPtr("image"),
 		EnvVars: []*restModel.APIPodEnvVar{
 			{
-				Name:  utility.ToStringPtr("env_name"),
-				Value: utility.ToStringPtr("env_value"),
+				Name:   utility.ToStringPtr("env_name"),
+				Value:  utility.ToStringPtr("env_value"),
+				Secret: utility.ToBoolPtr(false),
 			},
 			{
-				SecretOpts: &restModel.APISecretOpts{
-					Name:  utility.ToStringPtr("secret_name"),
-					Value: utility.ToStringPtr("secret_value"),
-				},
+				Name:   utility.ToStringPtr("secret_name"),
+				Value:  utility.ToStringPtr("secret_value"),
+				Secret: utility.ToBoolPtr(true),
 			},
 		},
 		Platform: utility.ToStringPtr("linux"),
@@ -44,10 +49,10 @@ func (s *podConnectorSuite) TestCreatePod() {
 	s.Require().NoError(err)
 	s.Require().NotZero(id)
 
-	p = restModel.APICreatePod{}
-	id, err = s.conn.CreatePod(p)
-	s.Require().Error(err)
-	s.Require().Zero(id)
+	podDB, err := pod.FindOneByID(id)
+	s.Require().NoError(err)
+	s.Assert().Equal("secret", podDB.Secret)
+	s.Assert().Equal("env_value", podDB.TaskContainerCreationOpts.EnvVars["env_name"])
 }
 
 func (s *podConnectorSuite) TestCheckPodSecret() {
@@ -63,4 +68,8 @@ func (s *podConnectorSuite) TestCheckPodSecret() {
 	s.Error(s.conn.CheckPodSecret("id", "bad_secret"))
 	s.Error(s.conn.CheckPodSecret("", "secret"))
 	s.Error(s.conn.CheckPodSecret("bad_id", "secret"))
+}
+
+func (s *podConnectorSuite) TearDownTest() {
+	s.NoError(db.ClearCollections(pod.Collection))
 }

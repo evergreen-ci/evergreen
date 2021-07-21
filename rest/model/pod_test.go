@@ -17,18 +17,19 @@ func TestPodToService(t *testing.T) {
 		Image:  utility.ToStringPtr("image"),
 		EnvVars: []*APIPodEnvVar{
 			{
-				Name:  utility.ToStringPtr("name"),
-				Value: utility.ToStringPtr("value"),
+				Name:   utility.ToStringPtr("name"),
+				Value:  utility.ToStringPtr("value"),
+				Secret: utility.ToBoolPtr(false),
 			},
 			{
-				Name:  utility.ToStringPtr("name1"),
-				Value: utility.ToStringPtr("value1"),
+				Name:   utility.ToStringPtr("name1"),
+				Value:  utility.ToStringPtr("value1"),
+				Secret: utility.ToBoolPtr(false),
 			},
 			{
-				SecretOpts: &APISecretOpts{
-					Name:  utility.ToStringPtr("secret_name"),
-					Value: utility.ToStringPtr("secret_value"),
-				},
+				Name:   utility.ToStringPtr("secret_name"),
+				Value:  utility.ToStringPtr("secret_value"),
+				Secret: utility.ToBoolPtr(true),
 			},
 		},
 		Platform: utility.ToStringPtr("linux"),
@@ -42,15 +43,13 @@ func TestPodToService(t *testing.T) {
 	require.True(t, ok)
 
 	assert.Equal(t, utility.FromStringPtr(apiPod.Secret), p.Secret)
-	assert.Equal(t, apiPod.Image, p.TaskContainerCreationOpts.Image)
+	assert.Equal(t, utility.FromStringPtr(apiPod.Image), p.TaskContainerCreationOpts.Image)
 	assert.Equal(t, utility.FromIntPtr(apiPod.Memory), p.TaskContainerCreationOpts.MemoryMB)
 	assert.Equal(t, utility.FromIntPtr(apiPod.CPU), p.TaskContainerCreationOpts.CPU)
 	assert.Equal(t, utility.FromStringPtr(apiPod.Platform), string(p.TaskContainerCreationOpts.Platform))
 	assert.Equal(t, utility.FromStringPtr(apiPod.Secret), p.Secret)
-	assert.Len(t, apiPod.EnvVars, 3)
 	assert.Len(t, p.TaskContainerCreationOpts.EnvVars, 2)
 	assert.Len(t, p.TaskContainerCreationOpts.EnvSecrets, 1)
-	assert.Equal(t, apiPod.EnvVars[0].Name, "name")
-	assert.Equal(t, p.TaskContainerCreationOpts.EnvVars["name1"], "value1")
-	assert.Equal(t, p.TaskContainerCreationOpts.EnvSecrets["secret_name"], "secret_value")
+	assert.Equal(t, "value1", p.TaskContainerCreationOpts.EnvVars["name1"])
+	assert.Equal(t, "secret_value", p.TaskContainerCreationOpts.EnvSecrets["secret_name"])
 }

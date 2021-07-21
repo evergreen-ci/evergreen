@@ -164,7 +164,7 @@ func TestPodAgentCedarConfig(t *testing.T) {
 	}
 }
 
-func TestPutPod(t *testing.T) {
+func TestPostPod(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podPostHandler){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			copied := ph.Factory()
@@ -179,7 +179,8 @@ func TestPutPod(t *testing.T) {
 				"image": "image",
 				"env_vars": [{
 					"name": "env_name",
-					"value": "env_val"
+					"value": "env_val",
+					"secret": false
 				}],
 				"platform": "linux",
 				"secret": "secret"
@@ -194,10 +195,9 @@ func TestPutPod(t *testing.T) {
 				"cpu": 128,
 				"image": "image",
 				"env_vars": [{
-					"secret_opts": {
-						"name": "name",
-						"value": "value
-					}
+					"name": "secret_name",
+					"value": "secret_val",
+					"secret": true
 				}],
 				"platform": "linux",
 				"secret": "secret"
@@ -206,32 +206,68 @@ func TestPutPod(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, ph.Parse(ctx, req))
 		},
+		"ParseFailsWithInvalidJSON": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
+			json := []byte(`{
+				"memory": 128,
+				"cpu": 128,,,
+				"image": "image",
+				"env_vars": [],
+				"platform": "linux",
+				"secret": "secret"
+			}`)
+			req, err := http.NewRequest(http.MethodPut, "https://example.com/rest/v2/pods/123abc", bytes.NewBuffer(json))
+			require.NoError(t, err)
+			require.Error(t, ph.Parse(ctx, req))
+		},
+		"ParseFailsWithMissingInput": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
+			json := []byte(`{
+				"cpu": 128,
+				"image": "image",
+				"env_vars": [],
+				"platform": "linux",
+				"secret": "secret"
+			}`)
+			req, err := http.NewRequest(http.MethodPut, "https://example.com/rest/v2/pods/123abc", bytes.NewBuffer(json))
+			require.NoError(t, err)
+			require.Error(t, ph.Parse(ctx, req))
+		},
+		"ParseFailsWithMissingEnvVarInput": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
+			json := []byte(`{
+				"cpu": 128,
+				"image": "image",
+				"env_vars": [{
+					"value": "secret_val",
+					"secret": true
+				}],
+				"platform": "linux",
+				"secret": "secret"
+			}`)
+			req, err := http.NewRequest(http.MethodPut, "https://example.com/rest/v2/pods/123abc", bytes.NewBuffer(json))
+			require.NoError(t, err)
+			require.Error(t, ph.Parse(ctx, req))
+		},
+		"ParseFailsWithInvalidInput": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
+			json := []byte(`{
+				"memory": -1,
+				"cpu": 128,
+				"image": "image",
+				"env_vars": [],
+				"platform": "linux",
+				"secret": "secret"
+			}`)
+			req, err := http.NewRequest(http.MethodPut, "https://example.com/rest/v2/pods/123abc", bytes.NewBuffer(json))
+			require.NoError(t, err)
+			require.Error(t, ph.Parse(ctx, req))
+		},
 		"RunSucceedsWithValidInput": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			json := []byte(`{
-					"memory": 128,
-					"cpu": 128,
-					"image": "image",
-					"env_vars": [{
-						"name": "env_name",
-						"value": "env_val"
-					}],
-					"platform": "linux",
-					"secret": "secret"
-				}`)
-			ph.body = json
-
-			resp := ph.Run(ctx)
-			require.NotNil(t, resp.Data())
-			assert.Equal(t, http.StatusCreated, resp.Status())
-		},
-		"RunFailsWithInvalidInput": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
-			json := []byte(`{
-				"memory": "",
+				"memory": 128,
 				"cpu": 128,
 				"image": "image",
 				"env_vars": [{
 					"name": "env_name",
-					"value": "env_val"
+					"value": "env_val",
+					"secret": false
 				}],
 				"platform": "linux",
 				"secret": "secret"
@@ -240,7 +276,7 @@ func TestPutPod(t *testing.T) {
 
 			resp := ph.Run(ctx)
 			require.NotNil(t, resp.Data())
-			assert.Equal(t, http.StatusInternalServerError, resp.Status())
+			assert.Equal(t, http.StatusCreated, resp.Status())
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
