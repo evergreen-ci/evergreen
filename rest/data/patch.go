@@ -306,8 +306,7 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 			allStatuses = append(allStatuses, cp.Status)
 		}
 
-		collectiveStatus := patch.GetCollectiveStatus(allStatuses)
-		patchDoc.Status = collectiveStatus
+		patchDoc.Status = patch.GetCollectiveStatus(allStatuses)
 	}
 
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
