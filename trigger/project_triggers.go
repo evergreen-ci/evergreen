@@ -193,7 +193,7 @@ func makeDownstreamProjectFromCommand(identifier, command, generateFile string) 
 		},
 	}
 	pp := &model.ParserProject{
-		Identifier: identifier,
+		Identifier: &identifier,
 	}
 
 	pp.AddTask(fullProject.Tasks[0].Name, fullProject.Tasks[0].Commands)

@@ -708,7 +708,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			return nil, errors.Wrap(err, "error translating intermediate project")
 		}
 	}
-	projectInfo.IntermediateProject.Id = v.Id
+	projectInfo.IntermediateProject.Id = &v.Id
 	projectInfo.IntermediateProject.CreateTime = v.CreateTime
 	v.Ignored = ignore
 	v.Activated = utility.FalsePtr()

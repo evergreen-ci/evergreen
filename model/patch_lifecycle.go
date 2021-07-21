@@ -282,7 +282,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			"Error marshaling patched project config from repository revision “%v”",
 			p.Githash)
 	}
-	intermediateProject.Id = p.Id.Hex()
+	hexId := p.Id.Hex()
+	intermediateProject.Id = &hexId
 
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {

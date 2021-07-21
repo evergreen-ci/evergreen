@@ -132,7 +132,7 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error creating config from generated config")
 	}
-	newPP.Id = v.Id
+	newPP.Id = &v.Id
 	p, err = TranslateProject(newPP)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error translating project")
@@ -170,9 +170,9 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 
 // update the parser project using the newest config number (if using legacy version config, this comes from version)
 func updateParserProject(v *Version, pp *ParserProject) error {
-	updateNum := pp.ConfigUpdateNumber + 1
+	updateNum := *pp.ConfigUpdateNumber + 1
 	// legacy: most likely a version for which no parser project exists
-	if pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
+	if *pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
 		updateNum = v.ConfigUpdateNumber + 1
 	}
 
