@@ -25,7 +25,7 @@ func TestInsertAndFindOneByID(t *testing.T) {
 			p := Pod{
 				ID:     "id",
 				Secret: "secret",
-				Status: RunningStatus,
+				Status: StatusRunning,
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
 					Image:    "alpine",
 					MemoryMB: 128,
@@ -105,8 +105,8 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(InitializingStatus))
-			assert.Equal(t, InitializingStatus, p.Status)
+			require.NoError(t, p.UpdateStatus(StatusInitializing))
+			assert.Equal(t, StatusInitializing, p.Status)
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -116,8 +116,8 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(StartingStatus))
-			assert.Equal(t, StartingStatus, p.Status)
+			require.NoError(t, p.UpdateStatus(StatusStarting))
+			assert.Equal(t, StatusStarting, p.Status)
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -127,8 +127,8 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithRunningStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(RunningStatus))
-			assert.Equal(t, RunningStatus, p.Status)
+			require.NoError(t, p.UpdateStatus(StatusRunning))
+			assert.Equal(t, StatusRunning, p.Status)
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -138,8 +138,8 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(TerminatedStatus))
-			assert.Equal(t, TerminatedStatus, p.Status)
+			require.NoError(t, p.UpdateStatus(StatusTerminated))
+			assert.Equal(t, StatusTerminated, p.Status)
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestUpdateStatus(t *testing.T) {
 			assert.Equal(t, p.Status, dbPod.Status)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
-			assert.Error(t, p.UpdateStatus(TerminatedStatus))
+			assert.Error(t, p.UpdateStatus(StatusTerminated))
 
 			dbPod, err := FindOneByID(p.ID)
 			assert.NoError(t, err)
@@ -157,15 +157,15 @@ func TestUpdateStatus(t *testing.T) {
 			require.NoError(t, p.Insert())
 
 			require.NoError(t, UpdateOne(ByID(p.ID), bson.M{
-				"$set": bson.M{StatusKey: InitializingStatus},
+				"$set": bson.M{StatusKey: StatusInitializing},
 			}))
 
-			assert.Error(t, p.UpdateStatus(TerminatedStatus))
+			assert.Error(t, p.UpdateStatus(StatusTerminated))
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Equal(t, InitializingStatus, dbPod.Status)
+			assert.Equal(t, StatusInitializing, dbPod.Status)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -175,7 +175,7 @@ func TestUpdateStatus(t *testing.T) {
 			}()
 			tCase(t, Pod{
 				ID:     "id",
-				Status: RunningStatus,
+				Status: StatusRunning,
 			})
 		})
 	}
