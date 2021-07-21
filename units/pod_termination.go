@@ -61,14 +61,13 @@ func makeTerminatePodJob() *terminatePodJob {
 // NewTerminatePodJob creates a job to terminate the given pod with the given
 // termination reason. Callers should populate the reason with as much context
 // as possible for why the pod is being terminated.
-func NewTerminatePodJob(p *pod.Pod, reason string, ts time.Time) amboy.Job {
+func NewTerminatePodJob(podID, reason string, ts time.Time) amboy.Job {
 	j := makeTerminatePodJob()
-	j.PodID = p.ID
+	j.PodID = podID
 	j.Reason = reason
-	j.pod = p
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", terminatePodJobName, p.ID), podLifecycleScope(p.ID)})
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", terminatePodJobName, podID), podLifecycleScope(podID)})
 	j.SetShouldApplyScopesOnEnqueue(true)
-	j.SetID(fmt.Sprintf("%s.%s.%s", terminatePodJobName, p.ID, ts.Format(TSFormat)))
+	j.SetID(fmt.Sprintf("%s.%s.%s", terminatePodJobName, podID, ts.Format(TSFormat)))
 
 	return j
 }
@@ -90,20 +89,20 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 	}
 
 	switch j.pod.Status {
-	case pod.InitializingStatus:
+	case pod.StatusInitializing:
 		grip.Info(message.Fields{
 			"message":                    "not deleting resources because pod has not initialized any yet",
 			"pod":                        j.PodID,
 			"termination_attempt_reason": j.Reason,
 			"job":                        j.ID(),
 		})
-	case pod.StartingStatus, pod.RunningStatus:
+	case pod.StatusStarting, pod.StatusRunning:
 		// TODO (EVG-15034): ensure deletion is idempotent.
 		if err := j.ecsPod.Delete(ctx); err != nil {
 			j.AddError(errors.Wrap(err, "deleting pod resources"))
 			return
 		}
-	case pod.TerminatedStatus:
+	case pod.StatusTerminated:
 		grip.Info(message.Fields{
 			"message":                    "pod is already terminated",
 			"pod":                        j.PodID,
@@ -113,7 +112,7 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.pod.UpdateStatus(pod.TerminatedStatus); err != nil {
+	if err := j.pod.UpdateStatus(pod.StatusTerminated); err != nil {
 		j.AddError(errors.Wrap(err, "marking pod as terminated"))
 	}
 }
@@ -138,7 +137,7 @@ func (j *terminatePodJob) populateIfUnset(ctx context.Context) error {
 		j.pod = p
 	}
 
-	if j.pod.Status == pod.InitializingStatus || j.pod.Status == pod.TerminatedStatus {
+	if j.pod.Status == pod.StatusInitializing || j.pod.Status == pod.StatusTerminated {
 		return nil
 	}
 

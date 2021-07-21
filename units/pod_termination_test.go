@@ -18,17 +18,14 @@ import (
 )
 
 func TestNewTerminatePodJob(t *testing.T) {
-	p := pod.Pod{
-		ID: "id",
-	}
+	podID := "id"
 	reason := "reason"
-	j, ok := NewTerminatePodJob(&p, reason, utility.RoundPartOfMinute(0)).(*terminatePodJob)
+	j, ok := NewTerminatePodJob(podID, reason, utility.RoundPartOfMinute(0)).(*terminatePodJob)
 	require.True(t, ok)
 
 	assert.NotZero(t, j.ID())
-	assert.Equal(t, j.Reason, reason)
-	assert.Equal(t, j.PodID, p.ID)
-	assert.NotZero(t, j.pod)
+	assert.Equal(t, reason, j.Reason)
+	assert.Equal(t, podID, j.PodID)
 }
 
 func TestTerminatePodJob(t *testing.T) {
@@ -84,11 +81,11 @@ func TestTerminatePodJob(t *testing.T) {
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.NotEqual(t, pod.TerminatedStatus, dbPod.Status)
+			assert.NotEqual(t, pod.StatusTerminated, dbPod.Status)
 		},
 		"FailsWhenPodStatusUpdateErrors": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
 			require.NoError(t, j.pod.Insert())
-			j.pod.Status = pod.InitializingStatus
+			j.pod.Status = pod.StatusInitializing
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
@@ -96,10 +93,10 @@ func TestTerminatePodJob(t *testing.T) {
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.NotEqual(t, pod.TerminatedStatus, j.pod.Status)
+			assert.NotEqual(t, pod.StatusTerminated, j.pod.Status)
 		},
 		"TerminatesWithoutDeletingResourcesForInitializingPod": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
-			j.pod.Status = pod.InitializingStatus
+			j.pod.Status = pod.StatusInitializing
 			require.NoError(t, j.pod.Insert())
 
 			j.Run(ctx)
@@ -108,10 +105,10 @@ func TestTerminatePodJob(t *testing.T) {
 			dbPod, err := pod.FindOneByID(j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Equal(t, pod.TerminatedStatus, dbPod.Status)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 		},
 		"NoopsforTerminatedPod": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
-			j.pod.Status = pod.TerminatedStatus
+			j.pod.Status = pod.StatusTerminated
 			require.NoError(t, j.pod.Insert())
 
 			j.Run(ctx)
@@ -120,7 +117,7 @@ func TestTerminatePodJob(t *testing.T) {
 			dbPod, err := pod.FindOneByID(j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Equal(t, pod.TerminatedStatus, dbPod.Status)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -144,12 +141,12 @@ func TestTerminatePodJob(t *testing.T) {
 
 			p := pod.Pod{
 				ID:     "id",
-				Status: pod.RunningStatus,
+				Status: pod.StatusRunning,
 				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
 					Image:    "image",
 					MemoryMB: 128,
 					CPU:      128,
-					Platform: evergreen.LinuxPodPlatform,
+					Platform: evergreen.PodPlatformLinux,
 					EnvSecrets: map[string]string{
 						"secret0": utility.RandomString(),
 						"secret1": utility.RandomString(),
@@ -157,8 +154,9 @@ func TestTerminatePodJob(t *testing.T) {
 				},
 			}
 
-			j, ok := NewTerminatePodJob(&p, "reason", utility.RoundPartOfMinute(0)).(*terminatePodJob)
+			j, ok := NewTerminatePodJob(p.ID, "reason", utility.RoundPartOfMinute(0)).(*terminatePodJob)
 			require.True(t, ok)
+			j.pod = &p
 			j.smClient = &mock.SecretsManagerClient{}
 			defer func() {
 				assert.NoError(t, j.smClient.Close(ctx))

@@ -7,6 +7,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -157,6 +160,46 @@ func TestPodAgentCedarConfig(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r, s)
+		})
+	}
+}
+
+func TestPodAgentNextTask(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env *mock.Environment){
+		"ParseSetsPodID": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env *mock.Environment) {
+			r, err := http.NewRequest(http.MethodGet, "/url", nil)
+			require.NoError(t, err)
+			podID := "some_pod_id"
+			r = gimlet.SetURLVars(r, map[string]string{"pod_id": podID})
+			require.NoError(t, rh.Parse(ctx, r))
+			assert.Equal(t, podID, rh.podID)
+		},
+		"ParseFailsWithoutPodID": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env *mock.Environment) {
+			r, err := http.NewRequest(http.MethodGet, "/url", nil)
+			require.NoError(t, err)
+			assert.Error(t, rh.Parse(ctx, r))
+			assert.Zero(t, rh.podID)
+		},
+		"RunEnqueuesTerminationJob": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env *mock.Environment) {
+			rh.podID = "some_pod_id"
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			stats := env.RemoteQueue().Stats(ctx)
+			assert.Equal(t, 1, stats.Total)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			rh, ok := makePodAgentNextTask(env, &data.DBConnector{}).(*podAgentNextTask)
+			require.True(t, ok)
+
+			tCase(ctx, t, rh, env)
 		})
 	}
 }
