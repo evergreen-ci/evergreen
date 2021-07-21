@@ -165,14 +165,14 @@ func TestPodAgentCedarConfig(t *testing.T) {
 }
 
 func TestPutPod(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podIDPutHandler){
-		"FactorySucceeds": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podPostHandler){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			copied := ph.Factory()
 			assert.NotZero(t, copied)
-			_, ok := copied.(*podIDPutHandler)
+			_, ok := copied.(*podPostHandler)
 			assert.True(t, ok)
 		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			json := []byte(`{
 				"memory": 128,
 				"cpu": 128,
@@ -188,7 +188,7 @@ func TestPutPod(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, ph.Parse(ctx, req))
 		},
-		"ParseSucceedsWithSecrets": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+		"ParseSucceedsWithSecrets": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			json := []byte(`{
 				"memory": 128,
 				"cpu": 128,
@@ -206,7 +206,7 @@ func TestPutPod(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, ph.Parse(ctx, req))
 		},
-		"RunSucceedsWithValidInput": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+		"RunSucceedsWithValidInput": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			json := []byte(`{
 					"memory": 128,
 					"cpu": 128,
@@ -218,14 +218,13 @@ func TestPutPod(t *testing.T) {
 					"platform": "linux",
 					"secret": "secret"
 				}`)
-			ph.podID = "pod4"
 			ph.body = json
 
 			resp := ph.Run(ctx)
 			require.NotNil(t, resp.Data())
 			assert.Equal(t, http.StatusCreated, resp.Status())
 		},
-		"RunFailsWithInvalidInput": func(ctx context.Context, t *testing.T, ph *podIDPutHandler) {
+		"RunFailsWithInvalidInput": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			json := []byte(`{
 				"memory": "",
 				"cpu": 128,
@@ -237,7 +236,6 @@ func TestPutPod(t *testing.T) {
 				"platform": "linux",
 				"secret": "secret"
 			}`)
-			ph.podID = "pod4"
 			ph.body = json
 
 			resp := ph.Run(ctx)
@@ -262,10 +260,10 @@ func TestPutPod(t *testing.T) {
 				},
 			}
 
-			p := makePutPod(sc)
+			p := makePostPod(sc)
 			require.NotZero(t, p)
 
-			tCase(ctx, t, p.(*podIDPutHandler))
+			tCase(ctx, t, p.(*podPostHandler))
 		})
 	}
 }

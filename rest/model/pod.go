@@ -10,13 +10,13 @@ import (
 
 // APISecretOpts is the model for secrets in a container.
 type APISecretOpts struct {
-	Name  *string `json:"name"`
+	Name  *string `json:"name"` // 
 	Value *string `json:"value"`
 }
 
 // APIPodEnvVar is the model for environment variables in a container.
 type APIPodEnvVar struct {
-	Name       *string        `json:"name"`
+	Name       *string        `json:"name"` // 
 	Value      *string        `json:"value"`
 	SecretOpts *APISecretOpts `json:"secret_opts"`
 }
@@ -33,14 +33,18 @@ type APICreatePod struct {
 	Name     *string         `json:"name"`
 	Memory   *int            `json:"memory"`
 	CPU      *int            `json:"cpu"`
-	Image    *string         `json:"image"`
+	Image    *string         `json:"image"` //
 	EnvVars  []*APIPodEnvVar `json:"env_vars"`
 	Platform *string         `json:"platform"`
 	Secret   *string         `json:"secret"`
 }
 
+type APICreatePodResponse struct {
+	ID string `json:"id"`
+}
+
 // fromAPIEnvVars converts a slice of APIPodEnvVars to a map of environment variables and a map of secrets.
-func fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]string, secrets map[string]string) {
+func (p *APICreatePod) fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]string, secrets map[string]string) {
 	envVars = make(map[string]string)
 	secrets = make(map[string]string)
 
@@ -57,7 +61,7 @@ func fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]string, secrets map
 
 // ToService returns a service layer pod.Pod using the data from APIPod.
 func (p *APICreatePod) ToService() (interface{}, error) {
-	envVars, secrets := fromAPIEnvVars(p.EnvVars)
+	envVars, secrets := p.fromAPIEnvVars(p.EnvVars)
 
 	return pod.Pod{
 		ID:     utility.RandomString(),

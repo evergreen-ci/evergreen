@@ -3,18 +3,15 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -92,30 +89,27 @@ func (h *podAgentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////
 //
-// PUT /rest/v2/pods/{pod_id}
+// POST /rest/v2/pods
 
-type podIDPutHandler struct {
-	podID string
-	body  []byte
-	sc    data.Connector
+type podPostHandler struct {
+	body []byte
+	sc   data.Connector
 }
 
-func makePutPod(sc data.Connector) gimlet.RouteHandler {
-	return &podIDPutHandler{
+func makePostPod(sc data.Connector) gimlet.RouteHandler {
+	return &podPostHandler{
 		sc: sc,
 	}
 }
 
-func (h *podIDPutHandler) Factory() gimlet.RouteHandler {
-	return &podIDPutHandler{
+func (h *podPostHandler) Factory() gimlet.RouteHandler {
+	return &podPostHandler{
 		sc: h.sc,
 	}
 }
 
 // Parse fetches the podID and JSON payload from the HTTP request.
-func (h *podIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.podID = gimlet.GetVars(r)["pod_id"]
-
+func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
@@ -128,53 +122,23 @@ func (h *podIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 // Run creates a new resource based on the Request-URI and JSON payload.
-func (h *podIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	apiPod := &model.APICreatePod{
-		Name: utility.ToStringPtr(h.podID),
-	}
-	if err := json.Unmarshal(h.body, apiPod); err != nil {
+func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
+	apiPod := model.APICreatePod{}
+
+	if err := json.Unmarshal(h.body, &apiPod); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	newPod, respErr := validateCreatePod(ctx, apiPod, h.podID, true)
-	if respErr != nil {
-		return respErr
+	id, err := h.sc.CreatePod(apiPod)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Creating new pod"))
 	}
 
-	responder := gimlet.NewJSONResponse(struct{}{})
+	responder := gimlet.NewJSONResponse(model.APICreatePodResponse{ID: id})
+
 	if err := responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
 	}
-	if err := h.sc.CreatePod(newPod); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() pod with pod id '%s", h.podID))
-	}
 
 	return responder
-}
-
-////////////////////////////////////////////////////////////////////////
-
-func validateCreatePod(ctx context.Context, apiPod *model.APICreatePod, resourceID string, isNewPod bool) (*pod.Pod, gimlet.Responder) {
-	i, err := apiPod.ToService()
-	if err != nil {
-		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod"))
-	}
-
-	p, ok := i.(pod.Pod)
-	if !ok {
-		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("Unexpected type %T for pod.Pod", i),
-		})
-	}
-
-	id := utility.FromStringPtr(apiPod.Name)
-	if resourceID != id {
-		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("A pod's name is immutable; cannot rename pod '%s'", resourceID),
-		})
-	}
-
-	return &p, nil
 }

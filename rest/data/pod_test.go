@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/pod"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -15,6 +17,37 @@ type podConnectorSuite struct {
 func TestPodConnectorSuite(t *testing.T) {
 	s := &podConnectorSuite{conn: &DBConnector{}}
 	suite.Run(t, s)
+}
+
+func (s *podConnectorSuite) TestCreatePod() {
+	p := restModel.APICreatePod{
+		Name:   utility.ToStringPtr("name"),
+		Memory: utility.ToIntPtr(128),
+		CPU:    utility.ToIntPtr(128),
+		Image:  utility.ToStringPtr("image"),
+		EnvVars: []*restModel.APIPodEnvVar{
+			{
+				Name:  utility.ToStringPtr("env_name"),
+				Value: utility.ToStringPtr("env_value"),
+			},
+			{
+				SecretOpts: &restModel.APISecretOpts{
+					Name:  utility.ToStringPtr("secret_name"),
+					Value: utility.ToStringPtr("secret_value"),
+				},
+			},
+		},
+		Platform: utility.ToStringPtr("linux"),
+		Secret:   utility.ToStringPtr("secret"),
+	}
+	id, err := s.conn.CreatePod(p)
+	s.Require().NoError(err)
+	s.Require().NotZero(id)
+
+	p = restModel.APICreatePod{}
+	id, err = s.conn.CreatePod(p)
+	s.Require().Error(err)
+	s.Require().Zero(id)
 }
 
 func (s *podConnectorSuite) TestCheckPodSecret() {
