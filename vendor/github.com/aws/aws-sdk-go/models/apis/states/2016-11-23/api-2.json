@@ -41,6 +41,7 @@
         {"shape":"InvalidDefinition"},
         {"shape":"InvalidName"},
         {"shape":"InvalidLoggingConfiguration"},
+        {"shape":"InvalidTracingConfiguration"},
         {"shape":"StateMachineAlreadyExists"},
         {"shape":"StateMachineDeleting"},
         {"shape":"StateMachineLimitExceeded"},
@@ -267,6 +268,24 @@
       ],
       "idempotent":true
     },
+    "StartSyncExecution":{
+      "name":"StartSyncExecution",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"StartSyncExecutionInput"},
+      "output":{"shape":"StartSyncExecutionOutput"},
+      "errors":[
+        {"shape":"InvalidArn"},
+        {"shape":"InvalidExecutionInput"},
+        {"shape":"InvalidName"},
+        {"shape":"StateMachineDoesNotExist"},
+        {"shape":"StateMachineDeleting"},
+        {"shape":"StateMachineTypeNotSupported"}
+      ],
+      "endpoint":{"hostPrefix":"sync-"}
+    },
     "StopExecution":{
       "name":"StopExecution",
       "http":{
@@ -319,6 +338,7 @@
         {"shape":"InvalidArn"},
         {"shape":"InvalidDefinition"},
         {"shape":"InvalidLoggingConfiguration"},
+        {"shape":"InvalidTracingConfiguration"},
         {"shape":"MissingRequiredParameter"},
         {"shape":"StateMachineDeleting"},
         {"shape":"StateMachineDoesNotExist"}
@@ -378,6 +398,7 @@
       "members":{
         "resource":{"shape":"Arn"},
         "input":{"shape":"SensitiveData"},
+        "inputDetails":{"shape":"HistoryEventExecutionDataDetails"},
         "timeoutInSeconds":{
           "shape":"TimeoutInSeconds",
           "box":true
@@ -397,7 +418,8 @@
     "ActivitySucceededEventDetails":{
       "type":"structure",
       "members":{
-        "output":{"shape":"SensitiveData"}
+        "output":{"shape":"SensitiveData"},
+        "outputDetails":{"shape":"HistoryEventExecutionDataDetails"}
       }
     },
     "ActivityTimedOutEventDetails":{
@@ -419,6 +441,27 @@
       "max":256,
       "min":1
     },
+    "BilledDuration":{
+      "type":"long",
+      "min":0
+    },
+    "BilledMemoryUsed":{
+      "type":"long",
+      "min":0
+    },
+    "BillingDetails":{
+      "type":"structure",
+      "members":{
+        "billedMemoryUsedInMB":{"shape":"BilledMemoryUsed"},
+        "billedDurationInMilliseconds":{"shape":"BilledDuration"}
+      }
+    },
+    "CloudWatchEventsExecutionDataDetails":{
+      "type":"structure",
+      "members":{
+        "included":{"shape":"includedDetails"}
+      }
+    },
     "CloudWatchLogsLogGroup":{
       "type":"structure",
       "members":{
@@ -427,7 +470,7 @@
     },
     "ConnectorParameters":{
       "type":"string",
-      "max":32768,
+      "max":262144,
       "min":0,
       "sensitive":true
     },
@@ -463,7 +506,8 @@
         "roleArn":{"shape":"Arn"},
         "type":{"shape":"StateMachineType"},
         "loggingConfiguration":{"shape":"LoggingConfiguration"},
-        "tags":{"shape":"TagList"}
+        "tags":{"shape":"TagList"},
+        "tracingConfiguration":{"shape":"TracingConfiguration"}
       }
     },
     "CreateStateMachineOutput":{
@@ -540,8 +584,7 @@
         "executionArn",
         "stateMachineArn",
         "status",
-        "startDate",
-        "input"
+        "startDate"
       ],
       "members":{
         "executionArn":{"shape":"Arn"},
@@ -551,7 +594,10 @@
         "startDate":{"shape":"Timestamp"},
         "stopDate":{"shape":"Timestamp"},
         "input":{"shape":"SensitiveData"},
-        "output":{"shape":"SensitiveData"}
+        "inputDetails":{"shape":"CloudWatchEventsExecutionDataDetails"},
+        "output":{"shape":"SensitiveData"},
+        "outputDetails":{"shape":"CloudWatchEventsExecutionDataDetails"},
+        "traceHeader":{"shape":"TraceHeader"}
       }
     },
     "DescribeStateMachineForExecutionInput":{
@@ -575,7 +621,9 @@
         "name":{"shape":"Name"},
         "definition":{"shape":"Definition"},
         "roleArn":{"shape":"Arn"},
-        "updateDate":{"shape":"Timestamp"}
+        "updateDate":{"shape":"Timestamp"},
+        "loggingConfiguration":{"shape":"LoggingConfiguration"},
+        "tracingConfiguration":{"shape":"TracingConfiguration"}
       }
     },
     "DescribeStateMachineInput":{
@@ -603,9 +651,11 @@
         "roleArn":{"shape":"Arn"},
         "type":{"shape":"StateMachineType"},
         "creationDate":{"shape":"Timestamp"},
-        "loggingConfiguration":{"shape":"LoggingConfiguration"}
+        "loggingConfiguration":{"shape":"LoggingConfiguration"},
+        "tracingConfiguration":{"shape":"TracingConfiguration"}
       }
     },
+    "Enabled":{"type":"boolean"},
     "ErrorMessage":{"type":"string"},
     "EventId":{"type":"long"},
     "ExecutionAbortedEventDetails":{
@@ -669,6 +719,7 @@
       "type":"structure",
       "members":{
         "input":{"shape":"SensitiveData"},
+        "inputDetails":{"shape":"HistoryEventExecutionDataDetails"},
         "roleArn":{"shape":"Arn"}
       }
     },
@@ -685,7 +736,8 @@
     "ExecutionSucceededEventDetails":{
       "type":"structure",
       "members":{
-        "output":{"shape":"SensitiveData"}
+        "output":{"shape":"SensitiveData"},
+        "outputDetails":{"shape":"HistoryEventExecutionDataDetails"}
       }
     },
     "ExecutionTimedOutEventDetails":{
@@ -717,7 +769,8 @@
         "executionArn":{"shape":"Arn"},
         "maxResults":{"shape":"PageSize"},
         "reverseOrder":{"shape":"ReverseOrder"},
-        "nextToken":{"shape":"PageToken"}
+        "nextToken":{"shape":"PageToken"},
+        "includeExecutionData":{"shape":"IncludeExecutionDataGetExecutionHistory"}
       }
     },
     "GetExecutionHistoryOutput":{
@@ -772,6 +825,12 @@
         "lambdaFunctionTimedOutEventDetails":{"shape":"LambdaFunctionTimedOutEventDetails"},
         "stateEnteredEventDetails":{"shape":"StateEnteredEventDetails"},
         "stateExitedEventDetails":{"shape":"StateExitedEventDetails"}
+      }
+    },
+    "HistoryEventExecutionDataDetails":{
+      "type":"structure",
+      "members":{
+        "truncated":{"shape":"truncated"}
       }
     },
     "HistoryEventList":{
@@ -843,6 +902,10 @@
       "max":256
     },
     "IncludeExecutionData":{"type":"boolean"},
+    "IncludeExecutionDataGetExecutionHistory":{
+      "type":"boolean",
+      "box":true
+    },
     "InvalidArn":{
       "type":"structure",
       "members":{
@@ -892,6 +955,13 @@
       },
       "exception":true
     },
+    "InvalidTracingConfiguration":{
+      "type":"structure",
+      "members":{
+        "message":{"shape":"ErrorMessage"}
+      },
+      "exception":true
+    },
     "LambdaFunctionFailedEventDetails":{
       "type":"structure",
       "members":{
@@ -912,6 +982,7 @@
       "members":{
         "resource":{"shape":"Arn"},
         "input":{"shape":"SensitiveData"},
+        "inputDetails":{"shape":"HistoryEventExecutionDataDetails"},
         "timeoutInSeconds":{
           "shape":"TimeoutInSeconds",
           "box":true
@@ -928,7 +999,8 @@
     "LambdaFunctionSucceededEventDetails":{
       "type":"structure",
       "members":{
-        "output":{"shape":"SensitiveData"}
+        "output":{"shape":"SensitiveData"},
+        "outputDetails":{"shape":"HistoryEventExecutionDataDetails"}
       }
     },
     "LambdaFunctionTimedOutEventDetails":{
@@ -1125,12 +1197,12 @@
     },
     "SensitiveData":{
       "type":"string",
-      "max":32768,
+      "max":262144,
       "sensitive":true
     },
     "SensitiveDataJobInput":{
       "type":"string",
-      "max":65536,
+      "max":262144,
       "sensitive":true
     },
     "SensitiveError":{
@@ -1145,7 +1217,8 @@
       "members":{
         "stateMachineArn":{"shape":"Arn"},
         "name":{"shape":"Name"},
-        "input":{"shape":"SensitiveData"}
+        "input":{"shape":"SensitiveData"},
+        "traceHeader":{"shape":"TraceHeader"}
       }
     },
     "StartExecutionOutput":{
@@ -1159,12 +1232,48 @@
         "startDate":{"shape":"Timestamp"}
       }
     },
+    "StartSyncExecutionInput":{
+      "type":"structure",
+      "required":["stateMachineArn"],
+      "members":{
+        "stateMachineArn":{"shape":"Arn"},
+        "name":{"shape":"Name"},
+        "input":{"shape":"SensitiveData"},
+        "traceHeader":{"shape":"TraceHeader"}
+      }
+    },
+    "StartSyncExecutionOutput":{
+      "type":"structure",
+      "required":[
+        "executionArn",
+        "startDate",
+        "stopDate",
+        "status"
+      ],
+      "members":{
+        "executionArn":{"shape":"Arn"},
+        "stateMachineArn":{"shape":"Arn"},
+        "name":{"shape":"Name"},
+        "startDate":{"shape":"Timestamp"},
+        "stopDate":{"shape":"Timestamp"},
+        "status":{"shape":"SyncExecutionStatus"},
+        "error":{"shape":"SensitiveError"},
+        "cause":{"shape":"SensitiveCause"},
+        "input":{"shape":"SensitiveData"},
+        "inputDetails":{"shape":"CloudWatchEventsExecutionDataDetails"},
+        "output":{"shape":"SensitiveData"},
+        "outputDetails":{"shape":"CloudWatchEventsExecutionDataDetails"},
+        "traceHeader":{"shape":"TraceHeader"},
+        "billingDetails":{"shape":"BillingDetails"}
+      }
+    },
     "StateEnteredEventDetails":{
       "type":"structure",
       "required":["name"],
       "members":{
         "name":{"shape":"Name"},
-        "input":{"shape":"SensitiveData"}
+        "input":{"shape":"SensitiveData"},
+        "inputDetails":{"shape":"HistoryEventExecutionDataDetails"}
       }
     },
     "StateExitedEventDetails":{
@@ -1172,7 +1281,8 @@
       "required":["name"],
       "members":{
         "name":{"shape":"Name"},
-        "output":{"shape":"SensitiveData"}
+        "output":{"shape":"SensitiveData"},
+        "outputDetails":{"shape":"HistoryEventExecutionDataDetails"}
       }
     },
     "StateMachineAlreadyExists":{
@@ -1259,6 +1369,14 @@
         "stopDate":{"shape":"Timestamp"}
       }
     },
+    "SyncExecutionStatus":{
+      "type":"string",
+      "enum":[
+        "SUCCEEDED",
+        "FAILED",
+        "TIMED_OUT"
+      ]
+    },
     "Tag":{
       "type":"structure",
       "members":{
@@ -1336,6 +1454,10 @@
         "timeoutInSeconds":{
           "shape":"TimeoutInSeconds",
           "box":true
+        },
+        "heartbeatInSeconds":{
+          "shape":"TimeoutInSeconds",
+          "box":true
         }
       }
     },
@@ -1385,7 +1507,8 @@
       "members":{
         "resourceType":{"shape":"Name"},
         "resource":{"shape":"Name"},
-        "output":{"shape":"SensitiveData"}
+        "output":{"shape":"SensitiveData"},
+        "outputDetails":{"shape":"HistoryEventExecutionDataDetails"}
       }
     },
     "TaskSucceededEventDetails":{
@@ -1397,7 +1520,8 @@
       "members":{
         "resourceType":{"shape":"Name"},
         "resource":{"shape":"Name"},
-        "output":{"shape":"SensitiveData"}
+        "output":{"shape":"SensitiveData"},
+        "outputDetails":{"shape":"HistoryEventExecutionDataDetails"}
       }
     },
     "TaskTimedOut":{
@@ -1435,6 +1559,18 @@
       },
       "exception":true
     },
+    "TraceHeader":{
+      "type":"string",
+      "max":256,
+      "min":0,
+      "pattern":"\\p{ASCII}*"
+    },
+    "TracingConfiguration":{
+      "type":"structure",
+      "members":{
+        "enabled":{"shape":"Enabled"}
+      }
+    },
     "UnsignedInteger":{
       "type":"integer",
       "min":0
@@ -1462,7 +1598,8 @@
         "stateMachineArn":{"shape":"Arn"},
         "definition":{"shape":"Definition"},
         "roleArn":{"shape":"Arn"},
-        "loggingConfiguration":{"shape":"LoggingConfiguration"}
+        "loggingConfiguration":{"shape":"LoggingConfiguration"},
+        "tracingConfiguration":{"shape":"TracingConfiguration"}
       }
     },
     "UpdateStateMachineOutput":{
@@ -1471,6 +1608,8 @@
       "members":{
         "updateDate":{"shape":"Timestamp"}
       }
-    }
+    },
+    "includedDetails":{"type":"boolean"},
+    "truncated":{"type":"boolean"}
   }
 }

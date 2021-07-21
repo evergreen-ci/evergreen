@@ -214,6 +214,11 @@ LOOP:
 				return true, err
 			}, utility.RetryOptions{MaxAttempts: 5, MaxDelay: minAgentSleepInterval})
 			if err != nil {
+				if ctx.Err() != nil {
+					// We don't want to return an error if
+					// the agent loop is canceled.
+					return nil
+				}
 				return errors.Wrap(err, "cannot connect to cedar")
 			}
 

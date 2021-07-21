@@ -108,6 +108,10 @@ type BackupAPI interface {
 	DescribeCopyJobWithContext(aws.Context, *backup.DescribeCopyJobInput, ...request.Option) (*backup.DescribeCopyJobOutput, error)
 	DescribeCopyJobRequest(*backup.DescribeCopyJobInput) (*request.Request, *backup.DescribeCopyJobOutput)
 
+	DescribeGlobalSettings(*backup.DescribeGlobalSettingsInput) (*backup.DescribeGlobalSettingsOutput, error)
+	DescribeGlobalSettingsWithContext(aws.Context, *backup.DescribeGlobalSettingsInput, ...request.Option) (*backup.DescribeGlobalSettingsOutput, error)
+	DescribeGlobalSettingsRequest(*backup.DescribeGlobalSettingsInput) (*request.Request, *backup.DescribeGlobalSettingsOutput)
+
 	DescribeProtectedResource(*backup.DescribeProtectedResourceInput) (*backup.DescribeProtectedResourceOutput, error)
 	DescribeProtectedResourceWithContext(aws.Context, *backup.DescribeProtectedResourceInput, ...request.Option) (*backup.DescribeProtectedResourceOutput, error)
 	DescribeProtectedResourceRequest(*backup.DescribeProtectedResourceInput) (*request.Request, *backup.DescribeProtectedResourceOutput)
@@ -116,9 +120,17 @@ type BackupAPI interface {
 	DescribeRecoveryPointWithContext(aws.Context, *backup.DescribeRecoveryPointInput, ...request.Option) (*backup.DescribeRecoveryPointOutput, error)
 	DescribeRecoveryPointRequest(*backup.DescribeRecoveryPointInput) (*request.Request, *backup.DescribeRecoveryPointOutput)
 
+	DescribeRegionSettings(*backup.DescribeRegionSettingsInput) (*backup.DescribeRegionSettingsOutput, error)
+	DescribeRegionSettingsWithContext(aws.Context, *backup.DescribeRegionSettingsInput, ...request.Option) (*backup.DescribeRegionSettingsOutput, error)
+	DescribeRegionSettingsRequest(*backup.DescribeRegionSettingsInput) (*request.Request, *backup.DescribeRegionSettingsOutput)
+
 	DescribeRestoreJob(*backup.DescribeRestoreJobInput) (*backup.DescribeRestoreJobOutput, error)
 	DescribeRestoreJobWithContext(aws.Context, *backup.DescribeRestoreJobInput, ...request.Option) (*backup.DescribeRestoreJobOutput, error)
 	DescribeRestoreJobRequest(*backup.DescribeRestoreJobInput) (*request.Request, *backup.DescribeRestoreJobOutput)
+
+	DisassociateRecoveryPoint(*backup.DisassociateRecoveryPointInput) (*backup.DisassociateRecoveryPointOutput, error)
+	DisassociateRecoveryPointWithContext(aws.Context, *backup.DisassociateRecoveryPointInput, ...request.Option) (*backup.DisassociateRecoveryPointOutput, error)
+	DisassociateRecoveryPointRequest(*backup.DisassociateRecoveryPointInput) (*request.Request, *backup.DisassociateRecoveryPointOutput)
 
 	ExportBackupPlanTemplate(*backup.ExportBackupPlanTemplateInput) (*backup.ExportBackupPlanTemplateOutput, error)
 	ExportBackupPlanTemplateWithContext(aws.Context, *backup.ExportBackupPlanTemplateInput, ...request.Option) (*backup.ExportBackupPlanTemplateOutput, error)
@@ -276,9 +288,17 @@ type BackupAPI interface {
 	UpdateBackupPlanWithContext(aws.Context, *backup.UpdateBackupPlanInput, ...request.Option) (*backup.UpdateBackupPlanOutput, error)
 	UpdateBackupPlanRequest(*backup.UpdateBackupPlanInput) (*request.Request, *backup.UpdateBackupPlanOutput)
 
+	UpdateGlobalSettings(*backup.UpdateGlobalSettingsInput) (*backup.UpdateGlobalSettingsOutput, error)
+	UpdateGlobalSettingsWithContext(aws.Context, *backup.UpdateGlobalSettingsInput, ...request.Option) (*backup.UpdateGlobalSettingsOutput, error)
+	UpdateGlobalSettingsRequest(*backup.UpdateGlobalSettingsInput) (*request.Request, *backup.UpdateGlobalSettingsOutput)
+
 	UpdateRecoveryPointLifecycle(*backup.UpdateRecoveryPointLifecycleInput) (*backup.UpdateRecoveryPointLifecycleOutput, error)
 	UpdateRecoveryPointLifecycleWithContext(aws.Context, *backup.UpdateRecoveryPointLifecycleInput, ...request.Option) (*backup.UpdateRecoveryPointLifecycleOutput, error)
 	UpdateRecoveryPointLifecycleRequest(*backup.UpdateRecoveryPointLifecycleInput) (*request.Request, *backup.UpdateRecoveryPointLifecycleOutput)
+
+	UpdateRegionSettings(*backup.UpdateRegionSettingsInput) (*backup.UpdateRegionSettingsOutput, error)
+	UpdateRegionSettingsWithContext(aws.Context, *backup.UpdateRegionSettingsInput, ...request.Option) (*backup.UpdateRegionSettingsOutput, error)
+	UpdateRegionSettingsRequest(*backup.UpdateRegionSettingsInput) (*request.Request, *backup.UpdateRegionSettingsOutput)
 }
 
 var _ BackupAPI = (*backup.Backup)(nil)

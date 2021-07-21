@@ -35,6 +35,7 @@ var (
 	DistroKey                          = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                        = bsonutil.MustHaveTag(Host{}, "Provider")
 	IPKey                              = bsonutil.MustHaveTag(Host{}, "IP")
+	IPv4Key                            = bsonutil.MustHaveTag(Host{}, "IPv4")
 	ProvisionedKey                     = bsonutil.MustHaveTag(Host{}, "Provisioned")
 	ProvisionTimeKey                   = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                           = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
@@ -574,7 +575,12 @@ func ById(id string) db.Q {
 
 // ByIP produces a query that returns a host with the given ip address.
 func ByIP(ip string) db.Q {
-	return db.Query(bson.M{IPKey: ip})
+	return db.Query(bson.M{
+		"$or": []bson.M{
+			{IPKey: ip},
+			{IPv4Key: ip},
+		},
+	})
 }
 
 // ByDistroIDOrAliasesRunning returns a query that returns all hosts with

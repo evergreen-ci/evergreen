@@ -1034,8 +1034,8 @@ func (c *MachineLearning) DeleteEvaluationRequest(input *DeleteEvaluationInput) 
 //
 // After invoking the DeleteEvaluation operation, you can use the GetEvaluation
 // operation to verify that the status of the Evaluation changed to DELETED.
-//  Caution
-// The results of the DeleteEvaluation operation are irreversible.
+//
+// Caution: The results of the DeleteEvaluation operation are irreversible.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2357,8 +2357,8 @@ func (c *MachineLearning) PredictRequest(input *PredictInput) (req *request.Requ
 // Predict API operation for Amazon Machine Learning.
 //
 // Generates a prediction for the observation using the specified ML Model.
-//  Note
-// Not all response parameters will be populated. Whether a response parameter
+//
+// Note: Not all response parameters will be populated. Whether a response parameter
 // is populated depends on the type of model requested.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -3077,7 +3077,7 @@ type CreateBatchPredictionInput struct {
 	//
 	// Amazon ML needs permissions to store and retrieve the logs on your behalf.
 	// For information about how to set permissions, see the Amazon Machine Learning
-	// Developer Guide (http://docs.aws.amazon.com/machine-learning/latest/dg).
+	// Developer Guide (https://docs.aws.amazon.com/machine-learning/latest/dg).
 	//
 	// OutputUri is a required field
 	OutputUri *string `type:"string" required:"true"`
@@ -3204,11 +3204,8 @@ type CreateDataSourceFromRDSInput struct {
 
 	// The data specification of an Amazon RDS DataSource:
 	//
-	//    * DatabaseInformation -
-	//    * DatabaseName - The name of the Amazon RDS database.
-	//
-	//    * InstanceIdentifier - A unique identifier for the Amazon RDS database
-	//    instance.
+	//    * DatabaseInformation - DatabaseName - The name of the Amazon RDS database.
+	//    InstanceIdentifier - A unique identifier for the Amazon RDS database instance.
 	//
 	//    * DatabaseCredentials - AWS Identity and Access Management (IAM) credentials
 	//    that are used to connect to the Amazon RDS database.
@@ -3216,12 +3213,12 @@ type CreateDataSourceFromRDSInput struct {
 	//    * ResourceRole - A role (DataPipelineDefaultResourceRole) assumed by an
 	//    EC2 instance to carry out the copy task from Amazon RDS to Amazon Simple
 	//    Storage Service (Amazon S3). For more information, see Role templates
-	//    (http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
+	//    (https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
 	//    for data pipelines.
 	//
 	//    * ServiceRole - A role (DataPipelineDefaultRole) assumed by the AWS Data
 	//    Pipeline service to monitor the progress of the copy task from Amazon
-	//    RDS to Amazon S3. For more information, see Role templates (http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
+	//    RDS to Amazon S3. For more information, see Role templates (https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
 	//    for data pipelines.
 	//
 	//    * SecurityInfo - The security information to use to access an RDS DB instance.
@@ -3377,10 +3374,8 @@ type CreateDataSourceFromRedshiftInput struct {
 
 	// The data specification of an Amazon Redshift DataSource:
 	//
-	//    * DatabaseInformation -
-	//    * DatabaseName - The name of the Amazon Redshift database.
-	//
-	//    * ClusterIdentifier - The unique ID for the Amazon Redshift cluster.
+	//    * DatabaseInformation - DatabaseName - The name of the Amazon Redshift
+	//    database. ClusterIdentifier - The unique ID for the Amazon Redshift cluster.
 	//
 	//    * DatabaseCredentials - The AWS Identity and Access Management (IAM) credentials
 	//    that are used to connect to the Amazon Redshift database.
@@ -3773,7 +3768,7 @@ type CreateMLModelInput struct {
 	//
 	//    * Choose MULTICLASS if the MLModel result has a limited number of values.
 	//
-	// For more information, see the Amazon Machine Learning Developer Guide (http://docs.aws.amazon.com/machine-learning/latest/dg).
+	// For more information, see the Amazon Machine Learning Developer Guide (https://docs.aws.amazon.com/machine-learning/latest/dg).
 	//
 	// MLModelType is a required field
 	MLModelType *string `type:"string" required:"true" enum:"MLModelType"`
@@ -3981,8 +3976,8 @@ func (s *CreateRealtimeEndpointInput) SetMLModelId(v string) *CreateRealtimeEndp
 //
 // The result contains the MLModelId and the endpoint information for the MLModel.
 //
-// The endpoint information includes the URI of the MLModel; that is, the location
-// to send online prediction requests for the specified MLModel.
+// Note: The endpoint information includes the URI of the MLModel; that is,
+// the location to send online prediction requests for the specified MLModel.
 type CreateRealtimeEndpointOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -4076,7 +4071,7 @@ type DataSource struct {
 	// Describes the DataSource details specific to Amazon Redshift.
 	RedshiftMetadata *RedshiftMetadata `type:"structure"`
 
-	// The Amazon Resource Name (ARN) of an AWS IAM Role (http://docs.aws.amazon.com/IAM/latest/UserGuide/roles-toplevel.html#roles-about-termsandconcepts),
+	// The Amazon Resource Name (ARN) of an AWS IAM Role (https://docs.aws.amazon.com/IAM/latest/UserGuide/roles-toplevel.html#roles-about-termsandconcepts),
 	// such as the following: arn:aws:iam::account:role/rolename.
 	RoleARN *string `min:"1" type:"string"`
 
@@ -5643,7 +5638,7 @@ type Evaluation struct {
 	//    to measure performance.
 	//
 	// For more information about performance metrics, please see the Amazon Machine
-	// Learning Developer Guide (http://docs.aws.amazon.com/machine-learning/latest/dg).
+	// Learning Developer Guide (https://docs.aws.amazon.com/machine-learning/latest/dg).
 	PerformanceMetrics *PerformanceMetrics `type:"structure"`
 
 	// A timestamp represented in epoch time.
@@ -6092,8 +6087,8 @@ type GetDataSourceOutput struct {
 	DataSourceId *string `min:"1" type:"string"`
 
 	// The schema used by all of the data files of this DataSource.
-	//  Note
-	// This parameter is provided as part of the verbose format.
+	//
+	// Note: This parameter is provided as part of the verbose format.
 	DataSourceSchema *string `type:"string"`
 
 	// The epoch time when Amazon Machine Learning marked the DataSource as COMPLETED
@@ -6124,7 +6119,7 @@ type GetDataSourceOutput struct {
 	// Describes the DataSource details specific to Amazon Redshift.
 	RedshiftMetadata *RedshiftMetadata `type:"structure"`
 
-	// The Amazon Resource Name (ARN) of an AWS IAM Role (http://docs.aws.amazon.com/IAM/latest/UserGuide/roles-toplevel.html#roles-about-termsandconcepts),
+	// The Amazon Resource Name (ARN) of an AWS IAM Role (https://docs.aws.amazon.com/IAM/latest/UserGuide/roles-toplevel.html#roles-about-termsandconcepts),
 	// such as the following: arn:aws:iam::account:role/rolename.
 	RoleARN *string `min:"1" type:"string"`
 
@@ -6384,7 +6379,7 @@ type GetEvaluationOutput struct {
 	//    to measure performance.
 	//
 	// For more information about performance metrics, please see the Amazon Machine
-	// Learning Developer Guide (http://docs.aws.amazon.com/machine-learning/latest/dg).
+	// Learning Developer Guide (https://docs.aws.amazon.com/machine-learning/latest/dg).
 	PerformanceMetrics *PerformanceMetrics `type:"structure"`
 
 	// The epoch time when Amazon Machine Learning marked the Evaluation as INPROGRESS.
@@ -6623,13 +6618,13 @@ type GetMLModelOutput struct {
 	// The recipe to use when training the MLModel. The Recipe provides detailed
 	// information about the observation data to use during training, and manipulations
 	// to perform on the observation data during training.
-	//  Note
-	// This parameter is provided as part of the verbose format.
+	//
+	// Note: This parameter is provided as part of the verbose format.
 	Recipe *string `type:"string"`
 
 	// The schema used by all of the data files referenced by the DataSource.
-	//  Note
-	// This parameter is provided as part of the verbose format.
+	//
+	// Note: This parameter is provided as part of the verbose format.
 	Schema *string `type:"string"`
 
 	// The scoring threshold is used in binary classification MLModel models. It
@@ -6846,8 +6841,8 @@ func (s *GetMLModelOutput) SetTrainingParameters(v map[string]*string) *GetMLMod
 // from retrying a request using a parameter that was not present in the original
 // request.
 type IdempotentParameterMismatchException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *int64 `locationName:"code" type:"integer"`
 
@@ -6866,17 +6861,17 @@ func (s IdempotentParameterMismatchException) GoString() string {
 
 func newErrorIdempotentParameterMismatchException(v protocol.ResponseMetadata) error {
 	return &IdempotentParameterMismatchException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s IdempotentParameterMismatchException) Code() string {
+func (s *IdempotentParameterMismatchException) Code() string {
 	return "IdempotentParameterMismatchException"
 }
 
 // Message returns the exception's message.
-func (s IdempotentParameterMismatchException) Message() string {
+func (s *IdempotentParameterMismatchException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6884,28 +6879,28 @@ func (s IdempotentParameterMismatchException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s IdempotentParameterMismatchException) OrigErr() error {
+func (s *IdempotentParameterMismatchException) OrigErr() error {
 	return nil
 }
 
-func (s IdempotentParameterMismatchException) Error() string {
+func (s *IdempotentParameterMismatchException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s IdempotentParameterMismatchException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *IdempotentParameterMismatchException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s IdempotentParameterMismatchException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *IdempotentParameterMismatchException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An error on the server occurred when trying to process a request.
 type InternalServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *int64 `locationName:"code" type:"integer"`
 
@@ -6924,17 +6919,17 @@ func (s InternalServerException) GoString() string {
 
 func newErrorInternalServerException(v protocol.ResponseMetadata) error {
 	return &InternalServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerException) Code() string {
+func (s *InternalServerException) Code() string {
 	return "InternalServerException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerException) Message() string {
+func (s *InternalServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6942,29 +6937,29 @@ func (s InternalServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerException) OrigErr() error {
+func (s *InternalServerException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerException) Error() string {
+func (s *InternalServerException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An error on the client occurred. Typically, the cause is an invalid input
 // value.
 type InvalidInputException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *int64 `locationName:"code" type:"integer"`
 
@@ -6983,17 +6978,17 @@ func (s InvalidInputException) GoString() string {
 
 func newErrorInvalidInputException(v protocol.ResponseMetadata) error {
 	return &InvalidInputException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidInputException) Code() string {
+func (s *InvalidInputException) Code() string {
 	return "InvalidInputException"
 }
 
 // Message returns the exception's message.
-func (s InvalidInputException) Message() string {
+func (s *InvalidInputException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7001,27 +6996,27 @@ func (s InvalidInputException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidInputException) OrigErr() error {
+func (s *InvalidInputException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidInputException) Error() string {
+func (s *InvalidInputException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidInputException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidInputException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidInputException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidInputException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type InvalidTagException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7038,17 +7033,17 @@ func (s InvalidTagException) GoString() string {
 
 func newErrorInvalidTagException(v protocol.ResponseMetadata) error {
 	return &InvalidTagException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidTagException) Code() string {
+func (s *InvalidTagException) Code() string {
 	return "InvalidTagException"
 }
 
 // Message returns the exception's message.
-func (s InvalidTagException) Message() string {
+func (s *InvalidTagException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7056,29 +7051,29 @@ func (s InvalidTagException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidTagException) OrigErr() error {
+func (s *InvalidTagException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidTagException) Error() string {
+func (s *InvalidTagException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidTagException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidTagException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidTagException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidTagException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The subscriber exceeded the maximum number of operations. This exception
 // can occur when listing objects such as DataSource.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *int64 `locationName:"code" type:"integer"`
 
@@ -7097,17 +7092,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7115,22 +7110,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the output of a GetMLModel operation.
@@ -7398,7 +7393,7 @@ func (s *MLModel) SetTrainingParameters(v map[string]*string) *MLModel {
 //    to measure performance.
 //
 // For more information about performance metrics, please see the Amazon Machine
-// Learning Developer Guide (http://docs.aws.amazon.com/machine-learning/latest/dg).
+// Learning Developer Guide (https://docs.aws.amazon.com/machine-learning/latest/dg).
 type PerformanceMetrics struct {
 	_ struct{} `type:"structure"`
 
@@ -7544,11 +7539,7 @@ type Prediction struct {
 	// Provides the raw classification score corresponding to each label.
 	PredictedScores map[string]*float64 `locationName:"predictedScores" type:"map"`
 
-	// The prediction value for
-	//    REGRESSION
-	//
-	//    MLModel
-	// .
+	// The prediction value for REGRESSION MLModel.
 	PredictedValue *float64 `locationName:"predictedValue" type:"float"`
 }
 
@@ -7588,8 +7579,8 @@ func (s *Prediction) SetPredictedValue(v float64) *Prediction {
 
 // The exception is thrown when a predict request is made to an unmounted MLModel.
 type PredictorNotMountedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7606,17 +7597,17 @@ func (s PredictorNotMountedException) GoString() string {
 
 func newErrorPredictorNotMountedException(v protocol.ResponseMetadata) error {
 	return &PredictorNotMountedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s PredictorNotMountedException) Code() string {
+func (s *PredictorNotMountedException) Code() string {
 	return "PredictorNotMountedException"
 }
 
 // Message returns the exception's message.
-func (s PredictorNotMountedException) Message() string {
+func (s *PredictorNotMountedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7624,22 +7615,22 @@ func (s PredictorNotMountedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s PredictorNotMountedException) OrigErr() error {
+func (s *PredictorNotMountedException) OrigErr() error {
 	return nil
 }
 
-func (s PredictorNotMountedException) Error() string {
+func (s *PredictorNotMountedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s PredictorNotMountedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *PredictorNotMountedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s PredictorNotMountedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *PredictorNotMountedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The data specification of an Amazon Relational Database Service (Amazon RDS)
@@ -7754,7 +7745,7 @@ type RDSDataSpec struct {
 
 	// The role (DataPipelineDefaultResourceRole) assumed by an Amazon Elastic Compute
 	// Cloud (Amazon EC2) instance to carry out the copy operation from Amazon RDS
-	// to an Amazon S3 task. For more information, see Role templates (http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
+	// to an Amazon S3 task. For more information, see Role templates (https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
 	// for data pipelines.
 	//
 	// ResourceRole is a required field
@@ -7781,7 +7772,7 @@ type RDSDataSpec struct {
 
 	// The role (DataPipelineDefaultRole) assumed by AWS Data Pipeline service to
 	// monitor the progress of the copy task from Amazon RDS to Amazon S3. For more
-	// information, see Role templates (http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
+	// information, see Role templates (https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
 	// for data pipelines.
 	//
 	// ServiceRole is a required field
@@ -8068,7 +8059,7 @@ type RDSMetadata struct {
 
 	// The role (DataPipelineDefaultResourceRole) assumed by an Amazon EC2 instance
 	// to carry out the copy task from Amazon RDS to Amazon S3. For more information,
-	// see Role templates (http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
+	// see Role templates (https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
 	// for data pipelines.
 	ResourceRole *string `min:"1" type:"string"`
 
@@ -8078,7 +8069,7 @@ type RDSMetadata struct {
 
 	// The role (DataPipelineDefaultRole) assumed by the Data Pipeline service to
 	// monitor the progress of the copy task from Amazon RDS to Amazon S3. For more
-	// information, see Role templates (http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
+	// information, see Role templates (https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-iam-roles.html)
 	// for data pipelines.
 	ServiceRole *string `min:"1" type:"string"`
 }
@@ -8149,9 +8140,9 @@ type RealtimeEndpointInfo struct {
 
 	// The URI that specifies where to send real-time prediction requests for the
 	// MLModel.
-	//  Note
-	// The application must wait until the real-time endpoint is ready before using
-	// this URI.
+	//
+	// Note: The application must wait until the real-time endpoint is ready before
+	// using this URI.
 	EndpointUrl *string `type:"string"`
 
 	// The maximum processing rate for the real-time endpoint for MLModel, measured
@@ -8470,7 +8461,7 @@ type RedshiftDatabaseCredentials struct {
 	// A password to be used by Amazon ML to connect to a database on an Amazon
 	// Redshift cluster. The password should have sufficient permissions to execute
 	// a RedshiftSelectSqlQuery query. The password should be valid for an Amazon
-	// Redshift USER (http://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html).
+	// Redshift USER (https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html).
 	//
 	// Password is a required field
 	Password *string `min:"8" type:"string" required:"true"`
@@ -8478,7 +8469,7 @@ type RedshiftDatabaseCredentials struct {
 	// A username to be used by Amazon Machine Learning (Amazon ML)to connect to
 	// a database on an Amazon Redshift cluster. The username should have sufficient
 	// permissions to execute the RedshiftSelectSqlQuery query. The username should
-	// be valid for an Amazon Redshift USER (http://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html).
+	// be valid for an Amazon Redshift USER (https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html).
 	//
 	// Username is a required field
 	Username *string `min:"1" type:"string" required:"true"`
@@ -8535,7 +8526,7 @@ type RedshiftMetadata struct {
 	// A username to be used by Amazon Machine Learning (Amazon ML)to connect to
 	// a database on an Amazon Redshift cluster. The username should have sufficient
 	// permissions to execute the RedshiftSelectSqlQuery query. The username should
-	// be valid for an Amazon Redshift USER (http://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html).
+	// be valid for an Amazon Redshift USER (https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html).
 	DatabaseUserName *string `min:"1" type:"string"`
 
 	// Describes the database details required to connect to an Amazon Redshift
@@ -8577,8 +8568,8 @@ func (s *RedshiftMetadata) SetSelectSqlQuery(v string) *RedshiftMetadata {
 
 // A specified resource cannot be located.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *int64 `locationName:"code" type:"integer"`
 
@@ -8597,17 +8588,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8615,22 +8606,22 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Describes the data specification of a DataSource.
@@ -8836,8 +8827,8 @@ func (s *Tag) SetValue(v string) *Tag {
 }
 
 type TagLimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8854,17 +8845,17 @@ func (s TagLimitExceededException) GoString() string {
 
 func newErrorTagLimitExceededException(v protocol.ResponseMetadata) error {
 	return &TagLimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TagLimitExceededException) Code() string {
+func (s *TagLimitExceededException) Code() string {
 	return "TagLimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s TagLimitExceededException) Message() string {
+func (s *TagLimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8872,22 +8863,22 @@ func (s TagLimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TagLimitExceededException) OrigErr() error {
+func (s *TagLimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s TagLimitExceededException) Error() string {
+func (s *TagLimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TagLimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TagLimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TagLimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TagLimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UpdateBatchPredictionInput struct {
@@ -9240,6 +9231,13 @@ const (
 	AlgorithmSgd = "sgd"
 )
 
+// Algorithm_Values returns all elements of the Algorithm enum
+func Algorithm_Values() []string {
+	return []string{
+		AlgorithmSgd,
+	}
+}
+
 // A list of the variables to use in searching or filtering BatchPrediction.
 //
 //    * CreatedAt - Sets the search criteria to BatchPrediction creation date.
@@ -9285,6 +9283,20 @@ const (
 	BatchPredictionFilterVariableDataUri = "DataURI"
 )
 
+// BatchPredictionFilterVariable_Values returns all elements of the BatchPredictionFilterVariable enum
+func BatchPredictionFilterVariable_Values() []string {
+	return []string{
+		BatchPredictionFilterVariableCreatedAt,
+		BatchPredictionFilterVariableLastUpdatedAt,
+		BatchPredictionFilterVariableStatus,
+		BatchPredictionFilterVariableName,
+		BatchPredictionFilterVariableIamuser,
+		BatchPredictionFilterVariableMlmodelId,
+		BatchPredictionFilterVariableDataSourceId,
+		BatchPredictionFilterVariableDataUri,
+	}
+}
+
 // A list of the variables to use in searching or filtering DataSource.
 //
 //    * CreatedAt - Sets the search criteria to DataSource creation date.
@@ -9299,8 +9311,8 @@ const (
 //
 //    * IAMUser - Sets the search criteria to the user account that invoked
 //    the DataSource creation.
-//  Note
-// The variable names should match the variable names in the DataSource.
+//
+// Note: The variable names should match the variable names in the DataSource.
 const (
 	// DataSourceFilterVariableCreatedAt is a DataSourceFilterVariable enum value
 	DataSourceFilterVariableCreatedAt = "CreatedAt"
@@ -9321,17 +9333,23 @@ const (
 	DataSourceFilterVariableIamuser = "IAMUser"
 )
 
-// Contains the key values of
-//    DetailsMap
-// :
-//    PredictiveModelType
-//  - Indicates the type of the
-//    MLModel
-// .
-//    Algorithm
-//  - Indicates the algorithm that was used for the
-//    MLModel
-// .
+// DataSourceFilterVariable_Values returns all elements of the DataSourceFilterVariable enum
+func DataSourceFilterVariable_Values() []string {
+	return []string{
+		DataSourceFilterVariableCreatedAt,
+		DataSourceFilterVariableLastUpdatedAt,
+		DataSourceFilterVariableStatus,
+		DataSourceFilterVariableName,
+		DataSourceFilterVariableDataLocationS3,
+		DataSourceFilterVariableIamuser,
+	}
+}
+
+// Contains the key values of DetailsMap:
+//
+//    * PredictiveModelType - Indicates the type of the MLModel.
+//
+//    * Algorithm - Indicates the algorithm that was used for the MLModel.
 const (
 	// DetailsAttributesPredictiveModelType is a DetailsAttributes enum value
 	DetailsAttributesPredictiveModelType = "PredictiveModelType"
@@ -9339,6 +9357,14 @@ const (
 	// DetailsAttributesAlgorithm is a DetailsAttributes enum value
 	DetailsAttributesAlgorithm = "Algorithm"
 )
+
+// DetailsAttributes_Values returns all elements of the DetailsAttributes enum
+func DetailsAttributes_Values() []string {
+	return []string{
+		DetailsAttributesPredictiveModelType,
+		DetailsAttributesAlgorithm,
+	}
+}
 
 // Object status with the following possible values:
 //
@@ -9367,6 +9393,17 @@ const (
 	// EntityStatusDeleted is a EntityStatus enum value
 	EntityStatusDeleted = "DELETED"
 )
+
+// EntityStatus_Values returns all elements of the EntityStatus enum
+func EntityStatus_Values() []string {
+	return []string{
+		EntityStatusPending,
+		EntityStatusInprogress,
+		EntityStatusFailed,
+		EntityStatusCompleted,
+		EntityStatusDeleted,
+	}
+}
 
 // A list of the variables to use in searching or filtering Evaluation.
 //
@@ -9412,6 +9449,20 @@ const (
 	EvaluationFilterVariableDataUri = "DataURI"
 )
 
+// EvaluationFilterVariable_Values returns all elements of the EvaluationFilterVariable enum
+func EvaluationFilterVariable_Values() []string {
+	return []string{
+		EvaluationFilterVariableCreatedAt,
+		EvaluationFilterVariableLastUpdatedAt,
+		EvaluationFilterVariableStatus,
+		EvaluationFilterVariableName,
+		EvaluationFilterVariableIamuser,
+		EvaluationFilterVariableMlmodelId,
+		EvaluationFilterVariableDataSourceId,
+		EvaluationFilterVariableDataUri,
+	}
+}
+
 const (
 	// MLModelFilterVariableCreatedAt is a MLModelFilterVariable enum value
 	MLModelFilterVariableCreatedAt = "CreatedAt"
@@ -9444,6 +9495,22 @@ const (
 	MLModelFilterVariableTrainingDataUri = "TrainingDataURI"
 )
 
+// MLModelFilterVariable_Values returns all elements of the MLModelFilterVariable enum
+func MLModelFilterVariable_Values() []string {
+	return []string{
+		MLModelFilterVariableCreatedAt,
+		MLModelFilterVariableLastUpdatedAt,
+		MLModelFilterVariableStatus,
+		MLModelFilterVariableName,
+		MLModelFilterVariableIamuser,
+		MLModelFilterVariableTrainingDataSourceId,
+		MLModelFilterVariableRealtimeEndpointStatus,
+		MLModelFilterVariableMlmodelType,
+		MLModelFilterVariableAlgorithm,
+		MLModelFilterVariableTrainingDataUri,
+	}
+}
+
 const (
 	// MLModelTypeRegression is a MLModelType enum value
 	MLModelTypeRegression = "REGRESSION"
@@ -9454,6 +9521,15 @@ const (
 	// MLModelTypeMulticlass is a MLModelType enum value
 	MLModelTypeMulticlass = "MULTICLASS"
 )
+
+// MLModelType_Values returns all elements of the MLModelType enum
+func MLModelType_Values() []string {
+	return []string{
+		MLModelTypeRegression,
+		MLModelTypeBinary,
+		MLModelTypeMulticlass,
+	}
+}
 
 const (
 	// RealtimeEndpointStatusNone is a RealtimeEndpointStatus enum value
@@ -9469,6 +9545,16 @@ const (
 	RealtimeEndpointStatusFailed = "FAILED"
 )
 
+// RealtimeEndpointStatus_Values returns all elements of the RealtimeEndpointStatus enum
+func RealtimeEndpointStatus_Values() []string {
+	return []string{
+		RealtimeEndpointStatusNone,
+		RealtimeEndpointStatusReady,
+		RealtimeEndpointStatusUpdating,
+		RealtimeEndpointStatusFailed,
+	}
+}
+
 // The sort order specified in a listing condition. Possible values include
 // the following:
 //
@@ -9483,6 +9569,14 @@ const (
 	SortOrderDsc = "dsc"
 )
 
+// SortOrder_Values returns all elements of the SortOrder enum
+func SortOrder_Values() []string {
+	return []string{
+		SortOrderAsc,
+		SortOrderDsc,
+	}
+}
+
 const (
 	// TaggableResourceTypeBatchPrediction is a TaggableResourceType enum value
 	TaggableResourceTypeBatchPrediction = "BatchPrediction"
@@ -9496,3 +9590,13 @@ const (
 	// TaggableResourceTypeMlmodel is a TaggableResourceType enum value
 	TaggableResourceTypeMlmodel = "MLModel"
 )
+
+// TaggableResourceType_Values returns all elements of the TaggableResourceType enum
+func TaggableResourceType_Values() []string {
+	return []string{
+		TaggableResourceTypeBatchPrediction,
+		TaggableResourceTypeDataSource,
+		TaggableResourceTypeEvaluation,
+		TaggableResourceTypeMlmodel,
+	}
+}

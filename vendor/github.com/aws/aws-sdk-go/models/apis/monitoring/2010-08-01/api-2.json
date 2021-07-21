@@ -74,6 +74,23 @@
         {"shape":"MissingRequiredParameterException"}
       ]
     },
+    "DeleteMetricStream":{
+      "name":"DeleteMetricStream",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteMetricStreamInput"},
+      "output":{
+        "shape":"DeleteMetricStreamOutput",
+        "resultWrapper":"DeleteMetricStreamResult"
+      },
+      "errors":[
+        {"shape":"InternalServiceFault"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"MissingRequiredParameterException"}
+      ]
+    },
     "DescribeAlarmHistory":{
       "name":"DescribeAlarmHistory",
       "http":{
@@ -264,6 +281,25 @@
         {"shape":"InternalServiceFault"}
       ]
     },
+    "GetMetricStream":{
+      "name":"GetMetricStream",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetMetricStreamInput"},
+      "output":{
+        "shape":"GetMetricStreamOutput",
+        "resultWrapper":"GetMetricStreamResult"
+      },
+      "errors":[
+        {"shape":"ResourceNotFoundException"},
+        {"shape":"InternalServiceFault"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"MissingRequiredParameterException"},
+        {"shape":"InvalidParameterCombinationException"}
+      ]
+    },
     "GetMetricWidgetImage":{
       "name":"GetMetricWidgetImage",
       "http":{
@@ -290,6 +326,24 @@
       "errors":[
         {"shape":"InvalidParameterValueException"},
         {"shape":"InternalServiceFault"}
+      ]
+    },
+    "ListMetricStreams":{
+      "name":"ListMetricStreams",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListMetricStreamsInput"},
+      "output":{
+        "shape":"ListMetricStreamsOutput",
+        "resultWrapper":"ListMetricStreamsResult"
+      },
+      "errors":[
+        {"shape":"InvalidNextToken"},
+        {"shape":"InternalServiceFault"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"MissingRequiredParameterException"}
       ]
     },
     "ListMetrics":{
@@ -341,6 +395,17 @@
         {"shape":"InternalServiceFault"},
         {"shape":"InvalidParameterValueException"},
         {"shape":"MissingRequiredParameterException"}
+      ]
+    },
+    "PutCompositeAlarm":{
+      "name":"PutCompositeAlarm",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"PutCompositeAlarmInput"},
+      "errors":[
+        {"shape":"LimitExceededFault"}
       ]
     },
     "PutDashboard":{
@@ -401,6 +466,25 @@
         {"shape":"InternalServiceFault"}
       ]
     },
+    "PutMetricStream":{
+      "name":"PutMetricStream",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"PutMetricStreamInput"},
+      "output":{
+        "shape":"PutMetricStreamOutput",
+        "resultWrapper":"PutMetricStreamResult"
+      },
+      "errors":[
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"InternalServiceFault"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"MissingRequiredParameterException"},
+        {"shape":"InvalidParameterCombinationException"}
+      ]
+    },
     "SetAlarmState":{
       "name":"SetAlarmState",
       "http":{
@@ -411,6 +495,40 @@
       "errors":[
         {"shape":"ResourceNotFound"},
         {"shape":"InvalidFormatFault"}
+      ]
+    },
+    "StartMetricStreams":{
+      "name":"StartMetricStreams",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"StartMetricStreamsInput"},
+      "output":{
+        "shape":"StartMetricStreamsOutput",
+        "resultWrapper":"StartMetricStreamsResult"
+      },
+      "errors":[
+        {"shape":"InternalServiceFault"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"MissingRequiredParameterException"}
+      ]
+    },
+    "StopMetricStreams":{
+      "name":"StopMetricStreams",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"StopMetricStreamsInput"},
+      "output":{
+        "shape":"StopMetricStreamsOutput",
+        "resultWrapper":"StopMetricStreamsResult"
+      },
+      "errors":[
+        {"shape":"InternalServiceFault"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"MissingRequiredParameterException"}
       ]
     },
     "TagResource":{
@@ -471,6 +589,7 @@
       "type":"structure",
       "members":{
         "AlarmName":{"shape":"AlarmName"},
+        "AlarmType":{"shape":"AlarmType"},
         "Timestamp":{"shape":"Timestamp"},
         "HistoryItemType":{"shape":"HistoryItemType"},
         "HistorySummary":{"shape":"HistorySummary"},
@@ -496,6 +615,22 @@
       "member":{"shape":"AlarmName"},
       "max":100
     },
+    "AlarmRule":{
+      "type":"string",
+      "max":10240,
+      "min":1
+    },
+    "AlarmType":{
+      "type":"string",
+      "enum":[
+        "CompositeAlarm",
+        "MetricAlarm"
+      ]
+    },
+    "AlarmTypes":{
+      "type":"list",
+      "member":{"shape":"AlarmType"}
+    },
     "AmazonResourceName":{
       "type":"string",
       "max":1024,
@@ -507,7 +642,7 @@
         "Namespace":{"shape":"Namespace"},
         "MetricName":{"shape":"MetricName"},
         "Dimensions":{"shape":"Dimensions"},
-        "Stat":{"shape":"Stat"},
+        "Stat":{"shape":"AnomalyDetectorMetricStat"},
         "Configuration":{"shape":"AnomalyDetectorConfiguration"},
         "StateValue":{"shape":"AnomalyDetectorStateValue"}
       }
@@ -523,7 +658,15 @@
       "type":"list",
       "member":{"shape":"Range"}
     },
-    "AnomalyDetectorMetricTimezone":{"type":"string"},
+    "AnomalyDetectorMetricStat":{
+      "type":"string",
+      "pattern":"(SampleCount|Average|Sum|Minimum|Maximum|p(\\d{1,2}|100)(\\.\\d{0,2})?|[ou]\\d+(\\.\\d*)?)(_E|_L|_H)?"
+    },
+    "AnomalyDetectorMetricTimezone":{
+      "type":"string",
+      "max":50,
+      "pattern":".*"
+    },
     "AnomalyDetectorStateValue":{
       "type":"string",
       "enum":[
@@ -552,6 +695,43 @@
         "LessThanLowerThreshold",
         "GreaterThanUpperThreshold"
       ]
+    },
+    "CompositeAlarm":{
+      "type":"structure",
+      "members":{
+        "ActionsEnabled":{"shape":"ActionsEnabled"},
+        "AlarmActions":{"shape":"ResourceList"},
+        "AlarmArn":{"shape":"AlarmArn"},
+        "AlarmConfigurationUpdatedTimestamp":{"shape":"Timestamp"},
+        "AlarmDescription":{"shape":"AlarmDescription"},
+        "AlarmName":{"shape":"AlarmName"},
+        "AlarmRule":{"shape":"AlarmRule"},
+        "InsufficientDataActions":{"shape":"ResourceList"},
+        "OKActions":{"shape":"ResourceList"},
+        "StateReason":{"shape":"StateReason"},
+        "StateReasonData":{"shape":"StateReasonData"},
+        "StateUpdatedTimestamp":{"shape":"Timestamp"},
+        "StateValue":{"shape":"StateValue"}
+      },
+      "xmlOrder":[
+        "ActionsEnabled",
+        "AlarmActions",
+        "AlarmArn",
+        "AlarmConfigurationUpdatedTimestamp",
+        "AlarmDescription",
+        "AlarmName",
+        "AlarmRule",
+        "InsufficientDataActions",
+        "OKActions",
+        "StateReason",
+        "StateReasonData",
+        "StateUpdatedTimestamp",
+        "StateValue"
+      ]
+    },
+    "CompositeAlarms":{
+      "type":"list",
+      "member":{"shape":"CompositeAlarm"}
     },
     "ConcurrentModificationException":{
       "type":"structure",
@@ -686,7 +866,7 @@
         "Namespace":{"shape":"Namespace"},
         "MetricName":{"shape":"MetricName"},
         "Dimensions":{"shape":"Dimensions"},
-        "Stat":{"shape":"Stat"}
+        "Stat":{"shape":"AnomalyDetectorMetricStat"}
       }
     },
     "DeleteAnomalyDetectorOutput":{
@@ -719,15 +899,29 @@
         "Failures":{"shape":"BatchFailures"}
       }
     },
+    "DeleteMetricStreamInput":{
+      "type":"structure",
+      "required":["Name"],
+      "members":{
+        "Name":{"shape":"MetricStreamName"}
+      }
+    },
+    "DeleteMetricStreamOutput":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "DescribeAlarmHistoryInput":{
       "type":"structure",
       "members":{
         "AlarmName":{"shape":"AlarmName"},
+        "AlarmTypes":{"shape":"AlarmTypes"},
         "HistoryItemType":{"shape":"HistoryItemType"},
         "StartDate":{"shape":"Timestamp"},
         "EndDate":{"shape":"Timestamp"},
         "MaxRecords":{"shape":"MaxRecords"},
-        "NextToken":{"shape":"NextToken"}
+        "NextToken":{"shape":"NextToken"},
+        "ScanBy":{"shape":"ScanBy"}
       }
     },
     "DescribeAlarmHistoryOutput":{
@@ -764,6 +958,9 @@
       "members":{
         "AlarmNames":{"shape":"AlarmNames"},
         "AlarmNamePrefix":{"shape":"AlarmNamePrefix"},
+        "AlarmTypes":{"shape":"AlarmTypes"},
+        "ChildrenOfAlarmName":{"shape":"AlarmName"},
+        "ParentsOfAlarmName":{"shape":"AlarmName"},
         "StateValue":{"shape":"StateValue"},
         "ActionPrefix":{"shape":"ActionPrefix"},
         "MaxRecords":{"shape":"MaxRecords"},
@@ -773,6 +970,7 @@
     "DescribeAlarmsOutput":{
       "type":"structure",
       "members":{
+        "CompositeAlarms":{"shape":"CompositeAlarms"},
         "MetricAlarms":{"shape":"MetricAlarms"},
         "NextToken":{"shape":"NextToken"}
       }
@@ -977,9 +1175,11 @@
         "EndTime":{"shape":"Timestamp"},
         "NextToken":{"shape":"NextToken"},
         "ScanBy":{"shape":"ScanBy"},
-        "MaxDatapoints":{"shape":"GetMetricDataMaxDatapoints"}
+        "MaxDatapoints":{"shape":"GetMetricDataMaxDatapoints"},
+        "LabelOptions":{"shape":"LabelOptions"}
       }
     },
+    "GetMetricDataLabelTimezone":{"type":"string"},
     "GetMetricDataMaxDatapoints":{"type":"integer"},
     "GetMetricDataOutput":{
       "type":"structure",
@@ -1015,6 +1215,28 @@
       "members":{
         "Label":{"shape":"MetricLabel"},
         "Datapoints":{"shape":"Datapoints"}
+      }
+    },
+    "GetMetricStreamInput":{
+      "type":"structure",
+      "required":["Name"],
+      "members":{
+        "Name":{"shape":"MetricStreamName"}
+      }
+    },
+    "GetMetricStreamOutput":{
+      "type":"structure",
+      "members":{
+        "Arn":{"shape":"AmazonResourceName"},
+        "Name":{"shape":"MetricStreamName"},
+        "IncludeFilters":{"shape":"MetricStreamFilters"},
+        "ExcludeFilters":{"shape":"MetricStreamFilters"},
+        "FirehoseArn":{"shape":"AmazonResourceName"},
+        "RoleArn":{"shape":"AmazonResourceName"},
+        "State":{"shape":"MetricStreamState"},
+        "CreationDate":{"shape":"Timestamp"},
+        "LastUpdateDate":{"shape":"Timestamp"},
+        "OutputFormat":{"shape":"MetricStreamOutputFormat"}
       }
     },
     "GetMetricWidgetImageInput":{
@@ -1238,6 +1460,12 @@
       "exception":true,
       "synthetic":true
     },
+    "LabelOptions":{
+      "type":"structure",
+      "members":{
+        "Timezone":{"shape":"GetMetricDataLabelTimezone"}
+      }
+    },
     "LastModified":{"type":"timestamp"},
     "LimitExceededException":{
       "type":"structure",
@@ -1276,13 +1504,33 @@
         "NextToken":{"shape":"NextToken"}
       }
     },
+    "ListMetricStreamsInput":{
+      "type":"structure",
+      "members":{
+        "NextToken":{"shape":"NextToken"},
+        "MaxResults":{"shape":"ListMetricStreamsMaxResults"}
+      }
+    },
+    "ListMetricStreamsMaxResults":{
+      "type":"integer",
+      "max":500,
+      "min":1
+    },
+    "ListMetricStreamsOutput":{
+      "type":"structure",
+      "members":{
+        "NextToken":{"shape":"NextToken"},
+        "Entries":{"shape":"MetricStreamEntries"}
+      }
+    },
     "ListMetricsInput":{
       "type":"structure",
       "members":{
         "Namespace":{"shape":"Namespace"},
         "MetricName":{"shape":"MetricName"},
         "Dimensions":{"shape":"DimensionFilters"},
-        "NextToken":{"shape":"NextToken"}
+        "NextToken":{"shape":"NextToken"},
+        "RecentlyActive":{"shape":"RecentlyActive"}
       }
     },
     "ListMetricsOutput":{
@@ -1490,6 +1738,51 @@
         "Unit":{"shape":"StandardUnit"}
       }
     },
+    "MetricStreamEntries":{
+      "type":"list",
+      "member":{"shape":"MetricStreamEntry"}
+    },
+    "MetricStreamEntry":{
+      "type":"structure",
+      "members":{
+        "Arn":{"shape":"AmazonResourceName"},
+        "CreationDate":{"shape":"Timestamp"},
+        "LastUpdateDate":{"shape":"Timestamp"},
+        "Name":{"shape":"MetricStreamName"},
+        "FirehoseArn":{"shape":"AmazonResourceName"},
+        "State":{"shape":"MetricStreamState"},
+        "OutputFormat":{"shape":"MetricStreamOutputFormat"}
+      }
+    },
+    "MetricStreamFilter":{
+      "type":"structure",
+      "members":{
+        "Namespace":{"shape":"Namespace"}
+      }
+    },
+    "MetricStreamFilters":{
+      "type":"list",
+      "member":{"shape":"MetricStreamFilter"}
+    },
+    "MetricStreamName":{
+      "type":"string",
+      "max":255,
+      "min":1
+    },
+    "MetricStreamNames":{
+      "type":"list",
+      "member":{"shape":"MetricStreamName"}
+    },
+    "MetricStreamOutputFormat":{
+      "type":"string",
+      "enum":[
+        "json",
+        "opentelemetry0.7"
+      ],
+      "max":255,
+      "min":1
+    },
+    "MetricStreamState":{"type":"string"},
     "MetricWidget":{"type":"string"},
     "MetricWidgetImage":{"type":"blob"},
     "Metrics":{
@@ -1541,13 +1834,30 @@
         "Namespace":{"shape":"Namespace"},
         "MetricName":{"shape":"MetricName"},
         "Dimensions":{"shape":"Dimensions"},
-        "Stat":{"shape":"Stat"},
+        "Stat":{"shape":"AnomalyDetectorMetricStat"},
         "Configuration":{"shape":"AnomalyDetectorConfiguration"}
       }
     },
     "PutAnomalyDetectorOutput":{
       "type":"structure",
       "members":{
+      }
+    },
+    "PutCompositeAlarmInput":{
+      "type":"structure",
+      "required":[
+        "AlarmName",
+        "AlarmRule"
+      ],
+      "members":{
+        "ActionsEnabled":{"shape":"ActionsEnabled"},
+        "AlarmActions":{"shape":"ResourceList"},
+        "AlarmDescription":{"shape":"AlarmDescription"},
+        "AlarmName":{"shape":"AlarmName"},
+        "AlarmRule":{"shape":"AlarmRule"},
+        "InsufficientDataActions":{"shape":"ResourceList"},
+        "OKActions":{"shape":"ResourceList"},
+        "Tags":{"shape":"TagList"}
       }
     },
     "PutDashboardInput":{
@@ -1576,7 +1886,8 @@
       "members":{
         "RuleName":{"shape":"InsightRuleName"},
         "RuleState":{"shape":"InsightRuleState"},
-        "RuleDefinition":{"shape":"InsightRuleDefinition"}
+        "RuleDefinition":{"shape":"InsightRuleDefinition"},
+        "Tags":{"shape":"TagList"}
       }
     },
     "PutInsightRuleOutput":{
@@ -1627,6 +1938,30 @@
         "MetricData":{"shape":"MetricData"}
       }
     },
+    "PutMetricStreamInput":{
+      "type":"structure",
+      "required":[
+        "Name",
+        "FirehoseArn",
+        "RoleArn",
+        "OutputFormat"
+      ],
+      "members":{
+        "Name":{"shape":"MetricStreamName"},
+        "IncludeFilters":{"shape":"MetricStreamFilters"},
+        "ExcludeFilters":{"shape":"MetricStreamFilters"},
+        "FirehoseArn":{"shape":"AmazonResourceName"},
+        "RoleArn":{"shape":"AmazonResourceName"},
+        "OutputFormat":{"shape":"MetricStreamOutputFormat"},
+        "Tags":{"shape":"TagList"}
+      }
+    },
+    "PutMetricStreamOutput":{
+      "type":"structure",
+      "members":{
+        "Arn":{"shape":"AmazonResourceName"}
+      }
+    },
     "Range":{
       "type":"structure",
       "required":[
@@ -1641,6 +1976,10 @@
         "StartTime",
         "EndTime"
       ]
+    },
+    "RecentlyActive":{
+      "type":"string",
+      "enum":["PT3H"]
     },
     "ResourceId":{"type":"string"},
     "ResourceList":{
@@ -1734,6 +2073,18 @@
         "None"
       ]
     },
+    "StartMetricStreamsInput":{
+      "type":"structure",
+      "required":["Names"],
+      "members":{
+        "Names":{"shape":"MetricStreamNames"}
+      }
+    },
+    "StartMetricStreamsOutput":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "Stat":{"type":"string"},
     "StateReason":{
       "type":"string",
@@ -1791,6 +2142,18 @@
         "InternalError",
         "PartialData"
       ]
+    },
+    "StopMetricStreamsInput":{
+      "type":"structure",
+      "required":["Names"],
+      "members":{
+        "Names":{"shape":"MetricStreamNames"}
+      }
+    },
+    "StopMetricStreamsOutput":{
+      "type":"structure",
+      "members":{
+      }
     },
     "StorageResolution":{
       "type":"integer",

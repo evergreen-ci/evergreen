@@ -452,8 +452,8 @@ func (c *RDSDataService) ExecuteStatementRequest(input *ExecuteStatementInput) (
 // If a call isn't part of a transaction because it doesn't include the transactionID
 // parameter, changes that result from the call are committed automatically.
 //
-// The response size limit is 1 MB or 1,000 records. If the call returns more
-// than 1 MB of response data or over 1,000 records, the call is terminated.
+// The response size limit is 1 MB. If the call returns more than 1 MB of response
+// data, the call is terminated.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -657,8 +657,8 @@ func (s *ArrayValue) SetStringValues(v []*string) *ArrayValue {
 
 // There is an error in the call or in a SQL statement.
 type BadRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message returned by this BadRequestException error.
 	Message_ *string `locationName:"message" type:"string"`
@@ -676,17 +676,17 @@ func (s BadRequestException) GoString() string {
 
 func newErrorBadRequestException(v protocol.ResponseMetadata) error {
 	return &BadRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BadRequestException) Code() string {
+func (s *BadRequestException) Code() string {
 	return "BadRequestException"
 }
 
 // Message returns the exception's message.
-func (s BadRequestException) Message() string {
+func (s *BadRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -694,22 +694,22 @@ func (s BadRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BadRequestException) OrigErr() error {
+func (s *BadRequestException) OrigErr() error {
 	return nil
 }
 
-func (s BadRequestException) Error() string {
+func (s *BadRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BadRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BadRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BadRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BadRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The request parameters represent the input of a SQL statement over an array
@@ -722,7 +722,16 @@ type BatchExecuteStatementInput struct {
 
 	// The parameter set for the batch operation.
 	//
-	// The maximum number of parameters in a parameter set is 1,000.
+	// The SQL statement is executed as many times as the number of parameter sets
+	// provided. To execute a SQL statement with no parameters, use one of the following
+	// options:
+	//
+	//    * Specify one or more empty parameter sets.
+	//
+	//    * Use the ExecuteStatement operation instead of the BatchExecuteStatement
+	//    operation.
+	//
+	// Array parameters are not supported.
 	ParameterSets [][]*SqlParameter `locationName:"parameterSets" type:"list"`
 
 	// The Amazon Resource Name (ARN) of the Aurora Serverless DB cluster.
@@ -1335,6 +1344,8 @@ type ExecuteStatementInput struct {
 	IncludeResultMetadata *bool `locationName:"includeResultMetadata" type:"boolean"`
 
 	// The parameters for the SQL statement.
+	//
+	// Array parameters are not supported.
 	Parameters []*SqlParameter `locationName:"parameters" type:"list"`
 
 	// The Amazon Resource Name (ARN) of the Aurora Serverless DB cluster.
@@ -1346,6 +1357,8 @@ type ExecuteStatementInput struct {
 	ResultSetOptions *ResultSetOptions `locationName:"resultSetOptions" type:"structure"`
 
 	// The name of the database schema.
+	//
+	// Currently, the schema parameter isn't supported.
 	Schema *string `locationName:"schema" type:"string"`
 
 	// The name or ARN of the secret that enables access to the DB cluster.
@@ -1600,8 +1613,8 @@ func (s *Field) SetStringValue(v string) *Field {
 
 // There are insufficient privileges to make the call.
 type ForbiddenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message returned by this ForbiddenException error.
 	Message_ *string `locationName:"message" type:"string"`
@@ -1619,17 +1632,17 @@ func (s ForbiddenException) GoString() string {
 
 func newErrorForbiddenException(v protocol.ResponseMetadata) error {
 	return &ForbiddenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ForbiddenException) Code() string {
+func (s *ForbiddenException) Code() string {
 	return "ForbiddenException"
 }
 
 // Message returns the exception's message.
-func (s ForbiddenException) Message() string {
+func (s *ForbiddenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1637,28 +1650,28 @@ func (s ForbiddenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ForbiddenException) OrigErr() error {
+func (s *ForbiddenException) OrigErr() error {
 	return nil
 }
 
-func (s ForbiddenException) Error() string {
+func (s *ForbiddenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ForbiddenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ForbiddenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ForbiddenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ForbiddenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An internal error occurred.
 type InternalServerErrorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1675,17 +1688,17 @@ func (s InternalServerErrorException) GoString() string {
 
 func newErrorInternalServerErrorException(v protocol.ResponseMetadata) error {
 	return &InternalServerErrorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerErrorException) Code() string {
+func (s *InternalServerErrorException) Code() string {
 	return "InternalServerErrorException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerErrorException) Message() string {
+func (s *InternalServerErrorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1693,28 +1706,28 @@ func (s InternalServerErrorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerErrorException) OrigErr() error {
+func (s *InternalServerErrorException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerErrorException) Error() string {
+func (s *InternalServerErrorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerErrorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerErrorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerErrorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerErrorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The resourceArn, secretArn, or transactionId value can't be found.
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message returned by this NotFoundException error.
 	Message_ *string `locationName:"message" type:"string"`
@@ -1732,17 +1745,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1750,22 +1763,22 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A record returned by a call.
@@ -1990,8 +2003,8 @@ func (s *RollbackTransactionOutput) SetTransactionStatus(v string) *RollbackTran
 
 // The service specified by the resourceArn parameter is not available.
 type ServiceUnavailableError struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2008,17 +2021,17 @@ func (s ServiceUnavailableError) GoString() string {
 
 func newErrorServiceUnavailableError(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailableError{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailableError) Code() string {
+func (s *ServiceUnavailableError) Code() string {
 	return "ServiceUnavailableError"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailableError) Message() string {
+func (s *ServiceUnavailableError) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2026,22 +2039,22 @@ func (s ServiceUnavailableError) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailableError) OrigErr() error {
+func (s *ServiceUnavailableError) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailableError) Error() string {
+func (s *ServiceUnavailableError) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailableError) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailableError) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailableError) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailableError) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A parameter used in a SQL statement.
@@ -2051,21 +2064,26 @@ type SqlParameter struct {
 	// The name of the parameter.
 	Name *string `locationName:"name" type:"string"`
 
-	// A hint that specifies the correct object type for data type mapping.
+	// A hint that specifies the correct object type for data type mapping. Possible
+	// values are as follows:
 	//
-	// Values:
+	//    * DATE - The corresponding String parameter value is sent as an object
+	//    of DATE type to the database. The accepted format is YYYY-MM-DD.
 	//
 	//    * DECIMAL - The corresponding String parameter value is sent as an object
 	//    of DECIMAL type to the database.
 	//
-	//    * TIMESTAMP - The corresponding String parameter value is sent as an object
-	//    of TIMESTAMP type to the database. The accepted format is YYYY-MM-DD HH:MM:SS[.FFF].
+	//    * JSON - The corresponding String parameter value is sent as an object
+	//    of JSON type to the database.
 	//
 	//    * TIME - The corresponding String parameter value is sent as an object
 	//    of TIME type to the database. The accepted format is HH:MM:SS[.FFF].
 	//
-	//    * DATE - The corresponding String parameter value is sent as an object
-	//    of DATE type to the database. The accepted format is YYYY-MM-DD.
+	//    * TIMESTAMP - The corresponding String parameter value is sent as an object
+	//    of TIMESTAMP type to the database. The accepted format is YYYY-MM-DD HH:MM:SS[.FFF].
+	//
+	//    * UUID - The corresponding String parameter value is sent as an object
+	//    of UUID type to the database.
 	TypeHint *string `locationName:"typeHint" type:"string" enum:"TypeHint"`
 
 	// The value of the parameter.
@@ -2137,8 +2155,8 @@ func (s *SqlStatementResult) SetResultFrame(v *ResultFrame) *SqlStatementResult 
 
 // The execution of the SQL statement timed out.
 type StatementTimeoutException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The database connection ID that executed the SQL statement.
 	DbConnectionId *int64 `locationName:"dbConnectionId" type:"long"`
@@ -2159,17 +2177,17 @@ func (s StatementTimeoutException) GoString() string {
 
 func newErrorStatementTimeoutException(v protocol.ResponseMetadata) error {
 	return &StatementTimeoutException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s StatementTimeoutException) Code() string {
+func (s *StatementTimeoutException) Code() string {
 	return "StatementTimeoutException"
 }
 
 // Message returns the exception's message.
-func (s StatementTimeoutException) Message() string {
+func (s *StatementTimeoutException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2177,22 +2195,22 @@ func (s StatementTimeoutException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s StatementTimeoutException) OrigErr() error {
+func (s *StatementTimeoutException) OrigErr() error {
 	return nil
 }
 
-func (s StatementTimeoutException) Error() string {
+func (s *StatementTimeoutException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s StatementTimeoutException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *StatementTimeoutException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s StatementTimeoutException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *StatementTimeoutException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A structure value returned by a call.
@@ -2353,23 +2371,49 @@ func (s *Value) SetStructValue(v *StructValue) *Value {
 }
 
 const (
-	// DecimalReturnTypeDoubleOrLong is a DecimalReturnType enum value
-	DecimalReturnTypeDoubleOrLong = "DOUBLE_OR_LONG"
-
 	// DecimalReturnTypeString is a DecimalReturnType enum value
 	DecimalReturnTypeString = "STRING"
+
+	// DecimalReturnTypeDoubleOrLong is a DecimalReturnType enum value
+	DecimalReturnTypeDoubleOrLong = "DOUBLE_OR_LONG"
 )
 
+// DecimalReturnType_Values returns all elements of the DecimalReturnType enum
+func DecimalReturnType_Values() []string {
+	return []string{
+		DecimalReturnTypeString,
+		DecimalReturnTypeDoubleOrLong,
+	}
+}
+
 const (
+	// TypeHintJson is a TypeHint enum value
+	TypeHintJson = "JSON"
+
+	// TypeHintUuid is a TypeHint enum value
+	TypeHintUuid = "UUID"
+
+	// TypeHintTimestamp is a TypeHint enum value
+	TypeHintTimestamp = "TIMESTAMP"
+
 	// TypeHintDate is a TypeHint enum value
 	TypeHintDate = "DATE"
-
-	// TypeHintDecimal is a TypeHint enum value
-	TypeHintDecimal = "DECIMAL"
 
 	// TypeHintTime is a TypeHint enum value
 	TypeHintTime = "TIME"
 
-	// TypeHintTimestamp is a TypeHint enum value
-	TypeHintTimestamp = "TIMESTAMP"
+	// TypeHintDecimal is a TypeHint enum value
+	TypeHintDecimal = "DECIMAL"
 )
+
+// TypeHint_Values returns all elements of the TypeHint enum
+func TypeHint_Values() []string {
+	return []string{
+		TypeHintJson,
+		TypeHintUuid,
+		TypeHintTimestamp,
+		TypeHintDate,
+		TypeHintTime,
+		TypeHintDecimal,
+	}
+}

@@ -638,7 +638,20 @@ func (c *MarketplaceCatalog) StartChangeSetRequest(input *StartChangeSetInput) (
 
 // StartChangeSet API operation for AWS Marketplace Catalog Service.
 //
-// This operation allows you to request changes in your entities.
+// This operation allows you to request changes for your entities. Within a
+// single ChangeSet, you cannot start the same change type against the same
+// entity multiple times. Additionally, when a ChangeSet is running, all the
+// entities targeted by the different changes are locked until the ChangeSet
+// has completed (either succeeded, cancelled, or failed). If you try to start
+// a ChangeSet containing a change against an entity that is already locked,
+// you will receive a ResourceInUseException.
+//
+// For example, you cannot start the ChangeSet described in the example (https://docs.aws.amazon.com/marketplace-catalog/latest/api-reference/API_StartChangeSet.html#API_StartChangeSet_Examples)
+// later in this topic, because it contains two changes to execute the same
+// change type (AddRevisions) against the same entity (entity-id@1).
+//
+// For more information about working with change sets, see Working with change
+// sets (https://docs.aws.amazon.com/marketplace-catalog/latest/api-reference/welcome.html#working-with-change-sets).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -693,10 +706,10 @@ func (c *MarketplaceCatalog) StartChangeSetWithContext(ctx aws.Context, input *S
 
 // Access is denied.
 type AccessDeniedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
-	Message_ *string `locationName:"Message" type:"string"`
+	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -711,17 +724,17 @@ func (s AccessDeniedException) GoString() string {
 
 func newErrorAccessDeniedException(v protocol.ResponseMetadata) error {
 	return &AccessDeniedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s AccessDeniedException) Code() string {
+func (s *AccessDeniedException) Code() string {
 	return "AccessDeniedException"
 }
 
 // Message returns the exception's message.
-func (s AccessDeniedException) Message() string {
+func (s *AccessDeniedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -729,22 +742,22 @@ func (s AccessDeniedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s AccessDeniedException) OrigErr() error {
+func (s *AccessDeniedException) OrigErr() error {
 	return nil
 }
 
-func (s AccessDeniedException) Error() string {
+func (s *AccessDeniedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s AccessDeniedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *AccessDeniedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s AccessDeniedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *AccessDeniedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type CancelChangeSetInput struct {
@@ -842,6 +855,9 @@ func (s *CancelChangeSetOutput) SetChangeSetId(v string) *CancelChangeSetOutput 
 type Change struct {
 	_ struct{} `type:"structure"`
 
+	// Optional name for the change.
+	ChangeName *string `min:"1" type:"string"`
+
 	// Change types are single string values that describe your intention for the
 	// change. Each change type is unique for each EntityType provided in the change's
 	// scope.
@@ -874,6 +890,9 @@ func (s Change) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *Change) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "Change"}
+	if s.ChangeName != nil && len(*s.ChangeName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ChangeName", 1))
+	}
 	if s.ChangeType == nil {
 		invalidParams.Add(request.NewErrParamRequired("ChangeType"))
 	}
@@ -899,6 +918,12 @@ func (s *Change) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetChangeName sets the ChangeName field's value.
+func (s *Change) SetChangeName(v string) *Change {
+	s.ChangeName = &v
+	return s
 }
 
 // SetChangeType sets the ChangeType field's value.
@@ -942,6 +967,12 @@ type ChangeSetSummaryListItem struct {
 	// set. The entity ID list is a maximum of 20 entities. It must contain at least
 	// one entity.
 	EntityIdList []*string `type:"list"`
+
+	// Returned if the change set is in FAILED status. Can be either CLIENT_ERROR,
+	// which means that there are issues with the request (see the ErrorDetailList
+	// of DescribeChangeSet), or SERVER_FAULT, which means that there is a problem
+	// in the system, and you should retry your request.
+	FailureCode *string `type:"string" enum:"FailureCode"`
 
 	// The time, in ISO 8601 format (2018-02-27T13:45:22Z), when the change set
 	// was started.
@@ -991,6 +1022,12 @@ func (s *ChangeSetSummaryListItem) SetEntityIdList(v []*string) *ChangeSetSummar
 	return s
 }
 
+// SetFailureCode sets the FailureCode field's value.
+func (s *ChangeSetSummaryListItem) SetFailureCode(v string) *ChangeSetSummaryListItem {
+	s.FailureCode = &v
+	return s
+}
+
 // SetStartTime sets the StartTime field's value.
 func (s *ChangeSetSummaryListItem) SetStartTime(v string) *ChangeSetSummaryListItem {
 	s.StartTime = &v
@@ -1008,8 +1045,15 @@ func (s *ChangeSetSummaryListItem) SetStatus(v string) *ChangeSetSummaryListItem
 type ChangeSummary struct {
 	_ struct{} `type:"structure"`
 
+	// Optional name for the change.
+	ChangeName *string `min:"1" type:"string"`
+
 	// The type of the change.
 	ChangeType *string `min:"1" type:"string"`
+
+	// This object contains details specific to the change type of the requested
+	// change.
+	Details *string `min:"2" type:"string"`
 
 	// The entity to be changed.
 	Entity *Entity `type:"structure"`
@@ -1028,9 +1072,21 @@ func (s ChangeSummary) GoString() string {
 	return s.String()
 }
 
+// SetChangeName sets the ChangeName field's value.
+func (s *ChangeSummary) SetChangeName(v string) *ChangeSummary {
+	s.ChangeName = &v
+	return s
+}
+
 // SetChangeType sets the ChangeType field's value.
 func (s *ChangeSummary) SetChangeType(v string) *ChangeSummary {
 	s.ChangeType = &v
+	return s
+}
+
+// SetDetails sets the Details field's value.
+func (s *ChangeSummary) SetDetails(v string) *ChangeSummary {
+	s.Details = &v
 	return s
 }
 
@@ -1127,9 +1183,15 @@ type DescribeChangeSetOutput struct {
 	// state. Null if the request is not in a terminal state.
 	EndTime *string `min:"20" type:"string"`
 
+	// Returned if the change set is in FAILED status. Can be either CLIENT_ERROR,
+	// which means that there are issues with the request (see the ErrorDetailList),
+	// or SERVER_FAULT, which means that there is a problem in the system, and you
+	// should retry your request.
+	FailureCode *string `type:"string" enum:"FailureCode"`
+
 	// Returned if there is a failure on the change set, but that failure is not
 	// related to any of the changes in the request.
-	FailureDescription *string `type:"string"`
+	FailureDescription *string `min:"1" type:"string"`
 
 	// The date and time, in ISO 8601 format (2018-02-27T13:45:22Z), the request
 	// started.
@@ -1176,6 +1238,12 @@ func (s *DescribeChangeSetOutput) SetChangeSetName(v string) *DescribeChangeSetO
 // SetEndTime sets the EndTime field's value.
 func (s *DescribeChangeSetOutput) SetEndTime(v string) *DescribeChangeSetOutput {
 	s.EndTime = &v
+	return s
+}
+
+// SetFailureCode sets the FailureCode field's value.
+func (s *DescribeChangeSetOutput) SetFailureCode(v string) *DescribeChangeSetOutput {
+	s.FailureCode = &v
 	return s
 }
 
@@ -1272,7 +1340,7 @@ type DescribeEntityOutput struct {
 	EntityType *string `min:"1" type:"string"`
 
 	// The last modified date of the entity, in ISO 8601 format (2018-02-27T13:45:22Z).
-	LastModifiedDate *string `type:"string"`
+	LastModifiedDate *string `min:"20" type:"string"`
 }
 
 // String returns the string representation
@@ -1315,8 +1383,8 @@ func (s *DescribeEntityOutput) SetLastModifiedDate(v string) *DescribeEntityOutp
 	return s
 }
 
-// A product entity contains data that describes your product, its supported
-// features, and how it can be used or launched by your customer.
+// An entity contains data that describes your product, its supported features,
+// and how it can be used or launched by your customer.
 type Entity struct {
 	_ struct{} `type:"structure"`
 
@@ -1386,16 +1454,16 @@ type EntitySummary struct {
 	EntityType *string `min:"1" type:"string"`
 
 	// The last time the entity was published, using ISO 8601 format (2018-02-27T13:45:22Z).
-	LastModifiedDate *string `type:"string"`
+	LastModifiedDate *string `min:"20" type:"string"`
 
-	// The name for the entity. This value is not unique. It is defined by the provider.
-	Name *string `type:"string"`
+	// The name for the entity. This value is not unique. It is defined by the seller.
+	Name *string `min:"1" type:"string"`
 
-	// The visibility status of the entity to subscribers. This value can be Public
-	// (everyone can view the entity), Limited (the entity is visible to limited
-	// accounts only), or Restricted (the entity was published and then unpublished
-	// and only existing subscribers can view it).
-	Visibility *string `type:"string"`
+	// The visibility status of the entity to buyers. This value can be Public (everyone
+	// can view the entity), Limited (the entity is visible to limited accounts
+	// only), or Restricted (the entity was published and then unpublished and only
+	// existing buyers can view it).
+	Visibility *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -1449,10 +1517,10 @@ type ErrorDetail struct {
 	_ struct{} `type:"structure"`
 
 	// The error code that identifies the type of error.
-	ErrorCode *string `type:"string"`
+	ErrorCode *string `min:"1" type:"string"`
 
 	// The message for the error.
-	ErrorMessage *string `type:"string"`
+	ErrorMessage *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -1554,10 +1622,10 @@ func (s *Filter) SetValueList(v []*string) *Filter {
 
 // There was an internal service exception.
 type InternalServiceException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
-	Message_ *string `locationName:"Message" type:"string"`
+	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -1572,17 +1640,17 @@ func (s InternalServiceException) GoString() string {
 
 func newErrorInternalServiceException(v protocol.ResponseMetadata) error {
 	return &InternalServiceException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServiceException) Code() string {
+func (s *InternalServiceException) Code() string {
 	return "InternalServiceException"
 }
 
 // Message returns the exception's message.
-func (s InternalServiceException) Message() string {
+func (s *InternalServiceException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1590,22 +1658,22 @@ func (s InternalServiceException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServiceException) OrigErr() error {
+func (s *InternalServiceException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServiceException) Error() string {
+func (s *InternalServiceException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServiceException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServiceException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServiceException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServiceException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListChangeSetsInput struct {
@@ -1628,7 +1696,7 @@ type ListChangeSetsInput struct {
 	// results.
 	NextToken *string `min:"1" type:"string"`
 
-	// An object that contains two attributes, sortBy and sortOrder.
+	// An object that contains two attributes, SortBy and SortOrder.
 	Sort *Sort `type:"structure"`
 }
 
@@ -1768,7 +1836,7 @@ type ListEntitiesInput struct {
 	// The value of the next token, if it exists. Null if there are no more results.
 	NextToken *string `min:"1" type:"string"`
 
-	// An object that contains two attributes, sortBy and sortOrder.
+	// An object that contains two attributes, SortBy and SortOrder.
 	Sort *Sort `type:"structure"`
 }
 
@@ -1898,10 +1966,10 @@ func (s *ListEntitiesOutput) SetNextToken(v string) *ListEntitiesOutput {
 
 // The resource is currently in use.
 type ResourceInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
-	Message_ *string `locationName:"Message" type:"string"`
+	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -1916,17 +1984,17 @@ func (s ResourceInUseException) GoString() string {
 
 func newErrorResourceInUseException(v protocol.ResponseMetadata) error {
 	return &ResourceInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceInUseException) Code() string {
+func (s *ResourceInUseException) Code() string {
 	return "ResourceInUseException"
 }
 
 // Message returns the exception's message.
-func (s ResourceInUseException) Message() string {
+func (s *ResourceInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1934,30 +2002,30 @@ func (s ResourceInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceInUseException) OrigErr() error {
+func (s *ResourceInUseException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceInUseException) Error() string {
+func (s *ResourceInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified resource wasn't found.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
-	Message_ *string `locationName:"Message" type:"string"`
+	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -1972,17 +2040,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1990,30 +2058,30 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Currently, the specified resource is not supported.
 type ResourceNotSupportedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
-	Message_ *string `locationName:"Message" type:"string"`
+	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -2028,17 +2096,17 @@ func (s ResourceNotSupportedException) GoString() string {
 
 func newErrorResourceNotSupportedException(v protocol.ResponseMetadata) error {
 	return &ResourceNotSupportedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotSupportedException) Code() string {
+func (s *ResourceNotSupportedException) Code() string {
 	return "ResourceNotSupportedException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotSupportedException) Message() string {
+func (s *ResourceNotSupportedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2046,30 +2114,30 @@ func (s ResourceNotSupportedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotSupportedException) OrigErr() error {
+func (s *ResourceNotSupportedException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotSupportedException) Error() string {
+func (s *ResourceNotSupportedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotSupportedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotSupportedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotSupportedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotSupportedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The maximum number of open requests per account has been exceeded.
 type ServiceQuotaExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
-	Message_ *string `locationName:"Message" type:"string"`
+	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -2084,17 +2152,17 @@ func (s ServiceQuotaExceededException) GoString() string {
 
 func newErrorServiceQuotaExceededException(v protocol.ResponseMetadata) error {
 	return &ServiceQuotaExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceQuotaExceededException) Code() string {
+func (s *ServiceQuotaExceededException) Code() string {
 	return "ServiceQuotaExceededException"
 }
 
 // Message returns the exception's message.
-func (s ServiceQuotaExceededException) Message() string {
+func (s *ServiceQuotaExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2102,25 +2170,25 @@ func (s ServiceQuotaExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceQuotaExceededException) OrigErr() error {
+func (s *ServiceQuotaExceededException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceQuotaExceededException) Error() string {
+func (s *ServiceQuotaExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceQuotaExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceQuotaExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceQuotaExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceQuotaExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// An object that contains two attributes, sortBy and sortOrder.
+// An object that contains two attributes, SortBy and SortOrder.
 type Sort struct {
 	_ struct{} `type:"structure"`
 
@@ -2296,10 +2364,10 @@ func (s *StartChangeSetOutput) SetChangeSetId(v string) *StartChangeSetOutput {
 
 // Too many requests.
 type ThrottlingException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
-	Message_ *string `locationName:"Message" type:"string"`
+	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -2314,17 +2382,17 @@ func (s ThrottlingException) GoString() string {
 
 func newErrorThrottlingException(v protocol.ResponseMetadata) error {
 	return &ThrottlingException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ThrottlingException) Code() string {
+func (s *ThrottlingException) Code() string {
 	return "ThrottlingException"
 }
 
 // Message returns the exception's message.
-func (s ThrottlingException) Message() string {
+func (s *ThrottlingException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2332,30 +2400,30 @@ func (s ThrottlingException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ThrottlingException) OrigErr() error {
+func (s *ThrottlingException) OrigErr() error {
 	return nil
 }
 
-func (s ThrottlingException) Error() string {
+func (s *ThrottlingException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ThrottlingException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ThrottlingException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ThrottlingException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ThrottlingException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An error occurred during validation.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
-	Message_ *string `locationName:"Message" type:"string"`
+	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -2370,17 +2438,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2388,22 +2456,22 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -2423,6 +2491,33 @@ const (
 	ChangeStatusFailed = "FAILED"
 )
 
+// ChangeStatus_Values returns all elements of the ChangeStatus enum
+func ChangeStatus_Values() []string {
+	return []string{
+		ChangeStatusPreparing,
+		ChangeStatusApplying,
+		ChangeStatusSucceeded,
+		ChangeStatusCancelled,
+		ChangeStatusFailed,
+	}
+}
+
+const (
+	// FailureCodeClientError is a FailureCode enum value
+	FailureCodeClientError = "CLIENT_ERROR"
+
+	// FailureCodeServerFault is a FailureCode enum value
+	FailureCodeServerFault = "SERVER_FAULT"
+)
+
+// FailureCode_Values returns all elements of the FailureCode enum
+func FailureCode_Values() []string {
+	return []string{
+		FailureCodeClientError,
+		FailureCodeServerFault,
+	}
+}
+
 const (
 	// SortOrderAscending is a SortOrder enum value
 	SortOrderAscending = "ASCENDING"
@@ -2430,3 +2525,11 @@ const (
 	// SortOrderDescending is a SortOrder enum value
 	SortOrderDescending = "DESCENDING"
 )
+
+// SortOrder_Values returns all elements of the SortOrder enum
+func SortOrder_Values() []string {
+	return []string{
+		SortOrderAscending,
+		SortOrderDescending,
+	}
+}

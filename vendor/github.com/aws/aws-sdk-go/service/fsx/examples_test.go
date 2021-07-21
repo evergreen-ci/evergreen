@@ -25,6 +25,56 @@ func parseTime(layout, value string) *time.Time {
 	return &t
 }
 
+// To copy a backup
+//
+// This operation copies an Amazon FSx backup.
+func ExampleFSx_CopyBackup_shared00() {
+	svc := fsx.New(session.New())
+	input := &fsx.CopyBackupInput{
+		SourceBackupId: aws.String("backup-03e3c82e0183b7b6b"),
+		SourceRegion:   aws.String("us-east-2"),
+	}
+
+	result, err := svc.CopyBackup(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case fsx.ErrCodeBadRequest:
+				fmt.Println(fsx.ErrCodeBadRequest, aerr.Error())
+			case fsx.ErrCodeBackupNotFound:
+				fmt.Println(fsx.ErrCodeBackupNotFound, aerr.Error())
+			case fsx.ErrCodeServiceLimitExceeded:
+				fmt.Println(fsx.ErrCodeServiceLimitExceeded, aerr.Error())
+			case fsx.ErrCodeUnsupportedOperation:
+				fmt.Println(fsx.ErrCodeUnsupportedOperation, aerr.Error())
+			case fsx.ErrCodeIncompatibleParameterError:
+				fmt.Println(fsx.ErrCodeIncompatibleParameterError, aerr.Error())
+			case fsx.ErrCodeInternalServerError:
+				fmt.Println(fsx.ErrCodeInternalServerError, aerr.Error())
+			case fsx.ErrCodeInvalidSourceKmsKey:
+				fmt.Println(fsx.ErrCodeInvalidSourceKmsKey, aerr.Error())
+			case fsx.ErrCodeInvalidDestinationKmsKey:
+				fmt.Println(fsx.ErrCodeInvalidDestinationKmsKey, aerr.Error())
+			case fsx.ErrCodeInvalidRegion:
+				fmt.Println(fsx.ErrCodeInvalidRegion, aerr.Error())
+			case fsx.ErrCodeSourceBackupUnavailable:
+				fmt.Println(fsx.ErrCodeSourceBackupUnavailable, aerr.Error())
+			case fsx.ErrCodeIncompatibleRegionForMultiAZ:
+				fmt.Println(fsx.ErrCodeIncompatibleRegionForMultiAZ, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		return
+	}
+
+	fmt.Println(result)
+}
+
 // To create a new backup
 //
 // This operation creates a new backup.
@@ -74,17 +124,18 @@ func ExampleFSx_CreateBackup_shared00() {
 
 // To create a new file system
 //
-// This operation creates a new file system.
+// This operation creates a new Amazon FSx for Windows File Server file system.
 func ExampleFSx_CreateFileSystem_shared00() {
 	svc := fsx.New(session.New())
 	input := &fsx.CreateFileSystemInput{
 		ClientRequestToken: aws.String("a8ca07e4-61ec-4399-99f4-19853801bcd5"),
 		FileSystemType:     aws.String("WINDOWS"),
-		KmsKeyId:           aws.String("arn:aws:kms:us-east-1:012345678912:key/0ff3ea8d-130e-4133-877f-93908b6fdbd6"),
+		KmsKeyId:           aws.String("arn:aws:kms:us-east-1:012345678912:key/1111abcd-2222-3333-4444-55556666eeff"),
 		SecurityGroupIds: []*string{
 			aws.String("sg-edcd9784"),
 		},
-		StorageCapacity: aws.Int64(300),
+		StorageCapacity: aws.Int64(3200),
+		StorageType:     aws.String("HDD"),
 		SubnetIds: []*string{
 			aws.String("subnet-1234abcd"),
 		},
@@ -95,10 +146,13 @@ func ExampleFSx_CreateFileSystem_shared00() {
 			},
 		},
 		WindowsConfiguration: &fsx.CreateFileSystemWindowsConfiguration{
-			ActiveDirectoryId:             aws.String("d-1234abcd12"),
+			ActiveDirectoryId: aws.String("d-1234abcd12"),
+			Aliases: []*string{
+				aws.String("accounting.corp.example.com"),
+			},
 			AutomaticBackupRetentionDays:  aws.Int64(30),
 			DailyAutomaticBackupStartTime: aws.String("05:00"),
-			ThroughputCapacity:            aws.Int64(8),
+			ThroughputCapacity:            aws.Int64(32),
 			WeeklyMaintenanceStartTime:    aws.String("1:05:00"),
 		},
 	}
@@ -119,6 +173,8 @@ func ExampleFSx_CreateFileSystem_shared00() {
 				fmt.Println(fsx.ErrCodeInvalidExportPath, aerr.Error())
 			case fsx.ErrCodeInvalidNetworkSettings:
 				fmt.Println(fsx.ErrCodeInvalidNetworkSettings, aerr.Error())
+			case fsx.ErrCodeInvalidPerUnitStorageThroughput:
+				fmt.Println(fsx.ErrCodeInvalidPerUnitStorageThroughput, aerr.Error())
 			case fsx.ErrCodeServiceLimitExceeded:
 				fmt.Println(fsx.ErrCodeServiceLimitExceeded, aerr.Error())
 			case fsx.ErrCodeInternalServerError:
@@ -176,6 +232,8 @@ func ExampleFSx_CreateFileSystemFromBackup_shared00() {
 				fmt.Println(fsx.ErrCodeIncompatibleParameterError, aerr.Error())
 			case fsx.ErrCodeInvalidNetworkSettings:
 				fmt.Println(fsx.ErrCodeInvalidNetworkSettings, aerr.Error())
+			case fsx.ErrCodeInvalidPerUnitStorageThroughput:
+				fmt.Println(fsx.ErrCodeInvalidPerUnitStorageThroughput, aerr.Error())
 			case fsx.ErrCodeServiceLimitExceeded:
 				fmt.Println(fsx.ErrCodeServiceLimitExceeded, aerr.Error())
 			case fsx.ErrCodeBackupNotFound:
@@ -223,6 +281,8 @@ func ExampleFSx_DeleteBackup_shared00() {
 				fmt.Println(fsx.ErrCodeIncompatibleParameterError, aerr.Error())
 			case fsx.ErrCodeInternalServerError:
 				fmt.Println(fsx.ErrCodeInternalServerError, aerr.Error())
+			case fsx.ErrCodeBackupBeingCopied:
+				fmt.Println(fsx.ErrCodeBackupBeingCopied, aerr.Error())
 			default:
 				fmt.Println(aerr.Error())
 			}
@@ -488,6 +548,8 @@ func ExampleFSx_UpdateFileSystem_shared00() {
 				fmt.Println(fsx.ErrCodeFileSystemNotFound, aerr.Error())
 			case fsx.ErrCodeMissingFileSystemConfiguration:
 				fmt.Println(fsx.ErrCodeMissingFileSystemConfiguration, aerr.Error())
+			case fsx.ErrCodeServiceLimitExceeded:
+				fmt.Println(fsx.ErrCodeServiceLimitExceeded, aerr.Error())
 			default:
 				fmt.Println(aerr.Error())
 			}

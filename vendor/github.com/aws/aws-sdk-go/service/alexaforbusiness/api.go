@@ -5865,6 +5865,9 @@ func (c *AlexaForBusiness) RegisterAVSDeviceRequest(input *RegisterAVSDeviceInpu
 //   * ConcurrentModificationException
 //   There is a concurrent modification of resources.
 //
+//   * NotFoundException
+//   The resource is not found.
+//
 //   * InvalidDeviceException
 //   The device is in an invalid state.
 //
@@ -6022,6 +6025,13 @@ func (c *AlexaForBusiness) ResolveRoomRequest(input *ResolveRoomInput) (req *req
 //
 // Determines the details for the room from which a skill request was invoked.
 // This operation is used by skill developers.
+//
+// To query ResolveRoom from an Alexa skill, the skill ID needs to be authorized.
+// When the skill is using an AWS Lambda function, the skill is automatically
+// authorized when you publish your skill as a private skill to your AWS account.
+// Skills that are hosted using a custom web service must be manually authorized.
+// To get your skill authorized, contact AWS Support with your AWS account ID
+// that queries the ResolveRoom API and skill ID.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -8725,8 +8735,8 @@ func (s *AddressBookData) SetName(v string) *AddressBookData {
 
 // The resource being created already exists.
 type AlreadyExistsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -8743,17 +8753,17 @@ func (s AlreadyExistsException) GoString() string {
 
 func newErrorAlreadyExistsException(v protocol.ResponseMetadata) error {
 	return &AlreadyExistsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s AlreadyExistsException) Code() string {
+func (s *AlreadyExistsException) Code() string {
 	return "AlreadyExistsException"
 }
 
 // Message returns the exception's message.
-func (s AlreadyExistsException) Message() string {
+func (s *AlreadyExistsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8761,22 +8771,22 @@ func (s AlreadyExistsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s AlreadyExistsException) OrigErr() error {
+func (s *AlreadyExistsException) OrigErr() error {
 	return nil
 }
 
-func (s AlreadyExistsException) Error() string {
+func (s *AlreadyExistsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s AlreadyExistsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *AlreadyExistsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s AlreadyExistsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *AlreadyExistsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ApproveSkillInput struct {
@@ -9297,7 +9307,9 @@ type BusinessReportContentRange struct {
 	_ struct{} `type:"structure"`
 
 	// The interval of the content range.
-	Interval *string `type:"string" enum:"BusinessReportInterval"`
+	//
+	// Interval is a required field
+	Interval *string `type:"string" required:"true" enum:"BusinessReportInterval"`
 }
 
 // String returns the string representation
@@ -9308,6 +9320,19 @@ func (s BusinessReportContentRange) String() string {
 // GoString returns the string representation
 func (s BusinessReportContentRange) GoString() string {
 	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *BusinessReportContentRange) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "BusinessReportContentRange"}
+	if s.Interval == nil {
+		invalidParams.Add(request.NewErrParamRequired("Interval"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
 }
 
 // SetInterval sets the Interval field's value.
@@ -9497,8 +9522,8 @@ func (s *Category) SetCategoryName(v string) *Category {
 
 // There is a concurrent modification of resources.
 type ConcurrentModificationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -9515,17 +9540,17 @@ func (s ConcurrentModificationException) GoString() string {
 
 func newErrorConcurrentModificationException(v protocol.ResponseMetadata) error {
 	return &ConcurrentModificationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConcurrentModificationException) Code() string {
+func (s *ConcurrentModificationException) Code() string {
 	return "ConcurrentModificationException"
 }
 
 // Message returns the exception's message.
-func (s ConcurrentModificationException) Message() string {
+func (s *ConcurrentModificationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9533,22 +9558,22 @@ func (s ConcurrentModificationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConcurrentModificationException) OrigErr() error {
+func (s *ConcurrentModificationException) OrigErr() error {
 	return nil
 }
 
-func (s ConcurrentModificationException) Error() string {
+func (s *ConcurrentModificationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConcurrentModificationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConcurrentModificationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConcurrentModificationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConcurrentModificationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The default conference provider that is used if no other scheduled meetings
@@ -9905,6 +9930,9 @@ type CreateAddressBookInput struct {
 	//
 	// Name is a required field
 	Name *string `min:"1" type:"string" required:"true"`
+
+	// The tags to be added to the specified resource. Do not provide system tags.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -9932,6 +9960,16 @@ func (s *CreateAddressBookInput) Validate() error {
 	if s.Name != nil && len(*s.Name) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -9954,6 +9992,12 @@ func (s *CreateAddressBookInput) SetDescription(v string) *CreateAddressBookInpu
 // SetName sets the Name field's value.
 func (s *CreateAddressBookInput) SetName(v string) *CreateAddressBookInput {
 	s.Name = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateAddressBookInput) SetTags(v []*Tag) *CreateAddressBookInput {
+	s.Tags = v
 	return s
 }
 
@@ -10010,6 +10054,9 @@ type CreateBusinessReportScheduleInput struct {
 
 	// The name identifier of the schedule.
 	ScheduleName *string `type:"string"`
+
+	// The tags for the business report schedule.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -10033,6 +10080,21 @@ func (s *CreateBusinessReportScheduleInput) Validate() error {
 	}
 	if s.Format == nil {
 		invalidParams.Add(request.NewErrParamRequired("Format"))
+	}
+	if s.ContentRange != nil {
+		if err := s.ContentRange.Validate(); err != nil {
+			invalidParams.AddNested("ContentRange", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 
 	if invalidParams.Len() > 0 {
@@ -10080,6 +10142,12 @@ func (s *CreateBusinessReportScheduleInput) SetS3KeyPrefix(v string) *CreateBusi
 // SetScheduleName sets the ScheduleName field's value.
 func (s *CreateBusinessReportScheduleInput) SetScheduleName(v string) *CreateBusinessReportScheduleInput {
 	s.ScheduleName = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateBusinessReportScheduleInput) SetTags(v []*Tag) *CreateBusinessReportScheduleInput {
+	s.Tags = v
 	return s
 }
 
@@ -10132,6 +10200,9 @@ type CreateConferenceProviderInput struct {
 
 	// The information for PSTN conferencing.
 	PSTNDialIn *PSTNDialIn `type:"structure"`
+
+	// The tags to be added to the specified resource. Do not provide system tags.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -10177,6 +10248,16 @@ func (s *CreateConferenceProviderInput) Validate() error {
 			invalidParams.AddNested("PSTNDialIn", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -10217,6 +10298,12 @@ func (s *CreateConferenceProviderInput) SetMeetingSetting(v *MeetingSetting) *Cr
 // SetPSTNDialIn sets the PSTNDialIn field's value.
 func (s *CreateConferenceProviderInput) SetPSTNDialIn(v *PSTNDialIn) *CreateConferenceProviderInput {
 	s.PSTNDialIn = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateConferenceProviderInput) SetTags(v []*Tag) *CreateConferenceProviderInput {
+	s.Tags = v
 	return s
 }
 
@@ -10271,6 +10358,9 @@ type CreateContactInput struct {
 
 	// The list of SIP addresses for the contact.
 	SipAddresses []*SipAddress `type:"list"`
+
+	// The tags to be added to the specified resource. Do not provide system tags.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -10321,6 +10411,16 @@ func (s *CreateContactInput) Validate() error {
 			}
 		}
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -10367,6 +10467,12 @@ func (s *CreateContactInput) SetPhoneNumbers(v []*PhoneNumber) *CreateContactInp
 // SetSipAddresses sets the SipAddresses field's value.
 func (s *CreateContactInput) SetSipAddresses(v []*SipAddress) *CreateContactInput {
 	s.SipAddresses = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateContactInput) SetTags(v []*Tag) *CreateContactInput {
+	s.Tags = v
 	return s
 }
 
@@ -10478,6 +10584,9 @@ type CreateGatewayGroupInput struct {
 	//
 	// Name is a required field
 	Name *string `min:"1" type:"string" required:"true"`
+
+	// The tags to be added to the specified resource. Do not provide system tags.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -10502,6 +10611,16 @@ func (s *CreateGatewayGroupInput) Validate() error {
 	if s.Name != nil && len(*s.Name) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -10524,6 +10643,12 @@ func (s *CreateGatewayGroupInput) SetDescription(v string) *CreateGatewayGroupIn
 // SetName sets the Name field's value.
 func (s *CreateGatewayGroupInput) SetName(v string) *CreateGatewayGroupInput {
 	s.Name = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateGatewayGroupInput) SetTags(v []*Tag) *CreateGatewayGroupInput {
+	s.Tags = v
 	return s
 }
 
@@ -10729,6 +10854,9 @@ type CreateNetworkProfileInput struct {
 	// Ssid is a required field
 	Ssid *string `min:"1" type:"string" required:"true"`
 
+	// The tags to be added to the specified resource. Do not provide system tags.
+	Tags []*Tag `type:"list"`
+
 	// The root certificates of your authentication server that is installed on
 	// your devices and used to trust your authentication server during EAP negotiation.
 	TrustAnchors []*string `min:"1" type:"list"`
@@ -10770,6 +10898,16 @@ func (s *CreateNetworkProfileInput) Validate() error {
 	}
 	if s.TrustAnchors != nil && len(s.TrustAnchors) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("TrustAnchors", 1))
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 
 	if invalidParams.Len() > 0 {
@@ -10832,6 +10970,12 @@ func (s *CreateNetworkProfileInput) SetSsid(v string) *CreateNetworkProfileInput
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreateNetworkProfileInput) SetTags(v []*Tag) *CreateNetworkProfileInput {
+	s.Tags = v
+	return s
+}
+
 // SetTrustAnchors sets the TrustAnchors field's value.
 func (s *CreateNetworkProfileInput) SetTrustAnchors(v []*string) *CreateNetworkProfileInput {
 	s.TrustAnchors = v
@@ -10872,6 +11016,9 @@ type CreateProfileInput struct {
 	// The user-specified token that is used during the creation of a profile.
 	ClientRequestToken *string `min:"10" type:"string" idempotencyToken:"true"`
 
+	// Whether data retention of the profile is enabled.
+	DataRetentionOptIn *bool `type:"boolean"`
+
 	// The distance unit to be used by devices in the profile.
 	//
 	// DistanceUnit is a required field
@@ -10897,6 +11044,9 @@ type CreateProfileInput struct {
 
 	// Whether room profile setup is enabled.
 	SetupModeDisabled *bool `type:"boolean"`
+
+	// The tags for the profile.
+	Tags []*Tag `type:"list"`
 
 	// The temperature unit to be used by devices in the profile.
 	//
@@ -10965,6 +11115,16 @@ func (s *CreateProfileInput) Validate() error {
 			invalidParams.AddNested("MeetingRoomConfiguration", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -10981,6 +11141,12 @@ func (s *CreateProfileInput) SetAddress(v string) *CreateProfileInput {
 // SetClientRequestToken sets the ClientRequestToken field's value.
 func (s *CreateProfileInput) SetClientRequestToken(v string) *CreateProfileInput {
 	s.ClientRequestToken = &v
+	return s
+}
+
+// SetDataRetentionOptIn sets the DataRetentionOptIn field's value.
+func (s *CreateProfileInput) SetDataRetentionOptIn(v bool) *CreateProfileInput {
+	s.DataRetentionOptIn = &v
 	return s
 }
 
@@ -11023,6 +11189,12 @@ func (s *CreateProfileInput) SetProfileName(v string) *CreateProfileInput {
 // SetSetupModeDisabled sets the SetupModeDisabled field's value.
 func (s *CreateProfileInput) SetSetupModeDisabled(v bool) *CreateProfileInput {
 	s.SetupModeDisabled = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateProfileInput) SetTags(v []*Tag) *CreateProfileInput {
+	s.Tags = v
 	return s
 }
 
@@ -11132,7 +11304,7 @@ type CreateRoomInput struct {
 	// The description for the room.
 	Description *string `min:"1" type:"string"`
 
-	// The profile ARN for the room.
+	// The profile ARN for the room. This is required.
 	ProfileArn *string `type:"string"`
 
 	// The calendar ARN for the room.
@@ -11261,6 +11433,9 @@ type CreateSkillGroupInput struct {
 	//
 	// SkillGroupName is a required field
 	SkillGroupName *string `min:"1" type:"string" required:"true"`
+
+	// The tags for the skill group.
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -11288,6 +11463,16 @@ func (s *CreateSkillGroupInput) Validate() error {
 	if s.SkillGroupName != nil && len(*s.SkillGroupName) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("SkillGroupName", 1))
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -11310,6 +11495,12 @@ func (s *CreateSkillGroupInput) SetDescription(v string) *CreateSkillGroupInput 
 // SetSkillGroupName sets the SkillGroupName field's value.
 func (s *CreateSkillGroupInput) SetSkillGroupName(v string) *CreateSkillGroupInput {
 	s.SkillGroupName = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateSkillGroupInput) SetTags(v []*Tag) *CreateSkillGroupInput {
+	s.Tags = v
 	return s
 }
 
@@ -12578,8 +12769,8 @@ func (s *DeviceNetworkProfileInfo) SetNetworkProfileArn(v string) *DeviceNetwork
 // The request failed because this device is no longer registered and therefore
 // no longer managed by this account.
 type DeviceNotRegisteredException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -12596,17 +12787,17 @@ func (s DeviceNotRegisteredException) GoString() string {
 
 func newErrorDeviceNotRegisteredException(v protocol.ResponseMetadata) error {
 	return &DeviceNotRegisteredException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s DeviceNotRegisteredException) Code() string {
+func (s *DeviceNotRegisteredException) Code() string {
 	return "DeviceNotRegisteredException"
 }
 
 // Message returns the exception's message.
-func (s DeviceNotRegisteredException) Message() string {
+func (s *DeviceNotRegisteredException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12614,22 +12805,22 @@ func (s DeviceNotRegisteredException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s DeviceNotRegisteredException) OrigErr() error {
+func (s *DeviceNotRegisteredException) OrigErr() error {
 	return nil
 }
 
-func (s DeviceNotRegisteredException) Error() string {
+func (s *DeviceNotRegisteredException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s DeviceNotRegisteredException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *DeviceNotRegisteredException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s DeviceNotRegisteredException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *DeviceNotRegisteredException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Details of a device’s status.
@@ -14154,8 +14345,8 @@ func (s *InstantBooking) SetEnabled(v bool) *InstantBooking {
 
 // The Certificate Authority can't issue or revoke a certificate.
 type InvalidCertificateAuthorityException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -14172,17 +14363,17 @@ func (s InvalidCertificateAuthorityException) GoString() string {
 
 func newErrorInvalidCertificateAuthorityException(v protocol.ResponseMetadata) error {
 	return &InvalidCertificateAuthorityException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidCertificateAuthorityException) Code() string {
+func (s *InvalidCertificateAuthorityException) Code() string {
 	return "InvalidCertificateAuthorityException"
 }
 
 // Message returns the exception's message.
-func (s InvalidCertificateAuthorityException) Message() string {
+func (s *InvalidCertificateAuthorityException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -14190,28 +14381,28 @@ func (s InvalidCertificateAuthorityException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidCertificateAuthorityException) OrigErr() error {
+func (s *InvalidCertificateAuthorityException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidCertificateAuthorityException) Error() string {
+func (s *InvalidCertificateAuthorityException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidCertificateAuthorityException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidCertificateAuthorityException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidCertificateAuthorityException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidCertificateAuthorityException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The device is in an invalid state.
 type InvalidDeviceException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -14228,17 +14419,17 @@ func (s InvalidDeviceException) GoString() string {
 
 func newErrorInvalidDeviceException(v protocol.ResponseMetadata) error {
 	return &InvalidDeviceException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidDeviceException) Code() string {
+func (s *InvalidDeviceException) Code() string {
 	return "InvalidDeviceException"
 }
 
 // Message returns the exception's message.
-func (s InvalidDeviceException) Message() string {
+func (s *InvalidDeviceException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -14246,28 +14437,28 @@ func (s InvalidDeviceException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidDeviceException) OrigErr() error {
+func (s *InvalidDeviceException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidDeviceException) Error() string {
+func (s *InvalidDeviceException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidDeviceException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidDeviceException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidDeviceException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidDeviceException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A password in SecretsManager is in an invalid state.
 type InvalidSecretsManagerResourceException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -14284,17 +14475,17 @@ func (s InvalidSecretsManagerResourceException) GoString() string {
 
 func newErrorInvalidSecretsManagerResourceException(v protocol.ResponseMetadata) error {
 	return &InvalidSecretsManagerResourceException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidSecretsManagerResourceException) Code() string {
+func (s *InvalidSecretsManagerResourceException) Code() string {
 	return "InvalidSecretsManagerResourceException"
 }
 
 // Message returns the exception's message.
-func (s InvalidSecretsManagerResourceException) Message() string {
+func (s *InvalidSecretsManagerResourceException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -14302,28 +14493,28 @@ func (s InvalidSecretsManagerResourceException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidSecretsManagerResourceException) OrigErr() error {
+func (s *InvalidSecretsManagerResourceException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidSecretsManagerResourceException) Error() string {
+func (s *InvalidSecretsManagerResourceException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidSecretsManagerResourceException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidSecretsManagerResourceException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidSecretsManagerResourceException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidSecretsManagerResourceException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The service linked role is locked for deletion.
 type InvalidServiceLinkedRoleStateException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -14340,17 +14531,17 @@ func (s InvalidServiceLinkedRoleStateException) GoString() string {
 
 func newErrorInvalidServiceLinkedRoleStateException(v protocol.ResponseMetadata) error {
 	return &InvalidServiceLinkedRoleStateException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidServiceLinkedRoleStateException) Code() string {
+func (s *InvalidServiceLinkedRoleStateException) Code() string {
 	return "InvalidServiceLinkedRoleStateException"
 }
 
 // Message returns the exception's message.
-func (s InvalidServiceLinkedRoleStateException) Message() string {
+func (s *InvalidServiceLinkedRoleStateException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -14358,28 +14549,28 @@ func (s InvalidServiceLinkedRoleStateException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidServiceLinkedRoleStateException) OrigErr() error {
+func (s *InvalidServiceLinkedRoleStateException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidServiceLinkedRoleStateException) Error() string {
+func (s *InvalidServiceLinkedRoleStateException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidServiceLinkedRoleStateException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidServiceLinkedRoleStateException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidServiceLinkedRoleStateException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidServiceLinkedRoleStateException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The attempt to update a user is invalid due to the user's current status.
 type InvalidUserStatusException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -14396,17 +14587,17 @@ func (s InvalidUserStatusException) GoString() string {
 
 func newErrorInvalidUserStatusException(v protocol.ResponseMetadata) error {
 	return &InvalidUserStatusException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidUserStatusException) Code() string {
+func (s *InvalidUserStatusException) Code() string {
 	return "InvalidUserStatusException"
 }
 
 // Message returns the exception's message.
-func (s InvalidUserStatusException) Message() string {
+func (s *InvalidUserStatusException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -14414,28 +14605,28 @@ func (s InvalidUserStatusException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidUserStatusException) OrigErr() error {
+func (s *InvalidUserStatusException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidUserStatusException) Error() string {
+func (s *InvalidUserStatusException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidUserStatusException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidUserStatusException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidUserStatusException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidUserStatusException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You are performing an action that would put you beyond your account's limits.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -14452,17 +14643,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -14470,22 +14661,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListBusinessReportSchedulesInput struct {
@@ -15515,8 +15706,8 @@ func (s *MeetingSetting) SetRequirePin(v string) *MeetingSetting {
 
 // The name sent in the request is already in use.
 type NameInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -15533,17 +15724,17 @@ func (s NameInUseException) GoString() string {
 
 func newErrorNameInUseException(v protocol.ResponseMetadata) error {
 	return &NameInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NameInUseException) Code() string {
+func (s *NameInUseException) Code() string {
 	return "NameInUseException"
 }
 
 // Message returns the exception's message.
-func (s NameInUseException) Message() string {
+func (s *NameInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15551,22 +15742,22 @@ func (s NameInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NameInUseException) OrigErr() error {
+func (s *NameInUseException) OrigErr() error {
 	return nil
 }
 
-func (s NameInUseException) Error() string {
+func (s *NameInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NameInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NameInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NameInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NameInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The network profile associated with a device.
@@ -15763,8 +15954,8 @@ func (s *NetworkProfileData) SetSsid(v string) *NetworkProfileData {
 
 // The resource is not found.
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -15781,17 +15972,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15799,22 +15990,22 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The information for public switched telephone network (PSTN) conferencing.
@@ -15972,6 +16163,9 @@ type Profile struct {
 	// The ARN of the address book.
 	AddressBookArn *string `type:"string"`
 
+	// Whether data retention of the profile is enabled.
+	DataRetentionOptIn *bool `type:"boolean"`
+
 	// The distance unit of a room profile.
 	DistanceUnit *string `type:"string" enum:"DistanceUnit"`
 
@@ -16029,6 +16223,12 @@ func (s *Profile) SetAddress(v string) *Profile {
 // SetAddressBookArn sets the AddressBookArn field's value.
 func (s *Profile) SetAddressBookArn(v string) *Profile {
 	s.AddressBookArn = &v
+	return s
+}
+
+// SetDataRetentionOptIn sets the DataRetentionOptIn field's value.
+func (s *Profile) SetDataRetentionOptIn(v bool) *Profile {
+	s.DataRetentionOptIn = &v
 	return s
 }
 
@@ -16504,14 +16704,19 @@ type RegisterAVSDeviceInput struct {
 
 	// The key generated by the OEM that uniquely identifies a specified instance
 	// of your AVS device.
-	//
-	// DeviceSerialNumber is a required field
-	DeviceSerialNumber *string `type:"string" required:"true"`
+	DeviceSerialNumber *string `type:"string"`
 
 	// The product ID used to identify your AVS device during authorization.
 	//
 	// ProductId is a required field
 	ProductId *string `type:"string" required:"true"`
+
+	// The Amazon Resource Name (ARN) of the room with which to associate your AVS
+	// device.
+	RoomArn *string `type:"string"`
+
+	// The tags to be added to the specified resource. Do not provide system tags.
+	Tags []*Tag `type:"list"`
 
 	// The code that is obtained after your AVS device has made a POST request to
 	// LWA as a part of the Device Authorization Request component of the OAuth
@@ -16540,9 +16745,6 @@ func (s *RegisterAVSDeviceInput) Validate() error {
 	if s.ClientId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ClientId"))
 	}
-	if s.DeviceSerialNumber == nil {
-		invalidParams.Add(request.NewErrParamRequired("DeviceSerialNumber"))
-	}
 	if s.ProductId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ProductId"))
 	}
@@ -16551,6 +16753,16 @@ func (s *RegisterAVSDeviceInput) Validate() error {
 	}
 	if s.UserCode != nil && len(*s.UserCode) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("UserCode", 1))
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 
 	if invalidParams.Len() > 0 {
@@ -16580,6 +16792,18 @@ func (s *RegisterAVSDeviceInput) SetDeviceSerialNumber(v string) *RegisterAVSDev
 // SetProductId sets the ProductId field's value.
 func (s *RegisterAVSDeviceInput) SetProductId(v string) *RegisterAVSDeviceInput {
 	s.ProductId = &v
+	return s
+}
+
+// SetRoomArn sets the RoomArn field's value.
+func (s *RegisterAVSDeviceInput) SetRoomArn(v string) *RegisterAVSDeviceInput {
+	s.RoomArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *RegisterAVSDeviceInput) SetTags(v []*Tag) *RegisterAVSDeviceInput {
+	s.Tags = v
 	return s
 }
 
@@ -16795,8 +17019,8 @@ func (s *ResolveRoomOutput) SetRoomSkillParameters(v []*RoomSkillParameter) *Res
 
 // Another resource is associated with the resource in the request.
 type ResourceAssociatedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -16813,17 +17037,17 @@ func (s ResourceAssociatedException) GoString() string {
 
 func newErrorResourceAssociatedException(v protocol.ResponseMetadata) error {
 	return &ResourceAssociatedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceAssociatedException) Code() string {
+func (s *ResourceAssociatedException) Code() string {
 	return "ResourceAssociatedException"
 }
 
 // Message returns the exception's message.
-func (s ResourceAssociatedException) Message() string {
+func (s *ResourceAssociatedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16831,28 +17055,28 @@ func (s ResourceAssociatedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceAssociatedException) OrigErr() error {
+func (s *ResourceAssociatedException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceAssociatedException) Error() string {
+func (s *ResourceAssociatedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceAssociatedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceAssociatedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceAssociatedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceAssociatedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The resource in the request is already in use.
 type ResourceInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// A unique, user-specified identifier for the request that ensures idempotency.
 	ClientRequestToken *string `min:"10" type:"string"`
@@ -16872,17 +17096,17 @@ func (s ResourceInUseException) GoString() string {
 
 func newErrorResourceInUseException(v protocol.ResponseMetadata) error {
 	return &ResourceInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceInUseException) Code() string {
+func (s *ResourceInUseException) Code() string {
 	return "ResourceInUseException"
 }
 
 // Message returns the exception's message.
-func (s ResourceInUseException) Message() string {
+func (s *ResourceInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16890,22 +17114,22 @@ func (s ResourceInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceInUseException) OrigErr() error {
+func (s *ResourceInUseException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceInUseException) Error() string {
+func (s *ResourceInUseException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type RevokeInvitationInput struct {
@@ -18456,6 +18680,8 @@ type SkillDetails struct {
 	// The date when the skill was released.
 	ReleaseDate *string `type:"string"`
 
+	// This member has been deprecated.
+	//
 	// The list of reviews for the skill, including Key and Value pair.
 	Reviews map[string]*string `type:"map"`
 
@@ -18619,8 +18845,8 @@ func (s *SkillGroupData) SetSkillGroupName(v string) *SkillGroupData {
 
 // The skill must be linked to a third-party account.
 type SkillNotLinkedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -18637,17 +18863,17 @@ func (s SkillNotLinkedException) GoString() string {
 
 func newErrorSkillNotLinkedException(v protocol.ResponseMetadata) error {
 	return &SkillNotLinkedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s SkillNotLinkedException) Code() string {
+func (s *SkillNotLinkedException) Code() string {
 	return "SkillNotLinkedException"
 }
 
 // Message returns the exception's message.
-func (s SkillNotLinkedException) Message() string {
+func (s *SkillNotLinkedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18655,22 +18881,22 @@ func (s SkillNotLinkedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s SkillNotLinkedException) OrigErr() error {
+func (s *SkillNotLinkedException) OrigErr() error {
 	return nil
 }
 
-func (s SkillNotLinkedException) Error() string {
+func (s *SkillNotLinkedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s SkillNotLinkedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *SkillNotLinkedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s SkillNotLinkedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *SkillNotLinkedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The summary of skills.
@@ -19276,8 +19502,8 @@ func (s *Text) SetValue(v string) *Text {
 // The caller has no permissions to operate on the resource involved in the
 // API call.
 type UnauthorizedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -19294,17 +19520,17 @@ func (s UnauthorizedException) GoString() string {
 
 func newErrorUnauthorizedException(v protocol.ResponseMetadata) error {
 	return &UnauthorizedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnauthorizedException) Code() string {
+func (s *UnauthorizedException) Code() string {
 	return "UnauthorizedException"
 }
 
 // Message returns the exception's message.
-func (s UnauthorizedException) Message() string {
+func (s *UnauthorizedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -19312,22 +19538,22 @@ func (s UnauthorizedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnauthorizedException) OrigErr() error {
+func (s *UnauthorizedException) OrigErr() error {
 	return nil
 }
 
-func (s UnauthorizedException) Error() string {
+func (s *UnauthorizedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnauthorizedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnauthorizedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnauthorizedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnauthorizedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
@@ -20332,6 +20558,9 @@ type UpdateProfileInput struct {
 	// The updated address for the room profile.
 	Address *string `min:"1" type:"string"`
 
+	// Whether data retention of the profile is enabled.
+	DataRetentionOptIn *bool `type:"boolean"`
+
 	// The updated distance unit for the room profile.
 	DistanceUnit *string `type:"string" enum:"DistanceUnit"`
 
@@ -20411,6 +20640,12 @@ func (s *UpdateProfileInput) Validate() error {
 // SetAddress sets the Address field's value.
 func (s *UpdateProfileInput) SetAddress(v string) *UpdateProfileInput {
 	s.Address = &v
+	return s
+}
+
+// SetDataRetentionOptIn sets the DataRetentionOptIn field's value.
+func (s *UpdateProfileInput) SetDataRetentionOptIn(v bool) *UpdateProfileInput {
+	s.DataRetentionOptIn = &v
 	return s
 }
 
@@ -20776,6 +21011,15 @@ const (
 	BusinessReportFailureCodeInternalFailure = "INTERNAL_FAILURE"
 )
 
+// BusinessReportFailureCode_Values returns all elements of the BusinessReportFailureCode enum
+func BusinessReportFailureCode_Values() []string {
+	return []string{
+		BusinessReportFailureCodeAccessDenied,
+		BusinessReportFailureCodeNoSuchBucket,
+		BusinessReportFailureCodeInternalFailure,
+	}
+}
+
 const (
 	// BusinessReportFormatCsv is a BusinessReportFormat enum value
 	BusinessReportFormatCsv = "CSV"
@@ -20783,6 +21027,14 @@ const (
 	// BusinessReportFormatCsvZip is a BusinessReportFormat enum value
 	BusinessReportFormatCsvZip = "CSV_ZIP"
 )
+
+// BusinessReportFormat_Values returns all elements of the BusinessReportFormat enum
+func BusinessReportFormat_Values() []string {
+	return []string{
+		BusinessReportFormatCsv,
+		BusinessReportFormatCsvZip,
+	}
+}
 
 const (
 	// BusinessReportIntervalOneDay is a BusinessReportInterval enum value
@@ -20795,6 +21047,15 @@ const (
 	BusinessReportIntervalThirtyDays = "THIRTY_DAYS"
 )
 
+// BusinessReportInterval_Values returns all elements of the BusinessReportInterval enum
+func BusinessReportInterval_Values() []string {
+	return []string{
+		BusinessReportIntervalOneDay,
+		BusinessReportIntervalOneWeek,
+		BusinessReportIntervalThirtyDays,
+	}
+}
+
 const (
 	// BusinessReportStatusRunning is a BusinessReportStatus enum value
 	BusinessReportStatusRunning = "RUNNING"
@@ -20806,6 +21067,15 @@ const (
 	BusinessReportStatusFailed = "FAILED"
 )
 
+// BusinessReportStatus_Values returns all elements of the BusinessReportStatus enum
+func BusinessReportStatus_Values() []string {
+	return []string{
+		BusinessReportStatusRunning,
+		BusinessReportStatusSucceeded,
+		BusinessReportStatusFailed,
+	}
+}
+
 const (
 	// CommsProtocolSip is a CommsProtocol enum value
 	CommsProtocolSip = "SIP"
@@ -20816,6 +21086,15 @@ const (
 	// CommsProtocolH323 is a CommsProtocol enum value
 	CommsProtocolH323 = "H323"
 )
+
+// CommsProtocol_Values returns all elements of the CommsProtocol enum
+func CommsProtocol_Values() []string {
+	return []string{
+		CommsProtocolSip,
+		CommsProtocolSips,
+		CommsProtocolH323,
+	}
+}
 
 const (
 	// ConferenceProviderTypeChime is a ConferenceProviderType enum value
@@ -20849,6 +21128,22 @@ const (
 	ConferenceProviderTypeCustom = "CUSTOM"
 )
 
+// ConferenceProviderType_Values returns all elements of the ConferenceProviderType enum
+func ConferenceProviderType_Values() []string {
+	return []string{
+		ConferenceProviderTypeChime,
+		ConferenceProviderTypeBluejeans,
+		ConferenceProviderTypeFuze,
+		ConferenceProviderTypeGoogleHangouts,
+		ConferenceProviderTypePolycom,
+		ConferenceProviderTypeRingcentral,
+		ConferenceProviderTypeSkypeForBusiness,
+		ConferenceProviderTypeWebex,
+		ConferenceProviderTypeZoom,
+		ConferenceProviderTypeCustom,
+	}
+}
+
 const (
 	// ConnectionStatusOnline is a ConnectionStatus enum value
 	ConnectionStatusOnline = "ONLINE"
@@ -20857,6 +21152,14 @@ const (
 	ConnectionStatusOffline = "OFFLINE"
 )
 
+// ConnectionStatus_Values returns all elements of the ConnectionStatus enum
+func ConnectionStatus_Values() []string {
+	return []string{
+		ConnectionStatusOnline,
+		ConnectionStatusOffline,
+	}
+}
+
 const (
 	// DeviceEventTypeConnectionStatus is a DeviceEventType enum value
 	DeviceEventTypeConnectionStatus = "CONNECTION_STATUS"
@@ -20864,6 +21167,14 @@ const (
 	// DeviceEventTypeDeviceStatus is a DeviceEventType enum value
 	DeviceEventTypeDeviceStatus = "DEVICE_STATUS"
 )
+
+// DeviceEventType_Values returns all elements of the DeviceEventType enum
+func DeviceEventType_Values() []string {
+	return []string{
+		DeviceEventTypeConnectionStatus,
+		DeviceEventTypeDeviceStatus,
+	}
+}
 
 const (
 	// DeviceStatusReady is a DeviceStatus enum value
@@ -20881,6 +21192,17 @@ const (
 	// DeviceStatusFailed is a DeviceStatus enum value
 	DeviceStatusFailed = "FAILED"
 )
+
+// DeviceStatus_Values returns all elements of the DeviceStatus enum
+func DeviceStatus_Values() []string {
+	return []string{
+		DeviceStatusReady,
+		DeviceStatusPending,
+		DeviceStatusWasOffline,
+		DeviceStatusDeregistered,
+		DeviceStatusFailed,
+	}
+}
 
 const (
 	// DeviceStatusDetailCodeDeviceSoftwareUpdateNeeded is a DeviceStatusDetailCode enum value
@@ -20927,12 +21249,48 @@ const (
 
 	// DeviceStatusDetailCodePasswordNotFound is a DeviceStatusDetailCode enum value
 	DeviceStatusDetailCodePasswordNotFound = "PASSWORD_NOT_FOUND"
+
+	// DeviceStatusDetailCodePasswordManagerAccessDenied is a DeviceStatusDetailCode enum value
+	DeviceStatusDetailCodePasswordManagerAccessDenied = "PASSWORD_MANAGER_ACCESS_DENIED"
+
+	// DeviceStatusDetailCodeCertificateAuthorityAccessDenied is a DeviceStatusDetailCode enum value
+	DeviceStatusDetailCodeCertificateAuthorityAccessDenied = "CERTIFICATE_AUTHORITY_ACCESS_DENIED"
 )
+
+// DeviceStatusDetailCode_Values returns all elements of the DeviceStatusDetailCode enum
+func DeviceStatusDetailCode_Values() []string {
+	return []string{
+		DeviceStatusDetailCodeDeviceSoftwareUpdateNeeded,
+		DeviceStatusDetailCodeDeviceWasOffline,
+		DeviceStatusDetailCodeCredentialsAccessFailure,
+		DeviceStatusDetailCodeTlsVersionMismatch,
+		DeviceStatusDetailCodeAssociationRejection,
+		DeviceStatusDetailCodeAuthenticationFailure,
+		DeviceStatusDetailCodeDhcpFailure,
+		DeviceStatusDetailCodeInternetUnavailable,
+		DeviceStatusDetailCodeDnsFailure,
+		DeviceStatusDetailCodeUnknownFailure,
+		DeviceStatusDetailCodeCertificateIssuingLimitExceeded,
+		DeviceStatusDetailCodeInvalidCertificateAuthority,
+		DeviceStatusDetailCodeNetworkProfileNotFound,
+		DeviceStatusDetailCodeInvalidPasswordState,
+		DeviceStatusDetailCodePasswordNotFound,
+		DeviceStatusDetailCodePasswordManagerAccessDenied,
+		DeviceStatusDetailCodeCertificateAuthorityAccessDenied,
+	}
+}
 
 const (
 	// DeviceUsageTypeVoice is a DeviceUsageType enum value
 	DeviceUsageTypeVoice = "VOICE"
 )
+
+// DeviceUsageType_Values returns all elements of the DeviceUsageType enum
+func DeviceUsageType_Values() []string {
+	return []string{
+		DeviceUsageTypeVoice,
+	}
+}
 
 const (
 	// DistanceUnitMetric is a DistanceUnit enum value
@@ -20942,6 +21300,14 @@ const (
 	DistanceUnitImperial = "IMPERIAL"
 )
 
+// DistanceUnit_Values returns all elements of the DistanceUnit enum
+func DistanceUnit_Values() []string {
+	return []string{
+		DistanceUnitMetric,
+		DistanceUnitImperial,
+	}
+}
+
 const (
 	// EnablementTypeEnabled is a EnablementType enum value
 	EnablementTypeEnabled = "ENABLED"
@@ -20950,6 +21316,14 @@ const (
 	EnablementTypePending = "PENDING"
 )
 
+// EnablementType_Values returns all elements of the EnablementType enum
+func EnablementType_Values() []string {
+	return []string{
+		EnablementTypeEnabled,
+		EnablementTypePending,
+	}
+}
+
 const (
 	// EnablementTypeFilterEnabled is a EnablementTypeFilter enum value
 	EnablementTypeFilterEnabled = "ENABLED"
@@ -20957,6 +21331,14 @@ const (
 	// EnablementTypeFilterPending is a EnablementTypeFilter enum value
 	EnablementTypeFilterPending = "PENDING"
 )
+
+// EnablementTypeFilter_Values returns all elements of the EnablementTypeFilter enum
+func EnablementTypeFilter_Values() []string {
+	return []string{
+		EnablementTypeFilterEnabled,
+		EnablementTypeFilterPending,
+	}
+}
 
 const (
 	// EndOfMeetingReminderTypeAnnouncementTimeCheck is a EndOfMeetingReminderType enum value
@@ -20971,6 +21353,16 @@ const (
 	// EndOfMeetingReminderTypeKnock is a EndOfMeetingReminderType enum value
 	EndOfMeetingReminderTypeKnock = "KNOCK"
 )
+
+// EndOfMeetingReminderType_Values returns all elements of the EndOfMeetingReminderType enum
+func EndOfMeetingReminderType_Values() []string {
+	return []string{
+		EndOfMeetingReminderTypeAnnouncementTimeCheck,
+		EndOfMeetingReminderTypeAnnouncementVariableTimeLeft,
+		EndOfMeetingReminderTypeChime,
+		EndOfMeetingReminderTypeKnock,
+	}
+}
 
 const (
 	// EnrollmentStatusInitialized is a EnrollmentStatus enum value
@@ -20988,6 +21380,17 @@ const (
 	// EnrollmentStatusDeregistering is a EnrollmentStatus enum value
 	EnrollmentStatusDeregistering = "DEREGISTERING"
 )
+
+// EnrollmentStatus_Values returns all elements of the EnrollmentStatus enum
+func EnrollmentStatus_Values() []string {
+	return []string{
+		EnrollmentStatusInitialized,
+		EnrollmentStatusPending,
+		EnrollmentStatusRegistered,
+		EnrollmentStatusDisassociating,
+		EnrollmentStatusDeregistering,
+	}
+}
 
 const (
 	// FeatureBluetooth is a Feature enum value
@@ -21015,15 +21418,43 @@ const (
 	FeatureAll = "ALL"
 )
 
+// Feature_Values returns all elements of the Feature enum
+func Feature_Values() []string {
+	return []string{
+		FeatureBluetooth,
+		FeatureVolume,
+		FeatureNotifications,
+		FeatureLists,
+		FeatureSkills,
+		FeatureNetworkProfile,
+		FeatureSettings,
+		FeatureAll,
+	}
+}
+
 const (
 	// LocaleEnUs is a Locale enum value
 	LocaleEnUs = "en-US"
 )
 
+// Locale_Values returns all elements of the Locale enum
+func Locale_Values() []string {
+	return []string{
+		LocaleEnUs,
+	}
+}
+
 const (
 	// NetworkEapMethodEapTls is a NetworkEapMethod enum value
 	NetworkEapMethodEapTls = "EAP_TLS"
 )
+
+// NetworkEapMethod_Values returns all elements of the NetworkEapMethod enum
+func NetworkEapMethod_Values() []string {
+	return []string{
+		NetworkEapMethodEapTls,
+	}
+}
 
 const (
 	// NetworkSecurityTypeOpen is a NetworkSecurityType enum value
@@ -21042,6 +21473,17 @@ const (
 	NetworkSecurityTypeWpa2Enterprise = "WPA2_ENTERPRISE"
 )
 
+// NetworkSecurityType_Values returns all elements of the NetworkSecurityType enum
+func NetworkSecurityType_Values() []string {
+	return []string{
+		NetworkSecurityTypeOpen,
+		NetworkSecurityTypeWep,
+		NetworkSecurityTypeWpaPsk,
+		NetworkSecurityTypeWpa2Psk,
+		NetworkSecurityTypeWpa2Enterprise,
+	}
+}
+
 const (
 	// PhoneNumberTypeMobile is a PhoneNumberType enum value
 	PhoneNumberTypeMobile = "MOBILE"
@@ -21052,6 +21494,15 @@ const (
 	// PhoneNumberTypeHome is a PhoneNumberType enum value
 	PhoneNumberTypeHome = "HOME"
 )
+
+// PhoneNumberType_Values returns all elements of the PhoneNumberType enum
+func PhoneNumberType_Values() []string {
+	return []string{
+		PhoneNumberTypeMobile,
+		PhoneNumberTypeWork,
+		PhoneNumberTypeHome,
+	}
+}
 
 const (
 	// RequirePinYes is a RequirePin enum value
@@ -21064,10 +21515,26 @@ const (
 	RequirePinOptional = "OPTIONAL"
 )
 
+// RequirePin_Values returns all elements of the RequirePin enum
+func RequirePin_Values() []string {
+	return []string{
+		RequirePinYes,
+		RequirePinNo,
+		RequirePinOptional,
+	}
+}
+
 const (
 	// SipTypeWork is a SipType enum value
 	SipTypeWork = "WORK"
 )
+
+// SipType_Values returns all elements of the SipType enum
+func SipType_Values() []string {
+	return []string{
+		SipTypeWork,
+	}
+}
 
 const (
 	// SkillTypePublic is a SkillType enum value
@@ -21076,6 +21543,14 @@ const (
 	// SkillTypePrivate is a SkillType enum value
 	SkillTypePrivate = "PRIVATE"
 )
+
+// SkillType_Values returns all elements of the SkillType enum
+func SkillType_Values() []string {
+	return []string{
+		SkillTypePublic,
+		SkillTypePrivate,
+	}
+}
 
 const (
 	// SkillTypeFilterPublic is a SkillTypeFilter enum value
@@ -21088,6 +21563,15 @@ const (
 	SkillTypeFilterAll = "ALL"
 )
 
+// SkillTypeFilter_Values returns all elements of the SkillTypeFilter enum
+func SkillTypeFilter_Values() []string {
+	return []string{
+		SkillTypeFilterPublic,
+		SkillTypeFilterPrivate,
+		SkillTypeFilterAll,
+	}
+}
+
 const (
 	// SortValueAsc is a SortValue enum value
 	SortValueAsc = "ASC"
@@ -21096,6 +21580,14 @@ const (
 	SortValueDesc = "DESC"
 )
 
+// SortValue_Values returns all elements of the SortValue enum
+func SortValue_Values() []string {
+	return []string{
+		SortValueAsc,
+		SortValueDesc,
+	}
+}
+
 const (
 	// TemperatureUnitFahrenheit is a TemperatureUnit enum value
 	TemperatureUnitFahrenheit = "FAHRENHEIT"
@@ -21103,6 +21595,14 @@ const (
 	// TemperatureUnitCelsius is a TemperatureUnit enum value
 	TemperatureUnitCelsius = "CELSIUS"
 )
+
+// TemperatureUnit_Values returns all elements of the TemperatureUnit enum
+func TemperatureUnit_Values() []string {
+	return []string{
+		TemperatureUnitFahrenheit,
+		TemperatureUnitCelsius,
+	}
+}
 
 const (
 	// WakeWordAlexa is a WakeWord enum value
@@ -21117,3 +21617,13 @@ const (
 	// WakeWordComputer is a WakeWord enum value
 	WakeWordComputer = "COMPUTER"
 )
+
+// WakeWord_Values returns all elements of the WakeWord enum
+func WakeWord_Values() []string {
+	return []string{
+		WakeWordAlexa,
+		WakeWordAmazon,
+		WakeWordEcho,
+		WakeWordComputer,
+	}
+}

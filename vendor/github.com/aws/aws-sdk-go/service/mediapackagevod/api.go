@@ -12,6 +12,94 @@ import (
 	"github.com/aws/aws-sdk-go/private/protocol/restjson"
 )
 
+const opConfigureLogs = "ConfigureLogs"
+
+// ConfigureLogsRequest generates a "aws/request.Request" representing the
+// client's request for the ConfigureLogs operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ConfigureLogs for more information on using the ConfigureLogs
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ConfigureLogsRequest method.
+//    req, resp := client.ConfigureLogsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/ConfigureLogs
+func (c *MediaPackageVod) ConfigureLogsRequest(input *ConfigureLogsInput) (req *request.Request, output *ConfigureLogsOutput) {
+	op := &request.Operation{
+		Name:       opConfigureLogs,
+		HTTPMethod: "PUT",
+		HTTPPath:   "/packaging_groups/{id}/configure_logs",
+	}
+
+	if input == nil {
+		input = &ConfigureLogsInput{}
+	}
+
+	output = &ConfigureLogsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ConfigureLogs API operation for AWS Elemental MediaPackage VOD.
+//
+// Changes the packaging group's properities to configure log subscription
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Elemental MediaPackage VOD's
+// API operation ConfigureLogs for usage and error information.
+//
+// Returned Error Types:
+//   * UnprocessableEntityException
+//
+//   * InternalServerErrorException
+//
+//   * ForbiddenException
+//
+//   * NotFoundException
+//
+//   * ServiceUnavailableException
+//
+//   * TooManyRequestsException
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/ConfigureLogs
+func (c *MediaPackageVod) ConfigureLogs(input *ConfigureLogsInput) (*ConfigureLogsOutput, error) {
+	req, out := c.ConfigureLogsRequest(input)
+	return out, req.Send()
+}
+
+// ConfigureLogsWithContext is the same as ConfigureLogs with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ConfigureLogs for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *MediaPackageVod) ConfigureLogsWithContext(ctx aws.Context, input *ConfigureLogsInput, opts ...request.Option) (*ConfigureLogsOutput, error) {
+	req, out := c.ConfigureLogsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opCreateAsset = "CreateAsset"
 
 // CreateAssetRequest generates a "aws/request.Request" representing the
@@ -1245,6 +1333,321 @@ func (c *MediaPackageVod) ListPackagingGroupsPagesWithContext(ctx aws.Context, i
 	return p.Err()
 }
 
+const opListTagsForResource = "ListTagsForResource"
+
+// ListTagsForResourceRequest generates a "aws/request.Request" representing the
+// client's request for the ListTagsForResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListTagsForResource for more information on using the ListTagsForResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListTagsForResourceRequest method.
+//    req, resp := client.ListTagsForResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/ListTagsForResource
+func (c *MediaPackageVod) ListTagsForResourceRequest(input *ListTagsForResourceInput) (req *request.Request, output *ListTagsForResourceOutput) {
+	op := &request.Operation{
+		Name:       opListTagsForResource,
+		HTTPMethod: "GET",
+		HTTPPath:   "/tags/{resource-arn}",
+	}
+
+	if input == nil {
+		input = &ListTagsForResourceInput{}
+	}
+
+	output = &ListTagsForResourceOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListTagsForResource API operation for AWS Elemental MediaPackage VOD.
+//
+// Returns a list of the tags assigned to the specified resource.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Elemental MediaPackage VOD's
+// API operation ListTagsForResource for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/ListTagsForResource
+func (c *MediaPackageVod) ListTagsForResource(input *ListTagsForResourceInput) (*ListTagsForResourceOutput, error) {
+	req, out := c.ListTagsForResourceRequest(input)
+	return out, req.Send()
+}
+
+// ListTagsForResourceWithContext is the same as ListTagsForResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListTagsForResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *MediaPackageVod) ListTagsForResourceWithContext(ctx aws.Context, input *ListTagsForResourceInput, opts ...request.Option) (*ListTagsForResourceOutput, error) {
+	req, out := c.ListTagsForResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opTagResource = "TagResource"
+
+// TagResourceRequest generates a "aws/request.Request" representing the
+// client's request for the TagResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See TagResource for more information on using the TagResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the TagResourceRequest method.
+//    req, resp := client.TagResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/TagResource
+func (c *MediaPackageVod) TagResourceRequest(input *TagResourceInput) (req *request.Request, output *TagResourceOutput) {
+	op := &request.Operation{
+		Name:       opTagResource,
+		HTTPMethod: "POST",
+		HTTPPath:   "/tags/{resource-arn}",
+	}
+
+	if input == nil {
+		input = &TagResourceInput{}
+	}
+
+	output = &TagResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// TagResource API operation for AWS Elemental MediaPackage VOD.
+//
+// Adds tags to the specified resource. You can specify one or more tags to
+// add.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Elemental MediaPackage VOD's
+// API operation TagResource for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/TagResource
+func (c *MediaPackageVod) TagResource(input *TagResourceInput) (*TagResourceOutput, error) {
+	req, out := c.TagResourceRequest(input)
+	return out, req.Send()
+}
+
+// TagResourceWithContext is the same as TagResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See TagResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *MediaPackageVod) TagResourceWithContext(ctx aws.Context, input *TagResourceInput, opts ...request.Option) (*TagResourceOutput, error) {
+	req, out := c.TagResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opUntagResource = "UntagResource"
+
+// UntagResourceRequest generates a "aws/request.Request" representing the
+// client's request for the UntagResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UntagResource for more information on using the UntagResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UntagResourceRequest method.
+//    req, resp := client.UntagResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/UntagResource
+func (c *MediaPackageVod) UntagResourceRequest(input *UntagResourceInput) (req *request.Request, output *UntagResourceOutput) {
+	op := &request.Operation{
+		Name:       opUntagResource,
+		HTTPMethod: "DELETE",
+		HTTPPath:   "/tags/{resource-arn}",
+	}
+
+	if input == nil {
+		input = &UntagResourceInput{}
+	}
+
+	output = &UntagResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// UntagResource API operation for AWS Elemental MediaPackage VOD.
+//
+// Removes tags from the specified resource. You can specify one or more tags
+// to remove.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Elemental MediaPackage VOD's
+// API operation UntagResource for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/UntagResource
+func (c *MediaPackageVod) UntagResource(input *UntagResourceInput) (*UntagResourceOutput, error) {
+	req, out := c.UntagResourceRequest(input)
+	return out, req.Send()
+}
+
+// UntagResourceWithContext is the same as UntagResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UntagResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *MediaPackageVod) UntagResourceWithContext(ctx aws.Context, input *UntagResourceInput, opts ...request.Option) (*UntagResourceOutput, error) {
+	req, out := c.UntagResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opUpdatePackagingGroup = "UpdatePackagingGroup"
+
+// UpdatePackagingGroupRequest generates a "aws/request.Request" representing the
+// client's request for the UpdatePackagingGroup operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UpdatePackagingGroup for more information on using the UpdatePackagingGroup
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UpdatePackagingGroupRequest method.
+//    req, resp := client.UpdatePackagingGroupRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/UpdatePackagingGroup
+func (c *MediaPackageVod) UpdatePackagingGroupRequest(input *UpdatePackagingGroupInput) (req *request.Request, output *UpdatePackagingGroupOutput) {
+	op := &request.Operation{
+		Name:       opUpdatePackagingGroup,
+		HTTPMethod: "PUT",
+		HTTPPath:   "/packaging_groups/{id}",
+	}
+
+	if input == nil {
+		input = &UpdatePackagingGroupInput{}
+	}
+
+	output = &UpdatePackagingGroupOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// UpdatePackagingGroup API operation for AWS Elemental MediaPackage VOD.
+//
+// Updates a specific packaging group. You can't change the id attribute or
+// any other system-generated attributes.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Elemental MediaPackage VOD's
+// API operation UpdatePackagingGroup for usage and error information.
+//
+// Returned Error Types:
+//   * UnprocessableEntityException
+//
+//   * InternalServerErrorException
+//
+//   * ForbiddenException
+//
+//   * NotFoundException
+//
+//   * ServiceUnavailableException
+//
+//   * TooManyRequestsException
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-vod-2018-11-07/UpdatePackagingGroup
+func (c *MediaPackageVod) UpdatePackagingGroup(input *UpdatePackagingGroupInput) (*UpdatePackagingGroupOutput, error) {
+	req, out := c.UpdatePackagingGroupRequest(input)
+	return out, req.Send()
+}
+
+// UpdatePackagingGroupWithContext is the same as UpdatePackagingGroup with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UpdatePackagingGroup for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *MediaPackageVod) UpdatePackagingGroupWithContext(ctx aws.Context, input *UpdatePackagingGroupInput, opts ...request.Option) (*UpdatePackagingGroupOutput, error) {
+	req, out := c.UpdatePackagingGroupRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 // A MediaPackage VOD Asset resource.
 type AssetShallow struct {
 	_ struct{} `type:"structure"`
@@ -1269,6 +1672,9 @@ type AssetShallow struct {
 
 	// The IAM role ARN used to access the source S3 bucket.
 	SourceRoleArn *string `locationName:"sourceRoleArn" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -1320,6 +1726,67 @@ func (s *AssetShallow) SetSourceArn(v string) *AssetShallow {
 // SetSourceRoleArn sets the SourceRoleArn field's value.
 func (s *AssetShallow) SetSourceRoleArn(v string) *AssetShallow {
 	s.SourceRoleArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *AssetShallow) SetTags(v map[string]*string) *AssetShallow {
+	s.Tags = v
+	return s
+}
+
+// CDN Authorization credentials
+type Authorization struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) for the secret in AWS Secrets Manager that
+	// is used for CDN authorization.
+	//
+	// CdnIdentifierSecret is a required field
+	CdnIdentifierSecret *string `locationName:"cdnIdentifierSecret" type:"string" required:"true"`
+
+	// The Amazon Resource Name (ARN) for the IAM role that allows MediaPackage
+	// to communicate with AWS Secrets Manager.
+	//
+	// SecretsRoleArn is a required field
+	SecretsRoleArn *string `locationName:"secretsRoleArn" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s Authorization) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s Authorization) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *Authorization) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "Authorization"}
+	if s.CdnIdentifierSecret == nil {
+		invalidParams.Add(request.NewErrParamRequired("CdnIdentifierSecret"))
+	}
+	if s.SecretsRoleArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("SecretsRoleArn"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCdnIdentifierSecret sets the CdnIdentifierSecret field's value.
+func (s *Authorization) SetCdnIdentifierSecret(v string) *Authorization {
+	s.CdnIdentifierSecret = &v
+	return s
+}
+
+// SetSecretsRoleArn sets the SecretsRoleArn field's value.
+func (s *Authorization) SetSecretsRoleArn(v string) *Authorization {
+	s.SecretsRoleArn = &v
 	return s
 }
 
@@ -1380,6 +1847,13 @@ type CmafPackage struct {
 	// HlsManifests is a required field
 	HlsManifests []*HlsManifest `locationName:"hlsManifests" type:"list" required:"true"`
 
+	// When includeEncoderConfigurationInSegments is set to true, MediaPackage places
+	// your encoder's Sequence Parameter Set (SPS), Picture Parameter Set (PPS),
+	// and Video Parameter Set (VPS) metadata in every video segment instead of
+	// in the init fragment. This lets you use different SPS/PPS/VPS settings for
+	// your assets during content playback.
+	IncludeEncoderConfigurationInSegments *bool `locationName:"includeEncoderConfigurationInSegments" type:"boolean"`
+
 	// Duration (in seconds) of each fragment. Actual fragments will berounded to
 	// the nearest multiple of the source fragment duration.
 	SegmentDurationSeconds *int64 `locationName:"segmentDurationSeconds" type:"integer"`
@@ -1425,9 +1899,128 @@ func (s *CmafPackage) SetHlsManifests(v []*HlsManifest) *CmafPackage {
 	return s
 }
 
+// SetIncludeEncoderConfigurationInSegments sets the IncludeEncoderConfigurationInSegments field's value.
+func (s *CmafPackage) SetIncludeEncoderConfigurationInSegments(v bool) *CmafPackage {
+	s.IncludeEncoderConfigurationInSegments = &v
+	return s
+}
+
 // SetSegmentDurationSeconds sets the SegmentDurationSeconds field's value.
 func (s *CmafPackage) SetSegmentDurationSeconds(v int64) *CmafPackage {
 	s.SegmentDurationSeconds = &v
+	return s
+}
+
+type ConfigureLogsInput struct {
+	_ struct{} `type:"structure"`
+
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
+	// Id is a required field
+	Id *string `location:"uri" locationName:"id" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ConfigureLogsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ConfigureLogsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ConfigureLogsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ConfigureLogsInput"}
+	if s.Id == nil {
+		invalidParams.Add(request.NewErrParamRequired("Id"))
+	}
+	if s.Id != nil && len(*s.Id) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Id", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *ConfigureLogsInput) SetEgressAccessLogs(v *EgressAccessLogs) *ConfigureLogsInput {
+	s.EgressAccessLogs = v
+	return s
+}
+
+// SetId sets the Id field's value.
+func (s *ConfigureLogsInput) SetId(v string) *ConfigureLogsInput {
+	s.Id = &v
+	return s
+}
+
+type ConfigureLogsOutput struct {
+	_ struct{} `type:"structure"`
+
+	Arn *string `locationName:"arn" type:"string"`
+
+	// CDN Authorization credentials
+	Authorization *Authorization `locationName:"authorization" type:"structure"`
+
+	DomainName *string `locationName:"domainName" type:"string"`
+
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
+	Id *string `locationName:"id" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
+}
+
+// String returns the string representation
+func (s ConfigureLogsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ConfigureLogsOutput) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *ConfigureLogsOutput) SetArn(v string) *ConfigureLogsOutput {
+	s.Arn = &v
+	return s
+}
+
+// SetAuthorization sets the Authorization field's value.
+func (s *ConfigureLogsOutput) SetAuthorization(v *Authorization) *ConfigureLogsOutput {
+	s.Authorization = v
+	return s
+}
+
+// SetDomainName sets the DomainName field's value.
+func (s *ConfigureLogsOutput) SetDomainName(v string) *ConfigureLogsOutput {
+	s.DomainName = &v
+	return s
+}
+
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *ConfigureLogsOutput) SetEgressAccessLogs(v *EgressAccessLogs) *ConfigureLogsOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
+// SetId sets the Id field's value.
+func (s *ConfigureLogsOutput) SetId(v string) *ConfigureLogsOutput {
+	s.Id = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *ConfigureLogsOutput) SetTags(v map[string]*string) *ConfigureLogsOutput {
+	s.Tags = v
 	return s
 }
 
@@ -1447,6 +2040,9 @@ type CreateAssetInput struct {
 
 	// SourceRoleArn is a required field
 	SourceRoleArn *string `locationName:"sourceRoleArn" type:"string" required:"true"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -1511,6 +2107,12 @@ func (s *CreateAssetInput) SetSourceRoleArn(v string) *CreateAssetInput {
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreateAssetInput) SetTags(v map[string]*string) *CreateAssetInput {
+	s.Tags = v
+	return s
+}
+
 type CreateAssetOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1529,6 +2131,9 @@ type CreateAssetOutput struct {
 	SourceArn *string `locationName:"sourceArn" type:"string"`
 
 	SourceRoleArn *string `locationName:"sourceRoleArn" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -1589,6 +2194,12 @@ func (s *CreateAssetOutput) SetSourceRoleArn(v string) *CreateAssetOutput {
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreateAssetOutput) SetTags(v map[string]*string) *CreateAssetOutput {
+	s.Tags = v
+	return s
+}
+
 type CreatePackagingConfigurationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1609,6 +2220,9 @@ type CreatePackagingConfigurationInput struct {
 
 	// PackagingGroupId is a required field
 	PackagingGroupId *string `locationName:"packagingGroupId" type:"string" required:"true"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -1693,6 +2307,12 @@ func (s *CreatePackagingConfigurationInput) SetPackagingGroupId(v string) *Creat
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreatePackagingConfigurationInput) SetTags(v map[string]*string) *CreatePackagingConfigurationInput {
+	s.Tags = v
+	return s
+}
+
 type CreatePackagingConfigurationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1713,6 +2333,9 @@ type CreatePackagingConfigurationOutput struct {
 	MssPackage *MssPackage `locationName:"mssPackage" type:"structure"`
 
 	PackagingGroupId *string `locationName:"packagingGroupId" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -1767,11 +2390,26 @@ func (s *CreatePackagingConfigurationOutput) SetPackagingGroupId(v string) *Crea
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreatePackagingConfigurationOutput) SetTags(v map[string]*string) *CreatePackagingConfigurationOutput {
+	s.Tags = v
+	return s
+}
+
 type CreatePackagingGroupInput struct {
 	_ struct{} `type:"structure"`
 
+	// CDN Authorization credentials
+	Authorization *Authorization `locationName:"authorization" type:"structure"`
+
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	// Id is a required field
 	Id *string `locationName:"id" type:"string" required:"true"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -1790,11 +2428,28 @@ func (s *CreatePackagingGroupInput) Validate() error {
 	if s.Id == nil {
 		invalidParams.Add(request.NewErrParamRequired("Id"))
 	}
+	if s.Authorization != nil {
+		if err := s.Authorization.Validate(); err != nil {
+			invalidParams.AddNested("Authorization", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetAuthorization sets the Authorization field's value.
+func (s *CreatePackagingGroupInput) SetAuthorization(v *Authorization) *CreatePackagingGroupInput {
+	s.Authorization = v
+	return s
+}
+
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *CreatePackagingGroupInput) SetEgressAccessLogs(v *EgressAccessLogs) *CreatePackagingGroupInput {
+	s.EgressAccessLogs = v
+	return s
 }
 
 // SetId sets the Id field's value.
@@ -1803,14 +2458,29 @@ func (s *CreatePackagingGroupInput) SetId(v string) *CreatePackagingGroupInput {
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreatePackagingGroupInput) SetTags(v map[string]*string) *CreatePackagingGroupInput {
+	s.Tags = v
+	return s
+}
+
 type CreatePackagingGroupOutput struct {
 	_ struct{} `type:"structure"`
 
 	Arn *string `locationName:"arn" type:"string"`
 
+	// CDN Authorization credentials
+	Authorization *Authorization `locationName:"authorization" type:"structure"`
+
 	DomainName *string `locationName:"domainName" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	Id *string `locationName:"id" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -1829,15 +2499,33 @@ func (s *CreatePackagingGroupOutput) SetArn(v string) *CreatePackagingGroupOutpu
 	return s
 }
 
+// SetAuthorization sets the Authorization field's value.
+func (s *CreatePackagingGroupOutput) SetAuthorization(v *Authorization) *CreatePackagingGroupOutput {
+	s.Authorization = v
+	return s
+}
+
 // SetDomainName sets the DomainName field's value.
 func (s *CreatePackagingGroupOutput) SetDomainName(v string) *CreatePackagingGroupOutput {
 	s.DomainName = &v
 	return s
 }
 
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *CreatePackagingGroupOutput) SetEgressAccessLogs(v *EgressAccessLogs) *CreatePackagingGroupOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
 // SetId sets the Id field's value.
 func (s *CreatePackagingGroupOutput) SetId(v string) *CreatePackagingGroupOutput {
 	s.Id = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreatePackagingGroupOutput) SetTags(v map[string]*string) *CreatePackagingGroupOutput {
+	s.Tags = v
 	return s
 }
 
@@ -1890,6 +2578,12 @@ func (s *DashEncryption) SetSpekeKeyProvider(v *SpekeKeyProvider) *DashEncryptio
 type DashManifest struct {
 	_ struct{} `type:"structure"`
 
+	// Determines the position of some tags in the Media Presentation Description
+	// (MPD). When set to FULL, elements like SegmentTemplate and ContentProtection
+	// are included in each Representation. When set to COMPACT, duplicate elements
+	// are combined and presented at the AdaptationSet level.
+	ManifestLayout *string `locationName:"manifestLayout" type:"string" enum:"ManifestLayout"`
+
 	// An optional string to include in the name of the manifest.
 	ManifestName *string `locationName:"manifestName" type:"string"`
 
@@ -1913,6 +2607,12 @@ func (s DashManifest) String() string {
 // GoString returns the string representation
 func (s DashManifest) GoString() string {
 	return s.String()
+}
+
+// SetManifestLayout sets the ManifestLayout field's value.
+func (s *DashManifest) SetManifestLayout(v string) *DashManifest {
+	s.ManifestLayout = &v
+	return s
 }
 
 // SetManifestName sets the ManifestName field's value.
@@ -1951,9 +2651,31 @@ type DashPackage struct {
 	// A Dynamic Adaptive Streaming over HTTP (DASH) encryption configuration.
 	Encryption *DashEncryption `locationName:"encryption" type:"structure"`
 
+	// When includeEncoderConfigurationInSegments is set to true, MediaPackage places
+	// your encoder's Sequence Parameter Set (SPS), Picture Parameter Set (PPS),
+	// and Video Parameter Set (VPS) metadata in every video segment instead of
+	// in the init fragment. This lets you use different SPS/PPS/VPS settings for
+	// your assets during content playback.
+	IncludeEncoderConfigurationInSegments *bool `locationName:"includeEncoderConfigurationInSegments" type:"boolean"`
+
+	// A list of triggers that controls when the outgoing Dynamic Adaptive Streaming
+	// over HTTP (DASH)Media Presentation Description (MPD) will be partitioned
+	// into multiple periods. If empty, the content will notbe partitioned into
+	// more than one period. If the list contains "ADS", new periods will be created
+	// wherethe Asset contains SCTE-35 ad markers.
+	PeriodTriggers []*string `locationName:"periodTriggers" type:"list"`
+
 	// Duration (in seconds) of each segment. Actual segments will berounded to
 	// the nearest multiple of the source segment duration.
 	SegmentDurationSeconds *int64 `locationName:"segmentDurationSeconds" type:"integer"`
+
+	// Determines the type of SegmentTemplate included in the Media Presentation
+	// Description (MPD). When set to NUMBER_WITH_TIMELINE, a full timeline is presented
+	// in each SegmentTemplate, with $Number$ media URLs. When set to TIME_WITH_TIMELINE,
+	// a full timeline is presented in each SegmentTemplate, with $Time$ media URLs.
+	// When set to NUMBER_WITH_DURATION, only a duration is included in each SegmentTemplate,
+	// with $Number$ media URLs.
+	SegmentTemplateFormat *string `locationName:"segmentTemplateFormat" type:"string" enum:"SegmentTemplateFormat"`
 }
 
 // String returns the string representation
@@ -1996,9 +2718,27 @@ func (s *DashPackage) SetEncryption(v *DashEncryption) *DashPackage {
 	return s
 }
 
+// SetIncludeEncoderConfigurationInSegments sets the IncludeEncoderConfigurationInSegments field's value.
+func (s *DashPackage) SetIncludeEncoderConfigurationInSegments(v bool) *DashPackage {
+	s.IncludeEncoderConfigurationInSegments = &v
+	return s
+}
+
+// SetPeriodTriggers sets the PeriodTriggers field's value.
+func (s *DashPackage) SetPeriodTriggers(v []*string) *DashPackage {
+	s.PeriodTriggers = v
+	return s
+}
+
 // SetSegmentDurationSeconds sets the SegmentDurationSeconds field's value.
 func (s *DashPackage) SetSegmentDurationSeconds(v int64) *DashPackage {
 	s.SegmentDurationSeconds = &v
+	return s
+}
+
+// SetSegmentTemplateFormat sets the SegmentTemplateFormat field's value.
+func (s *DashPackage) SetSegmentTemplateFormat(v string) *DashPackage {
+	s.SegmentTemplateFormat = &v
 	return s
 }
 
@@ -2218,6 +2958,9 @@ type DescribeAssetOutput struct {
 	SourceArn *string `locationName:"sourceArn" type:"string"`
 
 	SourceRoleArn *string `locationName:"sourceRoleArn" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -2275,6 +3018,12 @@ func (s *DescribeAssetOutput) SetSourceArn(v string) *DescribeAssetOutput {
 // SetSourceRoleArn sets the SourceRoleArn field's value.
 func (s *DescribeAssetOutput) SetSourceRoleArn(v string) *DescribeAssetOutput {
 	s.SourceRoleArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *DescribeAssetOutput) SetTags(v map[string]*string) *DescribeAssetOutput {
+	s.Tags = v
 	return s
 }
 
@@ -2337,6 +3086,9 @@ type DescribePackagingConfigurationOutput struct {
 	MssPackage *MssPackage `locationName:"mssPackage" type:"structure"`
 
 	PackagingGroupId *string `locationName:"packagingGroupId" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -2391,6 +3143,12 @@ func (s *DescribePackagingConfigurationOutput) SetPackagingGroupId(v string) *De
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *DescribePackagingConfigurationOutput) SetTags(v map[string]*string) *DescribePackagingConfigurationOutput {
+	s.Tags = v
+	return s
+}
+
 type DescribePackagingGroupInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2435,9 +3193,18 @@ type DescribePackagingGroupOutput struct {
 
 	Arn *string `locationName:"arn" type:"string"`
 
+	// CDN Authorization credentials
+	Authorization *Authorization `locationName:"authorization" type:"structure"`
+
 	DomainName *string `locationName:"domainName" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	Id *string `locationName:"id" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -2456,15 +3223,57 @@ func (s *DescribePackagingGroupOutput) SetArn(v string) *DescribePackagingGroupO
 	return s
 }
 
+// SetAuthorization sets the Authorization field's value.
+func (s *DescribePackagingGroupOutput) SetAuthorization(v *Authorization) *DescribePackagingGroupOutput {
+	s.Authorization = v
+	return s
+}
+
 // SetDomainName sets the DomainName field's value.
 func (s *DescribePackagingGroupOutput) SetDomainName(v string) *DescribePackagingGroupOutput {
 	s.DomainName = &v
 	return s
 }
 
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *DescribePackagingGroupOutput) SetEgressAccessLogs(v *EgressAccessLogs) *DescribePackagingGroupOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
 // SetId sets the Id field's value.
 func (s *DescribePackagingGroupOutput) SetId(v string) *DescribePackagingGroupOutput {
 	s.Id = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *DescribePackagingGroupOutput) SetTags(v map[string]*string) *DescribePackagingGroupOutput {
+	s.Tags = v
+	return s
+}
+
+// Configure egress access logging.
+type EgressAccessLogs struct {
+	_ struct{} `type:"structure"`
+
+	// Customize the log group name.
+	LogGroupName *string `locationName:"logGroupName" type:"string"`
+}
+
+// String returns the string representation
+func (s EgressAccessLogs) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EgressAccessLogs) GoString() string {
+	return s.String()
+}
+
+// SetLogGroupName sets the LogGroupName field's value.
+func (s *EgressAccessLogs) SetLogGroupName(v string) *EgressAccessLogs {
+	s.LogGroupName = &v
 	return s
 }
 
@@ -2502,8 +3311,8 @@ func (s *EgressEndpoint) SetUrl(v string) *EgressEndpoint {
 }
 
 type ForbiddenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2520,17 +3329,17 @@ func (s ForbiddenException) GoString() string {
 
 func newErrorForbiddenException(v protocol.ResponseMetadata) error {
 	return &ForbiddenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ForbiddenException) Code() string {
+func (s *ForbiddenException) Code() string {
 	return "ForbiddenException"
 }
 
 // Message returns the exception's message.
-func (s ForbiddenException) Message() string {
+func (s *ForbiddenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2538,22 +3347,22 @@ func (s ForbiddenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ForbiddenException) OrigErr() error {
+func (s *ForbiddenException) OrigErr() error {
 	return nil
 }
 
-func (s ForbiddenException) Error() string {
+func (s *ForbiddenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ForbiddenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ForbiddenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ForbiddenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ForbiddenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An HTTP Live Streaming (HLS) encryption configuration.
@@ -2773,8 +3582,8 @@ func (s *HlsPackage) SetUseAudioRenditionGroup(v bool) *HlsPackage {
 }
 
 type InternalServerErrorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2791,17 +3600,17 @@ func (s InternalServerErrorException) GoString() string {
 
 func newErrorInternalServerErrorException(v protocol.ResponseMetadata) error {
 	return &InternalServerErrorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerErrorException) Code() string {
+func (s *InternalServerErrorException) Code() string {
 	return "InternalServerErrorException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerErrorException) Message() string {
+func (s *InternalServerErrorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2809,22 +3618,22 @@ func (s InternalServerErrorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerErrorException) OrigErr() error {
+func (s *InternalServerErrorException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerErrorException) Error() string {
+func (s *InternalServerErrorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerErrorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerErrorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerErrorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerErrorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListAssetsInput struct {
@@ -3062,6 +3871,67 @@ func (s *ListPackagingGroupsOutput) SetPackagingGroups(v []*PackagingGroup) *Lis
 	return s
 }
 
+type ListTagsForResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"resource-arn" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ListTagsForResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListTagsForResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListTagsForResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListTagsForResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *ListTagsForResourceInput) SetResourceArn(v string) *ListTagsForResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+type ListTagsForResourceOutput struct {
+	_ struct{} `type:"structure"`
+
+	Tags map[string]*string `locationName:"tags" type:"map"`
+}
+
+// String returns the string representation
+func (s ListTagsForResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListTagsForResourceOutput) GoString() string {
+	return s.String()
+}
+
+// SetTags sets the Tags field's value.
+func (s *ListTagsForResourceOutput) SetTags(v map[string]*string) *ListTagsForResourceOutput {
+	s.Tags = v
+	return s
+}
+
 // A Microsoft Smooth Streaming (MSS) encryption configuration.
 type MssEncryption struct {
 	_ struct{} `type:"structure"`
@@ -3203,8 +4073,8 @@ func (s *MssPackage) SetSegmentDurationSeconds(v int64) *MssPackage {
 }
 
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3221,17 +4091,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3239,22 +4109,22 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A MediaPackage VOD PackagingConfiguration resource.
@@ -3281,6 +4151,9 @@ type PackagingConfiguration struct {
 
 	// The ID of a PackagingGroup.
 	PackagingGroupId *string `locationName:"packagingGroupId" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -3335,6 +4208,12 @@ func (s *PackagingConfiguration) SetPackagingGroupId(v string) *PackagingConfigu
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *PackagingConfiguration) SetTags(v map[string]*string) *PackagingConfiguration {
+	s.Tags = v
+	return s
+}
+
 // A MediaPackage VOD PackagingGroup resource.
 type PackagingGroup struct {
 	_ struct{} `type:"structure"`
@@ -3342,11 +4221,20 @@ type PackagingGroup struct {
 	// The ARN of the PackagingGroup.
 	Arn *string `locationName:"arn" type:"string"`
 
+	// CDN Authorization credentials
+	Authorization *Authorization `locationName:"authorization" type:"structure"`
+
 	// The fully qualified domain name for Assets in the PackagingGroup.
 	DomainName *string `locationName:"domainName" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	// The ID of the PackagingGroup.
 	Id *string `locationName:"id" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
 // String returns the string representation
@@ -3365,9 +4253,21 @@ func (s *PackagingGroup) SetArn(v string) *PackagingGroup {
 	return s
 }
 
+// SetAuthorization sets the Authorization field's value.
+func (s *PackagingGroup) SetAuthorization(v *Authorization) *PackagingGroup {
+	s.Authorization = v
+	return s
+}
+
 // SetDomainName sets the DomainName field's value.
 func (s *PackagingGroup) SetDomainName(v string) *PackagingGroup {
 	s.DomainName = &v
+	return s
+}
+
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *PackagingGroup) SetEgressAccessLogs(v *EgressAccessLogs) *PackagingGroup {
+	s.EgressAccessLogs = v
 	return s
 }
 
@@ -3377,9 +4277,15 @@ func (s *PackagingGroup) SetId(v string) *PackagingGroup {
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *PackagingGroup) SetTags(v map[string]*string) *PackagingGroup {
+	s.Tags = v
+	return s
+}
+
 type ServiceUnavailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3396,17 +4302,17 @@ func (s ServiceUnavailableException) GoString() string {
 
 func newErrorServiceUnavailableException(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailableException) Code() string {
+func (s *ServiceUnavailableException) Code() string {
 	return "ServiceUnavailableException"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailableException) Message() string {
+func (s *ServiceUnavailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3414,22 +4320,22 @@ func (s ServiceUnavailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailableException) OrigErr() error {
+func (s *ServiceUnavailableException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailableException) Error() string {
+func (s *ServiceUnavailableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A configuration for accessing an external Secure Packager and Encoder Key
@@ -3543,9 +4449,74 @@ func (s *StreamSelection) SetStreamOrder(v string) *StreamSelection {
 	return s
 }
 
+type TagResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"resource-arn" type:"string" required:"true"`
+
+	// Tags is a required field
+	Tags map[string]*string `locationName:"tags" type:"map" required:"true"`
+}
+
+// String returns the string representation
+func (s TagResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TagResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *TagResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "TagResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+	if s.Tags == nil {
+		invalidParams.Add(request.NewErrParamRequired("Tags"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *TagResourceInput) SetResourceArn(v string) *TagResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *TagResourceInput) SetTags(v map[string]*string) *TagResourceInput {
+	s.Tags = v
+	return s
+}
+
+type TagResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s TagResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TagResourceOutput) GoString() string {
+	return s.String()
+}
+
 type TooManyRequestsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3562,17 +4533,17 @@ func (s TooManyRequestsException) GoString() string {
 
 func newErrorTooManyRequestsException(v protocol.ResponseMetadata) error {
 	return &TooManyRequestsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyRequestsException) Code() string {
+func (s *TooManyRequestsException) Code() string {
 	return "TooManyRequestsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyRequestsException) Message() string {
+func (s *TooManyRequestsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3580,27 +4551,27 @@ func (s TooManyRequestsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyRequestsException) OrigErr() error {
+func (s *TooManyRequestsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyRequestsException) Error() string {
+func (s *TooManyRequestsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyRequestsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyRequestsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyRequestsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyRequestsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UnprocessableEntityException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3617,17 +4588,17 @@ func (s UnprocessableEntityException) GoString() string {
 
 func newErrorUnprocessableEntityException(v protocol.ResponseMetadata) error {
 	return &UnprocessableEntityException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnprocessableEntityException) Code() string {
+func (s *UnprocessableEntityException) Code() string {
 	return "UnprocessableEntityException"
 }
 
 // Message returns the exception's message.
-func (s UnprocessableEntityException) Message() string {
+func (s *UnprocessableEntityException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3635,22 +4606,205 @@ func (s UnprocessableEntityException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnprocessableEntityException) OrigErr() error {
+func (s *UnprocessableEntityException) OrigErr() error {
 	return nil
 }
 
-func (s UnprocessableEntityException) Error() string {
+func (s *UnprocessableEntityException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnprocessableEntityException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnprocessableEntityException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnprocessableEntityException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnprocessableEntityException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+type UntagResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"resource-arn" type:"string" required:"true"`
+
+	// TagKeys is a required field
+	TagKeys []*string `location:"querystring" locationName:"tagKeys" type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s UntagResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UntagResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UntagResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UntagResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+	if s.TagKeys == nil {
+		invalidParams.Add(request.NewErrParamRequired("TagKeys"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *UntagResourceInput) SetResourceArn(v string) *UntagResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+// SetTagKeys sets the TagKeys field's value.
+func (s *UntagResourceInput) SetTagKeys(v []*string) *UntagResourceInput {
+	s.TagKeys = v
+	return s
+}
+
+type UntagResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s UntagResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UntagResourceOutput) GoString() string {
+	return s.String()
+}
+
+type UpdatePackagingGroupInput struct {
+	_ struct{} `type:"structure"`
+
+	// CDN Authorization credentials
+	Authorization *Authorization `locationName:"authorization" type:"structure"`
+
+	// Id is a required field
+	Id *string `location:"uri" locationName:"id" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s UpdatePackagingGroupInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdatePackagingGroupInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UpdatePackagingGroupInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UpdatePackagingGroupInput"}
+	if s.Id == nil {
+		invalidParams.Add(request.NewErrParamRequired("Id"))
+	}
+	if s.Id != nil && len(*s.Id) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Id", 1))
+	}
+	if s.Authorization != nil {
+		if err := s.Authorization.Validate(); err != nil {
+			invalidParams.AddNested("Authorization", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAuthorization sets the Authorization field's value.
+func (s *UpdatePackagingGroupInput) SetAuthorization(v *Authorization) *UpdatePackagingGroupInput {
+	s.Authorization = v
+	return s
+}
+
+// SetId sets the Id field's value.
+func (s *UpdatePackagingGroupInput) SetId(v string) *UpdatePackagingGroupInput {
+	s.Id = &v
+	return s
+}
+
+type UpdatePackagingGroupOutput struct {
+	_ struct{} `type:"structure"`
+
+	Arn *string `locationName:"arn" type:"string"`
+
+	// CDN Authorization credentials
+	Authorization *Authorization `locationName:"authorization" type:"structure"`
+
+	DomainName *string `locationName:"domainName" type:"string"`
+
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
+	Id *string `locationName:"id" type:"string"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
+}
+
+// String returns the string representation
+func (s UpdatePackagingGroupOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdatePackagingGroupOutput) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *UpdatePackagingGroupOutput) SetArn(v string) *UpdatePackagingGroupOutput {
+	s.Arn = &v
+	return s
+}
+
+// SetAuthorization sets the Authorization field's value.
+func (s *UpdatePackagingGroupOutput) SetAuthorization(v *Authorization) *UpdatePackagingGroupOutput {
+	s.Authorization = v
+	return s
+}
+
+// SetDomainName sets the DomainName field's value.
+func (s *UpdatePackagingGroupOutput) SetDomainName(v string) *UpdatePackagingGroupOutput {
+	s.DomainName = &v
+	return s
+}
+
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *UpdatePackagingGroupOutput) SetEgressAccessLogs(v *EgressAccessLogs) *UpdatePackagingGroupOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
+// SetId sets the Id field's value.
+func (s *UpdatePackagingGroupOutput) SetId(v string) *UpdatePackagingGroupOutput {
+	s.Id = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *UpdatePackagingGroupOutput) SetTags(v map[string]*string) *UpdatePackagingGroupOutput {
+	s.Tags = v
+	return s
 }
 
 const (
@@ -3664,6 +4818,15 @@ const (
 	AdMarkersPassthrough = "PASSTHROUGH"
 )
 
+// AdMarkers_Values returns all elements of the AdMarkers enum
+func AdMarkers_Values() []string {
+	return []string{
+		AdMarkersNone,
+		AdMarkersScte35Enhanced,
+		AdMarkersPassthrough,
+	}
+}
+
 const (
 	// EncryptionMethodAes128 is a EncryptionMethod enum value
 	EncryptionMethodAes128 = "AES_128"
@@ -3672,6 +4835,42 @@ const (
 	EncryptionMethodSampleAes = "SAMPLE_AES"
 )
 
+// EncryptionMethod_Values returns all elements of the EncryptionMethod enum
+func EncryptionMethod_Values() []string {
+	return []string{
+		EncryptionMethodAes128,
+		EncryptionMethodSampleAes,
+	}
+}
+
+const (
+	// ManifestLayoutFull is a ManifestLayout enum value
+	ManifestLayoutFull = "FULL"
+
+	// ManifestLayoutCompact is a ManifestLayout enum value
+	ManifestLayoutCompact = "COMPACT"
+)
+
+// ManifestLayout_Values returns all elements of the ManifestLayout enum
+func ManifestLayout_Values() []string {
+	return []string{
+		ManifestLayoutFull,
+		ManifestLayoutCompact,
+	}
+}
+
+const (
+	// PeriodTriggersElementAds is a PeriodTriggersElement enum value
+	PeriodTriggersElementAds = "ADS"
+)
+
+// PeriodTriggersElement_Values returns all elements of the PeriodTriggersElement enum
+func PeriodTriggersElement_Values() []string {
+	return []string{
+		PeriodTriggersElementAds,
+	}
+}
+
 const (
 	// ProfileNone is a Profile enum value
 	ProfileNone = "NONE"
@@ -3679,6 +4878,34 @@ const (
 	// ProfileHbbtv15 is a Profile enum value
 	ProfileHbbtv15 = "HBBTV_1_5"
 )
+
+// Profile_Values returns all elements of the Profile enum
+func Profile_Values() []string {
+	return []string{
+		ProfileNone,
+		ProfileHbbtv15,
+	}
+}
+
+const (
+	// SegmentTemplateFormatNumberWithTimeline is a SegmentTemplateFormat enum value
+	SegmentTemplateFormatNumberWithTimeline = "NUMBER_WITH_TIMELINE"
+
+	// SegmentTemplateFormatTimeWithTimeline is a SegmentTemplateFormat enum value
+	SegmentTemplateFormatTimeWithTimeline = "TIME_WITH_TIMELINE"
+
+	// SegmentTemplateFormatNumberWithDuration is a SegmentTemplateFormat enum value
+	SegmentTemplateFormatNumberWithDuration = "NUMBER_WITH_DURATION"
+)
+
+// SegmentTemplateFormat_Values returns all elements of the SegmentTemplateFormat enum
+func SegmentTemplateFormat_Values() []string {
+	return []string{
+		SegmentTemplateFormatNumberWithTimeline,
+		SegmentTemplateFormatTimeWithTimeline,
+		SegmentTemplateFormatNumberWithDuration,
+	}
+}
 
 const (
 	// StreamOrderOriginal is a StreamOrder enum value
@@ -3690,3 +4917,12 @@ const (
 	// StreamOrderVideoBitrateDescending is a StreamOrder enum value
 	StreamOrderVideoBitrateDescending = "VIDEO_BITRATE_DESCENDING"
 )
+
+// StreamOrder_Values returns all elements of the StreamOrder enum
+func StreamOrder_Values() []string {
+	return []string{
+		StreamOrderOriginal,
+		StreamOrderVideoBitrateAscending,
+		StreamOrderVideoBitrateDescending,
+	}
+}

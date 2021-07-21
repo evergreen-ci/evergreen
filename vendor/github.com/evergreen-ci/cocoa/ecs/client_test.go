@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/evergreen-ci/cocoa"
-	"github.com/evergreen-ci/cocoa/internal/awsutil"
+	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/internal/testcase"
 	"github.com/evergreen-ci/cocoa/internal/testutil"
 	"github.com/evergreen-ci/utility"
@@ -21,11 +21,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestECSClientInterface(t *testing.T) {
-	assert.Implements(t, (*cocoa.ECSClient)(nil), &BasicECSClient{})
-}
-
 func TestECSClient(t *testing.T) {
+	assert.Implements(t, (*cocoa.ECSClient)(nil), &BasicECSClient{})
+
 	testutil.CheckAWSEnvVarsForECS(t)
 
 	ctx, cancel := context.WithCancel(context.Background())

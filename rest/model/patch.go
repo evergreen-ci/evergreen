@@ -189,6 +189,16 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
 
+	// set the patch status to the collective status between the parent and child patches
+	if len(childPatches) > 0 {
+		allStatuses := []string{*apiPatch.Status}
+		for _, cp := range childPatches {
+			allStatuses = append(allStatuses, *cp.Status)
+		}
+		apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatus(allStatuses))
+
+	}
+
 	if v.Project != "" {
 		identifier, err := model.GetIdentifierForProject(v.Project)
 		if err != nil {
@@ -322,34 +332,4 @@ func (g *githubPatch) ToService() (interface{}, error) {
 	res.HeadHash = utility.FromStringPtr(g.HeadHash)
 	res.Author = utility.FromStringPtr(g.Author)
 	return res, nil
-}
-
-type PatchesByStatus []APIPatch
-
-func (p PatchesByStatus) Len() int {
-	return len(p)
-}
-
-func (p PatchesByStatus) Less(i, j int) bool {
-	return p[i].patchStatusPriority() < p[j].patchStatusPriority()
-}
-
-func (p PatchesByStatus) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-// patchStatusPriority answers the question of what the patch status should be
-// when the patch status and the status of it's children are different
-func (p *APIPatch) patchStatusPriority() int {
-	switch *p.Status {
-	case evergreen.PatchCreated:
-		return 10
-	case evergreen.PatchStarted:
-		return 20
-	case evergreen.PatchFailed:
-		return 30
-	case evergreen.PatchSucceeded:
-		return 40
-	}
-	return 100
 }

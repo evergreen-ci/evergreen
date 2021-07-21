@@ -82,7 +82,7 @@ func (c *AppStream) AssociateFleetRequest(input *AssociateFleetInput) (req *requ
 //   An API error occurred. Wait a few minutes and try again.
 //
 //   * IncompatibleImageException
-//   The image does not support storage connectors.
+//   The image can't be updated because it's not compatible for updates.
 //
 //   * OperationNotPermittedException
 //   The attempted operation is not permitted.
@@ -168,6 +168,9 @@ func (c *AppStream) BatchAssociateUserStackRequest(input *BatchAssociateUserStac
 //   * OperationNotPermittedException
 //   The attempted operation is not permitted.
 //
+//   * InvalidParameterCombinationException
+//   Indicates an incorrect combination of parameters, or a missing parameter.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/BatchAssociateUserStack
 func (c *AppStream) BatchAssociateUserStack(input *BatchAssociateUserStackInput) (*BatchAssociateUserStackOutput, error) {
 	req, out := c.BatchAssociateUserStackRequest(input)
@@ -242,6 +245,14 @@ func (c *AppStream) BatchDisassociateUserStackRequest(input *BatchDisassociateUs
 //
 // See the AWS API reference guide for Amazon AppStream's
 // API operation BatchDisassociateUserStack for usage and error information.
+//
+// Returned Error Types:
+//   * OperationNotPermittedException
+//   The attempted operation is not permitted.
+//
+//   * InvalidParameterCombinationException
+//   Indicates an incorrect combination of parameters, or a missing parameter.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/BatchDisassociateUserStack
 func (c *AppStream) BatchDisassociateUserStack(input *BatchDisassociateUserStackInput) (*BatchDisassociateUserStackOutput, error) {
 	req, out := c.BatchDisassociateUserStackRequest(input)
@@ -336,7 +347,7 @@ func (c *AppStream) CopyImageRequest(input *CopyImageInput) (req *request.Reques
 //   assistance, contact AWS Support.
 //
 //   * IncompatibleImageException
-//   The image does not support storage connectors.
+//   The image can't be updated because it's not compatible for updates.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/CopyImage
 func (c *AppStream) CopyImage(input *CopyImageInput) (*CopyImageOutput, error) {
@@ -416,6 +427,9 @@ func (c *AppStream) CreateDirectoryConfigRequest(input *CreateDirectoryConfigInp
 // API operation CreateDirectoryConfig for usage and error information.
 //
 // Returned Error Types:
+//   * ResourceNotFoundException
+//   The specified resource was not found.
+//
 //   * ResourceAlreadyExistsException
 //   The specified resource already exists.
 //
@@ -425,6 +439,12 @@ func (c *AppStream) CreateDirectoryConfigRequest(input *CreateDirectoryConfigInp
 //   * InvalidAccountStatusException
 //   The resource cannot be created because your AWS account is suspended. For
 //   assistance, contact AWS Support.
+//
+//   * OperationNotPermittedException
+//   The attempted operation is not permitted.
+//
+//   * InvalidRoleException
+//   The specified role is invalid.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/CreateDirectoryConfig
 func (c *AppStream) CreateDirectoryConfig(input *CreateDirectoryConfigInput) (*CreateDirectoryConfigOutput, error) {
@@ -515,6 +535,11 @@ func (c *AppStream) CreateFleetRequest(input *CreateFleetInput) (req *request.Re
 //   * LimitExceededException
 //   The requested limit exceeds the permitted limit for an account.
 //
+//   * RequestLimitExceededException
+//   AppStream 2.0 can’t process the request right now because the Describe
+//   calls from your AWS account are being throttled by Amazon EC2. Try again
+//   later.
+//
 //   * InvalidAccountStatusException
 //   The resource cannot be created because your AWS account is suspended. For
 //   assistance, contact AWS Support.
@@ -529,7 +554,7 @@ func (c *AppStream) CreateFleetRequest(input *CreateFleetInput) (req *request.Re
 //   Indicates an incorrect combination of parameters, or a missing parameter.
 //
 //   * IncompatibleImageException
-//   The image does not support storage connectors.
+//   The image can't be updated because it's not compatible for updates.
 //
 //   * OperationNotPermittedException
 //   The attempted operation is not permitted.
@@ -617,6 +642,11 @@ func (c *AppStream) CreateImageBuilderRequest(input *CreateImageBuilderInput) (r
 //   * LimitExceededException
 //   The requested limit exceeds the permitted limit for an account.
 //
+//   * RequestLimitExceededException
+//   AppStream 2.0 can’t process the request right now because the Describe
+//   calls from your AWS account are being throttled by Amazon EC2. Try again
+//   later.
+//
 //   * InvalidAccountStatusException
 //   The resource cannot be created because your AWS account is suspended. For
 //   assistance, contact AWS Support.
@@ -640,7 +670,7 @@ func (c *AppStream) CreateImageBuilderRequest(input *CreateImageBuilderInput) (r
 //   Indicates an incorrect combination of parameters, or a missing parameter.
 //
 //   * IncompatibleImageException
-//   The image does not support storage connectors.
+//   The image can't be updated because it's not compatible for updates.
 //
 //   * OperationNotPermittedException
 //   The attempted operation is not permitted.
@@ -933,6 +963,109 @@ func (c *AppStream) CreateStreamingURL(input *CreateStreamingURLInput) (*CreateS
 // for more information on using Contexts.
 func (c *AppStream) CreateStreamingURLWithContext(ctx aws.Context, input *CreateStreamingURLInput, opts ...request.Option) (*CreateStreamingURLOutput, error) {
 	req, out := c.CreateStreamingURLRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opCreateUpdatedImage = "CreateUpdatedImage"
+
+// CreateUpdatedImageRequest generates a "aws/request.Request" representing the
+// client's request for the CreateUpdatedImage operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See CreateUpdatedImage for more information on using the CreateUpdatedImage
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the CreateUpdatedImageRequest method.
+//    req, resp := client.CreateUpdatedImageRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/CreateUpdatedImage
+func (c *AppStream) CreateUpdatedImageRequest(input *CreateUpdatedImageInput) (req *request.Request, output *CreateUpdatedImageOutput) {
+	op := &request.Operation{
+		Name:       opCreateUpdatedImage,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &CreateUpdatedImageInput{}
+	}
+
+	output = &CreateUpdatedImageOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// CreateUpdatedImage API operation for Amazon AppStream.
+//
+// Creates a new image with the latest Windows operating system updates, driver
+// updates, and AppStream 2.0 agent software.
+//
+// For more information, see the "Update an Image by Using Managed AppStream
+// 2.0 Image Updates" section in Administer Your AppStream 2.0 Images (https://docs.aws.amazon.com/appstream2/latest/developerguide/administer-images.html),
+// in the Amazon AppStream 2.0 Administration Guide.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon AppStream's
+// API operation CreateUpdatedImage for usage and error information.
+//
+// Returned Error Types:
+//   * LimitExceededException
+//   The requested limit exceeds the permitted limit for an account.
+//
+//   * InvalidAccountStatusException
+//   The resource cannot be created because your AWS account is suspended. For
+//   assistance, contact AWS Support.
+//
+//   * OperationNotPermittedException
+//   The attempted operation is not permitted.
+//
+//   * ResourceAlreadyExistsException
+//   The specified resource already exists.
+//
+//   * ResourceNotFoundException
+//   The specified resource was not found.
+//
+//   * ConcurrentModificationException
+//   An API error occurred. Wait a few minutes and try again.
+//
+//   * IncompatibleImageException
+//   The image can't be updated because it's not compatible for updates.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/CreateUpdatedImage
+func (c *AppStream) CreateUpdatedImage(input *CreateUpdatedImageInput) (*CreateUpdatedImageOutput, error) {
+	req, out := c.CreateUpdatedImageRequest(input)
+	return out, req.Send()
+}
+
+// CreateUpdatedImageWithContext is the same as CreateUpdatedImage with the addition of
+// the ability to pass a context and additional request options.
+//
+// See CreateUpdatedImage for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *AppStream) CreateUpdatedImageWithContext(ctx aws.Context, input *CreateUpdatedImageInput, opts ...request.Option) (*CreateUpdatedImageOutput, error) {
+	req, out := c.CreateUpdatedImageRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2635,6 +2768,9 @@ func (c *AppStream) DescribeUserStackAssociationsRequest(input *DescribeUserStac
 //   * InvalidParameterCombinationException
 //   Indicates an incorrect combination of parameters, or a missing parameter.
 //
+//   * OperationNotPermittedException
+//   The attempted operation is not permitted.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/DescribeUserStackAssociations
 func (c *AppStream) DescribeUserStackAssociations(input *DescribeUserStackAssociationsInput) (*DescribeUserStackAssociationsOutput, error) {
 	req, out := c.DescribeUserStackAssociationsRequest(input)
@@ -2883,6 +3019,9 @@ func (c *AppStream) DisassociateFleetRequest(input *DisassociateFleetInput) (req
 //
 //   * ConcurrentModificationException
 //   An API error occurred. Wait a few minutes and try again.
+//
+//   * OperationNotPermittedException
+//   The attempted operation is not permitted.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/DisassociateFleet
 func (c *AppStream) DisassociateFleet(input *DisassociateFleetInput) (*DisassociateFleetOutput, error) {
@@ -3361,6 +3500,11 @@ func (c *AppStream) StartFleetRequest(input *StartFleetInput) (req *request.Requ
 //   * LimitExceededException
 //   The requested limit exceeds the permitted limit for an account.
 //
+//   * RequestLimitExceededException
+//   AppStream 2.0 can’t process the request right now because the Describe
+//   calls from your AWS account are being throttled by Amazon EC2. Try again
+//   later.
+//
 //   * InvalidAccountStatusException
 //   The resource cannot be created because your AWS account is suspended. For
 //   assistance, contact AWS Support.
@@ -3464,7 +3608,7 @@ func (c *AppStream) StartImageBuilderRequest(input *StartImageBuilderInput) (req
 //   assistance, contact AWS Support.
 //
 //   * IncompatibleImageException
-//   The image does not support storage connectors.
+//   The image can't be updated because it's not compatible for updates.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/StartImageBuilder
 func (c *AppStream) StartImageBuilder(input *StartImageBuilderInput) (*StartImageBuilderOutput, error) {
@@ -3904,6 +4048,12 @@ func (c *AppStream) UpdateDirectoryConfigRequest(input *UpdateDirectoryConfigInp
 //   * ConcurrentModificationException
 //   An API error occurred. Wait a few minutes and try again.
 //
+//   * OperationNotPermittedException
+//   The attempted operation is not permitted.
+//
+//   * InvalidRoleException
+//   The specified role is invalid.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/appstream-2016-12-01/UpdateDirectoryConfig
 func (c *AppStream) UpdateDirectoryConfig(input *UpdateDirectoryConfigInput) (*UpdateDirectoryConfigOutput, error) {
 	req, out := c.UpdateDirectoryConfigRequest(input)
@@ -3992,6 +4142,11 @@ func (c *AppStream) UpdateFleetRequest(input *UpdateFleetInput) (req *request.Re
 //   * LimitExceededException
 //   The requested limit exceeds the permitted limit for an account.
 //
+//   * RequestLimitExceededException
+//   AppStream 2.0 can’t process the request right now because the Describe
+//   calls from your AWS account are being throttled by Amazon EC2. Try again
+//   later.
+//
 //   * InvalidAccountStatusException
 //   The resource cannot be created because your AWS account is suspended. For
 //   assistance, contact AWS Support.
@@ -4012,7 +4167,7 @@ func (c *AppStream) UpdateFleetRequest(input *UpdateFleetInput) (req *request.Re
 //   An API error occurred. Wait a few minutes and try again.
 //
 //   * IncompatibleImageException
-//   The image does not support storage connectors.
+//   The image can't be updated because it's not compatible for updates.
 //
 //   * OperationNotPermittedException
 //   The attempted operation is not permitted.
@@ -4199,7 +4354,7 @@ func (c *AppStream) UpdateStackRequest(input *UpdateStackInput) (req *request.Re
 //   assistance, contact AWS Support.
 //
 //   * IncompatibleImageException
-//   The image does not support storage connectors.
+//   The image can't be updated because it's not compatible for updates.
 //
 //   * OperationNotPermittedException
 //   The attempted operation is not permitted.
@@ -4776,8 +4931,8 @@ func (s *ComputeCapacityStatus) SetRunning(v int64) *ComputeCapacityStatus {
 
 // An API error occurred. Wait a few minutes and try again.
 type ConcurrentModificationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -4795,17 +4950,17 @@ func (s ConcurrentModificationException) GoString() string {
 
 func newErrorConcurrentModificationException(v protocol.ResponseMetadata) error {
 	return &ConcurrentModificationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConcurrentModificationException) Code() string {
+func (s *ConcurrentModificationException) Code() string {
 	return "ConcurrentModificationException"
 }
 
 // Message returns the exception's message.
-func (s ConcurrentModificationException) Message() string {
+func (s *ConcurrentModificationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4813,22 +4968,22 @@ func (s ConcurrentModificationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConcurrentModificationException) OrigErr() error {
+func (s *ConcurrentModificationException) OrigErr() error {
 	return nil
 }
 
-func (s ConcurrentModificationException) Error() string {
+func (s *ConcurrentModificationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConcurrentModificationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConcurrentModificationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConcurrentModificationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConcurrentModificationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type CopyImageInput struct {
@@ -4948,9 +5103,7 @@ type CreateDirectoryConfigInput struct {
 
 	// The credentials for the service account used by the fleet or image builder
 	// to connect to the directory.
-	//
-	// ServiceAccountCredentials is a required field
-	ServiceAccountCredentials *ServiceAccountCredentials `type:"structure" required:"true"`
+	ServiceAccountCredentials *ServiceAccountCredentials `type:"structure"`
 }
 
 // String returns the string representation
@@ -4971,9 +5124,6 @@ func (s *CreateDirectoryConfigInput) Validate() error {
 	}
 	if s.OrganizationalUnitDistinguishedNames == nil {
 		invalidParams.Add(request.NewErrParamRequired("OrganizationalUnitDistinguishedNames"))
-	}
-	if s.ServiceAccountCredentials == nil {
-		invalidParams.Add(request.NewErrParamRequired("ServiceAccountCredentials"))
 	}
 	if s.ServiceAccountCredentials != nil {
 		if err := s.ServiceAccountCredentials.Validate(); err != nil {
@@ -5076,7 +5226,7 @@ type CreateFleetInput struct {
 	// assume a role, a fleet instance calls the AWS Security Token Service (STS)
 	// AssumeRole API operation and passes the ARN of the role to use. The operation
 	// creates a new session with temporary credentials. AppStream 2.0 retrieves
-	// the temporary credentials and creates the AppStream_Machine_Role credential
+	// the temporary credentials and creates the appstream_machine_role credential
 	// profile on the instance.
 	//
 	// For more information, see Using an IAM Role to Grant Permissions to Applications
@@ -5117,6 +5267,8 @@ type CreateFleetInput struct {
 	// The instance type to use when launching fleet instances. The following instance
 	// types are available:
 	//
+	//    * stream.standard.small
+	//
 	//    * stream.standard.medium
 	//
 	//    * stream.standard.large
@@ -5141,6 +5293,18 @@ type CreateFleetInput struct {
 	//
 	//    * stream.memory.8xlarge
 	//
+	//    * stream.memory.z1d.large
+	//
+	//    * stream.memory.z1d.xlarge
+	//
+	//    * stream.memory.z1d.2xlarge
+	//
+	//    * stream.memory.z1d.3xlarge
+	//
+	//    * stream.memory.z1d.6xlarge
+	//
+	//    * stream.memory.z1d.12xlarge
+	//
 	//    * stream.graphics-design.large
 	//
 	//    * stream.graphics-design.xlarge
@@ -5150,6 +5314,18 @@ type CreateFleetInput struct {
 	//    * stream.graphics-design.4xlarge
 	//
 	//    * stream.graphics-desktop.2xlarge
+	//
+	//    * stream.graphics.g4dn.xlarge
+	//
+	//    * stream.graphics.g4dn.2xlarge
+	//
+	//    * stream.graphics.g4dn.4xlarge
+	//
+	//    * stream.graphics.g4dn.8xlarge
+	//
+	//    * stream.graphics.g4dn.12xlarge
+	//
+	//    * stream.graphics.g4dn.16xlarge
 	//
 	//    * stream.graphics-pro.4xlarge
 	//
@@ -5173,6 +5349,14 @@ type CreateFleetInput struct {
 	//
 	// Name is a required field
 	Name *string `type:"string" required:"true"`
+
+	// The AppStream 2.0 view that is displayed to your users when they stream from
+	// the fleet. When APP is specified, only the windows of applications opened
+	// by users display. When DESKTOP is specified, the standard desktop that is
+	// provided by the operating system displays.
+	//
+	// The default value is APP.
+	StreamView *string `type:"string" enum:"StreamView"`
 
 	// The tags to associate with the fleet. A tag is a key-value pair, and the
 	// value is optional. For example, Environment=Test. If you do not specify a
@@ -5320,6 +5504,12 @@ func (s *CreateFleetInput) SetName(v string) *CreateFleetInput {
 	return s
 }
 
+// SetStreamView sets the StreamView field's value.
+func (s *CreateFleetInput) SetStreamView(v string) *CreateFleetInput {
+	s.StreamView = &v
+	return s
+}
+
 // SetTags sets the Tags field's value.
 func (s *CreateFleetInput) SetTags(v map[string]*string) *CreateFleetInput {
 	s.Tags = v
@@ -5383,7 +5573,7 @@ type CreateImageBuilderInput struct {
 	// To assume a role, the image builder calls the AWS Security Token Service
 	// (STS) AssumeRole API operation and passes the ARN of the role to use. The
 	// operation creates a new session with temporary credentials. AppStream 2.0
-	// retrieves the temporary credentials and creates the AppStream_Machine_Role
+	// retrieves the temporary credentials and creates the appstream_machine_role
 	// credential profile on the instance.
 	//
 	// For more information, see Using an IAM Role to Grant Permissions to Applications
@@ -5399,6 +5589,8 @@ type CreateImageBuilderInput struct {
 
 	// The instance type to use when launching the image builder. The following
 	// instance types are available:
+	//
+	//    * stream.standard.small
 	//
 	//    * stream.standard.medium
 	//
@@ -5424,6 +5616,18 @@ type CreateImageBuilderInput struct {
 	//
 	//    * stream.memory.8xlarge
 	//
+	//    * stream.memory.z1d.large
+	//
+	//    * stream.memory.z1d.xlarge
+	//
+	//    * stream.memory.z1d.2xlarge
+	//
+	//    * stream.memory.z1d.3xlarge
+	//
+	//    * stream.memory.z1d.6xlarge
+	//
+	//    * stream.memory.z1d.12xlarge
+	//
 	//    * stream.graphics-design.large
 	//
 	//    * stream.graphics-design.xlarge
@@ -5433,6 +5637,18 @@ type CreateImageBuilderInput struct {
 	//    * stream.graphics-design.4xlarge
 	//
 	//    * stream.graphics-desktop.2xlarge
+	//
+	//    * stream.graphics.g4dn.xlarge
+	//
+	//    * stream.graphics.g4dn.2xlarge
+	//
+	//    * stream.graphics.g4dn.4xlarge
+	//
+	//    * stream.graphics.g4dn.8xlarge
+	//
+	//    * stream.graphics.g4dn.12xlarge
+	//
+	//    * stream.graphics.g4dn.16xlarge
 	//
 	//    * stream.graphics-pro.4xlarge
 	//
@@ -5923,7 +6139,9 @@ type CreateStreamingURLInput struct {
 	_ struct{} `type:"structure"`
 
 	// The name of the application to launch after the session starts. This is the
-	// name that you specified as Name in the Image Assistant.
+	// name that you specified as Name in the Image Assistant. If your fleet is
+	// enabled for the Desktop stream view, you can also choose to launch directly
+	// to the operating system desktop. To do so, specify Desktop.
 	ApplicationId *string `min:"1" type:"string"`
 
 	// The name of the fleet.
@@ -6059,6 +6277,146 @@ func (s *CreateStreamingURLOutput) SetExpires(v time.Time) *CreateStreamingURLOu
 // SetStreamingURL sets the StreamingURL field's value.
 func (s *CreateStreamingURLOutput) SetStreamingURL(v string) *CreateStreamingURLOutput {
 	s.StreamingURL = &v
+	return s
+}
+
+type CreateUpdatedImageInput struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether to display the status of image update availability before
+	// AppStream 2.0 initiates the process of creating a new updated image. If this
+	// value is set to true, AppStream 2.0 displays whether image updates are available.
+	// If this value is set to false, AppStream 2.0 initiates the process of creating
+	// a new updated image without displaying whether image updates are available.
+	DryRun *bool `locationName:"dryRun" type:"boolean"`
+
+	// The name of the image to update.
+	//
+	// ExistingImageName is a required field
+	ExistingImageName *string `locationName:"existingImageName" type:"string" required:"true"`
+
+	// The description to display for the new image.
+	NewImageDescription *string `locationName:"newImageDescription" type:"string"`
+
+	// The name to display for the new image.
+	NewImageDisplayName *string `locationName:"newImageDisplayName" type:"string"`
+
+	// The name of the new image. The name must be unique within the AWS account
+	// and Region.
+	//
+	// NewImageName is a required field
+	NewImageName *string `locationName:"newImageName" type:"string" required:"true"`
+
+	// The tags to associate with the new image. A tag is a key-value pair, and
+	// the value is optional. For example, Environment=Test. If you do not specify
+	// a value, Environment=.
+	//
+	// Generally allowed characters are: letters, numbers, and spaces representable
+	// in UTF-8, and the following special characters:
+	//
+	// _ . : / = + \ - @
+	//
+	// If you do not specify a value, the value is set to an empty string.
+	//
+	// For more information about tags, see Tagging Your Resources (https://docs.aws.amazon.com/appstream2/latest/developerguide/tagging-basic.html)
+	// in the Amazon AppStream 2.0 Administration Guide.
+	NewImageTags map[string]*string `locationName:"newImageTags" min:"1" type:"map"`
+}
+
+// String returns the string representation
+func (s CreateUpdatedImageInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateUpdatedImageInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreateUpdatedImageInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreateUpdatedImageInput"}
+	if s.ExistingImageName == nil {
+		invalidParams.Add(request.NewErrParamRequired("ExistingImageName"))
+	}
+	if s.NewImageName == nil {
+		invalidParams.Add(request.NewErrParamRequired("NewImageName"))
+	}
+	if s.NewImageTags != nil && len(s.NewImageTags) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NewImageTags", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDryRun sets the DryRun field's value.
+func (s *CreateUpdatedImageInput) SetDryRun(v bool) *CreateUpdatedImageInput {
+	s.DryRun = &v
+	return s
+}
+
+// SetExistingImageName sets the ExistingImageName field's value.
+func (s *CreateUpdatedImageInput) SetExistingImageName(v string) *CreateUpdatedImageInput {
+	s.ExistingImageName = &v
+	return s
+}
+
+// SetNewImageDescription sets the NewImageDescription field's value.
+func (s *CreateUpdatedImageInput) SetNewImageDescription(v string) *CreateUpdatedImageInput {
+	s.NewImageDescription = &v
+	return s
+}
+
+// SetNewImageDisplayName sets the NewImageDisplayName field's value.
+func (s *CreateUpdatedImageInput) SetNewImageDisplayName(v string) *CreateUpdatedImageInput {
+	s.NewImageDisplayName = &v
+	return s
+}
+
+// SetNewImageName sets the NewImageName field's value.
+func (s *CreateUpdatedImageInput) SetNewImageName(v string) *CreateUpdatedImageInput {
+	s.NewImageName = &v
+	return s
+}
+
+// SetNewImageTags sets the NewImageTags field's value.
+func (s *CreateUpdatedImageInput) SetNewImageTags(v map[string]*string) *CreateUpdatedImageInput {
+	s.NewImageTags = v
+	return s
+}
+
+type CreateUpdatedImageOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether a new image can be created.
+	CanUpdateImage *bool `locationName:"canUpdateImage" type:"boolean"`
+
+	// Describes an image.
+	Image *Image `locationName:"image" type:"structure"`
+}
+
+// String returns the string representation
+func (s CreateUpdatedImageOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateUpdatedImageOutput) GoString() string {
+	return s.String()
+}
+
+// SetCanUpdateImage sets the CanUpdateImage field's value.
+func (s *CreateUpdatedImageOutput) SetCanUpdateImage(v bool) *CreateUpdatedImageOutput {
+	s.CanUpdateImage = &v
+	return s
+}
+
+// SetImage sets the Image field's value.
+func (s *CreateUpdatedImageOutput) SetImage(v *Image) *CreateUpdatedImageOutput {
+	s.Image = v
 	return s
 }
 
@@ -7177,7 +7535,8 @@ type DescribeSessionsInput struct {
 	// StackName is a required field
 	StackName *string `min:"1" type:"string" required:"true"`
 
-	// The user identifier.
+	// The user identifier (ID). If you specify a user ID, you must also specify
+	// the authentication type.
 	UserId *string `min:"2" type:"string"`
 }
 
@@ -8076,7 +8435,7 @@ type Fleet struct {
 	// fleet instance calls the AWS Security Token Service (STS) AssumeRole API
 	// operation and passes the ARN of the role to use. The operation creates a
 	// new session with temporary credentials. AppStream 2.0 retrieves the temporary
-	// credentials and creates the AppStream_Machine_Role credential profile on
+	// credentials and creates the appstream_machine_role credential profile on
 	// the instance.
 	//
 	// For more information, see Using an IAM Role to Grant Permissions to Applications
@@ -8117,6 +8476,8 @@ type Fleet struct {
 	// The instance type to use when launching fleet instances. The following instance
 	// types are available:
 	//
+	//    * stream.standard.small
+	//
 	//    * stream.standard.medium
 	//
 	//    * stream.standard.large
@@ -8141,6 +8502,18 @@ type Fleet struct {
 	//
 	//    * stream.memory.8xlarge
 	//
+	//    * stream.memory.z1d.large
+	//
+	//    * stream.memory.z1d.xlarge
+	//
+	//    * stream.memory.z1d.2xlarge
+	//
+	//    * stream.memory.z1d.3xlarge
+	//
+	//    * stream.memory.z1d.6xlarge
+	//
+	//    * stream.memory.z1d.12xlarge
+	//
 	//    * stream.graphics-design.large
 	//
 	//    * stream.graphics-design.xlarge
@@ -8150,6 +8523,18 @@ type Fleet struct {
 	//    * stream.graphics-design.4xlarge
 	//
 	//    * stream.graphics-desktop.2xlarge
+	//
+	//    * stream.graphics.g4dn.xlarge
+	//
+	//    * stream.graphics.g4dn.2xlarge
+	//
+	//    * stream.graphics.g4dn.4xlarge
+	//
+	//    * stream.graphics.g4dn.8xlarge
+	//
+	//    * stream.graphics.g4dn.12xlarge
+	//
+	//    * stream.graphics.g4dn.16xlarge
 	//
 	//    * stream.graphics-pro.4xlarge
 	//
@@ -8178,6 +8563,14 @@ type Fleet struct {
 	//
 	// State is a required field
 	State *string `type:"string" required:"true" enum:"FleetState"`
+
+	// The AppStream 2.0 view that is displayed to your users when they stream from
+	// the fleet. When APP is specified, only the windows of applications opened
+	// by users display. When DESKTOP is specified, the standard desktop that is
+	// provided by the operating system displays.
+	//
+	// The default value is APP.
+	StreamView *string `type:"string" enum:"StreamView"`
 
 	// The VPC configuration for the fleet.
 	VpcConfig *VpcConfig `type:"structure"`
@@ -8301,6 +8694,12 @@ func (s *Fleet) SetState(v string) *Fleet {
 	return s
 }
 
+// SetStreamView sets the StreamView field's value.
+func (s *Fleet) SetStreamView(v string) *Fleet {
+	s.StreamView = &v
+	return s
+}
+
 // SetVpcConfig sets the VpcConfig field's value.
 func (s *Fleet) SetVpcConfig(v *VpcConfig) *Fleet {
 	s.VpcConfig = v
@@ -8372,6 +8771,9 @@ type Image struct {
 
 	// Indicates whether an image builder can be launched from this image.
 	ImageBuilderSupported *bool `type:"boolean"`
+
+	// Describes the errors that are returned when a new image can't be created.
+	ImageErrors []*ResourceError `type:"list"`
 
 	// The permissions to provide to the destination AWS account for the specified
 	// image.
@@ -8464,6 +8866,12 @@ func (s *Image) SetImageBuilderSupported(v bool) *Image {
 	return s
 }
 
+// SetImageErrors sets the ImageErrors field's value.
+func (s *Image) SetImageErrors(v []*ResourceError) *Image {
+	s.ImageErrors = v
+	return s
+}
+
 // SetImagePermissions sets the ImagePermissions field's value.
 func (s *Image) SetImagePermissions(v *ImagePermissions) *Image {
 	s.ImagePermissions = v
@@ -8541,7 +8949,7 @@ type ImageBuilder struct {
 	// role, the image builder calls the AWS Security Token Service (STS) AssumeRole
 	// API operation and passes the ARN of the role to use. The operation creates
 	// a new session with temporary credentials. AppStream 2.0 retrieves the temporary
-	// credentials and creates the AppStream_Machine_Role credential profile on
+	// credentials and creates the appstream_machine_role credential profile on
 	// the instance.
 	//
 	// For more information, see Using an IAM Role to Grant Permissions to Applications
@@ -8557,6 +8965,8 @@ type ImageBuilder struct {
 
 	// The instance type for the image builder. The following instance types are
 	// available:
+	//
+	//    * stream.standard.small
 	//
 	//    * stream.standard.medium
 	//
@@ -8582,6 +8992,18 @@ type ImageBuilder struct {
 	//
 	//    * stream.memory.8xlarge
 	//
+	//    * stream.memory.z1d.large
+	//
+	//    * stream.memory.z1d.xlarge
+	//
+	//    * stream.memory.z1d.2xlarge
+	//
+	//    * stream.memory.z1d.3xlarge
+	//
+	//    * stream.memory.z1d.6xlarge
+	//
+	//    * stream.memory.z1d.12xlarge
+	//
 	//    * stream.graphics-design.large
 	//
 	//    * stream.graphics-design.xlarge
@@ -8591,6 +9013,18 @@ type ImageBuilder struct {
 	//    * stream.graphics-design.4xlarge
 	//
 	//    * stream.graphics-desktop.2xlarge
+	//
+	//    * stream.graphics.g4dn.xlarge
+	//
+	//    * stream.graphics.g4dn.2xlarge
+	//
+	//    * stream.graphics.g4dn.4xlarge
+	//
+	//    * stream.graphics.g4dn.8xlarge
+	//
+	//    * stream.graphics.g4dn.12xlarge
+	//
+	//    * stream.graphics.g4dn.16xlarge
 	//
 	//    * stream.graphics-pro.4xlarge
 	//
@@ -8837,10 +9271,10 @@ func (s *ImageStateChangeReason) SetMessage(v string) *ImageStateChangeReason {
 	return s
 }
 
-// The image does not support storage connectors.
+// The image can't be updated because it's not compatible for updates.
 type IncompatibleImageException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -8858,17 +9292,17 @@ func (s IncompatibleImageException) GoString() string {
 
 func newErrorIncompatibleImageException(v protocol.ResponseMetadata) error {
 	return &IncompatibleImageException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s IncompatibleImageException) Code() string {
+func (s *IncompatibleImageException) Code() string {
 	return "IncompatibleImageException"
 }
 
 // Message returns the exception's message.
-func (s IncompatibleImageException) Message() string {
+func (s *IncompatibleImageException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8876,29 +9310,29 @@ func (s IncompatibleImageException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s IncompatibleImageException) OrigErr() error {
+func (s *IncompatibleImageException) OrigErr() error {
 	return nil
 }
 
-func (s IncompatibleImageException) Error() string {
+func (s *IncompatibleImageException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s IncompatibleImageException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *IncompatibleImageException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s IncompatibleImageException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *IncompatibleImageException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The resource cannot be created because your AWS account is suspended. For
 // assistance, contact AWS Support.
 type InvalidAccountStatusException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -8916,17 +9350,17 @@ func (s InvalidAccountStatusException) GoString() string {
 
 func newErrorInvalidAccountStatusException(v protocol.ResponseMetadata) error {
 	return &InvalidAccountStatusException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidAccountStatusException) Code() string {
+func (s *InvalidAccountStatusException) Code() string {
 	return "InvalidAccountStatusException"
 }
 
 // Message returns the exception's message.
-func (s InvalidAccountStatusException) Message() string {
+func (s *InvalidAccountStatusException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8934,28 +9368,28 @@ func (s InvalidAccountStatusException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidAccountStatusException) OrigErr() error {
+func (s *InvalidAccountStatusException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidAccountStatusException) Error() string {
+func (s *InvalidAccountStatusException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidAccountStatusException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidAccountStatusException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidAccountStatusException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidAccountStatusException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Indicates an incorrect combination of parameters, or a missing parameter.
 type InvalidParameterCombinationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -8973,17 +9407,17 @@ func (s InvalidParameterCombinationException) GoString() string {
 
 func newErrorInvalidParameterCombinationException(v protocol.ResponseMetadata) error {
 	return &InvalidParameterCombinationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidParameterCombinationException) Code() string {
+func (s *InvalidParameterCombinationException) Code() string {
 	return "InvalidParameterCombinationException"
 }
 
 // Message returns the exception's message.
-func (s InvalidParameterCombinationException) Message() string {
+func (s *InvalidParameterCombinationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8991,28 +9425,28 @@ func (s InvalidParameterCombinationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidParameterCombinationException) OrigErr() error {
+func (s *InvalidParameterCombinationException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidParameterCombinationException) Error() string {
+func (s *InvalidParameterCombinationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidParameterCombinationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidParameterCombinationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidParameterCombinationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidParameterCombinationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified role is invalid.
 type InvalidRoleException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -9030,17 +9464,17 @@ func (s InvalidRoleException) GoString() string {
 
 func newErrorInvalidRoleException(v protocol.ResponseMetadata) error {
 	return &InvalidRoleException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidRoleException) Code() string {
+func (s *InvalidRoleException) Code() string {
 	return "InvalidRoleException"
 }
 
 // Message returns the exception's message.
-func (s InvalidRoleException) Message() string {
+func (s *InvalidRoleException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9048,22 +9482,22 @@ func (s InvalidRoleException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidRoleException) OrigErr() error {
+func (s *InvalidRoleException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidRoleException) Error() string {
+func (s *InvalidRoleException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidRoleException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidRoleException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidRoleException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidRoleException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Describes the error that is returned when a usage report can't be generated.
@@ -9103,8 +9537,8 @@ func (s *LastReportGenerationExecutionError) SetErrorMessage(v string) *LastRepo
 
 // The requested limit exceeds the permitted limit for an account.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -9122,17 +9556,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9140,22 +9574,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListAssociatedFleetsInput struct {
@@ -9431,8 +9865,8 @@ func (s *NetworkAccessConfiguration) SetEniPrivateIpAddress(v string) *NetworkAc
 
 // The attempted operation is not permitted.
 type OperationNotPermittedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -9450,17 +9884,17 @@ func (s OperationNotPermittedException) GoString() string {
 
 func newErrorOperationNotPermittedException(v protocol.ResponseMetadata) error {
 	return &OperationNotPermittedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s OperationNotPermittedException) Code() string {
+func (s *OperationNotPermittedException) Code() string {
 	return "OperationNotPermittedException"
 }
 
 // Message returns the exception's message.
-func (s OperationNotPermittedException) Message() string {
+func (s *OperationNotPermittedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9468,28 +9902,87 @@ func (s OperationNotPermittedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s OperationNotPermittedException) OrigErr() error {
+func (s *OperationNotPermittedException) OrigErr() error {
 	return nil
 }
 
-func (s OperationNotPermittedException) Error() string {
+func (s *OperationNotPermittedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s OperationNotPermittedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *OperationNotPermittedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s OperationNotPermittedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *OperationNotPermittedException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// AppStream 2.0 can’t process the request right now because the Describe
+// calls from your AWS account are being throttled by Amazon EC2. Try again
+// later.
+type RequestLimitExceededException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	// The error message in the exception.
+	Message_ *string `locationName:"Message" type:"string"`
+}
+
+// String returns the string representation
+func (s RequestLimitExceededException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RequestLimitExceededException) GoString() string {
+	return s.String()
+}
+
+func newErrorRequestLimitExceededException(v protocol.ResponseMetadata) error {
+	return &RequestLimitExceededException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *RequestLimitExceededException) Code() string {
+	return "RequestLimitExceededException"
+}
+
+// Message returns the exception's message.
+func (s *RequestLimitExceededException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *RequestLimitExceededException) OrigErr() error {
+	return nil
+}
+
+func (s *RequestLimitExceededException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *RequestLimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *RequestLimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified resource already exists.
 type ResourceAlreadyExistsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -9507,17 +10000,17 @@ func (s ResourceAlreadyExistsException) GoString() string {
 
 func newErrorResourceAlreadyExistsException(v protocol.ResponseMetadata) error {
 	return &ResourceAlreadyExistsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceAlreadyExistsException) Code() string {
+func (s *ResourceAlreadyExistsException) Code() string {
 	return "ResourceAlreadyExistsException"
 }
 
 // Message returns the exception's message.
-func (s ResourceAlreadyExistsException) Message() string {
+func (s *ResourceAlreadyExistsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9525,22 +10018,22 @@ func (s ResourceAlreadyExistsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceAlreadyExistsException) OrigErr() error {
+func (s *ResourceAlreadyExistsException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceAlreadyExistsException) Error() string {
+func (s *ResourceAlreadyExistsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceAlreadyExistsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceAlreadyExistsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceAlreadyExistsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceAlreadyExistsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Describes a resource error.
@@ -9587,8 +10080,8 @@ func (s *ResourceError) SetErrorTimestamp(v time.Time) *ResourceError {
 
 // The specified resource is in use.
 type ResourceInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -9606,17 +10099,17 @@ func (s ResourceInUseException) GoString() string {
 
 func newErrorResourceInUseException(v protocol.ResponseMetadata) error {
 	return &ResourceInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceInUseException) Code() string {
+func (s *ResourceInUseException) Code() string {
 	return "ResourceInUseException"
 }
 
 // Message returns the exception's message.
-func (s ResourceInUseException) Message() string {
+func (s *ResourceInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9624,28 +10117,28 @@ func (s ResourceInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceInUseException) OrigErr() error {
+func (s *ResourceInUseException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceInUseException) Error() string {
+func (s *ResourceInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified resource exists and is not in use, but isn't available.
 type ResourceNotAvailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -9663,17 +10156,17 @@ func (s ResourceNotAvailableException) GoString() string {
 
 func newErrorResourceNotAvailableException(v protocol.ResponseMetadata) error {
 	return &ResourceNotAvailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotAvailableException) Code() string {
+func (s *ResourceNotAvailableException) Code() string {
 	return "ResourceNotAvailableException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotAvailableException) Message() string {
+func (s *ResourceNotAvailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9681,28 +10174,28 @@ func (s ResourceNotAvailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotAvailableException) OrigErr() error {
+func (s *ResourceNotAvailableException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotAvailableException) Error() string {
+func (s *ResourceNotAvailableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotAvailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotAvailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotAvailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotAvailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified resource was not found.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The error message in the exception.
 	Message_ *string `locationName:"Message" type:"string"`
@@ -9720,17 +10213,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9738,22 +10231,22 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Describes the credentials for the service account used by the fleet or image
@@ -10732,7 +11225,7 @@ type UpdateFleetInput struct {
 	// assume a role, a fleet instance calls the AWS Security Token Service (STS)
 	// AssumeRole API operation and passes the ARN of the role to use. The operation
 	// creates a new session with temporary credentials. AppStream 2.0 retrieves
-	// the temporary credentials and creates the AppStream_Machine_Role credential
+	// the temporary credentials and creates the appstream_machine_role credential
 	// profile on the instance.
 	//
 	// For more information, see Using an IAM Role to Grant Permissions to Applications
@@ -10773,6 +11266,8 @@ type UpdateFleetInput struct {
 	// The instance type to use when launching fleet instances. The following instance
 	// types are available:
 	//
+	//    * stream.standard.small
+	//
 	//    * stream.standard.medium
 	//
 	//    * stream.standard.large
@@ -10797,6 +11292,18 @@ type UpdateFleetInput struct {
 	//
 	//    * stream.memory.8xlarge
 	//
+	//    * stream.memory.z1d.large
+	//
+	//    * stream.memory.z1d.xlarge
+	//
+	//    * stream.memory.z1d.2xlarge
+	//
+	//    * stream.memory.z1d.3xlarge
+	//
+	//    * stream.memory.z1d.6xlarge
+	//
+	//    * stream.memory.z1d.12xlarge
+	//
 	//    * stream.graphics-design.large
 	//
 	//    * stream.graphics-design.xlarge
@@ -10806,6 +11313,18 @@ type UpdateFleetInput struct {
 	//    * stream.graphics-design.4xlarge
 	//
 	//    * stream.graphics-desktop.2xlarge
+	//
+	//    * stream.graphics.g4dn.xlarge
+	//
+	//    * stream.graphics.g4dn.2xlarge
+	//
+	//    * stream.graphics.g4dn.4xlarge
+	//
+	//    * stream.graphics.g4dn.8xlarge
+	//
+	//    * stream.graphics.g4dn.12xlarge
+	//
+	//    * stream.graphics.g4dn.16xlarge
 	//
 	//    * stream.graphics-pro.4xlarge
 	//
@@ -10825,6 +11344,14 @@ type UpdateFleetInput struct {
 
 	// A unique name for the fleet.
 	Name *string `min:"1" type:"string"`
+
+	// The AppStream 2.0 view that is displayed to your users when they stream from
+	// the fleet. When APP is specified, only the windows of applications opened
+	// by users display. When DESKTOP is specified, the standard desktop that is
+	// provided by the operating system displays.
+	//
+	// The default value is APP.
+	StreamView *string `type:"string" enum:"StreamView"`
 
 	// The VPC configuration for the fleet.
 	VpcConfig *VpcConfig `type:"structure"`
@@ -10951,6 +11478,12 @@ func (s *UpdateFleetInput) SetMaxUserDurationInSeconds(v int64) *UpdateFleetInpu
 // SetName sets the Name field's value.
 func (s *UpdateFleetInput) SetName(v string) *UpdateFleetInput {
 	s.Name = &v
+	return s
+}
+
+// SetStreamView sets the StreamView field's value.
+func (s *UpdateFleetInput) SetStreamView(v string) *UpdateFleetInput {
+	s.StreamView = &v
 	return s
 }
 
@@ -11664,6 +12197,13 @@ const (
 	AccessEndpointTypeStreaming = "STREAMING"
 )
 
+// AccessEndpointType_Values returns all elements of the AccessEndpointType enum
+func AccessEndpointType_Values() []string {
+	return []string{
+		AccessEndpointTypeStreaming,
+	}
+}
+
 const (
 	// ActionClipboardCopyFromLocalDevice is a Action enum value
 	ActionClipboardCopyFromLocalDevice = "CLIPBOARD_COPY_FROM_LOCAL_DEVICE"
@@ -11679,7 +12219,26 @@ const (
 
 	// ActionPrintingToLocalDevice is a Action enum value
 	ActionPrintingToLocalDevice = "PRINTING_TO_LOCAL_DEVICE"
+
+	// ActionDomainPasswordSignin is a Action enum value
+	ActionDomainPasswordSignin = "DOMAIN_PASSWORD_SIGNIN"
+
+	// ActionDomainSmartCardSignin is a Action enum value
+	ActionDomainSmartCardSignin = "DOMAIN_SMART_CARD_SIGNIN"
 )
+
+// Action_Values returns all elements of the Action enum
+func Action_Values() []string {
+	return []string{
+		ActionClipboardCopyFromLocalDevice,
+		ActionClipboardCopyToLocalDevice,
+		ActionFileUpload,
+		ActionFileDownload,
+		ActionPrintingToLocalDevice,
+		ActionDomainPasswordSignin,
+		ActionDomainSmartCardSignin,
+	}
+}
 
 const (
 	// AuthenticationTypeApi is a AuthenticationType enum value
@@ -11691,6 +12250,15 @@ const (
 	// AuthenticationTypeUserpool is a AuthenticationType enum value
 	AuthenticationTypeUserpool = "USERPOOL"
 )
+
+// AuthenticationType_Values returns all elements of the AuthenticationType enum
+func AuthenticationType_Values() []string {
+	return []string{
+		AuthenticationTypeApi,
+		AuthenticationTypeSaml,
+		AuthenticationTypeUserpool,
+	}
+}
 
 // The fleet attribute.
 const (
@@ -11706,6 +12274,16 @@ const (
 	// FleetAttributeIamRoleArn is a FleetAttribute enum value
 	FleetAttributeIamRoleArn = "IAM_ROLE_ARN"
 )
+
+// FleetAttribute_Values returns all elements of the FleetAttribute enum
+func FleetAttribute_Values() []string {
+	return []string{
+		FleetAttributeVpcConfiguration,
+		FleetAttributeVpcConfigurationSecurityGroupIds,
+		FleetAttributeDomainJoinInfo,
+		FleetAttributeIamRoleArn,
+	}
+}
 
 const (
 	// FleetErrorCodeIamServiceRoleMissingEniDescribeAction is a FleetErrorCode enum value
@@ -11756,6 +12334,12 @@ const (
 	// FleetErrorCodeIamServiceRoleMissingDescribeSecurityGroupsAction is a FleetErrorCode enum value
 	FleetErrorCodeIamServiceRoleMissingDescribeSecurityGroupsAction = "IAM_SERVICE_ROLE_MISSING_DESCRIBE_SECURITY_GROUPS_ACTION"
 
+	// FleetErrorCodeFleetStopped is a FleetErrorCode enum value
+	FleetErrorCodeFleetStopped = "FLEET_STOPPED"
+
+	// FleetErrorCodeFleetInstanceProvisioningFailure is a FleetErrorCode enum value
+	FleetErrorCodeFleetInstanceProvisioningFailure = "FLEET_INSTANCE_PROVISIONING_FAILURE"
+
 	// FleetErrorCodeDomainJoinErrorFileNotFound is a FleetErrorCode enum value
 	FleetErrorCodeDomainJoinErrorFileNotFound = "DOMAIN_JOIN_ERROR_FILE_NOT_FOUND"
 
@@ -11793,6 +12377,42 @@ const (
 	FleetErrorCodeDomainJoinInternalServiceError = "DOMAIN_JOIN_INTERNAL_SERVICE_ERROR"
 )
 
+// FleetErrorCode_Values returns all elements of the FleetErrorCode enum
+func FleetErrorCode_Values() []string {
+	return []string{
+		FleetErrorCodeIamServiceRoleMissingEniDescribeAction,
+		FleetErrorCodeIamServiceRoleMissingEniCreateAction,
+		FleetErrorCodeIamServiceRoleMissingEniDeleteAction,
+		FleetErrorCodeNetworkInterfaceLimitExceeded,
+		FleetErrorCodeInternalServiceError,
+		FleetErrorCodeIamServiceRoleIsMissing,
+		FleetErrorCodeMachineRoleIsMissing,
+		FleetErrorCodeStsDisabledInRegion,
+		FleetErrorCodeSubnetHasInsufficientIpAddresses,
+		FleetErrorCodeIamServiceRoleMissingDescribeSubnetAction,
+		FleetErrorCodeSubnetNotFound,
+		FleetErrorCodeImageNotFound,
+		FleetErrorCodeInvalidSubnetConfiguration,
+		FleetErrorCodeSecurityGroupsNotFound,
+		FleetErrorCodeIgwNotAttached,
+		FleetErrorCodeIamServiceRoleMissingDescribeSecurityGroupsAction,
+		FleetErrorCodeFleetStopped,
+		FleetErrorCodeFleetInstanceProvisioningFailure,
+		FleetErrorCodeDomainJoinErrorFileNotFound,
+		FleetErrorCodeDomainJoinErrorAccessDenied,
+		FleetErrorCodeDomainJoinErrorLogonFailure,
+		FleetErrorCodeDomainJoinErrorInvalidParameter,
+		FleetErrorCodeDomainJoinErrorMoreData,
+		FleetErrorCodeDomainJoinErrorNoSuchDomain,
+		FleetErrorCodeDomainJoinErrorNotSupported,
+		FleetErrorCodeDomainJoinNerrInvalidWorkgroupName,
+		FleetErrorCodeDomainJoinNerrWorkstationNotStarted,
+		FleetErrorCodeDomainJoinErrorDsMachineAccountQuotaExceeded,
+		FleetErrorCodeDomainJoinNerrPasswordExpired,
+		FleetErrorCodeDomainJoinInternalServiceError,
+	}
+}
+
 const (
 	// FleetStateStarting is a FleetState enum value
 	FleetStateStarting = "STARTING"
@@ -11807,6 +12427,16 @@ const (
 	FleetStateStopped = "STOPPED"
 )
 
+// FleetState_Values returns all elements of the FleetState enum
+func FleetState_Values() []string {
+	return []string{
+		FleetStateStarting,
+		FleetStateRunning,
+		FleetStateStopping,
+		FleetStateStopped,
+	}
+}
+
 const (
 	// FleetTypeAlwaysOn is a FleetType enum value
 	FleetTypeAlwaysOn = "ALWAYS_ON"
@@ -11814,6 +12444,14 @@ const (
 	// FleetTypeOnDemand is a FleetType enum value
 	FleetTypeOnDemand = "ON_DEMAND"
 )
+
+// FleetType_Values returns all elements of the FleetType enum
+func FleetType_Values() []string {
+	return []string{
+		FleetTypeAlwaysOn,
+		FleetTypeOnDemand,
+	}
+}
 
 const (
 	// ImageBuilderStatePending is a ImageBuilderState enum value
@@ -11842,7 +12480,30 @@ const (
 
 	// ImageBuilderStateFailed is a ImageBuilderState enum value
 	ImageBuilderStateFailed = "FAILED"
+
+	// ImageBuilderStateUpdating is a ImageBuilderState enum value
+	ImageBuilderStateUpdating = "UPDATING"
+
+	// ImageBuilderStatePendingQualification is a ImageBuilderState enum value
+	ImageBuilderStatePendingQualification = "PENDING_QUALIFICATION"
 )
+
+// ImageBuilderState_Values returns all elements of the ImageBuilderState enum
+func ImageBuilderState_Values() []string {
+	return []string{
+		ImageBuilderStatePending,
+		ImageBuilderStateUpdatingAgent,
+		ImageBuilderStateRunning,
+		ImageBuilderStateStopping,
+		ImageBuilderStateStopped,
+		ImageBuilderStateRebooting,
+		ImageBuilderStateSnapshotting,
+		ImageBuilderStateDeleting,
+		ImageBuilderStateFailed,
+		ImageBuilderStateUpdating,
+		ImageBuilderStatePendingQualification,
+	}
+}
 
 const (
 	// ImageBuilderStateChangeReasonCodeInternalError is a ImageBuilderStateChangeReasonCode enum value
@@ -11851,6 +12512,14 @@ const (
 	// ImageBuilderStateChangeReasonCodeImageUnavailable is a ImageBuilderStateChangeReasonCode enum value
 	ImageBuilderStateChangeReasonCodeImageUnavailable = "IMAGE_UNAVAILABLE"
 )
+
+// ImageBuilderStateChangeReasonCode_Values returns all elements of the ImageBuilderStateChangeReasonCode enum
+func ImageBuilderStateChangeReasonCode_Values() []string {
+	return []string{
+		ImageBuilderStateChangeReasonCodeInternalError,
+		ImageBuilderStateChangeReasonCodeImageUnavailable,
+	}
+}
 
 const (
 	// ImageStatePending is a ImageState enum value
@@ -11867,7 +12536,26 @@ const (
 
 	// ImageStateDeleting is a ImageState enum value
 	ImageStateDeleting = "DELETING"
+
+	// ImageStateCreating is a ImageState enum value
+	ImageStateCreating = "CREATING"
+
+	// ImageStateImporting is a ImageState enum value
+	ImageStateImporting = "IMPORTING"
 )
+
+// ImageState_Values returns all elements of the ImageState enum
+func ImageState_Values() []string {
+	return []string{
+		ImageStatePending,
+		ImageStateAvailable,
+		ImageStateFailed,
+		ImageStateCopying,
+		ImageStateDeleting,
+		ImageStateCreating,
+		ImageStateImporting,
+	}
+}
 
 const (
 	// ImageStateChangeReasonCodeInternalError is a ImageStateChangeReasonCode enum value
@@ -11880,6 +12568,15 @@ const (
 	ImageStateChangeReasonCodeImageCopyFailure = "IMAGE_COPY_FAILURE"
 )
 
+// ImageStateChangeReasonCode_Values returns all elements of the ImageStateChangeReasonCode enum
+func ImageStateChangeReasonCode_Values() []string {
+	return []string{
+		ImageStateChangeReasonCodeInternalError,
+		ImageStateChangeReasonCodeImageBuilderNotAvailable,
+		ImageStateChangeReasonCodeImageCopyFailure,
+	}
+}
+
 const (
 	// MessageActionSuppress is a MessageAction enum value
 	MessageActionSuppress = "SUPPRESS"
@@ -11888,6 +12585,14 @@ const (
 	MessageActionResend = "RESEND"
 )
 
+// MessageAction_Values returns all elements of the MessageAction enum
+func MessageAction_Values() []string {
+	return []string{
+		MessageActionSuppress,
+		MessageActionResend,
+	}
+}
+
 const (
 	// PermissionEnabled is a Permission enum value
 	PermissionEnabled = "ENABLED"
@@ -11895,6 +12600,14 @@ const (
 	// PermissionDisabled is a Permission enum value
 	PermissionDisabled = "DISABLED"
 )
+
+// Permission_Values returns all elements of the Permission enum
+func Permission_Values() []string {
+	return []string{
+		PermissionEnabled,
+		PermissionDisabled,
+	}
+}
 
 const (
 	// PlatformTypeWindows is a PlatformType enum value
@@ -11907,6 +12620,15 @@ const (
 	PlatformTypeWindowsServer2019 = "WINDOWS_SERVER_2019"
 )
 
+// PlatformType_Values returns all elements of the PlatformType enum
+func PlatformType_Values() []string {
+	return []string{
+		PlatformTypeWindows,
+		PlatformTypeWindowsServer2016,
+		PlatformTypeWindowsServer2019,
+	}
+}
+
 const (
 	// SessionConnectionStateConnected is a SessionConnectionState enum value
 	SessionConnectionStateConnected = "CONNECTED"
@@ -11914,6 +12636,14 @@ const (
 	// SessionConnectionStateNotConnected is a SessionConnectionState enum value
 	SessionConnectionStateNotConnected = "NOT_CONNECTED"
 )
+
+// SessionConnectionState_Values returns all elements of the SessionConnectionState enum
+func SessionConnectionState_Values() []string {
+	return []string{
+		SessionConnectionStateConnected,
+		SessionConnectionStateNotConnected,
+	}
+}
 
 // Possible values for the state of a streaming session.
 const (
@@ -11926,6 +12656,15 @@ const (
 	// SessionStateExpired is a SessionState enum value
 	SessionStateExpired = "EXPIRED"
 )
+
+// SessionState_Values returns all elements of the SessionState enum
+func SessionState_Values() []string {
+	return []string{
+		SessionStateActive,
+		SessionStatePending,
+		SessionStateExpired,
+	}
+}
 
 const (
 	// StackAttributeStorageConnectors is a StackAttribute enum value
@@ -11962,6 +12701,23 @@ const (
 	StackAttributeAccessEndpoints = "ACCESS_ENDPOINTS"
 )
 
+// StackAttribute_Values returns all elements of the StackAttribute enum
+func StackAttribute_Values() []string {
+	return []string{
+		StackAttributeStorageConnectors,
+		StackAttributeStorageConnectorHomefolders,
+		StackAttributeStorageConnectorGoogleDrive,
+		StackAttributeStorageConnectorOneDrive,
+		StackAttributeRedirectUrl,
+		StackAttributeFeedbackUrl,
+		StackAttributeThemeName,
+		StackAttributeUserSettings,
+		StackAttributeEmbedHostDomains,
+		StackAttributeIamRoleArn,
+		StackAttributeAccessEndpoints,
+	}
+}
+
 const (
 	// StackErrorCodeStorageConnectorError is a StackErrorCode enum value
 	StackErrorCodeStorageConnectorError = "STORAGE_CONNECTOR_ERROR"
@@ -11969,6 +12725,14 @@ const (
 	// StackErrorCodeInternalServiceError is a StackErrorCode enum value
 	StackErrorCodeInternalServiceError = "INTERNAL_SERVICE_ERROR"
 )
+
+// StackErrorCode_Values returns all elements of the StackErrorCode enum
+func StackErrorCode_Values() []string {
+	return []string{
+		StackErrorCodeStorageConnectorError,
+		StackErrorCodeInternalServiceError,
+	}
+}
 
 // The type of storage connector.
 const (
@@ -11982,6 +12746,31 @@ const (
 	StorageConnectorTypeOneDrive = "ONE_DRIVE"
 )
 
+// StorageConnectorType_Values returns all elements of the StorageConnectorType enum
+func StorageConnectorType_Values() []string {
+	return []string{
+		StorageConnectorTypeHomefolders,
+		StorageConnectorTypeGoogleDrive,
+		StorageConnectorTypeOneDrive,
+	}
+}
+
+const (
+	// StreamViewApp is a StreamView enum value
+	StreamViewApp = "APP"
+
+	// StreamViewDesktop is a StreamView enum value
+	StreamViewDesktop = "DESKTOP"
+)
+
+// StreamView_Values returns all elements of the StreamView enum
+func StreamView_Values() []string {
+	return []string{
+		StreamViewApp,
+		StreamViewDesktop,
+	}
+}
+
 const (
 	// UsageReportExecutionErrorCodeResourceNotFound is a UsageReportExecutionErrorCode enum value
 	UsageReportExecutionErrorCodeResourceNotFound = "RESOURCE_NOT_FOUND"
@@ -11993,10 +12782,26 @@ const (
 	UsageReportExecutionErrorCodeInternalServiceError = "INTERNAL_SERVICE_ERROR"
 )
 
+// UsageReportExecutionErrorCode_Values returns all elements of the UsageReportExecutionErrorCode enum
+func UsageReportExecutionErrorCode_Values() []string {
+	return []string{
+		UsageReportExecutionErrorCodeResourceNotFound,
+		UsageReportExecutionErrorCodeAccessDenied,
+		UsageReportExecutionErrorCodeInternalServiceError,
+	}
+}
+
 const (
 	// UsageReportScheduleDaily is a UsageReportSchedule enum value
 	UsageReportScheduleDaily = "DAILY"
 )
+
+// UsageReportSchedule_Values returns all elements of the UsageReportSchedule enum
+func UsageReportSchedule_Values() []string {
+	return []string{
+		UsageReportScheduleDaily,
+	}
+}
 
 const (
 	// UserStackAssociationErrorCodeStackNotFound is a UserStackAssociationErrorCode enum value
@@ -12005,9 +12810,22 @@ const (
 	// UserStackAssociationErrorCodeUserNameNotFound is a UserStackAssociationErrorCode enum value
 	UserStackAssociationErrorCodeUserNameNotFound = "USER_NAME_NOT_FOUND"
 
+	// UserStackAssociationErrorCodeDirectoryNotFound is a UserStackAssociationErrorCode enum value
+	UserStackAssociationErrorCodeDirectoryNotFound = "DIRECTORY_NOT_FOUND"
+
 	// UserStackAssociationErrorCodeInternalError is a UserStackAssociationErrorCode enum value
 	UserStackAssociationErrorCodeInternalError = "INTERNAL_ERROR"
 )
+
+// UserStackAssociationErrorCode_Values returns all elements of the UserStackAssociationErrorCode enum
+func UserStackAssociationErrorCode_Values() []string {
+	return []string{
+		UserStackAssociationErrorCodeStackNotFound,
+		UserStackAssociationErrorCodeUserNameNotFound,
+		UserStackAssociationErrorCodeDirectoryNotFound,
+		UserStackAssociationErrorCodeInternalError,
+	}
+}
 
 const (
 	// VisibilityTypePublic is a VisibilityType enum value
@@ -12019,3 +12837,12 @@ const (
 	// VisibilityTypeShared is a VisibilityType enum value
 	VisibilityTypeShared = "SHARED"
 )
+
+// VisibilityType_Values returns all elements of the VisibilityType enum
+func VisibilityType_Values() []string {
+	return []string{
+		VisibilityTypePublic,
+		VisibilityTypePrivate,
+		VisibilityTypeShared,
+	}
+}
