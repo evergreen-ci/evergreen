@@ -165,7 +165,7 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts: [StatusCount!]
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
 }
 type StatusCount {
@@ -178,6 +178,7 @@ input BuildVariantOptions {
   tasks: [String!]
   statuses: [String!]
 }
+
 input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
