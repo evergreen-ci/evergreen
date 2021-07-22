@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -197,5 +199,40 @@ func TestXUnitParseAndUpload(t *testing.T) {
 				}
 			}
 		}
+	})
+}
+
+func TestExpandParams(t *testing.T) {
+
+	Convey("With an xunitResults command and a task config", t, func() {
+
+		var cmd *xunitResults
+		var conf *internal.TaskConfig
+
+		Convey("when expanding the command's params", func() {
+
+			cmd = &xunitResults{}
+			conf = &internal.TaskConfig{
+				Expansions: util.NewExpansions(map[string]string{}),
+			}
+
+			Convey("all appropriate values should be expanded, if they"+
+				" contain expansions", func() {
+
+				cmd.File = "${file}"
+
+				conf.Expansions.Update(
+					map[string]string{
+						"file": "filecontent",
+					},
+				)
+
+				So(cmd.expandParams(conf), ShouldBeNil)
+				So(cmd.File, ShouldEqual, "filecontent")
+
+			})
+
+		})
+
 	})
 }
