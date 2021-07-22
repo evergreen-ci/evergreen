@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -44,6 +45,10 @@ func (c *xunitResults) ParseParams(params map[string]interface{}) error {
 
 // Expand the parameter appropriately
 func (c *xunitResults) expandParams(conf *internal.TaskConfig) error {
+	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+		return errors.Wrap(err, "error expanding params")
+	}
+
 	if c.File != "" {
 		c.Files = append(c.Files, c.File)
 	}
@@ -65,7 +70,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := c.expandParams(conf); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	errChan := make(chan error)
