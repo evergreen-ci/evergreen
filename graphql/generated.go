@@ -993,8 +993,6 @@ type UserResolver interface {
 type VersionResolver interface {
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
 
-	ProjectIdentifier(ctx context.Context, obj *model.APIVersion) (string, error)
-
 	TaskStatusCounts(ctx context.Context, obj *model.APIVersion) ([]*StatusCount, error)
 	BuildVariants(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error)
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
@@ -23917,13 +23915,13 @@ func (ec *executionContext) _Version_projectIdentifier(ctx context.Context, fiel
 		Object:   "Version",
 		Field:    field,
 		Args:     nil,
-		IsMethod: true,
+		IsMethod: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Version().ProjectIdentifier(rctx, obj)
+		return obj.ProjectIdentifier, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23935,9 +23933,9 @@ func (ec *executionContext) _Version_projectIdentifier(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Version_branch(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
@@ -31114,19 +31112,10 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "projectIdentifier":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Version_projectIdentifier(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
+			out.Values[i] = ec._Version_projectIdentifier(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "branch":
 			out.Values[i] = ec._Version_branch(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

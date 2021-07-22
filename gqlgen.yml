@@ -186,7 +186,5 @@ models:
   Version:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
     fields:
-      projectIdentifier:
-        resolver: true
       status:
         resolver: true
