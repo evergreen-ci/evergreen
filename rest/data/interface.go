@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -299,6 +300,8 @@ type Connector interface {
 
 	// CreatePod creates a new pod and returns the result of creating the pod.
 	CreatePod(restModel.APICreatePod) (*restModel.APICreatePodResponse, error)
+	// FindPodByID finds a pod by the given ID.
+	FindPodByID(id string) (*pod.Pod, error)
 	// CheckPodSecret checks that the ID and secret match the server's
 	// stored credentials for the pod.
 	CheckPodSecret(id, secret string) error

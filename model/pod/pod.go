@@ -74,7 +74,7 @@ type TaskContainerCreationOptions struct {
 	// EnvSecrets is a mapping of secret names to secret values to expose in the
 	// task's container environment variables. The secret name is the
 	// environment variable name.
-	EnvSecrets map[string]string `bson:"secrets,omitempty" json:"secrets,omitempty"`
+	EnvSecrets map[string]string `bson:"env_secrets,omitempty" json:"env_secrets,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
