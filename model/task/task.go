@@ -794,11 +794,10 @@ func (t *Task) MarkAsUndispatched() error {
 	)
 }
 
-// MarkGeneratedTasks marks that the task has generated tasks.
-func MarkGeneratedTasks(taskID string) error {
+// MarkGeneratedTasks saves if the generator task has generated tasks or not.
+func MarkGeneratedTasks(taskID string, wasGenerated bool) error {
 	query := bson.M{
-		IdKey:             taskID,
-		GeneratedTasksKey: bson.M{"$exists": false},
+		IdKey: taskID,
 	}
 	update := bson.M{
 		"$set": bson.M{

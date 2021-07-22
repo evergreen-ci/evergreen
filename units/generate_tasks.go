@@ -296,7 +296,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		return
 	}
 	if !shouldNoop {
-		j.AddError(task.MarkGeneratedTasks(j.TaskID))
+		j.AddError(task.MarkGeneratedTasks(j.TaskID, true))
 	}
 }
 

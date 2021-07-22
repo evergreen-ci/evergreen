@@ -161,8 +161,17 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 	if err := updateParserProject(v, pp); err != nil {
 		return errors.WithStack(err)
 	}
+	// Now that we've already updated the project, mark tasks as generated
+	// to verify we don't hit re-defining errors with other jobs while saving new builds/tasks.
+	if err := task.MarkGeneratedTasks(t.Id, true); err != nil {
+		return errors.Wrap(err, "error marking tasks as generated")
+	}
 
 	if err := g.saveNewBuildsAndTasks(ctx, v, p, t); err != nil {
+		// Because we were unable to save new builds and tasks, release the generator lock.
+		if err2 := task.MarkGeneratedTasks(t.Id, false); err2 != nil {
+			return errors.WithStack(err2)
+		}
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
 	return nil
