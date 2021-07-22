@@ -362,6 +362,66 @@
                }
             }
          }
+      },
+      {
+         "query_file": "commit-taskStatusCounts-filter.graphql",
+         "result": {
+            "data": {
+               "mainlineCommits": {
+                  "versions": [
+                     {
+                        "version": {
+                           "id": "evergreen_version5",
+                           "taskStatusCounts": [
+                              {
+                                 "status": "success",
+                                 "count": 1
+                              }
+                           ]
+                        },
+                        "rolledUpVersions": null
+                     },
+                     {
+                        "version": null,
+                        "rolledUpVersions": [
+                           {
+                              "id": "evergreen_version4",
+                              "taskStatusCounts": []
+                           },
+                           {
+                              "id": "evergreen_version3",
+                              "taskStatusCounts": []
+                           }
+                        ]
+                     },
+                     {
+                        "version": {
+                           "id": "evergreen_version2",
+                           "taskStatusCounts": [
+                              {
+                                 "status": "success",
+                                 "count": 1
+                              }
+                           ]
+                        },
+                        "rolledUpVersions": null
+                     },
+                     {
+                        "version": {
+                           "id": "evergreen_version1",
+                           "taskStatusCounts": [
+                              {
+                                 "status": "success",
+                                 "count": 1
+                              }
+                           ]
+                        },
+                        "rolledUpVersions": null
+                     }
+                  ]
+               }
+            }
+         }
       }
    ]
 }
