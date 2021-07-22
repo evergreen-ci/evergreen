@@ -385,12 +385,10 @@
                         "version": null,
                         "rolledUpVersions": [
                            {
-                              "id": "evergreen_version4",
-                              "taskStatusCounts": []
+                              "id": "evergreen_version4"
                            },
                            {
-                              "id": "evergreen_version3",
-                              "taskStatusCounts": []
+                              "id": "evergreen_version3"
                            }
                         ]
                      },
