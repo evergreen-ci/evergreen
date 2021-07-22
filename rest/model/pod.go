@@ -12,7 +12,7 @@ import (
 type APIPodEnvVar struct {
 	Name   *string `json:"name"`
 	Value  *string `json:"value"`
-	Secret *bool   `json:"secret_opts"`
+	Secret *bool   `json:"secret"`
 }
 
 // APITimeInfo is the model for the timing information of a pod.

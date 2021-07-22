@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -188,6 +189,14 @@ func TestPostPod(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPut, "https://example.com/rest/v2/pods/123abc", bytes.NewBuffer(json))
 			require.NoError(t, err)
 			require.NoError(t, ph.Parse(ctx, req))
+			assert.Equal(t, 128, utility.FromIntPtr(ph.p.Memory))
+			assert.Equal(t, 128, utility.FromIntPtr(ph.p.CPU))
+			assert.Equal(t, "image", utility.FromStringPtr(ph.p.Image))
+			assert.Equal(t, "linux", utility.FromStringPtr(ph.p.Platform))
+			assert.Equal(t, "secret", utility.FromStringPtr(ph.p.Secret))
+			assert.Equal(t, "env_name", utility.FromStringPtr(ph.p.EnvVars[0].Name))
+			assert.Equal(t, "env_val", utility.FromStringPtr(ph.p.EnvVars[0].Value))
+			assert.Equal(t, false, utility.FromBoolPtr(ph.p.EnvVars[0].Secret))
 		},
 		"ParseSucceedsWithSecrets": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			json := []byte(`{
@@ -205,6 +214,9 @@ func TestPostPod(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPut, "https://example.com/rest/v2/pods/123abc", bytes.NewBuffer(json))
 			require.NoError(t, err)
 			require.NoError(t, ph.Parse(ctx, req))
+			assert.Equal(t, "secret_name", utility.FromStringPtr(ph.p.EnvVars[0].Name))
+			assert.Equal(t, "secret_val", utility.FromStringPtr(ph.p.EnvVars[0].Value))
+			assert.Equal(t, true, utility.FromBoolPtr(ph.p.EnvVars[0].Secret))
 		},
 		"ParseFailsWithInvalidJSON": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			json := []byte(`{
