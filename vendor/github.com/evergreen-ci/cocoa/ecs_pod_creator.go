@@ -183,7 +183,7 @@ func (o *ECSPodCreationOptions) Validate() error {
 	}
 
 	if o.ExecutionOpts == nil {
-		placementOpts := NewECSPodPlacementOptions().SetStrategy(BinpackPlacement).SetStrategyParameter(BinpackMemory)
+		placementOpts := NewECSPodPlacementOptions().SetStrategy(StrategyBinpack).SetStrategyParameter(StrategyParamBinpackMemory)
 		o.ExecutionOpts = NewECSPodExecutionOptions().SetPlacementOptions(*placementOpts)
 	}
 
@@ -553,7 +553,7 @@ func (o *ECSPodExecutionOptions) Validate() error {
 	}
 
 	if o.PlacementOpts == nil {
-		o.PlacementOpts = NewECSPodPlacementOptions().SetStrategy(BinpackPlacement).SetStrategyParameter(BinpackMemory)
+		o.PlacementOpts = NewECSPodPlacementOptions().SetStrategy(StrategyBinpack).SetStrategyParameter(StrategyParamBinpackMemory)
 	}
 
 	return nil
@@ -602,8 +602,8 @@ func (o *ECSPodPlacementOptions) Validate() error {
 		catcher.Add(o.Strategy.Validate())
 	}
 	if o.Strategy != nil && o.StrategyParameter != nil {
-		catcher.ErrorfWhen(*o.Strategy == BinpackPlacement && *o.StrategyParameter != BinpackMemory && *o.StrategyParameter != BinpackCPU, "strategy parameter cannot be '%s' when the strategy is '%s'", *o.StrategyParameter, *o.Strategy)
-		catcher.ErrorfWhen(*o.Strategy != SpreadPlacement && *o.StrategyParameter == SpreadHost, "strategy parameter cannot be '%s' when the strategy is not '%s'", *o.StrategyParameter, SpreadPlacement)
+		catcher.ErrorfWhen(*o.Strategy == StrategyBinpack && *o.StrategyParameter != StrategyParamBinpackMemory && *o.StrategyParameter != StrategyParamBinpackCPU, "strategy parameter cannot be '%s' when the strategy is '%s'", *o.StrategyParameter, *o.Strategy)
+		catcher.ErrorfWhen(*o.Strategy != StrategySpread && *o.StrategyParameter == StrategyParamSpreadHost, "strategy parameter cannot be '%s' when the strategy is not '%s'", *o.StrategyParameter, StrategySpread)
 	}
 
 	if catcher.HasErrors() {
@@ -611,16 +611,16 @@ func (o *ECSPodPlacementOptions) Validate() error {
 	}
 
 	if o.Strategy == nil {
-		strategy := BinpackPlacement
+		strategy := StrategyBinpack
 		o.Strategy = &strategy
 	}
 
 	if o.Strategy != nil && o.StrategyParameter == nil {
-		if *o.Strategy == BinpackPlacement {
-			o.StrategyParameter = utility.ToStringPtr(BinpackMemory)
+		if *o.Strategy == StrategyBinpack {
+			o.StrategyParameter = utility.ToStringPtr(StrategyParamBinpackMemory)
 		}
-		if *o.Strategy == SpreadPlacement {
-			o.StrategyParameter = utility.ToStringPtr(SpreadHost)
+		if *o.Strategy == StrategySpread {
+			o.StrategyParameter = utility.ToStringPtr(StrategyParamSpreadHost)
 		}
 	}
 
@@ -631,23 +631,23 @@ func (o *ECSPodPlacementOptions) Validate() error {
 type ECSPlacementStrategy string
 
 const (
-	// SpreadPlacement indicates that the ECS pod will be assigned in such a way
+	// StrategySpread indicates that the ECS pod will be assigned in such a way
 	// to achieve an even spread based on the given ECSStrategyParameter.
-	SpreadPlacement ECSPlacementStrategy = ecs.PlacementStrategyTypeSpread
-	// RandomPlacement indicates that the ECS pod should be assigned to a
+	StrategySpread ECSPlacementStrategy = ecs.PlacementStrategyTypeSpread
+	// StrategyRandom indicates that the ECS pod should be assigned to a
 	// container instance randomly.
-	RandomPlacement ECSPlacementStrategy = ecs.PlacementStrategyTypeRandom
-	// BinpackPlacement indicates that the the ECS pod will be placed on a
+	StrategyRandom ECSPlacementStrategy = ecs.PlacementStrategyTypeRandom
+	// StrategyBinpack indicates that the the ECS pod will be placed on a
 	// container instance with the least amount of memory or CPU that will be
 	// sufficient for the pod's requirements if possible.
-	BinpackPlacement ECSPlacementStrategy = ecs.PlacementStrategyTypeBinpack
+	StrategyBinpack ECSPlacementStrategy = ecs.PlacementStrategyTypeBinpack
 )
 
 // Validate checks that the ECS pod status is one of the recognized placement
 // strategies.
 func (s ECSPlacementStrategy) Validate() error {
 	switch s {
-	case SpreadPlacement, RandomPlacement, BinpackPlacement:
+	case StrategySpread, StrategyRandom, StrategyBinpack:
 		return nil
 	default:
 		return errors.Errorf("unrecognized placement strategy '%s'", s)
@@ -659,15 +659,15 @@ func (s ECSPlacementStrategy) Validate() error {
 type ECSStrategyParameter = string
 
 const (
-	// BinpackMemory indicates ECS should optimize its binpacking strategy based
+	// StrategyParamBinpackMemory indicates ECS should optimize its binpacking strategy based
 	// on memory usage.
-	BinpackMemory ECSStrategyParameter = "memory"
-	// BinpackCPU indicates ECS should optimize its binpacking strategy based
+	StrategyParamBinpackMemory ECSStrategyParameter = "memory"
+	// StrategyParamBinpackCPU indicates ECS should optimize its binpacking strategy based
 	// on CPU usage.
-	BinpackCPU ECSStrategyParameter = "cpu"
-	// SpreadHost indicates the ECS should spread pods evenly across all
+	StrategyParamBinpackCPU ECSStrategyParameter = "cpu"
+	// StrategyParamSpreadHost indicates the ECS should spread pods evenly across all
 	// container instances (i.e. hosts).
-	SpreadHost ECSStrategyParameter = "host"
+	StrategyParamSpreadHost ECSStrategyParameter = "host"
 )
 
 // ECSTaskDefinition represents options for an existing ECS task definition.

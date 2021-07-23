@@ -90,7 +90,7 @@ func (m *BasicECSPodCreator) CreatePod(ctx context.Context, opts ...*cocoa.ECSPo
 	options := NewBasicECSPodOptions().
 		SetClient(m.client).
 		SetVault(m.vault).
-		SetStatus(cocoa.RunningStatus).
+		SetStatus(cocoa.StatusRunning).
 		SetResources(*resources)
 
 	p, err := NewBasicECSPod(options)
