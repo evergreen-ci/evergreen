@@ -116,17 +116,17 @@ func TestExportPodStatus(t *testing.T) {
 	t.Run("SucceedsWithStartingStatus", func(t *testing.T) {
 		s, err := ExportPodStatus(pod.StatusStarting)
 		require.NoError(t, err)
-		assert.Equal(t, cocoa.StartingStatus, s)
+		assert.Equal(t, cocoa.StatusStarting, s)
 	})
 	t.Run("SucceedsWithRunningStatus", func(t *testing.T) {
 		s, err := ExportPodStatus(pod.StatusRunning)
 		require.NoError(t, err)
-		assert.Equal(t, cocoa.RunningStatus, s)
+		assert.Equal(t, cocoa.StatusRunning, s)
 	})
 	t.Run("SucceedsWithTerminatedStatus", func(t *testing.T) {
 		s, err := ExportPodStatus(pod.StatusTerminated)
 		require.NoError(t, err)
-		assert.Equal(t, cocoa.DeletedStatus, s)
+		assert.Equal(t, cocoa.StatusDeleted, s)
 	})
 	t.Run("FailsWithInitializingStatus", func(t *testing.T) {
 		s, err := ExportPodStatus(pod.StatusInitializing)

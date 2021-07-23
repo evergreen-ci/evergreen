@@ -129,13 +129,13 @@ const (
 func (s *APIPodStatus) BuildFromService(ps pod.Status) error {
 	var converted APIPodStatus
 	switch ps {
-	case pod.InitializingStatus:
+	case pod.StatusInitializing:
 		converted = PodStatusInitializing
-	case pod.StartingStatus:
+	case pod.StatusStarting:
 		converted = PodStatusStarting
-	case pod.RunningStatus:
+	case pod.StatusRunning:
 		converted = PodStatusRunning
-	case pod.TerminatedStatus:
+	case pod.StatusTerminated:
 		converted = PodStatusTerminated
 	default:
 		return errors.Errorf("unrecognized pod status '%s'", ps)
@@ -147,13 +147,13 @@ func (s *APIPodStatus) BuildFromService(ps pod.Status) error {
 func (s *APIPodStatus) ToService() (pod.Status, error) {
 	switch *s {
 	case PodStatusInitializing:
-		return pod.InitializingStatus, nil
+		return pod.StatusTerminated, nil
 	case PodStatusStarting:
-		return pod.StartingStatus, nil
+		return pod.StatusStarting, nil
 	case PodStatusRunning:
-		return pod.RunningStatus, nil
+		return pod.StatusRunning, nil
 	case PodStatusTerminated:
-		return pod.TerminatedStatus, nil
+		return pod.StatusTerminated, nil
 	default:
 		return "", errors.Errorf("unrecognized pod status '%s'", s)
 	}
@@ -199,10 +199,10 @@ type APIPodResourceInfo struct {
 }
 
 func (i *APIPodResourceInfo) BuildFromService(info pod.ResourceInfo) {
-	i.ID = utility.ToStringPtr(v.ID)
-	i.DefinitionID = utility.ToStringPtr(v.DefinitionID)
-	i.Cluster = utility.ToStringPtr(v.Cluster)
-	i.SecretIDs = v.SecretIDs
+	i.ID = utility.ToStringPtr(info.ID)
+	i.DefinitionID = utility.ToStringPtr(info.DefinitionID)
+	i.Cluster = utility.ToStringPtr(info.Cluster)
+	i.SecretIDs = info.SecretIDs
 }
 
 func (i *APIPodResourceInfo) ToService() pod.ResourceInfo {
