@@ -3,6 +3,7 @@ package pod
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -108,9 +109,9 @@ func (p *Pod) UpdateStatus(s Status) error {
 		return err
 	}
 
-	p.Status = s
+	event.LogPodStatusChanged(p.ID, string(p.Status), string(s))
 
-	// TODO (EVG-15026): set up event logging when pod status changes.
+	p.Status = s
 
 	return nil
 }
