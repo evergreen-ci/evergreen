@@ -952,16 +952,16 @@ const (
 type PodPlatform string
 
 const (
-	// LinuxPodPlatform is the platform to run pods with Linux containers.
-	LinuxPodPlatform PodPlatform = "linux"
-	// WindowsPodPlatform is the platform to run pods with Windows containers.
-	WindowsPodPlatform PodPlatform = "windows"
+	// PodPlatformLinux is the platform to run pods with Linux containers.
+	PodPlatformLinux PodPlatform = "linux"
+	// PodPlatformWindows is the platform to run pods with Windows containers.
+	PodPlatformWindows PodPlatform = "windows"
 )
 
 // Validate checks that the given pod platform is recognized.
 func (p PodPlatform) Validate() error {
 	switch p {
-	case LinuxPodPlatform, WindowsPodPlatform:
+	case PodPlatformLinux, PodPlatformWindows:
 		return nil
 	default:
 		return errors.Errorf("unrecognized pod platform '%s'", p)

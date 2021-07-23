@@ -87,7 +87,7 @@ func TestExportPod(t *testing.T) {
 
 			p := pod.Pod{
 				ID:     "id",
-				Status: pod.RunningStatus,
+				Status: pod.StatusRunning,
 				Resources: pod.ResourceInfo{
 					ID:           "task_id",
 					DefinitionID: "task_def_id",
@@ -114,22 +114,22 @@ func TestExportPod(t *testing.T) {
 
 func TestExportPodStatus(t *testing.T) {
 	t.Run("SucceedsWithStartingStatus", func(t *testing.T) {
-		s, err := ExportPodStatus(pod.StartingStatus)
+		s, err := ExportPodStatus(pod.StatusStarting)
 		require.NoError(t, err)
 		assert.Equal(t, cocoa.StartingStatus, s)
 	})
 	t.Run("SucceedsWithRunningStatus", func(t *testing.T) {
-		s, err := ExportPodStatus(pod.RunningStatus)
+		s, err := ExportPodStatus(pod.StatusRunning)
 		require.NoError(t, err)
 		assert.Equal(t, cocoa.RunningStatus, s)
 	})
 	t.Run("SucceedsWithTerminatedStatus", func(t *testing.T) {
-		s, err := ExportPodStatus(pod.TerminatedStatus)
+		s, err := ExportPodStatus(pod.StatusTerminated)
 		require.NoError(t, err)
 		assert.Equal(t, cocoa.DeletedStatus, s)
 	})
 	t.Run("FailsWithInitializingStatus", func(t *testing.T) {
-		s, err := ExportPodStatus(pod.InitializingStatus)
+		s, err := ExportPodStatus(pod.StatusInitializing)
 		assert.Error(t, err)
 		assert.Zero(t, s)
 	})

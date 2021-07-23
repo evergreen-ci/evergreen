@@ -256,7 +256,7 @@ func MockConfig() *evergreen.Settings {
 						Clusters: []evergreen.ECSClusterConfig{
 							{
 								Name:     "cluster_name",
-								Platform: evergreen.LinuxPodPlatform,
+								Platform: evergreen.PodPlatformLinux,
 							},
 						},
 					},

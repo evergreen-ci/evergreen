@@ -6,7 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
+	"github.com/pkg/errors"
 )
 
 /////////////////////////////////////////
@@ -79,4 +84,44 @@ func (h *podAgentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 		APIKey:   h.settings.Cedar.APIKey,
 	}
 	return gimlet.NewJSONResponse(data)
+}
+
+type podAgentNextTask struct {
+	env   evergreen.Environment
+	sc    data.Connector
+	podID string
+}
+
+func makePodAgentNextTask(env evergreen.Environment, sc data.Connector) gimlet.RouteHandler {
+	return &podAgentNextTask{
+		env: env,
+		sc:  sc,
+	}
+}
+
+func (h *podAgentNextTask) Factory() gimlet.RouteHandler {
+	return &podAgentNextTask{
+		env: h.env,
+		sc:  h.sc,
+	}
+}
+
+func (h *podAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
+	h.podID = gimlet.GetVars(r)["pod_id"]
+	if h.podID == "" {
+		return errors.New("missing pod ID")
+	}
+	return nil
+}
+
+func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
+	j := units.NewTerminatePodJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
+	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
+		})
+	}
+
+	return gimlet.NewJSONResponse(apimodels.NextTaskResponse{})
 }

@@ -29,15 +29,15 @@ type Pod struct {
 type Status string
 
 const (
-	// InitializingStatus indicates that a pod is waiting to be created.
-	InitializingStatus Status = "initializing"
-	// StartingStatus indicates that a pod's containers are starting.
-	StartingStatus Status = "starting"
-	// Running indicates that the pod's containers are running.
-	RunningStatus Status = "running"
-	// TerminatedStatus indicates that the pod's containers have been
+	// StatusInitializing indicates that a pod is waiting to be created.
+	StatusInitializing Status = "initializing"
+	// StatusStarting indicates that a pod's containers are starting.
+	StatusStarting Status = "starting"
+	// StatusRunning indicates that the pod's containers are running.
+	StatusRunning Status = "running"
+	// StatusTerminated indicates that the pod's containers have been
 	// deleted.
-	TerminatedStatus Status = "terminated"
+	StatusTerminated Status = "terminated"
 )
 
 // ResourceInfo represents information about external resources associated with
