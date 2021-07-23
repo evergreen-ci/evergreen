@@ -166,12 +166,12 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run creates a new resource based on the Request-URI and JSON payload.
 func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
-	id, err := h.sc.CreatePod(h.p)
+	res, err := h.sc.CreatePod(h.p)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Creating new pod"))
 	}
 
-	responder := gimlet.NewJSONResponse(id)
+	responder := gimlet.NewJSONResponse(res)
 
 	if err := responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
