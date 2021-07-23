@@ -65,3 +65,16 @@ func UpdateOne(query interface{}, update interface{}) error {
 		update,
 	)
 }
+
+// Find gets all Pods for the given query.
+func Find(query db.Q) ([]Pod, error) {
+	pods := []Pod{}
+	return pods, errors.WithStack(db.FindAllQ(Collection, query, &pods))
+}
+
+// FindByInitializing find all pods that are initialized but not running yet.
+func FindByInitializing() ([]Pod, error) {
+	return Find(db.Query(bson.M{
+		StatusKey: StatusInitializing,
+	}))
+}
