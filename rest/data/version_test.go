@@ -434,7 +434,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	pp, err = model.ParserProjectFindOneById(newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	assert.True(pp.Stepback)
+	assert.True(utility.FromBoolPtr(pp.Stepback))
 
 	b, err := build.FindOneId(newVersion.BuildIds[0])
 	assert.NoError(err)
@@ -480,7 +480,7 @@ tasks:
 	pp, err = model.ParserProjectFindOneById(newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	assert.True(pp.Stepback)
+	assert.True(utility.FromBoolPtr(pp.Stepback))
 
 	b, err = build.FindOneId(newVersion.BuildIds[0])
 	assert.NoError(err)

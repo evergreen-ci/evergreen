@@ -1400,7 +1400,7 @@ func TestTryUpsert(t *testing.T) {
 			pp, err := ParserProjectFindOneById(pp.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
-			assert.Equal(t, "you", pp.Owner)
+			assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
 		},
 		"noConfigNumber": func(t *testing.T) {
 			pp := &ParserProject{
@@ -1413,7 +1413,7 @@ func TestTryUpsert(t *testing.T) {
 			pp, err := ParserProjectFindOneById(pp.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
-			assert.Equal(t, "you", pp.Owner)
+			assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
 		},
 		"configNumberDoesNotMatch": func(t *testing.T) {
 			pp := &ParserProject{
@@ -1428,7 +1428,7 @@ func TestTryUpsert(t *testing.T) {
 			pp, err := ParserProjectFindOneById(pp.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
-			assert.Equal(t, "me", pp.Owner)
+			assert.Equal(t, "me", utility.FromStringPtr(pp.Owner))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
