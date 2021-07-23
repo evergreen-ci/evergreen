@@ -48,7 +48,7 @@ const LoadProjectError = "load project error(s)"
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
 type ParserProject struct {
-	// Id and ConfigdUpdateNumber not pointeres because they are only used internally
+	// Id and ConfigdUpdateNumber not pointers because they are only used internally
 	Id                 string                     `yaml:"_id" bson:"_id"` // should be the same as the version's ID
 	ConfigUpdateNumber int                        `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
 	Enabled            *bool                      `yaml:"enabled,omitempty" bson:"enabled,omitempty"`

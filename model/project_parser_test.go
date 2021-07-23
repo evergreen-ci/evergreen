@@ -1375,7 +1375,7 @@ tasks:
 
 func TestAddBuildVariant(t *testing.T) {
 	pp := ParserProject{
-		Identifier: "small",
+		Identifier: utility.ToStringPtr("small"),
 	}
 
 	pp.AddBuildVariant("name", "my-name", "", nil, []string{"task"})
@@ -1392,10 +1392,10 @@ func TestTryUpsert(t *testing.T) {
 			pp := &ParserProject{
 				Id:                 "my-project",
 				ConfigUpdateNumber: 4,
-				Owner:              "me",
+				Owner:              utility.ToStringPtr("me"),
 			}
 			assert.NoError(t, pp.TryUpsert()) // new project should work
-			pp.Owner = "you"
+			pp.Owner = utility.ToStringPtr("you")
 			assert.NoError(t, pp.TryUpsert())
 			pp, err := ParserProjectFindOneById(pp.Id)
 			assert.NoError(t, err)
@@ -1405,10 +1405,10 @@ func TestTryUpsert(t *testing.T) {
 		"noConfigNumber": func(t *testing.T) {
 			pp := &ParserProject{
 				Id:    "my-project",
-				Owner: "me",
+				Owner: utility.ToStringPtr("me"),
 			}
 			assert.NoError(t, pp.TryUpsert()) // new project should work
-			pp.Owner = "you"
+			pp.Owner = utility.ToStringPtr("you")
 			assert.NoError(t, pp.TryUpsert())
 			pp, err := ParserProjectFindOneById(pp.Id)
 			assert.NoError(t, err)
@@ -1419,11 +1419,11 @@ func TestTryUpsert(t *testing.T) {
 			pp := &ParserProject{
 				Id:                 "my-project",
 				ConfigUpdateNumber: 4,
-				Owner:              "me",
+				Owner:              utility.ToStringPtr("me"),
 			}
 			assert.NoError(t, pp.TryUpsert()) // new project should work
 			pp.ConfigUpdateNumber = 5
-			pp.Owner = "you"
+			pp.Owner = utility.ToStringPtr("you")
 			assert.NoError(t, pp.TryUpsert()) // should not update and should not error
 			pp, err := ParserProjectFindOneById(pp.Id)
 			assert.NoError(t, err)
@@ -1535,7 +1535,7 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 	pp, err := createIntermediateProject(yml)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
-	pp.Identifier = "old-project-identifier"
+	pp.Identifier = utility.ToStringPtr("old-project-identifier")
 	pp.ConfigUpdateNumber = 1
 
 	yamlToCompare, err := yaml.Marshal(pp)
@@ -1554,7 +1554,7 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 	pp, err = createIntermediateProject(newYaml)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
-	pp.Identifier = "new-project-identifier"
+	pp.Identifier = utility.ToStringPtr("new-project-identifier")
 
 	assert.NoError(t, pp.TryUpsert())
 
