@@ -25,7 +25,7 @@ func (s *podConnectorSuite) SetupTest() {
 }
 
 func (s *podConnectorSuite) TearDownTest() {
-	s.NoError(db.Clear(pod.Collection))
+	s.NoError(db.ClearCollections(pod.Collection))
 }
 
 func (s *podConnectorSuite) TestCreatePod() {
@@ -57,7 +57,6 @@ func (s *podConnectorSuite) TestCreatePod() {
 	s.Require().NoError(err)
 	s.Assert().Equal("secret", podDB.Secret)
 	s.Assert().Equal("env_value", podDB.TaskContainerCreationOpts.EnvVars["env_name"])
-	s.NoError(db.Clear(pod.Collection))
 }
 
 func (s *podConnectorSuite) TestFindPodByIDSucceeds() {

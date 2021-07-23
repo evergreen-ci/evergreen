@@ -49,7 +49,10 @@ func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 		}
 	}
 	if secret != p.Secret {
-		return errors.New("incorrect pod secret")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "pod secrets do not match",
+		}
 	}
 	return nil
 }
