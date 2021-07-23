@@ -1652,9 +1652,13 @@ func (a *APIECSClusterConfig) ToService() (interface{}, error) {
 	if a == nil {
 		return nil, nil
 	}
+	p := evergreen.ECSClusterPlatform(utility.FromStringPtr(a.Platform))
+	if err := p.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid platform")
+	}
 	return evergreen.ECSClusterConfig{
 		Name:     utility.FromStringPtr(a.Name),
-		Platform: evergreen.PodPlatform(utility.FromStringPtr(a.Platform)),
+		Platform: p,
 	}, nil
 }
 

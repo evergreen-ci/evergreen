@@ -46,8 +46,9 @@ func (s *podConnectorSuite) TestCreatePod() {
 				Secret: utility.ToBoolPtr(true),
 			},
 		},
-		Platform: utility.ToStringPtr("linux"),
-		Secret:   utility.ToStringPtr("secret"),
+		OS:     utility.ToStringPtr("linux"),
+		Arch:   utility.ToStringPtr("amd64"),
+		Secret: utility.ToStringPtr("secret"),
 	}
 	res, err := s.conn.CreatePod(p)
 	s.Require().NoError(err)

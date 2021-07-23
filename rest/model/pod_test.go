@@ -3,7 +3,6 @@ package model
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -34,8 +33,9 @@ func TestAPICreatePod(t *testing.T) {
 					Secret: utility.ToBoolPtr(true),
 				},
 			},
-			Platform: utility.ToStringPtr("linux"),
-			Secret:   utility.ToStringPtr("secret"),
+			OS:     utility.ToStringPtr("linux"),
+			Arch:   utility.ToStringPtr("amd64"),
+			Secret: utility.ToStringPtr("secret"),
 		}
 
 		res, err := apiPod.ToService()
@@ -48,7 +48,8 @@ func TestAPICreatePod(t *testing.T) {
 		assert.Equal(t, utility.FromStringPtr(apiPod.Image), p.TaskContainerCreationOpts.Image)
 		assert.Equal(t, utility.FromIntPtr(apiPod.Memory), p.TaskContainerCreationOpts.MemoryMB)
 		assert.Equal(t, utility.FromIntPtr(apiPod.CPU), p.TaskContainerCreationOpts.CPU)
-		assert.Equal(t, utility.FromStringPtr(apiPod.Platform), string(p.TaskContainerCreationOpts.Platform))
+		assert.Equal(t, utility.FromStringPtr(apiPod.OS), string(p.TaskContainerCreationOpts.OS))
+		assert.Equal(t, utility.FromStringPtr(apiPod.Arch), string(p.TaskContainerCreationOpts.Arch))
 		assert.Equal(t, utility.FromStringPtr(apiPod.Secret), p.Secret)
 		assert.Equal(t, pod.StatusInitializing, p.Status)
 		assert.Len(t, p.TaskContainerCreationOpts.EnvVars, 2)
@@ -88,7 +89,6 @@ func TestAPIPod(t *testing.T) {
 
 	validAPIPod := func() APIPod {
 		status := PodStatusRunning
-		platform := evergreen.PodPlatformLinux
 		return APIPod{
 			ID:     utility.ToStringPtr("id"),
 			Status: &status,
@@ -97,7 +97,8 @@ func TestAPIPod(t *testing.T) {
 				Image:    utility.ToStringPtr("image"),
 				MemoryMB: utility.ToIntPtr(128),
 				CPU:      utility.ToIntPtr(128),
-				Platform: &platform,
+				OS:       utility.ToStringPtr("linux"),
+				Arch:     utility.ToStringPtr("amd64"),
 				EnvVars: map[string]string{
 					"var0": "val0",
 					"var1": "val1",
@@ -126,7 +127,8 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image), dbPod.TaskContainerCreationOpts.Image)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB), dbPod.TaskContainerCreationOpts.MemoryMB)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU), dbPod.TaskContainerCreationOpts.CPU)
-			assert.Equal(t, *apiPod.TaskContainerCreationOpts.Platform, dbPod.TaskContainerCreationOpts.Platform)
+			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.OS), string(dbPod.TaskContainerCreationOpts.OS))
+			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Arch), string(dbPod.TaskContainerCreationOpts.Arch))
 			require.NotZero(t, dbPod.TaskContainerCreationOpts.EnvVars)
 			for k, v := range apiPod.TaskContainerCreationOpts.EnvVars {
 				assert.Equal(t, v, dbPod.TaskContainerCreationOpts.EnvVars[k])
@@ -144,15 +146,19 @@ func TestAPIPod(t *testing.T) {
 		})
 		t.Run("FailsWithInvalidStatus", func(t *testing.T) {
 			apiPod := validAPIPod()
-			status := APIPodStatus("invalid")
-			apiPod.Status = &status
-			apiPod.TaskContainerCreationOpts.Platform = nil
+			apiPod.Status = nil
 			_, err := apiPod.ToService()
 			assert.Error(t, err)
 		})
-		t.Run("FailsWithoutPlatform", func(t *testing.T) {
+		t.Run("FailsWithInvalidOS", func(t *testing.T) {
 			apiPod := validAPIPod()
-			apiPod.TaskContainerCreationOpts.Platform = nil
+			apiPod.TaskContainerCreationOpts.OS = nil
+			_, err := apiPod.ToService()
+			assert.Error(t, err)
+		})
+		t.Run("FailsWithInvalidArch", func(t *testing.T) {
+			apiPod := validAPIPod()
+			apiPod.TaskContainerCreationOpts.Arch = nil
 			_, err := apiPod.ToService()
 			assert.Error(t, err)
 		})
@@ -169,8 +175,8 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.Image, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.CPU, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU))
-			require.NotZero(t, apiPod.TaskContainerCreationOpts.Platform)
-			assert.Equal(t, dbPod.TaskContainerCreationOpts.Platform, *apiPod.TaskContainerCreationOpts.Platform)
+			assert.Equal(t, string(dbPod.TaskContainerCreationOpts.OS), utility.FromStringPtr(apiPod.TaskContainerCreationOpts.OS))
+			assert.Equal(t, string(dbPod.TaskContainerCreationOpts.Arch), utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Arch))
 			require.NotZero(t, apiPod.TaskContainerCreationOpts.EnvVars)
 			for k, v := range dbPod.TaskContainerCreationOpts.EnvVars {
 				assert.Equal(t, v, apiPod.TaskContainerCreationOpts.EnvVars[k])

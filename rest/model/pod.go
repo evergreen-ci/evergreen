@@ -3,7 +3,6 @@ package model
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -25,13 +24,14 @@ type APITimeInfo struct {
 
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
-	Name     *string         `json:"name"`
-	Memory   *int            `json:"memory"`
-	CPU      *int            `json:"cpu"`
-	Image    *string         `json:"image"`
-	EnvVars  []*APIPodEnvVar `json:"env_vars"`
-	Platform *string         `json:"platform"`
-	Secret   *string         `json:"secret"`
+	Name    *string         `json:"name"`
+	Memory  *int            `json:"memory"`
+	CPU     *int            `json:"cpu"`
+	Image   *string         `json:"image"`
+	EnvVars []*APIPodEnvVar `json:"env_vars"`
+	OS      *string         `json:"os"`
+	Arch    *string         `json:"arch"`
+	Secret  *string         `json:"secret"`
 }
 
 type APICreatePodResponse struct {
@@ -57,6 +57,14 @@ func (p *APICreatePod) fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]s
 // ToService returns a service layer pod.Pod using the data from APIPod.
 func (p *APICreatePod) ToService() (interface{}, error) {
 	envVars, secrets := p.fromAPIEnvVars(p.EnvVars)
+	os := pod.OS(utility.FromStringPtr(p.OS))
+	if err := os.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid OS")
+	}
+	arch := pod.Arch(utility.FromStringPtr(p.Arch))
+	if err := arch.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid architecture")
+	}
 
 	return pod.Pod{
 		ID:     utility.RandomString(),
@@ -66,7 +74,8 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 			Image:      utility.FromStringPtr(p.Image),
 			MemoryMB:   utility.FromIntPtr(p.Memory),
 			CPU:        utility.FromIntPtr(p.CPU),
-			Platform:   evergreen.PodPlatform(utility.FromStringPtr(p.Platform)),
+			OS:         os,
+			Arch:       arch,
 			EnvVars:    envVars,
 			EnvSecrets: secrets,
 		},
@@ -149,7 +158,7 @@ func (s *APIPodStatus) BuildFromService(ps pod.Status) error {
 // ToService converts a REST API pod status into a service-layer pod status.
 func (s *APIPodStatus) ToService() (*pod.Status, error) {
 	if s == nil {
-		return nil, errors.New("invalid pod status")
+		return nil, errors.New("nonexistent pod status")
 	}
 	var converted pod.Status
 	switch *s {
@@ -170,12 +179,13 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 // APIPodTaskContainerCreationOptions represents options to apply to the task's
 // container when creating a pod.
 type APIPodTaskContainerCreationOptions struct {
-	Image      *string                `json:"image,omitempty"`
-	MemoryMB   *int                   `json:"memory_mb,omitempty"`
-	CPU        *int                   `json:"cpu,omitempty"`
-	Platform   *evergreen.PodPlatform `json:"platform,omitempty"`
-	EnvVars    map[string]string      `json:"env_vars,omitempty"`
-	EnvSecrets map[string]string      `json:"env_secrets,omitempty"`
+	Image      *string           `json:"image,omitempty"`
+	MemoryMB   *int              `json:"memory_mb,omitempty"`
+	CPU        *int              `json:"cpu,omitempty"`
+	OS         *string           `json:"os,omitempty"`
+	Arch       *string           `json:"arch,omitempty"`
+	EnvVars    map[string]string `json:"env_vars,omitempty"`
+	EnvSecrets map[string]string `json:"env_secrets,omitempty"`
 }
 
 // BuildFromService converts service-layer task container creation options into
@@ -184,24 +194,31 @@ func (o *APIPodTaskContainerCreationOptions) BuildFromService(opts pod.TaskConta
 	o.Image = utility.ToStringPtr(opts.Image)
 	o.MemoryMB = utility.ToIntPtr(opts.MemoryMB)
 	o.CPU = utility.ToIntPtr(opts.CPU)
-	o.Platform = &opts.Platform
+	o.OS = utility.ToStringPtr(string(opts.OS))
+	o.Arch = utility.ToStringPtr(string(opts.Arch))
 	o.EnvVars = opts.EnvVars
 	o.EnvSecrets = opts.EnvSecrets
 }
 
 // ToService converts REST API task container creation options into
 // service-layer task container creation options.
-func (i *APIPodTaskContainerCreationOptions) ToService() (*pod.TaskContainerCreationOptions, error) {
-	if i.Platform == nil {
-		return nil, errors.New("missing platform")
+func (o *APIPodTaskContainerCreationOptions) ToService() (*pod.TaskContainerCreationOptions, error) {
+	os := pod.OS(utility.FromStringPtr(o.OS))
+	if err := os.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid OS")
+	}
+	arch := pod.Arch(utility.FromStringPtr(o.Arch))
+	if err := arch.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid architecture")
 	}
 	return &pod.TaskContainerCreationOptions{
-		Image:      utility.FromStringPtr(i.Image),
-		MemoryMB:   utility.FromIntPtr(i.MemoryMB),
-		CPU:        utility.FromIntPtr(i.CPU),
-		Platform:   *i.Platform,
-		EnvVars:    i.EnvVars,
-		EnvSecrets: i.EnvSecrets,
+		Image:      utility.FromStringPtr(o.Image),
+		MemoryMB:   utility.FromIntPtr(o.MemoryMB),
+		CPU:        utility.FromIntPtr(o.CPU),
+		OS:         os,
+		Arch:       arch,
+		EnvVars:    o.EnvVars,
+		EnvSecrets: o.EnvSecrets,
 	}, nil
 }
 
