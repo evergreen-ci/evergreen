@@ -332,7 +332,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
-	if pp != nil && *pp.ConfigUpdateNumber >= srcVersion.ConfigUpdateNumber {
+	if pp != nil && pp.ConfigUpdateNumber >= srcVersion.ConfigUpdateNumber {
 		config, err = yaml.Marshal(pp)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
@@ -361,7 +361,7 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
-	if pp == nil || *pp.ConfigUpdateNumber < srcVersion.ConfigUpdateNumber {
+	if pp == nil || pp.ConfigUpdateNumber < srcVersion.ConfigUpdateNumber {
 		p := &model.Project{}
 		pp, err = model.LoadProjectInto([]byte(srcVersion.Config), srcVersion.Identifier, p)
 		if err != nil {

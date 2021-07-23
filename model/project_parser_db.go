@@ -95,7 +95,7 @@ func checkConfigNumberQuery(id string, configNum int) bson.M {
 // TryUpsert suppresses the error of inserting if it's a duplicate key error
 // and attempts to upsert if config number matches.
 func (pp *ParserProject) TryUpsert() error {
-	err := ParserProjectUpsertOne(checkConfigNumberQuery(*pp.Id, *pp.ConfigUpdateNumber), pp)
+	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), pp)
 	if !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "database error upserting parser project")
 	}
@@ -115,12 +115,12 @@ func (pp *ParserProject) TryUpsert() error {
 // existing config number is less than or equal to the new config number.
 // If shouldEqual, only update if the config update number matches.
 func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
-	if pp.Id == nil {
+	if pp.Id == "" {
 		return errors.New("no version ID given")
 	}
 	expectedNum := pp.ConfigUpdateNumber
-	pp.ConfigUpdateNumber = &updateNum
-	if err := ParserProjectUpsertOne(checkConfigNumberQuery(*pp.Id, *expectedNum), pp); err != nil {
+	pp.ConfigUpdateNumber = updateNum
+	if err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, expectedNum), pp); err != nil {
 		// expose all errors to check duplicate key errors for a race
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}

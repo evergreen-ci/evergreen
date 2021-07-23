@@ -48,8 +48,9 @@ const LoadProjectError = "load project error(s)"
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
 type ParserProject struct {
-	Id                 *string                    `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber *int                       `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	// Id and ConfigdUpdateNumber not pointeres because they are only used internally
+	Id                 string                     `yaml:"_id" bson:"_id"` // should be the same as the version's ID
+	ConfigUpdateNumber int                        `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
 	Enabled            *bool                      `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
@@ -475,7 +476,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 	}
 
 	// if parser project config number is old then we should default to legacy
-	if pp != nil && *pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
 		if pp.Functions == nil {
 			pp.Functions = map[string]*YAMLCommandSet{}
 		}
@@ -493,9 +494,9 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}
-	pp.Id = &v.Id
+	pp.Id = v.Id
 	pp.Identifier = &id
-	pp.ConfigUpdateNumber = &v.ConfigUpdateNumber
+	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
 	pp.CreateTime = v.CreateTime
 
 	if shouldSave {
@@ -584,28 +585,28 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:           *pp.Enabled,
-		Stepback:          *pp.Stepback,
-		PreErrorFailsTask: *pp.PreErrorFailsTask,
-		OomTracker:        *pp.OomTracker,
-		BatchTime:         *pp.BatchTime,
-		Owner:             *pp.Owner,
-		Repo:              *pp.Repo,
-		RemotePath:        *pp.RemotePath,
-		Branch:            *pp.Branch,
-		Identifier:        *pp.Identifier,
-		DisplayName:       *pp.DisplayName,
-		CommandType:       *pp.CommandType,
+		Enabled:           utility.FromBoolPtr(pp.Enabled),
+		Stepback:          utility.FromBoolPtr(pp.Stepback),
+		PreErrorFailsTask: utility.FromBoolPtr(pp.PreErrorFailsTask),
+		OomTracker:        utility.FromBoolPtr(pp.OomTracker),
+		BatchTime:         utility.FromIntPtr(pp.BatchTime),
+		Owner:             utility.FromStringPtr(pp.Owner),
+		Repo:              utility.FromStringPtr(pp.Repo),
+		RemotePath:        utility.FromStringPtr(pp.RemotePath),
+		Branch:            utility.FromStringPtr(pp.Branch),
+		Identifier:        utility.FromStringPtr(pp.Identifier),
+		DisplayName:       utility.FromStringPtr(pp.DisplayName),
+		CommandType:       utility.FromStringPtr(pp.CommandType),
 		Ignore:            pp.Ignore,
 		Parameters:        pp.Parameters,
 		Pre:               pp.Pre,
 		Post:              pp.Post,
 		EarlyTermination:  pp.EarlyTermination,
 		Timeout:           pp.Timeout,
-		CallbackTimeout:   *pp.CallbackTimeout,
+		CallbackTimeout:   utility.FromIntPtr(pp.CallbackTimeout),
 		Modules:           pp.Modules,
 		Functions:         pp.Functions,
-		ExecTimeoutSecs:   *pp.ExecTimeoutSecs,
+		ExecTimeoutSecs:   utility.FromIntPtr(pp.ExecTimeoutSecs),
 		Loggers:           pp.Loggers,
 	}
 	catcher := grip.NewBasicCatcher()
