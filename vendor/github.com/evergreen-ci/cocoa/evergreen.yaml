@@ -64,7 +64,7 @@ tasks:
     must_have_test_results: true
   - <<: *run-target
     tags: ["test"]
-    name: test-internal-awsutil
+    name: test-awsutil
     must_have_test_results: true
   - <<: *run-target
     tags: ["test"]
@@ -85,7 +85,7 @@ tasks:
     must_have_test_results: true
   - <<: *run-target
     tags: ["lint"]
-    name: lint-internal-awsutil
+    name: lint-awsutil
     must_have_test_results: true
   - <<: *run-target
     tags: ["lint"]

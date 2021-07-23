@@ -80,6 +80,14 @@ type SnowballAPI interface {
 	CreateJobWithContext(aws.Context, *snowball.CreateJobInput, ...request.Option) (*snowball.CreateJobOutput, error)
 	CreateJobRequest(*snowball.CreateJobInput) (*request.Request, *snowball.CreateJobOutput)
 
+	CreateLongTermPricing(*snowball.CreateLongTermPricingInput) (*snowball.CreateLongTermPricingOutput, error)
+	CreateLongTermPricingWithContext(aws.Context, *snowball.CreateLongTermPricingInput, ...request.Option) (*snowball.CreateLongTermPricingOutput, error)
+	CreateLongTermPricingRequest(*snowball.CreateLongTermPricingInput) (*request.Request, *snowball.CreateLongTermPricingOutput)
+
+	CreateReturnShippingLabel(*snowball.CreateReturnShippingLabelInput) (*snowball.CreateReturnShippingLabelOutput, error)
+	CreateReturnShippingLabelWithContext(aws.Context, *snowball.CreateReturnShippingLabelInput, ...request.Option) (*snowball.CreateReturnShippingLabelOutput, error)
+	CreateReturnShippingLabelRequest(*snowball.CreateReturnShippingLabelInput) (*request.Request, *snowball.CreateReturnShippingLabelOutput)
+
 	DescribeAddress(*snowball.DescribeAddressInput) (*snowball.DescribeAddressOutput, error)
 	DescribeAddressWithContext(aws.Context, *snowball.DescribeAddressInput, ...request.Option) (*snowball.DescribeAddressOutput, error)
 	DescribeAddressRequest(*snowball.DescribeAddressInput) (*request.Request, *snowball.DescribeAddressOutput)
@@ -98,6 +106,10 @@ type SnowballAPI interface {
 	DescribeJob(*snowball.DescribeJobInput) (*snowball.DescribeJobOutput, error)
 	DescribeJobWithContext(aws.Context, *snowball.DescribeJobInput, ...request.Option) (*snowball.DescribeJobOutput, error)
 	DescribeJobRequest(*snowball.DescribeJobInput) (*request.Request, *snowball.DescribeJobOutput)
+
+	DescribeReturnShippingLabel(*snowball.DescribeReturnShippingLabelInput) (*snowball.DescribeReturnShippingLabelOutput, error)
+	DescribeReturnShippingLabelWithContext(aws.Context, *snowball.DescribeReturnShippingLabelInput, ...request.Option) (*snowball.DescribeReturnShippingLabelOutput, error)
+	DescribeReturnShippingLabelRequest(*snowball.DescribeReturnShippingLabelInput) (*request.Request, *snowball.DescribeReturnShippingLabelOutput)
 
 	GetJobManifest(*snowball.GetJobManifestInput) (*snowball.GetJobManifestOutput, error)
 	GetJobManifestWithContext(aws.Context, *snowball.GetJobManifestInput, ...request.Option) (*snowball.GetJobManifestOutput, error)
@@ -134,6 +146,10 @@ type SnowballAPI interface {
 	ListJobsPages(*snowball.ListJobsInput, func(*snowball.ListJobsOutput, bool) bool) error
 	ListJobsPagesWithContext(aws.Context, *snowball.ListJobsInput, func(*snowball.ListJobsOutput, bool) bool, ...request.Option) error
 
+	ListLongTermPricing(*snowball.ListLongTermPricingInput) (*snowball.ListLongTermPricingOutput, error)
+	ListLongTermPricingWithContext(aws.Context, *snowball.ListLongTermPricingInput, ...request.Option) (*snowball.ListLongTermPricingOutput, error)
+	ListLongTermPricingRequest(*snowball.ListLongTermPricingInput) (*request.Request, *snowball.ListLongTermPricingOutput)
+
 	UpdateCluster(*snowball.UpdateClusterInput) (*snowball.UpdateClusterOutput, error)
 	UpdateClusterWithContext(aws.Context, *snowball.UpdateClusterInput, ...request.Option) (*snowball.UpdateClusterOutput, error)
 	UpdateClusterRequest(*snowball.UpdateClusterInput) (*request.Request, *snowball.UpdateClusterOutput)
@@ -141,6 +157,14 @@ type SnowballAPI interface {
 	UpdateJob(*snowball.UpdateJobInput) (*snowball.UpdateJobOutput, error)
 	UpdateJobWithContext(aws.Context, *snowball.UpdateJobInput, ...request.Option) (*snowball.UpdateJobOutput, error)
 	UpdateJobRequest(*snowball.UpdateJobInput) (*request.Request, *snowball.UpdateJobOutput)
+
+	UpdateJobShipmentState(*snowball.UpdateJobShipmentStateInput) (*snowball.UpdateJobShipmentStateOutput, error)
+	UpdateJobShipmentStateWithContext(aws.Context, *snowball.UpdateJobShipmentStateInput, ...request.Option) (*snowball.UpdateJobShipmentStateOutput, error)
+	UpdateJobShipmentStateRequest(*snowball.UpdateJobShipmentStateInput) (*request.Request, *snowball.UpdateJobShipmentStateOutput)
+
+	UpdateLongTermPricing(*snowball.UpdateLongTermPricingInput) (*snowball.UpdateLongTermPricingOutput, error)
+	UpdateLongTermPricingWithContext(aws.Context, *snowball.UpdateLongTermPricingInput, ...request.Option) (*snowball.UpdateLongTermPricingOutput, error)
+	UpdateLongTermPricingRequest(*snowball.UpdateLongTermPricingInput) (*request.Request, *snowball.UpdateLongTermPricingOutput)
 }
 
 var _ SnowballAPI = (*snowball.Snowball)(nil)

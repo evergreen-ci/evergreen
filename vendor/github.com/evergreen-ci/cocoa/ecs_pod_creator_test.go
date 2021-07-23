@@ -394,6 +394,10 @@ func TestSecretOptions(t *testing.T) {
 		opts := NewSecretOptions().SetExists(true)
 		assert.True(t, utility.FromBoolPtr(opts.Exists))
 	})
+	t.Run("SetOwned", func(t *testing.T) {
+		opts := NewSecretOptions().SetOwned(true)
+		assert.True(t, utility.FromBoolPtr(opts.Owned))
+	})
 }
 
 func TestECSPodExecutionOptions(t *testing.T) {

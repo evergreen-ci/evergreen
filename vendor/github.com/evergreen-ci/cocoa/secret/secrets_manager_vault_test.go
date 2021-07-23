@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/cocoa"
-	"github.com/evergreen-ci/cocoa/internal/awsutil"
+	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/internal/testcase"
 	"github.com/evergreen-ci/cocoa/internal/testutil"
 	"github.com/evergreen-ci/utility"
@@ -16,11 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVaultInterface(t *testing.T) {
-	assert.Implements(t, (*cocoa.Vault)(nil), &BasicSecretsManager{})
-}
-
 func TestSecretsManager(t *testing.T) {
+	assert.Implements(t, (*cocoa.Vault)(nil), &BasicSecretsManager{})
+
 	testutil.CheckAWSEnvVarsForSecretsManager(t)
 
 	ctx, cancel := context.WithCancel(context.Background())

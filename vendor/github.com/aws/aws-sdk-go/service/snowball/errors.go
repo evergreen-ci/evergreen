@@ -17,6 +17,13 @@ const (
 	// notes.
 	ErrCodeClusterLimitExceededException = "ClusterLimitExceededException"
 
+	// ErrCodeConflictException for service response error code
+	// "ConflictException".
+	//
+	// You get this exception when you call CreateReturnShippingLabel more than
+	// once when other requests are not completed.
+	ErrCodeConflictException = "ConflictException"
+
 	// ErrCodeEc2RequestFailedException for service response error code
 	// "Ec2RequestFailedException".
 	//
@@ -34,7 +41,7 @@ const (
 	// ErrCodeInvalidInputCombinationException for service response error code
 	// "InvalidInputCombinationException".
 	//
-	// Job or cluster creation failed. One ore more inputs were invalid. Confirm
+	// Job or cluster creation failed. One or more inputs were invalid. Confirm
 	// that the CreateClusterRequest$SnowballType value supports your CreateJobRequest$JobType,
 	// and try again.
 	ErrCodeInvalidInputCombinationException = "InvalidInputCombinationException"
@@ -67,6 +74,14 @@ const (
 	// the specified CreateJob or UpdateJob action.
 	ErrCodeKMSRequestFailedException = "KMSRequestFailedException"
 
+	// ErrCodeReturnShippingLabelAlreadyExistsException for service response error code
+	// "ReturnShippingLabelAlreadyExistsException".
+	//
+	// You get this exception if you call CreateReturnShippingLabel and a valid
+	// return shipping label already exists. In this case, use DescribeReturnShippingLabel
+	// to get the url.
+	ErrCodeReturnShippingLabelAlreadyExistsException = "ReturnShippingLabelAlreadyExistsException"
+
 	// ErrCodeUnsupportedAddressException for service response error code
 	// "UnsupportedAddressException".
 	//
@@ -77,13 +92,15 @@ const (
 )
 
 var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
-	"ClusterLimitExceededException":    newErrorClusterLimitExceededException,
-	"Ec2RequestFailedException":        newErrorEc2RequestFailedException,
-	"InvalidAddressException":          newErrorInvalidAddressException,
-	"InvalidInputCombinationException": newErrorInvalidInputCombinationException,
-	"InvalidJobStateException":         newErrorInvalidJobStateException,
-	"InvalidNextTokenException":        newErrorInvalidNextTokenException,
-	"InvalidResourceException":         newErrorInvalidResourceException,
-	"KMSRequestFailedException":        newErrorKMSRequestFailedException,
-	"UnsupportedAddressException":      newErrorUnsupportedAddressException,
+	"ClusterLimitExceededException":             newErrorClusterLimitExceededException,
+	"ConflictException":                         newErrorConflictException,
+	"Ec2RequestFailedException":                 newErrorEc2RequestFailedException,
+	"InvalidAddressException":                   newErrorInvalidAddressException,
+	"InvalidInputCombinationException":          newErrorInvalidInputCombinationException,
+	"InvalidJobStateException":                  newErrorInvalidJobStateException,
+	"InvalidNextTokenException":                 newErrorInvalidNextTokenException,
+	"InvalidResourceException":                  newErrorInvalidResourceException,
+	"KMSRequestFailedException":                 newErrorKMSRequestFailedException,
+	"ReturnShippingLabelAlreadyExistsException": newErrorReturnShippingLabelAlreadyExistsException,
+	"UnsupportedAddressException":               newErrorUnsupportedAddressException,
 }

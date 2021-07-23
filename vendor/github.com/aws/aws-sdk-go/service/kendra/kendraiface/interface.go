@@ -68,6 +68,10 @@ type KendraAPI interface {
 	BatchPutDocumentWithContext(aws.Context, *kendra.BatchPutDocumentInput, ...request.Option) (*kendra.BatchPutDocumentOutput, error)
 	BatchPutDocumentRequest(*kendra.BatchPutDocumentInput) (*request.Request, *kendra.BatchPutDocumentOutput)
 
+	ClearQuerySuggestions(*kendra.ClearQuerySuggestionsInput) (*kendra.ClearQuerySuggestionsOutput, error)
+	ClearQuerySuggestionsWithContext(aws.Context, *kendra.ClearQuerySuggestionsInput, ...request.Option) (*kendra.ClearQuerySuggestionsOutput, error)
+	ClearQuerySuggestionsRequest(*kendra.ClearQuerySuggestionsInput) (*request.Request, *kendra.ClearQuerySuggestionsOutput)
+
 	CreateDataSource(*kendra.CreateDataSourceInput) (*kendra.CreateDataSourceOutput, error)
 	CreateDataSourceWithContext(aws.Context, *kendra.CreateDataSourceInput, ...request.Option) (*kendra.CreateDataSourceOutput, error)
 	CreateDataSourceRequest(*kendra.CreateDataSourceInput) (*request.Request, *kendra.CreateDataSourceOutput)
@@ -80,6 +84,18 @@ type KendraAPI interface {
 	CreateIndexWithContext(aws.Context, *kendra.CreateIndexInput, ...request.Option) (*kendra.CreateIndexOutput, error)
 	CreateIndexRequest(*kendra.CreateIndexInput) (*request.Request, *kendra.CreateIndexOutput)
 
+	CreateQuerySuggestionsBlockList(*kendra.CreateQuerySuggestionsBlockListInput) (*kendra.CreateQuerySuggestionsBlockListOutput, error)
+	CreateQuerySuggestionsBlockListWithContext(aws.Context, *kendra.CreateQuerySuggestionsBlockListInput, ...request.Option) (*kendra.CreateQuerySuggestionsBlockListOutput, error)
+	CreateQuerySuggestionsBlockListRequest(*kendra.CreateQuerySuggestionsBlockListInput) (*request.Request, *kendra.CreateQuerySuggestionsBlockListOutput)
+
+	CreateThesaurus(*kendra.CreateThesaurusInput) (*kendra.CreateThesaurusOutput, error)
+	CreateThesaurusWithContext(aws.Context, *kendra.CreateThesaurusInput, ...request.Option) (*kendra.CreateThesaurusOutput, error)
+	CreateThesaurusRequest(*kendra.CreateThesaurusInput) (*request.Request, *kendra.CreateThesaurusOutput)
+
+	DeleteDataSource(*kendra.DeleteDataSourceInput) (*kendra.DeleteDataSourceOutput, error)
+	DeleteDataSourceWithContext(aws.Context, *kendra.DeleteDataSourceInput, ...request.Option) (*kendra.DeleteDataSourceOutput, error)
+	DeleteDataSourceRequest(*kendra.DeleteDataSourceInput) (*request.Request, *kendra.DeleteDataSourceOutput)
+
 	DeleteFaq(*kendra.DeleteFaqInput) (*kendra.DeleteFaqOutput, error)
 	DeleteFaqWithContext(aws.Context, *kendra.DeleteFaqInput, ...request.Option) (*kendra.DeleteFaqOutput, error)
 	DeleteFaqRequest(*kendra.DeleteFaqInput) (*request.Request, *kendra.DeleteFaqOutput)
@@ -87,6 +103,14 @@ type KendraAPI interface {
 	DeleteIndex(*kendra.DeleteIndexInput) (*kendra.DeleteIndexOutput, error)
 	DeleteIndexWithContext(aws.Context, *kendra.DeleteIndexInput, ...request.Option) (*kendra.DeleteIndexOutput, error)
 	DeleteIndexRequest(*kendra.DeleteIndexInput) (*request.Request, *kendra.DeleteIndexOutput)
+
+	DeleteQuerySuggestionsBlockList(*kendra.DeleteQuerySuggestionsBlockListInput) (*kendra.DeleteQuerySuggestionsBlockListOutput, error)
+	DeleteQuerySuggestionsBlockListWithContext(aws.Context, *kendra.DeleteQuerySuggestionsBlockListInput, ...request.Option) (*kendra.DeleteQuerySuggestionsBlockListOutput, error)
+	DeleteQuerySuggestionsBlockListRequest(*kendra.DeleteQuerySuggestionsBlockListInput) (*request.Request, *kendra.DeleteQuerySuggestionsBlockListOutput)
+
+	DeleteThesaurus(*kendra.DeleteThesaurusInput) (*kendra.DeleteThesaurusOutput, error)
+	DeleteThesaurusWithContext(aws.Context, *kendra.DeleteThesaurusInput, ...request.Option) (*kendra.DeleteThesaurusOutput, error)
+	DeleteThesaurusRequest(*kendra.DeleteThesaurusInput) (*request.Request, *kendra.DeleteThesaurusOutput)
 
 	DescribeDataSource(*kendra.DescribeDataSourceInput) (*kendra.DescribeDataSourceOutput, error)
 	DescribeDataSourceWithContext(aws.Context, *kendra.DescribeDataSourceInput, ...request.Option) (*kendra.DescribeDataSourceOutput, error)
@@ -99,6 +123,22 @@ type KendraAPI interface {
 	DescribeIndex(*kendra.DescribeIndexInput) (*kendra.DescribeIndexOutput, error)
 	DescribeIndexWithContext(aws.Context, *kendra.DescribeIndexInput, ...request.Option) (*kendra.DescribeIndexOutput, error)
 	DescribeIndexRequest(*kendra.DescribeIndexInput) (*request.Request, *kendra.DescribeIndexOutput)
+
+	DescribeQuerySuggestionsBlockList(*kendra.DescribeQuerySuggestionsBlockListInput) (*kendra.DescribeQuerySuggestionsBlockListOutput, error)
+	DescribeQuerySuggestionsBlockListWithContext(aws.Context, *kendra.DescribeQuerySuggestionsBlockListInput, ...request.Option) (*kendra.DescribeQuerySuggestionsBlockListOutput, error)
+	DescribeQuerySuggestionsBlockListRequest(*kendra.DescribeQuerySuggestionsBlockListInput) (*request.Request, *kendra.DescribeQuerySuggestionsBlockListOutput)
+
+	DescribeQuerySuggestionsConfig(*kendra.DescribeQuerySuggestionsConfigInput) (*kendra.DescribeQuerySuggestionsConfigOutput, error)
+	DescribeQuerySuggestionsConfigWithContext(aws.Context, *kendra.DescribeQuerySuggestionsConfigInput, ...request.Option) (*kendra.DescribeQuerySuggestionsConfigOutput, error)
+	DescribeQuerySuggestionsConfigRequest(*kendra.DescribeQuerySuggestionsConfigInput) (*request.Request, *kendra.DescribeQuerySuggestionsConfigOutput)
+
+	DescribeThesaurus(*kendra.DescribeThesaurusInput) (*kendra.DescribeThesaurusOutput, error)
+	DescribeThesaurusWithContext(aws.Context, *kendra.DescribeThesaurusInput, ...request.Option) (*kendra.DescribeThesaurusOutput, error)
+	DescribeThesaurusRequest(*kendra.DescribeThesaurusInput) (*request.Request, *kendra.DescribeThesaurusOutput)
+
+	GetQuerySuggestions(*kendra.GetQuerySuggestionsInput) (*kendra.GetQuerySuggestionsOutput, error)
+	GetQuerySuggestionsWithContext(aws.Context, *kendra.GetQuerySuggestionsInput, ...request.Option) (*kendra.GetQuerySuggestionsOutput, error)
+	GetQuerySuggestionsRequest(*kendra.GetQuerySuggestionsInput) (*request.Request, *kendra.GetQuerySuggestionsOutput)
 
 	ListDataSourceSyncJobs(*kendra.ListDataSourceSyncJobsInput) (*kendra.ListDataSourceSyncJobsOutput, error)
 	ListDataSourceSyncJobsWithContext(aws.Context, *kendra.ListDataSourceSyncJobsInput, ...request.Option) (*kendra.ListDataSourceSyncJobsOutput, error)
@@ -125,6 +165,18 @@ type KendraAPI interface {
 	ListIndicesPages(*kendra.ListIndicesInput, func(*kendra.ListIndicesOutput, bool) bool) error
 	ListIndicesPagesWithContext(aws.Context, *kendra.ListIndicesInput, func(*kendra.ListIndicesOutput, bool) bool, ...request.Option) error
 
+	ListQuerySuggestionsBlockLists(*kendra.ListQuerySuggestionsBlockListsInput) (*kendra.ListQuerySuggestionsBlockListsOutput, error)
+	ListQuerySuggestionsBlockListsWithContext(aws.Context, *kendra.ListQuerySuggestionsBlockListsInput, ...request.Option) (*kendra.ListQuerySuggestionsBlockListsOutput, error)
+	ListQuerySuggestionsBlockListsRequest(*kendra.ListQuerySuggestionsBlockListsInput) (*request.Request, *kendra.ListQuerySuggestionsBlockListsOutput)
+
+	ListTagsForResource(*kendra.ListTagsForResourceInput) (*kendra.ListTagsForResourceOutput, error)
+	ListTagsForResourceWithContext(aws.Context, *kendra.ListTagsForResourceInput, ...request.Option) (*kendra.ListTagsForResourceOutput, error)
+	ListTagsForResourceRequest(*kendra.ListTagsForResourceInput) (*request.Request, *kendra.ListTagsForResourceOutput)
+
+	ListThesauri(*kendra.ListThesauriInput) (*kendra.ListThesauriOutput, error)
+	ListThesauriWithContext(aws.Context, *kendra.ListThesauriInput, ...request.Option) (*kendra.ListThesauriOutput, error)
+	ListThesauriRequest(*kendra.ListThesauriInput) (*request.Request, *kendra.ListThesauriOutput)
+
 	Query(*kendra.QueryInput) (*kendra.QueryOutput, error)
 	QueryWithContext(aws.Context, *kendra.QueryInput, ...request.Option) (*kendra.QueryOutput, error)
 	QueryRequest(*kendra.QueryInput) (*request.Request, *kendra.QueryOutput)
@@ -141,6 +193,14 @@ type KendraAPI interface {
 	SubmitFeedbackWithContext(aws.Context, *kendra.SubmitFeedbackInput, ...request.Option) (*kendra.SubmitFeedbackOutput, error)
 	SubmitFeedbackRequest(*kendra.SubmitFeedbackInput) (*request.Request, *kendra.SubmitFeedbackOutput)
 
+	TagResource(*kendra.TagResourceInput) (*kendra.TagResourceOutput, error)
+	TagResourceWithContext(aws.Context, *kendra.TagResourceInput, ...request.Option) (*kendra.TagResourceOutput, error)
+	TagResourceRequest(*kendra.TagResourceInput) (*request.Request, *kendra.TagResourceOutput)
+
+	UntagResource(*kendra.UntagResourceInput) (*kendra.UntagResourceOutput, error)
+	UntagResourceWithContext(aws.Context, *kendra.UntagResourceInput, ...request.Option) (*kendra.UntagResourceOutput, error)
+	UntagResourceRequest(*kendra.UntagResourceInput) (*request.Request, *kendra.UntagResourceOutput)
+
 	UpdateDataSource(*kendra.UpdateDataSourceInput) (*kendra.UpdateDataSourceOutput, error)
 	UpdateDataSourceWithContext(aws.Context, *kendra.UpdateDataSourceInput, ...request.Option) (*kendra.UpdateDataSourceOutput, error)
 	UpdateDataSourceRequest(*kendra.UpdateDataSourceInput) (*request.Request, *kendra.UpdateDataSourceOutput)
@@ -148,6 +208,18 @@ type KendraAPI interface {
 	UpdateIndex(*kendra.UpdateIndexInput) (*kendra.UpdateIndexOutput, error)
 	UpdateIndexWithContext(aws.Context, *kendra.UpdateIndexInput, ...request.Option) (*kendra.UpdateIndexOutput, error)
 	UpdateIndexRequest(*kendra.UpdateIndexInput) (*request.Request, *kendra.UpdateIndexOutput)
+
+	UpdateQuerySuggestionsBlockList(*kendra.UpdateQuerySuggestionsBlockListInput) (*kendra.UpdateQuerySuggestionsBlockListOutput, error)
+	UpdateQuerySuggestionsBlockListWithContext(aws.Context, *kendra.UpdateQuerySuggestionsBlockListInput, ...request.Option) (*kendra.UpdateQuerySuggestionsBlockListOutput, error)
+	UpdateQuerySuggestionsBlockListRequest(*kendra.UpdateQuerySuggestionsBlockListInput) (*request.Request, *kendra.UpdateQuerySuggestionsBlockListOutput)
+
+	UpdateQuerySuggestionsConfig(*kendra.UpdateQuerySuggestionsConfigInput) (*kendra.UpdateQuerySuggestionsConfigOutput, error)
+	UpdateQuerySuggestionsConfigWithContext(aws.Context, *kendra.UpdateQuerySuggestionsConfigInput, ...request.Option) (*kendra.UpdateQuerySuggestionsConfigOutput, error)
+	UpdateQuerySuggestionsConfigRequest(*kendra.UpdateQuerySuggestionsConfigInput) (*request.Request, *kendra.UpdateQuerySuggestionsConfigOutput)
+
+	UpdateThesaurus(*kendra.UpdateThesaurusInput) (*kendra.UpdateThesaurusOutput, error)
+	UpdateThesaurusWithContext(aws.Context, *kendra.UpdateThesaurusInput, ...request.Option) (*kendra.UpdateThesaurusOutput, error)
+	UpdateThesaurusRequest(*kendra.UpdateThesaurusInput) (*request.Request, *kendra.UpdateThesaurusOutput)
 }
 
 var _ KendraAPI = (*kendra.Kendra)(nil)

@@ -60,6 +60,8 @@ func (c *AugmentedAIRuntime) DeleteHumanLoopRequest(input *DeleteHumanLoopInput)
 //
 // Deletes the specified human loop for a flow definition.
 //
+// If the human loop was deleted, this operation will return a ResourceNotFoundException.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -69,16 +71,19 @@ func (c *AugmentedAIRuntime) DeleteHumanLoopRequest(input *DeleteHumanLoopInput)
 //
 // Returned Error Types:
 //   * ValidationException
-//   Your request was not valid. Check the syntax and try again.
+//   The request isn't valid. Check the syntax and try again.
 //
 //   * ResourceNotFoundException
-//   We were unable to find the requested resource.
+//   We couldn't find the requested resource. Check that your resources exists
+//   and were created in the same AWS Region as your request, and try your request
+//   again.
 //
 //   * ThrottlingException
-//   Your request has exceeded the allowed amount of requests.
+//   You exceeded the maximum number of requests.
 //
 //   * InternalServerException
-//   Your request could not be processed.
+//   We couldn't process your request because of an issue with the server. Try
+//   again later.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/sagemaker-a2i-runtime-2019-11-07/DeleteHumanLoop
 func (c *AugmentedAIRuntime) DeleteHumanLoop(input *DeleteHumanLoopInput) (*DeleteHumanLoopOutput, error) {
@@ -146,7 +151,8 @@ func (c *AugmentedAIRuntime) DescribeHumanLoopRequest(input *DescribeHumanLoopIn
 
 // DescribeHumanLoop API operation for Amazon Augmented AI Runtime.
 //
-// Returns information about the specified human loop.
+// Returns information about the specified human loop. If the human loop was
+// deleted, this operation will return a ResourceNotFoundException error.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -157,16 +163,19 @@ func (c *AugmentedAIRuntime) DescribeHumanLoopRequest(input *DescribeHumanLoopIn
 //
 // Returned Error Types:
 //   * ValidationException
-//   Your request was not valid. Check the syntax and try again.
+//   The request isn't valid. Check the syntax and try again.
 //
 //   * ResourceNotFoundException
-//   We were unable to find the requested resource.
+//   We couldn't find the requested resource. Check that your resources exists
+//   and were created in the same AWS Region as your request, and try your request
+//   again.
 //
 //   * ThrottlingException
-//   Your request has exceeded the allowed amount of requests.
+//   You exceeded the maximum number of requests.
 //
 //   * InternalServerException
-//   Your request could not be processed.
+//   We couldn't process your request because of an issue with the server. Try
+//   again later.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/sagemaker-a2i-runtime-2019-11-07/DescribeHumanLoop
 func (c *AugmentedAIRuntime) DescribeHumanLoop(input *DescribeHumanLoopInput) (*DescribeHumanLoopOutput, error) {
@@ -240,7 +249,8 @@ func (c *AugmentedAIRuntime) ListHumanLoopsRequest(input *ListHumanLoopsInput) (
 
 // ListHumanLoops API operation for Amazon Augmented AI Runtime.
 //
-// Returns information about human loops, given the specified parameters.
+// Returns information about human loops, given the specified parameters. If
+// a human loop was deleted, it will not be included.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -251,13 +261,19 @@ func (c *AugmentedAIRuntime) ListHumanLoopsRequest(input *ListHumanLoopsInput) (
 //
 // Returned Error Types:
 //   * ValidationException
-//   Your request was not valid. Check the syntax and try again.
+//   The request isn't valid. Check the syntax and try again.
+//
+//   * ResourceNotFoundException
+//   We couldn't find the requested resource. Check that your resources exists
+//   and were created in the same AWS Region as your request, and try your request
+//   again.
 //
 //   * ThrottlingException
-//   Your request has exceeded the allowed amount of requests.
+//   You exceeded the maximum number of requests.
 //
 //   * InternalServerException
-//   Your request could not be processed.
+//   We couldn't process your request because of an issue with the server. Try
+//   again later.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/sagemaker-a2i-runtime-2019-11-07/ListHumanLoops
 func (c *AugmentedAIRuntime) ListHumanLoops(input *ListHumanLoopsInput) (*ListHumanLoopsOutput, error) {
@@ -388,17 +404,29 @@ func (c *AugmentedAIRuntime) StartHumanLoopRequest(input *StartHumanLoopInput) (
 //
 // Returned Error Types:
 //   * ValidationException
-//   Your request was not valid. Check the syntax and try again.
+//   The request isn't valid. Check the syntax and try again.
 //
 //   * ThrottlingException
-//   Your request has exceeded the allowed amount of requests.
+//   You exceeded the maximum number of requests.
 //
 //   * ServiceQuotaExceededException
-//   You have exceeded your service quota. To perform the requested action, remove
-//   some of the relevant resources, or request a service quota increase.
+//   You exceeded your service quota. Service quotas, also referred to as limits,
+//   are the maximum number of service resources or operations for your AWS account.
+//   For a list of Amazon A2I service quotes, see Amazon Augmented AI Service
+//   Quotes (https://docs.aws.amazon.com/general/latest/gr/a2i.html). Delete some
+//   resources or request an increase in your service quota. You can request a
+//   quota increase using Service Quotas or the AWS Support Center. To request
+//   an increase, see AWS Service Quotas (https://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html)
+//   in the AWS General Reference.
 //
 //   * InternalServerException
-//   Your request could not be processed.
+//   We couldn't process your request because of an issue with the server. Try
+//   again later.
+//
+//   * ConflictException
+//   Your request has the same name as another active human loop but has different
+//   input data. You cannot start two human loops with the same name and different
+//   input data.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/sagemaker-a2i-runtime-2019-11-07/StartHumanLoop
 func (c *AugmentedAIRuntime) StartHumanLoop(input *StartHumanLoopInput) (*StartHumanLoopOutput, error) {
@@ -478,16 +506,19 @@ func (c *AugmentedAIRuntime) StopHumanLoopRequest(input *StopHumanLoopInput) (re
 //
 // Returned Error Types:
 //   * ValidationException
-//   Your request was not valid. Check the syntax and try again.
+//   The request isn't valid. Check the syntax and try again.
 //
 //   * ResourceNotFoundException
-//   We were unable to find the requested resource.
+//   We couldn't find the requested resource. Check that your resources exists
+//   and were created in the same AWS Region as your request, and try your request
+//   again.
 //
 //   * ThrottlingException
-//   Your request has exceeded the allowed amount of requests.
+//   You exceeded the maximum number of requests.
 //
 //   * InternalServerException
-//   Your request could not be processed.
+//   We couldn't process your request because of an issue with the server. Try
+//   again later.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/sagemaker-a2i-runtime-2019-11-07/StopHumanLoop
 func (c *AugmentedAIRuntime) StopHumanLoop(input *StopHumanLoopInput) (*StopHumanLoopOutput, error) {
@@ -511,10 +542,68 @@ func (c *AugmentedAIRuntime) StopHumanLoopWithContext(ctx aws.Context, input *St
 	return out, req.Send()
 }
 
+// Your request has the same name as another active human loop but has different
+// input data. You cannot start two human loops with the same name and different
+// input data.
+type ConflictException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"Message" type:"string"`
+}
+
+// String returns the string representation
+func (s ConflictException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ConflictException) GoString() string {
+	return s.String()
+}
+
+func newErrorConflictException(v protocol.ResponseMetadata) error {
+	return &ConflictException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *ConflictException) Code() string {
+	return "ConflictException"
+}
+
+// Message returns the exception's message.
+func (s *ConflictException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *ConflictException) OrigErr() error {
+	return nil
+}
+
+func (s *ConflictException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *ConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *ConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
 type DeleteHumanLoopInput struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the human loop you want to delete.
+	// The name of the human loop that you want to delete.
 	//
 	// HumanLoopName is a required field
 	HumanLoopName *string `location:"uri" locationName:"HumanLoopName" min:"1" type:"string" required:"true"`
@@ -569,7 +658,7 @@ func (s DeleteHumanLoopOutput) GoString() string {
 type DescribeHumanLoopInput struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the human loop.
+	// The name of the human loop that you want information about.
 	//
 	// HumanLoopName is a required field
 	HumanLoopName *string `location:"uri" locationName:"HumanLoopName" min:"1" type:"string" required:"true"`
@@ -610,16 +699,18 @@ func (s *DescribeHumanLoopInput) SetHumanLoopName(v string) *DescribeHumanLoopIn
 type DescribeHumanLoopOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The timestamp when Amazon Augmented AI created the human loop.
+	// The creation time when Amazon Augmented AI created the human loop.
 	//
-	// CreationTimestamp is a required field
-	CreationTimestamp *time.Time `type:"timestamp" required:"true"`
+	// CreationTime is a required field
+	CreationTime *time.Time `type:"timestamp" required:"true"`
 
-	// A failure code denoting a specific type of failure.
+	// A failure code that identifies the type of failure.
+	//
+	// Possible values: ValidationError, Expired, InternalError
 	FailureCode *string `type:"string"`
 
-	// The reason why a human loop has failed. The failure reason is returned when
-	// the human loop status is Failed.
+	// The reason why a human loop failed. The failure reason is returned when the
+	// status of the human loop is Failed.
 	FailureReason *string `type:"string"`
 
 	// The Amazon Resource Name (ARN) of the flow definition.
@@ -632,20 +723,17 @@ type DescribeHumanLoopOutput struct {
 	// HumanLoopArn is a required field
 	HumanLoopArn *string `type:"string" required:"true"`
 
-	// An object containing information about the human loop input.
-	//
-	// HumanLoopInput is a required field
-	HumanLoopInput *HumanLoopInputContent `type:"structure" required:"true"`
-
-	// The name of the human loop.
+	// The name of the human loop. The name must be lowercase, unique within the
+	// Region in your account, and can have up to 63 characters. Valid characters:
+	// a-z, 0-9, and - (hyphen).
 	//
 	// HumanLoopName is a required field
 	HumanLoopName *string `min:"1" type:"string" required:"true"`
 
-	// An object containing information about the output of the human loop.
-	HumanLoopOutput *HumanLoopOutputContent `type:"structure"`
+	// An object that contains information about the output of the human loop.
+	HumanLoopOutput *HumanLoopOutput `type:"structure"`
 
-	// The status of the human loop. Valid values:
+	// The status of the human loop.
 	//
 	// HumanLoopStatus is a required field
 	HumanLoopStatus *string `type:"string" required:"true" enum:"HumanLoopStatus"`
@@ -661,9 +749,9 @@ func (s DescribeHumanLoopOutput) GoString() string {
 	return s.String()
 }
 
-// SetCreationTimestamp sets the CreationTimestamp field's value.
-func (s *DescribeHumanLoopOutput) SetCreationTimestamp(v time.Time) *DescribeHumanLoopOutput {
-	s.CreationTimestamp = &v
+// SetCreationTime sets the CreationTime field's value.
+func (s *DescribeHumanLoopOutput) SetCreationTime(v time.Time) *DescribeHumanLoopOutput {
+	s.CreationTime = &v
 	return s
 }
 
@@ -691,12 +779,6 @@ func (s *DescribeHumanLoopOutput) SetHumanLoopArn(v string) *DescribeHumanLoopOu
 	return s
 }
 
-// SetHumanLoopInput sets the HumanLoopInput field's value.
-func (s *DescribeHumanLoopOutput) SetHumanLoopInput(v *HumanLoopInputContent) *DescribeHumanLoopOutput {
-	s.HumanLoopInput = v
-	return s
-}
-
 // SetHumanLoopName sets the HumanLoopName field's value.
 func (s *DescribeHumanLoopOutput) SetHumanLoopName(v string) *DescribeHumanLoopOutput {
 	s.HumanLoopName = &v
@@ -704,7 +786,7 @@ func (s *DescribeHumanLoopOutput) SetHumanLoopName(v string) *DescribeHumanLoopO
 }
 
 // SetHumanLoopOutput sets the HumanLoopOutput field's value.
-func (s *DescribeHumanLoopOutput) SetHumanLoopOutput(v *HumanLoopOutputContent) *DescribeHumanLoopOutput {
+func (s *DescribeHumanLoopOutput) SetHumanLoopOutput(v *HumanLoopOutput) *DescribeHumanLoopOutput {
 	s.HumanLoopOutput = v
 	return s
 }
@@ -715,90 +797,74 @@ func (s *DescribeHumanLoopOutput) SetHumanLoopStatus(v string) *DescribeHumanLoo
 	return s
 }
 
-// Contains information about why a human loop was triggered. If at least one
-// activation reason is evaluated to be true, the human loop is activated.
-type HumanLoopActivationReason struct {
+// Attributes of the data specified by the customer. Use these to describe the
+// data to be labeled.
+type HumanLoopDataAttributes struct {
 	_ struct{} `type:"structure"`
 
-	// True if the specified conditions were matched to trigger the human loop.
-	ConditionsMatched *bool `type:"boolean"`
+	// Declares that your content is free of personally identifiable information
+	// or adult content.
+	//
+	// Amazon SageMaker can restrict the Amazon Mechanical Turk workers who can
+	// view your task based on this information.
+	//
+	// ContentClassifiers is a required field
+	ContentClassifiers []*string `type:"list" required:"true"`
 }
 
 // String returns the string representation
-func (s HumanLoopActivationReason) String() string {
+func (s HumanLoopDataAttributes) String() string {
 	return awsutil.Prettify(s)
 }
 
 // GoString returns the string representation
-func (s HumanLoopActivationReason) GoString() string {
+func (s HumanLoopDataAttributes) GoString() string {
 	return s.String()
 }
 
-// SetConditionsMatched sets the ConditionsMatched field's value.
-func (s *HumanLoopActivationReason) SetConditionsMatched(v bool) *HumanLoopActivationReason {
-	s.ConditionsMatched = &v
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *HumanLoopDataAttributes) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "HumanLoopDataAttributes"}
+	if s.ContentClassifiers == nil {
+		invalidParams.Add(request.NewErrParamRequired("ContentClassifiers"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetContentClassifiers sets the ContentClassifiers field's value.
+func (s *HumanLoopDataAttributes) SetContentClassifiers(v []*string) *HumanLoopDataAttributes {
+	s.ContentClassifiers = v
 	return s
 }
 
-// Information about the corresponding flow definition's human loop activation
-// condition evaluation. Null if StartHumanLoop was invoked directly.
-type HumanLoopActivationResults struct {
+// An object containing the human loop input in JSON format.
+type HumanLoopInput struct {
 	_ struct{} `type:"structure"`
 
-	// A copy of the human loop activation conditions of the flow definition, augmented
-	// with the results of evaluating those conditions on the input provided to
-	// the StartHumanLoop operation.
-	HumanLoopActivationConditionsEvaluationResults *string `type:"string"`
-
-	// An object containing information about why a human loop was triggered.
-	HumanLoopActivationReason *HumanLoopActivationReason `type:"structure"`
-}
-
-// String returns the string representation
-func (s HumanLoopActivationResults) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation
-func (s HumanLoopActivationResults) GoString() string {
-	return s.String()
-}
-
-// SetHumanLoopActivationConditionsEvaluationResults sets the HumanLoopActivationConditionsEvaluationResults field's value.
-func (s *HumanLoopActivationResults) SetHumanLoopActivationConditionsEvaluationResults(v string) *HumanLoopActivationResults {
-	s.HumanLoopActivationConditionsEvaluationResults = &v
-	return s
-}
-
-// SetHumanLoopActivationReason sets the HumanLoopActivationReason field's value.
-func (s *HumanLoopActivationResults) SetHumanLoopActivationReason(v *HumanLoopActivationReason) *HumanLoopActivationResults {
-	s.HumanLoopActivationReason = v
-	return s
-}
-
-// An object containing the input.
-type HumanLoopInputContent struct {
-	_ struct{} `type:"structure"`
-
-	// Serialized input from the human loop.
+	// Serialized input from the human loop. The input must be a string representation
+	// of a file in JSON format.
 	//
 	// InputContent is a required field
 	InputContent *string `type:"string" required:"true"`
 }
 
 // String returns the string representation
-func (s HumanLoopInputContent) String() string {
+func (s HumanLoopInput) String() string {
 	return awsutil.Prettify(s)
 }
 
 // GoString returns the string representation
-func (s HumanLoopInputContent) GoString() string {
+func (s HumanLoopInput) GoString() string {
 	return s.String()
 }
 
 // Validate inspects the fields of the type to determine if they are valid.
-func (s *HumanLoopInputContent) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "HumanLoopInputContent"}
+func (s *HumanLoopInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "HumanLoopInput"}
 	if s.InputContent == nil {
 		invalidParams.Add(request.NewErrParamRequired("InputContent"))
 	}
@@ -810,34 +876,34 @@ func (s *HumanLoopInputContent) Validate() error {
 }
 
 // SetInputContent sets the InputContent field's value.
-func (s *HumanLoopInputContent) SetInputContent(v string) *HumanLoopInputContent {
+func (s *HumanLoopInput) SetInputContent(v string) *HumanLoopInput {
 	s.InputContent = &v
 	return s
 }
 
 // Information about where the human output will be stored.
-type HumanLoopOutputContent struct {
+type HumanLoopOutput struct {
 	_ struct{} `type:"structure"`
 
 	// The location of the Amazon S3 object where Amazon Augmented AI stores your
-	// human loop output. The output is stored at the following location: s3://S3OutputPath/HumanLoopName/CreationTime/output.json.
+	// human loop output.
 	//
 	// OutputS3Uri is a required field
 	OutputS3Uri *string `type:"string" required:"true"`
 }
 
 // String returns the string representation
-func (s HumanLoopOutputContent) String() string {
+func (s HumanLoopOutput) String() string {
 	return awsutil.Prettify(s)
 }
 
 // GoString returns the string representation
-func (s HumanLoopOutputContent) GoString() string {
+func (s HumanLoopOutput) GoString() string {
 	return s.String()
 }
 
 // SetOutputS3Uri sets the OutputS3Uri field's value.
-func (s *HumanLoopOutputContent) SetOutputS3Uri(v string) *HumanLoopOutputContent {
+func (s *HumanLoopOutput) SetOutputS3Uri(v string) *HumanLoopOutput {
 	s.OutputS3Uri = &v
 	return s
 }
@@ -849,17 +915,18 @@ type HumanLoopSummary struct {
 	// When Amazon Augmented AI created the human loop.
 	CreationTime *time.Time `type:"timestamp"`
 
-	// The reason why the human loop failed. A failure reason is returned only when
-	// the status of the human loop is Failed.
+	// The reason why the human loop failed. A failure reason is returned when the
+	// status of the human loop is Failed.
 	FailureReason *string `type:"string"`
 
-	// The Amazon Resource Name (ARN) of the flow definition.
+	// The Amazon Resource Name (ARN) of the flow definition used to configure the
+	// human loop.
 	FlowDefinitionArn *string `type:"string"`
 
 	// The name of the human loop.
 	HumanLoopName *string `min:"1" type:"string"`
 
-	// The status of the human loop. Valid values:
+	// The status of the human loop.
 	HumanLoopStatus *string `type:"string" enum:"HumanLoopStatus"`
 }
 
@@ -903,52 +970,11 @@ func (s *HumanLoopSummary) SetHumanLoopStatus(v string) *HumanLoopSummary {
 	return s
 }
 
-// Attributes of the data specified by the customer. Use these to describe the
-// data to be labeled.
-type HumanReviewDataAttributes struct {
-	_ struct{} `type:"structure"`
-
-	// Declares that your content is free of personally identifiable information
-	// or adult content. Amazon SageMaker may restrict the Amazon Mechanical Turk
-	// workers that can view your task based on this information.
-	//
-	// ContentClassifiers is a required field
-	ContentClassifiers []*string `type:"list" required:"true"`
-}
-
-// String returns the string representation
-func (s HumanReviewDataAttributes) String() string {
-	return awsutil.Prettify(s)
-}
-
-// GoString returns the string representation
-func (s HumanReviewDataAttributes) GoString() string {
-	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *HumanReviewDataAttributes) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "HumanReviewDataAttributes"}
-	if s.ContentClassifiers == nil {
-		invalidParams.Add(request.NewErrParamRequired("ContentClassifiers"))
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
-}
-
-// SetContentClassifiers sets the ContentClassifiers field's value.
-func (s *HumanReviewDataAttributes) SetContentClassifiers(v []*string) *HumanReviewDataAttributes {
-	s.ContentClassifiers = v
-	return s
-}
-
-// Your request could not be processed.
+// We couldn't process your request because of an issue with the server. Try
+// again later.
 type InternalServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -965,17 +991,17 @@ func (s InternalServerException) GoString() string {
 
 func newErrorInternalServerException(v protocol.ResponseMetadata) error {
 	return &InternalServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerException) Code() string {
+func (s *InternalServerException) Code() string {
 	return "InternalServerException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerException) Message() string {
+func (s *InternalServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -983,45 +1009,49 @@ func (s InternalServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerException) OrigErr() error {
+func (s *InternalServerException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerException) Error() string {
+func (s *InternalServerException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListHumanLoopsInput struct {
 	_ struct{} `type:"structure"`
 
-	// (Optional) The timestamp of the date when you want the human loops to begin.
-	// For example, 1551000000.
+	// (Optional) The timestamp of the date when you want the human loops to begin
+	// in ISO 8601 format. For example, 2020-02-24.
 	CreationTimeAfter *time.Time `location:"querystring" locationName:"CreationTimeAfter" type:"timestamp"`
 
 	// (Optional) The timestamp of the date before which you want the human loops
-	// to begin. For example, 1550000000.
+	// to begin in ISO 8601 format. For example, 2020-02-24.
 	CreationTimeBefore *time.Time `location:"querystring" locationName:"CreationTimeBefore" type:"timestamp"`
 
+	// The Amazon Resource Name (ARN) of a flow definition.
+	//
+	// FlowDefinitionArn is a required field
+	FlowDefinitionArn *string `location:"querystring" locationName:"FlowDefinitionArn" type:"string" required:"true"`
+
 	// The total number of items to return. If the total number of available items
-	// is more than the value specified in MaxResults, then a NextToken will be
-	// provided in the output that you can use to resume pagination.
+	// is more than the value specified in MaxResults, then a NextToken is returned
+	// in the output. You can use this token to display the next page of results.
 	MaxResults *int64 `location:"querystring" locationName:"MaxResults" min:"1" type:"integer"`
 
-	// A token to resume pagination.
+	// A token to display the next page of results.
 	NextToken *string `location:"querystring" locationName:"NextToken" type:"string"`
 
-	// An optional value that specifies whether you want the results sorted in Ascending
-	// or Descending order.
+	// Optional. The order for displaying results. Valid values: Ascending and Descending.
 	SortOrder *string `location:"querystring" locationName:"SortOrder" type:"string" enum:"SortOrder"`
 }
 
@@ -1038,6 +1068,9 @@ func (s ListHumanLoopsInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *ListHumanLoopsInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListHumanLoopsInput"}
+	if s.FlowDefinitionArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("FlowDefinitionArn"))
+	}
 	if s.MaxResults != nil && *s.MaxResults < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
 	}
@@ -1057,6 +1090,12 @@ func (s *ListHumanLoopsInput) SetCreationTimeAfter(v time.Time) *ListHumanLoopsI
 // SetCreationTimeBefore sets the CreationTimeBefore field's value.
 func (s *ListHumanLoopsInput) SetCreationTimeBefore(v time.Time) *ListHumanLoopsInput {
 	s.CreationTimeBefore = &v
+	return s
+}
+
+// SetFlowDefinitionArn sets the FlowDefinitionArn field's value.
+func (s *ListHumanLoopsInput) SetFlowDefinitionArn(v string) *ListHumanLoopsInput {
+	s.FlowDefinitionArn = &v
 	return s
 }
 
@@ -1081,12 +1120,12 @@ func (s *ListHumanLoopsInput) SetSortOrder(v string) *ListHumanLoopsInput {
 type ListHumanLoopsOutput struct {
 	_ struct{} `type:"structure"`
 
-	// An array of objects containing information about the human loops.
+	// An array of objects that contain information about the human loops.
 	//
 	// HumanLoopSummaries is a required field
 	HumanLoopSummaries []*HumanLoopSummary `type:"list" required:"true"`
 
-	// A token to resume pagination.
+	// A token to display the next page of results.
 	NextToken *string `type:"string"`
 }
 
@@ -1112,10 +1151,12 @@ func (s *ListHumanLoopsOutput) SetNextToken(v string) *ListHumanLoopsOutput {
 	return s
 }
 
-// We were unable to find the requested resource.
+// We couldn't find the requested resource. Check that your resources exists
+// and were created in the same AWS Region as your request, and try your request
+// again.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1132,17 +1173,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1150,29 +1191,35 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// You have exceeded your service quota. To perform the requested action, remove
-// some of the relevant resources, or request a service quota increase.
+// You exceeded your service quota. Service quotas, also referred to as limits,
+// are the maximum number of service resources or operations for your AWS account.
+// For a list of Amazon A2I service quotes, see Amazon Augmented AI Service
+// Quotes (https://docs.aws.amazon.com/general/latest/gr/a2i.html). Delete some
+// resources or request an increase in your service quota. You can request a
+// quota increase using Service Quotas or the AWS Support Center. To request
+// an increase, see AWS Service Quotas (https://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html)
+// in the AWS General Reference.
 type ServiceQuotaExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1189,17 +1236,17 @@ func (s ServiceQuotaExceededException) GoString() string {
 
 func newErrorServiceQuotaExceededException(v protocol.ResponseMetadata) error {
 	return &ServiceQuotaExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceQuotaExceededException) Code() string {
+func (s *ServiceQuotaExceededException) Code() string {
 	return "ServiceQuotaExceededException"
 }
 
 // Message returns the exception's message.
-func (s ServiceQuotaExceededException) Message() string {
+func (s *ServiceQuotaExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1207,39 +1254,41 @@ func (s ServiceQuotaExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceQuotaExceededException) OrigErr() error {
+func (s *ServiceQuotaExceededException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceQuotaExceededException) Error() string {
+func (s *ServiceQuotaExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceQuotaExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceQuotaExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceQuotaExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceQuotaExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type StartHumanLoopInput struct {
 	_ struct{} `type:"structure"`
 
-	// Attributes of the data specified by the customer.
-	DataAttributes *HumanReviewDataAttributes `type:"structure"`
+	// Attributes of the specified data. Use DataAttributes to specify if your data
+	// is free of personally identifiable information and/or free of adult content.
+	DataAttributes *HumanLoopDataAttributes `type:"structure"`
 
-	// The Amazon Resource Name (ARN) of the flow definition.
+	// The Amazon Resource Name (ARN) of the flow definition associated with this
+	// human loop.
 	//
 	// FlowDefinitionArn is a required field
 	FlowDefinitionArn *string `type:"string" required:"true"`
 
-	// An object containing information about the human loop.
+	// An object that contains information about the human loop.
 	//
 	// HumanLoopInput is a required field
-	HumanLoopInput *HumanLoopInputContent `type:"structure" required:"true"`
+	HumanLoopInput *HumanLoopInput `type:"structure" required:"true"`
 
 	// The name of the human loop.
 	//
@@ -1290,7 +1339,7 @@ func (s *StartHumanLoopInput) Validate() error {
 }
 
 // SetDataAttributes sets the DataAttributes field's value.
-func (s *StartHumanLoopInput) SetDataAttributes(v *HumanReviewDataAttributes) *StartHumanLoopInput {
+func (s *StartHumanLoopInput) SetDataAttributes(v *HumanLoopDataAttributes) *StartHumanLoopInput {
 	s.DataAttributes = v
 	return s
 }
@@ -1302,7 +1351,7 @@ func (s *StartHumanLoopInput) SetFlowDefinitionArn(v string) *StartHumanLoopInpu
 }
 
 // SetHumanLoopInput sets the HumanLoopInput field's value.
-func (s *StartHumanLoopInput) SetHumanLoopInput(v *HumanLoopInputContent) *StartHumanLoopInput {
+func (s *StartHumanLoopInput) SetHumanLoopInput(v *HumanLoopInput) *StartHumanLoopInput {
 	s.HumanLoopInput = v
 	return s
 }
@@ -1315,9 +1364,6 @@ func (s *StartHumanLoopInput) SetHumanLoopName(v string) *StartHumanLoopInput {
 
 type StartHumanLoopOutput struct {
 	_ struct{} `type:"structure"`
-
-	// An object containing information about the human loop activation.
-	HumanLoopActivationResults *HumanLoopActivationResults `type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the human loop.
 	HumanLoopArn *string `type:"string"`
@@ -1333,12 +1379,6 @@ func (s StartHumanLoopOutput) GoString() string {
 	return s.String()
 }
 
-// SetHumanLoopActivationResults sets the HumanLoopActivationResults field's value.
-func (s *StartHumanLoopOutput) SetHumanLoopActivationResults(v *HumanLoopActivationResults) *StartHumanLoopOutput {
-	s.HumanLoopActivationResults = v
-	return s
-}
-
 // SetHumanLoopArn sets the HumanLoopArn field's value.
 func (s *StartHumanLoopOutput) SetHumanLoopArn(v string) *StartHumanLoopOutput {
 	s.HumanLoopArn = &v
@@ -1348,7 +1388,7 @@ func (s *StartHumanLoopOutput) SetHumanLoopArn(v string) *StartHumanLoopOutput {
 type StopHumanLoopInput struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the human loop you want to stop.
+	// The name of the human loop that you want to stop.
 	//
 	// HumanLoopName is a required field
 	HumanLoopName *string `min:"1" type:"string" required:"true"`
@@ -1400,10 +1440,10 @@ func (s StopHumanLoopOutput) GoString() string {
 	return s.String()
 }
 
-// Your request has exceeded the allowed amount of requests.
+// You exceeded the maximum number of requests.
 type ThrottlingException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1420,17 +1460,17 @@ func (s ThrottlingException) GoString() string {
 
 func newErrorThrottlingException(v protocol.ResponseMetadata) error {
 	return &ThrottlingException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ThrottlingException) Code() string {
+func (s *ThrottlingException) Code() string {
 	return "ThrottlingException"
 }
 
 // Message returns the exception's message.
-func (s ThrottlingException) Message() string {
+func (s *ThrottlingException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1438,28 +1478,28 @@ func (s ThrottlingException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ThrottlingException) OrigErr() error {
+func (s *ThrottlingException) OrigErr() error {
 	return nil
 }
 
-func (s ThrottlingException) Error() string {
+func (s *ThrottlingException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ThrottlingException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ThrottlingException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ThrottlingException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ThrottlingException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// Your request was not valid. Check the syntax and try again.
+// The request isn't valid. Check the syntax and try again.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1476,17 +1516,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1494,22 +1534,22 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -1519,6 +1559,14 @@ const (
 	// ContentClassifierFreeOfAdultContent is a ContentClassifier enum value
 	ContentClassifierFreeOfAdultContent = "FreeOfAdultContent"
 )
+
+// ContentClassifier_Values returns all elements of the ContentClassifier enum
+func ContentClassifier_Values() []string {
+	return []string{
+		ContentClassifierFreeOfPersonallyIdentifiableInformation,
+		ContentClassifierFreeOfAdultContent,
+	}
+}
 
 const (
 	// HumanLoopStatusInProgress is a HumanLoopStatus enum value
@@ -1537,6 +1585,17 @@ const (
 	HumanLoopStatusStopping = "Stopping"
 )
 
+// HumanLoopStatus_Values returns all elements of the HumanLoopStatus enum
+func HumanLoopStatus_Values() []string {
+	return []string{
+		HumanLoopStatusInProgress,
+		HumanLoopStatusFailed,
+		HumanLoopStatusCompleted,
+		HumanLoopStatusStopped,
+		HumanLoopStatusStopping,
+	}
+}
+
 const (
 	// SortOrderAscending is a SortOrder enum value
 	SortOrderAscending = "Ascending"
@@ -1544,3 +1603,11 @@ const (
 	// SortOrderDescending is a SortOrder enum value
 	SortOrderDescending = "Descending"
 )
+
+// SortOrder_Values returns all elements of the SortOrder enum
+func SortOrder_Values() []string {
+	return []string{
+		SortOrderAscending,
+		SortOrderDescending,
+	}
+}

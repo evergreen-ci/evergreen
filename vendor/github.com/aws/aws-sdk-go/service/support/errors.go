@@ -38,7 +38,7 @@ const (
 	// "AttachmentSetSizeLimitExceeded".
 	//
 	// A limit for the size of an attachment set has been exceeded. The limits are
-	// 3 attachments and 5 MB per attachment.
+	// three attachments and 5 MB per attachment.
 	ErrCodeAttachmentSetSizeLimitExceeded = "AttachmentSetSizeLimitExceeded"
 
 	// ErrCodeCaseCreationLimitExceeded for service response error code
@@ -50,7 +50,7 @@ const (
 	// ErrCodeCaseIdNotFound for service response error code
 	// "CaseIdNotFound".
 	//
-	// The requested caseId could not be located.
+	// The requested caseId couldn't be located.
 	ErrCodeCaseIdNotFound = "CaseIdNotFound"
 
 	// ErrCodeDescribeAttachmentLimitExceeded for service response error code

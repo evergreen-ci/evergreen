@@ -64,6 +64,14 @@ type OutpostsAPI interface {
 	CreateOutpostWithContext(aws.Context, *outposts.CreateOutpostInput, ...request.Option) (*outposts.CreateOutpostOutput, error)
 	CreateOutpostRequest(*outposts.CreateOutpostInput) (*request.Request, *outposts.CreateOutpostOutput)
 
+	DeleteOutpost(*outposts.DeleteOutpostInput) (*outposts.DeleteOutpostOutput, error)
+	DeleteOutpostWithContext(aws.Context, *outposts.DeleteOutpostInput, ...request.Option) (*outposts.DeleteOutpostOutput, error)
+	DeleteOutpostRequest(*outposts.DeleteOutpostInput) (*request.Request, *outposts.DeleteOutpostOutput)
+
+	DeleteSite(*outposts.DeleteSiteInput) (*outposts.DeleteSiteOutput, error)
+	DeleteSiteWithContext(aws.Context, *outposts.DeleteSiteInput, ...request.Option) (*outposts.DeleteSiteOutput, error)
+	DeleteSiteRequest(*outposts.DeleteSiteInput) (*request.Request, *outposts.DeleteSiteOutput)
+
 	GetOutpost(*outposts.GetOutpostInput) (*outposts.GetOutpostOutput, error)
 	GetOutpostWithContext(aws.Context, *outposts.GetOutpostInput, ...request.Option) (*outposts.GetOutpostOutput, error)
 	GetOutpostRequest(*outposts.GetOutpostInput) (*request.Request, *outposts.GetOutpostOutput)
@@ -85,6 +93,18 @@ type OutpostsAPI interface {
 
 	ListSitesPages(*outposts.ListSitesInput, func(*outposts.ListSitesOutput, bool) bool) error
 	ListSitesPagesWithContext(aws.Context, *outposts.ListSitesInput, func(*outposts.ListSitesOutput, bool) bool, ...request.Option) error
+
+	ListTagsForResource(*outposts.ListTagsForResourceInput) (*outposts.ListTagsForResourceOutput, error)
+	ListTagsForResourceWithContext(aws.Context, *outposts.ListTagsForResourceInput, ...request.Option) (*outposts.ListTagsForResourceOutput, error)
+	ListTagsForResourceRequest(*outposts.ListTagsForResourceInput) (*request.Request, *outposts.ListTagsForResourceOutput)
+
+	TagResource(*outposts.TagResourceInput) (*outposts.TagResourceOutput, error)
+	TagResourceWithContext(aws.Context, *outposts.TagResourceInput, ...request.Option) (*outposts.TagResourceOutput, error)
+	TagResourceRequest(*outposts.TagResourceInput) (*request.Request, *outposts.TagResourceOutput)
+
+	UntagResource(*outposts.UntagResourceInput) (*outposts.UntagResourceOutput, error)
+	UntagResourceWithContext(aws.Context, *outposts.UntagResourceInput, ...request.Option) (*outposts.UntagResourceOutput, error)
+	UntagResourceRequest(*outposts.UntagResourceInput) (*request.Request, *outposts.UntagResourceOutput)
 }
 
 var _ OutpostsAPI = (*outposts.Outposts)(nil)

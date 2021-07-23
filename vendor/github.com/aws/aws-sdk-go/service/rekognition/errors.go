@@ -32,8 +32,9 @@ const (
 	// ErrCodeImageTooLargeException for service response error code
 	// "ImageTooLargeException".
 	//
-	// The input image size exceeds the allowed limit. For more information, see
-	// Limits in Amazon Rekognition in the Amazon Rekognition Developer Guide.
+	// The input image size exceeds the allowed limit. If you are calling DetectProtectiveEquipment,
+	// the image size or resolution exceeds the allowed limit. For more information,
+	// see Limits in Amazon Rekognition in the Amazon Rekognition Developer Guide.
 	ErrCodeImageTooLargeException = "ImageTooLargeException"
 
 	// ErrCodeInternalServerError for service response error code
@@ -87,17 +88,19 @@ const (
 	// ErrCodeResourceAlreadyExistsException for service response error code
 	// "ResourceAlreadyExistsException".
 	//
-	// A collection with the specified ID already exists.
+	// A resource with the specified ID already exists.
 	ErrCodeResourceAlreadyExistsException = "ResourceAlreadyExistsException"
 
 	// ErrCodeResourceInUseException for service response error code
 	// "ResourceInUseException".
+	//
+	// The specified resource is already being used.
 	ErrCodeResourceInUseException = "ResourceInUseException"
 
 	// ErrCodeResourceNotFoundException for service response error code
 	// "ResourceNotFoundException".
 	//
-	// The collection specified in the request cannot be found.
+	// The resource specified in the request cannot be found.
 	ErrCodeResourceNotFoundException = "ResourceNotFoundException"
 
 	// ErrCodeResourceNotReadyException for service response error code
@@ -106,6 +109,13 @@ const (
 	// The requested resource isn't ready. For example, this exception occurs when
 	// you call DetectCustomLabels with a model version that isn't deployed.
 	ErrCodeResourceNotReadyException = "ResourceNotReadyException"
+
+	// ErrCodeServiceQuotaExceededException for service response error code
+	// "ServiceQuotaExceededException".
+	//
+	// The size of the collection exceeds the allowed limit. For more information,
+	// see Limits in Amazon Rekognition in the Amazon Rekognition Developer Guide.
+	ErrCodeServiceQuotaExceededException = "ServiceQuotaExceededException"
 
 	// ErrCodeThrottlingException for service response error code
 	// "ThrottlingException".
@@ -118,7 +128,7 @@ const (
 	// "VideoTooLargeException".
 	//
 	// The file size or duration of the supplied media is too large. The maximum
-	// file size is 8GB. The maximum duration is 2 hours.
+	// file size is 10GB. The maximum duration is 6 hours.
 	ErrCodeVideoTooLargeException = "VideoTooLargeException"
 )
 
@@ -138,6 +148,7 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"ResourceInUseException":                 newErrorResourceInUseException,
 	"ResourceNotFoundException":              newErrorResourceNotFoundException,
 	"ResourceNotReadyException":              newErrorResourceNotReadyException,
+	"ServiceQuotaExceededException":          newErrorServiceQuotaExceededException,
 	"ThrottlingException":                    newErrorThrottlingException,
 	"VideoTooLargeException":                 newErrorVideoTooLargeException,
 }

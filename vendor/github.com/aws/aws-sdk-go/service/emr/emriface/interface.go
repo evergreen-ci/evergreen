@@ -84,9 +84,25 @@ type EMRAPI interface {
 	CreateSecurityConfigurationWithContext(aws.Context, *emr.CreateSecurityConfigurationInput, ...request.Option) (*emr.CreateSecurityConfigurationOutput, error)
 	CreateSecurityConfigurationRequest(*emr.CreateSecurityConfigurationInput) (*request.Request, *emr.CreateSecurityConfigurationOutput)
 
+	CreateStudio(*emr.CreateStudioInput) (*emr.CreateStudioOutput, error)
+	CreateStudioWithContext(aws.Context, *emr.CreateStudioInput, ...request.Option) (*emr.CreateStudioOutput, error)
+	CreateStudioRequest(*emr.CreateStudioInput) (*request.Request, *emr.CreateStudioOutput)
+
+	CreateStudioSessionMapping(*emr.CreateStudioSessionMappingInput) (*emr.CreateStudioSessionMappingOutput, error)
+	CreateStudioSessionMappingWithContext(aws.Context, *emr.CreateStudioSessionMappingInput, ...request.Option) (*emr.CreateStudioSessionMappingOutput, error)
+	CreateStudioSessionMappingRequest(*emr.CreateStudioSessionMappingInput) (*request.Request, *emr.CreateStudioSessionMappingOutput)
+
 	DeleteSecurityConfiguration(*emr.DeleteSecurityConfigurationInput) (*emr.DeleteSecurityConfigurationOutput, error)
 	DeleteSecurityConfigurationWithContext(aws.Context, *emr.DeleteSecurityConfigurationInput, ...request.Option) (*emr.DeleteSecurityConfigurationOutput, error)
 	DeleteSecurityConfigurationRequest(*emr.DeleteSecurityConfigurationInput) (*request.Request, *emr.DeleteSecurityConfigurationOutput)
+
+	DeleteStudio(*emr.DeleteStudioInput) (*emr.DeleteStudioOutput, error)
+	DeleteStudioWithContext(aws.Context, *emr.DeleteStudioInput, ...request.Option) (*emr.DeleteStudioOutput, error)
+	DeleteStudioRequest(*emr.DeleteStudioInput) (*request.Request, *emr.DeleteStudioOutput)
+
+	DeleteStudioSessionMapping(*emr.DeleteStudioSessionMappingInput) (*emr.DeleteStudioSessionMappingOutput, error)
+	DeleteStudioSessionMappingWithContext(aws.Context, *emr.DeleteStudioSessionMappingInput, ...request.Option) (*emr.DeleteStudioSessionMappingOutput, error)
+	DeleteStudioSessionMappingRequest(*emr.DeleteStudioSessionMappingInput) (*request.Request, *emr.DeleteStudioSessionMappingOutput)
 
 	DescribeCluster(*emr.DescribeClusterInput) (*emr.DescribeClusterOutput, error)
 	DescribeClusterWithContext(aws.Context, *emr.DescribeClusterInput, ...request.Option) (*emr.DescribeClusterOutput, error)
@@ -96,6 +112,10 @@ type EMRAPI interface {
 	DescribeJobFlowsWithContext(aws.Context, *emr.DescribeJobFlowsInput, ...request.Option) (*emr.DescribeJobFlowsOutput, error)
 	DescribeJobFlowsRequest(*emr.DescribeJobFlowsInput) (*request.Request, *emr.DescribeJobFlowsOutput)
 
+	DescribeNotebookExecution(*emr.DescribeNotebookExecutionInput) (*emr.DescribeNotebookExecutionOutput, error)
+	DescribeNotebookExecutionWithContext(aws.Context, *emr.DescribeNotebookExecutionInput, ...request.Option) (*emr.DescribeNotebookExecutionOutput, error)
+	DescribeNotebookExecutionRequest(*emr.DescribeNotebookExecutionInput) (*request.Request, *emr.DescribeNotebookExecutionOutput)
+
 	DescribeSecurityConfiguration(*emr.DescribeSecurityConfigurationInput) (*emr.DescribeSecurityConfigurationOutput, error)
 	DescribeSecurityConfigurationWithContext(aws.Context, *emr.DescribeSecurityConfigurationInput, ...request.Option) (*emr.DescribeSecurityConfigurationOutput, error)
 	DescribeSecurityConfigurationRequest(*emr.DescribeSecurityConfigurationInput) (*request.Request, *emr.DescribeSecurityConfigurationOutput)
@@ -104,9 +124,21 @@ type EMRAPI interface {
 	DescribeStepWithContext(aws.Context, *emr.DescribeStepInput, ...request.Option) (*emr.DescribeStepOutput, error)
 	DescribeStepRequest(*emr.DescribeStepInput) (*request.Request, *emr.DescribeStepOutput)
 
+	DescribeStudio(*emr.DescribeStudioInput) (*emr.DescribeStudioOutput, error)
+	DescribeStudioWithContext(aws.Context, *emr.DescribeStudioInput, ...request.Option) (*emr.DescribeStudioOutput, error)
+	DescribeStudioRequest(*emr.DescribeStudioInput) (*request.Request, *emr.DescribeStudioOutput)
+
 	GetBlockPublicAccessConfiguration(*emr.GetBlockPublicAccessConfigurationInput) (*emr.GetBlockPublicAccessConfigurationOutput, error)
 	GetBlockPublicAccessConfigurationWithContext(aws.Context, *emr.GetBlockPublicAccessConfigurationInput, ...request.Option) (*emr.GetBlockPublicAccessConfigurationOutput, error)
 	GetBlockPublicAccessConfigurationRequest(*emr.GetBlockPublicAccessConfigurationInput) (*request.Request, *emr.GetBlockPublicAccessConfigurationOutput)
+
+	GetManagedScalingPolicy(*emr.GetManagedScalingPolicyInput) (*emr.GetManagedScalingPolicyOutput, error)
+	GetManagedScalingPolicyWithContext(aws.Context, *emr.GetManagedScalingPolicyInput, ...request.Option) (*emr.GetManagedScalingPolicyOutput, error)
+	GetManagedScalingPolicyRequest(*emr.GetManagedScalingPolicyInput) (*request.Request, *emr.GetManagedScalingPolicyOutput)
+
+	GetStudioSessionMapping(*emr.GetStudioSessionMappingInput) (*emr.GetStudioSessionMappingOutput, error)
+	GetStudioSessionMappingWithContext(aws.Context, *emr.GetStudioSessionMappingInput, ...request.Option) (*emr.GetStudioSessionMappingOutput, error)
+	GetStudioSessionMappingRequest(*emr.GetStudioSessionMappingInput) (*request.Request, *emr.GetStudioSessionMappingOutput)
 
 	ListBootstrapActions(*emr.ListBootstrapActionsInput) (*emr.ListBootstrapActionsOutput, error)
 	ListBootstrapActionsWithContext(aws.Context, *emr.ListBootstrapActionsInput, ...request.Option) (*emr.ListBootstrapActionsOutput, error)
@@ -143,6 +175,13 @@ type EMRAPI interface {
 	ListInstancesPages(*emr.ListInstancesInput, func(*emr.ListInstancesOutput, bool) bool) error
 	ListInstancesPagesWithContext(aws.Context, *emr.ListInstancesInput, func(*emr.ListInstancesOutput, bool) bool, ...request.Option) error
 
+	ListNotebookExecutions(*emr.ListNotebookExecutionsInput) (*emr.ListNotebookExecutionsOutput, error)
+	ListNotebookExecutionsWithContext(aws.Context, *emr.ListNotebookExecutionsInput, ...request.Option) (*emr.ListNotebookExecutionsOutput, error)
+	ListNotebookExecutionsRequest(*emr.ListNotebookExecutionsInput) (*request.Request, *emr.ListNotebookExecutionsOutput)
+
+	ListNotebookExecutionsPages(*emr.ListNotebookExecutionsInput, func(*emr.ListNotebookExecutionsOutput, bool) bool) error
+	ListNotebookExecutionsPagesWithContext(aws.Context, *emr.ListNotebookExecutionsInput, func(*emr.ListNotebookExecutionsOutput, bool) bool, ...request.Option) error
+
 	ListSecurityConfigurations(*emr.ListSecurityConfigurationsInput) (*emr.ListSecurityConfigurationsOutput, error)
 	ListSecurityConfigurationsWithContext(aws.Context, *emr.ListSecurityConfigurationsInput, ...request.Option) (*emr.ListSecurityConfigurationsOutput, error)
 	ListSecurityConfigurationsRequest(*emr.ListSecurityConfigurationsInput) (*request.Request, *emr.ListSecurityConfigurationsOutput)
@@ -156,6 +195,20 @@ type EMRAPI interface {
 
 	ListStepsPages(*emr.ListStepsInput, func(*emr.ListStepsOutput, bool) bool) error
 	ListStepsPagesWithContext(aws.Context, *emr.ListStepsInput, func(*emr.ListStepsOutput, bool) bool, ...request.Option) error
+
+	ListStudioSessionMappings(*emr.ListStudioSessionMappingsInput) (*emr.ListStudioSessionMappingsOutput, error)
+	ListStudioSessionMappingsWithContext(aws.Context, *emr.ListStudioSessionMappingsInput, ...request.Option) (*emr.ListStudioSessionMappingsOutput, error)
+	ListStudioSessionMappingsRequest(*emr.ListStudioSessionMappingsInput) (*request.Request, *emr.ListStudioSessionMappingsOutput)
+
+	ListStudioSessionMappingsPages(*emr.ListStudioSessionMappingsInput, func(*emr.ListStudioSessionMappingsOutput, bool) bool) error
+	ListStudioSessionMappingsPagesWithContext(aws.Context, *emr.ListStudioSessionMappingsInput, func(*emr.ListStudioSessionMappingsOutput, bool) bool, ...request.Option) error
+
+	ListStudios(*emr.ListStudiosInput) (*emr.ListStudiosOutput, error)
+	ListStudiosWithContext(aws.Context, *emr.ListStudiosInput, ...request.Option) (*emr.ListStudiosOutput, error)
+	ListStudiosRequest(*emr.ListStudiosInput) (*request.Request, *emr.ListStudiosOutput)
+
+	ListStudiosPages(*emr.ListStudiosInput, func(*emr.ListStudiosOutput, bool) bool) error
+	ListStudiosPagesWithContext(aws.Context, *emr.ListStudiosInput, func(*emr.ListStudiosOutput, bool) bool, ...request.Option) error
 
 	ModifyCluster(*emr.ModifyClusterInput) (*emr.ModifyClusterOutput, error)
 	ModifyClusterWithContext(aws.Context, *emr.ModifyClusterInput, ...request.Option) (*emr.ModifyClusterOutput, error)
@@ -177,9 +230,17 @@ type EMRAPI interface {
 	PutBlockPublicAccessConfigurationWithContext(aws.Context, *emr.PutBlockPublicAccessConfigurationInput, ...request.Option) (*emr.PutBlockPublicAccessConfigurationOutput, error)
 	PutBlockPublicAccessConfigurationRequest(*emr.PutBlockPublicAccessConfigurationInput) (*request.Request, *emr.PutBlockPublicAccessConfigurationOutput)
 
+	PutManagedScalingPolicy(*emr.PutManagedScalingPolicyInput) (*emr.PutManagedScalingPolicyOutput, error)
+	PutManagedScalingPolicyWithContext(aws.Context, *emr.PutManagedScalingPolicyInput, ...request.Option) (*emr.PutManagedScalingPolicyOutput, error)
+	PutManagedScalingPolicyRequest(*emr.PutManagedScalingPolicyInput) (*request.Request, *emr.PutManagedScalingPolicyOutput)
+
 	RemoveAutoScalingPolicy(*emr.RemoveAutoScalingPolicyInput) (*emr.RemoveAutoScalingPolicyOutput, error)
 	RemoveAutoScalingPolicyWithContext(aws.Context, *emr.RemoveAutoScalingPolicyInput, ...request.Option) (*emr.RemoveAutoScalingPolicyOutput, error)
 	RemoveAutoScalingPolicyRequest(*emr.RemoveAutoScalingPolicyInput) (*request.Request, *emr.RemoveAutoScalingPolicyOutput)
+
+	RemoveManagedScalingPolicy(*emr.RemoveManagedScalingPolicyInput) (*emr.RemoveManagedScalingPolicyOutput, error)
+	RemoveManagedScalingPolicyWithContext(aws.Context, *emr.RemoveManagedScalingPolicyInput, ...request.Option) (*emr.RemoveManagedScalingPolicyOutput, error)
+	RemoveManagedScalingPolicyRequest(*emr.RemoveManagedScalingPolicyInput) (*request.Request, *emr.RemoveManagedScalingPolicyOutput)
 
 	RemoveTags(*emr.RemoveTagsInput) (*emr.RemoveTagsOutput, error)
 	RemoveTagsWithContext(aws.Context, *emr.RemoveTagsInput, ...request.Option) (*emr.RemoveTagsOutput, error)
@@ -197,9 +258,25 @@ type EMRAPI interface {
 	SetVisibleToAllUsersWithContext(aws.Context, *emr.SetVisibleToAllUsersInput, ...request.Option) (*emr.SetVisibleToAllUsersOutput, error)
 	SetVisibleToAllUsersRequest(*emr.SetVisibleToAllUsersInput) (*request.Request, *emr.SetVisibleToAllUsersOutput)
 
+	StartNotebookExecution(*emr.StartNotebookExecutionInput) (*emr.StartNotebookExecutionOutput, error)
+	StartNotebookExecutionWithContext(aws.Context, *emr.StartNotebookExecutionInput, ...request.Option) (*emr.StartNotebookExecutionOutput, error)
+	StartNotebookExecutionRequest(*emr.StartNotebookExecutionInput) (*request.Request, *emr.StartNotebookExecutionOutput)
+
+	StopNotebookExecution(*emr.StopNotebookExecutionInput) (*emr.StopNotebookExecutionOutput, error)
+	StopNotebookExecutionWithContext(aws.Context, *emr.StopNotebookExecutionInput, ...request.Option) (*emr.StopNotebookExecutionOutput, error)
+	StopNotebookExecutionRequest(*emr.StopNotebookExecutionInput) (*request.Request, *emr.StopNotebookExecutionOutput)
+
 	TerminateJobFlows(*emr.TerminateJobFlowsInput) (*emr.TerminateJobFlowsOutput, error)
 	TerminateJobFlowsWithContext(aws.Context, *emr.TerminateJobFlowsInput, ...request.Option) (*emr.TerminateJobFlowsOutput, error)
 	TerminateJobFlowsRequest(*emr.TerminateJobFlowsInput) (*request.Request, *emr.TerminateJobFlowsOutput)
+
+	UpdateStudio(*emr.UpdateStudioInput) (*emr.UpdateStudioOutput, error)
+	UpdateStudioWithContext(aws.Context, *emr.UpdateStudioInput, ...request.Option) (*emr.UpdateStudioOutput, error)
+	UpdateStudioRequest(*emr.UpdateStudioInput) (*request.Request, *emr.UpdateStudioOutput)
+
+	UpdateStudioSessionMapping(*emr.UpdateStudioSessionMappingInput) (*emr.UpdateStudioSessionMappingOutput, error)
+	UpdateStudioSessionMappingWithContext(aws.Context, *emr.UpdateStudioSessionMappingInput, ...request.Option) (*emr.UpdateStudioSessionMappingOutput, error)
+	UpdateStudioSessionMappingRequest(*emr.UpdateStudioSessionMappingInput) (*request.Request, *emr.UpdateStudioSessionMappingOutput)
 
 	WaitUntilClusterRunning(*emr.DescribeClusterInput) error
 	WaitUntilClusterRunningWithContext(aws.Context, *emr.DescribeClusterInput, ...request.WaiterOption) error

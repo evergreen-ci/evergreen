@@ -108,9 +108,17 @@ type GlueAPI interface {
 	BatchStopJobRunWithContext(aws.Context, *glue.BatchStopJobRunInput, ...request.Option) (*glue.BatchStopJobRunOutput, error)
 	BatchStopJobRunRequest(*glue.BatchStopJobRunInput) (*request.Request, *glue.BatchStopJobRunOutput)
 
+	BatchUpdatePartition(*glue.BatchUpdatePartitionInput) (*glue.BatchUpdatePartitionOutput, error)
+	BatchUpdatePartitionWithContext(aws.Context, *glue.BatchUpdatePartitionInput, ...request.Option) (*glue.BatchUpdatePartitionOutput, error)
+	BatchUpdatePartitionRequest(*glue.BatchUpdatePartitionInput) (*request.Request, *glue.BatchUpdatePartitionOutput)
+
 	CancelMLTaskRun(*glue.CancelMLTaskRunInput) (*glue.CancelMLTaskRunOutput, error)
 	CancelMLTaskRunWithContext(aws.Context, *glue.CancelMLTaskRunInput, ...request.Option) (*glue.CancelMLTaskRunOutput, error)
 	CancelMLTaskRunRequest(*glue.CancelMLTaskRunInput) (*request.Request, *glue.CancelMLTaskRunOutput)
+
+	CheckSchemaVersionValidity(*glue.CheckSchemaVersionValidityInput) (*glue.CheckSchemaVersionValidityOutput, error)
+	CheckSchemaVersionValidityWithContext(aws.Context, *glue.CheckSchemaVersionValidityInput, ...request.Option) (*glue.CheckSchemaVersionValidityOutput, error)
+	CheckSchemaVersionValidityRequest(*glue.CheckSchemaVersionValidityInput) (*request.Request, *glue.CheckSchemaVersionValidityOutput)
 
 	CreateClassifier(*glue.CreateClassifierInput) (*glue.CreateClassifierOutput, error)
 	CreateClassifierWithContext(aws.Context, *glue.CreateClassifierInput, ...request.Option) (*glue.CreateClassifierOutput, error)
@@ -144,6 +152,18 @@ type GlueAPI interface {
 	CreatePartitionWithContext(aws.Context, *glue.CreatePartitionInput, ...request.Option) (*glue.CreatePartitionOutput, error)
 	CreatePartitionRequest(*glue.CreatePartitionInput) (*request.Request, *glue.CreatePartitionOutput)
 
+	CreatePartitionIndex(*glue.CreatePartitionIndexInput) (*glue.CreatePartitionIndexOutput, error)
+	CreatePartitionIndexWithContext(aws.Context, *glue.CreatePartitionIndexInput, ...request.Option) (*glue.CreatePartitionIndexOutput, error)
+	CreatePartitionIndexRequest(*glue.CreatePartitionIndexInput) (*request.Request, *glue.CreatePartitionIndexOutput)
+
+	CreateRegistry(*glue.CreateRegistryInput) (*glue.CreateRegistryOutput, error)
+	CreateRegistryWithContext(aws.Context, *glue.CreateRegistryInput, ...request.Option) (*glue.CreateRegistryOutput, error)
+	CreateRegistryRequest(*glue.CreateRegistryInput) (*request.Request, *glue.CreateRegistryOutput)
+
+	CreateSchema(*glue.CreateSchemaInput) (*glue.CreateSchemaOutput, error)
+	CreateSchemaWithContext(aws.Context, *glue.CreateSchemaInput, ...request.Option) (*glue.CreateSchemaOutput, error)
+	CreateSchemaRequest(*glue.CreateSchemaInput) (*request.Request, *glue.CreateSchemaOutput)
+
 	CreateScript(*glue.CreateScriptInput) (*glue.CreateScriptOutput, error)
 	CreateScriptWithContext(aws.Context, *glue.CreateScriptInput, ...request.Option) (*glue.CreateScriptOutput, error)
 	CreateScriptRequest(*glue.CreateScriptInput) (*request.Request, *glue.CreateScriptOutput)
@@ -171,6 +191,14 @@ type GlueAPI interface {
 	DeleteClassifier(*glue.DeleteClassifierInput) (*glue.DeleteClassifierOutput, error)
 	DeleteClassifierWithContext(aws.Context, *glue.DeleteClassifierInput, ...request.Option) (*glue.DeleteClassifierOutput, error)
 	DeleteClassifierRequest(*glue.DeleteClassifierInput) (*request.Request, *glue.DeleteClassifierOutput)
+
+	DeleteColumnStatisticsForPartition(*glue.DeleteColumnStatisticsForPartitionInput) (*glue.DeleteColumnStatisticsForPartitionOutput, error)
+	DeleteColumnStatisticsForPartitionWithContext(aws.Context, *glue.DeleteColumnStatisticsForPartitionInput, ...request.Option) (*glue.DeleteColumnStatisticsForPartitionOutput, error)
+	DeleteColumnStatisticsForPartitionRequest(*glue.DeleteColumnStatisticsForPartitionInput) (*request.Request, *glue.DeleteColumnStatisticsForPartitionOutput)
+
+	DeleteColumnStatisticsForTable(*glue.DeleteColumnStatisticsForTableInput) (*glue.DeleteColumnStatisticsForTableOutput, error)
+	DeleteColumnStatisticsForTableWithContext(aws.Context, *glue.DeleteColumnStatisticsForTableInput, ...request.Option) (*glue.DeleteColumnStatisticsForTableOutput, error)
+	DeleteColumnStatisticsForTableRequest(*glue.DeleteColumnStatisticsForTableInput) (*request.Request, *glue.DeleteColumnStatisticsForTableOutput)
 
 	DeleteConnection(*glue.DeleteConnectionInput) (*glue.DeleteConnectionOutput, error)
 	DeleteConnectionWithContext(aws.Context, *glue.DeleteConnectionInput, ...request.Option) (*glue.DeleteConnectionOutput, error)
@@ -200,9 +228,25 @@ type GlueAPI interface {
 	DeletePartitionWithContext(aws.Context, *glue.DeletePartitionInput, ...request.Option) (*glue.DeletePartitionOutput, error)
 	DeletePartitionRequest(*glue.DeletePartitionInput) (*request.Request, *glue.DeletePartitionOutput)
 
+	DeletePartitionIndex(*glue.DeletePartitionIndexInput) (*glue.DeletePartitionIndexOutput, error)
+	DeletePartitionIndexWithContext(aws.Context, *glue.DeletePartitionIndexInput, ...request.Option) (*glue.DeletePartitionIndexOutput, error)
+	DeletePartitionIndexRequest(*glue.DeletePartitionIndexInput) (*request.Request, *glue.DeletePartitionIndexOutput)
+
+	DeleteRegistry(*glue.DeleteRegistryInput) (*glue.DeleteRegistryOutput, error)
+	DeleteRegistryWithContext(aws.Context, *glue.DeleteRegistryInput, ...request.Option) (*glue.DeleteRegistryOutput, error)
+	DeleteRegistryRequest(*glue.DeleteRegistryInput) (*request.Request, *glue.DeleteRegistryOutput)
+
 	DeleteResourcePolicy(*glue.DeleteResourcePolicyInput) (*glue.DeleteResourcePolicyOutput, error)
 	DeleteResourcePolicyWithContext(aws.Context, *glue.DeleteResourcePolicyInput, ...request.Option) (*glue.DeleteResourcePolicyOutput, error)
 	DeleteResourcePolicyRequest(*glue.DeleteResourcePolicyInput) (*request.Request, *glue.DeleteResourcePolicyOutput)
+
+	DeleteSchema(*glue.DeleteSchemaInput) (*glue.DeleteSchemaOutput, error)
+	DeleteSchemaWithContext(aws.Context, *glue.DeleteSchemaInput, ...request.Option) (*glue.DeleteSchemaOutput, error)
+	DeleteSchemaRequest(*glue.DeleteSchemaInput) (*request.Request, *glue.DeleteSchemaOutput)
+
+	DeleteSchemaVersions(*glue.DeleteSchemaVersionsInput) (*glue.DeleteSchemaVersionsOutput, error)
+	DeleteSchemaVersionsWithContext(aws.Context, *glue.DeleteSchemaVersionsInput, ...request.Option) (*glue.DeleteSchemaVersionsOutput, error)
+	DeleteSchemaVersionsRequest(*glue.DeleteSchemaVersionsInput) (*request.Request, *glue.DeleteSchemaVersionsOutput)
 
 	DeleteSecurityConfiguration(*glue.DeleteSecurityConfigurationInput) (*glue.DeleteSecurityConfigurationOutput, error)
 	DeleteSecurityConfigurationWithContext(aws.Context, *glue.DeleteSecurityConfigurationInput, ...request.Option) (*glue.DeleteSecurityConfigurationOutput, error)
@@ -242,6 +286,14 @@ type GlueAPI interface {
 
 	GetClassifiersPages(*glue.GetClassifiersInput, func(*glue.GetClassifiersOutput, bool) bool) error
 	GetClassifiersPagesWithContext(aws.Context, *glue.GetClassifiersInput, func(*glue.GetClassifiersOutput, bool) bool, ...request.Option) error
+
+	GetColumnStatisticsForPartition(*glue.GetColumnStatisticsForPartitionInput) (*glue.GetColumnStatisticsForPartitionOutput, error)
+	GetColumnStatisticsForPartitionWithContext(aws.Context, *glue.GetColumnStatisticsForPartitionInput, ...request.Option) (*glue.GetColumnStatisticsForPartitionOutput, error)
+	GetColumnStatisticsForPartitionRequest(*glue.GetColumnStatisticsForPartitionInput) (*request.Request, *glue.GetColumnStatisticsForPartitionOutput)
+
+	GetColumnStatisticsForTable(*glue.GetColumnStatisticsForTableInput) (*glue.GetColumnStatisticsForTableOutput, error)
+	GetColumnStatisticsForTableWithContext(aws.Context, *glue.GetColumnStatisticsForTableInput, ...request.Option) (*glue.GetColumnStatisticsForTableOutput, error)
+	GetColumnStatisticsForTableRequest(*glue.GetColumnStatisticsForTableInput) (*request.Request, *glue.GetColumnStatisticsForTableOutput)
 
 	GetConnection(*glue.GetConnectionInput) (*glue.GetConnectionOutput, error)
 	GetConnectionWithContext(aws.Context, *glue.GetConnectionInput, ...request.Option) (*glue.GetConnectionOutput, error)
@@ -358,6 +410,13 @@ type GlueAPI interface {
 	GetPartitionWithContext(aws.Context, *glue.GetPartitionInput, ...request.Option) (*glue.GetPartitionOutput, error)
 	GetPartitionRequest(*glue.GetPartitionInput) (*request.Request, *glue.GetPartitionOutput)
 
+	GetPartitionIndexes(*glue.GetPartitionIndexesInput) (*glue.GetPartitionIndexesOutput, error)
+	GetPartitionIndexesWithContext(aws.Context, *glue.GetPartitionIndexesInput, ...request.Option) (*glue.GetPartitionIndexesOutput, error)
+	GetPartitionIndexesRequest(*glue.GetPartitionIndexesInput) (*request.Request, *glue.GetPartitionIndexesOutput)
+
+	GetPartitionIndexesPages(*glue.GetPartitionIndexesInput, func(*glue.GetPartitionIndexesOutput, bool) bool) error
+	GetPartitionIndexesPagesWithContext(aws.Context, *glue.GetPartitionIndexesInput, func(*glue.GetPartitionIndexesOutput, bool) bool, ...request.Option) error
+
 	GetPartitions(*glue.GetPartitionsInput) (*glue.GetPartitionsOutput, error)
 	GetPartitionsWithContext(aws.Context, *glue.GetPartitionsInput, ...request.Option) (*glue.GetPartitionsOutput, error)
 	GetPartitionsRequest(*glue.GetPartitionsInput) (*request.Request, *glue.GetPartitionsOutput)
@@ -369,9 +428,36 @@ type GlueAPI interface {
 	GetPlanWithContext(aws.Context, *glue.GetPlanInput, ...request.Option) (*glue.GetPlanOutput, error)
 	GetPlanRequest(*glue.GetPlanInput) (*request.Request, *glue.GetPlanOutput)
 
+	GetRegistry(*glue.GetRegistryInput) (*glue.GetRegistryOutput, error)
+	GetRegistryWithContext(aws.Context, *glue.GetRegistryInput, ...request.Option) (*glue.GetRegistryOutput, error)
+	GetRegistryRequest(*glue.GetRegistryInput) (*request.Request, *glue.GetRegistryOutput)
+
+	GetResourcePolicies(*glue.GetResourcePoliciesInput) (*glue.GetResourcePoliciesOutput, error)
+	GetResourcePoliciesWithContext(aws.Context, *glue.GetResourcePoliciesInput, ...request.Option) (*glue.GetResourcePoliciesOutput, error)
+	GetResourcePoliciesRequest(*glue.GetResourcePoliciesInput) (*request.Request, *glue.GetResourcePoliciesOutput)
+
+	GetResourcePoliciesPages(*glue.GetResourcePoliciesInput, func(*glue.GetResourcePoliciesOutput, bool) bool) error
+	GetResourcePoliciesPagesWithContext(aws.Context, *glue.GetResourcePoliciesInput, func(*glue.GetResourcePoliciesOutput, bool) bool, ...request.Option) error
+
 	GetResourcePolicy(*glue.GetResourcePolicyInput) (*glue.GetResourcePolicyOutput, error)
 	GetResourcePolicyWithContext(aws.Context, *glue.GetResourcePolicyInput, ...request.Option) (*glue.GetResourcePolicyOutput, error)
 	GetResourcePolicyRequest(*glue.GetResourcePolicyInput) (*request.Request, *glue.GetResourcePolicyOutput)
+
+	GetSchema(*glue.GetSchemaInput) (*glue.GetSchemaOutput, error)
+	GetSchemaWithContext(aws.Context, *glue.GetSchemaInput, ...request.Option) (*glue.GetSchemaOutput, error)
+	GetSchemaRequest(*glue.GetSchemaInput) (*request.Request, *glue.GetSchemaOutput)
+
+	GetSchemaByDefinition(*glue.GetSchemaByDefinitionInput) (*glue.GetSchemaByDefinitionOutput, error)
+	GetSchemaByDefinitionWithContext(aws.Context, *glue.GetSchemaByDefinitionInput, ...request.Option) (*glue.GetSchemaByDefinitionOutput, error)
+	GetSchemaByDefinitionRequest(*glue.GetSchemaByDefinitionInput) (*request.Request, *glue.GetSchemaByDefinitionOutput)
+
+	GetSchemaVersion(*glue.GetSchemaVersionInput) (*glue.GetSchemaVersionOutput, error)
+	GetSchemaVersionWithContext(aws.Context, *glue.GetSchemaVersionInput, ...request.Option) (*glue.GetSchemaVersionOutput, error)
+	GetSchemaVersionRequest(*glue.GetSchemaVersionInput) (*request.Request, *glue.GetSchemaVersionOutput)
+
+	GetSchemaVersionsDiff(*glue.GetSchemaVersionsDiffInput) (*glue.GetSchemaVersionsDiffOutput, error)
+	GetSchemaVersionsDiffWithContext(aws.Context, *glue.GetSchemaVersionsDiffInput, ...request.Option) (*glue.GetSchemaVersionsDiffOutput, error)
+	GetSchemaVersionsDiffRequest(*glue.GetSchemaVersionsDiffInput) (*request.Request, *glue.GetSchemaVersionsDiffOutput)
 
 	GetSecurityConfiguration(*glue.GetSecurityConfigurationInput) (*glue.GetSecurityConfigurationOutput, error)
 	GetSecurityConfigurationWithContext(aws.Context, *glue.GetSecurityConfigurationInput, ...request.Option) (*glue.GetSecurityConfigurationOutput, error)
@@ -476,6 +562,34 @@ type GlueAPI interface {
 	ListJobsPages(*glue.ListJobsInput, func(*glue.ListJobsOutput, bool) bool) error
 	ListJobsPagesWithContext(aws.Context, *glue.ListJobsInput, func(*glue.ListJobsOutput, bool) bool, ...request.Option) error
 
+	ListMLTransforms(*glue.ListMLTransformsInput) (*glue.ListMLTransformsOutput, error)
+	ListMLTransformsWithContext(aws.Context, *glue.ListMLTransformsInput, ...request.Option) (*glue.ListMLTransformsOutput, error)
+	ListMLTransformsRequest(*glue.ListMLTransformsInput) (*request.Request, *glue.ListMLTransformsOutput)
+
+	ListMLTransformsPages(*glue.ListMLTransformsInput, func(*glue.ListMLTransformsOutput, bool) bool) error
+	ListMLTransformsPagesWithContext(aws.Context, *glue.ListMLTransformsInput, func(*glue.ListMLTransformsOutput, bool) bool, ...request.Option) error
+
+	ListRegistries(*glue.ListRegistriesInput) (*glue.ListRegistriesOutput, error)
+	ListRegistriesWithContext(aws.Context, *glue.ListRegistriesInput, ...request.Option) (*glue.ListRegistriesOutput, error)
+	ListRegistriesRequest(*glue.ListRegistriesInput) (*request.Request, *glue.ListRegistriesOutput)
+
+	ListRegistriesPages(*glue.ListRegistriesInput, func(*glue.ListRegistriesOutput, bool) bool) error
+	ListRegistriesPagesWithContext(aws.Context, *glue.ListRegistriesInput, func(*glue.ListRegistriesOutput, bool) bool, ...request.Option) error
+
+	ListSchemaVersions(*glue.ListSchemaVersionsInput) (*glue.ListSchemaVersionsOutput, error)
+	ListSchemaVersionsWithContext(aws.Context, *glue.ListSchemaVersionsInput, ...request.Option) (*glue.ListSchemaVersionsOutput, error)
+	ListSchemaVersionsRequest(*glue.ListSchemaVersionsInput) (*request.Request, *glue.ListSchemaVersionsOutput)
+
+	ListSchemaVersionsPages(*glue.ListSchemaVersionsInput, func(*glue.ListSchemaVersionsOutput, bool) bool) error
+	ListSchemaVersionsPagesWithContext(aws.Context, *glue.ListSchemaVersionsInput, func(*glue.ListSchemaVersionsOutput, bool) bool, ...request.Option) error
+
+	ListSchemas(*glue.ListSchemasInput) (*glue.ListSchemasOutput, error)
+	ListSchemasWithContext(aws.Context, *glue.ListSchemasInput, ...request.Option) (*glue.ListSchemasOutput, error)
+	ListSchemasRequest(*glue.ListSchemasInput) (*request.Request, *glue.ListSchemasOutput)
+
+	ListSchemasPages(*glue.ListSchemasInput, func(*glue.ListSchemasOutput, bool) bool) error
+	ListSchemasPagesWithContext(aws.Context, *glue.ListSchemasInput, func(*glue.ListSchemasOutput, bool) bool, ...request.Option) error
+
 	ListTriggers(*glue.ListTriggersInput) (*glue.ListTriggersOutput, error)
 	ListTriggersWithContext(aws.Context, *glue.ListTriggersInput, ...request.Option) (*glue.ListTriggersOutput, error)
 	ListTriggersRequest(*glue.ListTriggersInput) (*request.Request, *glue.ListTriggersOutput)
@@ -498,13 +612,33 @@ type GlueAPI interface {
 	PutResourcePolicyWithContext(aws.Context, *glue.PutResourcePolicyInput, ...request.Option) (*glue.PutResourcePolicyOutput, error)
 	PutResourcePolicyRequest(*glue.PutResourcePolicyInput) (*request.Request, *glue.PutResourcePolicyOutput)
 
+	PutSchemaVersionMetadata(*glue.PutSchemaVersionMetadataInput) (*glue.PutSchemaVersionMetadataOutput, error)
+	PutSchemaVersionMetadataWithContext(aws.Context, *glue.PutSchemaVersionMetadataInput, ...request.Option) (*glue.PutSchemaVersionMetadataOutput, error)
+	PutSchemaVersionMetadataRequest(*glue.PutSchemaVersionMetadataInput) (*request.Request, *glue.PutSchemaVersionMetadataOutput)
+
 	PutWorkflowRunProperties(*glue.PutWorkflowRunPropertiesInput) (*glue.PutWorkflowRunPropertiesOutput, error)
 	PutWorkflowRunPropertiesWithContext(aws.Context, *glue.PutWorkflowRunPropertiesInput, ...request.Option) (*glue.PutWorkflowRunPropertiesOutput, error)
 	PutWorkflowRunPropertiesRequest(*glue.PutWorkflowRunPropertiesInput) (*request.Request, *glue.PutWorkflowRunPropertiesOutput)
 
+	QuerySchemaVersionMetadata(*glue.QuerySchemaVersionMetadataInput) (*glue.QuerySchemaVersionMetadataOutput, error)
+	QuerySchemaVersionMetadataWithContext(aws.Context, *glue.QuerySchemaVersionMetadataInput, ...request.Option) (*glue.QuerySchemaVersionMetadataOutput, error)
+	QuerySchemaVersionMetadataRequest(*glue.QuerySchemaVersionMetadataInput) (*request.Request, *glue.QuerySchemaVersionMetadataOutput)
+
+	RegisterSchemaVersion(*glue.RegisterSchemaVersionInput) (*glue.RegisterSchemaVersionOutput, error)
+	RegisterSchemaVersionWithContext(aws.Context, *glue.RegisterSchemaVersionInput, ...request.Option) (*glue.RegisterSchemaVersionOutput, error)
+	RegisterSchemaVersionRequest(*glue.RegisterSchemaVersionInput) (*request.Request, *glue.RegisterSchemaVersionOutput)
+
+	RemoveSchemaVersionMetadata(*glue.RemoveSchemaVersionMetadataInput) (*glue.RemoveSchemaVersionMetadataOutput, error)
+	RemoveSchemaVersionMetadataWithContext(aws.Context, *glue.RemoveSchemaVersionMetadataInput, ...request.Option) (*glue.RemoveSchemaVersionMetadataOutput, error)
+	RemoveSchemaVersionMetadataRequest(*glue.RemoveSchemaVersionMetadataInput) (*request.Request, *glue.RemoveSchemaVersionMetadataOutput)
+
 	ResetJobBookmark(*glue.ResetJobBookmarkInput) (*glue.ResetJobBookmarkOutput, error)
 	ResetJobBookmarkWithContext(aws.Context, *glue.ResetJobBookmarkInput, ...request.Option) (*glue.ResetJobBookmarkOutput, error)
 	ResetJobBookmarkRequest(*glue.ResetJobBookmarkInput) (*request.Request, *glue.ResetJobBookmarkOutput)
+
+	ResumeWorkflowRun(*glue.ResumeWorkflowRunInput) (*glue.ResumeWorkflowRunOutput, error)
+	ResumeWorkflowRunWithContext(aws.Context, *glue.ResumeWorkflowRunInput, ...request.Option) (*glue.ResumeWorkflowRunOutput, error)
+	ResumeWorkflowRunRequest(*glue.ResumeWorkflowRunInput) (*request.Request, *glue.ResumeWorkflowRunOutput)
 
 	SearchTables(*glue.SearchTablesInput) (*glue.SearchTablesOutput, error)
 	SearchTablesWithContext(aws.Context, *glue.SearchTablesInput, ...request.Option) (*glue.SearchTablesOutput, error)
@@ -561,6 +695,10 @@ type GlueAPI interface {
 	StopTriggerWithContext(aws.Context, *glue.StopTriggerInput, ...request.Option) (*glue.StopTriggerOutput, error)
 	StopTriggerRequest(*glue.StopTriggerInput) (*request.Request, *glue.StopTriggerOutput)
 
+	StopWorkflowRun(*glue.StopWorkflowRunInput) (*glue.StopWorkflowRunOutput, error)
+	StopWorkflowRunWithContext(aws.Context, *glue.StopWorkflowRunInput, ...request.Option) (*glue.StopWorkflowRunOutput, error)
+	StopWorkflowRunRequest(*glue.StopWorkflowRunInput) (*request.Request, *glue.StopWorkflowRunOutput)
+
 	TagResource(*glue.TagResourceInput) (*glue.TagResourceOutput, error)
 	TagResourceWithContext(aws.Context, *glue.TagResourceInput, ...request.Option) (*glue.TagResourceOutput, error)
 	TagResourceRequest(*glue.TagResourceInput) (*request.Request, *glue.TagResourceOutput)
@@ -572,6 +710,14 @@ type GlueAPI interface {
 	UpdateClassifier(*glue.UpdateClassifierInput) (*glue.UpdateClassifierOutput, error)
 	UpdateClassifierWithContext(aws.Context, *glue.UpdateClassifierInput, ...request.Option) (*glue.UpdateClassifierOutput, error)
 	UpdateClassifierRequest(*glue.UpdateClassifierInput) (*request.Request, *glue.UpdateClassifierOutput)
+
+	UpdateColumnStatisticsForPartition(*glue.UpdateColumnStatisticsForPartitionInput) (*glue.UpdateColumnStatisticsForPartitionOutput, error)
+	UpdateColumnStatisticsForPartitionWithContext(aws.Context, *glue.UpdateColumnStatisticsForPartitionInput, ...request.Option) (*glue.UpdateColumnStatisticsForPartitionOutput, error)
+	UpdateColumnStatisticsForPartitionRequest(*glue.UpdateColumnStatisticsForPartitionInput) (*request.Request, *glue.UpdateColumnStatisticsForPartitionOutput)
+
+	UpdateColumnStatisticsForTable(*glue.UpdateColumnStatisticsForTableInput) (*glue.UpdateColumnStatisticsForTableOutput, error)
+	UpdateColumnStatisticsForTableWithContext(aws.Context, *glue.UpdateColumnStatisticsForTableInput, ...request.Option) (*glue.UpdateColumnStatisticsForTableOutput, error)
+	UpdateColumnStatisticsForTableRequest(*glue.UpdateColumnStatisticsForTableInput) (*request.Request, *glue.UpdateColumnStatisticsForTableOutput)
 
 	UpdateConnection(*glue.UpdateConnectionInput) (*glue.UpdateConnectionOutput, error)
 	UpdateConnectionWithContext(aws.Context, *glue.UpdateConnectionInput, ...request.Option) (*glue.UpdateConnectionOutput, error)
@@ -604,6 +750,14 @@ type GlueAPI interface {
 	UpdatePartition(*glue.UpdatePartitionInput) (*glue.UpdatePartitionOutput, error)
 	UpdatePartitionWithContext(aws.Context, *glue.UpdatePartitionInput, ...request.Option) (*glue.UpdatePartitionOutput, error)
 	UpdatePartitionRequest(*glue.UpdatePartitionInput) (*request.Request, *glue.UpdatePartitionOutput)
+
+	UpdateRegistry(*glue.UpdateRegistryInput) (*glue.UpdateRegistryOutput, error)
+	UpdateRegistryWithContext(aws.Context, *glue.UpdateRegistryInput, ...request.Option) (*glue.UpdateRegistryOutput, error)
+	UpdateRegistryRequest(*glue.UpdateRegistryInput) (*request.Request, *glue.UpdateRegistryOutput)
+
+	UpdateSchema(*glue.UpdateSchemaInput) (*glue.UpdateSchemaOutput, error)
+	UpdateSchemaWithContext(aws.Context, *glue.UpdateSchemaInput, ...request.Option) (*glue.UpdateSchemaOutput, error)
+	UpdateSchemaRequest(*glue.UpdateSchemaInput) (*request.Request, *glue.UpdateSchemaOutput)
 
 	UpdateTable(*glue.UpdateTableInput) (*glue.UpdateTableOutput, error)
 	UpdateTableWithContext(aws.Context, *glue.UpdateTableInput, ...request.Option) (*glue.UpdateTableOutput, error)

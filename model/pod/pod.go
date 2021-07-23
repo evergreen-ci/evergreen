@@ -1,10 +1,9 @@
 package pod
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -14,17 +13,46 @@ type Pod struct {
 	// ID is the unique identifier for the metadata document. This is
 	// semantically unrelated to the ExternalID.
 	ID string `bson:"_id" json:"id"`
-	// ExternalID is the unique external resource identifier for the collection
-	// of containers running in the container orchestration service.
-	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
+	// Status is the current state of the pod.
+	Status Status `bson:"pod_status"`
 	// Secret is the shared secret between the server and the pod for
 	// authentication when the host is provisioned.
 	Secret string `bson:"secret" json:"secret"`
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
-	// TimeInfo contains timing information for the pod's lifecycle.
-	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
+	// Resources are external resources that are managed by this pod.
+	Resources ResourceInfo `bson:"ecs_info" json:"ecs_info"`
+}
+
+// Status represents a possible state that a pod can be in.
+type Status string
+
+const (
+	// StatusInitializing indicates that a pod is waiting to be created.
+	StatusInitializing Status = "initializing"
+	// StatusStarting indicates that a pod's containers are starting.
+	StatusStarting Status = "starting"
+	// StatusRunning indicates that the pod's containers are running.
+	StatusRunning Status = "running"
+	// StatusTerminated indicates that the pod's containers have been
+	// deleted.
+	StatusTerminated Status = "terminated"
+)
+
+// ResourceInfo represents information about external resources associated with
+// a pod.
+type ResourceInfo struct {
+	// ID is the unique resource identifier for the collection of containers
+	// running.
+	ID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
+	// DefinitionID is the resource identifier for the pod definition template.
+	DefinitionID string `bson:"definition_id" json:"definition_id"`
+	// Cluster is the name of the cluster where the containers are running.
+	Cluster string `bson:"cluster" json:"cluster"`
+	// SecretIDs are the resource identifiers for the secrets owned by this pod
+	// in Secrets Manager.
+	SecretIDs []string `bson:"secret_ids" json:"secret_ids"`
 }
 
 // TaskCreationOptions are options to apply to the task's container when
@@ -55,24 +83,6 @@ func (o TaskContainerCreationOptions) IsZero() bool {
 	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.Platform == "" && o.EnvVars == nil && o.EnvSecrets == nil
 }
 
-// TimeInfo represents timing information about the pod.
-type TimeInfo struct {
-	// Initialized is the time when this pod was first initialized.
-	Initialized time.Time `bson:"initialized,omitempty" json:"initialized,omitempty"`
-	// Started is the time when this pod was actually requested to start its
-	// containers.
-	Started time.Time `bson:"started,omitempty" json:"started,omitempty"`
-	// Provisioned is the time when the pod was finished provisioning and
-	// ready to do useful work.
-	Provisioned time.Time `bson:"provisioned,omitempty" json:"provisioned,omitempty"`
-}
-
-// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
-// zero value for BSON marshalling.
-func (i TimeInfo) IsZero() bool {
-	return i.Initialized.IsZero() && i.Started.IsZero() && i.Provisioned.IsZero()
-}
-
 // Insert inserts a new pod into the collection.
 func (p *Pod) Insert() error {
 	return db.Insert(Collection, p)
@@ -86,4 +96,22 @@ func (p *Pod) Remove() error {
 			IDKey: p.ID,
 		},
 	)
+}
+
+// UpdateStatus updates the pod status.
+func (p *Pod) UpdateStatus(s Status) error {
+	byIDAndStatus := ByID(p.ID)
+	byIDAndStatus[StatusKey] = p.Status
+
+	if err := UpdateOne(byIDAndStatus, bson.M{
+		"$set": bson.M{StatusKey: s},
+	}); err != nil {
+		return err
+	}
+
+	event.LogPodStatusChanged(p.ID, string(p.Status), string(s))
+
+	p.Status = s
+
+	return nil
 }

@@ -26,7 +26,7 @@ import (
 //    // myFunc uses an SDK service client to make a request to
 //    // AWS Compute Optimizer.
 //    func myFunc(svc computeoptimizeriface.ComputeOptimizerAPI) bool {
-//        // Make svc.GetAutoScalingGroupRecommendations request
+//        // Make svc.DescribeRecommendationExportJobs request
 //    }
 //
 //    func main() {
@@ -42,7 +42,7 @@ import (
 //    type mockComputeOptimizerClient struct {
 //        computeoptimizeriface.ComputeOptimizerAPI
 //    }
-//    func (m *mockComputeOptimizerClient) GetAutoScalingGroupRecommendations(input *computeoptimizer.GetAutoScalingGroupRecommendationsInput) (*computeoptimizer.GetAutoScalingGroupRecommendationsOutput, error) {
+//    func (m *mockComputeOptimizerClient) DescribeRecommendationExportJobs(input *computeoptimizer.DescribeRecommendationExportJobsInput) (*computeoptimizer.DescribeRecommendationExportJobsOutput, error) {
 //        // mock response/functionality
 //    }
 //
@@ -60,9 +60,33 @@ import (
 // and waiters. Its suggested to use the pattern above for testing, or using
 // tooling to generate mocks to satisfy the interfaces.
 type ComputeOptimizerAPI interface {
+	DescribeRecommendationExportJobs(*computeoptimizer.DescribeRecommendationExportJobsInput) (*computeoptimizer.DescribeRecommendationExportJobsOutput, error)
+	DescribeRecommendationExportJobsWithContext(aws.Context, *computeoptimizer.DescribeRecommendationExportJobsInput, ...request.Option) (*computeoptimizer.DescribeRecommendationExportJobsOutput, error)
+	DescribeRecommendationExportJobsRequest(*computeoptimizer.DescribeRecommendationExportJobsInput) (*request.Request, *computeoptimizer.DescribeRecommendationExportJobsOutput)
+
+	ExportAutoScalingGroupRecommendations(*computeoptimizer.ExportAutoScalingGroupRecommendationsInput) (*computeoptimizer.ExportAutoScalingGroupRecommendationsOutput, error)
+	ExportAutoScalingGroupRecommendationsWithContext(aws.Context, *computeoptimizer.ExportAutoScalingGroupRecommendationsInput, ...request.Option) (*computeoptimizer.ExportAutoScalingGroupRecommendationsOutput, error)
+	ExportAutoScalingGroupRecommendationsRequest(*computeoptimizer.ExportAutoScalingGroupRecommendationsInput) (*request.Request, *computeoptimizer.ExportAutoScalingGroupRecommendationsOutput)
+
+	ExportEBSVolumeRecommendations(*computeoptimizer.ExportEBSVolumeRecommendationsInput) (*computeoptimizer.ExportEBSVolumeRecommendationsOutput, error)
+	ExportEBSVolumeRecommendationsWithContext(aws.Context, *computeoptimizer.ExportEBSVolumeRecommendationsInput, ...request.Option) (*computeoptimizer.ExportEBSVolumeRecommendationsOutput, error)
+	ExportEBSVolumeRecommendationsRequest(*computeoptimizer.ExportEBSVolumeRecommendationsInput) (*request.Request, *computeoptimizer.ExportEBSVolumeRecommendationsOutput)
+
+	ExportEC2InstanceRecommendations(*computeoptimizer.ExportEC2InstanceRecommendationsInput) (*computeoptimizer.ExportEC2InstanceRecommendationsOutput, error)
+	ExportEC2InstanceRecommendationsWithContext(aws.Context, *computeoptimizer.ExportEC2InstanceRecommendationsInput, ...request.Option) (*computeoptimizer.ExportEC2InstanceRecommendationsOutput, error)
+	ExportEC2InstanceRecommendationsRequest(*computeoptimizer.ExportEC2InstanceRecommendationsInput) (*request.Request, *computeoptimizer.ExportEC2InstanceRecommendationsOutput)
+
+	ExportLambdaFunctionRecommendations(*computeoptimizer.ExportLambdaFunctionRecommendationsInput) (*computeoptimizer.ExportLambdaFunctionRecommendationsOutput, error)
+	ExportLambdaFunctionRecommendationsWithContext(aws.Context, *computeoptimizer.ExportLambdaFunctionRecommendationsInput, ...request.Option) (*computeoptimizer.ExportLambdaFunctionRecommendationsOutput, error)
+	ExportLambdaFunctionRecommendationsRequest(*computeoptimizer.ExportLambdaFunctionRecommendationsInput) (*request.Request, *computeoptimizer.ExportLambdaFunctionRecommendationsOutput)
+
 	GetAutoScalingGroupRecommendations(*computeoptimizer.GetAutoScalingGroupRecommendationsInput) (*computeoptimizer.GetAutoScalingGroupRecommendationsOutput, error)
 	GetAutoScalingGroupRecommendationsWithContext(aws.Context, *computeoptimizer.GetAutoScalingGroupRecommendationsInput, ...request.Option) (*computeoptimizer.GetAutoScalingGroupRecommendationsOutput, error)
 	GetAutoScalingGroupRecommendationsRequest(*computeoptimizer.GetAutoScalingGroupRecommendationsInput) (*request.Request, *computeoptimizer.GetAutoScalingGroupRecommendationsOutput)
+
+	GetEBSVolumeRecommendations(*computeoptimizer.GetEBSVolumeRecommendationsInput) (*computeoptimizer.GetEBSVolumeRecommendationsOutput, error)
+	GetEBSVolumeRecommendationsWithContext(aws.Context, *computeoptimizer.GetEBSVolumeRecommendationsInput, ...request.Option) (*computeoptimizer.GetEBSVolumeRecommendationsOutput, error)
+	GetEBSVolumeRecommendationsRequest(*computeoptimizer.GetEBSVolumeRecommendationsInput) (*request.Request, *computeoptimizer.GetEBSVolumeRecommendationsOutput)
 
 	GetEC2InstanceRecommendations(*computeoptimizer.GetEC2InstanceRecommendationsInput) (*computeoptimizer.GetEC2InstanceRecommendationsOutput, error)
 	GetEC2InstanceRecommendationsWithContext(aws.Context, *computeoptimizer.GetEC2InstanceRecommendationsInput, ...request.Option) (*computeoptimizer.GetEC2InstanceRecommendationsOutput, error)
@@ -75,6 +99,10 @@ type ComputeOptimizerAPI interface {
 	GetEnrollmentStatus(*computeoptimizer.GetEnrollmentStatusInput) (*computeoptimizer.GetEnrollmentStatusOutput, error)
 	GetEnrollmentStatusWithContext(aws.Context, *computeoptimizer.GetEnrollmentStatusInput, ...request.Option) (*computeoptimizer.GetEnrollmentStatusOutput, error)
 	GetEnrollmentStatusRequest(*computeoptimizer.GetEnrollmentStatusInput) (*request.Request, *computeoptimizer.GetEnrollmentStatusOutput)
+
+	GetLambdaFunctionRecommendations(*computeoptimizer.GetLambdaFunctionRecommendationsInput) (*computeoptimizer.GetLambdaFunctionRecommendationsOutput, error)
+	GetLambdaFunctionRecommendationsWithContext(aws.Context, *computeoptimizer.GetLambdaFunctionRecommendationsInput, ...request.Option) (*computeoptimizer.GetLambdaFunctionRecommendationsOutput, error)
+	GetLambdaFunctionRecommendationsRequest(*computeoptimizer.GetLambdaFunctionRecommendationsInput) (*request.Request, *computeoptimizer.GetLambdaFunctionRecommendationsOutput)
 
 	GetRecommendationSummaries(*computeoptimizer.GetRecommendationSummariesInput) (*computeoptimizer.GetRecommendationSummariesOutput, error)
 	GetRecommendationSummariesWithContext(aws.Context, *computeoptimizer.GetRecommendationSummariesInput, ...request.Option) (*computeoptimizer.GetRecommendationSummariesOutput, error)

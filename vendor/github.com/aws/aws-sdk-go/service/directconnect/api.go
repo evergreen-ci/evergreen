@@ -767,6 +767,96 @@ func (c *DirectConnect) AssociateHostedConnectionWithContext(ctx aws.Context, in
 	return out, req.Send()
 }
 
+const opAssociateMacSecKey = "AssociateMacSecKey"
+
+// AssociateMacSecKeyRequest generates a "aws/request.Request" representing the
+// client's request for the AssociateMacSecKey operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See AssociateMacSecKey for more information on using the AssociateMacSecKey
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the AssociateMacSecKeyRequest method.
+//    req, resp := client.AssociateMacSecKeyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/AssociateMacSecKey
+func (c *DirectConnect) AssociateMacSecKeyRequest(input *AssociateMacSecKeyInput) (req *request.Request, output *AssociateMacSecKeyOutput) {
+	op := &request.Operation{
+		Name:       opAssociateMacSecKey,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &AssociateMacSecKeyInput{}
+	}
+
+	output = &AssociateMacSecKeyOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// AssociateMacSecKey API operation for AWS Direct Connect.
+//
+// Associates a MAC Security (MACsec) Connection Key Name (CKN)/ Connectivity
+// Association Key (CAK) pair with an AWS Direct Connect dedicated connection.
+//
+// You must supply either the secretARN, or the CKN/CAK (ckn and cak) pair in
+// the request.
+//
+// For information about MAC Security (MACsec) key considerations, see MACsec
+// pre-shared CKN/CAK key considerations (https://docs.aws.amazon.com/directconnect/latest/UserGuide/direct-connect-mac-sec-getting-started.html#mac-sec-key-consideration)
+// in the AWS Direct Connect User Guide.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Direct Connect's
+// API operation AssociateMacSecKey for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   A server-side error occurred.
+//
+//   * ClientException
+//   One or more parameters are not valid.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/AssociateMacSecKey
+func (c *DirectConnect) AssociateMacSecKey(input *AssociateMacSecKeyInput) (*AssociateMacSecKeyOutput, error) {
+	req, out := c.AssociateMacSecKeyRequest(input)
+	return out, req.Send()
+}
+
+// AssociateMacSecKeyWithContext is the same as AssociateMacSecKey with the addition of
+// the ability to pass a context and additional request options.
+//
+// See AssociateMacSecKey for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DirectConnect) AssociateMacSecKeyWithContext(ctx aws.Context, input *AssociateMacSecKeyInput, opts ...request.Option) (*AssociateMacSecKeyOutput, error) {
+	req, out := c.AssociateMacSecKeyRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opAssociateVirtualInterface = "AssociateVirtualInterface"
 
 // AssociateVirtualInterfaceRequest generates a "aws/request.Request" representing the
@@ -1262,7 +1352,7 @@ func (c *DirectConnect) CreateBGPPeerRequest(input *CreateBGPPeerInput) (req *re
 // you cannot specify custom IPv6 addresses.
 //
 // For a public virtual interface, the Autonomous System Number (ASN) must be
-// private or already whitelisted for the virtual interface.
+// private or already on the allow list for the virtual interface.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1620,10 +1710,8 @@ func (c *DirectConnect) CreateDirectConnectGatewayAssociationProposalRequest(inp
 // Creates a proposal to associate the specified virtual private gateway or
 // transit gateway with the specified Direct Connect gateway.
 //
-// You can only associate a Direct Connect gateway and virtual private gateway
-// or transit gateway when the account that owns the Direct Connect gateway
-// and the account that owns the virtual private gateway or transit gateway
-// have the same AWS Payer ID.
+// You can associate a Direct Connect gateway and virtual private gateway or
+// transit gateway that is owned by any AWS account.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1816,24 +1904,24 @@ func (c *DirectConnect) CreateLagRequest(input *CreateLagInput) (req *request.Re
 // CreateLag API operation for AWS Direct Connect.
 //
 // Creates a link aggregation group (LAG) with the specified number of bundled
-// physical connections between the customer network and a specific AWS Direct
-// Connect location. A LAG is a logical interface that uses the Link Aggregation
-// Control Protocol (LACP) to aggregate multiple interfaces, enabling you to
-// treat them as a single interface.
+// physical dedicated connections between the customer network and a specific
+// AWS Direct Connect location. A LAG is a logical interface that uses the Link
+// Aggregation Control Protocol (LACP) to aggregate multiple interfaces, enabling
+// you to treat them as a single interface.
 //
-// All connections in a LAG must use the same bandwidth and must terminate at
-// the same AWS Direct Connect endpoint.
+// All connections in a LAG must use the same bandwidth (either 1Gbps or 10Gbps)
+// and must terminate at the same AWS Direct Connect endpoint.
 //
-// You can have up to 10 connections per LAG. Regardless of this limit, if you
-// request more connections for the LAG than AWS Direct Connect can allocate
+// You can have up to 10 dedicated connections per LAG. Regardless of this limit,
+// if you request more connections for the LAG than AWS Direct Connect can allocate
 // on a single endpoint, no LAG is created.
 //
-// You can specify an existing physical connection or interconnect to include
-// in the LAG (which counts towards the total number of connections). Doing
-// so interrupts the current physical connection or hosted connections, and
-// re-establishes them as a member of the LAG. The LAG will be created on the
-// same AWS Direct Connect endpoint to which the connection terminates. Any
-// virtual interfaces associated with the connection are automatically disassociated
+// You can specify an existing physical dedicated connection or interconnect
+// to include in the LAG (which counts towards the total number of connections).
+// Doing so interrupts the current physical dedicated connection, and re-establishes
+// them as a member of the LAG. The LAG will be created on the same AWS Direct
+// Connect endpoint to which the dedicated connection terminates. Any virtual
+// interfaces associated with the dedicated connection are automatically disassociated
 // and re-associated with the LAG. The connection ID does not change.
 //
 // If the AWS account used to create a LAG is a registered AWS Direct Connect
@@ -1934,6 +2022,13 @@ func (c *DirectConnect) CreatePrivateVirtualInterfaceRequest(input *CreatePrivat
 // enables the possibility for connecting to multiple VPCs, including VPCs in
 // different AWS Regions. Connecting the private virtual interface to a VGW
 // only provides access to a single VPC within the same Region.
+//
+// Setting the MTU of a virtual interface to 9001 (jumbo frames) can cause an
+// update to the underlying physical connection if it wasn't updated to support
+// jumbo frames. Updating the connection disrupts network connectivity for all
+// virtual interfaces associated with the connection for up to 30 seconds. To
+// check whether your connection supports jumbo frames, call DescribeConnections.
+// To check whether your virtual interface supports jumbo frames, call DescribeVirtualInterfaces.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2125,6 +2220,13 @@ func (c *DirectConnect) CreateTransitVirtualInterfaceRequest(input *CreateTransi
 // Connect gateway must be different. For example, if you use the default ASN
 // 64512 for both your the transit gateway and Direct Connect gateway, the association
 // request fails.
+//
+// Setting the MTU of a virtual interface to 8500 (jumbo frames) can cause an
+// update to the underlying physical connection if it wasn't updated to support
+// jumbo frames. Updating the connection disrupts network connectivity for all
+// virtual interfaces associated with the connection for up to 30 seconds. To
+// check whether your connection supports jumbo frames, call DescribeConnections.
+// To check whether your virtual interface supports jumbo frames, call DescribeVirtualInterfaces.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -3248,13 +3350,21 @@ func (c *DirectConnect) DescribeDirectConnectGatewayAssociationsRequest(input *D
 // DescribeDirectConnectGatewayAssociations API operation for AWS Direct Connect.
 //
 // Lists the associations between your Direct Connect gateways and virtual private
-// gateways. You must specify a Direct Connect gateway, a virtual private gateway,
-// or both. If you specify a Direct Connect gateway, the response contains all
-// virtual private gateways associated with the Direct Connect gateway. If you
-// specify a virtual private gateway, the response contains all Direct Connect
-// gateways associated with the virtual private gateway. If you specify both,
-// the response contains the association between the Direct Connect gateway
-// and the virtual private gateway.
+// gateways and transit gateways. You must specify one of the following:
+//
+//    * A Direct Connect gateway The response contains all virtual private gateways
+//    and transit gateways associated with the Direct Connect gateway.
+//
+//    * A virtual private gateway The response contains the Direct Connect gateway.
+//
+//    * A transit gateway The response contains the Direct Connect gateway.
+//
+//    * A Direct Connect gateway and a virtual private gateway The response
+//    contains the association between the Direct Connect gateway and virtual
+//    private gateway.
+//
+//    * A Direct Connect gateway and a transit gateway The response contains
+//    the association between the Direct Connect gateway and transit gateway.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4331,6 +4441,345 @@ func (c *DirectConnect) DisassociateConnectionFromLagWithContext(ctx aws.Context
 	return out, req.Send()
 }
 
+const opDisassociateMacSecKey = "DisassociateMacSecKey"
+
+// DisassociateMacSecKeyRequest generates a "aws/request.Request" representing the
+// client's request for the DisassociateMacSecKey operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DisassociateMacSecKey for more information on using the DisassociateMacSecKey
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DisassociateMacSecKeyRequest method.
+//    req, resp := client.DisassociateMacSecKeyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/DisassociateMacSecKey
+func (c *DirectConnect) DisassociateMacSecKeyRequest(input *DisassociateMacSecKeyInput) (req *request.Request, output *DisassociateMacSecKeyOutput) {
+	op := &request.Operation{
+		Name:       opDisassociateMacSecKey,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DisassociateMacSecKeyInput{}
+	}
+
+	output = &DisassociateMacSecKeyOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DisassociateMacSecKey API operation for AWS Direct Connect.
+//
+// Removes the association between a MAC Security (MACsec) security key and
+// an AWS Direct Connect dedicated connection.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Direct Connect's
+// API operation DisassociateMacSecKey for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   A server-side error occurred.
+//
+//   * ClientException
+//   One or more parameters are not valid.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/DisassociateMacSecKey
+func (c *DirectConnect) DisassociateMacSecKey(input *DisassociateMacSecKeyInput) (*DisassociateMacSecKeyOutput, error) {
+	req, out := c.DisassociateMacSecKeyRequest(input)
+	return out, req.Send()
+}
+
+// DisassociateMacSecKeyWithContext is the same as DisassociateMacSecKey with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DisassociateMacSecKey for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DirectConnect) DisassociateMacSecKeyWithContext(ctx aws.Context, input *DisassociateMacSecKeyInput, opts ...request.Option) (*DisassociateMacSecKeyOutput, error) {
+	req, out := c.DisassociateMacSecKeyRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opListVirtualInterfaceTestHistory = "ListVirtualInterfaceTestHistory"
+
+// ListVirtualInterfaceTestHistoryRequest generates a "aws/request.Request" representing the
+// client's request for the ListVirtualInterfaceTestHistory operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListVirtualInterfaceTestHistory for more information on using the ListVirtualInterfaceTestHistory
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListVirtualInterfaceTestHistoryRequest method.
+//    req, resp := client.ListVirtualInterfaceTestHistoryRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/ListVirtualInterfaceTestHistory
+func (c *DirectConnect) ListVirtualInterfaceTestHistoryRequest(input *ListVirtualInterfaceTestHistoryInput) (req *request.Request, output *ListVirtualInterfaceTestHistoryOutput) {
+	op := &request.Operation{
+		Name:       opListVirtualInterfaceTestHistory,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ListVirtualInterfaceTestHistoryInput{}
+	}
+
+	output = &ListVirtualInterfaceTestHistoryOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListVirtualInterfaceTestHistory API operation for AWS Direct Connect.
+//
+// Lists the virtual interface failover test history.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Direct Connect's
+// API operation ListVirtualInterfaceTestHistory for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   A server-side error occurred.
+//
+//   * ClientException
+//   One or more parameters are not valid.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/ListVirtualInterfaceTestHistory
+func (c *DirectConnect) ListVirtualInterfaceTestHistory(input *ListVirtualInterfaceTestHistoryInput) (*ListVirtualInterfaceTestHistoryOutput, error) {
+	req, out := c.ListVirtualInterfaceTestHistoryRequest(input)
+	return out, req.Send()
+}
+
+// ListVirtualInterfaceTestHistoryWithContext is the same as ListVirtualInterfaceTestHistory with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListVirtualInterfaceTestHistory for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DirectConnect) ListVirtualInterfaceTestHistoryWithContext(ctx aws.Context, input *ListVirtualInterfaceTestHistoryInput, opts ...request.Option) (*ListVirtualInterfaceTestHistoryOutput, error) {
+	req, out := c.ListVirtualInterfaceTestHistoryRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStartBgpFailoverTest = "StartBgpFailoverTest"
+
+// StartBgpFailoverTestRequest generates a "aws/request.Request" representing the
+// client's request for the StartBgpFailoverTest operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StartBgpFailoverTest for more information on using the StartBgpFailoverTest
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StartBgpFailoverTestRequest method.
+//    req, resp := client.StartBgpFailoverTestRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/StartBgpFailoverTest
+func (c *DirectConnect) StartBgpFailoverTestRequest(input *StartBgpFailoverTestInput) (req *request.Request, output *StartBgpFailoverTestOutput) {
+	op := &request.Operation{
+		Name:       opStartBgpFailoverTest,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StartBgpFailoverTestInput{}
+	}
+
+	output = &StartBgpFailoverTestOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StartBgpFailoverTest API operation for AWS Direct Connect.
+//
+// Starts the virtual interface failover test that verifies your configuration
+// meets your resiliency requirements by placing the BGP peering session in
+// the DOWN state. You can then send traffic to verify that there are no outages.
+//
+// You can run the test on public, private, transit, and hosted virtual interfaces.
+//
+// You can use ListVirtualInterfaceTestHistory (https://docs.aws.amazon.com/directconnect/latest/APIReference/API_ListVirtualInterfaceTestHistory.html)
+// to view the virtual interface test history.
+//
+// If you need to stop the test before the test interval completes, use StopBgpFailoverTest
+// (https://docs.aws.amazon.com/directconnect/latest/APIReference/API_StopBgpFailoverTest.html).
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Direct Connect's
+// API operation StartBgpFailoverTest for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   A server-side error occurred.
+//
+//   * ClientException
+//   One or more parameters are not valid.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/StartBgpFailoverTest
+func (c *DirectConnect) StartBgpFailoverTest(input *StartBgpFailoverTestInput) (*StartBgpFailoverTestOutput, error) {
+	req, out := c.StartBgpFailoverTestRequest(input)
+	return out, req.Send()
+}
+
+// StartBgpFailoverTestWithContext is the same as StartBgpFailoverTest with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StartBgpFailoverTest for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DirectConnect) StartBgpFailoverTestWithContext(ctx aws.Context, input *StartBgpFailoverTestInput, opts ...request.Option) (*StartBgpFailoverTestOutput, error) {
+	req, out := c.StartBgpFailoverTestRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStopBgpFailoverTest = "StopBgpFailoverTest"
+
+// StopBgpFailoverTestRequest generates a "aws/request.Request" representing the
+// client's request for the StopBgpFailoverTest operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StopBgpFailoverTest for more information on using the StopBgpFailoverTest
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StopBgpFailoverTestRequest method.
+//    req, resp := client.StopBgpFailoverTestRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/StopBgpFailoverTest
+func (c *DirectConnect) StopBgpFailoverTestRequest(input *StopBgpFailoverTestInput) (req *request.Request, output *StopBgpFailoverTestOutput) {
+	op := &request.Operation{
+		Name:       opStopBgpFailoverTest,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StopBgpFailoverTestInput{}
+	}
+
+	output = &StopBgpFailoverTestOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StopBgpFailoverTest API operation for AWS Direct Connect.
+//
+// Stops the virtual interface failover test.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Direct Connect's
+// API operation StopBgpFailoverTest for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   A server-side error occurred.
+//
+//   * ClientException
+//   One or more parameters are not valid.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/StopBgpFailoverTest
+func (c *DirectConnect) StopBgpFailoverTest(input *StopBgpFailoverTestInput) (*StopBgpFailoverTestOutput, error) {
+	req, out := c.StopBgpFailoverTestRequest(input)
+	return out, req.Send()
+}
+
+// StopBgpFailoverTestWithContext is the same as StopBgpFailoverTest with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StopBgpFailoverTest for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DirectConnect) StopBgpFailoverTestWithContext(ctx aws.Context, input *StopBgpFailoverTestInput, opts ...request.Option) (*StopBgpFailoverTestOutput, error) {
+	req, out := c.StopBgpFailoverTestRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opTagResource = "TagResource"
 
 // TagResourceRequest generates a "aws/request.Request" representing the
@@ -4507,6 +4956,94 @@ func (c *DirectConnect) UntagResourceWithContext(ctx aws.Context, input *UntagRe
 	return out, req.Send()
 }
 
+const opUpdateConnection = "UpdateConnection"
+
+// UpdateConnectionRequest generates a "aws/request.Request" representing the
+// client's request for the UpdateConnection operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UpdateConnection for more information on using the UpdateConnection
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UpdateConnectionRequest method.
+//    req, resp := client.UpdateConnectionRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/UpdateConnection
+func (c *DirectConnect) UpdateConnectionRequest(input *UpdateConnectionInput) (req *request.Request, output *UpdateConnectionOutput) {
+	op := &request.Operation{
+		Name:       opUpdateConnection,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &UpdateConnectionInput{}
+	}
+
+	output = &UpdateConnectionOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// UpdateConnection API operation for AWS Direct Connect.
+//
+// Updates the AWS Direct Connect dedicated connection configuration.
+//
+// You can update the following parameters for a connection:
+//
+//    * The connection name
+//
+//    * The connection's MAC Security (MACsec) encryption mode.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Direct Connect's
+// API operation UpdateConnection for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   A server-side error occurred.
+//
+//   * ClientException
+//   One or more parameters are not valid.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/directconnect-2012-10-25/UpdateConnection
+func (c *DirectConnect) UpdateConnection(input *UpdateConnectionInput) (*UpdateConnectionOutput, error) {
+	req, out := c.UpdateConnectionRequest(input)
+	return out, req.Send()
+}
+
+// UpdateConnectionWithContext is the same as UpdateConnection with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UpdateConnection for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DirectConnect) UpdateConnectionWithContext(ctx aws.Context, input *UpdateConnectionInput, opts ...request.Option) (*UpdateConnectionOutput, error) {
+	req, out := c.UpdateConnectionRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opUpdateDirectConnectGatewayAssociation = "UpdateDirectConnectGatewayAssociation"
 
 // UpdateDirectConnectGatewayAssociationRequest generates a "aws/request.Request" representing the
@@ -4637,19 +5174,21 @@ func (c *DirectConnect) UpdateLagRequest(input *UpdateLagInput) (req *request.Re
 //
 // Updates the attributes of the specified link aggregation group (LAG).
 //
-// You can update the following attributes:
+// You can update the following LAG attributes:
 //
 //    * The name of the LAG.
 //
 //    * The value for the minimum number of connections that must be operational
 //    for the LAG itself to be operational.
 //
-// When you create a LAG, the default value for the minimum number of operational
-// connections is zero (0). If you update this value and the number of operational
-// connections falls below the specified value, the LAG automatically goes down
-// to avoid over-utilization of the remaining connections. Adjust this value
-// with care, as it could force the LAG down if it is set higher than the current
-// number of operational connections.
+//    * The LAG's MACsec encryption mode. AWS assigns this value to each connection
+//    which is part of the LAG.
+//
+//    * The tags
+//
+// If you adjust the threshold value for the minimum number of operational connections,
+// ensure that the new value does not cause the LAG to fall below the threshold
+// and become non-operational.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4738,7 +5277,7 @@ func (c *DirectConnect) UpdateVirtualInterfaceAttributesRequest(input *UpdateVir
 // jumbo frames. Updating the connection disrupts network connectivity for all
 // virtual interfaces associated with the connection for up to 30 seconds. To
 // check whether your connection supports jumbo frames, call DescribeConnections.
-// To check whether your virtual interface supports jumbo frames, call DescribeVirtualInterfaces.
+// To check whether your virtual q interface supports jumbo frames, call DescribeVirtualInterfaces.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5436,6 +5975,126 @@ func (s *AssociateHostedConnectionInput) SetParentConnectionId(v string) *Associ
 	return s
 }
 
+type AssociateMacSecKeyInput struct {
+	_ struct{} `type:"structure"`
+
+	// The MAC Security (MACsec) CAK to associate with the dedicated connection.
+	//
+	// You can create the CKN/CAK pair using an industry standard tool.
+	//
+	// The valid values are 64 hexadecimal characters (0-9, A-E).
+	//
+	// If you use this request parameter, you must use the ckn request parameter
+	// and not use the secretARN request parameter.
+	Cak *string `locationName:"cak" type:"string"`
+
+	// The MAC Security (MACsec) CKN to associate with the dedicated connection.
+	//
+	// You can create the CKN/CAK pair using an industry standard tool.
+	//
+	// The valid values are 64 hexadecimal characters (0-9, A-E).
+	//
+	// If you use this request parameter, you must use the cak request parameter
+	// and not use the secretARN request parameter.
+	Ckn *string `locationName:"ckn" type:"string"`
+
+	// The ID of the dedicated connection (dxcon-xxxx), or the ID of the LAG (dxlag-xxxx).
+	//
+	// You can use DescribeConnections or DescribeLags to retrieve connection ID.
+	//
+	// ConnectionId is a required field
+	ConnectionId *string `locationName:"connectionId" type:"string" required:"true"`
+
+	// The Amazon Resource Name (ARN) of the MAC Security (MACsec) secret key to
+	// associate with the dedicated connection.
+	//
+	// You can use DescribeConnections or DescribeLags to retrieve the MAC Security
+	// (MACsec) secret key.
+	//
+	// If you use this request parameter, you do not use the ckn and cak request
+	// parameters.
+	SecretARN *string `locationName:"secretARN" type:"string"`
+}
+
+// String returns the string representation
+func (s AssociateMacSecKeyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AssociateMacSecKeyInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *AssociateMacSecKeyInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "AssociateMacSecKeyInput"}
+	if s.ConnectionId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ConnectionId"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCak sets the Cak field's value.
+func (s *AssociateMacSecKeyInput) SetCak(v string) *AssociateMacSecKeyInput {
+	s.Cak = &v
+	return s
+}
+
+// SetCkn sets the Ckn field's value.
+func (s *AssociateMacSecKeyInput) SetCkn(v string) *AssociateMacSecKeyInput {
+	s.Ckn = &v
+	return s
+}
+
+// SetConnectionId sets the ConnectionId field's value.
+func (s *AssociateMacSecKeyInput) SetConnectionId(v string) *AssociateMacSecKeyInput {
+	s.ConnectionId = &v
+	return s
+}
+
+// SetSecretARN sets the SecretARN field's value.
+func (s *AssociateMacSecKeyInput) SetSecretARN(v string) *AssociateMacSecKeyInput {
+	s.SecretARN = &v
+	return s
+}
+
+type AssociateMacSecKeyOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The ID of the dedicated connection (dxcon-xxxx), or the ID of the LAG (dxlag-xxxx).
+	ConnectionId *string `locationName:"connectionId" type:"string"`
+
+	// The MAC Security (MACsec) security keys associated with the dedicated connection.
+	MacSecKeys []*MacSecKey `locationName:"macSecKeys" type:"list"`
+}
+
+// String returns the string representation
+func (s AssociateMacSecKeyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AssociateMacSecKeyOutput) GoString() string {
+	return s.String()
+}
+
+// SetConnectionId sets the ConnectionId field's value.
+func (s *AssociateMacSecKeyOutput) SetConnectionId(v string) *AssociateMacSecKeyOutput {
+	s.ConnectionId = &v
+	return s
+}
+
+// SetMacSecKeys sets the MacSecKeys field's value.
+func (s *AssociateMacSecKeyOutput) SetMacSecKeys(v []*MacSecKey) *AssociateMacSecKeyOutput {
+	s.MacSecKeys = v
+	return s
+}
+
 type AssociateVirtualInterfaceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -5660,8 +6319,8 @@ func (s *BGPPeer) SetCustomerAddress(v string) *BGPPeer {
 
 // One or more parameters are not valid.
 type ClientException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5678,17 +6337,17 @@ func (s ClientException) GoString() string {
 
 func newErrorClientException(v protocol.ResponseMetadata) error {
 	return &ClientException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ClientException) Code() string {
+func (s *ClientException) Code() string {
 	return "DirectConnectClientException"
 }
 
 // Message returns the exception's message.
-func (s ClientException) Message() string {
+func (s *ClientException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5696,22 +6355,22 @@ func (s ClientException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ClientException) OrigErr() error {
+func (s *ClientException) OrigErr() error {
 	return nil
 }
 
-func (s ClientException) Error() string {
+func (s *ClientException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ClientException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ClientException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ClientException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ClientException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ConfirmConnectionInput struct {
@@ -6145,6 +6804,11 @@ type Connection struct {
 	//    * unknown: The state of the connection is not available.
 	ConnectionState *string `locationName:"connectionState" type:"string" enum:"ConnectionState"`
 
+	// The MAC Security (MACsec) connection encryption mode.
+	//
+	// The valid values are no_encrypt, should_encrypt, and must_encrypt.
+	EncryptionMode *string `locationName:"encryptionMode" type:"string"`
+
 	// Indicates whether the connection supports a secondary BGP peer in the same
 	// address family (IPv4/IPv6).
 	HasLogicalRedundancy *string `locationName:"hasLogicalRedundancy" type:"string" enum:"HasLogicalRedundancy"`
@@ -6161,11 +6825,23 @@ type Connection struct {
 	// The location of the connection.
 	Location *string `locationName:"location" type:"string"`
 
+	// Indicates whether the connection supports MAC Security (MACsec).
+	MacSecCapable *bool `locationName:"macSecCapable" type:"boolean"`
+
+	// The MAC Security (MACsec) security keys associated with the connection.
+	MacSecKeys []*MacSecKey `locationName:"macSecKeys" type:"list"`
+
 	// The ID of the AWS account that owns the connection.
 	OwnerAccount *string `locationName:"ownerAccount" type:"string"`
 
 	// The name of the AWS Direct Connect service provider associated with the connection.
 	PartnerName *string `locationName:"partnerName" type:"string"`
+
+	// The MAC Security (MACsec) port link status of the connection.
+	//
+	// The valid values are Encryption Up, which means that there is an active Connection
+	// Key Name, or Encryption Down.
+	PortEncryptionStatus *string `locationName:"portEncryptionStatus" type:"string"`
 
 	// The name of the service provider associated with the connection.
 	ProviderName *string `locationName:"providerName" type:"string"`
@@ -6226,6 +6902,12 @@ func (s *Connection) SetConnectionState(v string) *Connection {
 	return s
 }
 
+// SetEncryptionMode sets the EncryptionMode field's value.
+func (s *Connection) SetEncryptionMode(v string) *Connection {
+	s.EncryptionMode = &v
+	return s
+}
+
 // SetHasLogicalRedundancy sets the HasLogicalRedundancy field's value.
 func (s *Connection) SetHasLogicalRedundancy(v string) *Connection {
 	s.HasLogicalRedundancy = &v
@@ -6256,6 +6938,18 @@ func (s *Connection) SetLocation(v string) *Connection {
 	return s
 }
 
+// SetMacSecCapable sets the MacSecCapable field's value.
+func (s *Connection) SetMacSecCapable(v bool) *Connection {
+	s.MacSecCapable = &v
+	return s
+}
+
+// SetMacSecKeys sets the MacSecKeys field's value.
+func (s *Connection) SetMacSecKeys(v []*MacSecKey) *Connection {
+	s.MacSecKeys = v
+	return s
+}
+
 // SetOwnerAccount sets the OwnerAccount field's value.
 func (s *Connection) SetOwnerAccount(v string) *Connection {
 	s.OwnerAccount = &v
@@ -6265,6 +6959,12 @@ func (s *Connection) SetOwnerAccount(v string) *Connection {
 // SetPartnerName sets the PartnerName field's value.
 func (s *Connection) SetPartnerName(v string) *Connection {
 	s.PartnerName = &v
+	return s
+}
+
+// SetPortEncryptionStatus sets the PortEncryptionStatus field's value.
+func (s *Connection) SetPortEncryptionStatus(v string) *Connection {
+	s.PortEncryptionStatus = &v
 	return s
 }
 
@@ -6394,6 +7094,13 @@ type CreateConnectionInput struct {
 	// The name of the service provider associated with the requested connection.
 	ProviderName *string `locationName:"providerName" type:"string"`
 
+	// Indicates whether you want the connection to support MAC Security (MACsec).
+	//
+	// MAC Security (MACsec) is only available on dedicated connections. For information
+	// about MAC Security (MACsec) prerequisties, see MACsec prerequisties (https://docs.aws.amazon.com/directconnect/latest/UserGuide/direct-connect-mac-sec-getting-started.html#mac-sec-prerequisites)
+	// in the AWS Direct Connect User Guide.
+	RequestMACSec *bool `locationName:"requestMACSec" type:"boolean"`
+
 	// The tags to associate with the lag.
 	Tags []*Tag `locationName:"tags" min:"1" type:"list"`
 }
@@ -6467,6 +7174,12 @@ func (s *CreateConnectionInput) SetLocation(v string) *CreateConnectionInput {
 // SetProviderName sets the ProviderName field's value.
 func (s *CreateConnectionInput) SetProviderName(v string) *CreateConnectionInput {
 	s.ProviderName = &v
+	return s
+}
+
+// SetRequestMACSec sets the RequestMACSec field's value.
+func (s *CreateConnectionInput) SetRequestMACSec(v bool) *CreateConnectionInput {
+	s.RequestMACSec = &v
 	return s
 }
 
@@ -6861,12 +7574,11 @@ type CreateLagInput struct {
 	// The tags to associate with the automtically created LAGs.
 	ChildConnectionTags []*Tag `locationName:"childConnectionTags" min:"1" type:"list"`
 
-	// The ID of an existing connection to migrate to the LAG.
+	// The ID of an existing dedicated connection to migrate to the LAG.
 	ConnectionId *string `locationName:"connectionId" type:"string"`
 
-	// The bandwidth of the individual physical connections bundled by the LAG.
-	// The possible values are 50Mbps, 100Mbps, 200Mbps, 300Mbps, 400Mbps, 500Mbps,
-	// 1Gbps, 2Gbps, 5Gbps, and 10Gbps.
+	// The bandwidth of the individual physical dedicated connections bundled by
+	// the LAG. The possible values are 1Gbps and 10Gbps.
 	//
 	// ConnectionsBandwidth is a required field
 	ConnectionsBandwidth *string `locationName:"connectionsBandwidth" type:"string" required:"true"`
@@ -6881,14 +7593,22 @@ type CreateLagInput struct {
 	// Location is a required field
 	Location *string `locationName:"location" type:"string" required:"true"`
 
-	// The number of physical connections initially provisioned and bundled by the
-	// LAG.
+	// The number of physical dedicated connections initially provisioned and bundled
+	// by the LAG.
 	//
 	// NumberOfConnections is a required field
 	NumberOfConnections *int64 `locationName:"numberOfConnections" type:"integer" required:"true"`
 
 	// The name of the service provider associated with the LAG.
 	ProviderName *string `locationName:"providerName" type:"string"`
+
+	// Indicates whether the connection will support MAC Security (MACsec).
+	//
+	// All connections in the LAG must be capable of supporting MAC Security (MACsec).
+	// For information about MAC Security (MACsec) prerequisties, see MACsec prerequisties
+	// (https://docs.aws.amazon.com/directconnect/latest/UserGuide/direct-connect-mac-sec-getting-started.html#mac-sec-prerequisites)
+	// in the AWS Direct Connect User Guide.
+	RequestMACSec *bool `locationName:"requestMACSec" type:"boolean"`
 
 	// The tags to associate with the LAG.
 	Tags []*Tag `locationName:"tags" min:"1" type:"list"`
@@ -6991,6 +7711,12 @@ func (s *CreateLagInput) SetNumberOfConnections(v int64) *CreateLagInput {
 // SetProviderName sets the ProviderName field's value.
 func (s *CreateLagInput) SetProviderName(v string) *CreateLagInput {
 	s.ProviderName = &v
+	return s
+}
+
+// SetRequestMACSec sets the RequestMACSec field's value.
+func (s *CreateLagInput) SetRequestMACSec(v bool) *CreateLagInput {
+	s.RequestMACSec = &v
 	return s
 }
 
@@ -7956,7 +8682,7 @@ type DescribeDirectConnectGatewayAssociationsInput struct {
 	// The token provided in the previous call to retrieve the next page.
 	NextToken *string `locationName:"nextToken" type:"string"`
 
-	// The ID of the virtual private gateway.
+	// The ID of the virtual private gateway or transit gateway.
 	VirtualGatewayId *string `locationName:"virtualGatewayId" type:"string"`
 }
 
@@ -8712,10 +9438,100 @@ func (s *DisassociateConnectionFromLagInput) SetLagId(v string) *DisassociateCon
 	return s
 }
 
+type DisassociateMacSecKeyInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ID of the dedicated connection (dxcon-xxxx), or the ID of the LAG (dxlag-xxxx).
+	//
+	// You can use DescribeConnections or DescribeLags to retrieve connection ID.
+	//
+	// ConnectionId is a required field
+	ConnectionId *string `locationName:"connectionId" type:"string" required:"true"`
+
+	// The Amazon Resource Name (ARN) of the MAC Security (MACsec) secret key.
+	//
+	// You can use DescribeConnections to retrieve the ARN of the MAC Security (MACsec)
+	// secret key.
+	//
+	// SecretARN is a required field
+	SecretARN *string `locationName:"secretARN" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DisassociateMacSecKeyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DisassociateMacSecKeyInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DisassociateMacSecKeyInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DisassociateMacSecKeyInput"}
+	if s.ConnectionId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ConnectionId"))
+	}
+	if s.SecretARN == nil {
+		invalidParams.Add(request.NewErrParamRequired("SecretARN"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConnectionId sets the ConnectionId field's value.
+func (s *DisassociateMacSecKeyInput) SetConnectionId(v string) *DisassociateMacSecKeyInput {
+	s.ConnectionId = &v
+	return s
+}
+
+// SetSecretARN sets the SecretARN field's value.
+func (s *DisassociateMacSecKeyInput) SetSecretARN(v string) *DisassociateMacSecKeyInput {
+	s.SecretARN = &v
+	return s
+}
+
+type DisassociateMacSecKeyOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The ID of the dedicated connection (dxcon-xxxx), or the ID of the LAG (dxlag-xxxx).
+	ConnectionId *string `locationName:"connectionId" type:"string"`
+
+	// The MAC Security (MACsec) security keys no longer associated with the dedicated
+	// connection.
+	MacSecKeys []*MacSecKey `locationName:"macSecKeys" type:"list"`
+}
+
+// String returns the string representation
+func (s DisassociateMacSecKeyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DisassociateMacSecKeyOutput) GoString() string {
+	return s.String()
+}
+
+// SetConnectionId sets the ConnectionId field's value.
+func (s *DisassociateMacSecKeyOutput) SetConnectionId(v string) *DisassociateMacSecKeyOutput {
+	s.ConnectionId = &v
+	return s
+}
+
+// SetMacSecKeys sets the MacSecKeys field's value.
+func (s *DisassociateMacSecKeyOutput) SetMacSecKeys(v []*MacSecKey) *DisassociateMacSecKeyOutput {
+	s.MacSecKeys = v
+	return s
+}
+
 // A tag key was specified more than once.
 type DuplicateTagKeysException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8732,17 +9548,17 @@ func (s DuplicateTagKeysException) GoString() string {
 
 func newErrorDuplicateTagKeysException(v protocol.ResponseMetadata) error {
 	return &DuplicateTagKeysException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s DuplicateTagKeysException) Code() string {
+func (s *DuplicateTagKeysException) Code() string {
 	return "DuplicateTagKeysException"
 }
 
 // Message returns the exception's message.
-func (s DuplicateTagKeysException) Message() string {
+func (s *DuplicateTagKeysException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8750,22 +9566,22 @@ func (s DuplicateTagKeysException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s DuplicateTagKeysException) OrigErr() error {
+func (s *DuplicateTagKeysException) OrigErr() error {
 	return nil
 }
 
-func (s DuplicateTagKeysException) Error() string {
+func (s *DuplicateTagKeysException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s DuplicateTagKeysException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *DuplicateTagKeysException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s DuplicateTagKeysException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *DuplicateTagKeysException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Information about a Direct Connect gateway, which enables you to connect
@@ -9321,6 +10137,11 @@ type Lag struct {
 	// The possible values are 1Gbps and 10Gbps.
 	ConnectionsBandwidth *string `locationName:"connectionsBandwidth" type:"string"`
 
+	// The LAG MAC Security (MACsec) encryption mode.
+	//
+	// The valid values are no_encrypt, should_encrypt, and must_encrypt.
+	EncryptionMode *string `locationName:"encryptionMode" type:"string"`
+
 	// Indicates whether the LAG supports a secondary BGP peer in the same address
 	// family (IPv4/IPv6).
 	HasLogicalRedundancy *string `locationName:"hasLogicalRedundancy" type:"string" enum:"HasLogicalRedundancy"`
@@ -9356,12 +10177,18 @@ type Lag struct {
 	// The location of the LAG.
 	Location *string `locationName:"location" type:"string"`
 
-	// The minimum number of physical connections that must be operational for the
-	// LAG itself to be operational.
+	// Indicates whether the LAG supports MAC Security (MACsec).
+	MacSecCapable *bool `locationName:"macSecCapable" type:"boolean"`
+
+	// The MAC Security (MACsec) security keys associated with the LAG.
+	MacSecKeys []*MacSecKey `locationName:"macSecKeys" type:"list"`
+
+	// The minimum number of physical dedicated connections that must be operational
+	// for the LAG itself to be operational.
 	MinimumLinks *int64 `locationName:"minimumLinks" type:"integer"`
 
-	// The number of physical connections bundled by the LAG, up to a maximum of
-	// 10.
+	// The number of physical dedicated connections bundled by the LAG, up to a
+	// maximum of 10.
 	NumberOfConnections *int64 `locationName:"numberOfConnections" type:"integer"`
 
 	// The ID of the AWS account that owns the LAG.
@@ -9417,6 +10244,12 @@ func (s *Lag) SetConnectionsBandwidth(v string) *Lag {
 	return s
 }
 
+// SetEncryptionMode sets the EncryptionMode field's value.
+func (s *Lag) SetEncryptionMode(v string) *Lag {
+	s.EncryptionMode = &v
+	return s
+}
+
 // SetHasLogicalRedundancy sets the HasLogicalRedundancy field's value.
 func (s *Lag) SetHasLogicalRedundancy(v string) *Lag {
 	s.HasLogicalRedundancy = &v
@@ -9453,6 +10286,18 @@ func (s *Lag) SetLocation(v string) *Lag {
 	return s
 }
 
+// SetMacSecCapable sets the MacSecCapable field's value.
+func (s *Lag) SetMacSecCapable(v bool) *Lag {
+	s.MacSecCapable = &v
+	return s
+}
+
+// SetMacSecKeys sets the MacSecKeys field's value.
+func (s *Lag) SetMacSecKeys(v []*MacSecKey) *Lag {
+	s.MacSecKeys = v
+	return s
+}
+
 // SetMinimumLinks sets the MinimumLinks field's value.
 func (s *Lag) SetMinimumLinks(v int64) *Lag {
 	s.MinimumLinks = &v
@@ -9486,6 +10331,111 @@ func (s *Lag) SetRegion(v string) *Lag {
 // SetTags sets the Tags field's value.
 func (s *Lag) SetTags(v []*Tag) *Lag {
 	s.Tags = v
+	return s
+}
+
+type ListVirtualInterfaceTestHistoryInput struct {
+	_ struct{} `type:"structure"`
+
+	// The BGP peers that were placed in the DOWN state during the virtual interface
+	// failover test.
+	BgpPeers []*string `locationName:"bgpPeers" type:"list"`
+
+	// The maximum number of results to return with a single call. To retrieve the
+	// remaining results, make another call with the returned nextToken value.
+	//
+	// If MaxResults is given a value larger than 100, only 100 results are returned.
+	MaxResults *int64 `locationName:"maxResults" type:"integer"`
+
+	// The token for the next page of results.
+	NextToken *string `locationName:"nextToken" type:"string"`
+
+	// The status of the virtual interface failover test.
+	Status *string `locationName:"status" type:"string"`
+
+	// The ID of the virtual interface failover test.
+	TestId *string `locationName:"testId" type:"string"`
+
+	// The ID of the virtual interface that was tested.
+	VirtualInterfaceId *string `locationName:"virtualInterfaceId" type:"string"`
+}
+
+// String returns the string representation
+func (s ListVirtualInterfaceTestHistoryInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListVirtualInterfaceTestHistoryInput) GoString() string {
+	return s.String()
+}
+
+// SetBgpPeers sets the BgpPeers field's value.
+func (s *ListVirtualInterfaceTestHistoryInput) SetBgpPeers(v []*string) *ListVirtualInterfaceTestHistoryInput {
+	s.BgpPeers = v
+	return s
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListVirtualInterfaceTestHistoryInput) SetMaxResults(v int64) *ListVirtualInterfaceTestHistoryInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListVirtualInterfaceTestHistoryInput) SetNextToken(v string) *ListVirtualInterfaceTestHistoryInput {
+	s.NextToken = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *ListVirtualInterfaceTestHistoryInput) SetStatus(v string) *ListVirtualInterfaceTestHistoryInput {
+	s.Status = &v
+	return s
+}
+
+// SetTestId sets the TestId field's value.
+func (s *ListVirtualInterfaceTestHistoryInput) SetTestId(v string) *ListVirtualInterfaceTestHistoryInput {
+	s.TestId = &v
+	return s
+}
+
+// SetVirtualInterfaceId sets the VirtualInterfaceId field's value.
+func (s *ListVirtualInterfaceTestHistoryInput) SetVirtualInterfaceId(v string) *ListVirtualInterfaceTestHistoryInput {
+	s.VirtualInterfaceId = &v
+	return s
+}
+
+type ListVirtualInterfaceTestHistoryOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The token to use to retrieve the next page of results. This value is null
+	// when there are no more results to return.
+	NextToken *string `locationName:"nextToken" type:"string"`
+
+	// The ID of the tested virtual interface.
+	VirtualInterfaceTestHistory []*VirtualInterfaceTestHistory `locationName:"virtualInterfaceTestHistory" type:"list"`
+}
+
+// String returns the string representation
+func (s ListVirtualInterfaceTestHistoryOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListVirtualInterfaceTestHistoryOutput) GoString() string {
+	return s.String()
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListVirtualInterfaceTestHistoryOutput) SetNextToken(v string) *ListVirtualInterfaceTestHistoryOutput {
+	s.NextToken = &v
+	return s
+}
+
+// SetVirtualInterfaceTestHistory sets the VirtualInterfaceTestHistory field's value.
+func (s *ListVirtualInterfaceTestHistoryOutput) SetVirtualInterfaceTestHistory(v []*VirtualInterfaceTestHistory) *ListVirtualInterfaceTestHistoryOutput {
+	s.VirtualInterfaceTestHistory = v
 	return s
 }
 
@@ -9530,6 +10480,9 @@ func (s *Loa) SetLoaContentType(v string) *Loa {
 type Location struct {
 	_ struct{} `type:"structure"`
 
+	// The available MAC Security (MACsec) port speeds for the location.
+	AvailableMacSecPortSpeeds []*string `locationName:"availableMacSecPortSpeeds" type:"list"`
+
 	// The available port speeds for the location.
 	AvailablePortSpeeds []*string `locationName:"availablePortSpeeds" type:"list"`
 
@@ -9555,6 +10508,12 @@ func (s Location) String() string {
 // GoString returns the string representation
 func (s Location) GoString() string {
 	return s.String()
+}
+
+// SetAvailableMacSecPortSpeeds sets the AvailableMacSecPortSpeeds field's value.
+func (s *Location) SetAvailableMacSecPortSpeeds(v []*string) *Location {
+	s.AvailableMacSecPortSpeeds = v
+	return s
 }
 
 // SetAvailablePortSpeeds sets the AvailablePortSpeeds field's value.
@@ -9584,6 +10543,72 @@ func (s *Location) SetLocationName(v string) *Location {
 // SetRegion sets the Region field's value.
 func (s *Location) SetRegion(v string) *Location {
 	s.Region = &v
+	return s
+}
+
+// Information about the MAC Security (MACsec) secret key.
+type MacSecKey struct {
+	_ struct{} `type:"structure"`
+
+	// The Connection Key Name (CKN) for the MAC Security secret key.
+	Ckn *string `locationName:"ckn" type:"string"`
+
+	// The Amazon Resource Name (ARN) of the MAC Security (MACsec) secret key.
+	SecretARN *string `locationName:"secretARN" type:"string"`
+
+	// The date that the MAC Security (MACsec) secret key takes effect. The value
+	// is displayed in UTC format.
+	StartOn *string `locationName:"startOn" type:"string"`
+
+	// The state of the MAC Security (MACsec) secret key.
+	//
+	// The possible values are:
+	//
+	//    * associating: The MAC Security (MACsec) secret key is being validated
+	//    and not yet associated with the connection or LAG.
+	//
+	//    * associated: The MAC Security (MACsec) secret key is validated and associated
+	//    with the connection or LAG.
+	//
+	//    * disassociating: The MAC Security (MACsec) secret key is being disassociated
+	//    from the connection or LAG
+	//
+	//    * disassociated: The MAC Security (MACsec) secret key is no longer associated
+	//    with the connection or LAG.
+	State *string `locationName:"state" type:"string"`
+}
+
+// String returns the string representation
+func (s MacSecKey) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s MacSecKey) GoString() string {
+	return s.String()
+}
+
+// SetCkn sets the Ckn field's value.
+func (s *MacSecKey) SetCkn(v string) *MacSecKey {
+	s.Ckn = &v
+	return s
+}
+
+// SetSecretARN sets the SecretARN field's value.
+func (s *MacSecKey) SetSecretARN(v string) *MacSecKey {
+	s.SecretARN = &v
+	return s
+}
+
+// SetStartOn sets the StartOn field's value.
+func (s *MacSecKey) SetStartOn(v string) *MacSecKey {
+	s.StartOn = &v
+	return s
+}
+
+// SetState sets the State field's value.
+func (s *MacSecKey) SetState(v string) *MacSecKey {
+	s.State = &v
 	return s
 }
 
@@ -9685,7 +10710,9 @@ type NewPrivateVirtualInterface struct {
 	// The ID of the virtual private gateway.
 	VirtualGatewayId *string `locationName:"virtualGatewayId" type:"string"`
 
-	// The name of the virtual interface assigned by the customer network.
+	// The name of the virtual interface assigned by the customer network. The name
+	// has a maximum of 100 characters. The following are valid characters: a-z,
+	// 0-9 and a hyphen (-).
 	//
 	// VirtualInterfaceName is a required field
 	VirtualInterfaceName *string `locationName:"virtualInterfaceName" type:"string" required:"true"`
@@ -9835,7 +10862,9 @@ type NewPrivateVirtualInterfaceAllocation struct {
 	// The tags associated with the private virtual interface.
 	Tags []*Tag `locationName:"tags" min:"1" type:"list"`
 
-	// The name of the virtual interface assigned by the customer network.
+	// The name of the virtual interface assigned by the customer network. The name
+	// has a maximum of 100 characters. The following are valid characters: a-z,
+	// 0-9 and a hyphen (-).
 	//
 	// VirtualInterfaceName is a required field
 	VirtualInterfaceName *string `locationName:"virtualInterfaceName" type:"string" required:"true"`
@@ -9973,7 +11002,9 @@ type NewPublicVirtualInterface struct {
 	// The tags associated with the public virtual interface.
 	Tags []*Tag `locationName:"tags" min:"1" type:"list"`
 
-	// The name of the virtual interface assigned by the customer network.
+	// The name of the virtual interface assigned by the customer network. The name
+	// has a maximum of 100 characters. The following are valid characters: a-z,
+	// 0-9 and a hyphen (-).
 	//
 	// VirtualInterfaceName is a required field
 	VirtualInterfaceName *string `locationName:"virtualInterfaceName" type:"string" required:"true"`
@@ -10111,7 +11142,9 @@ type NewPublicVirtualInterfaceAllocation struct {
 	// The tags associated with the public virtual interface.
 	Tags []*Tag `locationName:"tags" min:"1" type:"list"`
 
-	// The name of the virtual interface assigned by the customer network.
+	// The name of the virtual interface assigned by the customer network. The name
+	// has a maximum of 100 characters. The following are valid characters: a-z,
+	// 0-9 and a hyphen (-).
 	//
 	// VirtualInterfaceName is a required field
 	VirtualInterfaceName *string `locationName:"virtualInterfaceName" type:"string" required:"true"`
@@ -10250,7 +11283,9 @@ type NewTransitVirtualInterface struct {
 	// The tags associated with the transitive virtual interface.
 	Tags []*Tag `locationName:"tags" min:"1" type:"list"`
 
-	// The name of the virtual interface assigned by the customer network.
+	// The name of the virtual interface assigned by the customer network. The name
+	// has a maximum of 100 characters. The following are valid characters: a-z,
+	// 0-9 and a hyphen (-).
 	VirtualInterfaceName *string `locationName:"virtualInterfaceName" type:"string"`
 
 	// The ID of the VLAN.
@@ -10379,7 +11414,9 @@ type NewTransitVirtualInterfaceAllocation struct {
 	// The tags associated with the transitive virtual interface.
 	Tags []*Tag `locationName:"tags" min:"1" type:"list"`
 
-	// The name of the virtual interface assigned by the customer network.
+	// The name of the virtual interface assigned by the customer network. The name
+	// has a maximum of 100 characters. The following are valid characters: a-z,
+	// 0-9 and a hyphen (-).
 	VirtualInterfaceName *string `locationName:"virtualInterfaceName" type:"string"`
 
 	// The ID of the VLAN.
@@ -10534,8 +11571,8 @@ func (s *RouteFilterPrefix) SetCidr(v string) *RouteFilterPrefix {
 
 // A server-side error occurred.
 type ServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -10552,17 +11589,17 @@ func (s ServerException) GoString() string {
 
 func newErrorServerException(v protocol.ResponseMetadata) error {
 	return &ServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServerException) Code() string {
+func (s *ServerException) Code() string {
 	return "DirectConnectServerException"
 }
 
 // Message returns the exception's message.
-func (s ServerException) Message() string {
+func (s *ServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10570,22 +11607,166 @@ func (s ServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServerException) OrigErr() error {
+func (s *ServerException) OrigErr() error {
 	return nil
 }
 
-func (s ServerException) Error() string {
+func (s *ServerException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServerException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+type StartBgpFailoverTestInput struct {
+	_ struct{} `type:"structure"`
+
+	// The BGP peers to place in the DOWN state.
+	BgpPeers []*string `locationName:"bgpPeers" type:"list"`
+
+	// The time in minutes that the virtual interface failover test will last.
+	//
+	// Maximum value: 180 minutes (3 hours).
+	//
+	// Default: 180 minutes (3 hours).
+	TestDurationInMinutes *int64 `locationName:"testDurationInMinutes" type:"integer"`
+
+	// The ID of the virtual interface you want to test.
+	//
+	// VirtualInterfaceId is a required field
+	VirtualInterfaceId *string `locationName:"virtualInterfaceId" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StartBgpFailoverTestInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartBgpFailoverTestInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StartBgpFailoverTestInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StartBgpFailoverTestInput"}
+	if s.VirtualInterfaceId == nil {
+		invalidParams.Add(request.NewErrParamRequired("VirtualInterfaceId"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetBgpPeers sets the BgpPeers field's value.
+func (s *StartBgpFailoverTestInput) SetBgpPeers(v []*string) *StartBgpFailoverTestInput {
+	s.BgpPeers = v
+	return s
+}
+
+// SetTestDurationInMinutes sets the TestDurationInMinutes field's value.
+func (s *StartBgpFailoverTestInput) SetTestDurationInMinutes(v int64) *StartBgpFailoverTestInput {
+	s.TestDurationInMinutes = &v
+	return s
+}
+
+// SetVirtualInterfaceId sets the VirtualInterfaceId field's value.
+func (s *StartBgpFailoverTestInput) SetVirtualInterfaceId(v string) *StartBgpFailoverTestInput {
+	s.VirtualInterfaceId = &v
+	return s
+}
+
+type StartBgpFailoverTestOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Information about the virtual interface failover test.
+	VirtualInterfaceTest *VirtualInterfaceTestHistory `locationName:"virtualInterfaceTest" type:"structure"`
+}
+
+// String returns the string representation
+func (s StartBgpFailoverTestOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartBgpFailoverTestOutput) GoString() string {
+	return s.String()
+}
+
+// SetVirtualInterfaceTest sets the VirtualInterfaceTest field's value.
+func (s *StartBgpFailoverTestOutput) SetVirtualInterfaceTest(v *VirtualInterfaceTestHistory) *StartBgpFailoverTestOutput {
+	s.VirtualInterfaceTest = v
+	return s
+}
+
+type StopBgpFailoverTestInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ID of the virtual interface you no longer want to test.
+	//
+	// VirtualInterfaceId is a required field
+	VirtualInterfaceId *string `locationName:"virtualInterfaceId" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StopBgpFailoverTestInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopBgpFailoverTestInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StopBgpFailoverTestInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StopBgpFailoverTestInput"}
+	if s.VirtualInterfaceId == nil {
+		invalidParams.Add(request.NewErrParamRequired("VirtualInterfaceId"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetVirtualInterfaceId sets the VirtualInterfaceId field's value.
+func (s *StopBgpFailoverTestInput) SetVirtualInterfaceId(v string) *StopBgpFailoverTestInput {
+	s.VirtualInterfaceId = &v
+	return s
+}
+
+type StopBgpFailoverTestOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Information about the virtual interface failover test.
+	VirtualInterfaceTest *VirtualInterfaceTestHistory `locationName:"virtualInterfaceTest" type:"structure"`
+}
+
+// String returns the string representation
+func (s StopBgpFailoverTestOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopBgpFailoverTestOutput) GoString() string {
+	return s.String()
+}
+
+// SetVirtualInterfaceTest sets the VirtualInterfaceTest field's value.
+func (s *StopBgpFailoverTestOutput) SetVirtualInterfaceTest(v *VirtualInterfaceTestHistory) *StopBgpFailoverTestOutput {
+	s.VirtualInterfaceTest = v
+	return s
 }
 
 // Information about a tag.
@@ -10720,8 +11901,8 @@ func (s TagResourceOutput) GoString() string {
 
 // You have reached the limit on the number of tags that can be assigned.
 type TooManyTagsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -10738,17 +11919,17 @@ func (s TooManyTagsException) GoString() string {
 
 func newErrorTooManyTagsException(v protocol.ResponseMetadata) error {
 	return &TooManyTagsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyTagsException) Code() string {
+func (s *TooManyTagsException) Code() string {
 	return "TooManyTagsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyTagsException) Message() string {
+func (s *TooManyTagsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10756,22 +11937,22 @@ func (s TooManyTagsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyTagsException) OrigErr() error {
+func (s *TooManyTagsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyTagsException) Error() string {
+func (s *TooManyTagsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyTagsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyTagsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyTagsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyTagsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
@@ -10838,6 +12019,299 @@ func (s UntagResourceOutput) String() string {
 // GoString returns the string representation
 func (s UntagResourceOutput) GoString() string {
 	return s.String()
+}
+
+type UpdateConnectionInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ID of the dedicated connection.
+	//
+	// You can use DescribeConnections to retrieve the connection ID.
+	//
+	// ConnectionId is a required field
+	ConnectionId *string `locationName:"connectionId" type:"string" required:"true"`
+
+	// The name of the connection.
+	ConnectionName *string `locationName:"connectionName" type:"string"`
+
+	// The connection MAC Security (MACsec) encryption mode.
+	//
+	// The valid values are no_encrypt, should_encrypt, and must_encrypt.
+	EncryptionMode *string `locationName:"encryptionMode" type:"string"`
+}
+
+// String returns the string representation
+func (s UpdateConnectionInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdateConnectionInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UpdateConnectionInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UpdateConnectionInput"}
+	if s.ConnectionId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ConnectionId"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConnectionId sets the ConnectionId field's value.
+func (s *UpdateConnectionInput) SetConnectionId(v string) *UpdateConnectionInput {
+	s.ConnectionId = &v
+	return s
+}
+
+// SetConnectionName sets the ConnectionName field's value.
+func (s *UpdateConnectionInput) SetConnectionName(v string) *UpdateConnectionInput {
+	s.ConnectionName = &v
+	return s
+}
+
+// SetEncryptionMode sets the EncryptionMode field's value.
+func (s *UpdateConnectionInput) SetEncryptionMode(v string) *UpdateConnectionInput {
+	s.EncryptionMode = &v
+	return s
+}
+
+// Information about an AWS Direct Connect connection.
+type UpdateConnectionOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The Direct Connect endpoint on which the physical connection terminates.
+	AwsDevice *string `locationName:"awsDevice" deprecated:"true" type:"string"`
+
+	// The Direct Connect endpoint on which the physical connection terminates.
+	AwsDeviceV2 *string `locationName:"awsDeviceV2" type:"string"`
+
+	// The bandwidth of the connection.
+	Bandwidth *string `locationName:"bandwidth" type:"string"`
+
+	// The ID of the connection.
+	ConnectionId *string `locationName:"connectionId" type:"string"`
+
+	// The name of the connection.
+	ConnectionName *string `locationName:"connectionName" type:"string"`
+
+	// The state of the connection. The following are the possible values:
+	//
+	//    * ordering: The initial state of a hosted connection provisioned on an
+	//    interconnect. The connection stays in the ordering state until the owner
+	//    of the hosted connection confirms or declines the connection order.
+	//
+	//    * requested: The initial state of a standard connection. The connection
+	//    stays in the requested state until the Letter of Authorization (LOA) is
+	//    sent to the customer.
+	//
+	//    * pending: The connection has been approved and is being initialized.
+	//
+	//    * available: The network link is up and the connection is ready for use.
+	//
+	//    * down: The network link is down.
+	//
+	//    * deleting: The connection is being deleted.
+	//
+	//    * deleted: The connection has been deleted.
+	//
+	//    * rejected: A hosted connection in the ordering state enters the rejected
+	//    state if it is deleted by the customer.
+	//
+	//    * unknown: The state of the connection is not available.
+	ConnectionState *string `locationName:"connectionState" type:"string" enum:"ConnectionState"`
+
+	// The MAC Security (MACsec) connection encryption mode.
+	//
+	// The valid values are no_encrypt, should_encrypt, and must_encrypt.
+	EncryptionMode *string `locationName:"encryptionMode" type:"string"`
+
+	// Indicates whether the connection supports a secondary BGP peer in the same
+	// address family (IPv4/IPv6).
+	HasLogicalRedundancy *string `locationName:"hasLogicalRedundancy" type:"string" enum:"HasLogicalRedundancy"`
+
+	// Indicates whether jumbo frames (9001 MTU) are supported.
+	JumboFrameCapable *bool `locationName:"jumboFrameCapable" type:"boolean"`
+
+	// The ID of the LAG.
+	LagId *string `locationName:"lagId" type:"string"`
+
+	// The time of the most recent call to DescribeLoa for this connection.
+	LoaIssueTime *time.Time `locationName:"loaIssueTime" type:"timestamp"`
+
+	// The location of the connection.
+	Location *string `locationName:"location" type:"string"`
+
+	// Indicates whether the connection supports MAC Security (MACsec).
+	MacSecCapable *bool `locationName:"macSecCapable" type:"boolean"`
+
+	// The MAC Security (MACsec) security keys associated with the connection.
+	MacSecKeys []*MacSecKey `locationName:"macSecKeys" type:"list"`
+
+	// The ID of the AWS account that owns the connection.
+	OwnerAccount *string `locationName:"ownerAccount" type:"string"`
+
+	// The name of the AWS Direct Connect service provider associated with the connection.
+	PartnerName *string `locationName:"partnerName" type:"string"`
+
+	// The MAC Security (MACsec) port link status of the connection.
+	//
+	// The valid values are Encryption Up, which means that there is an active Connection
+	// Key Name, or Encryption Down.
+	PortEncryptionStatus *string `locationName:"portEncryptionStatus" type:"string"`
+
+	// The name of the service provider associated with the connection.
+	ProviderName *string `locationName:"providerName" type:"string"`
+
+	// The AWS Region where the connection is located.
+	Region *string `locationName:"region" type:"string"`
+
+	// The tags associated with the connection.
+	Tags []*Tag `locationName:"tags" min:"1" type:"list"`
+
+	// The ID of the VLAN.
+	Vlan *int64 `locationName:"vlan" type:"integer"`
+}
+
+// String returns the string representation
+func (s UpdateConnectionOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdateConnectionOutput) GoString() string {
+	return s.String()
+}
+
+// SetAwsDevice sets the AwsDevice field's value.
+func (s *UpdateConnectionOutput) SetAwsDevice(v string) *UpdateConnectionOutput {
+	s.AwsDevice = &v
+	return s
+}
+
+// SetAwsDeviceV2 sets the AwsDeviceV2 field's value.
+func (s *UpdateConnectionOutput) SetAwsDeviceV2(v string) *UpdateConnectionOutput {
+	s.AwsDeviceV2 = &v
+	return s
+}
+
+// SetBandwidth sets the Bandwidth field's value.
+func (s *UpdateConnectionOutput) SetBandwidth(v string) *UpdateConnectionOutput {
+	s.Bandwidth = &v
+	return s
+}
+
+// SetConnectionId sets the ConnectionId field's value.
+func (s *UpdateConnectionOutput) SetConnectionId(v string) *UpdateConnectionOutput {
+	s.ConnectionId = &v
+	return s
+}
+
+// SetConnectionName sets the ConnectionName field's value.
+func (s *UpdateConnectionOutput) SetConnectionName(v string) *UpdateConnectionOutput {
+	s.ConnectionName = &v
+	return s
+}
+
+// SetConnectionState sets the ConnectionState field's value.
+func (s *UpdateConnectionOutput) SetConnectionState(v string) *UpdateConnectionOutput {
+	s.ConnectionState = &v
+	return s
+}
+
+// SetEncryptionMode sets the EncryptionMode field's value.
+func (s *UpdateConnectionOutput) SetEncryptionMode(v string) *UpdateConnectionOutput {
+	s.EncryptionMode = &v
+	return s
+}
+
+// SetHasLogicalRedundancy sets the HasLogicalRedundancy field's value.
+func (s *UpdateConnectionOutput) SetHasLogicalRedundancy(v string) *UpdateConnectionOutput {
+	s.HasLogicalRedundancy = &v
+	return s
+}
+
+// SetJumboFrameCapable sets the JumboFrameCapable field's value.
+func (s *UpdateConnectionOutput) SetJumboFrameCapable(v bool) *UpdateConnectionOutput {
+	s.JumboFrameCapable = &v
+	return s
+}
+
+// SetLagId sets the LagId field's value.
+func (s *UpdateConnectionOutput) SetLagId(v string) *UpdateConnectionOutput {
+	s.LagId = &v
+	return s
+}
+
+// SetLoaIssueTime sets the LoaIssueTime field's value.
+func (s *UpdateConnectionOutput) SetLoaIssueTime(v time.Time) *UpdateConnectionOutput {
+	s.LoaIssueTime = &v
+	return s
+}
+
+// SetLocation sets the Location field's value.
+func (s *UpdateConnectionOutput) SetLocation(v string) *UpdateConnectionOutput {
+	s.Location = &v
+	return s
+}
+
+// SetMacSecCapable sets the MacSecCapable field's value.
+func (s *UpdateConnectionOutput) SetMacSecCapable(v bool) *UpdateConnectionOutput {
+	s.MacSecCapable = &v
+	return s
+}
+
+// SetMacSecKeys sets the MacSecKeys field's value.
+func (s *UpdateConnectionOutput) SetMacSecKeys(v []*MacSecKey) *UpdateConnectionOutput {
+	s.MacSecKeys = v
+	return s
+}
+
+// SetOwnerAccount sets the OwnerAccount field's value.
+func (s *UpdateConnectionOutput) SetOwnerAccount(v string) *UpdateConnectionOutput {
+	s.OwnerAccount = &v
+	return s
+}
+
+// SetPartnerName sets the PartnerName field's value.
+func (s *UpdateConnectionOutput) SetPartnerName(v string) *UpdateConnectionOutput {
+	s.PartnerName = &v
+	return s
+}
+
+// SetPortEncryptionStatus sets the PortEncryptionStatus field's value.
+func (s *UpdateConnectionOutput) SetPortEncryptionStatus(v string) *UpdateConnectionOutput {
+	s.PortEncryptionStatus = &v
+	return s
+}
+
+// SetProviderName sets the ProviderName field's value.
+func (s *UpdateConnectionOutput) SetProviderName(v string) *UpdateConnectionOutput {
+	s.ProviderName = &v
+	return s
+}
+
+// SetRegion sets the Region field's value.
+func (s *UpdateConnectionOutput) SetRegion(v string) *UpdateConnectionOutput {
+	s.Region = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *UpdateConnectionOutput) SetTags(v []*Tag) *UpdateConnectionOutput {
+	s.Tags = v
+	return s
+}
+
+// SetVlan sets the Vlan field's value.
+func (s *UpdateConnectionOutput) SetVlan(v int64) *UpdateConnectionOutput {
+	s.Vlan = &v
+	return s
 }
 
 type UpdateDirectConnectGatewayAssociationInput struct {
@@ -10908,6 +12382,11 @@ func (s *UpdateDirectConnectGatewayAssociationOutput) SetDirectConnectGatewayAss
 type UpdateLagInput struct {
 	_ struct{} `type:"structure"`
 
+	// The LAG MAC Security (MACsec) encryption mode.
+	//
+	// AWS applies the value to all connections which are part of the LAG.
+	EncryptionMode *string `locationName:"encryptionMode" type:"string"`
+
 	// The ID of the LAG.
 	//
 	// LagId is a required field
@@ -10942,6 +12421,12 @@ func (s *UpdateLagInput) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetEncryptionMode sets the EncryptionMode field's value.
+func (s *UpdateLagInput) SetEncryptionMode(v string) *UpdateLagInput {
+	s.EncryptionMode = &v
+	return s
 }
 
 // SetLagId sets the LagId field's value.
@@ -11079,7 +12564,9 @@ type UpdateVirtualInterfaceAttributesOutput struct {
 	// The ID of the virtual interface.
 	VirtualInterfaceId *string `locationName:"virtualInterfaceId" type:"string"`
 
-	// The name of the virtual interface assigned by the customer network.
+	// The name of the virtual interface assigned by the customer network. The name
+	// has a maximum of 100 characters. The following are valid characters: a-z,
+	// 0-9 and a hyphen (-).
 	VirtualInterfaceName *string `locationName:"virtualInterfaceName" type:"string"`
 
 	// The state of the virtual interface. The following are the possible values:
@@ -11387,7 +12874,9 @@ type VirtualInterface struct {
 	// The ID of the virtual interface.
 	VirtualInterfaceId *string `locationName:"virtualInterfaceId" type:"string"`
 
-	// The name of the virtual interface assigned by the customer network.
+	// The name of the virtual interface assigned by the customer network. The name
+	// has a maximum of 100 characters. The following are valid characters: a-z,
+	// 0-9 and a hyphen (-).
 	VirtualInterfaceName *string `locationName:"virtualInterfaceName" type:"string"`
 
 	// The state of the virtual interface. The following are the possible values:
@@ -11583,6 +13072,94 @@ func (s *VirtualInterface) SetVlan(v int64) *VirtualInterface {
 	return s
 }
 
+// Information about the virtual interface failover test.
+type VirtualInterfaceTestHistory struct {
+	_ struct{} `type:"structure"`
+
+	// The BGP peers that were put in the DOWN state as part of the virtual interface
+	// failover test.
+	BgpPeers []*string `locationName:"bgpPeers" type:"list"`
+
+	// The time that the virtual interface moves out of the DOWN state.
+	EndTime *time.Time `locationName:"endTime" type:"timestamp"`
+
+	// The owner ID of the tested virtual interface.
+	OwnerAccount *string `locationName:"ownerAccount" type:"string"`
+
+	// The time that the virtual interface moves to the DOWN state.
+	StartTime *time.Time `locationName:"startTime" type:"timestamp"`
+
+	// The status of the virtual interface failover test.
+	Status *string `locationName:"status" type:"string"`
+
+	// The time that the virtual interface failover test ran in minutes.
+	TestDurationInMinutes *int64 `locationName:"testDurationInMinutes" type:"integer"`
+
+	// The ID of the virtual interface failover test.
+	TestId *string `locationName:"testId" type:"string"`
+
+	// The ID of the tested virtual interface.
+	VirtualInterfaceId *string `locationName:"virtualInterfaceId" type:"string"`
+}
+
+// String returns the string representation
+func (s VirtualInterfaceTestHistory) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s VirtualInterfaceTestHistory) GoString() string {
+	return s.String()
+}
+
+// SetBgpPeers sets the BgpPeers field's value.
+func (s *VirtualInterfaceTestHistory) SetBgpPeers(v []*string) *VirtualInterfaceTestHistory {
+	s.BgpPeers = v
+	return s
+}
+
+// SetEndTime sets the EndTime field's value.
+func (s *VirtualInterfaceTestHistory) SetEndTime(v time.Time) *VirtualInterfaceTestHistory {
+	s.EndTime = &v
+	return s
+}
+
+// SetOwnerAccount sets the OwnerAccount field's value.
+func (s *VirtualInterfaceTestHistory) SetOwnerAccount(v string) *VirtualInterfaceTestHistory {
+	s.OwnerAccount = &v
+	return s
+}
+
+// SetStartTime sets the StartTime field's value.
+func (s *VirtualInterfaceTestHistory) SetStartTime(v time.Time) *VirtualInterfaceTestHistory {
+	s.StartTime = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *VirtualInterfaceTestHistory) SetStatus(v string) *VirtualInterfaceTestHistory {
+	s.Status = &v
+	return s
+}
+
+// SetTestDurationInMinutes sets the TestDurationInMinutes field's value.
+func (s *VirtualInterfaceTestHistory) SetTestDurationInMinutes(v int64) *VirtualInterfaceTestHistory {
+	s.TestDurationInMinutes = &v
+	return s
+}
+
+// SetTestId sets the TestId field's value.
+func (s *VirtualInterfaceTestHistory) SetTestId(v string) *VirtualInterfaceTestHistory {
+	s.TestId = &v
+	return s
+}
+
+// SetVirtualInterfaceId sets the VirtualInterfaceId field's value.
+func (s *VirtualInterfaceTestHistory) SetVirtualInterfaceId(v string) *VirtualInterfaceTestHistory {
+	s.VirtualInterfaceId = &v
+	return s
+}
+
 const (
 	// AddressFamilyIpv4 is a AddressFamily enum value
 	AddressFamilyIpv4 = "ipv4"
@@ -11590,6 +13167,14 @@ const (
 	// AddressFamilyIpv6 is a AddressFamily enum value
 	AddressFamilyIpv6 = "ipv6"
 )
+
+// AddressFamily_Values returns all elements of the AddressFamily enum
+func AddressFamily_Values() []string {
+	return []string{
+		AddressFamilyIpv4,
+		AddressFamilyIpv6,
+	}
+}
 
 const (
 	// BGPPeerStateVerifying is a BGPPeerState enum value
@@ -11608,6 +13193,17 @@ const (
 	BGPPeerStateDeleted = "deleted"
 )
 
+// BGPPeerState_Values returns all elements of the BGPPeerState enum
+func BGPPeerState_Values() []string {
+	return []string{
+		BGPPeerStateVerifying,
+		BGPPeerStatePending,
+		BGPPeerStateAvailable,
+		BGPPeerStateDeleting,
+		BGPPeerStateDeleted,
+	}
+}
+
 const (
 	// BGPStatusUp is a BGPStatus enum value
 	BGPStatusUp = "up"
@@ -11618,6 +13214,15 @@ const (
 	// BGPStatusUnknown is a BGPStatus enum value
 	BGPStatusUnknown = "unknown"
 )
+
+// BGPStatus_Values returns all elements of the BGPStatus enum
+func BGPStatus_Values() []string {
+	return []string{
+		BGPStatusUp,
+		BGPStatusDown,
+		BGPStatusUnknown,
+	}
+}
 
 const (
 	// ConnectionStateOrdering is a ConnectionState enum value
@@ -11648,6 +13253,21 @@ const (
 	ConnectionStateUnknown = "unknown"
 )
 
+// ConnectionState_Values returns all elements of the ConnectionState enum
+func ConnectionState_Values() []string {
+	return []string{
+		ConnectionStateOrdering,
+		ConnectionStateRequested,
+		ConnectionStatePending,
+		ConnectionStateAvailable,
+		ConnectionStateDown,
+		ConnectionStateDeleting,
+		ConnectionStateDeleted,
+		ConnectionStateRejected,
+		ConnectionStateUnknown,
+	}
+}
+
 const (
 	// GatewayAssociationProposalStateRequested is a GatewayAssociationProposalState enum value
 	GatewayAssociationProposalStateRequested = "requested"
@@ -11658,6 +13278,15 @@ const (
 	// GatewayAssociationProposalStateDeleted is a GatewayAssociationProposalState enum value
 	GatewayAssociationProposalStateDeleted = "deleted"
 )
+
+// GatewayAssociationProposalState_Values returns all elements of the GatewayAssociationProposalState enum
+func GatewayAssociationProposalState_Values() []string {
+	return []string{
+		GatewayAssociationProposalStateRequested,
+		GatewayAssociationProposalStateAccepted,
+		GatewayAssociationProposalStateDeleted,
+	}
+}
 
 const (
 	// GatewayAssociationStateAssociating is a GatewayAssociationState enum value
@@ -11676,6 +13305,17 @@ const (
 	GatewayAssociationStateUpdating = "updating"
 )
 
+// GatewayAssociationState_Values returns all elements of the GatewayAssociationState enum
+func GatewayAssociationState_Values() []string {
+	return []string{
+		GatewayAssociationStateAssociating,
+		GatewayAssociationStateAssociated,
+		GatewayAssociationStateDisassociating,
+		GatewayAssociationStateDisassociated,
+		GatewayAssociationStateUpdating,
+	}
+}
+
 const (
 	// GatewayAttachmentStateAttaching is a GatewayAttachmentState enum value
 	GatewayAttachmentStateAttaching = "attaching"
@@ -11690,6 +13330,16 @@ const (
 	GatewayAttachmentStateDetached = "detached"
 )
 
+// GatewayAttachmentState_Values returns all elements of the GatewayAttachmentState enum
+func GatewayAttachmentState_Values() []string {
+	return []string{
+		GatewayAttachmentStateAttaching,
+		GatewayAttachmentStateAttached,
+		GatewayAttachmentStateDetaching,
+		GatewayAttachmentStateDetached,
+	}
+}
+
 const (
 	// GatewayAttachmentTypeTransitVirtualInterface is a GatewayAttachmentType enum value
 	GatewayAttachmentTypeTransitVirtualInterface = "TransitVirtualInterface"
@@ -11697,6 +13347,14 @@ const (
 	// GatewayAttachmentTypePrivateVirtualInterface is a GatewayAttachmentType enum value
 	GatewayAttachmentTypePrivateVirtualInterface = "PrivateVirtualInterface"
 )
+
+// GatewayAttachmentType_Values returns all elements of the GatewayAttachmentType enum
+func GatewayAttachmentType_Values() []string {
+	return []string{
+		GatewayAttachmentTypeTransitVirtualInterface,
+		GatewayAttachmentTypePrivateVirtualInterface,
+	}
+}
 
 const (
 	// GatewayStatePending is a GatewayState enum value
@@ -11712,6 +13370,16 @@ const (
 	GatewayStateDeleted = "deleted"
 )
 
+// GatewayState_Values returns all elements of the GatewayState enum
+func GatewayState_Values() []string {
+	return []string{
+		GatewayStatePending,
+		GatewayStateAvailable,
+		GatewayStateDeleting,
+		GatewayStateDeleted,
+	}
+}
+
 const (
 	// GatewayTypeVirtualPrivateGateway is a GatewayType enum value
 	GatewayTypeVirtualPrivateGateway = "virtualPrivateGateway"
@@ -11719,6 +13387,14 @@ const (
 	// GatewayTypeTransitGateway is a GatewayType enum value
 	GatewayTypeTransitGateway = "transitGateway"
 )
+
+// GatewayType_Values returns all elements of the GatewayType enum
+func GatewayType_Values() []string {
+	return []string{
+		GatewayTypeVirtualPrivateGateway,
+		GatewayTypeTransitGateway,
+	}
+}
 
 const (
 	// HasLogicalRedundancyUnknown is a HasLogicalRedundancy enum value
@@ -11730,6 +13406,15 @@ const (
 	// HasLogicalRedundancyNo is a HasLogicalRedundancy enum value
 	HasLogicalRedundancyNo = "no"
 )
+
+// HasLogicalRedundancy_Values returns all elements of the HasLogicalRedundancy enum
+func HasLogicalRedundancy_Values() []string {
+	return []string{
+		HasLogicalRedundancyUnknown,
+		HasLogicalRedundancyYes,
+		HasLogicalRedundancyNo,
+	}
+}
 
 const (
 	// InterconnectStateRequested is a InterconnectState enum value
@@ -11754,6 +13439,19 @@ const (
 	InterconnectStateUnknown = "unknown"
 )
 
+// InterconnectState_Values returns all elements of the InterconnectState enum
+func InterconnectState_Values() []string {
+	return []string{
+		InterconnectStateRequested,
+		InterconnectStatePending,
+		InterconnectStateAvailable,
+		InterconnectStateDown,
+		InterconnectStateDeleting,
+		InterconnectStateDeleted,
+		InterconnectStateUnknown,
+	}
+}
+
 const (
 	// LagStateRequested is a LagState enum value
 	LagStateRequested = "requested"
@@ -11777,10 +13475,30 @@ const (
 	LagStateUnknown = "unknown"
 )
 
+// LagState_Values returns all elements of the LagState enum
+func LagState_Values() []string {
+	return []string{
+		LagStateRequested,
+		LagStatePending,
+		LagStateAvailable,
+		LagStateDown,
+		LagStateDeleting,
+		LagStateDeleted,
+		LagStateUnknown,
+	}
+}
+
 const (
 	// LoaContentTypeApplicationPdf is a LoaContentType enum value
 	LoaContentTypeApplicationPdf = "application/pdf"
 )
+
+// LoaContentType_Values returns all elements of the LoaContentType enum
+func LoaContentType_Values() []string {
+	return []string{
+		LoaContentTypeApplicationPdf,
+	}
+}
 
 const (
 	// VirtualInterfaceStateConfirming is a VirtualInterfaceState enum value
@@ -11810,3 +13528,18 @@ const (
 	// VirtualInterfaceStateUnknown is a VirtualInterfaceState enum value
 	VirtualInterfaceStateUnknown = "unknown"
 )
+
+// VirtualInterfaceState_Values returns all elements of the VirtualInterfaceState enum
+func VirtualInterfaceState_Values() []string {
+	return []string{
+		VirtualInterfaceStateConfirming,
+		VirtualInterfaceStateVerifying,
+		VirtualInterfaceStatePending,
+		VirtualInterfaceStateAvailable,
+		VirtualInterfaceStateDown,
+		VirtualInterfaceStateDeleting,
+		VirtualInterfaceStateDeleted,
+		VirtualInterfaceStateRejected,
+		VirtualInterfaceStateUnknown,
+	}
+}

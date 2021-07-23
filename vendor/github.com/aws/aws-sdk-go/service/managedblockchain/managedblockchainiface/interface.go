@@ -142,9 +142,29 @@ type ManagedBlockchainAPI interface {
 	ListProposalsPages(*managedblockchain.ListProposalsInput, func(*managedblockchain.ListProposalsOutput, bool) bool) error
 	ListProposalsPagesWithContext(aws.Context, *managedblockchain.ListProposalsInput, func(*managedblockchain.ListProposalsOutput, bool) bool, ...request.Option) error
 
+	ListTagsForResource(*managedblockchain.ListTagsForResourceInput) (*managedblockchain.ListTagsForResourceOutput, error)
+	ListTagsForResourceWithContext(aws.Context, *managedblockchain.ListTagsForResourceInput, ...request.Option) (*managedblockchain.ListTagsForResourceOutput, error)
+	ListTagsForResourceRequest(*managedblockchain.ListTagsForResourceInput) (*request.Request, *managedblockchain.ListTagsForResourceOutput)
+
 	RejectInvitation(*managedblockchain.RejectInvitationInput) (*managedblockchain.RejectInvitationOutput, error)
 	RejectInvitationWithContext(aws.Context, *managedblockchain.RejectInvitationInput, ...request.Option) (*managedblockchain.RejectInvitationOutput, error)
 	RejectInvitationRequest(*managedblockchain.RejectInvitationInput) (*request.Request, *managedblockchain.RejectInvitationOutput)
+
+	TagResource(*managedblockchain.TagResourceInput) (*managedblockchain.TagResourceOutput, error)
+	TagResourceWithContext(aws.Context, *managedblockchain.TagResourceInput, ...request.Option) (*managedblockchain.TagResourceOutput, error)
+	TagResourceRequest(*managedblockchain.TagResourceInput) (*request.Request, *managedblockchain.TagResourceOutput)
+
+	UntagResource(*managedblockchain.UntagResourceInput) (*managedblockchain.UntagResourceOutput, error)
+	UntagResourceWithContext(aws.Context, *managedblockchain.UntagResourceInput, ...request.Option) (*managedblockchain.UntagResourceOutput, error)
+	UntagResourceRequest(*managedblockchain.UntagResourceInput) (*request.Request, *managedblockchain.UntagResourceOutput)
+
+	UpdateMember(*managedblockchain.UpdateMemberInput) (*managedblockchain.UpdateMemberOutput, error)
+	UpdateMemberWithContext(aws.Context, *managedblockchain.UpdateMemberInput, ...request.Option) (*managedblockchain.UpdateMemberOutput, error)
+	UpdateMemberRequest(*managedblockchain.UpdateMemberInput) (*request.Request, *managedblockchain.UpdateMemberOutput)
+
+	UpdateNode(*managedblockchain.UpdateNodeInput) (*managedblockchain.UpdateNodeOutput, error)
+	UpdateNodeWithContext(aws.Context, *managedblockchain.UpdateNodeInput, ...request.Option) (*managedblockchain.UpdateNodeOutput, error)
+	UpdateNodeRequest(*managedblockchain.UpdateNodeInput) (*request.Request, *managedblockchain.UpdateNodeOutput)
 
 	VoteOnProposal(*managedblockchain.VoteOnProposalInput) (*managedblockchain.VoteOnProposalOutput, error)
 	VoteOnProposalWithContext(aws.Context, *managedblockchain.VoteOnProposalInput, ...request.Option) (*managedblockchain.VoteOnProposalOutput, error)
