@@ -188,11 +188,22 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 				"unable to find a suggested merge base commit for revision %v, must fix on projects settings page",
 				revision)
 			gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
+			return []model.Revision{}, revisionError
 		} else {
-			// automatically set the newly found base revision as base revision
-			revisionError = errors.Errorf("base revision, %v not found, suggested base revision, %v found",
-				revision, baseRevision)
+			// automatically set the newly found base revision as base revision and append revisions
+			commit, err := thirdparty.GetCommitEvent(ctx,
+				gRepoPoller.OauthToken,
+				gRepoPoller.ProjectRef.Owner,
+				gRepoPoller.ProjectRef.Repo,
+				baseRevision,
+			)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error loading commit '%v'", baseRevision)
+			}
+			revisions = append(revisions, githubCommitToRevision(commit))
 
+			grip.Infof("Base revision, %v not found, updating %v as new base revision",
+				revision, baseRevision)
 			err = model.UpdateLastRevision(gRepoPoller.ProjectRef.Id, baseRevision)
 			if err != nil {
 				return nil, errors.Wrap(err, "error updating last revision")
@@ -205,8 +216,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 		if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
 			return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
 		}
-
-		return []model.Revision{}, revisionError
 	}
 
 	if len(revisions) == 0 {
