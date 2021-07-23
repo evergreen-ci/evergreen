@@ -24,7 +24,7 @@ func (s *podConnectorSuite) SetupTest() {
 	s.NoError(db.ClearCollections(pod.Collection))
 }
 
-func (s *podConnectorSuite) TeardownTest() {
+func (s *podConnectorSuite) TearDownTest() {
 	s.NoError(db.Clear(pod.Collection))
 }
 
