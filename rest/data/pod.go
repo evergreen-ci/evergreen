@@ -35,9 +35,18 @@ func (c *DBPodConnector) CreatePod(p model.APICreatePod) (*model.APICreatePodRes
 // database. It returns an error if the secret does not match the one assigned
 // for the given pod ID.
 func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
-	p, err := c.FindPodByID(id)
+	p, err := pod.FindOneByID(id)
 	if err != nil {
-		return err
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "finding pod by ID").Error(),
+		}
+	}
+	if p == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "pod does not exist",
+		}
 	}
 	if secret != p.Secret {
 		return errors.New("incorrect pod secret")
@@ -52,7 +61,7 @@ func (c *DBPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
+			Message:    errors.Wrap(err, "finding pod by ID").Error(),
 		}
 	}
 	if p == nil {
@@ -61,7 +70,14 @@ func (c *DBPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 			Message:    "pod does not exist",
 		}
 	}
-	return p, nil
+	var apiPod model.APIPod
+	if err := apiPod.BuildFromService(p); err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "building pod from service model").Error(),
+		}
+	}
+	return &apiPod, nil
 }
 
 // MockPodConnector implements the pod-related methods from the connector via an
@@ -118,9 +134,12 @@ func translatePod(p model.APICreatePod) (*pod.Pod, error) {
 // FindPodByID checks the cache for a matching pod by ID.
 func (c *MockPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 	for _, p := range c.CachedPods {
-		// kim: TODO: write DB pod -> API pod converter (BuildFromService)
 		if id == p.ID {
-			return &p, nil
+			var apiPod model.APIPod
+			if err := apiPod.BuildFromService(&p); err != nil {
+				return nil, errors.Wrap(err, "building pod from service model")
+			}
+			return &apiPod, nil
 		}
 	}
 	return nil, errors.New("pod does not exist")
