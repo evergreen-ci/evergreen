@@ -105,22 +105,22 @@ func (s *PodSecret) SetOwned(owned bool) *PodSecret {
 type ECSPodStatus string
 
 const (
-	// StartingStatus indicates that the ECS pod is being prepared to run.
-	StartingStatus ECSPodStatus = "starting"
-	// RunningStatus indicates that the ECS pod is actively running.
-	RunningStatus ECSPodStatus = "running"
-	// StoppedStatus indicates the that ECS pod is stopped, but all of its
+	// StatusStarting indicates that the ECS pod is being prepared to run.
+	StatusStarting ECSPodStatus = "starting"
+	// StatusRunning indicates that the ECS pod is actively running.
+	StatusRunning ECSPodStatus = "running"
+	// StatusStopped indicates the that ECS pod is stopped, but all of its
 	// resources are still available.
-	StoppedStatus ECSPodStatus = "stopped"
-	// DeletedStatus indicates that the ECS pod has been cleaned up completely,
+	StatusStopped ECSPodStatus = "stopped"
+	// StatusDeleted indicates that the ECS pod has been cleaned up completely,
 	// including all of its resources.
-	DeletedStatus ECSPodStatus = "deleted"
+	StatusDeleted ECSPodStatus = "deleted"
 )
 
 // Validate checks that the ECS pod status is one of the recognized statuses.
 func (s ECSPodStatus) Validate() error {
 	switch s {
-	case StartingStatus, RunningStatus, StoppedStatus, DeletedStatus:
+	case StatusStarting, StatusRunning, StatusStopped, StatusDeleted:
 		return nil
 	default:
 		return errors.Errorf("unrecognized status '%s'", s)

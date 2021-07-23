@@ -47,7 +47,7 @@ func TestTerminatePodJob(t *testing.T) {
 
 			info, err := j.ecsPod.Info(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, cocoa.DeletedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusDeleted, info.Status)
 		},
 		"SucceedsWithPodFromDB": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
 			require.NoError(t, j.pod.Insert())
@@ -68,7 +68,7 @@ func TestTerminatePodJob(t *testing.T) {
 
 			info, err := j.ecsPod.Info(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, cocoa.DeletedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusDeleted, info.Status)
 		},
 		"FailsWhenDeletingResourcesErrors": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
 			require.NoError(t, j.pod.Insert())

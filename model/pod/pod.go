@@ -55,8 +55,14 @@ type ResourceInfo struct {
 	SecretIDs []string `bson:"secret_ids" json:"secret_ids"`
 }
 
-// TaskCreationOptions are options to apply to the task's container when
-// creating a pod in the container orchestration service.
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (o ResourceInfo) IsZero() bool {
+	return o.ID == "" && o.DefinitionID == "" && o.Cluster == "" && len(o.SecretIDs) == 0
+}
+
+// TaskContainerCreationOptions are options to apply to the task's container
+// when creating a pod in the container orchestration service.
 type TaskContainerCreationOptions struct {
 	// Image is the image that the task's container will run.
 	Image string `bson:"image" json:"image"`
@@ -74,13 +80,13 @@ type TaskContainerCreationOptions struct {
 	// EnvSecrets is a mapping of secret names to secret values to expose in the
 	// task's container environment variables. The secret name is the
 	// environment variable name.
-	EnvSecrets map[string]string `bson:"secrets,omitempty" json:"secrets,omitempty"`
+	EnvSecrets map[string]string `bson:"env_secrets,omitempty" json:"env_secrets,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o TaskContainerCreationOptions) IsZero() bool {
-	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.Platform == "" && o.EnvVars == nil && o.EnvSecrets == nil
+	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.Platform == "" && len(o.EnvVars) == 0 && len(o.EnvSecrets) == 0
 }
 
 // Insert inserts a new pod into the collection.

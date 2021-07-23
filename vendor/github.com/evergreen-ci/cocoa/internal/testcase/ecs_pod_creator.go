@@ -82,7 +82,7 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 
 			info, err := p.Info(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, cocoa.RunningStatus, info.Status)
+			assert.Equal(t, cocoa.StatusRunning, info.Status)
 		},
 	}
 }
@@ -160,7 +160,7 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 
 			info, err := p.Info(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, cocoa.RunningStatus, info.Status)
+			assert.Equal(t, cocoa.StatusRunning, info.Status)
 		},
 	}
 }

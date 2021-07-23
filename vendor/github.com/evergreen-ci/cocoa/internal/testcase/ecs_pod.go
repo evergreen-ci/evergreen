@@ -55,7 +55,7 @@ func ECSPodTests() map[string]ECSPodTestCase {
 			info, err := p.Info(ctx)
 			require.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, cocoa.StoppedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusStopped, info.Status)
 		},
 		"StopSucceedsWithSecrets": func(ctx context.Context, t *testing.T, v cocoa.Vault, pc cocoa.ECSPodCreator) {
 			secret := cocoa.NewEnvironmentVariable().
@@ -81,7 +81,7 @@ func ECSPodTests() map[string]ECSPodTestCase {
 			info, err := p.Info(ctx)
 			require.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, cocoa.RunningStatus, info.Status)
+			assert.Equal(t, cocoa.StatusRunning, info.Status)
 			assert.Len(t, info.Resources.Secrets, 2)
 
 			require.NoError(t, p.Stop(ctx))
@@ -89,7 +89,7 @@ func ECSPodTests() map[string]ECSPodTestCase {
 			info, err = p.Info(ctx)
 			require.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, cocoa.StoppedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusStopped, info.Status)
 			require.Len(t, info.Resources.Secrets, 2)
 
 			arn := info.Resources.Secrets[0].Name
@@ -112,7 +112,7 @@ func ECSPodTests() map[string]ECSPodTestCase {
 			info, err := p.Info(ctx)
 			require.NoError(t, err)
 			require.NotZero(t, info)
-			assert.Equal(t, cocoa.StoppedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusStopped, info.Status)
 
 			require.Error(t, p.Stop(ctx))
 		},
@@ -125,14 +125,14 @@ func ECSPodTests() map[string]ECSPodTestCase {
 			info, err := p.Info(ctx)
 			require.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, cocoa.RunningStatus, info.Status)
+			assert.Equal(t, cocoa.StatusRunning, info.Status)
 
 			require.NoError(t, p.Delete(ctx))
 
 			info, err = p.Info(ctx)
 			require.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, cocoa.DeletedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusDeleted, info.Status)
 		},
 		"DeleteSucceedsWithSecrets": func(ctx context.Context, t *testing.T, v cocoa.Vault, pc cocoa.ECSPodCreator) {
 			secret := cocoa.NewEnvironmentVariable().SetName(t.Name()).
@@ -149,7 +149,7 @@ func ECSPodTests() map[string]ECSPodTestCase {
 			info, err := p.Info(ctx)
 			require.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, cocoa.RunningStatus, info.Status)
+			assert.Equal(t, cocoa.StatusRunning, info.Status)
 			require.Len(t, info.Resources.Secrets, 2)
 
 			require.NoError(t, p.Delete(ctx))
@@ -157,7 +157,7 @@ func ECSPodTests() map[string]ECSPodTestCase {
 			info, err = p.Info(ctx)
 			require.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, cocoa.DeletedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusDeleted, info.Status)
 			require.Len(t, info.Resources.Secrets, 2)
 
 			arn0 := info.Resources.Secrets[0].Name
