@@ -15,20 +15,20 @@ import (
 type DBPodConnector struct{}
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
-func (c *DBPodConnector) CreatePod(p restModel.APICreatePod) (string, error) {
+func (c *DBPodConnector) CreatePod(p restModel.APICreatePod) (*restModel.APICreatePodResponse, error) {
 	podDB, err := translatePod(p)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if err := podDB.Insert(); err != nil {
-		return "", gimlet.ErrorResponse{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("pod with id '%s' was not inserted", podDB.ID),
 		}
 	}
 
-	return podDB.ID, nil
+	return &restModel.APICreatePodResponse{ID: podDB.ID}, nil
 }
 
 // CheckPodSecret checks for a pod with a matching ID and secret in the
@@ -53,15 +53,15 @@ type MockPodConnector struct {
 	CachedPods []pod.Pod
 }
 
-func (c *MockPodConnector) CreatePod(apiPod restModel.APICreatePod) (string, error) {
+func (c *MockPodConnector) CreatePod(apiPod restModel.APICreatePod) (*restModel.APICreatePodResponse, error) {
 	podDB, err := translatePod(apiPod)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	c.CachedPods = append(c.CachedPods, *podDB)
 
-	return podDB.ID, nil
+	return &restModel.APICreatePodResponse{ID: podDB.ID}, nil
 }
 
 func (c *MockPodConnector) CheckPodSecret(id, secret string) error {

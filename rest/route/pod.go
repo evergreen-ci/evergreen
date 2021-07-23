@@ -122,7 +122,6 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
-	h.body = b
 
 	if err := json.Unmarshal(b, &h.p); err != nil {
 		return gimlet.ErrorResponse{
@@ -131,25 +130,33 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	if h.p.Image == nil || h.p.CPU == nil || h.p.Memory == nil || h.p.Platform == nil {
+	if utility.FromStringPtr(h.p.Image) == "" {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Invalid API pod initialization input"),
+			Message:    fmt.Sprintln("Invalid API input: missing or empty image input"),
 		}
-	}
-
-	if utility.FromIntPtr(h.p.Memory) <= 0 || utility.FromIntPtr(h.p.CPU) <= 0 {
+	} else if utility.FromStringPtr(h.p.Platform) == "" {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Invalid memory or CPU amount"),
+			Message:    fmt.Sprintln("Invalid API input: missing or empty platform"),
+		}
+	} else if utility.FromIntPtr(h.p.CPU) <= 0 {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintln("Invalid API input: missing or invalid CPU"),
+		}
+	} else if utility.FromIntPtr(h.p.Memory) <= 0 {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintln("Invalid API input: missing or invalid memory"),
 		}
 	}
 
 	for _, envVar := range h.p.EnvVars {
-		if envVar.Name == nil {
+		if utility.FromStringPtr(envVar.Name) == "" {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("Invalid API input: missing environment variable name"),
+				Message:    fmt.Sprintf("Invalid API input: missing or empty environment variable name"),
 			}
 		}
 	}
@@ -164,7 +171,7 @@ func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Creating new pod"))
 	}
 
-	responder := gimlet.NewJSONResponse(model.APICreatePodResponse{ID: id})
+	responder := gimlet.NewJSONResponse(id)
 
 	if err := responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
