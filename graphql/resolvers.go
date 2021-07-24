@@ -981,7 +981,7 @@ func (r *patchResolver) Status(ctx context.Context, obj *restModel.APIPatch) (st
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 	}
-	status := obj.Status
+	status := *obj.Status
 	if len(obj.ChildPatches) > 0 {
 		for _, cp := range obj.ChildPatches {
 			// add the child patch tasks to tasks so that we can consider their status
@@ -997,11 +997,10 @@ func (r *patchResolver) Status(ctx context.Context, obj *restModel.APIPatch) (st
 	// If theres an aborted task we should set the patch status to aborted if there are no other failures
 	if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
 		if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
-			abortedStatus := evergreen.TaskAborted
-			status = &abortedStatus
+			status = evergreen.PatchAborted
 		}
 	}
-	return *status, nil
+	return status, nil
 }
 
 func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPatch, error) {
@@ -1017,9 +1016,6 @@ func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIV
 	v, err := r.sc.FindVersionById(id)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", id, err.Error()))
-	}
-	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find a version with id: `%s`", id))
 	}
 	apiVersion := restModel.APIVersion{}
 	if err = apiVersion.BuildFromService(v); err != nil {
@@ -2909,20 +2905,18 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 	t := timeTaken.Round(time.Second)
 	m := makespan.Round(time.Second)
 
-	var apiTimeTaken *restModel.APIDuration
-	var apiMakespan *restModel.APIDuration
-	if t.String() != "0s" {
-		apiDuration := restModel.NewAPIDuration(t)
-		apiTimeTaken = &apiDuration
+	var apiTimeTaken restModel.APIDuration
+	var apiMakespan restModel.APIDuration
+	if t.Seconds() != 0 {
+		apiTimeTaken = restModel.NewAPIDuration(t)
 	}
-	if m.String() != "0s" {
-		apiDuration := restModel.NewAPIDuration(m)
-		apiMakespan = &apiDuration
+	if m.Seconds() != 0 {
+		apiMakespan = restModel.NewAPIDuration(m)
 	}
 
 	return &VersionTiming{
-		TimeTaken: apiTimeTaken,
-		Makespan:  apiMakespan,
+		TimeTaken: &apiTimeTaken,
+		Makespan:  &apiMakespan,
 	}, nil
 }
 
@@ -2944,8 +2938,10 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for version: %s ", err.Error()))
 	}
-	status, _ := evergreen.VersionStatusToPatchStatus(*obj.Status)
-
+	status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
+	if err != nil {
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occured when converting a version status: %s ", err.Error()))
+	}
 	if evergreen.IsPatchRequester(*obj.Requester) {
 		p, err := r.sc.FindPatchById(*obj.Id)
 		if err != nil {
