@@ -202,8 +202,14 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			}
 			revisions = append(revisions, githubCommitToRevision(commit))
 
-			grip.Infof("Base revision, %v not found, updating %v as new base revision",
-				revision, baseRevision)
+			grip.Info(message.Fields{
+				"source":             "github poller",
+				"message":            "updating new base revision",
+				"revision":           revision,
+				"new_revision":       baseRevision,
+				"project":            gRepoPoller.ProjectRef.Id,
+				"project_identifier": gRepoPoller.ProjectRef.Identifier,
+			})
 			err = model.UpdateLastRevision(gRepoPoller.ProjectRef.Id, baseRevision)
 			if err != nil {
 				return nil, errors.Wrap(err, "error updating last revision")
