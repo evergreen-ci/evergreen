@@ -5078,7 +5078,6 @@ input BuildVariantOptions {
   tasks: [String!]
   statuses: [String!]
 }
-
 input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7

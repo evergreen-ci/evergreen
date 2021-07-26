@@ -2790,10 +2790,11 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:  options.Statuses,
-		Variants:  options.Variants,
-		TaskNames: options.Tasks,
-		Sorts:     defaultSort,
+		Statuses:        options.Statuses,
+		Variants:        options.Variants,
+		TaskNames:       options.Tasks,
+		Sorts:           defaultSort,
+		FieldsToProject: []string{task.DisplayStatusKey},
 	}
 
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
