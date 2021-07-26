@@ -188,6 +188,9 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 				"unable to find a suggested merge base commit for revision %v, must fix on projects settings page",
 				revision)
 			gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
+			if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
+				return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
+			}
 			return []model.Revision{}, revisionError
 		} else {
 			// automatically set the newly found base revision as base revision and append revisions
@@ -214,11 +217,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			if err != nil {
 				return nil, errors.Wrap(err, "error updating last revision")
 			}
-			gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
-		}
-
-		if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
-			return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
 		}
 	}
 
