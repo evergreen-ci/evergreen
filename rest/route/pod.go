@@ -2,9 +2,6 @@ package route
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -12,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -43,72 +41,40 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
-	b, err := ioutil.ReadAll(body)
-	if err != nil {
-		return errors.Wrap(err, "Argument read error")
+	if err := utility.ReadJSON(r.Body, &h.p); err != nil {
+		return errors.Wrap(err, "reading payload body")
 	}
-
-	if err := json.Unmarshal(b, &h.p); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("API error while unmarshalling JSON"),
-		}
-	}
-
-	if utility.FromStringPtr(h.p.Image) == "" {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintln("Invalid API input: missing or empty image input"),
-		}
-	}
-	if utility.FromStringPtr(h.p.OS) == "" {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintln("Invalid API input: missing or empty OS"),
-		}
-	}
-	if utility.FromStringPtr(h.p.Arch) == "" {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintln("Invalid API input: missing or empty architecture"),
-		}
-	}
-	if utility.FromIntPtr(h.p.CPU) <= 0 {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintln("Invalid API input: missing or invalid CPU"),
-		}
-	}
-	if utility.FromIntPtr(h.p.Memory) <= 0 {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintln("Invalid API input: missing or invalid memory"),
-		}
-	}
-
-	for _, envVar := range h.p.EnvVars {
-		if utility.FromStringPtr(envVar.Name) == "" {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("Invalid API input: missing or empty environment variable name"),
-			}
-		}
+	if err := h.validatePayload(); err != nil {
+		return errors.Wrap(err, "invalid API input")
 	}
 
 	return nil
+}
+
+// validatePayload validates that the input request payload is valid.
+func (h *podPostHandler) validatePayload() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(utility.FromStringPtr(h.p.Image) == "", "missing image")
+	catcher.NewWhen(utility.FromStringPtr(h.p.OS) == "", "missing OS")
+	catcher.NewWhen(utility.FromStringPtr(h.p.Arch) == "", "missing architecture")
+	catcher.NewWhen(utility.FromIntPtr(h.p.CPU) <= 0, "CPU must be a positive non-zero value")
+	catcher.NewWhen(utility.FromIntPtr(h.p.Memory) <= 0, "memory must be a positive non-zero value")
+	for i, envVar := range h.p.EnvVars {
+		catcher.ErrorfWhen(utility.FromStringPtr(envVar.Name) == "", "missing environment variable name for variable at index %d", i)
+	}
+	return catcher.Resolve()
 }
 
 // Run creates a new resource based on the Request-URI and JSON payload.
 func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 	res, err := h.sc.CreatePod(h.p)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Creating new pod"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating new pod"))
 	}
 
-	responder := gimlet.NewJSONResponse(res)
-
-	if err := responder.SetStatus(http.StatusCreated); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
+	responder, err := gimlet.NewBasicResponder(http.StatusCreated, gimlet.JSON, res)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "constructing response"))
 	}
 
 	return responder
