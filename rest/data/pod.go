@@ -119,7 +119,7 @@ func translatePod(p model.APICreatePod) (*pod.Pod, error) {
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("API error converting from model.APICreatePod to pod.Pod"),
+			Message:    errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod").Error(),
 		}
 	}
 

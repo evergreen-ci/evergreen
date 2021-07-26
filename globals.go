@@ -948,22 +948,18 @@ const (
 	LogTypeSystem = "system_log"
 )
 
-// PodPlatform represents recognized platforms for pods.
-type PodPlatform string
+type ECSClusterPlatform string
 
 const (
-	// PodPlatformLinux is the platform to run pods with Linux containers.
-	PodPlatformLinux PodPlatform = "linux"
-	// PodPlatformWindows is the platform to run pods with Windows containers.
-	PodPlatformWindows PodPlatform = "windows"
+	ECSClusterPlatformLinux   = "linux"
+	ECSClusterPlatformWindows = "windows"
 )
 
-// Validate checks that the given pod platform is recognized.
-func (p PodPlatform) Validate() error {
+func (p ECSClusterPlatform) Validate() error {
 	switch p {
-	case PodPlatformLinux, PodPlatformWindows:
+	case ECSClusterPlatformLinux, ECSClusterPlatformWindows:
 		return nil
 	default:
-		return errors.Errorf("unrecognized pod platform '%s'", p)
+		return errors.Errorf("unrecognized ECS cluster platform '%s'", p)
 	}
 }
