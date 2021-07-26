@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
@@ -1226,6 +1227,38 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 		for _, user := range users {
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewReauthorizeUserJob(env, &user, ts)), "user %s", user.Id)
 		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulatePodInitializingJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "error fetching initializing pods")
+		}
+
+		jobsSubmitted := 0
+		collisions := 0
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			err := amboy.EnqueueUniqueJob(ctx, queue, NewPodInitJob(env, &p, utility.RoundPartOfMinute(0).Format(TSFormat)))
+			if amboy.IsDuplicateJobError(err) || amboy.IsDuplicateJobScopeError(err) {
+				collisions++
+				continue
+			}
+			catcher.Add(err)
+
+			jobsSubmitted++
+		}
+
+		grip.Info(message.Fields{
+			"initializing_pods": len(pods),
+			"jobs_submitted":    jobsSubmitted,
+			"duplicates_seen":   collisions,
+			"message":           "pod initializing",
+		})
 
 		return catcher.Resolve()
 	}
