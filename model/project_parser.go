@@ -48,7 +48,7 @@ const LoadProjectError = "load project error(s)"
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
 type ParserProject struct {
-	// Id and ConfigdUpdateNumber not pointers because they are only used internally
+	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
 	Id                 string                     `yaml:"_id" bson:"_id"` // should be the same as the version's ID
 	ConfigUpdateNumber int                        `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
 	Enabled            *bool                      `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
@@ -495,7 +495,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}
 	pp.Id = v.Id
-	pp.Identifier = &id
+	pp.Identifier = utility.ToStringPtr(id)
 	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
 	pp.CreateTime = v.CreateTime
 
