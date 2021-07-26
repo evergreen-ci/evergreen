@@ -2801,13 +2801,18 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 type versionResolver struct{ *Resolver }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
-func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion) ([]*StatusCount, error) {
+func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*StatusCount, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Statuses:        options.Statuses,
+		Variants:        options.Variants,
+		TaskNames:       options.Tasks,
+		Sorts:           defaultSort,
+		FieldsToProject: []string{task.DisplayStatusKey},
 	}
+
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 
 	if err != nil {
