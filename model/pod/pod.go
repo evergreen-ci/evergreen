@@ -95,6 +95,8 @@ type TaskContainerCreationOptions struct {
 	// task's container environment variables. The secret name is the
 	// environment variable name.
 	EnvSecrets map[string]string `bson:"env_secrets,omitempty" json:"env_secrets,omitempty"`
+	// WorkingDir is the working directory for the task's container.
+	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir,omitempty"`
 }
 
 // OS represents recognized operating systems for pods.

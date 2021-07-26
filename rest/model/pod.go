@@ -24,34 +24,19 @@ type APITimeInfo struct {
 
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
-	Name    *string         `json:"name"`
-	Memory  *int            `json:"memory"`
-	CPU     *int            `json:"cpu"`
-	Image   *string         `json:"image"`
-	EnvVars []*APIPodEnvVar `json:"env_vars"`
-	OS      *string         `json:"os"`
-	Arch    *string         `json:"arch"`
-	Secret  *string         `json:"secret"`
+	Name       *string         `json:"name"`
+	Memory     *int            `json:"memory"`
+	CPU        *int            `json:"cpu"`
+	Image      *string         `json:"image"`
+	EnvVars    []*APIPodEnvVar `json:"env_vars"`
+	OS         *string         `json:"os"`
+	Arch       *string         `json:"arch"`
+	Secret     *string         `json:"secret"`
+	WorkingDir *string         `json:"working_dir"`
 }
 
 type APICreatePodResponse struct {
 	ID string `json:"id"`
-}
-
-// fromAPIEnvVars converts a slice of APIPodEnvVars to a map of environment variables and a map of secrets.
-func (p *APICreatePod) fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]string, secrets map[string]string) {
-	envVars = make(map[string]string)
-	secrets = make(map[string]string)
-
-	for _, envVar := range api {
-		if utility.FromBoolPtr(envVar.Secret) {
-			secrets[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
-		} else {
-			envVars[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
-		}
-	}
-
-	return envVars, secrets
 }
 
 // ToService returns a service layer pod.Pod using the data from APIPod.
@@ -78,8 +63,25 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 			Arch:       arch,
 			EnvVars:    envVars,
 			EnvSecrets: secrets,
+			WorkingDir: utility.FromStringPtr(p.WorkingDir),
 		},
 	}, nil
+}
+
+// fromAPIEnvVars converts a slice of APIPodEnvVars to a map of environment variables and a map of secrets.
+func (p *APICreatePod) fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]string, secrets map[string]string) {
+	envVars = make(map[string]string)
+	secrets = make(map[string]string)
+
+	for _, envVar := range api {
+		if utility.FromBoolPtr(envVar.Secret) {
+			secrets[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
+		} else {
+			envVars[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
+		}
+	}
+
+	return envVars, secrets
 }
 
 // APIPod represents a pod to be used and returned from the REST API.
@@ -186,6 +188,7 @@ type APIPodTaskContainerCreationOptions struct {
 	Arch       *string           `json:"arch,omitempty"`
 	EnvVars    map[string]string `json:"env_vars,omitempty"`
 	EnvSecrets map[string]string `json:"env_secrets,omitempty"`
+	WorkingDir *string           `json:"working_dir,omitempty"`
 }
 
 // BuildFromService converts service-layer task container creation options into
@@ -198,6 +201,7 @@ func (o *APIPodTaskContainerCreationOptions) BuildFromService(opts pod.TaskConta
 	o.Arch = utility.ToStringPtr(string(opts.Arch))
 	o.EnvVars = opts.EnvVars
 	o.EnvSecrets = opts.EnvSecrets
+	o.WorkingDir = utility.ToStringPtr(opts.WorkingDir)
 }
 
 // ToService converts REST API task container creation options into
@@ -219,6 +223,7 @@ func (o *APIPodTaskContainerCreationOptions) ToService() (*pod.TaskContainerCrea
 		Arch:       arch,
 		EnvVars:    o.EnvVars,
 		EnvSecrets: o.EnvSecrets,
+		WorkingDir: utility.FromStringPtr(o.WorkingDir),
 	}, nil
 }
 
