@@ -1232,6 +1232,38 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
+func PopulatePodInitializingJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "error fetching initializing pods")
+		}
+
+		jobsSubmitted := 0
+		collisions := 0
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			err := amboy.EnqueueUniqueJob(ctx, queue, NewPodInitJob(env, &p, utility.RoundPartOfMinute(0).Format(TSFormat)))
+			if amboy.IsDuplicateJobError(err) || amboy.IsDuplicateJobScopeError(err) {
+				collisions++
+				continue
+			}
+			catcher.Add(err)
+
+			jobsSubmitted++
+		}
+
+		grip.Info(message.Fields{
+			"initializing_pods": len(pods),
+			"jobs_submitted":    jobsSubmitted,
+			"duplicates_seen":   collisions,
+			"message":           "pod initializing",
+		})
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
