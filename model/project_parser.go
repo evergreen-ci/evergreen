@@ -480,7 +480,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 		if pp.Functions == nil {
 			pp.Functions = map[string]*YAMLCommandSet{}
 		}
-		pp.Identifier = &id
+		pp.Identifier = utility.ToStringPtr(id)
 		var p *Project
 		p, err = TranslateProject(pp)
 		return p, pp, err
