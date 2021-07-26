@@ -21,7 +21,7 @@
       "query_file": "set-priority.graphql",
       "result": {
         "data": {
-          "setPatchPriority": "5e4ff3abe3c3317e352062e4"
+          "setPatchPriority": ["5e4ff3abe3c3317e352062e4"]
         }
       }
     },
@@ -39,6 +39,14 @@
         ],
         "data": {
           "setPatchPriority": null
+        }
+      }
+    },
+    {
+      "query_file": "set-priority-multiple.graphql",
+      "result": {
+        "data": {
+          "setPatchPriority": ["5e4ff3abe3c3317e352062e4", "9e4ff3abe3c3317e352062e4"]
         }
       }
     }

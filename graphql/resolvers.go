@@ -1962,16 +1962,22 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 	return &patchID, nil
 }
 
-func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
+func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchIds []string, priority int) ([]string, error) {
 	modifications := VersionModifications{
 		Action:   SetPriority,
 		Priority: int64(priority),
 	}
-	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
-	if err != nil {
-		return nil, err
+
+	updatedPatchIds := []string{}
+	for _, patchId := range patchIds {
+		fmt.Sprintf("patch '%s'", patchId)
+		err := ModifyVersionHandler(ctx, r.sc, patchId, modifications)
+		if err != nil {
+			return updatedPatchIds, err
+		}
+		updatedPatchIds = append(updatedPatchIds, patchId)
 	}
-	return &patchID, nil
+	return updatedPatchIds, nil
 }
 
 func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {
