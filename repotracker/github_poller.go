@@ -205,7 +205,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			grip.Info(message.Fields{
 				"source":             "github poller",
 				"message":            "updating new base revision",
-				"revision":           revision,
+				"old_revision":       revision,
 				"new_revision":       baseRevision,
 				"project":            gRepoPoller.ProjectRef.Id,
 				"project_identifier": gRepoPoller.ProjectRef.Identifier,
@@ -214,9 +214,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			if err != nil {
 				return nil, errors.Wrap(err, "error updating last revision")
 			}
-			gRepoPoller.ProjectRef.RepotrackerError.Exists = false
-			gRepoPoller.ProjectRef.RepotrackerError.InvalidRevision = ""
-			gRepoPoller.ProjectRef.RepotrackerError.MergeBaseRevision = ""
+			gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
 		}
 
 		if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
