@@ -91,6 +91,9 @@ func (h *podAgentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(data)
 }
 
+////////////////////////////////////////////////
+//
+// GET /rest/v2/pods/{pod_id}/agent/next_task
 type podAgentNextTask struct {
 	env   evergreen.Environment
 	sc    data.Connector
