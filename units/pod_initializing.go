@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -19,31 +19,32 @@ import (
 	"github.com/pkg/errors"
 )
 
-const podInitJobName = "pod-initializing-job"
+const createPodJobName = "create-pod"
 
 func init() {
-	registry.AddJobType(podInitJobName, func() amboy.Job {
-		return makePodInitJob()
+	registry.AddJobType(createPodJobName, func() amboy.Job {
+		return makeCreatePodJob()
 	})
 }
 
-type podInitJob struct {
+type createPodJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 	PodID    string `bson:"pod_id" json:"pod_id" yaml:"pod_id"`
 
-	pod       *pod.Pod
-	smClient  cocoa.SecretsManagerClient
-	vault     cocoa.Vault
-	ecsClient cocoa.ECSClient
-	ecsPod    cocoa.ECSPod
-	env       evergreen.Environment
+	pod           *pod.Pod
+	smClient      cocoa.SecretsManagerClient
+	vault         cocoa.Vault
+	ecsClient     cocoa.ECSClient
+	ecsPod        cocoa.ECSPod
+	ecsPodCreator cocoa.ECSPodCreator
+	env           evergreen.Environment
 }
 
-func makePodInitJob() *podInitJob {
-	j := &podInitJob{
+func makeCreatePodJob() *createPodJob {
+	j := &createPodJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    podInitJobName,
+				Name:    createPodJobName,
 				Version: 0,
 			},
 		},
@@ -53,27 +54,25 @@ func makePodInitJob() *podInitJob {
 	return j
 }
 
-// NewPodInitJob creates a job that starts the given pod.
-func NewPodInitJob(env evergreen.Environment, p *pod.Pod, id string) amboy.Job {
-	j := makePodInitJob()
+// NewCreatePodJob creates a job that starts the given pod.
+func NewCreatePodJob(env evergreen.Environment, p *pod.Pod, id string) amboy.Job {
+	j := makeCreatePodJob()
 	j.pod = p
 	j.PodID = p.ID
 	j.env = env
-	j.SetPriority(1)
-	j.SetID(fmt.Sprintf("%s.%s.%s", podInitJobName, j.PodID, id))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", podInitJobName, j.PodID)})
+	j.SetID(fmt.Sprintf("%s.%s.%s", createPodJobName, j.PodID, id))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", createPodJobName, j.PodID), podLifecycleScope(j.PodID)})
 	j.SetShouldApplyScopesOnEnqueue(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
-		Retryable: utility.TruePtr(),
-		WaitUntil: utility.ToTimeDurationPtr(10 * time.Second),
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(15),
+		WaitUntil:   utility.ToTimeDurationPtr(10 * time.Second),
 	})
 
 	return j
 }
 
-func (j *podInitJob) Run(ctx context.Context) {
-	// TODO (WIP)
-	// only field that will be set is job.Base and podID
+func (j *createPodJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
@@ -87,11 +86,18 @@ func (j *podInitJob) Run(ctx context.Context) {
 
 	switch j.pod.Status {
 	case pod.StatusInitializing:
-		if _, err := j.ecsClient.RunTask(ctx, &ecs.RunTaskInput{
-			Cluster:        utility.ToStringPtr(j.pod.Resources.Cluster),
-			ReferenceId:    utility.ToStringPtr(j.PodID),
-			TaskDefinition: utility.ToStringPtr(j.TaskID),
-		}); err != nil {
+		execOpts := cocoa.NewECSPodExecutionOptions().
+			SetCluster(j.pod.Resources.Cluster).
+			SetExecutionRole(j.env.Settings().Providers.AWS.Pod.ECS.ExecutionRole)
+
+		opts := cocoa.NewECSPodCreationOptions().
+			SetContainerDefinitions([]cocoa.ECSContainerDefinition{
+				cloud.ExportPodContainerDef(j.pod.TaskContainerCreationOpts, j.pod.Resources.SecretIDs),
+			}).
+			SetExecutionOptions(*execOpts).
+			SetTaskRole(j.env.Settings().Providers.AWS.Pod.ECS.TaskRole)
+
+		if _, err := j.ecsPodCreator.CreatePod(ctx, opts); err != nil {
 			j.AddError(errors.Wrap(err, "running pod"))
 			return
 		}
@@ -101,5 +107,9 @@ func (j *podInitJob) Run(ctx context.Context) {
 			"pod":     j.PodID,
 			"job":     j.ID(),
 		})
+	}
+
+	if err := j.pod.UpdateStatus(pod.StatusStarting); err != nil {
+		j.AddError(errors.Wrap(err, "marking pod as starting"))
 	}
 }

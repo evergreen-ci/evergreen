@@ -90,7 +90,7 @@ func FindByStaleStarting() ([]Pod, error) {
 	})
 }
 
-// FindByInitializing find all pods that are initialized but not running yet.
+// FindByInitializing find all pods that are initializing but have not started any containers.
 func FindByInitializing() ([]Pod, error) {
 	return Find(bson.M{
 		StatusKey: StatusInitializing,

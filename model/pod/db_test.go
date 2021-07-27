@@ -62,30 +62,34 @@ func TestFindByStaleStarting(t *testing.T) {
 
 func TestFindByInitializing(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
-	p := &Pod{
+
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	p1 := &Pod{
 		ID:     utility.RandomString(),
 		Status: StatusInitializing,
-		Secret: "secret",
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p1.Insert())
 
-	p = &Pod{
+	p2 := &Pod{
 		ID:     utility.RandomString(),
 		Status: StatusStarting,
-		Secret: "secret",
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p2.Insert())
 
-	p = &Pod{
+	p3 := &Pod{
 		ID:     utility.RandomString(),
 		Status: StatusInitializing,
-		Secret: "secret",
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p3.Insert())
 
 	pods, err := FindByInitializing()
 	require.NoError(t, err)
 	require.Len(t, pods, 2)
 	assert.Equal(t, StatusInitializing, pods[0].Status)
+	assert.Equal(t, p1.ID, pods[0].ID)
 	assert.Equal(t, StatusInitializing, pods[1].Status)
+	assert.Equal(t, p3.ID, pods[1].ID)
 }

@@ -26,6 +26,11 @@ func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) cocoa.Vault {
 	return secret.NewBasicSecretsManager(c)
 }
 
+// MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods with ECS.
+func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, error) {
+	return ecs.NewBasicECSPodCreator(c, v)
+}
+
 // ExportPod exports the pod DB model to its equivalent cocoa.ECSPod backed by
 // the given ECS client and secret vault.
 func ExportPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, error) {
@@ -95,6 +100,22 @@ func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 	return *res
 }
 
+// ExportPodContainerDef exports the ECS pod container definition into the equivalent cocoa.ECSContainerDefintion.
+func ExportPodContainerDef(opts pod.TaskContainerCreationOptions, secretIDs []string) cocoa.ECSContainerDefinition {
+	return *cocoa.NewECSContainerDefinition().
+		SetImage(opts.Image).
+		SetMemoryMB(opts.MemoryMB).
+		SetCPU(opts.CPU).
+		SetEnvironmentVariables(toEnvVars(opts.EnvVars, opts.EnvSecrets, secretIDs))
+}
+
+// ExportPodTaskDef exports the ECS pod resources into cocoa.ECSTaskDefinition.
+func ExportPodTaskDef(resources pod.ResourceInfo) cocoa.ECSTaskDefinition {
+	return *cocoa.NewECSTaskDefinition().
+		SetID(resources.DefinitionID).
+		SetOwned(false)
+}
+
 // podAWSOptions creates options to initialize an AWS client for pod management.
 func podAWSOptions(settings *evergreen.Settings) awsutil.ClientOptions {
 	opts := awsutil.NewClientOptions().SetRetryOptions(awsClientDefaultRetryOptions())
@@ -106,4 +127,33 @@ func podAWSOptions(settings *evergreen.Settings) awsutil.ClientOptions {
 	}
 
 	return *opts
+}
+
+// toEnvVars converts a map of environment variables and a map of secrets to a slice of cocoa.EnvironmentVariables.
+func toEnvVars(envVars map[string]string, secrets map[string]string, secretIDs []string) []cocoa.EnvironmentVariable {
+	allEnvVars := []cocoa.EnvironmentVariable{}
+
+	for k, v := range envVars {
+		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetValue(v))
+	}
+
+	for k, v := range secrets {
+		owned := false
+
+		for _, id := range secretIDs {
+			if id == k {
+				owned = true
+				break
+			}
+		}
+
+		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetSecretOptions(
+			*cocoa.NewSecretOptions().
+				SetName(k).
+				SetValue(v).
+				SetExists(false).
+				SetOwned(owned)))
+	}
+
+	return allEnvVars
 }
