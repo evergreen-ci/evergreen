@@ -2689,8 +2689,20 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
-func (r *queryResolver) buildVariantHistory(ctx context.Context, projectId string, taskName string) ([]string, error) {
-	task.FindUniqueBuildVariant(projectId, taskName)
+func (r *queryResolver) BuildVariantHistory(ctx context.Context, projectId string, taskName string) ([]string, error) {
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(projectId, taskName)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
+	}
+	return taskBuildVariants.BuildVariants, nil
+}
+
+func (r *queryResolver) TaskHistory(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
+	}
+	return buildVariantTasks.Tasks, nil
 }
 
 // Will return an array of activated and unactivated versions
