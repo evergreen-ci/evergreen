@@ -1300,6 +1300,10 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 
 		cedarBaseTestResults, err := apimodels.GetCedarTestResults(ctx, baseTestResultOpts)
+		grip.Warning(message.Fields{
+			"function":              "TaskTests",
+			"baseTestResultOptions": baseTestResultOpts,
+		})
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"task_id": baseTask.Id,
@@ -1308,12 +1312,29 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 
 		if cedarBaseTestResults != nil && len(cedarBaseTestResults) > 0 {
+			grip.Warning(message.Fields{
+				"function": "TaskTests",
+				"type":     "base task",
+				"taskId":   baseTask.Id,
+				"source":   "cedar",
+				"count":    len(cedarBaseTestResults),
+			})
 			for _, t := range cedarBaseTestResults {
+				if t.DisplayTestName != "" {
+					baseTestStatusMap[t.DisplayTestName] = t.Status
+				}
 				baseTestStatusMap[t.TestName] = t.Status
 			}
 		} else {
 			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTaskLatestExec})
 			if baseTestResults != nil && len(baseTestResults) > 0 {
+				grip.Warning(message.Fields{
+					"function": "TaskTests",
+					"type":     "base task",
+					"taskId":   baseTask.Id,
+					"source":   "evg",
+					"count":    len(baseTestResults),
+				})
 				for _, t := range baseTestResults {
 					baseTestStatusMap[t.TestFile] = t.Status
 				}
@@ -1347,6 +1368,12 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 	// Put testresults into an array of testPointers and save the total and filtered test count to return
 	if cedarTestResults != nil && len(cedarTestResults) > 0 {
+		grip.Warning(message.Fields{
+			"function": "TaskTests",
+			"taskId":   taskID,
+			"source":   "cedar",
+			"count":    len(cedarTestResults),
+		})
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
 			GroupID:     groupIdParam,
 			Limit:       limitParam,
@@ -1393,7 +1420,12 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			Execution: dbTask.Execution,
 			Page:      pageParam,
 		})
-
+		grip.Warning(message.Fields{
+			"function": "TaskTests",
+			"taskId":   taskID,
+			"source":   "evg",
+			"count":    len(paginatedFilteredTests),
+		})
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
