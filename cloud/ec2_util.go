@@ -117,6 +117,8 @@ func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 		return StatusRunning
 	case ec2.InstanceStateNameStopped:
 		return StatusStopped
+	case ec2.InstanceStateNameStopping:
+		return StatusStopping
 	case ec2.InstanceStateNameTerminated, ec2.InstanceStateNameShuttingDown:
 		return StatusTerminated
 	default:
