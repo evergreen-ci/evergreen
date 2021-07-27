@@ -41,7 +41,7 @@ type APICreatePodResponse struct {
 
 // ToService returns a service layer pod.Pod using the data from APIPod.
 func (p *APICreatePod) ToService() (interface{}, error) {
-	envVars, secrets := p.fromAPIEnvVars(p.EnvVars)
+	envVars, secrets := p.splitEnvVars()
 	os := pod.OS(utility.FromStringPtr(p.OS))
 	if err := os.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid OS")
@@ -68,12 +68,13 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 	}, nil
 }
 
-// fromAPIEnvVars converts a slice of APIPodEnvVars to a map of environment variables and a map of secrets.
-func (p *APICreatePod) fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]string, secrets map[string]string) {
+// splitEnvVars splits its environment variables into its non-secret and secret
+// environment variables.
+func (p *APICreatePod) splitEnvVars() (envVars map[string]string, secrets map[string]string) {
 	envVars = make(map[string]string)
 	secrets = make(map[string]string)
 
-	for _, envVar := range api {
+	for _, envVar := range p.EnvVars {
 		if utility.FromBoolPtr(envVar.Secret) {
 			secrets[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
 		} else {
