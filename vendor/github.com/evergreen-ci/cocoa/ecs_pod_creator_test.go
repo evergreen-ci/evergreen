@@ -46,23 +46,35 @@ func TestECSPodCreationOptions(t *testing.T) {
 		assert.Equal(t, cpu, utility.FromIntPtr(def.CPU))
 	})
 	t.Run("SetTags", func(t *testing.T) {
-		key := "tagKey"
-		value := "tagValue"
-		def := NewECSPodCreationOptions().SetTags(map[string]string{key: value})
-		require.Len(t, def.Tags, 1)
-		assert.Equal(t, value, def.Tags[key])
+		tags := map[string]string{"key": "value"}
+		opts := NewECSPodCreationOptions().SetTags(tags)
+		require.Len(t, opts.Tags, len(tags))
+		for k, v := range tags {
+			assert.Equal(t, v, opts.Tags[k])
+		}
+	})
+	t.Run("SetTaskRole", func(t *testing.T) {
+		r := "task_role"
+		opts := NewECSPodCreationOptions().SetTaskRole(r)
+		assert.Equal(t, r, utility.FromStringPtr(opts.TaskRole))
+	})
+	t.Run("SetExecutionRole", func(t *testing.T) {
+		r := "execution_role"
+		opts := NewECSPodCreationOptions().SetExecutionRole(r)
+		assert.Equal(t, r, utility.FromStringPtr(opts.ExecutionRole))
 	})
 	t.Run("AddTags", func(t *testing.T) {
-		key0 := "key0"
-		val0 := "val0"
-		key1 := "key1"
-		val1 := "val1"
-		def := NewECSPodCreationOptions().AddTags(map[string]string{key0: val0, key1: val1})
-		require.Len(t, def.Tags, 2)
-		assert.Equal(t, val0, def.Tags[key0])
-		assert.Equal(t, val1, def.Tags[key1])
-		def.AddTags(map[string]string{})
-		assert.Len(t, def.Tags, 2)
+		tags := map[string]string{"key0": "val0", "key1": "val1"}
+		opts := NewECSPodCreationOptions().AddTags(tags)
+		require.Len(t, opts.Tags, len(tags))
+		for k, v := range tags {
+			assert.Equal(t, v, opts.Tags[k])
+		}
+		opts.AddTags(map[string]string{})
+		assert.Len(t, opts.Tags, len(tags))
+		for k, v := range tags {
+			assert.Equal(t, v, opts.Tags[k])
+		}
 	})
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("EmptyIsInvalid", func(t *testing.T) {
@@ -202,6 +214,11 @@ func TestECSContainerDefinition(t *testing.T) {
 		def := NewECSContainerDefinition().SetCommand(cmd)
 		assert.Equal(t, cmd, def.Command)
 	})
+	t.Run("SetWorkingDir", func(t *testing.T) {
+		dir := "working_dir"
+		def := NewECSContainerDefinition().SetWorkingDir(dir)
+		assert.Equal(t, dir, utility.FromStringPtr(def.WorkingDir))
+	})
 	t.Run("SetMemoryMB", func(t *testing.T) {
 		mem := 128
 		def := NewECSContainerDefinition().SetMemoryMB(mem)
@@ -211,22 +228,6 @@ func TestECSContainerDefinition(t *testing.T) {
 		cpu := 128
 		def := NewECSContainerDefinition().SetCPU(cpu)
 		assert.Equal(t, cpu, utility.FromIntPtr(def.CPU))
-	})
-	t.Run("SetTags", func(t *testing.T) {
-		tag := "tag"
-		def := NewECSContainerDefinition().SetTags([]string{tag})
-		require.Len(t, def.Tags, 1)
-		assert.Equal(t, tag, def.Tags[0])
-	})
-	t.Run("AddTags", func(t *testing.T) {
-		tag0 := "tag0"
-		tag1 := "tag1"
-		def := NewECSContainerDefinition().AddTags(tag0, tag1)
-		require.Len(t, def.Tags, 2)
-		assert.Equal(t, tag0, def.Tags[0])
-		assert.Equal(t, tag1, def.Tags[1])
-		def.AddTags()
-		assert.Len(t, def.Tags, 2)
 	})
 	t.Run("SetEnvironmentVariables", func(t *testing.T) {
 		ev := NewEnvironmentVariable().SetName("name").SetValue("value")
@@ -270,8 +271,7 @@ func TestECSContainerDefinition(t *testing.T) {
 				SetMemoryMB(128).
 				SetCPU(128).
 				SetCommand([]string{"echo"}).
-				AddEnvironmentVariables(*ev).
-				AddTags("tag")
+				AddEnvironmentVariables(*ev)
 			assert.NoError(t, def.Validate())
 		})
 		t.Run("ZeroCPUIsInvalid", func(t *testing.T) {
@@ -439,11 +439,6 @@ func TestECSPodExecutionOptions(t *testing.T) {
 		assert.Equal(t, val1, opts.Tags[key1])
 		opts.AddTags(map[string]string{})
 		assert.Len(t, opts.Tags, 2)
-	})
-	t.Run("SetExecutionRole", func(t *testing.T) {
-		role := "role"
-		opts := NewECSPodExecutionOptions().SetExecutionRole(role)
-		assert.Equal(t, role, *opts.ExecutionRole)
 	})
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("EmptyIsValid", func(t *testing.T) {

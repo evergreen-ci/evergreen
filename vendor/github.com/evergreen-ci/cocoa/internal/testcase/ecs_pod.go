@@ -34,9 +34,9 @@ func ECSPodTests() map[string]ECSPodTestCase {
 			SetMemoryMB(128).
 			SetCPU(128).
 			SetTaskRole(testutil.TaskRole()).
+			SetExecutionRole(testutil.ExecutionRole()).
 			SetExecutionOptions(*cocoa.NewECSPodExecutionOptions().
-				SetCluster(testutil.ECSClusterName()).
-				SetExecutionRole(testutil.ExecutionRole()))
+				SetCluster(testutil.ECSClusterName()))
 	}
 
 	return map[string]ECSPodTestCase{
