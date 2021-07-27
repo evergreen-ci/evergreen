@@ -1,7 +1,6 @@
 package evergreen
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -319,7 +318,7 @@ func VersionStatusToPatchStatus(versionStatus string) (string, error) {
 	case VersionSucceeded:
 		return PatchSucceeded, nil
 	default:
-		return "", errors.New(fmt.Sprintf("unknown version status: %s", versionStatus))
+		return "", errors.Errorf("unknown version status: %s", versionStatus)
 	}
 }
 

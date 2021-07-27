@@ -2964,16 +2964,16 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for version: %s ", err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for version: %s", err.Error()))
 	}
 	status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occured when converting a version status: %s ", err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occured when converting a version status: %s", err.Error()))
 	}
 	if evergreen.IsPatchRequester(*obj.Requester) {
 		p, err := r.sc.FindPatchById(*obj.Id)
 		if err != nil {
-			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch: %s", err.Error()))
+			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
 		}
 		if len(p.ChildPatches) > 0 {
 			patchStatuses := []string{}
