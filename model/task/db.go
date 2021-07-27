@@ -846,6 +846,9 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) (*Task
 	if err := Aggregate(pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "can't get build variant tasks")
 	}
+	if len(result) == 0 {
+		return nil, nil
+	}
 	return &result[0], nil
 }
 
@@ -891,6 +894,9 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string) (*BuildV
 	result := []BuildVariantTasks{}
 	if err := Aggregate(pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "can't get build variant tasks")
+	}
+	if len(result) == 0 {
+		return nil, nil
 	}
 	return &result[0], nil
 }

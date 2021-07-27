@@ -478,7 +478,7 @@ type ComplexityRoot struct {
 		AwsRegions              func(childComplexity int) int
 		BbGetCreatedTickets     func(childComplexity int, taskID string) int
 		BuildBaron              func(childComplexity int, taskID string, execution int) int
-		BuildVariantHistory     func(childComplexity int, projectID string, taskName string) int
+		BuildVariantHistory     func(childComplexity int, projectID string, buildVariant string) int
 		ClientConfig            func(childComplexity int) int
 		CommitQueue             func(childComplexity int, id string) int
 		DistroTaskQueue         func(childComplexity int, distroID string) int
@@ -501,7 +501,7 @@ type ComplexityRoot struct {
 		Task                    func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions       func(childComplexity int, taskID string) int
 		TaskFiles               func(childComplexity int, taskID string, execution *int) int
-		TaskHistory             func(childComplexity int, projectID string, buildVariant string) int
+		TaskHistory             func(childComplexity int, projectID string, taskName string) int
 		TaskLogs                func(childComplexity int, taskID string, execution *int) int
 		TaskQueueDistros        func(childComplexity int) int
 		TaskTests               func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
@@ -919,8 +919,8 @@ type QueryResolver interface {
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error)
-	BuildVariantHistory(ctx context.Context, projectID string, taskName string) ([]string, error)
-	TaskHistory(ctx context.Context, projectID string, buildVariant string) ([]string, error)
+	BuildVariantHistory(ctx context.Context, projectID string, buildVariant string) ([]string, error)
+	TaskHistory(ctx context.Context, projectID string, taskName string) ([]string, error)
 }
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
@@ -3042,7 +3042,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.BuildVariantHistory(childComplexity, args["projectId"].(string), args["taskName"].(string)), true
+		return e.complexity.Query.BuildVariantHistory(childComplexity, args["projectId"].(string), args["buildVariant"].(string)), true
 
 	case "Query.clientConfig":
 		if e.complexity.Query.ClientConfig == nil {
@@ -3278,7 +3278,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskHistory(childComplexity, args["projectId"].(string), args["buildVariant"].(string)), true
+		return e.complexity.Query.TaskHistory(childComplexity, args["projectId"].(string), args["taskName"].(string)), true
 
 	case "Query.taskLogs":
 		if e.complexity.Query.TaskLogs == nil {
@@ -5000,8 +5000,8 @@ var sources = []*ast.Source{
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
-  buildVariantHistory(projectId: String!, taskName: String!): [String!]
-  taskHistory(projectId: String!, buildVariant: String!): [String!]
+  buildVariantHistory(projectId: String!, buildVariant: String!): [String!]
+  taskHistory(projectId: String!, taskName: String!): [String!]
 }
 
 type Mutation {
@@ -6732,13 +6732,13 @@ func (ec *executionContext) field_Query_buildVariantHistory_args(ctx context.Con
 	}
 	args["projectId"] = arg0
 	var arg1 string
-	if tmp, ok := rawArgs["taskName"]; ok {
+	if tmp, ok := rawArgs["buildVariant"]; ok {
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["taskName"] = arg1
+	args["buildVariant"] = arg1
 	return args, nil
 }
 
@@ -7088,13 +7088,13 @@ func (ec *executionContext) field_Query_taskHistory_args(ctx context.Context, ra
 	}
 	args["projectId"] = arg0
 	var arg1 string
-	if tmp, ok := rawArgs["buildVariant"]; ok {
+	if tmp, ok := rawArgs["taskName"]; ok {
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["buildVariant"] = arg1
+	args["taskName"] = arg1
 	return args, nil
 }
 
@@ -17383,7 +17383,7 @@ func (ec *executionContext) _Query_buildVariantHistory(ctx context.Context, fiel
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().BuildVariantHistory(rctx, args["projectId"].(string), args["taskName"].(string))
+		return ec.resolvers.Query().BuildVariantHistory(rctx, args["projectId"].(string), args["buildVariant"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17421,7 +17421,7 @@ func (ec *executionContext) _Query_taskHistory(ctx context.Context, field graphq
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskHistory(rctx, args["projectId"].(string), args["buildVariant"].(string))
+		return ec.resolvers.Query().TaskHistory(rctx, args["projectId"].(string), args["taskName"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

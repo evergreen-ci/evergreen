@@ -72,8 +72,8 @@ type Query {
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
-  buildVariantHistory(projectId: String!, taskName: String!): [String!]
-  taskHistory(projectId: String!, buildVariant: String!): [String!]
+  buildVariantHistory(projectId: String!, buildVariant: String!): [String!]
+  taskHistory(projectId: String!, taskName: String!): [String!]
 }
 
 type Mutation {
