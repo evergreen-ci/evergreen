@@ -2397,17 +2397,66 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	return &duration, nil
 }
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	tests, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
+	testCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test count: %s", err.Error()))
 	}
-	return tests, nil
+	// Check cedar if we dont have any test results in the db
+	if testCount == 0 {
+		opts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			Execution: obj.Execution,
+		}
+
+		if len(obj.ExecutionTasks) > 0 {
+			opts.DisplayTaskID = *obj.Id
+		} else {
+			opts.TaskID = *obj.Id
+		}
+
+		cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id": obj.Id,
+				"message": "problem getting cedar test results",
+			}))
+		}
+		testCount = len(cedarTestResults)
+	}
+	return testCount, nil
 }
 
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tests for failedTestCount: %s", err.Error()))
+	}
+	// Check cedar if we dont have any test results in the db
+	if failedTestCount == 0 {
+		opts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			Execution: obj.Execution,
+		}
+
+		if len(obj.ExecutionTasks) > 0 {
+			opts.DisplayTaskID = *obj.Id
+		} else {
+			opts.TaskID = *obj.Id
+		}
+
+		cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id": obj.Id,
+				"message": "problem getting cedar test results",
+			}))
+		}
+		// Get the count of the tests with the status failed
+		for _, test := range cedarTestResults {
+			if test.Status == evergreen.TestFailedStatus {
+				failedTestCount++
+			}
+		}
 	}
 	return failedTestCount, nil
 }
