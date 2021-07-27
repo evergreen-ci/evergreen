@@ -1227,27 +1227,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 }
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
-	dbTask, err := task.FindByIdExecution(taskID, execution)
-	if dbTask == nil || err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
-	}
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: dbTask.Execution,
-	}
-	if len(dbTask.ExecutionTasks) > 0 {
-		opts.DisplayTaskID = taskID
-	} else {
-		opts.TaskID = taskID
-	}
-
-	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"task_id": taskID,
-			"message": "problem getting cedar test results",
-		}))
-	}
+	// Query parameter mappping
 	sortBy := ""
 	if sortCategory != nil {
 		switch *sortCategory {
@@ -1275,11 +1255,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}
 
 	groupIdParam := utility.FromStringPtr(groupID)
-
-	if *sortDirection == SortDirectionDesc {
-		sortDir = -1
-	}
-
 	testNameParam := utility.FromStringPtr(testName)
 
 	pageParam := 0
@@ -1295,119 +1270,84 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		statusesParam = statuses
 	}
 
-	testPointers := []*restModel.APITest{}
-	var totalTestCount int
-	var filteredTestCount int
-
-	baseTask, err := dbTask.FindTaskOnBaseCommit()
-	hasCedarResults := cedarTestResults != nil
-	if baseTask != nil {
-		baseTaskLatestExec, _ := task.GetLatestExecution(baseTask.Id)
-		grip.Warning(message.Fields{
-			"function":                "TaskTests",
-			"task_id":                 taskID,
-			"base_task_id":            baseTask.Id,
-			"dbTaskexecution":         dbTask.Execution,
-			"baseTaskExecution":       baseTask.Execution,
-			"baseTaskLatestExeuction": baseTaskLatestExec,
-			"hasCedarTestResults":     hasCedarResults
-			"numBaseTasks":            len(baseTask.ExecutionTasks),
-		})
-	} else {
-		grip.Warning(message.Fields{
-			"function":     "TaskTests",
-			"task_id":      taskID,
-			"base_task_id": "DNE",
-		})
+	// fetch task from db
+	dbTask, err := task.FindByIdExecution(taskID, execution)
+	if dbTask == nil || err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
+
+	// Get the base test statuses
+	baseTask, err := dbTask.FindTaskOnBaseCommit()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task for task %s: %s", taskID, err))
 	}
 	baseTestStatusMap := make(map[string]string)
-	if cedarTestResults == nil {
-		if baseTask != nil {
-			baseTaskLatestExec, err := task.GetLatestExecution(baseTask.Id)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting getting latest execution for task %s: %s", baseTask.Id, err.Error()))
-			}
-			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTaskLatestExec})
-			for _, t := range baseTestResults {
-				baseTestStatusMap[t.TestFile] = t.Status
-			}
-		}
 
-		paginatedFilteredTests, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-			TaskID:    taskID,
-			TestName:  testNameParam,
-			Statuses:  statusesParam,
-			SortBy:    sortBy,
-			GroupID:   groupIdParam,
-			SortDir:   sortDir,
-			Limit:     limitParam,
-			Execution: dbTask.Execution,
-			Page:      pageParam,
-		})
-
+	if baseTask != nil {
+		baseTaskLatestExec, err := task.GetLatestExecution(baseTask.Id)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, err.Error())
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting getting latest execution for task %s: %s", baseTask.Id, err.Error()))
 		}
-		for _, t := range paginatedFilteredTests {
-			apiTest := restModel.APITest{}
-			if err = apiTest.BuildFromService(t.TaskID); err != nil {
-				return nil, InternalServerError.Send(ctx, err.Error())
-			}
-			if err = apiTest.BuildFromService(&t); err != nil {
-				return nil, InternalServerError.Send(ctx, err.Error())
-			}
-			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
-				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
-				apiTest.Logs.HTMLDisplayURL = &formattedURL
-			}
-			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
-				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
-				apiTest.Logs.RawDisplayURL = &formattedURL
-			}
-			baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
-			apiTest.BaseStatus = &baseTestStatus
-			testPointers = append(testPointers, &apiTest)
-		}
-		totalTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
-		}
-		filteredTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, dbTask.Execution)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
-		}
-	} else {
-		if baseTask != nil {
-			baseTaskLatestExec, err := task.GetLatestExecution(baseTask.Id)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting getting latest execution for task %s: %s", baseTask.Id, err.Error()))
-			}
-			baseTestResultOpts := apimodels.GetCedarTestResultsOptions{
-				BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-				Execution: baseTaskLatestExec,
-			}
 
-			if len(baseTask.ExecutionTasks) > 0 {
-				baseTestResultOpts.DisplayTaskID = baseTask.Id
-			} else {
-				baseTestResultOpts.TaskID = baseTask.Id
-			}
+		baseTestResultOpts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			Execution: baseTaskLatestExec,
+		}
 
-			cedarBaseTestResults, err := apimodels.GetCedarTestResults(ctx, baseTestResultOpts)
-			if err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
-					"task_id": baseTask.Id,
-					"message": "problem getting cedar test results",
-				}))
-			}
+		if len(baseTask.ExecutionTasks) > 0 {
+			baseTestResultOpts.DisplayTaskID = baseTask.Id
+		} else {
+			baseTestResultOpts.TaskID = baseTask.Id
+		}
+
+		cedarBaseTestResults, err := apimodels.GetCedarTestResults(ctx, baseTestResultOpts)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id": baseTask.Id,
+				"message": "problem getting cedar test results",
+			}))
+		}
+
+		if cedarBaseTestResults != nil && len(cedarBaseTestResults) > 0 {
 			for _, t := range cedarBaseTestResults {
 				baseTestStatusMap[t.TestName] = t.Status
 			}
+		} else {
+			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTaskLatestExec})
+			if baseTestResults != nil && len(baseTestResults) > 0 {
+				for _, t := range baseTestResults {
+					baseTestStatusMap[t.TestFile] = t.Status
+				}
+			}
 		}
+	}
 
+	// try getting testresults from cedar
+	opts := apimodels.GetCedarTestResultsOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		Execution: dbTask.Execution,
+	}
+	if len(dbTask.ExecutionTasks) > 0 {
+		opts.DisplayTaskID = taskID
+	} else {
+		opts.TaskID = taskID
+	}
+
+	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"task_id": taskID,
+			"message": "problem getting cedar test results",
+		}))
+	}
+
+	testPointers := []*restModel.APITest{}
+	var totalTestCount int
+	var filteredTestCount int
+
+	// Put testresults into an arrar of testPointers and save the total and filtered test count to return
+	if cedarTestResults != nil || len(cedarTestResults) > 0 {
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
 			GroupID:     groupIdParam,
 			Limit:       limitParam,
@@ -1441,6 +1381,52 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 		totalTestCount = len(cedarTestResults)
 		filteredTestCount = testCount
+	} else {
+		// try getting testresults from evergreen
+		paginatedFilteredTests, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+			TaskID:    taskID,
+			TestName:  testNameParam,
+			Statuses:  statusesParam,
+			SortBy:    sortBy,
+			GroupID:   groupIdParam,
+			SortDir:   sortDir,
+			Limit:     limitParam,
+			Execution: dbTask.Execution,
+			Page:      pageParam,
+		})
+
+		if err != nil {
+			return nil, ResourceNotFound.Send(ctx, err.Error())
+		}
+
+		for _, t := range paginatedFilteredTests {
+			apiTest := restModel.APITest{}
+			if err = apiTest.BuildFromService(t.TaskID); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = apiTest.BuildFromService(&t); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
+				apiTest.Logs.HTMLDisplayURL = &formattedURL
+			}
+			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
+				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
+				apiTest.Logs.RawDisplayURL = &formattedURL
+			}
+			baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
+			apiTest.BaseStatus = &baseTestStatus
+			testPointers = append(testPointers, &apiTest)
+		}
+		totalTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
+		}
+		filteredTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, dbTask.Execution)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
+		}
 	}
 
 	taskTestResult := TaskTestResult{
