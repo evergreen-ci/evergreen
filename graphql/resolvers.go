@@ -2971,7 +2971,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	}
 	status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occured when converting a version status: %s", err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occurred when converting a version status: %s", err.Error()))
 	}
 	if evergreen.IsPatchRequester(*obj.Requester) {
 		p, err := r.sc.FindPatchById(*obj.Id)
