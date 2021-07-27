@@ -115,6 +115,13 @@ func TestUpdateStatus(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Status, dbPod.Status)
+	}
+
+	checkStatusAndTimeInfo := func(t *testing.T, p Pod) {
+		dbPod, err := FindOneByID(p.ID)
+		require.NoError(t, err)
+		require.NotZero(t, dbPod)
+		assert.Equal(t, p.Status, dbPod.Status)
 		switch p.Status {
 		case StatusInitializing:
 			assert.NotZero(t, p.TimeInfo.Initializing)
@@ -143,7 +150,7 @@ func TestUpdateStatus(t *testing.T) {
 			require.NoError(t, p.UpdateStatus(StatusInitializing))
 			assert.Equal(t, StatusInitializing, p.Status)
 
-			checkStatus(t, p)
+			checkStatusAndTimeInfo(t, p)
 			checkEventLog(t, p)
 		},
 		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
@@ -152,16 +159,7 @@ func TestUpdateStatus(t *testing.T) {
 			require.NoError(t, p.UpdateStatus(StatusStarting))
 			assert.Equal(t, StatusStarting, p.Status)
 
-			checkStatus(t, p)
-			checkEventLog(t, p)
-		},
-		"SucceedsWithRunningStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
-
-			require.NoError(t, p.UpdateStatus(StatusRunning))
-			assert.Equal(t, StatusRunning, p.Status)
-
-			checkStatus(t, p)
+			checkStatusAndTimeInfo(t, p)
 			checkEventLog(t, p)
 		},
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
@@ -172,6 +170,12 @@ func TestUpdateStatus(t *testing.T) {
 
 			checkStatus(t, p)
 			checkEventLog(t, p)
+		},
+		"NoopsWithIdenticalStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(p.Status))
+			checkStatus(t, p)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
 			assert.Error(t, p.UpdateStatus(StatusTerminated))

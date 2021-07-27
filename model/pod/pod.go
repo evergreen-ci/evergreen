@@ -182,8 +182,13 @@ func (p *Pod) Remove() error {
 	)
 }
 
-// UpdateStatus updates the pod status.
+// UpdateStatus updates the pod status. If the new status is identical to the
+// current one, this is a no-op.
 func (p *Pod) UpdateStatus(s Status) error {
+	if p.Status == s {
+		return nil
+	}
+
 	byIDAndStatus := ByID(p.ID)
 	byIDAndStatus[StatusKey] = p.Status
 
