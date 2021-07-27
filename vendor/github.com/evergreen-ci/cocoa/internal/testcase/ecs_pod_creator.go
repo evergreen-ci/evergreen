@@ -35,7 +35,7 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 				SetName("container")
 			require.NotNil(t, containerDef.EnvVars)
 
-			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(testutil.ECSClusterName()).SetExecutionRole(testutil.ExecutionRole())
+			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(testutil.ECSClusterName())
 			assert.NoError(t, execOpts.Validate())
 
 			opts := cocoa.NewECSPodCreationOptions().
@@ -44,6 +44,7 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 				SetMemoryMB(128).
 				SetCPU(128).
 				SetTaskRole(testutil.TaskRole()).
+				SetExecutionRole(testutil.ExecutionRole()).
 				SetExecutionOptions(*execOpts)
 			assert.NoError(t, opts.Validate())
 
@@ -137,8 +138,7 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 			require.NotNil(t, containerDef.EnvVars)
 
 			execOpts := cocoa.NewECSPodExecutionOptions().
-				SetCluster(testutil.ECSClusterName()).
-				SetExecutionRole(testutil.ExecutionRole())
+				SetCluster(testutil.ECSClusterName())
 			assert.NoError(t, execOpts.Validate())
 
 			opts := cocoa.NewECSPodCreationOptions().
@@ -147,6 +147,7 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 				SetMemoryMB(128).
 				SetCPU(128).
 				SetTaskRole(testutil.TaskRole()).
+				SetExecutionRole(testutil.ExecutionRole()).
 				SetExecutionOptions(*execOpts)
 			assert.NoError(t, opts.Validate())
 

@@ -184,15 +184,14 @@ func TestTerminatePodJob(t *testing.T) {
 				SetImage(p.TaskContainerCreationOpts.Image).
 				AddEnvironmentVariables(envVars...)
 
-			execOpts := cocoa.NewECSPodExecutionOptions().
-				SetCluster(cluster).
-				SetExecutionRole("execution_role")
+			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
 
 			ecsPod, err := pc.CreatePod(ctx, cocoa.NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 				SetCPU(p.TaskContainerCreationOpts.CPU).
 				SetTaskRole("task_role").
+				SetExecutionRole("execution_role").
 				SetExecutionOptions(*execOpts))
 			require.NoError(t, err)
 			j.ecsPod = ecsPod

@@ -34,9 +34,10 @@ func TestAPICreatePod(t *testing.T) {
 					Secret: utility.ToBoolPtr(true),
 				},
 			},
-			OS:     utility.ToStringPtr("linux"),
-			Arch:   utility.ToStringPtr("amd64"),
-			Secret: utility.ToStringPtr("secret"),
+			OS:         utility.ToStringPtr("linux"),
+			Arch:       utility.ToStringPtr("amd64"),
+			Secret:     utility.ToStringPtr("secret"),
+			WorkingDir: utility.ToStringPtr("working_dir"),
 		}
 
 		res, err := apiPod.ToService()
@@ -51,6 +52,7 @@ func TestAPICreatePod(t *testing.T) {
 		assert.Equal(t, utility.FromIntPtr(apiPod.CPU), p.TaskContainerCreationOpts.CPU)
 		assert.Equal(t, utility.FromStringPtr(apiPod.OS), string(p.TaskContainerCreationOpts.OS))
 		assert.Equal(t, utility.FromStringPtr(apiPod.Arch), string(p.TaskContainerCreationOpts.Arch))
+		assert.Equal(t, utility.FromStringPtr(apiPod.WorkingDir), p.TaskContainerCreationOpts.WorkingDir)
 		assert.Equal(t, utility.FromStringPtr(apiPod.Secret), p.Secret)
 		assert.Equal(t, pod.StatusInitializing, p.Status)
 		assert.NotZero(t, p.TimeInfo.Initializing)
@@ -79,6 +81,7 @@ func TestAPIPod(t *testing.T) {
 					"secret0": "secret_val0",
 					"secret1": "secret_val1",
 				},
+				WorkingDir: "working_dir",
 			},
 			TimeInfo: pod.TimeInfo{
 				Initializing:     time.Now(),
@@ -114,6 +117,7 @@ func TestAPIPod(t *testing.T) {
 					"secret0": "secret_val0",
 					"secret1": "secret_val1",
 				},
+				WorkingDir: utility.ToStringPtr("working_dir"),
 			},
 			TimeInfo: APIPodTimeInfo{
 				Initializing:     utility.ToTimePtr(time.Now()),
@@ -156,8 +160,8 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.DefinitionID), dbPod.Resources.DefinitionID)
 			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.Cluster), dbPod.Resources.Cluster)
 			left, right := utility.StringSliceSymmetricDifference(dbPod.Resources.SecretIDs, apiPod.Resources.SecretIDs)
-			assert.Empty(t, left)
-			assert.Empty(t, right)
+			assert.Empty(t, left, "actual is missing secret IDs: %s", left)
+			assert.Empty(t, right, "actual has extra unexpected secret IDs: %s", right)
 		})
 		t.Run("FailsWithInvalidStatus", func(t *testing.T) {
 			apiPod := validAPIPod()
@@ -192,6 +196,7 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.CPU, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU))
 			assert.Equal(t, string(dbPod.TaskContainerCreationOpts.OS), utility.FromStringPtr(apiPod.TaskContainerCreationOpts.OS))
 			assert.Equal(t, string(dbPod.TaskContainerCreationOpts.Arch), utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Arch))
+			assert.Equal(t, dbPod.TaskContainerCreationOpts.WorkingDir, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.WorkingDir))
 			require.NotZero(t, apiPod.TaskContainerCreationOpts.EnvVars)
 			for k, v := range dbPod.TaskContainerCreationOpts.EnvVars {
 				assert.Equal(t, v, apiPod.TaskContainerCreationOpts.EnvVars[k])

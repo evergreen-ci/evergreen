@@ -42,6 +42,9 @@ type ECSPodCreationOptions struct {
 	// configuration, this may be required if
 	// (ECSPodExecutionOptions).SupportsDebugMode is true.
 	TaskRole *string
+	// ExecutionRole is the role that ECS container agent can use. Depending on
+	// the configuration, this may be required if the container uses secrets.
+	ExecutionRole *string
 	// Tags are resource tags to apply to the pod definition.
 	Tags map[string]string
 	// ExecutionOpts specify options to configure how the pod executes.
@@ -93,6 +96,12 @@ func (o *ECSPodCreationOptions) SetTaskRole(role string) *ECSPodCreationOptions 
 	return o
 }
 
+// SetExecutionRole sets the execution role that the pod can use.
+func (o *ECSPodCreationOptions) SetExecutionRole(role string) *ECSPodCreationOptions {
+	o.ExecutionRole = &role
+	return o
+}
+
 // SetTags sets the tags for the pod definition. This overwrites any existing
 // tags.
 func (o *ECSPodCreationOptions) SetTags(tags map[string]string) *ECSPodCreationOptions {
@@ -103,13 +112,11 @@ func (o *ECSPodCreationOptions) SetTags(tags map[string]string) *ECSPodCreationO
 // AddTags adds new tags to the existing ones for the pod definition.
 func (o *ECSPodCreationOptions) AddTags(tags map[string]string) *ECSPodCreationOptions {
 	if o.Tags == nil {
-		o.Tags = make(map[string]string)
+		o.Tags = map[string]string{}
 	}
-
 	for k, v := range tags {
 		o.Tags[k] = v
 	}
-
 	return o
 }
 
@@ -143,7 +150,7 @@ func (o *ECSPodCreationOptions) validateContainerDefinitions() error {
 
 		if len(o.ContainerDefinitions[i].EnvVars) > 0 {
 			for _, envVar := range o.ContainerDefinitions[i].EnvVars {
-				if envVar.SecretOpts != nil && o.ExecutionOpts.ExecutionRole == nil {
+				if envVar.SecretOpts != nil && o.ExecutionRole == nil {
 					catcher.Errorf("must specify execution role ARN when specifying container secrets")
 				}
 			}
@@ -221,6 +228,10 @@ func MergeECSPodCreationOptions(opts ...*ECSPodCreationOptions) ECSPodCreationOp
 			merged.TaskRole = opt.TaskRole
 		}
 
+		if opt.ExecutionRole != nil {
+			merged.ExecutionRole = opt.ExecutionRole
+		}
+
 		if opt.Tags != nil {
 			merged.Tags = opt.Tags
 		}
@@ -259,10 +270,6 @@ func MergeECSPodExecutionOptions(opts ...*ECSPodExecutionOptions) ECSPodExecutio
 		if opt.Tags != nil {
 			merged.Tags = opt.Tags
 		}
-
-		if opt.ExecutionRole != nil {
-			merged.ExecutionRole = opt.ExecutionRole
-		}
 	}
 
 	return merged
@@ -279,6 +286,9 @@ type ECSContainerDefinition struct {
 	// Command is the command to run, separated into individual arguments. By
 	// default, there is no command.
 	Command []string
+	// WorkingDir is the container working directory in which commands will be
+	// run.
+	WorkingDir *string
 	// MemoryMB is the amount of memory (in MB) to allocate. This must be
 	// set if a pod-level memory limit is not given.
 	MemoryMB *int
@@ -288,8 +298,6 @@ type ECSContainerDefinition struct {
 	CPU *int
 	// EnvVars are environment variables to make available in the container.
 	EnvVars []EnvironmentVariable
-	// Tags are resource tags to apply.
-	Tags []string
 }
 
 // NewECSContainerDefinition returns a new uninitialized container definition.
@@ -315,6 +323,13 @@ func (d *ECSContainerDefinition) SetCommand(cmd []string) *ECSContainerDefinitio
 	return d
 }
 
+// SetWorkingDir sets the working directory where the container's commands
+// will run.
+func (d *ECSContainerDefinition) SetWorkingDir(dir string) *ECSContainerDefinition {
+	d.WorkingDir = &dir
+	return d
+}
+
 // SetMemoryMB sets the amount of memory (in MB) to allocate.
 func (d *ECSContainerDefinition) SetMemoryMB(mem int) *ECSContainerDefinition {
 	d.MemoryMB = &mem
@@ -324,18 +339,6 @@ func (d *ECSContainerDefinition) SetMemoryMB(mem int) *ECSContainerDefinition {
 // SetCPU sets the number of CPU units to allocate.
 func (d *ECSContainerDefinition) SetCPU(cpu int) *ECSContainerDefinition {
 	d.CPU = &cpu
-	return d
-}
-
-// SetTags sets the tags for the container. This overwrites any existing tags.
-func (d *ECSContainerDefinition) SetTags(tags []string) *ECSContainerDefinition {
-	d.Tags = tags
-	return d
-}
-
-// AddTags adds new tags to the existing ones for the container.
-func (d *ECSContainerDefinition) AddTags(tags ...string) *ECSContainerDefinition {
-	d.Tags = append(d.Tags, tags...)
 	return d
 }
 
@@ -485,9 +488,6 @@ type ECSPodExecutionOptions struct {
 	SupportsDebugMode *bool
 	// Tags are any tags to apply to the running pods.
 	Tags map[string]string
-	// ExecutionRole is the role that ECS container agent can use. Depending on
-	// the configuration, this may be required if the container uses secrets.
-	ExecutionRole *string
 }
 
 // NewECSPodExecutionOptions returns new uninitialized options to run a pod.
@@ -525,20 +525,11 @@ func (o *ECSPodExecutionOptions) SetTags(tags map[string]string) *ECSPodExecutio
 // AddTags adds new tags to the existing ones for the pod itself when it is run.
 func (o *ECSPodExecutionOptions) AddTags(tags map[string]string) *ECSPodExecutionOptions {
 	if o.Tags == nil {
-		o.Tags = make(map[string]string)
+		o.Tags = map[string]string{}
 	}
-
 	for k, v := range tags {
 		o.Tags[k] = v
 	}
-
-	return o
-}
-
-// SetExecutionRole sets the execution role for the pod itself when it is run. This overwrites any
-// existing execution roles.
-func (o *ECSPodExecutionOptions) SetExecutionRole(role string) *ECSPodExecutionOptions {
-	o.ExecutionRole = &role
 	return o
 }
 
