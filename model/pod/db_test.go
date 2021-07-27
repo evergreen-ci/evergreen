@@ -89,6 +89,7 @@ func TestFindByInitializing(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, pods, 2)
 	assert.Equal(t, StatusInitializing, pods[0].Status)
+	assert.Equal(t, p1.ID, pods[0].ID)
 	assert.Equal(t, StatusInitializing, pods[1].Status)
 
 	ids := map[string]struct{}{p1.ID: {}, p3.ID: {}}
