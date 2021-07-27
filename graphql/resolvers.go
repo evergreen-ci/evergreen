@@ -1276,13 +1276,12 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 
-	// Get the base test statuses
 	baseTask, err := dbTask.FindTaskOnBaseCommit()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task for task %s: %s", taskID, err))
 	}
 	baseTestStatusMap := make(map[string]string)
-
+	// Populate baseTestStatusMap
 	if baseTask != nil {
 		baseTaskLatestExec, err := task.GetLatestExecution(baseTask.Id)
 		if err != nil {
@@ -1322,7 +1321,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 	}
 
-	// try getting testresults from cedar
+	// try getting test results from cedar
 	opts := apimodels.GetCedarTestResultsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		Execution: dbTask.Execution,
@@ -1346,8 +1345,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	var totalTestCount int
 	var filteredTestCount int
 
-	// Put testresults into an arrar of testPointers and save the total and filtered test count to return
-	if cedarTestResults != nil || len(cedarTestResults) > 0 {
+	// Put testresults into an array of testPointers and save the total and filtered test count to return
+	if cedarTestResults != nil && len(cedarTestResults) > 0 {
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
 			GroupID:     groupIdParam,
 			Limit:       limitParam,
