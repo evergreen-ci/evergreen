@@ -215,14 +215,6 @@ func ByRecentlyFinishedWithMakespans(limit int) db.Q {
 	}).Sort([]string{RevisionOrderNumberKey}).Limit(limit)
 }
 
-// ByProjectAndTaskName builds a query that returns all build variants for a project that have a task name matching the given name.
-func ByProjectAndTaskName(project, taskName string) db.Q {
-	return db.Query(bson.M{
-		ProjectKey:  project,
-		TaskNameKey: taskName,
-	})
-}
-
 // DB Boilerplate
 
 // FindOne returns one build that satisfies the query.
