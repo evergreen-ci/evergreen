@@ -1300,16 +1300,35 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	var filteredTestCount int
 
 	baseTask, err := dbTask.FindTaskOnBaseCommit()
+	if baseTask != nil {
+		baseTaskLatestExec, _ := task.GetLatestExecution(baseTask.Id)
+		grip.Warning(message.Fields{
+			"function":                "TaskTests",
+			"task_id":                 taskID,
+			"base_task_id":            baseTask.Id,
+			"dbTaskexecution":         dbTask.Execution,
+			"baseTaskExecution":       baseTask.Execution,
+			"baseTaskLatestExeuction": baseTaskLatestExec,
+			"numBaseTasks":            len(baseTask.ExecutionTasks),
+		})
+	} else {
+		grip.Warning(message.Fields{
+			"function":     "TaskTests",
+			"task_id":      taskID,
+			"base_task_id": "DNE",
+		})
+	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task for task %s: %s", taskID, err))
 	}
 	baseTestStatusMap := make(map[string]string)
 	if cedarTestResults == nil {
-		var taskExecution int
-		taskExecution = dbTask.Execution
-
 		if baseTask != nil {
-			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: taskExecution})
+			baseTaskLatestExec, err := task.GetLatestExecution(baseTask.Id)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting getting latest execution for task %s: %s", baseTask.Id, err.Error()))
+			}
+			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTaskLatestExec})
 			for _, t := range baseTestResults {
 				baseTestStatusMap[t.TestFile] = t.Status
 			}
@@ -1323,7 +1342,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			GroupID:   groupIdParam,
 			SortDir:   sortDir,
 			Limit:     limitParam,
-			Execution: taskExecution,
+			Execution: dbTask.Execution,
 			Page:      pageParam,
 		})
 
@@ -1350,19 +1369,23 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			apiTest.BaseStatus = &baseTestStatus
 			testPointers = append(testPointers, &apiTest)
 		}
-		totalTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, taskExecution)
+		totalTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
 		}
-		filteredTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, taskExecution)
+		filteredTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, dbTask.Execution)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
 		}
 	} else {
 		if baseTask != nil {
+			baseTaskLatestExec, err := task.GetLatestExecution(baseTask.Id)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting getting latest execution for task %s: %s", baseTask.Id, err.Error()))
+			}
 			baseTestResultOpts := apimodels.GetCedarTestResultsOptions{
 				BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-				Execution: dbTask.Execution,
+				Execution: baseTaskLatestExec,
 			}
 
 			if len(baseTask.ExecutionTasks) > 0 {
