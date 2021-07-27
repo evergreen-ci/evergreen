@@ -2689,6 +2689,10 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
+func (r *queryResolver) buildVariantHistory(ctx context.Context, projectId string, taskName string) ([]string, error) {
+	task.FindUniqueBuildVariant(projectId, taskName)
+}
+
 // Will return an array of activated and unactivated versions
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error) {
 	projectId, err := model.GetIdForProject(options.ProjectID)

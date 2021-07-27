@@ -478,6 +478,7 @@ type ComplexityRoot struct {
 		AwsRegions              func(childComplexity int) int
 		BbGetCreatedTickets     func(childComplexity int, taskID string) int
 		BuildBaron              func(childComplexity int, taskID string, execution int) int
+		BuildVariantHistory     func(childComplexity int, projectID string, taskName string) int
 		ClientConfig            func(childComplexity int) int
 		CommitQueue             func(childComplexity int, id string) int
 		DistroTaskQueue         func(childComplexity int, distroID string) int
@@ -500,6 +501,7 @@ type ComplexityRoot struct {
 		Task                    func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions       func(childComplexity int, taskID string) int
 		TaskFiles               func(childComplexity int, taskID string, execution *int) int
+		TaskHistory             func(childComplexity int, projectID string, buildVariant string) int
 		TaskLogs                func(childComplexity int, taskID string, execution *int) int
 		TaskQueueDistros        func(childComplexity int) int
 		TaskTests               func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
@@ -917,6 +919,8 @@ type QueryResolver interface {
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error)
+	BuildVariantHistory(ctx context.Context, projectID string, taskName string) ([]string, error)
+	TaskHistory(ctx context.Context, projectID string, buildVariant string) ([]string, error)
 }
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
@@ -3028,6 +3032,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.BuildBaron(childComplexity, args["taskId"].(string), args["execution"].(int)), true
 
+	case "Query.buildVariantHistory":
+		if e.complexity.Query.BuildVariantHistory == nil {
+			break
+		}
+
+		args, err := ec.field_Query_buildVariantHistory_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.BuildVariantHistory(childComplexity, args["projectId"].(string), args["taskName"].(string)), true
+
 	case "Query.clientConfig":
 		if e.complexity.Query.ClientConfig == nil {
 			break
@@ -3251,6 +3267,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.TaskFiles(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
+
+	case "Query.taskHistory":
+		if e.complexity.Query.TaskHistory == nil {
+			break
+		}
+
+		args, err := ec.field_Query_taskHistory_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TaskHistory(childComplexity, args["projectId"].(string), args["buildVariant"].(string)), true
 
 	case "Query.taskLogs":
 		if e.complexity.Query.TaskLogs == nil {
@@ -4972,7 +5000,10 @@ var sources = []*ast.Source{
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
+  buildVariantHistory(projectId: String!, taskName: String!): [String!]
+  taskHistory(projectId: String!, buildVariant: String!): [String!]
 }
+
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
@@ -5083,6 +5114,8 @@ input MainlineCommitsOptions {
   limit: Int = 7
   skipOrderNumber: Int = 0
 }
+
+
 enum SpawnHostStatusActions {
   START
   STOP
@@ -6687,6 +6720,28 @@ func (ec *executionContext) field_Query_buildBaron_args(ctx context.Context, raw
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_buildVariantHistory_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["taskName"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskName"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -7018,6 +7073,28 @@ func (ec *executionContext) field_Query_taskFiles_args(ctx context.Context, rawA
 		}
 	}
 	args["execution"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_taskHistory_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["buildVariant"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["buildVariant"] = arg1
 	return args, nil
 }
 
@@ -17280,6 +17357,82 @@ func (ec *executionContext) _Query_mainlineCommits(ctx context.Context, field gr
 	res := resTmp.(*MainlineCommits)
 	fc.Result = res
 	return ec.marshalOMainlineCommits2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommits(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_buildVariantHistory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_buildVariantHistory_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().BuildVariantHistory(rctx, args["projectId"].(string), args["taskName"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_taskHistory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_taskHistory_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().TaskHistory(rctx, args["projectId"].(string), args["buildVariant"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -29026,6 +29179,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_mainlineCommits(ctx, field)
+				return res
+			})
+		case "buildVariantHistory":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_buildVariantHistory(ctx, field)
+				return res
+			})
+		case "taskHistory":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_taskHistory(ctx, field)
 				return res
 			})
 		case "__type":

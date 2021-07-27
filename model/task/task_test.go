@@ -2317,6 +2317,100 @@ func TestDisplayStatus(t *testing.T) {
 	checkStatuses(t, evergreen.TaskWillRun, t11)
 }
 
+func TestFindByUniqueBuildVariantNames(t *testing.T) {
+	Convey("Should return tasks unique build variants for tasks", t, func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+		t1 := Task{
+			Id:           "t1",
+			Status:       evergreen.TaskSucceeded,
+			BuildVariant: "ubuntu1604",
+			DisplayName:  "test-agent",
+			Project:      "evergreen",
+			Requester:    evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, t1.Insert())
+		t2 := Task{
+			Id:           "t2",
+			Status:       evergreen.TaskSucceeded,
+			BuildVariant: "osx",
+			DisplayName:  "test-agent",
+			Project:      "evergreen",
+			Requester:    evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, t2.Insert())
+		t3 := Task{
+			Id:           "t3",
+			Status:       evergreen.TaskSucceeded,
+			BuildVariant: "windows",
+			DisplayName:  "test-agent",
+			Project:      "evergreen",
+			Requester:    evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, t3.Insert())
+		t4 := Task{
+			Id:           "t4",
+			Status:       evergreen.TaskFailed,
+			BuildVariant: "ubuntu1604",
+			DisplayName:  "test-agent",
+			Project:      "evergreen",
+			Requester:    evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, t4.Insert())
+		task, err := FindByUniqueBuildVariantNames("evergreen", "test-agent")
+		assert.NoError(t, err)
+		assert.Equal(t, task, &TaskBuildVariants{
+			Task:          "test-agent",
+			BuildVariants: []string{"windows", "ubuntu1604", "osx"},
+		})
+
+	})
+	Convey("Should only include tasks that appear on mainline commits", t, func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+		t1 := Task{
+			Id:           "t1",
+			Status:       evergreen.TaskSucceeded,
+			BuildVariant: "ubuntu1604",
+			DisplayName:  "test-agent",
+			Project:      "evergreen",
+			Requester:    evergreen.PatchVersionRequester,
+		}
+		assert.NoError(t, t1.Insert())
+		t2 := Task{
+			Id:           "t2",
+			Status:       evergreen.TaskSucceeded,
+			BuildVariant: "osx",
+			DisplayName:  "test-agent",
+			Project:      "evergreen",
+			Requester:    evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, t2.Insert())
+		t3 := Task{
+			Id:           "t3",
+			Status:       evergreen.TaskSucceeded,
+			BuildVariant: "windows",
+			DisplayName:  "test-agent",
+			Project:      "evergreen",
+			Requester:    evergreen.PatchVersionRequester,
+		}
+		assert.NoError(t, t3.Insert())
+		t4 := Task{
+			Id:           "t4",
+			Status:       evergreen.TaskFailed,
+			BuildVariant: "ubuntu1604",
+			DisplayName:  "test-agent",
+			Project:      "evergreen",
+			Requester:    evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, t4.Insert())
+		task, err := FindByUniqueBuildVariantNames("evergreen", "test-agent")
+		assert.NoError(t, err)
+		assert.Equal(t, task, &TaskBuildVariants{
+			Task:          "test-agent",
+			BuildVariants: []string{"osx", "ubuntu1604"},
+		})
+	})
+
+}
 func checkStatuses(t *testing.T, expected string, toCheck Task) {
 	var dbTasks []Task
 	aggregation := []bson.M{

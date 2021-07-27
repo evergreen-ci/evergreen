@@ -802,6 +802,40 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
+type TaskBuildVariants struct {
+	Task          string   `bson:"_id"`
+	BuildVariants []string `bson:"build_variants"`
+}
+
+// FindByUniqueBuildVariantNames returns TaskBuildVariants with a list of unique build variants
+func FindByUniqueBuildVariantNames(projectId string, taskName string) (*TaskBuildVariants, error) {
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			ProjectKey:     projectId,
+			DisplayNameKey: taskName,
+			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes}},
+		}}
+
+	group := bson.M{
+		"$group": bson.M{
+			"_id":            taskName,
+			"build_variants": bson.M{"$addToSet": "$" + "build_variant"},
+		},
+	}
+	sort := bson.M{
+		"$sort": bson.M{
+			"build_variants": 1,
+		},
+	}
+	pipeline = append(pipeline, group)
+	pipeline = append(pipeline, sort)
+	result := []TaskBuildVariants{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "can't get build variant tasks")
+	}
+	return &result[0], nil
+}
+
 // DB Boilerplate
 
 // FindOneNoMerge is a FindOne without merging test results.

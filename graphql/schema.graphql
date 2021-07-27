@@ -72,7 +72,10 @@ type Query {
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
+  buildVariantHistory(projectId: String!, taskName: String!): [String!]
+  taskHistory(projectId: String!, buildVariant: String!): [String!]
 }
+
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
@@ -183,6 +186,8 @@ input MainlineCommitsOptions {
   limit: Int = 7
   skipOrderNumber: Int = 0
 }
+
+
 enum SpawnHostStatusActions {
   START
   STOP
