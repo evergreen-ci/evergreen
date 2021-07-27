@@ -798,7 +798,7 @@ type ComplexityRoot struct {
 		StartTime         func(childComplexity int) int
 		Status            func(childComplexity int) int
 		TaskCount         func(childComplexity int) int
-		TaskStatusCounts  func(childComplexity int) int
+		TaskStatusCounts  func(childComplexity int, options *BuildVariantOptions) int
 		VersionTiming     func(childComplexity int) int
 	}
 
@@ -993,7 +993,7 @@ type UserResolver interface {
 type VersionResolver interface {
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
 
-	TaskStatusCounts(ctx context.Context, obj *model.APIVersion) ([]*StatusCount, error)
+	TaskStatusCounts(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*StatusCount, error)
 	BuildVariants(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error)
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Patch(ctx context.Context, obj *model.APIVersion) (*model.APIPatch, error)
@@ -4813,7 +4813,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Version.TaskStatusCounts(childComplexity), true
+		args, err := ec.field_Version_taskStatusCounts_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.TaskStatusCounts(childComplexity, args["options"].(*BuildVariantOptions)), true
 
 	case "Version.versionTiming":
 		if e.complexity.Version.VersionTiming == nil {
@@ -5161,7 +5166,7 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts: [StatusCount!]
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   isPatch: Boolean!
   patch: Patch
@@ -7348,6 +7353,20 @@ func (ec *executionContext) field_User_patches_args(ctx context.Context, rawArgs
 }
 
 func (ec *executionContext) field_Version_buildVariants_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *BuildVariantOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		arg0, err = ec.unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Version_taskStatusCounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *BuildVariantOptions
@@ -24052,9 +24071,16 @@ func (ec *executionContext) _Version_taskStatusCounts(ctx context.Context, field
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Version_taskStatusCounts_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Version().TaskStatusCounts(rctx, obj)
+		return ec.resolvers.Version().TaskStatusCounts(rctx, obj, args["options"].(*BuildVariantOptions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

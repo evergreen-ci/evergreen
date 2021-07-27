@@ -51,14 +51,14 @@ func ExportPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, erro
 // ExportStatus exports the pod status to the equivalent cocoa.ECSPodStatus.
 func ExportPodStatus(s pod.Status) (cocoa.ECSPodStatus, error) {
 	switch s {
-	case pod.InitializingStatus:
+	case pod.StatusInitializing:
 		return "", errors.Errorf("a pod that is initializing does not exist in ECS yet")
-	case pod.StartingStatus:
-		return cocoa.StartingStatus, nil
-	case pod.RunningStatus:
-		return cocoa.RunningStatus, nil
-	case pod.TerminatedStatus:
-		return cocoa.DeletedStatus, nil
+	case pod.StatusStarting:
+		return cocoa.StatusStarting, nil
+	case pod.StatusRunning:
+		return cocoa.StatusRunning, nil
+	case pod.StatusTerminated:
+		return cocoa.StatusDeleted, nil
 	default:
 		return "", errors.Errorf("no equivalent ECS status for pod status '%s'", s)
 	}

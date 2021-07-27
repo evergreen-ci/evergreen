@@ -136,6 +136,8 @@ func (c *AWSPodConfig) Validate() error {
 type ECSConfig struct {
 	// TaskDefinitionPrefix is the prefix for the task definition families.
 	TaskDefinitionPrefix string `bson:"task_definition_prefix,omitempty" json:"task_definition_prefix,omitempty" yaml:"task_definition_prefix,omitempty"`
+	TaskRole             string `bson:"task_role,omitempty" json:"task_role,omitempty" yaml:"task_role,omitempty"`
+	ExecutionRole        string `bson:"execution_role,omitempty" json:"execution_role,omitempty" yaml:"execution_role,omitempty"`
 	// Clusters specify the configuration of each particular ECS cluster.
 	Clusters []ECSClusterConfig `bson:"clusters,omitempty" json:"clusters,omitempty" yaml:"clusters,omitempty"`
 }
@@ -155,7 +157,7 @@ type ECSClusterConfig struct {
 	// Name is the ECS cluster name.
 	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Platform is the platform supported by the cluster.
-	Platform PodPlatform `bson:"platform,omitempty" json:"platform,omitempty" yaml:"platform,omitempty"`
+	Platform ECSClusterPlatform `bson:"platform,omitempty" json:"platform,omitempty" yaml:"platform,omitempty"`
 }
 
 // Validate checks that the ECS cluster configuration has the required fields
@@ -163,7 +165,7 @@ type ECSClusterConfig struct {
 func (c *ECSClusterConfig) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(c.Name == "", "must specify a cluster name")
-	catcher.Add(c.Platform.Validate())
+	catcher.Wrap(c.Platform.Validate(), "invalid platform")
 	return catcher.Resolve()
 }
 

@@ -168,7 +168,7 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts: [StatusCount!]
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   isPatch: Boolean!
   patch: Patch

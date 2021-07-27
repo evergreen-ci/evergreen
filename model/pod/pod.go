@@ -1,8 +1,9 @@
 package pod
 
 import (
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -28,16 +29,26 @@ type Pod struct {
 type Status string
 
 const (
-	// InitializingStatus indicates that a pod is waiting to be created.
-	InitializingStatus Status = "initializing"
-	// StartingStatus indicates that a pod's containers are starting.
-	StartingStatus Status = "starting"
-	// Running indicates that the pod's containers are running.
-	RunningStatus Status = "running"
-	// TerminatedStatus indicates that the pod's containers have been
+	// StatusInitializing indicates that a pod is waiting to be created.
+	StatusInitializing Status = "initializing"
+	// StatusStarting indicates that a pod's containers are starting.
+	StatusStarting Status = "starting"
+	// StatusRunning indicates that the pod's containers are running.
+	StatusRunning Status = "running"
+	// StatusTerminated indicates that the pod's containers have been
 	// deleted.
-	TerminatedStatus Status = "terminated"
+	StatusTerminated Status = "terminated"
 )
+
+// Validate checks that the pod status is recognized.
+func (s Status) Validate() error {
+	switch s {
+	case StatusInitializing, StatusStarting, StatusRunning, StatusTerminated:
+		return nil
+	default:
+		return errors.Errorf("unrecognized pod status '%s'", s)
+	}
+}
 
 // ResourceInfo represents information about external resources associated with
 // a pod.
@@ -54,8 +65,14 @@ type ResourceInfo struct {
 	SecretIDs []string `bson:"secret_ids" json:"secret_ids"`
 }
 
-// TaskCreationOptions are options to apply to the task's container when
-// creating a pod in the container orchestration service.
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (o ResourceInfo) IsZero() bool {
+	return o.ID == "" && o.DefinitionID == "" && o.Cluster == "" && len(o.SecretIDs) == 0
+}
+
+// TaskContainerCreationOptions are options to apply to the task's container
+// when creating a pod in the container orchestration service.
 type TaskContainerCreationOptions struct {
 	// Image is the image that the task's container will run.
 	Image string `bson:"image" json:"image"`
@@ -65,21 +82,63 @@ type TaskContainerCreationOptions struct {
 	// CPU is the CPU units that the task will be allocated. 1024 CPU units is
 	// equivalent to 1vCPU.
 	CPU int `bson:"cpu" json:"cpu"`
-	// Platform indicates which particular platform the pod's containers run on.
-	Platform evergreen.PodPlatform `bson:"platform" json:"platform"`
+	// OS indicates which particular operating system the pod's containers run
+	// on.
+	OS OS `bson:"os" json:"os"`
+	// Arch indicates the particular architecture that the pod's containers run
+	// on.
+	Arch Arch ` bson:"arch" json:"arch"`
 	// EnvVars is a mapping of the non-secret environment variables to expose in
 	// the task's container environment.
 	EnvVars map[string]string `bson:"env_vars,omitempty" json:"env_vars,omitempty"`
 	// EnvSecrets is a mapping of secret names to secret values to expose in the
 	// task's container environment variables. The secret name is the
 	// environment variable name.
-	EnvSecrets map[string]string `bson:"secrets,omitempty" json:"secrets,omitempty"`
+	EnvSecrets map[string]string `bson:"env_secrets,omitempty" json:"env_secrets,omitempty"`
+}
+
+// OS represents recognized operating systems for pods.
+type OS string
+
+const (
+	// OSLinux indicates that the pods will run with Linux containers.
+	OSLinux OS = "linux"
+	// OSWindows indicates that the pods will run with Windows containers.
+	OSWindows OS = "windows"
+)
+
+// Validate checks that the pod OS is recognized.
+func (os OS) Validate() error {
+	switch os {
+	case OSLinux, OSWindows:
+		return nil
+	default:
+		return errors.Errorf("unrecognized pod OS '%s'", os)
+	}
+}
+
+// Arch represents recognized architectures for pods.
+type Arch string
+
+const (
+	ArchAMD64 = "amd64"
+	ArchARM64 = "arm64"
+)
+
+// Validate checks that the pod architecture is recognized.
+func (a Arch) Validate() error {
+	switch a {
+	case ArchAMD64, ArchARM64:
+		return nil
+	default:
+		return errors.Errorf("unrecognized pod architecture '%s'", a)
+	}
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o TaskContainerCreationOptions) IsZero() bool {
-	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.Platform == "" && o.EnvVars == nil && o.EnvSecrets == nil
+	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.OS == "" && o.Arch == "" && len(o.EnvVars) == 0 && len(o.EnvSecrets) == 0
 }
 
 // Insert inserts a new pod into the collection.
@@ -108,9 +167,9 @@ func (p *Pod) UpdateStatus(s Status) error {
 		return err
 	}
 
-	p.Status = s
+	event.LogPodStatusChanged(p.ID, string(p.Status), string(s))
 
-	// TODO (EVG-15026): set up event logging when pod status changes.
+	p.Status = s
 
 	return nil
 }

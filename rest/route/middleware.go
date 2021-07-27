@@ -330,28 +330,19 @@ func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	id := gimlet.GetVars(r)["pod_id"]
 	if id == "" {
 		if id = r.Header.Get(evergreen.PodHeader); id == "" {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "missing pod ID",
-			}))
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod ID")))
 			return
 		}
 	}
 
 	secret := r.Header.Get(evergreen.PodSecretHeader)
 	if secret == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "missing pod secret",
-		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod secret")))
 		return
 	}
 
 	if err := m.sc.CheckPodSecret(id, secret); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    err.Error(),
-		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
 

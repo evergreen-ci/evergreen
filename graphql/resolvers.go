@@ -1314,16 +1314,15 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	var totalTestCount int
 	var filteredTestCount int
 
+	baseTask, err := dbTask.FindTaskOnBaseCommit()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task for task %s: %s", taskID, err))
+	}
+	baseTestStatusMap := make(map[string]string)
 	if cedarTestResults == nil {
-		baseTask, err := dbTask.FindTaskOnBaseCommit()
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task with id %s: %s", taskID, err))
-		}
-
 		var taskExecution int
 		taskExecution = dbTask.Execution
 
-		baseTestStatusMap := make(map[string]string)
 		if baseTask != nil {
 			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: taskExecution})
 			for _, t := range baseTestResults {
@@ -1375,6 +1374,30 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
 		}
 	} else {
+		if baseTask != nil {
+			baseTestResultOpts := apimodels.GetCedarTestResultsOptions{
+				BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+				Execution: dbTask.Execution,
+			}
+
+			if len(baseTask.ExecutionTasks) > 0 {
+				baseTestResultOpts.DisplayTaskID = baseTask.Id
+			} else {
+				baseTestResultOpts.TaskID = baseTask.Id
+			}
+
+			cedarBaseTestResults, err := apimodels.GetCedarTestResults(ctx, baseTestResultOpts)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"task_id": baseTask.Id,
+					"message": "problem getting cedar test results",
+				}))
+			}
+			for _, t := range cedarBaseTestResults {
+				baseTestStatusMap[t.TestName] = t.Status
+			}
+		}
+
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
 			GroupID:     groupIdParam,
 			Limit:       limitParam,
@@ -1401,7 +1424,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
 				apiTest.Logs.RawDisplayURL = &formattedURL
 			}
-
+			baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
+			apiTest.BaseStatus = &baseTestStatus
 			testPointers = append(testPointers, &apiTest)
 		}
 
@@ -2792,13 +2816,18 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 type versionResolver struct{ *Resolver }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
-func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion) ([]*StatusCount, error) {
+func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*StatusCount, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Statuses:        options.Statuses,
+		Variants:        options.Variants,
+		TaskNames:       options.Tasks,
+		Sorts:           defaultSort,
+		FieldsToProject: []string{task.DisplayStatusKey},
 	}
+
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 
 	if err != nil {
