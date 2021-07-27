@@ -1239,26 +1239,10 @@ func PopulatePodInitializingJobs(env evergreen.Environment) amboy.QueueOperation
 			return errors.Wrap(err, "error fetching initializing pods")
 		}
 
-		jobsSubmitted := 0
-		collisions := 0
 		catcher := grip.NewBasicCatcher()
 		for _, p := range pods {
-			err := amboy.EnqueueUniqueJob(ctx, queue, NewPodInitJob(env, &p, utility.RoundPartOfMinute(0).Format(TSFormat)))
-			if amboy.IsDuplicateJobError(err) || amboy.IsDuplicateJobScopeError(err) {
-				collisions++
-				continue
-			}
-			catcher.Add(err)
-
-			jobsSubmitted++
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewCreatePodJob(env, &p, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing jobs to create pod %s", p.ID)
 		}
-
-		grip.Info(message.Fields{
-			"initializing_pods": len(pods),
-			"jobs_submitted":    jobsSubmitted,
-			"duplicates_seen":   collisions,
-			"message":           "pod initializing",
-		})
 
 		return catcher.Resolve()
 	}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/cocoa"
+	"github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
@@ -51,6 +52,19 @@ func TestMakeSecretsManagerVault(t *testing.T) {
 		c, err := MakeSecretsManagerClient(validPodClientSettings())
 		require.NoError(t, err)
 		assert.NotZero(t, MakeSecretsManagerVault(c))
+	})
+}
+
+func TestMakeECSPodCreator(t *testing.T) {
+	t.Run("Succeeds", func(t *testing.T) {
+		c, err := MakeECSPodCreator(&mock.ECSClient{}, &mock.Vault{})
+		require.NoError(t, err)
+		assert.NotZero(t, c)
+	})
+	t.Run("FailsWithoutRequiredClient", func(t *testing.T) {
+		c, err := MakeECSPodCreator(nil, &mock.Vault{})
+		require.Error(t, err)
+		assert.Zero(t, c)
 	})
 }
 
@@ -189,6 +203,14 @@ func TestExportPodResources(t *testing.T) {
 			assert.True(t, utility.FromBoolPtr(s.Owned))
 		}
 	})
+}
+
+func TestExportPodContainerDef(t *testing.T) {
+	// TODO: implement
+}
+
+func TestExportPodTaskDef(t *testing.T) {
+	// TODO: implement
 }
 
 func validPodClientSettings() *evergreen.Settings {
