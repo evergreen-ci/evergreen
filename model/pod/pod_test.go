@@ -2,10 +2,12 @@ package pod
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,9 +34,14 @@ func TestInsertAndFindOneByID(t *testing.T) {
 					MemoryMB: 128,
 					CPU:      128,
 				},
+				TimeInfo: TimeInfo{
+					Initializing:     utility.BSONTime(time.Now()),
+					Starting:         utility.BSONTime(time.Now()),
+					LastCommunicated: utility.BSONTime(time.Now()),
+				},
 				Resources: ResourceInfo{
-					ID:           "task_id",
-					DefinitionID: "task_definition_id",
+					ExternalID:   "external_id",
+					DefinitionID: "definition_id",
 					Cluster:      "cluster",
 					SecretIDs:    []string{"secret0", "secret1"},
 				},
@@ -49,6 +56,7 @@ func TestInsertAndFindOneByID(t *testing.T) {
 			assert.Equal(t, p.Status, dbPod.Status)
 			assert.Equal(t, p.Secret, dbPod.Secret)
 			assert.Equal(t, p.Resources, dbPod.Resources)
+			assert.Equal(t, p.TimeInfo, dbPod.TimeInfo)
 			assert.Equal(t, p.TaskContainerCreationOpts, dbPod.TaskContainerCreationOpts)
 		},
 	} {
@@ -107,8 +115,18 @@ func TestUpdateStatus(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Status, dbPod.Status)
-
+		switch p.Status {
+		case StatusInitializing:
+			assert.NotZero(t, p.TimeInfo.Initializing)
+			assert.NotZero(t, dbPod.TimeInfo.Initializing)
+			assert.Equal(t, p.TimeInfo.Initializing, dbPod.TimeInfo.Initializing)
+		case StatusStarting:
+			assert.NotZero(t, p.TimeInfo.Starting)
+			assert.NotZero(t, dbPod.TimeInfo.Starting)
+			assert.Equal(t, p.TimeInfo.Starting, dbPod.TimeInfo.Starting)
+		}
 	}
+
 	checkEventLog := func(t *testing.T, p Pod) {
 		events, err := event.Find(event.AllLogCollection, event.MostRecentPodEvents(p.ID, 10))
 		require.NoError(t, err)
@@ -117,6 +135,7 @@ func TestUpdateStatus(t *testing.T) {
 		assert.Equal(t, event.ResourceTypePod, events[0].ResourceType)
 		assert.Equal(t, string(event.EventPodStatusChange), events[0].EventType)
 	}
+
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
 		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())

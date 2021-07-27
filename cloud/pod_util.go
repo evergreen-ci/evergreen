@@ -77,8 +77,8 @@ func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 
 	res := cocoa.NewECSPodResources().SetSecrets(secrets)
 
-	if info.ID != "" {
-		res.SetTaskID(info.ID)
+	if info.ExternalID != "" {
+		res.SetTaskID(info.ExternalID)
 	}
 
 	if info.DefinitionID != "" {
