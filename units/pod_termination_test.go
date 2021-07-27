@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/cocoa/mock"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -146,7 +145,8 @@ func TestTerminatePodJob(t *testing.T) {
 					Image:    "image",
 					MemoryMB: 128,
 					CPU:      128,
-					Platform: evergreen.PodPlatformLinux,
+					OS:       pod.OSLinux,
+					Arch:     pod.ArchAMD64,
 					EnvSecrets: map[string]string{
 						"secret0": utility.RandomString(),
 						"secret1": utility.RandomString(),

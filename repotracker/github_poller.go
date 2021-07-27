@@ -187,23 +187,37 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			revisionError = errors.Wrapf(err,
 				"unable to find a suggested merge base commit for revision %v, must fix on projects settings page",
 				revision)
-		} else {
-			// update project ref to have an inconsistent status
-			revisionDetails = &model.RepositoryErrorDetails{
-				Exists:            true,
-				InvalidRevision:   revision[:10],
-				MergeBaseRevision: baseRevision,
+			gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
+			if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
+				return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
 			}
-			revisionError = errors.Errorf("base revision, %v not found, suggested base revision, %v found, must confirm on project settings page",
-				revision, baseRevision)
-		}
+			return []model.Revision{}, revisionError
+		} else {
+			// automatically set the newly found base revision as base revision and append revisions
+			commit, err := thirdparty.GetCommitEvent(ctx,
+				gRepoPoller.OauthToken,
+				gRepoPoller.ProjectRef.Owner,
+				gRepoPoller.ProjectRef.Repo,
+				baseRevision,
+			)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error loading commit '%v'", baseRevision)
+			}
+			revisions = append(revisions, githubCommitToRevision(commit))
 
-		gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
-		if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
-			return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
+			grip.Info(message.Fields{
+				"source":             "github poller",
+				"message":            "updating new base revision",
+				"old_revision":       revision,
+				"new_revision":       baseRevision,
+				"project":            gRepoPoller.ProjectRef.Id,
+				"project_identifier": gRepoPoller.ProjectRef.Identifier,
+			})
+			err = model.UpdateLastRevision(gRepoPoller.ProjectRef.Id, baseRevision)
+			if err != nil {
+				return nil, errors.Wrap(err, "error updating last revision")
+			}
 		}
-
-		return []model.Revision{}, revisionError
 	}
 
 	if len(revisions) == 0 {
