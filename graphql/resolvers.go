@@ -1300,6 +1300,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	var filteredTestCount int
 
 	baseTask, err := dbTask.FindTaskOnBaseCommit()
+	hasCedarResults := cedarTestResults != nil
 	if baseTask != nil {
 		baseTaskLatestExec, _ := task.GetLatestExecution(baseTask.Id)
 		grip.Warning(message.Fields{
@@ -1309,6 +1310,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			"dbTaskexecution":         dbTask.Execution,
 			"baseTaskExecution":       baseTask.Execution,
 			"baseTaskLatestExeuction": baseTaskLatestExec,
+			"hasCedarTestResults":     hasCedarResults
 			"numBaseTasks":            len(baseTask.ExecutionTasks),
 		})
 	} else {
