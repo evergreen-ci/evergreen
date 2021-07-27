@@ -2317,7 +2317,7 @@ func TestDisplayStatus(t *testing.T) {
 	checkStatuses(t, evergreen.TaskWillRun, t11)
 }
 
-func TestFindByUniqueBuildVariantNames(t *testing.T) {
+func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 	Convey("Should return tasks unique build variants for tasks", t, func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 		t1 := Task{
@@ -2356,11 +2356,11 @@ func TestFindByUniqueBuildVariantNames(t *testing.T) {
 			Requester:    evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(t, t4.Insert())
-		task, err := FindByUniqueBuildVariantNames("evergreen", "test-agent")
+		task, err := FindUniqueBuildVariantNamesByTask("evergreen", "test-agent")
 		assert.NoError(t, err)
 		assert.Equal(t, task, &TaskBuildVariants{
 			Task:          "test-agent",
-			BuildVariants: []string{"windows", "ubuntu1604", "osx"},
+			BuildVariants: []string{"osx", "ubuntu1604", "windows"},
 		})
 
 	})
@@ -2402,7 +2402,7 @@ func TestFindByUniqueBuildVariantNames(t *testing.T) {
 			Requester:    evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(t, t4.Insert())
-		task, err := FindByUniqueBuildVariantNames("evergreen", "test-agent")
+		task, err := FindUniqueBuildVariantNamesByTask("evergreen", "test-agent")
 		assert.NoError(t, err)
 		assert.Equal(t, task, &TaskBuildVariants{
 			Task:          "test-agent",
