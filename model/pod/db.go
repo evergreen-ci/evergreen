@@ -17,6 +17,7 @@ var (
 	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
 	SecretKey                    = bsonutil.MustHaveTag(Pod{}, "Secret")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
+	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
 
 	TaskContainerCreationOptsImageKey    = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Image")
@@ -27,10 +28,14 @@ var (
 	TaskContainerCreationOptsEnvVarsKey  = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvVars")
 	TaskContainerCreationOptsSecretsKey  = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvSecrets")
 
-	ResourceInfoID           = bsonutil.MustHaveTag(ResourceInfo{}, "ID")
-	ResourceInfoDefinitionID = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
-	ResourceInfoCluster      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
-	ResourceInfoSecretIDs    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
+	TimeInfoInitializingKey     = bsonutil.MustHaveTag(TimeInfo{}, "Initializing")
+	TimeInfoStartingKey         = bsonutil.MustHaveTag(TimeInfo{}, "Starting")
+	TimeInfoLastCommunicatedKey = bsonutil.MustHaveTag(TimeInfo{}, "LastCommunicated")
+
+	ResourceInfoExternalIDKey   = bsonutil.MustHaveTag(ResourceInfo{}, "ExternalID")
+	ResourceInfoDefinitionIDKey = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
+	ResourceInfoClusterKey      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
+	ResourceInfoSecretIDsKey    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
 )
 
 // FindOne finds one pod by the given query.

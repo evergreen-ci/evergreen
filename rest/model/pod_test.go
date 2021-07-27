@@ -2,6 +2,7 @@ package model
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
@@ -52,6 +53,7 @@ func TestAPICreatePod(t *testing.T) {
 		assert.Equal(t, utility.FromStringPtr(apiPod.Arch), string(p.TaskContainerCreationOpts.Arch))
 		assert.Equal(t, utility.FromStringPtr(apiPod.Secret), p.Secret)
 		assert.Equal(t, pod.StatusInitializing, p.Status)
+		assert.NotZero(t, p.TimeInfo.Initializing)
 		assert.Len(t, p.TaskContainerCreationOpts.EnvVars, 2)
 		assert.Len(t, p.TaskContainerCreationOpts.EnvSecrets, 1)
 		assert.Equal(t, "value1", p.TaskContainerCreationOpts.EnvVars["name1"])
@@ -78,8 +80,13 @@ func TestAPIPod(t *testing.T) {
 					"secret1": "secret_val1",
 				},
 			},
+			TimeInfo: pod.TimeInfo{
+				Initializing:     time.Now(),
+				Starting:         time.Now(),
+				LastCommunicated: time.Now(),
+			},
 			Resources: pod.ResourceInfo{
-				ID:           "id",
+				ExternalID:   "external_id",
 				DefinitionID: "definition_id",
 				Cluster:      "cluster",
 				SecretIDs:    []string{"secret_id0", "secret_id1"},
@@ -108,8 +115,13 @@ func TestAPIPod(t *testing.T) {
 					"secret1": "secret_val1",
 				},
 			},
+			TimeInfo: APIPodTimeInfo{
+				Initializing:     utility.ToTimePtr(time.Now()),
+				Starting:         utility.ToTimePtr(time.Now()),
+				LastCommunicated: utility.ToTimePtr(time.Now()),
+			},
 			Resources: APIPodResourceInfo{
-				ID:           utility.ToStringPtr("id"),
+				ExternalID:   utility.ToStringPtr("task_id"),
 				DefinitionID: utility.ToStringPtr("definition_id"),
 				Cluster:      utility.ToStringPtr("cluster"),
 				SecretIDs:    []string{"secret_id0", "secret_id1"},
@@ -137,7 +149,10 @@ func TestAPIPod(t *testing.T) {
 			for k, v := range apiPod.TaskContainerCreationOpts.EnvSecrets {
 				assert.Equal(t, v, dbPod.TaskContainerCreationOpts.EnvSecrets[k])
 			}
-			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.ID), dbPod.Resources.ID)
+			assert.Equal(t, utility.FromTimePtr(apiPod.TimeInfo.Initializing), dbPod.TimeInfo.Initializing)
+			assert.Equal(t, utility.FromTimePtr(apiPod.TimeInfo.Starting), dbPod.TimeInfo.Starting)
+			assert.Equal(t, utility.FromTimePtr(apiPod.TimeInfo.LastCommunicated), dbPod.TimeInfo.LastCommunicated)
+			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.ExternalID), dbPod.Resources.ExternalID)
 			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.DefinitionID), dbPod.Resources.DefinitionID)
 			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.Cluster), dbPod.Resources.Cluster)
 			left, right := utility.StringSliceSymmetricDifference(dbPod.Resources.SecretIDs, apiPod.Resources.SecretIDs)
@@ -185,7 +200,10 @@ func TestAPIPod(t *testing.T) {
 			for k, v := range dbPod.TaskContainerCreationOpts.EnvSecrets {
 				assert.Equal(t, v, apiPod.TaskContainerCreationOpts.EnvSecrets[k])
 			}
-			assert.Equal(t, dbPod.Resources.ID, utility.FromStringPtr(apiPod.Resources.ID))
+			assert.Equal(t, dbPod.TimeInfo.Initializing, utility.FromTimePtr(apiPod.TimeInfo.Initializing))
+			assert.Equal(t, dbPod.TimeInfo.Starting, utility.FromTimePtr(apiPod.TimeInfo.Starting))
+			assert.Equal(t, dbPod.TimeInfo.LastCommunicated, utility.FromTimePtr(apiPod.TimeInfo.LastCommunicated))
+			assert.Equal(t, dbPod.Resources.ExternalID, utility.FromStringPtr(apiPod.Resources.ExternalID))
 			assert.Equal(t, dbPod.Resources.DefinitionID, utility.FromStringPtr(apiPod.Resources.DefinitionID))
 			assert.Equal(t, dbPod.Resources.Cluster, utility.FromStringPtr(apiPod.Resources.Cluster))
 			left, right := utility.StringSliceSymmetricDifference(dbPod.Resources.SecretIDs, apiPod.Resources.SecretIDs)

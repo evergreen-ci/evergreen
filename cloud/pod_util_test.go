@@ -89,7 +89,7 @@ func TestExportPod(t *testing.T) {
 				ID:     "id",
 				Status: pod.StatusRunning,
 				Resources: pod.ResourceInfo{
-					ID:           "task_id",
+					ExternalID:   "task_id",
 					DefinitionID: "task_def_id",
 					Cluster:      "cluster",
 					SecretIDs:    []string{"secret"},
@@ -147,7 +147,7 @@ func TestExportPodResources(t *testing.T) {
 	t.Run("SetsTaskID", func(t *testing.T) {
 		id := "task_id"
 		r := ExportPodResources(pod.ResourceInfo{
-			ID: id,
+			ExternalID: id,
 		})
 		assert.Equal(t, id, utility.FromStringPtr(r.TaskID))
 		assert.Zero(t, r.TaskDefinition)
