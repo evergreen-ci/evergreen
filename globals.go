@@ -115,6 +115,7 @@ const (
 	PatchStarted     = "started"
 	PatchSucceeded   = "succeeded"
 	PatchFailed      = "failed"
+	PatchAborted     = "aborted" // This is a display status only and not a real patch status
 	PatchAllOutcomes = "*"
 
 	PushLogPushing = "pushing"
@@ -317,7 +318,7 @@ func VersionStatusToPatchStatus(versionStatus string) (string, error) {
 	case VersionSucceeded:
 		return PatchSucceeded, nil
 	default:
-		return "", errors.New("unknown version status")
+		return "", errors.Errorf("unknown version status: %s", versionStatus)
 	}
 }
 
