@@ -2831,7 +2831,7 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", *v.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version with id %s: %s", *v.Id, err.Error()))
 	}
 
 	statusCountsMap := map[string]int{}
@@ -2921,15 +2921,14 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 }
 
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
-	tasks, err := task.FindAll(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
+	v, err := model.VersionFindOneId(*obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks for version `%s` : %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version `%s`: %s", *obj.Id, err.Error()))
 	}
-	if tasks == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find any tasks for version %s", *obj.Id))
+	timeTaken, makespan, err := v.GetTimeSpent()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting timing for version `%s`: %s", *obj.Id, err.Error()))
 	}
-	timeTaken, makespan := task.GetTimeSpent(tasks)
-
 	// return nil if rounded timeTaken/makespan == 0s
 	t := timeTaken.Round(time.Second)
 	m := makespan.Round(time.Second)
