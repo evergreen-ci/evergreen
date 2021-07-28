@@ -1835,13 +1835,13 @@ func TestMarkGeneratedTasks(t *testing.T) {
 
 	mockError := errors.New("mock error")
 
-	require.NoError(t, MarkGeneratedTasks(t1.Id, true))
+	require.NoError(t, MarkGeneratedTasks(t1.Id))
 	found, err := FindOneId(t1.Id)
 	require.NoError(t, err)
 	require.Equal(t, true, found.GeneratedTasks)
 	require.Equal(t, "", found.GenerateTasksError)
 
-	require.NoError(t, MarkGeneratedTasks(t1.Id, true))
+	require.NoError(t, MarkGeneratedTasks(t1.Id))
 	require.NoError(t, MarkGeneratedTasksErr(t1.Id, mockError))
 	found, err = FindOneId(t1.Id)
 	require.NoError(t, err)
