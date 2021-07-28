@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -363,33 +362,7 @@ func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo s
 }
 
 func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
-	hook, err := model.FindGithubHook(p.Owner, p.Repo)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Id)
-	}
-	projectVars, err := model.FindOneProjectVars(p.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Id)
-	}
-	if projectVars == nil {
-		projectVars = &model.ProjectVars{}
-	}
-	projectAliases, err := model.FindAliasesForProject(p.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Id)
-	}
-	subscriptions, err := event.FindSubscriptionsByOwner(p.Id, event.OwnerTypeProject)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Id)
-	}
-	projectSettingsEvent := model.ProjectSettingsEvent{
-		ProjectRef:         *p,
-		GitHubHooksEnabled: hook != nil,
-		Vars:               *projectVars,
-		Aliases:            projectAliases,
-		Subscriptions:      subscriptions,
-	}
-	return &projectSettingsEvent, nil
+	return model.GetProjectSettingsEvents(p)
 }
 
 func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
