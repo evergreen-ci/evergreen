@@ -265,6 +265,12 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+	if t.Status != evergreen.TaskFailed {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
 
 	body := util.NewRequestReader(r)
 	defer body.Close()
@@ -310,18 +316,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	task, err := task.FindOneIdAndExecution(*h.annotation.TaskId, *h.annotation.TaskExecution)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Failed to find task '%s'", *h.annotation.TaskId))
-	}
-	if task == nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "The task '%s' does not exist", *h.annotation.TaskId))
-	}
-	if task.Status != evergreen.TaskFailed {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot create annotation when task status is '%s'", task.Status))
-	}
-
-	err = annotations.UpdateAnnotation(model.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
+	err := annotations.UpdateAnnotation(model.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}
