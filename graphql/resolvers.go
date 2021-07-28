@@ -1906,6 +1906,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	opts := data.TaskFilterOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
+		Sorts:                 []task.TasksSortOrder{{Key: task.DisplayNameKey, Order: 1}},
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -1958,6 +1959,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		}
 		scheduledTasks = append(scheduledTasks, task)
 	}
+
 	return scheduledTasks, nil
 }
 
