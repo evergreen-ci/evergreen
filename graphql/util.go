@@ -714,9 +714,6 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrapf(err, "error getting patch '%s'", version.Id)
 		}
-		if p == nil {
-			return http.StatusNotFound, errors.Errorf("patch %s does not exist", version.Id)
-		}
 		for _, childPatchId := range p.Triggers.ChildPatches {
 			if err := model.SetVersionPriority(childPatchId, modifications.Priority, user.Id); err != nil {
 				return http.StatusInternalServerError, errors.Wrapf(err, "error setting priority for child patch '%s'", childPatchId)
