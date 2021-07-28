@@ -185,7 +185,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return err
 	}
 	if err != nil {
-		return errors.Wrap(err, evergreen.RetryGenerateTasksError)
+		return errors.Wrap(err, evergreen.SaveGenerateTasksError)
 	}
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
@@ -286,7 +286,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			"task":          t.Id,
 			"job":           j.ID(),
 			"version":       t.Version,
-			"should_retry":  strings.Contains(err.Error(), evergreen.RetryGenerateTasksError),
+			"should_retry":  strings.Contains(err.Error(), evergreen.SaveGenerateTasksError),
 		}))
 	}
 
