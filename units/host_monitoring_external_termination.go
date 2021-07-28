@@ -130,11 +130,11 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			return false, errors.Wrapf(h.MarkReachable(), "error updating reachability for host %s", h.Id)
 		}
 		return false, nil
-	case cloud.StatusStopped, cloud.StatusTerminated:
+	case cloud.StatusStopping, cloud.StatusStopped, cloud.StatusTerminated:
 		// Avoid accidentally terminating non-agent hosts that are stopped (e.g.
 		// spawn hosts).
-		if cloudStatus == cloud.StatusStopped && (h.UserHost || h.StartedBy != evergreen.User) {
-			return false, errors.New("non-agent host is stopped and should not be terminated")
+		if cloudStatus != cloud.StatusTerminated && (h.UserHost || h.StartedBy != evergreen.User) {
+			return false, errors.New("non-agent host is not already terminated and should not be terminated")
 		}
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
