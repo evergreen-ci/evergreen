@@ -256,7 +256,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 			SetErrorSender(level.Error, grip.GetSender()).SetOutputSender(level.Info, grip.GetSender()).
 			Directory(workingDirectory).Run(ctx)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not run patch command due to merge conflict on evergreen.yml")
+			return nil, errors.Wrap(err, "could not run patch command possibly due to merge conflict on evergreen configuration file")
 		}
 
 		// read in the patched config file
