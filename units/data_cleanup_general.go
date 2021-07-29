@@ -31,14 +31,12 @@ func init() {
 	})
 }
 
-type cleanupJob func(context.Context, evergreen.Environment, time.Time, int) (int, error)
-
 type dataCleanup struct {
 	job.Base       `bson:"metadata" json:"metadata" yaml:"metadata"`
-	collectionName string `bson:"collection_name" json:"collection_name" yaml:"collection_name"`
+	CollectionName string `bson:"collection_name" json:"collection_name" yaml:"collection_name"`
+	UseHex         bool   `bson:"use_hex" json:"use_hex" yaml:"use_hex"`
 
-	env               evergreen.Environment
-	deleteWithLimitFn cleanupJob
+	env evergreen.Environment
 }
 
 func makeDbCleanupJob() *dataCleanup {
@@ -56,12 +54,12 @@ func makeDbCleanupJob() *dataCleanup {
 	return j
 }
 
-func NewDbCleanupJob(ts time.Time, deleteWithLimitFn cleanupJob, collectionName string) amboy.Job {
+func NewDbCleanupJob(ts time.Time, collectionName string, useHex bool) amboy.Job {
 	j := makeDbCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", dbCleanupJobName, ts.Format(TSFormat)))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: time.Minute})
-	j.deleteWithLimitFn = deleteWithLimitFn
-	j.collectionName = collectionName
+	j.UseHex = useHex
+	j.CollectionName = collectionName
 	return j
 }
 
@@ -94,7 +92,7 @@ func (j *dataCleanup) Run(ctx context.Context) {
 		timeSpent time.Duration
 	)
 
-	totalDocs, _ := j.env.DB().Collection(j.collectionName).EstimatedDocumentCount(ctx)
+	totalDocs, _ := j.env.DB().Collection(j.CollectionName).EstimatedDocumentCount(ctx)
 	timestamp := time.Now().Add(time.Duration(-365*24) * time.Hour)
 
 LOOP:
@@ -107,7 +105,7 @@ LOOP:
 				break LOOP
 			}
 			opStart := time.Now()
-			num, err := j.deleteWithLimitFn(ctx, j.env, timestamp, cleanupBatchSize)
+			num, err := j.deleteCollectionWithLimit(ctx, j.env, timestamp, cleanupBatchSize)
 			j.AddError(err)
 
 			batches++
@@ -124,7 +122,7 @@ LOOP:
 		"job_type":           j.Type().Name,
 		"batch_size":         cleanupBatchSize,
 		"total_docs":         totalDocs,
-		"collection":         j.collectionName,
+		"collection":         j.CollectionName,
 		"message":            "timing-info",
 		"run_start_at":       startAt,
 		"oid":                primitive.NewObjectIDFromTimestamp(timestamp).Hex(),
@@ -139,17 +137,22 @@ LOOP:
 	})
 }
 
-func DeleteCollectionWithLimit(ctx context.Context, env evergreen.Environment, ts time.Time, limit int, collection string) (int, error) {
+func (j *dataCleanup) deleteCollectionWithLimit(ctx context.Context, env evergreen.Environment, ts time.Time, limit int) (int, error) {
 	if limit > 100*1000 {
 		panic("cannot delete more than 100k documents in a single operation")
 	}
 
 	ops := make([]mongo.WriteModel, limit)
 	for idx := 0; idx < limit; idx++ {
-		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}})
+		//todo: use more specific filter
+		if j.UseHex {
+			ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}})
+		} else {
+			ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}})
+		}
 	}
 
-	res, err := env.DB().Collection(TestLogCollection).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
+	res, err := env.DB().Collection(j.CollectionName).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
