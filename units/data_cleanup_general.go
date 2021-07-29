@@ -13,7 +13,11 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -133,4 +137,22 @@ LOOP:
 		"num_docs":           numDocs,
 		"time_spent_seconds": timeSpent.Seconds(),
 	})
+}
+
+func DeleteCollectionWithLimit(ctx context.Context, env evergreen.Environment, ts time.Time, limit int, collection string) (int, error) {
+	if limit > 100*1000 {
+		panic("cannot delete more than 100k documents in a single operation")
+	}
+
+	ops := make([]mongo.WriteModel, limit)
+	for idx := 0; idx < limit; idx++ {
+		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}})
+	}
+
+	res, err := env.DB().Collection(TestLogCollection).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	return int(res.DeletedCount), nil
 }
