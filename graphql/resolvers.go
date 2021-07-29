@@ -1280,14 +1280,13 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	baseTestStatusMap := make(map[string]string)
 	// Fetch base tests and populate baseTestStatusMap
 	if baseTask != nil {
-		baseTaskLatestExec, err := task.GetLatestExecution(baseTask.Id)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting getting latest execution for task %s: %s", baseTask.Id, err.Error()))
 		}
 
 		baseTestResultOpts := apimodels.GetCedarTestResultsOptions{
 			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			Execution: baseTaskLatestExec,
+			Execution: baseTask.Execution,
 		}
 
 		if len(baseTask.ExecutionTasks) > 0 {
@@ -1306,14 +1305,13 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 		if cedarBaseTestResults != nil && len(cedarBaseTestResults) > 0 {
 			for _, t := range cedarBaseTestResults {
+				baseTestStatusMap[t.TestName] = t.Status
 				baseTestStatusMap[t.DisplayTestName] = t.Status
 			}
 		} else {
-			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTaskLatestExec})
-			if baseTestResults != nil && len(baseTestResults) > 0 {
-				for _, t := range baseTestResults {
-					baseTestStatusMap[t.TestFile] = t.Status
-				}
+			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
+			for _, t := range baseTestResults {
+				baseTestStatusMap[t.TestFile] = t.Status
 			}
 		}
 	}
@@ -1369,7 +1367,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
 				apiTest.Logs.RawDisplayURL = &formattedURL
 			}
+
 			baseTestStatus := baseTestStatusMap[utility.FromStringPtr(apiTest.DisplayTestName)]
+			if baseTestStatus == "" {
+				baseTestStatus = baseTestStatusMap[utility.FromStringPtr(apiTest.TestFile)]
+			}
 			apiTest.BaseStatus = &baseTestStatus
 			testPointers = append(testPointers, &apiTest)
 		}
