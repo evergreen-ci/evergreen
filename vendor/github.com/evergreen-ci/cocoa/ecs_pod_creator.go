@@ -42,6 +42,9 @@ type ECSPodCreationOptions struct {
 	// configuration, this may be required if
 	// (ECSPodExecutionOptions).SupportsDebugMode is true.
 	TaskRole *string
+	// ExecutionRole is the role that ECS container agent can use. Depending on
+	// the configuration, this may be required if the container uses secrets.
+	ExecutionRole *string
 	// Tags are resource tags to apply to the pod definition.
 	Tags map[string]string
 	// ExecutionOpts specify options to configure how the pod executes.
@@ -93,6 +96,12 @@ func (o *ECSPodCreationOptions) SetTaskRole(role string) *ECSPodCreationOptions 
 	return o
 }
 
+// SetExecutionRole sets the execution role that the pod can use.
+func (o *ECSPodCreationOptions) SetExecutionRole(role string) *ECSPodCreationOptions {
+	o.ExecutionRole = &role
+	return o
+}
+
 // SetTags sets the tags for the pod definition. This overwrites any existing
 // tags.
 func (o *ECSPodCreationOptions) SetTags(tags map[string]string) *ECSPodCreationOptions {
@@ -103,13 +112,11 @@ func (o *ECSPodCreationOptions) SetTags(tags map[string]string) *ECSPodCreationO
 // AddTags adds new tags to the existing ones for the pod definition.
 func (o *ECSPodCreationOptions) AddTags(tags map[string]string) *ECSPodCreationOptions {
 	if o.Tags == nil {
-		o.Tags = make(map[string]string)
+		o.Tags = map[string]string{}
 	}
-
 	for k, v := range tags {
 		o.Tags[k] = v
 	}
-
 	return o
 }
 
@@ -143,7 +150,7 @@ func (o *ECSPodCreationOptions) validateContainerDefinitions() error {
 
 		if len(o.ContainerDefinitions[i].EnvVars) > 0 {
 			for _, envVar := range o.ContainerDefinitions[i].EnvVars {
-				if envVar.SecretOpts != nil && o.ExecutionOpts.ExecutionRole == nil {
+				if envVar.SecretOpts != nil && o.ExecutionRole == nil {
 					catcher.Errorf("must specify execution role ARN when specifying container secrets")
 				}
 			}
@@ -183,7 +190,7 @@ func (o *ECSPodCreationOptions) Validate() error {
 	}
 
 	if o.ExecutionOpts == nil {
-		placementOpts := NewECSPodPlacementOptions().SetStrategy(BinpackPlacement).SetStrategyParameter(BinpackMemory)
+		placementOpts := NewECSPodPlacementOptions().SetStrategy(StrategyBinpack).SetStrategyParameter(StrategyParamBinpackMemory)
 		o.ExecutionOpts = NewECSPodExecutionOptions().SetPlacementOptions(*placementOpts)
 	}
 
@@ -219,6 +226,10 @@ func MergeECSPodCreationOptions(opts ...*ECSPodCreationOptions) ECSPodCreationOp
 
 		if opt.TaskRole != nil {
 			merged.TaskRole = opt.TaskRole
+		}
+
+		if opt.ExecutionRole != nil {
+			merged.ExecutionRole = opt.ExecutionRole
 		}
 
 		if opt.Tags != nil {
@@ -259,10 +270,6 @@ func MergeECSPodExecutionOptions(opts ...*ECSPodExecutionOptions) ECSPodExecutio
 		if opt.Tags != nil {
 			merged.Tags = opt.Tags
 		}
-
-		if opt.ExecutionRole != nil {
-			merged.ExecutionRole = opt.ExecutionRole
-		}
 	}
 
 	return merged
@@ -279,6 +286,9 @@ type ECSContainerDefinition struct {
 	// Command is the command to run, separated into individual arguments. By
 	// default, there is no command.
 	Command []string
+	// WorkingDir is the container working directory in which commands will be
+	// run.
+	WorkingDir *string
 	// MemoryMB is the amount of memory (in MB) to allocate. This must be
 	// set if a pod-level memory limit is not given.
 	MemoryMB *int
@@ -288,8 +298,6 @@ type ECSContainerDefinition struct {
 	CPU *int
 	// EnvVars are environment variables to make available in the container.
 	EnvVars []EnvironmentVariable
-	// Tags are resource tags to apply.
-	Tags []string
 }
 
 // NewECSContainerDefinition returns a new uninitialized container definition.
@@ -315,6 +323,13 @@ func (d *ECSContainerDefinition) SetCommand(cmd []string) *ECSContainerDefinitio
 	return d
 }
 
+// SetWorkingDir sets the working directory where the container's commands
+// will run.
+func (d *ECSContainerDefinition) SetWorkingDir(dir string) *ECSContainerDefinition {
+	d.WorkingDir = &dir
+	return d
+}
+
 // SetMemoryMB sets the amount of memory (in MB) to allocate.
 func (d *ECSContainerDefinition) SetMemoryMB(mem int) *ECSContainerDefinition {
 	d.MemoryMB = &mem
@@ -324,18 +339,6 @@ func (d *ECSContainerDefinition) SetMemoryMB(mem int) *ECSContainerDefinition {
 // SetCPU sets the number of CPU units to allocate.
 func (d *ECSContainerDefinition) SetCPU(cpu int) *ECSContainerDefinition {
 	d.CPU = &cpu
-	return d
-}
-
-// SetTags sets the tags for the container. This overwrites any existing tags.
-func (d *ECSContainerDefinition) SetTags(tags []string) *ECSContainerDefinition {
-	d.Tags = tags
-	return d
-}
-
-// AddTags adds new tags to the existing ones for the container.
-func (d *ECSContainerDefinition) AddTags(tags ...string) *ECSContainerDefinition {
-	d.Tags = append(d.Tags, tags...)
 	return d
 }
 
@@ -485,9 +488,6 @@ type ECSPodExecutionOptions struct {
 	SupportsDebugMode *bool
 	// Tags are any tags to apply to the running pods.
 	Tags map[string]string
-	// ExecutionRole is the role that ECS container agent can use. Depending on
-	// the configuration, this may be required if the container uses secrets.
-	ExecutionRole *string
 }
 
 // NewECSPodExecutionOptions returns new uninitialized options to run a pod.
@@ -525,20 +525,11 @@ func (o *ECSPodExecutionOptions) SetTags(tags map[string]string) *ECSPodExecutio
 // AddTags adds new tags to the existing ones for the pod itself when it is run.
 func (o *ECSPodExecutionOptions) AddTags(tags map[string]string) *ECSPodExecutionOptions {
 	if o.Tags == nil {
-		o.Tags = make(map[string]string)
+		o.Tags = map[string]string{}
 	}
-
 	for k, v := range tags {
 		o.Tags[k] = v
 	}
-
-	return o
-}
-
-// SetExecutionRole sets the execution role for the pod itself when it is run. This overwrites any
-// existing execution roles.
-func (o *ECSPodExecutionOptions) SetExecutionRole(role string) *ECSPodExecutionOptions {
-	o.ExecutionRole = &role
 	return o
 }
 
@@ -553,7 +544,7 @@ func (o *ECSPodExecutionOptions) Validate() error {
 	}
 
 	if o.PlacementOpts == nil {
-		o.PlacementOpts = NewECSPodPlacementOptions().SetStrategy(BinpackPlacement).SetStrategyParameter(BinpackMemory)
+		o.PlacementOpts = NewECSPodPlacementOptions().SetStrategy(StrategyBinpack).SetStrategyParameter(StrategyParamBinpackMemory)
 	}
 
 	return nil
@@ -602,8 +593,8 @@ func (o *ECSPodPlacementOptions) Validate() error {
 		catcher.Add(o.Strategy.Validate())
 	}
 	if o.Strategy != nil && o.StrategyParameter != nil {
-		catcher.ErrorfWhen(*o.Strategy == BinpackPlacement && *o.StrategyParameter != BinpackMemory && *o.StrategyParameter != BinpackCPU, "strategy parameter cannot be '%s' when the strategy is '%s'", *o.StrategyParameter, *o.Strategy)
-		catcher.ErrorfWhen(*o.Strategy != SpreadPlacement && *o.StrategyParameter == SpreadHost, "strategy parameter cannot be '%s' when the strategy is not '%s'", *o.StrategyParameter, SpreadPlacement)
+		catcher.ErrorfWhen(*o.Strategy == StrategyBinpack && *o.StrategyParameter != StrategyParamBinpackMemory && *o.StrategyParameter != StrategyParamBinpackCPU, "strategy parameter cannot be '%s' when the strategy is '%s'", *o.StrategyParameter, *o.Strategy)
+		catcher.ErrorfWhen(*o.Strategy != StrategySpread && *o.StrategyParameter == StrategyParamSpreadHost, "strategy parameter cannot be '%s' when the strategy is not '%s'", *o.StrategyParameter, StrategySpread)
 	}
 
 	if catcher.HasErrors() {
@@ -611,16 +602,16 @@ func (o *ECSPodPlacementOptions) Validate() error {
 	}
 
 	if o.Strategy == nil {
-		strategy := BinpackPlacement
+		strategy := StrategyBinpack
 		o.Strategy = &strategy
 	}
 
 	if o.Strategy != nil && o.StrategyParameter == nil {
-		if *o.Strategy == BinpackPlacement {
-			o.StrategyParameter = utility.ToStringPtr(BinpackMemory)
+		if *o.Strategy == StrategyBinpack {
+			o.StrategyParameter = utility.ToStringPtr(StrategyParamBinpackMemory)
 		}
-		if *o.Strategy == SpreadPlacement {
-			o.StrategyParameter = utility.ToStringPtr(SpreadHost)
+		if *o.Strategy == StrategySpread {
+			o.StrategyParameter = utility.ToStringPtr(StrategyParamSpreadHost)
 		}
 	}
 
@@ -631,23 +622,23 @@ func (o *ECSPodPlacementOptions) Validate() error {
 type ECSPlacementStrategy string
 
 const (
-	// SpreadPlacement indicates that the ECS pod will be assigned in such a way
+	// StrategySpread indicates that the ECS pod will be assigned in such a way
 	// to achieve an even spread based on the given ECSStrategyParameter.
-	SpreadPlacement ECSPlacementStrategy = ecs.PlacementStrategyTypeSpread
-	// RandomPlacement indicates that the ECS pod should be assigned to a
+	StrategySpread ECSPlacementStrategy = ecs.PlacementStrategyTypeSpread
+	// StrategyRandom indicates that the ECS pod should be assigned to a
 	// container instance randomly.
-	RandomPlacement ECSPlacementStrategy = ecs.PlacementStrategyTypeRandom
-	// BinpackPlacement indicates that the the ECS pod will be placed on a
+	StrategyRandom ECSPlacementStrategy = ecs.PlacementStrategyTypeRandom
+	// StrategyBinpack indicates that the the ECS pod will be placed on a
 	// container instance with the least amount of memory or CPU that will be
 	// sufficient for the pod's requirements if possible.
-	BinpackPlacement ECSPlacementStrategy = ecs.PlacementStrategyTypeBinpack
+	StrategyBinpack ECSPlacementStrategy = ecs.PlacementStrategyTypeBinpack
 )
 
 // Validate checks that the ECS pod status is one of the recognized placement
 // strategies.
 func (s ECSPlacementStrategy) Validate() error {
 	switch s {
-	case SpreadPlacement, RandomPlacement, BinpackPlacement:
+	case StrategySpread, StrategyRandom, StrategyBinpack:
 		return nil
 	default:
 		return errors.Errorf("unrecognized placement strategy '%s'", s)
@@ -659,15 +650,15 @@ func (s ECSPlacementStrategy) Validate() error {
 type ECSStrategyParameter = string
 
 const (
-	// BinpackMemory indicates ECS should optimize its binpacking strategy based
+	// StrategyParamBinpackMemory indicates ECS should optimize its binpacking strategy based
 	// on memory usage.
-	BinpackMemory ECSStrategyParameter = "memory"
-	// BinpackCPU indicates ECS should optimize its binpacking strategy based
+	StrategyParamBinpackMemory ECSStrategyParameter = "memory"
+	// StrategyParamBinpackCPU indicates ECS should optimize its binpacking strategy based
 	// on CPU usage.
-	BinpackCPU ECSStrategyParameter = "cpu"
-	// SpreadHost indicates the ECS should spread pods evenly across all
+	StrategyParamBinpackCPU ECSStrategyParameter = "cpu"
+	// StrategyParamSpreadHost indicates the ECS should spread pods evenly across all
 	// container instances (i.e. hosts).
-	SpreadHost ECSStrategyParameter = "host"
+	StrategyParamSpreadHost ECSStrategyParameter = "host"
 )
 
 // ECSTaskDefinition represents options for an existing ECS task definition.

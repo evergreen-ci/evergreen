@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/cocoa/mock"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -47,7 +46,7 @@ func TestTerminatePodJob(t *testing.T) {
 
 			info, err := j.ecsPod.Info(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, cocoa.DeletedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusDeleted, info.Status)
 		},
 		"SucceedsWithPodFromDB": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
 			require.NoError(t, j.pod.Insert())
@@ -68,11 +67,11 @@ func TestTerminatePodJob(t *testing.T) {
 
 			info, err := j.ecsPod.Info(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, cocoa.DeletedStatus, info.Status)
+			assert.Equal(t, cocoa.StatusDeleted, info.Status)
 		},
 		"FailsWhenDeletingResourcesErrors": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
 			require.NoError(t, j.pod.Insert())
-			j.pod.Resources.ID = utility.RandomString()
+			j.pod.Resources.ExternalID = utility.RandomString()
 			j.ecsPod = nil
 
 			j.Run(ctx)
@@ -146,7 +145,8 @@ func TestTerminatePodJob(t *testing.T) {
 					Image:    "image",
 					MemoryMB: 128,
 					CPU:      128,
-					Platform: evergreen.PodPlatformLinux,
+					OS:       pod.OSLinux,
+					Arch:     pod.ArchAMD64,
 					EnvSecrets: map[string]string{
 						"secret0": utility.RandomString(),
 						"secret1": utility.RandomString(),
@@ -184,22 +184,21 @@ func TestTerminatePodJob(t *testing.T) {
 				SetImage(p.TaskContainerCreationOpts.Image).
 				AddEnvironmentVariables(envVars...)
 
-			execOpts := cocoa.NewECSPodExecutionOptions().
-				SetCluster(cluster).
-				SetExecutionRole("execution_role")
+			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
 
 			ecsPod, err := pc.CreatePod(ctx, cocoa.NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 				SetCPU(p.TaskContainerCreationOpts.CPU).
 				SetTaskRole("task_role").
+				SetExecutionRole("execution_role").
 				SetExecutionOptions(*execOpts))
 			require.NoError(t, err)
 			j.ecsPod = ecsPod
 
 			info, err := j.ecsPod.Info(ctx)
 			require.NoError(t, err)
-			j.pod.Resources.ID = utility.FromStringPtr(info.Resources.TaskID)
+			j.pod.Resources.ExternalID = utility.FromStringPtr(info.Resources.TaskID)
 			j.pod.Resources.DefinitionID = utility.FromStringPtr(info.Resources.TaskDefinition.ID)
 			j.pod.Resources.Cluster = utility.FromStringPtr(info.Resources.Cluster)
 			for _, secret := range info.Resources.Secrets {

@@ -115,6 +115,13 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 	if err := j.pod.UpdateStatus(pod.StatusTerminated); err != nil {
 		j.AddError(errors.Wrap(err, "marking pod as terminated"))
 	}
+
+	grip.Info(message.Fields{
+		"message":                    "successfully terminated pod",
+		"pod":                        j.PodID,
+		"termination_attempt_reason": j.Reason,
+		"job":                        j.ID(),
+	})
 }
 
 func (j *terminatePodJob) populateIfUnset(ctx context.Context) error {

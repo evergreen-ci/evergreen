@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/pod"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -15,7 +15,7 @@ import (
 type DBPodConnector struct{}
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
-func (c *DBPodConnector) CreatePod(p restModel.APICreatePod) (*restModel.APICreatePodResponse, error) {
+func (c *DBPodConnector) CreatePod(p model.APICreatePod) (*model.APICreatePodResponse, error) {
 	podDB, err := translatePod(p)
 	if err != nil {
 		return nil, err
@@ -28,23 +28,59 @@ func (c *DBPodConnector) CreatePod(p restModel.APICreatePod) (*restModel.APICrea
 		}
 	}
 
-	return &restModel.APICreatePodResponse{ID: podDB.ID}, nil
+	return &model.APICreatePodResponse{ID: podDB.ID}, nil
 }
 
 // CheckPodSecret checks for a pod with a matching ID and secret in the
-// database.
+// database. It returns an error if the secret does not match the one assigned
+// for the given pod ID.
 func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 	p, err := pod.FindOneByID(id)
 	if err != nil {
-		return err
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "finding pod by ID").Error(),
+		}
 	}
 	if p == nil {
-		return errors.New("pod does not exist")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "pod does not exist",
+		}
 	}
 	if secret != p.Secret {
-		return errors.New("incorrect pod secret")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "pod secrets do not match",
+		}
 	}
 	return nil
+}
+
+// FindPodByID finds a pod by the given ID. It returns an error if the pod
+// cannot be found.
+func (c *DBPodConnector) FindPodByID(id string) (*model.APIPod, error) {
+	p, err := pod.FindOneByID(id)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "finding pod by ID").Error(),
+		}
+	}
+	if p == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "pod does not exist",
+		}
+	}
+	var apiPod model.APIPod
+	if err := apiPod.BuildFromService(p); err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "building pod from service model").Error(),
+		}
+	}
+	return &apiPod, nil
 }
 
 // MockPodConnector implements the pod-related methods from the connector via an
@@ -53,7 +89,7 @@ type MockPodConnector struct {
 	CachedPods []pod.Pod
 }
 
-func (c *MockPodConnector) CreatePod(apiPod restModel.APICreatePod) (*restModel.APICreatePodResponse, error) {
+func (c *MockPodConnector) CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 	podDB, err := translatePod(apiPod)
 	if err != nil {
 		return nil, err
@@ -61,9 +97,11 @@ func (c *MockPodConnector) CreatePod(apiPod restModel.APICreatePod) (*restModel.
 
 	c.CachedPods = append(c.CachedPods, *podDB)
 
-	return &restModel.APICreatePodResponse{ID: podDB.ID}, nil
+	return &model.APICreatePodResponse{ID: podDB.ID}, nil
 }
 
+// CheckPodSecret checks the cache for a matching pod by ID and verifies that
+// the secret matches.
 func (c *MockPodConnector) CheckPodSecret(id, secret string) error {
 	for _, p := range c.CachedPods {
 		if id != p.ID {
@@ -76,12 +114,12 @@ func (c *MockPodConnector) CheckPodSecret(id, secret string) error {
 	return errors.New("pod does not exist")
 }
 
-func translatePod(p restModel.APICreatePod) (*pod.Pod, error) {
+func translatePod(p model.APICreatePod) (*pod.Pod, error) {
 	i, err := p.ToService()
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("API error converting from model.APICreatePod to pod.Pod"),
+			Message:    errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod").Error(),
 		}
 	}
 
@@ -94,4 +132,18 @@ func translatePod(p restModel.APICreatePod) (*pod.Pod, error) {
 	}
 
 	return &podDB, nil
+}
+
+// FindPodByID checks the cache for a matching pod by ID.
+func (c *MockPodConnector) FindPodByID(id string) (*model.APIPod, error) {
+	for _, p := range c.CachedPods {
+		if id == p.ID {
+			var apiPod model.APIPod
+			if err := apiPod.BuildFromService(&p); err != nil {
+				return nil, errors.Wrap(err, "building pod from service model")
+			}
+			return &apiPod, nil
+		}
+	}
+	return nil, errors.New("pod does not exist")
 }

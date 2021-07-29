@@ -89,7 +89,7 @@ func TestExportPod(t *testing.T) {
 				ID:     "id",
 				Status: pod.StatusRunning,
 				Resources: pod.ResourceInfo{
-					ID:           "task_id",
+					ExternalID:   "task_id",
 					DefinitionID: "task_def_id",
 					Cluster:      "cluster",
 					SecretIDs:    []string{"secret"},
@@ -116,17 +116,17 @@ func TestExportPodStatus(t *testing.T) {
 	t.Run("SucceedsWithStartingStatus", func(t *testing.T) {
 		s, err := ExportPodStatus(pod.StatusStarting)
 		require.NoError(t, err)
-		assert.Equal(t, cocoa.StartingStatus, s)
+		assert.Equal(t, cocoa.StatusStarting, s)
 	})
 	t.Run("SucceedsWithRunningStatus", func(t *testing.T) {
 		s, err := ExportPodStatus(pod.StatusRunning)
 		require.NoError(t, err)
-		assert.Equal(t, cocoa.RunningStatus, s)
+		assert.Equal(t, cocoa.StatusRunning, s)
 	})
 	t.Run("SucceedsWithTerminatedStatus", func(t *testing.T) {
 		s, err := ExportPodStatus(pod.StatusTerminated)
 		require.NoError(t, err)
-		assert.Equal(t, cocoa.DeletedStatus, s)
+		assert.Equal(t, cocoa.StatusDeleted, s)
 	})
 	t.Run("FailsWithInitializingStatus", func(t *testing.T) {
 		s, err := ExportPodStatus(pod.StatusInitializing)
@@ -147,7 +147,7 @@ func TestExportPodResources(t *testing.T) {
 	t.Run("SetsTaskID", func(t *testing.T) {
 		id := "task_id"
 		r := ExportPodResources(pod.ResourceInfo{
-			ID: id,
+			ExternalID: id,
 		})
 		assert.Equal(t, id, utility.FromStringPtr(r.TaskID))
 		assert.Zero(t, r.TaskDefinition)

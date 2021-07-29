@@ -10,6 +10,7 @@ type Query {
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
+  version(id: String!): Version!
   projects: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
@@ -150,6 +151,7 @@ type MainlineCommitVersion {
   version: Version
   rolledUpVersions: [Version!]
 }
+
 type Version {
   id: String!
   createTime: Time!
@@ -162,12 +164,25 @@ type Version {
   order: Int!
   repo: String!
   project: String!
+  projectIdentifier: String!
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts: [StatusCount!]
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+  isPatch: Boolean!
+  patch: Patch
+  taskCount: Int
+  baseVersionID: String
+  versionTiming: VersionTiming
+  parameters: [Parameter!]!
 }
+
+type VersionTiming {
+  makespan: Duration
+  timeTaken: Duration
+}
+
 type StatusCount {
   status: String!
   count: Int!
