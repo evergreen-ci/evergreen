@@ -1399,7 +1399,9 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller stri
 			bson.M{
 				"$unset": bson.M{projectRefNotifyOnFailureKey: 1},
 			})
-
+		if err != nil {
+			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
+		}
 		// handle subscriptions
 		catcher := grip.NewBasicCatcher()
 		for _, sub := range before.Subscriptions {
