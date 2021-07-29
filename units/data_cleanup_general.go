@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -17,26 +16,32 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const testLogsCleanupJobName = "data-cleanup-testlogs"
+const (
+	dbCleanupJobName = "db-cleanup"
+	cleanupBatchSize = 100 * 1000
+)
 
 func init() {
-	registry.AddJobType(testLogsCleanupJobName, func() amboy.Job {
-		return makeTestLogsCleanupJob()
+	registry.AddJobType(dbCleanupJobName, func() amboy.Job {
+		return makeDbCleanupJob()
 	})
 }
 
-type dataCleanupTestLogs struct {
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+type cleanupJob func(context.Context, evergreen.Environment, time.Time, int) (int, error)
 
-	env evergreen.Environment
+type dataCleanup struct {
+	job.Base       `bson:"metadata" json:"metadata" yaml:"metadata"`
+	collectionName string `bson:"collection_name" json:"collection_name" yaml:"collection_name"`
+
+	env               evergreen.Environment
+	deleteWithLimitFn cleanupJob
 }
 
-func makeTestLogsCleanupJob() *dataCleanupTestLogs {
-	j := &dataCleanupTestLogs{
+func makeDbCleanupJob() *dataCleanup {
+	j := &dataCleanup{
 		Base: job.Base{
-
 			JobType: amboy.JobType{
-				Name:    testLogsCleanupJobName,
+				Name:    dbCleanupJobName,
 				Version: 0,
 			},
 		},
@@ -47,14 +52,16 @@ func makeTestLogsCleanupJob() *dataCleanupTestLogs {
 	return j
 }
 
-func NewTestLogsCleanupJob(ts time.Time) amboy.Job {
-	j := makeTestLogsCleanupJob()
-	j.SetID(fmt.Sprintf("%s.%s", testLogsCleanupJobName, ts.Format(TSFormat)))
+func NewDbCleanupJob(ts time.Time, deleteWithLimitFn cleanupJob, collectionName string) amboy.Job {
+	j := makeDbCleanupJob()
+	j.SetID(fmt.Sprintf("%s.%s", dbCleanupJobName, ts.Format(TSFormat)))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: time.Minute})
+	j.deleteWithLimitFn = deleteWithLimitFn
+	j.collectionName = collectionName
 	return j
 }
 
-func (j *dataCleanupTestLogs) Run(ctx context.Context) {
+func (j *dataCleanup) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	startAt := time.Now()
 
@@ -70,7 +77,7 @@ func (j *dataCleanupTestLogs) Run(ctx context.Context) {
 
 	if flags.BackgroundCleanupDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"job_type": testLogsCleanupJobName,
+			"job_type": dbCleanupJobName,
 			"job_id":   j.ID(),
 			"message":  "disaster recovery backups disabled, also disabling cleanup",
 		})
@@ -83,9 +90,9 @@ func (j *dataCleanupTestLogs) Run(ctx context.Context) {
 		timeSpent time.Duration
 	)
 
-	totalDocs, _ := j.env.DB().Collection(model.TestLogCollection).EstimatedDocumentCount(ctx)
-
+	totalDocs, _ := j.env.DB().Collection(j.collectionName).EstimatedDocumentCount(ctx)
 	timestamp := time.Now().Add(time.Duration(-365*24) * time.Hour)
+
 LOOP:
 	for {
 		select {
@@ -96,7 +103,7 @@ LOOP:
 				break LOOP
 			}
 			opStart := time.Now()
-			num, err := model.DeleteTestLogsWithLimit(ctx, j.env, timestamp, cleanupBatchSize)
+			num, err := j.deleteWithLimitFn(ctx, j.env, timestamp, cleanupBatchSize)
 			j.AddError(err)
 
 			batches++
@@ -110,14 +117,14 @@ LOOP:
 
 	grip.Info(message.Fields{
 		"job_id":             j.ID(),
-		"batch_size":         cleanupBatchSize,
-		"collection":         model.TestLogCollection,
 		"job_type":           j.Type().Name,
-		"oid":                primitive.NewObjectIDFromTimestamp(timestamp).Hex(),
-		"oid_ts":             timestamp.Format(TSFormat),
+		"batch_size":         cleanupBatchSize,
 		"total_docs":         totalDocs,
+		"collection":         j.collectionName,
 		"message":            "timing-info",
 		"run_start_at":       startAt,
+		"oid":                primitive.NewObjectIDFromTimestamp(timestamp).Hex(),
+		"oid_ts":             timestamp.Format(TSFormat),
 		"has_errors":         j.HasErrors(),
 		"aborted":            ctx.Err() != nil,
 		"total":              time.Since(startAt).Seconds(),
@@ -126,5 +133,4 @@ LOOP:
 		"num_docs":           numDocs,
 		"time_spent_seconds": timeSpent.Seconds(),
 	})
-
 }
