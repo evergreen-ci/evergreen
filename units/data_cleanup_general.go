@@ -148,7 +148,7 @@ func (j *dataCleanup) deleteCollectionWithLimit(ctx context.Context, env evergre
 	for idx := 0; idx < limit; idx++ {
 		var filter map[string]interface{}
 		if j.CollectionName == testresult.Collection {
-			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}
+			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}}
 		} else if j.CollectionName == "event_log" {
 			rTypes := []string{
 				"TASK",
@@ -159,6 +159,12 @@ func (j *dataCleanup) deleteCollectionWithLimit(ctx context.Context, env evergre
 
 		} else if j.CollectionName == model.TestLogCollection {
 			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}
+		} else {
+			grip.Error(message.Fields{
+				"message":    "Programmer error: behavior is not defined for collection",
+				"collection": j.CollectionName,
+			})
+
 		}
 		ops[idx] = mongo.NewDeleteOneModel().SetFilter(filter)
 	}
