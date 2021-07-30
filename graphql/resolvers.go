@@ -1987,7 +1987,6 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchIds []stri
 
 	updatedPatchIds := []string{}
 	for _, patchId := range patchIds {
-		fmt.Sprintf("patch '%s'", patchId)
 		err := ModifyVersionHandler(ctx, r.sc, patchId, modifications)
 		if err != nil {
 			return updatedPatchIds, err
