@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -261,6 +262,12 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 	if t == nil {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	if !evergreen.IsFailedTaskStatus(t.Status) {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
