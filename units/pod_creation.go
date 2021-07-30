@@ -14,12 +14,13 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-const createPodJobName = "create-pod"
+const (
+	createPodJobName     = "create-pod"
+	createPodMaxAttempts = 15
+)
 
 func init() {
 	registry.AddJobType(createPodJobName, func() amboy.Job {
@@ -65,7 +66,7 @@ func NewCreatePodJob(env evergreen.Environment, p *pod.Pod, id string) amboy.Job
 	j.SetShouldApplyScopesOnEnqueue(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(15),
+		MaxAttempts: utility.ToIntPtr(createPodMaxAttempts),
 		WaitUntil:   utility.ToTimeDurationPtr(10 * time.Second),
 	})
 
@@ -86,30 +87,34 @@ func (j *createPodJob) Run(ctx context.Context) {
 
 	switch j.pod.Status {
 	case pod.StatusInitializing:
-		execOpts := cocoa.NewECSPodExecutionOptions().
-			SetCluster(j.pod.Resources.Cluster).
-			SetExecutionRole(j.env.Settings().Providers.AWS.Pod.ECS.ExecutionRole)
+		opts, err := cloud.ExportPodCreationOptions(j.env.Settings().Providers.AWS.Pod.ECS, j.pod.TaskContainerCreationOpts)
+		if err != nil {
+			j.AddError(errors.Wrap(err, "exporting pod creation options"))
+		}
 
-		opts := cocoa.NewECSPodCreationOptions().
-			SetContainerDefinitions([]cocoa.ECSContainerDefinition{
-				cloud.ExportPodContainerDef(j.pod.TaskContainerCreationOpts, j.pod.Resources.SecretIDs),
-			}).
-			SetExecutionOptions(*execOpts).
-			SetTaskRole(j.env.Settings().Providers.AWS.Pod.ECS.TaskRole)
-
-		if _, err := j.ecsPodCreator.CreatePod(ctx, opts); err != nil {
-			j.AddError(errors.Wrap(err, "running pod"))
+		p, err := j.ecsPodCreator.CreatePod(ctx, opts)
+		if err != nil {
+			j.AddError(errors.Wrap(err, "starting pod"))
 			return
 		}
-	default:
-		grip.Info(message.Fields{
-			"message": "not starting pod because pod has already started or stopped",
-			"pod":     j.PodID,
-			"job":     j.ID(),
-		})
-	}
 
-	if err := j.pod.UpdateStatus(pod.StatusStarting); err != nil {
-		j.AddError(errors.Wrap(err, "marking pod as starting"))
+		info, err := p.Info(ctx)
+		if err != nil {
+			j.AddError(errors.Wrap(err, "getting pod info"))
+		}
+
+		j.pod.Resources.Cluster = *info.Resources.Cluster
+		j.pod.Resources.DefinitionID = *info.Resources.TaskDefinition.ID
+		j.pod.Resources.ExternalID = *info.Resources.TaskID
+		for _, secret := range info.Resources.Secrets {
+			j.pod.Resources.SecretIDs = append(j.pod.Resources.SecretIDs, *secret.NamedSecret.Name)
+		}
+
+		if err := j.pod.UpdateStatus(pod.StatusStarting); err != nil {
+			j.AddError(errors.Wrap(err, "marking pod as starting"))
+		}
+
+	default:
+		j.AddError(errors.New("not starting pod because pod has already started or stopped"))
 	}
 }

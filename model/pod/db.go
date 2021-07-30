@@ -72,7 +72,7 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-// Find gets all Pods for the given BSON document.
+// Find gets all Pods for the given query.
 func Find(doc bson.M) ([]Pod, error) {
 	pods := []Pod{}
 	return pods, errors.WithStack(db.FindAllQ(Collection, db.Query(doc), &pods))

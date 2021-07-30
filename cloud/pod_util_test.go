@@ -205,12 +205,104 @@ func TestExportPodResources(t *testing.T) {
 	})
 }
 
-func TestExportPodContainerDef(t *testing.T) {
-	// TODO: implement
-}
+func TestExportPodCreationOptions(t *testing.T) {
+	t.Run("FailsWithNoECSConfig", func(t *testing.T) {
+		opts, err := ExportPodCreationOptions(evergreen.ECSConfig{}, pod.TaskContainerCreationOptions{})
+		require.NotZero(t, err)
+		require.Zero(t, opts)
+	})
+	t.Run("FailsWithNoTaskContainerCreationOptions", func(t *testing.T) {
+		opts, err := ExportPodCreationOptions(
+			evergreen.ECSConfig{
+				TaskRole:      "role",
+				ExecutionRole: "role",
+				Clusters: []evergreen.ECSClusterConfig{
+					{
+						Name: "cluster",
+					},
+				},
+			}, pod.TaskContainerCreationOptions{})
+		require.NotZero(t, err)
+		require.Zero(t, opts)
+	})
+	t.Run("FailsWithNoClusterName", func(t *testing.T) {
+		opts, err := ExportPodCreationOptions(
+			evergreen.ECSConfig{
+				TaskRole:      "role",
+				ExecutionRole: "role",
+				Clusters: []evergreen.ECSClusterConfig{
+					{
+						Platform: "linux",
+					},
+				},
+			}, pod.TaskContainerCreationOptions{})
+		require.NotZero(t, err)
+		require.Zero(t, opts)
+	})
+	t.Run("FailsWithNoContainerImage", func(t *testing.T) {
+		opts, err := ExportPodCreationOptions(
+			evergreen.ECSConfig{
+				TaskRole:      "role",
+				ExecutionRole: "role",
+				Clusters: []evergreen.ECSClusterConfig{
+					{
+						Name: "cluster",
+					},
+				},
+			}, pod.TaskContainerCreationOptions{
+				MemoryMB: 128,
+				CPU:      128,
+			})
+		require.NotZero(t, err)
+		require.Zero(t, opts)
+	})
+	t.Run("Succeeds", func(t *testing.T) {
+		opts, err := ExportPodCreationOptions(
+			evergreen.ECSConfig{
+				TaskRole:      "task_role",
+				ExecutionRole: "execution_role",
+				Clusters: []evergreen.ECSClusterConfig{
+					{
+						Name: "cluster",
+					},
+				},
+			}, pod.TaskContainerCreationOptions{
+				Image:    "image",
+				MemoryMB: 128,
+				CPU:      128,
+				EnvVars: map[string]string{
+					"name": "value",
+				},
+				EnvSecrets: map[string]string{
+					"s1": "secret",
+				},
+			})
+		require.Zero(t, err)
+		require.NotZero(t, opts)
+		require.Equal(t, "task_role", utility.FromStringPtr(opts.TaskRole))
+		require.Equal(t, "execution_role", utility.FromStringPtr(opts.ExecutionRole))
 
-func TestExportPodTaskDef(t *testing.T) {
-	// TODO: implement
+		require.NotZero(t, opts.ExecutionOpts)
+		require.Equal(t, "cluster", utility.FromStringPtr(opts.ExecutionOpts.Cluster))
+
+		require.NotZero(t, opts.ContainerDefinitions)
+		require.Len(t, opts.ContainerDefinitions, 1)
+		require.Equal(t, "image", utility.FromStringPtr(opts.ContainerDefinitions[0].Image))
+		require.Equal(t, 128, utility.FromIntPtr(opts.ContainerDefinitions[0].MemoryMB))
+		require.Equal(t, 128, utility.FromIntPtr(opts.ContainerDefinitions[0].CPU))
+		require.Len(t, opts.ContainerDefinitions[0].EnvVars, 2)
+		for _, envVar := range opts.ContainerDefinitions[0].EnvVars {
+			if envVar.SecretOpts != nil {
+				require.Equal(t, "s1", utility.FromStringPtr(envVar.SecretOpts.Name))
+				require.Equal(t, "secret", utility.FromStringPtr(envVar.SecretOpts.Value))
+				require.Equal(t, false, utility.FromBoolPtr(envVar.SecretOpts.Exists))
+				require.Equal(t, true, utility.FromBoolPtr(envVar.SecretOpts.Owned))
+			} else {
+				require.Equal(t, "name", utility.FromStringPtr(envVar.Name))
+				require.Equal(t, "value", utility.FromStringPtr(envVar.Value))
+			}
+		}
+	})
 }
 
 func validPodClientSettings() *evergreen.Settings {
