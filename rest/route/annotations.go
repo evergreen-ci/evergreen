@@ -265,7 +265,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	if t.Status != evergreen.TaskFailed {
+	if !evergreen.IsFailedTaskStatus(t.Status) {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
 			StatusCode: http.StatusBadRequest,
