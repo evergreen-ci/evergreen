@@ -735,18 +735,6 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		if err := model.SetVersionPriority(version.Id, modifications.Priority, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
 		}
-		// update priority for child patches
-		p, err := patch.FindOneId(version.Id)
-		if err != nil {
-			return http.StatusInternalServerError, errors.Wrapf(err, "error getting patch '%s'", version.Id)
-		}
-		if p != nil {
-			for _, childPatchId := range p.Triggers.ChildPatches {
-				if err := model.SetVersionPriority(childPatchId, modifications.Priority, user.Id); err != nil {
-					return http.StatusInternalServerError, errors.Wrapf(err, "error setting priority for child patch '%s'", childPatchId)
-				}
-			}
-		}
 	default:
 		return http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", modifications.Action)
 	}
@@ -764,6 +752,25 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
+
+	if modifications.Action != Restart {
+		//do the same for child patches
+		p, err := patch.FindOneId(patchID)
+		if err != nil {
+			return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version for child patch %s: %s", patchID, err.Error()))
+		}
+		childPatchIds := []string{}
+		if p != nil {
+			childPatchIds = p.Triggers.ChildPatches
+		}
+		for _, childPatchId := range childPatchIds {
+			err = ModifyVersionHandler(ctx, dataConnector, childPatchId, modifications)
+			if err != nil {
+				return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
+			}
+		}
+	}
+
 	return nil
 }
 
