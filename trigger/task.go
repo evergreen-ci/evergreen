@@ -328,7 +328,23 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 	var payload interface{}
 	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
 		// We avoid creating BFG ticket in the case that the task is stranded to reduce noise for the Build Baron
-		if t.task.Details.Description == evergreen.TaskDescriptionStranded {
+		// If task is display, we skip ticket creation if all execution task failures are only 'stranded'
+		shouldSkipTicket := false
+		if t.task.DisplayOnly {
+			for _, executionTask := range t.task.ExecutionTasksFull {
+				if executionTask.Details.Status == evergreen.TaskFailed {
+					if executionTask.Details.Description == evergreen.TaskDescriptionStranded {
+						shouldSkipTicket = true
+					} else {
+						shouldSkipTicket = false
+						break
+					}
+				}
+			}
+		} else {
+			shouldSkipTicket = t.task.Details.Description == evergreen.TaskDescriptionStranded
+		}
+		if shouldSkipTicket {
 			return nil, nil
 		}
 		issueSub, ok := sub.Subscriber.Target.(*event.JIRAIssueSubscriber)

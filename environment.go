@@ -576,16 +576,16 @@ func (e *envState) initSenders(ctx context.Context) error {
 
 	var sender send.Sender
 	githubToken, err := e.settings.GetGithubOauthToken()
-	if err == nil && len(githubToken) > 0 {
-		// Github Status
-		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token: githubToken,
-		}, "")
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup github status logger")
-		}
-		e.senders[SenderGithubStatus] = sender
+	//if err == nil && len(githubToken) > 0 {
+	// Github Status
+	sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+		Token: githubToken,
+	}, "")
+	if err != nil {
+		return errors.Wrap(err, "Failed to setup github status logger")
 	}
+	e.senders[SenderGithubStatus] = sender
+	//}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(ctx, jira.Export(), levelInfo)
@@ -601,21 +601,21 @@ func (e *envState) initSenders(ctx context.Context) error {
 		e.senders[SenderJIRAComment] = sender
 	}
 
-	if slack := &e.settings.Slack; len(slack.Token) != 0 {
-		// this sender is initialised with an invalid channel. Any
-		// messages sent with it that do not use message.SlackMessage
-		// will not be received
-		sender, err = send.NewSlackLogger(&send.SlackOptions{
-			Channel:  "#",
-			Name:     "evergreen",
-			Username: "Evergreen",
-			IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
-		}, slack.Token, levelInfo)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup slack logger")
-		}
-		e.senders[SenderSlack] = sender
+	//if slack := &e.settings.Slack; len(slack.Token) != 0 {
+	// this sender is initialised with an invalid channel. Any
+	// messages sent with it that do not use message.SlackMessage
+	// will not be received
+	sender, err = send.NewSlackLogger(&send.SlackOptions{
+		Channel:  "#",
+		Name:     "evergreen",
+		Username: "Evergreen",
+		IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
+	}, "xoxb-2151770606-401366182596-uV9L1wZPrYQpCLvftWU3yuhK", levelInfo)
+	if err != nil {
+		return errors.Wrap(err, "Failed to setup slack logger")
 	}
+	e.senders[SenderSlack] = sender
+	//}
 
 	sender, err = util.NewEvergreenWebhookLogger()
 	if err != nil {
@@ -636,7 +636,6 @@ func (e *envState) initSenders(ctx context.Context) error {
 			if err == nil {
 				return
 			}
-
 			grip.Error(message.WrapError(err, message.Fields{
 				"notification":        m.String(),
 				"message_type":        fmt.Sprintf("%T", m),
