@@ -247,11 +247,21 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.taskId = gimlet.GetVars(r)["task_id"]
+	taskExecutionsAsString := gimlet.GetVars(r)["task_execution"]
 	if h.taskId == "" {
 		return gimlet.ErrorResponse{
 			Message:    "task ID cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
+	}
+	if taskExecutionsAsString == "" {
+		return gimlet.ErrorResponse{
+			Message:    "task execution cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	if taskExec, err := strconv.Atoi(taskExecutionsAsString); err != nil {
+		h.annotation.TaskExecution = &taskExec
 	}
 
 	// check if the task exists
@@ -296,10 +306,6 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 		}
 	}
 
-	// set TaskExecution to the latest execution
-	if h.annotation.TaskExecution == nil {
-		h.annotation.TaskExecution = &t.Execution
-	}
 	if h.annotation.TaskId == nil {
 		taskId := h.taskId
 		h.annotation.TaskId = &taskId
