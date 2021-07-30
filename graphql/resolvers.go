@@ -1241,6 +1241,10 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			break
 		case TestSortCategoryStartTime:
 			sortBy = testresult.StartTimeKey
+			break
+		case TestSortCategoryBaseStatus:
+			sortBy = "base_status"
+			break
 		}
 	}
 
@@ -1342,14 +1346,15 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 	if cedarTestResults != nil && len(cedarTestResults) > 0 {
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
-			GroupID:     groupIdParam,
-			Limit:       limitParam,
-			Page:        pageParam,
-			SortBy:      sortBy,
-			SortDir:     sortDir,
-			Statuses:    statusesParam,
-			TestName:    testNameParam,
-			TestResults: cedarTestResults,
+			GroupID:          groupIdParam,
+			Limit:            limitParam,
+			Page:             pageParam,
+			SortBy:           sortBy,
+			SortDir:          sortDir,
+			Statuses:         statusesParam,
+			TestName:         testNameParam,
+			TestResults:      cedarTestResults,
+			BaseTestStatuses: baseTestStatusMap,
 		})
 		for _, t := range filteredTestResults {
 			apiTest := restModel.APITest{}
