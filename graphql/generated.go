@@ -352,8 +352,9 @@ type ComplexityRoot struct {
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
 		ScheduleTask                  func(childComplexity int, taskID string) int
 		ScheduleUndispatchedBaseTasks func(childComplexity int, patchID string) int
-		SetPatchPriority              func(childComplexity int, patchIds []string, priority int) int
+		SetPatchPriority              func(childComplexity int, patchID string, priority int) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
+		SetVersionPriority            func(childComplexity int, versionIds []string, priority int) int
 		SpawnHost                     func(childComplexity int, spawnHostInput *SpawnHostInput) int
 		SpawnVolume                   func(childComplexity int, spawnVolumeInput SpawnVolumeInput) int
 		UnschedulePatchTasks          func(childComplexity int, patchID string, abort bool) int
@@ -849,7 +850,8 @@ type MutationResolver interface {
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
 	ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*model.APITask, error)
 	EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*model.APIPatch, error)
-	SetPatchPriority(ctx context.Context, patchIds []string, priority int) ([]string, error)
+	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
+	SetVersionPriority(ctx context.Context, versionIds []string, priority int) ([]string, error)
 	ScheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -2424,7 +2426,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetPatchPriority(childComplexity, args["patchIds"].([]string), args["priority"].(int)), true
+		return e.complexity.Mutation.SetPatchPriority(childComplexity, args["patchId"].(string), args["priority"].(int)), true
 
 	case "Mutation.setTaskPriority":
 		if e.complexity.Mutation.SetTaskPriority == nil {
@@ -2437,6 +2439,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.SetTaskPriority(childComplexity, args["taskId"].(string), args["priority"].(int)), true
+
+	case "Mutation.setVersionPriority":
+		if e.complexity.Mutation.SetVersionPriority == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setVersionPriority_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetVersionPriority(childComplexity, args["versionIds"].([]string), args["priority"].(int)), true
 
 	case "Mutation.spawnHost":
 		if e.complexity.Mutation.SpawnHost == nil {
@@ -5081,7 +5095,8 @@ type Mutation {
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
-  setPatchPriority(patchIds: [String!]!, priority: Int!): [String!]
+  setPatchPriority(patchId: String!, priority: Int!): String
+  setVersionPriority(versionIds: [String!]!, priority: Int!): [String!]
   scheduleTask(taskId: String!): Task!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -6529,14 +6544,14 @@ func (ec *executionContext) field_Mutation_scheduleUndispatchedBaseTasks_args(ct
 func (ec *executionContext) field_Mutation_setPatchPriority_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 []string
-	if tmp, ok := rawArgs["patchIds"]; ok {
-		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+	var arg0 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["patchIds"] = arg0
+	args["patchId"] = arg0
 	var arg1 int
 	if tmp, ok := rawArgs["priority"]; ok {
 		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
@@ -6559,6 +6574,28 @@ func (ec *executionContext) field_Mutation_setTaskPriority_args(ctx context.Cont
 		}
 	}
 	args["taskId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["priority"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["priority"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setVersionPriority_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []string
+	if tmp, ok := rawArgs["versionIds"]; ok {
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["versionIds"] = arg0
 	var arg1 int
 	if tmp, ok := rawArgs["priority"]; ok {
 		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
@@ -12872,7 +12909,45 @@ func (ec *executionContext) _Mutation_setPatchPriority(ctx context.Context, fiel
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetPatchPriority(rctx, args["patchIds"].([]string), args["priority"].(int))
+		return ec.resolvers.Mutation().SetPatchPriority(rctx, args["patchId"].(string), args["priority"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_setVersionPriority(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_setVersionPriority_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetVersionPriority(rctx, args["versionIds"].([]string), args["priority"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -28214,6 +28289,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "setPatchPriority":
 			out.Values[i] = ec._Mutation_setPatchPriority(ctx, field)
+		case "setVersionPriority":
+			out.Values[i] = ec._Mutation_setVersionPriority(ctx, field)
 		case "scheduleTask":
 			out.Values[i] = ec._Mutation_scheduleTask(ctx, field)
 			if out.Values[i] == graphql.Null {

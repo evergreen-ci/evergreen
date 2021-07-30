@@ -1979,21 +1979,33 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 	return &patchID, nil
 }
 
-func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchIds []string, priority int) ([]string, error) {
+func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
+	modifications := VersionModifications{
+		Action:   SetPriority,
+		Priority: int64(priority),
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	return &patchID, nil
+}
+
+func (r *mutationResolver) SetVersionPriority(ctx context.Context, versionIds []string, priority int) ([]string, error) {
 	modifications := VersionModifications{
 		Action:   SetPriority,
 		Priority: int64(priority),
 	}
 
-	updatedPatchIds := []string{}
-	for _, patchId := range patchIds {
-		err := ModifyVersionHandler(ctx, r.sc, patchId, modifications)
+	updatedVersionIds := []string{}
+	for _, versionId := range versionIds {
+		err := ModifyVersionHandler(ctx, r.sc, versionId, modifications)
 		if err != nil {
-			return updatedPatchIds, err
+			return updatedVersionIds, err
 		}
-		updatedPatchIds = append(updatedPatchIds, patchId)
+		updatedVersionIds = append(updatedVersionIds, versionId)
 	}
-	return updatedPatchIds, nil
+	return updatedVersionIds, nil
 }
 
 func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {

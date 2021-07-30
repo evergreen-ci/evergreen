@@ -1,0 +1,3 @@
+mutation {
+  setVersionPriority(versionIds: ["washington"], priority: 999)
+}

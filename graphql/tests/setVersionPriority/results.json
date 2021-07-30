@@ -6,14 +6,14 @@
         "errors": [
           {
             "message": "error finding version washington: 404 (Not Found): version with id washington not found",
-            "path": ["setPatchPriority"],
+            "path": ["setVersionPriority"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
           }
         ],
         "data": {
-          "setPatchPriority": null
+          "setVersionPriority": null
         }
       }
     },
@@ -21,7 +21,7 @@
       "query_file": "set-priority.graphql",
       "result": {
         "data": {
-          "setPatchPriority": ["5e4ff3abe3c3317e352062e4"]
+          "setPatchPriority": "5e4ff3abe3c3317e352062e4"
         }
       }
     },
@@ -31,14 +31,14 @@
         "errors": [
           {
             "message": "Insufficient access to set priority 999, can only set priority less than or equal to 100",
-            "path": ["setPatchPriority"],
+            "path": ["setVersionPriority"],
             "extensions": {
               "code": "FORBIDDEN"
             }
           }
         ],
         "data": {
-          "setPatchPriority": null
+          "setVersionPriority": null
         }
       }
     },
@@ -46,7 +46,7 @@
       "query_file": "set-priority-multiple.graphql",
       "result": {
         "data": {
-          "setPatchPriority": ["5e4ff3abe3c3317e352062e4", "9e4ff3abe3c3317e352062e4"]
+          "setVersionPriority": ["5e4ff3abe3c3317e352062e4", "9e4ff3abe3c3317e352062e4"]
         }
       }
     }
