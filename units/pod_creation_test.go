@@ -24,5 +24,5 @@ func TestNewCreatePodJob(t *testing.T) {
 	assert.Equal(t, pod.StatusInitializing, j.pod.Status)
 }
 func TestCreatePodJob(t *testing.T) {
-
+	// TODO: implement
 }

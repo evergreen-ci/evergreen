@@ -26,7 +26,7 @@ func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) cocoa.Vault {
 	return secret.NewBasicSecretsManager(c)
 }
 
-// MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods with ECS.
+// MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS and secrets backed by a secret Vault.
 func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, error) {
 	return ecs.NewBasicECSPodCreator(c, v)
 }
@@ -101,19 +101,43 @@ func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 }
 
 // ExportPodContainerDef exports the ECS pod container definition into the equivalent cocoa.ECSContainerDefintion.
-func ExportPodContainerDef(opts pod.TaskContainerCreationOptions, secretIDs []string) cocoa.ECSContainerDefinition {
-	return *cocoa.NewECSContainerDefinition().
+func ExportPodContainerDef(opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
+	if opts.Image == "" {
+		return nil, errors.New("must specify an image")
+	}
+	return cocoa.NewECSContainerDefinition().
 		SetImage(opts.Image).
 		SetMemoryMB(opts.MemoryMB).
 		SetCPU(opts.CPU).
-		SetEnvironmentVariables(toEnvVars(opts.EnvVars, opts.EnvSecrets, secretIDs))
+		SetEnvironmentVariables(exportEnvVars(opts.EnvVars, opts.EnvSecrets)), nil
 }
 
-// ExportPodTaskDef exports the ECS pod resources into cocoa.ECSTaskDefinition.
-func ExportPodTaskDef(resources pod.ResourceInfo) cocoa.ECSTaskDefinition {
-	return *cocoa.NewECSTaskDefinition().
-		SetID(resources.DefinitionID).
-		SetOwned(false)
+// ExportPodExecutionOptions exports the ECS configuration into cocoa.ECSPodExecutionOptions.
+func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig) (*cocoa.ECSPodExecutionOptions, error) {
+	if len(ecsConfig.Clusters) == 0 {
+		return nil, errors.New("must specify at least one cluster to use")
+	}
+	return cocoa.NewECSPodExecutionOptions().
+		SetCluster(ecsConfig.Clusters[0].Name), nil
+}
+
+// ExportPodCreationOptions exports the ECS pod resources into cocoa.ECSPodExecutionOptions.
+func ExportPodCreationOptions(ecsConfig evergreen.ECSConfig, taskContainerCreationOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodCreationOptions, error) {
+	execOpts, err := ExportPodExecutionOptions(ecsConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "exporting pod execution options")
+	}
+
+	containerDef, err := ExportPodContainerDef(taskContainerCreationOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "exporting pod container definition")
+	}
+
+	return cocoa.NewECSPodCreationOptions().
+		SetTaskRole(ecsConfig.TaskRole).
+		SetExecutionRole(ecsConfig.ExecutionRole).
+		SetExecutionOptions(*execOpts).
+		SetContainerDefinitions([]cocoa.ECSContainerDefinition{*containerDef}), nil
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.
@@ -129,30 +153,21 @@ func podAWSOptions(settings *evergreen.Settings) awsutil.ClientOptions {
 	return *opts
 }
 
-// toEnvVars converts a map of environment variables and a map of secrets to a slice of cocoa.EnvironmentVariables.
-func toEnvVars(envVars map[string]string, secrets map[string]string, secretIDs []string) []cocoa.EnvironmentVariable {
-	allEnvVars := []cocoa.EnvironmentVariable{}
+// exportEnvVars converts a map of environment variables and a map of secrets to a slice of cocoa.EnvironmentVariables.
+func exportEnvVars(envVars map[string]string, secrets map[string]string) []cocoa.EnvironmentVariable {
+	var allEnvVars []cocoa.EnvironmentVariable
 
 	for k, v := range envVars {
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetValue(v))
 	}
 
 	for k, v := range secrets {
-		owned := false
-
-		for _, id := range secretIDs {
-			if id == k {
-				owned = true
-				break
-			}
-		}
-
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetSecretOptions(
 			*cocoa.NewSecretOptions().
 				SetName(k).
 				SetValue(v).
 				SetExists(false).
-				SetOwned(owned)))
+				SetOwned(true)))
 	}
 
 	return allEnvVars
