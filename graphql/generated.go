@@ -614,6 +614,7 @@ type ComplexityRoot struct {
 		TimeTaken               func(childComplexity int) int
 		TotalTestCount          func(childComplexity int) int
 		Version                 func(childComplexity int) int
+		VersionMetadata         func(childComplexity int) int
 	}
 
 	TaskEndDetail struct {
@@ -977,6 +978,8 @@ type TaskResolver interface {
 	Status(ctx context.Context, obj *model.APITask) (string, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
+
+	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
 }
 type TaskQueueItemResolver interface {
 	Requester(ctx context.Context, obj *model.APITaskQueueItem) (TaskQueueItemType, error)
@@ -3951,6 +3954,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.Version(childComplexity), true
 
+	case "Task.versionMetadata":
+		if e.complexity.Task.VersionMetadata == nil {
+			break
+		}
+
+		return e.complexity.Task.VersionMetadata(childComplexity), true
+
 	case "TaskEndDetail.description":
 		if e.complexity.TaskEndDetail.Description == nil {
 			break
@@ -5732,7 +5742,7 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
-  patchMetadata: PatchMetadata!
+  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int
   project: Project
@@ -5749,7 +5759,8 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   totalTestCount: Int!
-  version: String!
+  version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
+  versionMetadata: Version!
 }
 
 type BaseTaskInfo {
@@ -20289,6 +20300,40 @@ func (ec *executionContext) _Task_version(ctx context.Context, field graphql.Col
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_versionMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().VersionMetadata(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -30213,6 +30258,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "versionMetadata":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_versionMetadata(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
