@@ -140,6 +140,19 @@
       }
     },
     {
+      "query_file": "versionMetadata.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task",
+            "versionMetadata": {
+              "author": "brian.samek"
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "spawnHostLink.graphql",
       "result": {
         "data": {

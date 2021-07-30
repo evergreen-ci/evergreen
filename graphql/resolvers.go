@@ -2482,6 +2482,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 	return failedTestCount, nil
 }
 
+// TODO: deprecated
 func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
 	version, err := r.sc.FindVersionById(*obj.Version)
 	if err != nil {
@@ -2720,6 +2721,18 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 	displayName := b.DisplayName
 	return &displayName, nil
 
+}
+
+func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
+	v, err := r.sc.FindVersionById(utility.FromStringPtr(obj.Version))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find version id: %s for task: %s", *obj.Version, utility.FromStringPtr(obj.Id)))
+	}
+	apiVersion := &restModel.APIVersion{}
+	if err = apiVersion.BuildFromService(v); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert version: %s to APIVersion", v.Id))
+	}
+	return apiVersion, nil
 }
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {
