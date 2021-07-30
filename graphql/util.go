@@ -36,14 +36,15 @@ import (
 )
 
 type FilterSortAndPaginateCedarTestResultsOpts struct {
-	GroupID     string
-	Limit       int
-	Page        int
-	SortBy      string
-	SortDir     int
-	Statuses    []string
-	TestName    string
-	TestResults []apimodels.CedarTestResult
+	GroupID          string
+	Limit            int
+	Page             int
+	SortBy           string
+	SortDir          int
+	Statuses         []string
+	TestName         string
+	TestResults      []apimodels.CedarTestResult
+	BaseTestStatuses map[string]string
 }
 
 // FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array.
@@ -98,10 +99,17 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if opts.SortDir == 1 {
-					return testResultI.TestName < testResultJ.TestName
+				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
+					if opts.SortDir == 1 {
+						return testResultI.DisplayTestName < testResultJ.DisplayTestName
+					}
+					return testResultI.DisplayTestName > testResultJ.DisplayTestName
+				} else {
+					if opts.SortDir == 1 {
+						return testResultI.TestName < testResultJ.TestName
+					}
+					return testResultI.TestName > testResultJ.TestName
 				}
-				return testResultI.TestName > testResultJ.TestName
 			})
 			break
 		case testresult.StatusKey:
@@ -112,6 +120,24 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 					return testResultI.Status < testResultJ.Status
 				}
 				return testResultI.Status > testResultJ.Status
+			})
+			break
+		case "base_status":
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+
+				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
+					if opts.SortDir == 1 {
+						return opts.BaseTestStatuses[testResultI.DisplayTestName] < opts.BaseTestStatuses[testResultJ.DisplayTestName]
+					}
+					return opts.BaseTestStatuses[testResultI.DisplayTestName] > opts.BaseTestStatuses[testResultJ.DisplayTestName]
+				} else {
+					if opts.SortDir == 1 {
+						return opts.BaseTestStatuses[testResultI.TestName] < opts.BaseTestStatuses[testResultJ.TestName]
+					}
+					return opts.BaseTestStatuses[testResultI.TestName] > opts.BaseTestStatuses[testResultJ.TestName]
+				}
 			})
 			break
 		}
