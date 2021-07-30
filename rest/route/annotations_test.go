@@ -350,6 +350,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		{Id: "t5", Execution: 0, Status: evergreen.TaskSetupFailed},
 		{Id: "t6", Execution: 0, Status: evergreen.TaskSucceeded},
 		{Id: "t7", Execution: 0, Status: evergreen.TaskWillRun},
+		{Id: "t8", Execution: 0, Status: evergreen.TaskDispatched},
 	}
 
 	old_tasks := []task.Task{
@@ -543,6 +544,22 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
+
+	a = &model.APITaskAnnotation{
+		Id:            utility.ToStringPtr("1"),
+		TaskId:        utility.ToStringPtr("t8"),
+		TaskExecution: &execution0,
+	}
+	jsonBody, err = json.Marshal(a)
+	assert.NoError(t, err)
+	buffer = bytes.NewBuffer(jsonBody)
+
+	r, err = http.NewRequest("PUT", "/task/t8/annotations", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t8"})
+	assert.NoError(t, err)
+	err = h.Parse(ctx, r)
+	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
+
 }
 
 func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
