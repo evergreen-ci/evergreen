@@ -2358,10 +2358,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		assert.NoError(t, t4.Insert())
 		taskBuildVariants, err := FindUniqueBuildVariantNamesByTask("evergreen", "test-agent")
 		assert.NoError(t, err)
-		assert.Equal(t, &TaskBuildVariants{
-			Task:          "test-agent",
-			BuildVariants: []string{"osx", "ubuntu1604", "windows"},
-		}, taskBuildVariants)
+		assert.Equal(t, []string{"osx", "ubuntu1604", "windows"}, taskBuildVariants)
 
 	})
 	Convey("Should only include tasks that appear on mainline commits", t, func() {
@@ -2404,10 +2401,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		assert.NoError(t, t4.Insert())
 		taskBuildVariants, err := FindUniqueBuildVariantNamesByTask("evergreen", "test-agent")
 		assert.NoError(t, err)
-		assert.Equal(t, &TaskBuildVariants{
-			Task:          "test-agent",
-			BuildVariants: []string{"osx", "ubuntu1604"},
-		}, taskBuildVariants)
+		assert.Equal(t, []string{"osx", "ubuntu1604"}, taskBuildVariants)
 	})
 
 }
@@ -2453,10 +2447,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 		assert.NoError(t, t4.Insert())
 		buildVariantTask, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604")
 		assert.NoError(t, err)
-		assert.Equal(t, &BuildVariantTasks{
-			BuildVariant: "ubuntu1604",
-			Tasks:        []string{"dist", "test-agent", "test-graphql"},
-		}, buildVariantTask)
+		assert.Equal(t, []string{"dist", "test-agent", "test-graphql"}, buildVariantTask)
 
 	})
 	Convey("Should only include tasks that appear on mainline commits", t, func() {
@@ -2499,10 +2490,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 		assert.NoError(t, t4.Insert())
 		buildVariantTasks, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604")
 		assert.NoError(t, err)
-		assert.Equal(t, &BuildVariantTasks{
-			BuildVariant: "ubuntu1604",
-			Tasks:        []string{"test-graphql", "test-something"},
-		}, buildVariantTasks)
+		assert.Equal(t, []string{"test-graphql", "test-something"}, buildVariantTasks)
 	})
 
 }
