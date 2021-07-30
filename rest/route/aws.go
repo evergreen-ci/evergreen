@@ -154,7 +154,7 @@ func (aws *awsSns) handleNotification(ctx context.Context) error {
 					Message:    errors.Wrap(err, "problem processing instance termination").Error(),
 				}
 			}
-		case ec2.InstanceStateNameStopped:
+		case ec2.InstanceStateNameStopped, ec2.InstanceStateNameStopping:
 			if err := aws.handleInstanceStopped(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,

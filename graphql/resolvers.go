@@ -971,42 +971,41 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 	return *obj.Id, nil
 }
 
-func (r *patchResolver) Status(ctx context.Context, obj *restModel.APIPatch) (string, error) {
-	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-	opts := data.TaskFilterOptions{
-		Statuses:        failedAndAbortedStatuses,
-		FieldsToProject: []string{task.DisplayStatusKey},
-	}
-	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
-	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
-	}
-	status := *obj.Status
-	if len(obj.ChildPatches) > 0 {
-		for _, cp := range obj.ChildPatches {
-			// add the child patch tasks to tasks so that we can consider their status
-			childPatchTasks, _, err := r.sc.FindTasksByVersion(*cp.Id, opts)
-			if err != nil {
-				return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
-			}
-			tasks = append(tasks, childPatchTasks...)
-		}
-	}
-	statuses := getAllTaskStatuses(tasks)
-
-	// If theres an aborted task we should set the patch status to aborted if there are no other failures
-	if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
-		if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
-			status = evergreen.PatchAborted
-		}
-	}
-	return status, nil
-}
-
 func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPatch, error) {
 	patch, err := r.sc.FindPatchById(id)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+
+	if evergreen.IsFinishedPatchStatus(*patch.Status) {
+		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
+		opts := data.TaskFilterOptions{
+			Statuses:        failedAndAbortedStatuses,
+			FieldsToProject: []string{task.DisplayStatusKey},
+		}
+		tasks, _, err := r.sc.FindTasksByVersion(id, opts)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
+		}
+
+		if len(patch.ChildPatches) > 0 {
+			for _, cp := range patch.ChildPatches {
+				// add the child patch tasks to tasks so that we can consider their status
+				childPatchTasks, _, err := r.sc.FindTasksByVersion(*cp.Id, opts)
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for child patch: %s ", err.Error()))
+				}
+				tasks = append(tasks, childPatchTasks...)
+			}
+		}
+		statuses := getAllTaskStatuses(tasks)
+
+		// If theres an aborted task we should set the patch status to aborted if there are no other failures
+		if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
+			if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
+				patch.Status = utility.ToStringPtr(evergreen.PatchAborted)
+			}
+		}
 	}
 
 	return patch, nil
@@ -1906,6 +1905,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	opts := data.TaskFilterOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
+		Sorts:                 []task.TasksSortOrder{{Key: task.DisplayNameKey, Order: 1}},
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -1958,6 +1958,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		}
 		scheduledTasks = append(scheduledTasks, task)
 	}
+
 	return scheduledTasks, nil
 }
 
@@ -2412,18 +2413,72 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	return &duration, nil
 }
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	tests, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
-	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test count: %s", err.Error()))
+	opts := apimodels.GetCedarTestResultsOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		Execution: obj.Execution,
 	}
-	return tests, nil
+
+	if len(obj.ExecutionTasks) > 0 {
+		opts.DisplayTaskID = *obj.Id
+	} else {
+		opts.TaskID = *obj.Id
+	}
+
+	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"task_id": *obj.Id,
+			"message": "problem getting cedar test results",
+		}))
+	}
+	testCount := len(cedarTestResults)
+
+	// Check the db if cedar doesn't return any test results
+	if testCount == 0 {
+		testCount, err = r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
+		if err != nil {
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test count: %s", err.Error()))
+		}
+	}
+
+	return testCount, nil
 }
 
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
-	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tests for failedTestCount: %s", err.Error()))
+	opts := apimodels.GetCedarTestResultsOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		Execution: obj.Execution,
 	}
+
+	if len(obj.ExecutionTasks) > 0 {
+		opts.DisplayTaskID = *obj.Id
+	} else {
+		opts.TaskID = *obj.Id
+	}
+
+	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"task_id": obj.Id,
+			"message": "problem getting cedar test results",
+		}))
+	}
+	failedTestCount := 0
+	// Get the count of the tests with the status failed
+	for _, test := range cedarTestResults {
+		if test.Status == evergreen.TestFailedStatus {
+			failedTestCount++
+		}
+	}
+
+	// Check the db if cedar doesn't return any results
+	if failedTestCount == 0 {
+		failedTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
+		if err != nil {
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tests for failedTestCount: %s", err.Error()))
+		}
+	}
+
 	return failedTestCount, nil
 }
 
