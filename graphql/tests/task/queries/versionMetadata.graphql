@@ -1,0 +1,8 @@
+{
+  task(taskId: "taskity_task") {
+    id
+    versionMetadata {
+      author
+    }
+  }
+}
