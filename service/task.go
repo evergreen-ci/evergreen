@@ -398,6 +398,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
+		EvgBaseUrl    string
 		Task          uiTaskData
 		Host          *host.Host
 		PluginContent pluginData
@@ -405,7 +406,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Permissions   gimlet.Permissions
 		NewUILink     string
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+	}{uis.Settings.Ui.Url, uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
