@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -34,7 +36,7 @@ func init() {
 type dataCleanup struct {
 	job.Base       `bson:"metadata" json:"metadata" yaml:"metadata"`
 	CollectionName string `bson:"collection_name" json:"collection_name" yaml:"collection_name"`
-	UseHex         bool   `bson:"use_hex" json:"use_hex" yaml:"use_hex"`
+	TTLDays        int    `bson:"ttl_days" json:"ttl_days" yaml:"ttl_days"`
 
 	env evergreen.Environment
 }
@@ -54,12 +56,12 @@ func makeDbCleanupJob() *dataCleanup {
 	return j
 }
 
-func NewDbCleanupJob(ts time.Time, collectionName string, useHex bool) amboy.Job {
+func NewDbCleanupJob(ts time.Time, collectionName string, ttlDays int) amboy.Job {
 	j := makeDbCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", dbCleanupJobName, ts.Format(TSFormat)))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: time.Minute})
-	j.UseHex = useHex
 	j.CollectionName = collectionName
+	j.TTLDays = ttlDays
 	return j
 }
 
@@ -93,7 +95,7 @@ func (j *dataCleanup) Run(ctx context.Context) {
 	)
 
 	totalDocs, _ := j.env.DB().Collection(j.CollectionName).EstimatedDocumentCount(ctx)
-	timestamp := time.Now().Add(time.Duration(-365*24) * time.Hour)
+	timestamp := time.Now().Add(time.Duration(-j.TTLDays*24) * time.Hour)
 
 LOOP:
 	for {
@@ -144,12 +146,21 @@ func (j *dataCleanup) deleteCollectionWithLimit(ctx context.Context, env evergre
 
 	ops := make([]mongo.WriteModel, limit)
 	for idx := 0; idx < limit; idx++ {
-		//todo: use more specific filter
-		if j.UseHex {
-			ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}})
-		} else {
-			ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}})
+		var filter map[string]interface{}
+		if j.CollectionName == testresult.Collection {
+			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}
+		} else if j.CollectionName == "event_log" {
+			rTypes := []string{
+				"TASK",
+				"SCHEDULER",
+				"PATCH",
+			}
+			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}, "r_type": bson.M{"$in": rTypes}}
+
+		} else if j.CollectionName == model.TestLogCollection {
+			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}
 		}
+		ops[idx] = mongo.NewDeleteOneModel().SetFilter(filter)
 	}
 
 	res, err := env.DB().Collection(j.CollectionName).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))

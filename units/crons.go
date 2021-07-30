@@ -1248,8 +1248,9 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		catcher.Add(queue.Put(ctx, NewDbCleanupJob(utility.RoundPartOfMinute(2), testresult.Collection, false)))
-		catcher.Add(queue.Put(ctx, NewDbCleanupJob(utility.RoundPartOfMinute(2), model.TestLogCollection, true)))
+		catcher.Add(queue.Put(ctx, NewDbCleanupJob(utility.RoundPartOfMinute(2), testresult.Collection, 365)))
+		catcher.Add(queue.Put(ctx, NewDbCleanupJob(utility.RoundPartOfMinute(2), model.TestLogCollection, 365)))
+		catcher.Add(queue.Put(ctx, NewDbCleanupJob(utility.RoundPartOfMinute(2), "event_log", 90)))
 
 		return catcher.Resolve()
 	}
