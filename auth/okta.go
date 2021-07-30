@@ -20,6 +20,7 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 		ClientSecret:         conf.ClientSecret,
 		RedirectURI:          strings.TrimRight(evgURL, "/") + "/login/redirect/callback",
 		Issuer:               conf.Issuer,
+		Scopes:               conf.Scopes,
 		UserGroup:            conf.UserGroup,
 		CookiePath:           "/",
 		CookieDomain:         loginDomain,

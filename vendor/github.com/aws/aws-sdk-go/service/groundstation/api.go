@@ -2514,6 +2514,30 @@ func (c *GroundStation) UpdateMissionProfileWithContext(ctx aws.Context, input *
 	return out, req.Send()
 }
 
+// Details about an antenna demod decode Config used in a contact.
+type AntennaDemodDecodeDetails struct {
+	_ struct{} `type:"structure"`
+
+	// Name of an antenna demod decode output node used in a contact.
+	OutputNode *string `locationName:"outputNode" type:"string"`
+}
+
+// String returns the string representation
+func (s AntennaDemodDecodeDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AntennaDemodDecodeDetails) GoString() string {
+	return s.String()
+}
+
+// SetOutputNode sets the OutputNode field's value.
+func (s *AntennaDemodDecodeDetails) SetOutputNode(v string) *AntennaDemodDecodeDetails {
+	s.OutputNode = &v
+	return s
+}
+
 // Information about how AWS Ground Station should configure an antenna for
 // downlink during a contact.
 type AntennaDownlinkConfig struct {
@@ -2655,6 +2679,9 @@ type AntennaUplinkConfig struct {
 	//
 	// TargetEirp is a required field
 	TargetEirp *Eirp `locationName:"targetEirp" type:"structure" required:"true"`
+
+	// Whether or not uplink transmit is disabled.
+	TransmitDisabled *bool `locationName:"transmitDisabled" type:"boolean"`
 }
 
 // String returns the string representation
@@ -2702,6 +2729,12 @@ func (s *AntennaUplinkConfig) SetSpectrumConfig(v *UplinkSpectrumConfig) *Antenn
 // SetTargetEirp sets the TargetEirp field's value.
 func (s *AntennaUplinkConfig) SetTargetEirp(v *Eirp) *AntennaUplinkConfig {
 	s.TargetEirp = v
+	return s
+}
+
+// SetTransmitDisabled sets the TransmitDisabled field's value.
+func (s *AntennaUplinkConfig) SetTransmitDisabled(v bool) *AntennaUplinkConfig {
+	s.TransmitDisabled = &v
 	return s
 }
 
@@ -2766,6 +2799,48 @@ func (s CancelContactOutput) GoString() string {
 // SetContactId sets the ContactId field's value.
 func (s *CancelContactOutput) SetContactId(v string) *CancelContactOutput {
 	s.ContactId = &v
+	return s
+}
+
+// Details for certain Config object types in a contact.
+type ConfigDetails struct {
+	_ struct{} `type:"structure"`
+
+	// Details for antenna demod decode Config in a contact.
+	AntennaDemodDecodeDetails *AntennaDemodDecodeDetails `locationName:"antennaDemodDecodeDetails" type:"structure"`
+
+	// Information about the endpoint details.
+	EndpointDetails *EndpointDetails `locationName:"endpointDetails" type:"structure"`
+
+	// Details for an S3 recording Config in a contact.
+	S3RecordingDetails *S3RecordingDetails `locationName:"s3RecordingDetails" type:"structure"`
+}
+
+// String returns the string representation
+func (s ConfigDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ConfigDetails) GoString() string {
+	return s.String()
+}
+
+// SetAntennaDemodDecodeDetails sets the AntennaDemodDecodeDetails field's value.
+func (s *ConfigDetails) SetAntennaDemodDecodeDetails(v *AntennaDemodDecodeDetails) *ConfigDetails {
+	s.AntennaDemodDecodeDetails = v
+	return s
+}
+
+// SetEndpointDetails sets the EndpointDetails field's value.
+func (s *ConfigDetails) SetEndpointDetails(v *EndpointDetails) *ConfigDetails {
+	s.EndpointDetails = v
+	return s
+}
+
+// SetS3RecordingDetails sets the S3RecordingDetails field's value.
+func (s *ConfigDetails) SetS3RecordingDetails(v *S3RecordingDetails) *ConfigDetails {
+	s.S3RecordingDetails = v
 	return s
 }
 
@@ -2841,6 +2916,9 @@ type ConfigTypeData struct {
 	// Information about the dataflow endpoint Config.
 	DataflowEndpointConfig *DataflowEndpointConfig `locationName:"dataflowEndpointConfig" type:"structure"`
 
+	// Information about an S3 recording Config.
+	S3RecordingConfig *S3RecordingConfig `locationName:"s3RecordingConfig" type:"structure"`
+
 	// Object that determines whether tracking should be used during a contact executed
 	// with this Config in the mission profile.
 	TrackingConfig *TrackingConfig `locationName:"trackingConfig" type:"structure"`
@@ -2885,6 +2963,11 @@ func (s *ConfigTypeData) Validate() error {
 			invalidParams.AddNested("DataflowEndpointConfig", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.S3RecordingConfig != nil {
+		if err := s.S3RecordingConfig.Validate(); err != nil {
+			invalidParams.AddNested("S3RecordingConfig", err.(request.ErrInvalidParams))
+		}
+	}
 	if s.TrackingConfig != nil {
 		if err := s.TrackingConfig.Validate(); err != nil {
 			invalidParams.AddNested("TrackingConfig", err.(request.ErrInvalidParams))
@@ -2923,6 +3006,12 @@ func (s *ConfigTypeData) SetAntennaUplinkConfig(v *AntennaUplinkConfig) *ConfigT
 // SetDataflowEndpointConfig sets the DataflowEndpointConfig field's value.
 func (s *ConfigTypeData) SetDataflowEndpointConfig(v *DataflowEndpointConfig) *ConfigTypeData {
 	s.DataflowEndpointConfig = v
+	return s
+}
+
+// SetS3RecordingConfig sets the S3RecordingConfig field's value.
+func (s *ConfigTypeData) SetS3RecordingConfig(v *S3RecordingConfig) *ConfigTypeData {
+	s.S3RecordingConfig = v
 	return s
 }
 
@@ -3451,12 +3540,57 @@ func (s *Data) SetRegion(v string) *Data {
 	return s
 }
 
+// Information about a dataflow edge used in a contact.
+type DataflowDetail struct {
+	_ struct{} `type:"structure"`
+
+	// Dataflow details for the destination side.
+	Destination *Destination `locationName:"destination" type:"structure"`
+
+	// Error message for a dataflow.
+	ErrorMessage *string `locationName:"errorMessage" type:"string"`
+
+	// Dataflow details for the source side.
+	Source *Source `locationName:"source" type:"structure"`
+}
+
+// String returns the string representation
+func (s DataflowDetail) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DataflowDetail) GoString() string {
+	return s.String()
+}
+
+// SetDestination sets the Destination field's value.
+func (s *DataflowDetail) SetDestination(v *Destination) *DataflowDetail {
+	s.Destination = v
+	return s
+}
+
+// SetErrorMessage sets the ErrorMessage field's value.
+func (s *DataflowDetail) SetErrorMessage(v string) *DataflowDetail {
+	s.ErrorMessage = &v
+	return s
+}
+
+// SetSource sets the Source field's value.
+func (s *DataflowDetail) SetSource(v *Source) *DataflowDetail {
+	s.Source = v
+	return s
+}
+
 // Information about a dataflow endpoint.
 type DataflowEndpoint struct {
 	_ struct{} `type:"structure"`
 
 	// Socket address of a dataflow endpoint.
 	Address *SocketAddress `locationName:"address" type:"structure"`
+
+	// Maximum transmission unit (MTU) size in bytes of a dataflow endpoint.
+	Mtu *int64 `locationName:"mtu" min:"1400" type:"integer"`
 
 	// Name of a dataflow endpoint.
 	Name *string `locationName:"name" min:"1" type:"string"`
@@ -3478,6 +3612,9 @@ func (s DataflowEndpoint) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *DataflowEndpoint) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "DataflowEndpoint"}
+	if s.Mtu != nil && *s.Mtu < 1400 {
+		invalidParams.Add(request.NewErrParamMinValue("Mtu", 1400))
+	}
 	if s.Name != nil && len(*s.Name) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
 	}
@@ -3496,6 +3633,12 @@ func (s *DataflowEndpoint) Validate() error {
 // SetAddress sets the Address field's value.
 func (s *DataflowEndpoint) SetAddress(v *SocketAddress) *DataflowEndpoint {
 	s.Address = v
+	return s
+}
+
+// SetMtu sets the Mtu field's value.
+func (s *DataflowEndpoint) SetMtu(v int64) *DataflowEndpoint {
+	s.Mtu = &v
 	return s
 }
 
@@ -3905,8 +4048,8 @@ func (s *DemodulationConfig) SetUnvalidatedJSON(v string) *DemodulationConfig {
 
 // Dependency encountered an error.
 type DependencyException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -3925,17 +4068,17 @@ func (s DependencyException) GoString() string {
 
 func newErrorDependencyException(v protocol.ResponseMetadata) error {
 	return &DependencyException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s DependencyException) Code() string {
+func (s *DependencyException) Code() string {
 	return "DependencyException"
 }
 
 // Message returns the exception's message.
-func (s DependencyException) Message() string {
+func (s *DependencyException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3943,22 +4086,22 @@ func (s DependencyException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s DependencyException) OrigErr() error {
+func (s *DependencyException) OrigErr() error {
 	return nil
 }
 
-func (s DependencyException) Error() string {
+func (s *DependencyException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s DependencyException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *DependencyException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s DependencyException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *DependencyException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type DescribeContactInput struct {
@@ -4010,6 +4153,9 @@ type DescribeContactOutput struct {
 
 	// Status of a contact.
 	ContactStatus *string `locationName:"contactStatus" type:"string" enum:"ContactStatus"`
+
+	// List describing source and destination details for each dataflow edge.
+	DataflowList []*DataflowDetail `locationName:"dataflowList" type:"list"`
 
 	// End time of a contact.
 	EndTime *time.Time `locationName:"endTime" type:"timestamp"`
@@ -4066,6 +4212,12 @@ func (s *DescribeContactOutput) SetContactId(v string) *DescribeContactOutput {
 // SetContactStatus sets the ContactStatus field's value.
 func (s *DescribeContactOutput) SetContactStatus(v string) *DescribeContactOutput {
 	s.ContactStatus = &v
+	return s
+}
+
+// SetDataflowList sets the DataflowList field's value.
+func (s *DescribeContactOutput) SetDataflowList(v []*DataflowDetail) *DescribeContactOutput {
+	s.DataflowList = v
 	return s
 }
 
@@ -4135,6 +4287,58 @@ func (s *DescribeContactOutput) SetTags(v map[string]*string) *DescribeContactOu
 	return s
 }
 
+// Dataflow details for the destination side.
+type Destination struct {
+	_ struct{} `type:"structure"`
+
+	// Additional details for a Config, if type is dataflow endpoint or antenna
+	// demod decode.
+	ConfigDetails *ConfigDetails `locationName:"configDetails" type:"structure"`
+
+	// UUID of a Config.
+	ConfigId *string `locationName:"configId" type:"string"`
+
+	// Type of a Config.
+	ConfigType *string `locationName:"configType" type:"string" enum:"ConfigCapabilityType"`
+
+	// Region of a dataflow destination.
+	DataflowDestinationRegion *string `locationName:"dataflowDestinationRegion" type:"string"`
+}
+
+// String returns the string representation
+func (s Destination) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s Destination) GoString() string {
+	return s.String()
+}
+
+// SetConfigDetails sets the ConfigDetails field's value.
+func (s *Destination) SetConfigDetails(v *ConfigDetails) *Destination {
+	s.ConfigDetails = v
+	return s
+}
+
+// SetConfigId sets the ConfigId field's value.
+func (s *Destination) SetConfigId(v string) *Destination {
+	s.ConfigId = &v
+	return s
+}
+
+// SetConfigType sets the ConfigType field's value.
+func (s *Destination) SetConfigType(v string) *Destination {
+	s.ConfigType = &v
+	return s
+}
+
+// SetDataflowDestinationRegion sets the DataflowDestinationRegion field's value.
+func (s *Destination) SetDataflowDestinationRegion(v string) *Destination {
+	s.DataflowDestinationRegion = &v
+	return s
+}
+
 // Object that represents EIRP.
 type Eirp struct {
 	_ struct{} `type:"structure"`
@@ -4144,7 +4348,7 @@ type Eirp struct {
 	// Units is a required field
 	Units *string `locationName:"units" type:"string" required:"true" enum:"EirpUnits"`
 
-	// Value of an EIRP.
+	// Value of an EIRP. Valid values are between 20.0 to 50.0 dBW.
 	//
 	// Value is a required field
 	Value *float64 `locationName:"value" type:"double" required:"true"`
@@ -4287,7 +4491,8 @@ type Frequency struct {
 	// Units is a required field
 	Units *string `locationName:"units" type:"string" required:"true" enum:"FrequencyUnits"`
 
-	// Frequency value.
+	// Frequency value. Valid values are between 2200 to 2300 MHz and 7750 to 8400
+	// MHz for downlink and 2025 to 2120 MHz for uplink.
 	//
 	// Value is a required field
 	Value *float64 `locationName:"value" type:"double" required:"true"`
@@ -4340,7 +4545,15 @@ type FrequencyBandwidth struct {
 	// Units is a required field
 	Units *string `locationName:"units" type:"string" required:"true" enum:"BandwidthUnits"`
 
-	// Frequency bandwidth value.
+	// Frequency bandwidth value. AWS Ground Station currently has the following
+	// bandwidth limitations:
+	//
+	//    * For AntennaDownlinkDemodDecodeconfig, valid values are between 125 kHz
+	//    to 650 MHz.
+	//
+	//    * For AntennaDownlinkconfig, valid values are between 10 kHz to 54 MHz.
+	//
+	//    * For AntennaUplinkConfig, valid values are between 10 kHz to 54 MHz.
 	//
 	// Value is a required field
 	Value *float64 `locationName:"value" type:"double" required:"true"`
@@ -4965,8 +5178,8 @@ func (s *GetSatelliteOutput) SetSatelliteId(v string) *GetSatelliteOutput {
 
 // One or more parameters are not valid.
 type InvalidParameterException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -4985,17 +5198,17 @@ func (s InvalidParameterException) GoString() string {
 
 func newErrorInvalidParameterException(v protocol.ResponseMetadata) error {
 	return &InvalidParameterException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidParameterException) Code() string {
+func (s *InvalidParameterException) Code() string {
 	return "InvalidParameterException"
 }
 
 // Message returns the exception's message.
-func (s InvalidParameterException) Message() string {
+func (s *InvalidParameterException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5003,22 +5216,22 @@ func (s InvalidParameterException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidParameterException) OrigErr() error {
+func (s *InvalidParameterException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidParameterException) Error() string {
+func (s *InvalidParameterException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidParameterException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidParameterException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidParameterException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidParameterException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListConfigsInput struct {
@@ -5748,8 +5961,8 @@ func (s *ReserveContactOutput) SetContactId(v string) *ReserveContactOutput {
 
 // Account limits for this resource have been exceeded.
 type ResourceLimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -5768,17 +5981,17 @@ func (s ResourceLimitExceededException) GoString() string {
 
 func newErrorResourceLimitExceededException(v protocol.ResponseMetadata) error {
 	return &ResourceLimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceLimitExceededException) Code() string {
+func (s *ResourceLimitExceededException) Code() string {
 	return "ResourceLimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s ResourceLimitExceededException) Message() string {
+func (s *ResourceLimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5786,28 +5999,28 @@ func (s ResourceLimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceLimitExceededException) OrigErr() error {
+func (s *ResourceLimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceLimitExceededException) Error() string {
+func (s *ResourceLimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceLimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceLimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceLimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceLimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Resource was not found.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5824,17 +6037,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5842,22 +6055,120 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// Information about an S3 recording Config.
+type S3RecordingConfig struct {
+	_ struct{} `type:"structure"`
+
+	// ARN of the bucket to record to.
+	//
+	// BucketArn is a required field
+	BucketArn *string `locationName:"bucketArn" type:"string" required:"true"`
+
+	// S3 Key prefix to prefice data files.
+	Prefix *string `locationName:"prefix" min:"1" type:"string"`
+
+	// ARN of the role Ground Station assumes to write data to the bucket.
+	//
+	// RoleArn is a required field
+	RoleArn *string `locationName:"roleArn" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s S3RecordingConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s S3RecordingConfig) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *S3RecordingConfig) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "S3RecordingConfig"}
+	if s.BucketArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("BucketArn"))
+	}
+	if s.Prefix != nil && len(*s.Prefix) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Prefix", 1))
+	}
+	if s.RoleArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("RoleArn"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetBucketArn sets the BucketArn field's value.
+func (s *S3RecordingConfig) SetBucketArn(v string) *S3RecordingConfig {
+	s.BucketArn = &v
+	return s
+}
+
+// SetPrefix sets the Prefix field's value.
+func (s *S3RecordingConfig) SetPrefix(v string) *S3RecordingConfig {
+	s.Prefix = &v
+	return s
+}
+
+// SetRoleArn sets the RoleArn field's value.
+func (s *S3RecordingConfig) SetRoleArn(v string) *S3RecordingConfig {
+	s.RoleArn = &v
+	return s
+}
+
+// Details about an S3 recording Config used in a contact.
+type S3RecordingDetails struct {
+	_ struct{} `type:"structure"`
+
+	// ARN of the bucket used.
+	BucketArn *string `locationName:"bucketArn" type:"string"`
+
+	// Template of the S3 key used.
+	KeyTemplate *string `locationName:"keyTemplate" type:"string"`
+}
+
+// String returns the string representation
+func (s S3RecordingDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s S3RecordingDetails) GoString() string {
+	return s.String()
+}
+
+// SetBucketArn sets the BucketArn field's value.
+func (s *S3RecordingDetails) SetBucketArn(v string) *S3RecordingDetails {
+	s.BucketArn = &v
+	return s
+}
+
+// SetKeyTemplate sets the KeyTemplate field's value.
+func (s *S3RecordingDetails) SetKeyTemplate(v string) *S3RecordingDetails {
+	s.KeyTemplate = &v
+	return s
 }
 
 // Item in a list of satellites.
@@ -6032,21 +6343,83 @@ func (s *SocketAddress) SetPort(v int64) *SocketAddress {
 	return s
 }
 
+// Dataflow details for the source side.
+type Source struct {
+	_ struct{} `type:"structure"`
+
+	// Additional details for a Config, if type is dataflow endpoint or antenna
+	// demod decode.
+	ConfigDetails *ConfigDetails `locationName:"configDetails" type:"structure"`
+
+	// UUID of a Config.
+	ConfigId *string `locationName:"configId" type:"string"`
+
+	// Type of a Config.
+	ConfigType *string `locationName:"configType" type:"string" enum:"ConfigCapabilityType"`
+
+	// Region of a dataflow source.
+	DataflowSourceRegion *string `locationName:"dataflowSourceRegion" type:"string"`
+}
+
+// String returns the string representation
+func (s Source) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s Source) GoString() string {
+	return s.String()
+}
+
+// SetConfigDetails sets the ConfigDetails field's value.
+func (s *Source) SetConfigDetails(v *ConfigDetails) *Source {
+	s.ConfigDetails = v
+	return s
+}
+
+// SetConfigId sets the ConfigId field's value.
+func (s *Source) SetConfigId(v string) *Source {
+	s.ConfigId = &v
+	return s
+}
+
+// SetConfigType sets the ConfigType field's value.
+func (s *Source) SetConfigType(v string) *Source {
+	s.ConfigType = &v
+	return s
+}
+
+// SetDataflowSourceRegion sets the DataflowSourceRegion field's value.
+func (s *Source) SetDataflowSourceRegion(v string) *Source {
+	s.DataflowSourceRegion = &v
+	return s
+}
+
 // Object that describes a spectral Config.
 type SpectrumConfig struct {
 	_ struct{} `type:"structure"`
 
-	// Bandwidth of a spectral Config.
+	// Bandwidth of a spectral Config. AWS Ground Station currently has the following
+	// bandwidth limitations:
+	//
+	//    * For AntennaDownlinkDemodDecodeconfig, valid values are between 125 kHz
+	//    to 650 MHz.
+	//
+	//    * For AntennaDownlinkconfig valid values are between 10 kHz to 54 MHz.
+	//
+	//    * For AntennaUplinkConfig, valid values are between 10 kHz to 54 MHz.
 	//
 	// Bandwidth is a required field
 	Bandwidth *FrequencyBandwidth `locationName:"bandwidth" type:"structure" required:"true"`
 
-	// Center frequency of a spectral Config.
+	// Center frequency of a spectral Config. Valid values are between 2200 to 2300
+	// MHz and 7750 to 8400 MHz for downlink and 2025 to 2120 MHz for uplink.
 	//
 	// CenterFrequency is a required field
 	CenterFrequency *Frequency `locationName:"centerFrequency" type:"structure" required:"true"`
 
-	// Polarization of a spectral Config.
+	// Polarization of a spectral Config. Capturing both "RIGHT_HAND" and "LEFT_HAND"
+	// polarization requires two separate configs.
 	Polarization *string `locationName:"polarization" type:"string" enum:"Polarization"`
 }
 
@@ -6612,12 +6985,14 @@ func (s *UplinkEchoConfig) SetEnabled(v bool) *UplinkEchoConfig {
 type UplinkSpectrumConfig struct {
 	_ struct{} `type:"structure"`
 
-	// Center frequency of an uplink spectral Config.
+	// Center frequency of an uplink spectral Config. Valid values are between 2025
+	// to 2120 MHz.
 	//
 	// CenterFrequency is a required field
 	CenterFrequency *Frequency `locationName:"centerFrequency" type:"structure" required:"true"`
 
-	// Polarization of an uplink spectral Config.
+	// Polarization of an uplink spectral Config. Capturing both "RIGHT_HAND" and
+	// "LEFT_HAND" polarization requires two separate configs.
 	Polarization *string `locationName:"polarization" type:"string" enum:"Polarization"`
 }
 
@@ -6669,6 +7044,14 @@ const (
 	AngleUnitsRadian = "RADIAN"
 )
 
+// AngleUnits_Values returns all elements of the AngleUnits enum
+func AngleUnits_Values() []string {
+	return []string{
+		AngleUnitsDegreeAngle,
+		AngleUnitsRadian,
+	}
+}
+
 const (
 	// BandwidthUnitsGhz is a BandwidthUnits enum value
 	BandwidthUnitsGhz = "GHz"
@@ -6679,6 +7062,15 @@ const (
 	// BandwidthUnitsKHz is a BandwidthUnits enum value
 	BandwidthUnitsKHz = "kHz"
 )
+
+// BandwidthUnits_Values returns all elements of the BandwidthUnits enum
+func BandwidthUnits_Values() []string {
+	return []string{
+		BandwidthUnitsGhz,
+		BandwidthUnitsMhz,
+		BandwidthUnitsKHz,
+	}
+}
 
 const (
 	// ConfigCapabilityTypeAntennaDownlink is a ConfigCapabilityType enum value
@@ -6698,7 +7090,23 @@ const (
 
 	// ConfigCapabilityTypeUplinkEcho is a ConfigCapabilityType enum value
 	ConfigCapabilityTypeUplinkEcho = "uplink-echo"
+
+	// ConfigCapabilityTypeS3Recording is a ConfigCapabilityType enum value
+	ConfigCapabilityTypeS3Recording = "s3-recording"
 )
+
+// ConfigCapabilityType_Values returns all elements of the ConfigCapabilityType enum
+func ConfigCapabilityType_Values() []string {
+	return []string{
+		ConfigCapabilityTypeAntennaDownlink,
+		ConfigCapabilityTypeAntennaDownlinkDemodDecode,
+		ConfigCapabilityTypeAntennaUplink,
+		ConfigCapabilityTypeDataflowEndpoint,
+		ConfigCapabilityTypeTracking,
+		ConfigCapabilityTypeUplinkEcho,
+		ConfigCapabilityTypeS3Recording,
+	}
+}
 
 const (
 	// ContactStatusAvailable is a ContactStatus enum value
@@ -6706,6 +7114,9 @@ const (
 
 	// ContactStatusAwsCancelled is a ContactStatus enum value
 	ContactStatusAwsCancelled = "AWS_CANCELLED"
+
+	// ContactStatusAwsFailed is a ContactStatus enum value
+	ContactStatusAwsFailed = "AWS_FAILED"
 
 	// ContactStatusCancelled is a ContactStatus enum value
 	ContactStatusCancelled = "CANCELLED"
@@ -6738,6 +7149,25 @@ const (
 	ContactStatusScheduling = "SCHEDULING"
 )
 
+// ContactStatus_Values returns all elements of the ContactStatus enum
+func ContactStatus_Values() []string {
+	return []string{
+		ContactStatusAvailable,
+		ContactStatusAwsCancelled,
+		ContactStatusAwsFailed,
+		ContactStatusCancelled,
+		ContactStatusCancelling,
+		ContactStatusCompleted,
+		ContactStatusFailed,
+		ContactStatusFailedToSchedule,
+		ContactStatusPass,
+		ContactStatusPostpass,
+		ContactStatusPrepass,
+		ContactStatusScheduled,
+		ContactStatusScheduling,
+	}
+}
+
 const (
 	// CriticalityPreferred is a Criticality enum value
 	CriticalityPreferred = "PREFERRED"
@@ -6749,10 +7179,26 @@ const (
 	CriticalityRequired = "REQUIRED"
 )
 
+// Criticality_Values returns all elements of the Criticality enum
+func Criticality_Values() []string {
+	return []string{
+		CriticalityPreferred,
+		CriticalityRemoved,
+		CriticalityRequired,
+	}
+}
+
 const (
 	// EirpUnitsDBw is a EirpUnits enum value
 	EirpUnitsDBw = "dBW"
 )
+
+// EirpUnits_Values returns all elements of the EirpUnits enum
+func EirpUnits_Values() []string {
+	return []string{
+		EirpUnitsDBw,
+	}
+}
 
 const (
 	// EndpointStatusCreated is a EndpointStatus enum value
@@ -6771,6 +7217,17 @@ const (
 	EndpointStatusFailed = "failed"
 )
 
+// EndpointStatus_Values returns all elements of the EndpointStatus enum
+func EndpointStatus_Values() []string {
+	return []string{
+		EndpointStatusCreated,
+		EndpointStatusCreating,
+		EndpointStatusDeleted,
+		EndpointStatusDeleting,
+		EndpointStatusFailed,
+	}
+}
+
 const (
 	// FrequencyUnitsGhz is a FrequencyUnits enum value
 	FrequencyUnitsGhz = "GHz"
@@ -6782,6 +7239,15 @@ const (
 	FrequencyUnitsKHz = "kHz"
 )
 
+// FrequencyUnits_Values returns all elements of the FrequencyUnits enum
+func FrequencyUnits_Values() []string {
+	return []string{
+		FrequencyUnitsGhz,
+		FrequencyUnitsMhz,
+		FrequencyUnitsKHz,
+	}
+}
+
 const (
 	// PolarizationLeftHand is a Polarization enum value
 	PolarizationLeftHand = "LEFT_HAND"
@@ -6792,3 +7258,12 @@ const (
 	// PolarizationRightHand is a Polarization enum value
 	PolarizationRightHand = "RIGHT_HAND"
 )
+
+// Polarization_Values returns all elements of the Polarization enum
+func Polarization_Values() []string {
+	return []string{
+		PolarizationLeftHand,
+		PolarizationNone,
+		PolarizationRightHand,
+	}
+}

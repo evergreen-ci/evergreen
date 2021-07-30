@@ -14,26 +14,34 @@ const (
 
 var (
 	IDKey                        = bsonutil.MustHaveTag(Pod{}, "ID")
-	ExternalIDKey                = bsonutil.MustHaveTag(Pod{}, "ExternalID")
+	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
+	SecretKey                    = bsonutil.MustHaveTag(Pod{}, "Secret")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
 	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
+	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
 
 	TaskContainerCreationOptsImageKey    = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Image")
 	TaskContainerCreationOptsMemoryMBKey = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "MemoryMB")
 	TaskContainerCreationOptsCPUKey      = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "CPU")
-	TaskContainerCreationOptsPlatformKey = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Platform")
+	TaskContainerCreationOptsOSKey       = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "OS")
+	TaskContainerCreationOptsArchKey     = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Arch")
 	TaskContainerCreationOptsEnvVarsKey  = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvVars")
 	TaskContainerCreationOptsSecretsKey  = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvSecrets")
 
-	TimeInfoInitializedKey = bsonutil.MustHaveTag(TimeInfo{}, "Initialized")
-	TimeInfoStartedKey     = bsonutil.MustHaveTag(TimeInfo{}, "Started")
-	TimeInfoProvisionedKey = bsonutil.MustHaveTag(TimeInfo{}, "Provisioned")
+	TimeInfoInitializingKey     = bsonutil.MustHaveTag(TimeInfo{}, "Initializing")
+	TimeInfoStartingKey         = bsonutil.MustHaveTag(TimeInfo{}, "Starting")
+	TimeInfoLastCommunicatedKey = bsonutil.MustHaveTag(TimeInfo{}, "LastCommunicated")
+
+	ResourceInfoExternalIDKey   = bsonutil.MustHaveTag(ResourceInfo{}, "ExternalID")
+	ResourceInfoDefinitionIDKey = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
+	ResourceInfoClusterKey      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
+	ResourceInfoSecretIDsKey    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
 )
 
 // FindOne finds one pod by the given query.
-func FindOne(query db.Q) (*Pod, error) {
+func FindOne(q bson.M) (*Pod, error) {
 	var p Pod
-	err := db.FindOneQ(Collection, query, &p)
+	err := db.FindOneQ(Collection, db.Query(q), &p)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -42,10 +50,24 @@ func FindOne(query db.Q) (*Pod, error) {
 
 // FindOneByID finds one pod by its ID.
 func FindOneByID(id string) (*Pod, error) {
-	query := db.Query(bson.M{IDKey: id})
-	p, err := FindOne(query)
+	p, err := FindOne(ByID(id))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod '%s'", id)
 	}
 	return p, nil
+}
+
+func ByID(id string) bson.M {
+	return bson.M{
+		IDKey: id,
+	}
+}
+
+// UpdateOne updates one pod.
+func UpdateOne(query interface{}, update interface{}) error {
+	return db.Update(
+		Collection,
+		query,
+		update,
+	)
 }

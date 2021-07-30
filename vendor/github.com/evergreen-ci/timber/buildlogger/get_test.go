@@ -261,8 +261,8 @@ type mockHandler struct {
 
 func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.pages > 0 {
-		w.Header().Set("Link", fmt.Sprintf("<%s>; rel=\"%s\"", h.baseURL, "next"))
 		if h.count <= h.pages-1 {
+			w.Header().Set("Link", fmt.Sprintf("<%s>; rel=\"%s\"", h.baseURL, "next"))
 			_, _ = w.Write([]byte(fmt.Sprintf("PAGINATED BODY PAGE %d\n", h.count+1)))
 		}
 		h.count++

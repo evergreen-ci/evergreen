@@ -117,6 +117,8 @@ func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 		return StatusRunning
 	case ec2.InstanceStateNameStopped:
 		return StatusStopped
+	case ec2.InstanceStateNameStopping:
+		return StatusStopping
 	case ec2.InstanceStateNameTerminated, ec2.InstanceStateNameShuttingDown:
 		return StatusTerminated
 	default:
@@ -317,10 +319,14 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	if instance.PublicDnsName == nil {
 		return errors.New("instance missing public dns name")
 	}
+	if instance.PublicIpAddress == nil {
+		return errors.New("instance missing public ip address")
+	}
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
 	h.Host = *instance.PublicDnsName
 	h.Volumes = makeVolumeAttachments(instance.BlockDeviceMappings)
+	h.IPv4 = *instance.PublicIpAddress
 
 	if err := h.CacheHostData(); err != nil {
 		return errors.Wrap(err, "error updating host document in db")

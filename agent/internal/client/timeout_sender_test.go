@@ -51,7 +51,7 @@ func TestTimeoutSender(t *testing.T) {
 
 type logSenderSuite struct {
 	suite.Suite
-	restClient        *communicatorImpl
+	restClient        *hostCommunicator
 	tempDir           string
 	numMessages       int
 	maxSleep          time.Duration
@@ -68,7 +68,7 @@ func (s *logSenderSuite) SetupTest() {
 }
 
 func (s *logSenderSuite) SetupSuite() {
-	s.restClient = NewCommunicator("foo").(*communicatorImpl)
+	s.restClient = NewHostCommunicator("foo", "hostID", "hostSecret").(*hostCommunicator)
 	tempDir, err := ioutil.TempDir("", "logSenderSuite")
 	s.Require().NoError(err)
 	s.tempDir = tempDir

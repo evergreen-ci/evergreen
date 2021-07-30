@@ -714,7 +714,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		So(alias.Upsert(), ShouldBeNil)
 		mustHaveResults := true
 		parserProject := &ParserProject{
-			Identifier: "projectId",
+			Identifier: utility.ToStringPtr("projectId"),
 			Tasks: []parserTask{
 				{
 					Name:      "taskA",

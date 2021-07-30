@@ -2901,8 +2901,8 @@ func (s AssociateConfigurationItemsToApplicationOutput) GoString() string {
 // The AWS user account does not have permission to perform the action. Check
 // the IAM policy associated with this account.
 type AuthorizationErrorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2919,17 +2919,17 @@ func (s AuthorizationErrorException) GoString() string {
 
 func newErrorAuthorizationErrorException(v protocol.ResponseMetadata) error {
 	return &AuthorizationErrorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s AuthorizationErrorException) Code() string {
+func (s *AuthorizationErrorException) Code() string {
 	return "AuthorizationErrorException"
 }
 
 // Message returns the exception's message.
-func (s AuthorizationErrorException) Message() string {
+func (s *AuthorizationErrorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2937,22 +2937,22 @@ func (s AuthorizationErrorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s AuthorizationErrorException) OrigErr() error {
+func (s *AuthorizationErrorException) OrigErr() error {
 	return nil
 }
 
-func (s AuthorizationErrorException) Error() string {
+func (s *AuthorizationErrorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s AuthorizationErrorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *AuthorizationErrorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s AuthorizationErrorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *AuthorizationErrorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Error messages returned for each import task that you deleted as a response
@@ -3128,8 +3128,8 @@ func (s *ConfigurationTag) SetValue(v string) *ConfigurationTag {
 }
 
 type ConflictErrorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3146,17 +3146,17 @@ func (s ConflictErrorException) GoString() string {
 
 func newErrorConflictErrorException(v protocol.ResponseMetadata) error {
 	return &ConflictErrorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConflictErrorException) Code() string {
+func (s *ConflictErrorException) Code() string {
 	return "ConflictErrorException"
 }
 
 // Message returns the exception's message.
-func (s ConflictErrorException) Message() string {
+func (s *ConflictErrorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3164,22 +3164,22 @@ func (s ConflictErrorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConflictErrorException) OrigErr() error {
+func (s *ConflictErrorException) OrigErr() error {
 	return nil
 }
 
-func (s ConflictErrorException) Error() string {
+func (s *ConflictErrorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConflictErrorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConflictErrorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConflictErrorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConflictErrorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A list of continuous export descriptions.
@@ -4874,8 +4874,8 @@ func (s *GetDiscoverySummaryOutput) SetServersMappedtoTags(v int64) *GetDiscover
 
 // The home region is not set. Set the home region to continue.
 type HomeRegionNotSetException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4892,17 +4892,17 @@ func (s HomeRegionNotSetException) GoString() string {
 
 func newErrorHomeRegionNotSetException(v protocol.ResponseMetadata) error {
 	return &HomeRegionNotSetException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s HomeRegionNotSetException) Code() string {
+func (s *HomeRegionNotSetException) Code() string {
 	return "HomeRegionNotSetException"
 }
 
 // Message returns the exception's message.
-func (s HomeRegionNotSetException) Message() string {
+func (s *HomeRegionNotSetException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4910,22 +4910,22 @@ func (s HomeRegionNotSetException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s HomeRegionNotSetException) OrigErr() error {
+func (s *HomeRegionNotSetException) OrigErr() error {
 	return nil
 }
 
-func (s HomeRegionNotSetException) Error() string {
+func (s *HomeRegionNotSetException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s HomeRegionNotSetException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *HomeRegionNotSetException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s HomeRegionNotSetException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *HomeRegionNotSetException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An array of information related to the import task request that includes
@@ -5141,8 +5141,8 @@ func (s *ImportTaskFilter) SetValues(v []*string) *ImportTaskFilter {
 
 // One or more parameters are not valid. Verify the parameters and try again.
 type InvalidParameterException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5159,17 +5159,17 @@ func (s InvalidParameterException) GoString() string {
 
 func newErrorInvalidParameterException(v protocol.ResponseMetadata) error {
 	return &InvalidParameterException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidParameterException) Code() string {
+func (s *InvalidParameterException) Code() string {
 	return "InvalidParameterException"
 }
 
 // Message returns the exception's message.
-func (s InvalidParameterException) Message() string {
+func (s *InvalidParameterException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5177,29 +5177,29 @@ func (s InvalidParameterException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidParameterException) OrigErr() error {
+func (s *InvalidParameterException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidParameterException) Error() string {
+func (s *InvalidParameterException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidParameterException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidParameterException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidParameterException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidParameterException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The value of one or more parameters are either invalid or out of range. Verify
 // the parameter values and try again.
 type InvalidParameterValueException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5216,17 +5216,17 @@ func (s InvalidParameterValueException) GoString() string {
 
 func newErrorInvalidParameterValueException(v protocol.ResponseMetadata) error {
 	return &InvalidParameterValueException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidParameterValueException) Code() string {
+func (s *InvalidParameterValueException) Code() string {
 	return "InvalidParameterValueException"
 }
 
 // Message returns the exception's message.
-func (s InvalidParameterValueException) Message() string {
+func (s *InvalidParameterValueException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5234,22 +5234,22 @@ func (s InvalidParameterValueException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidParameterValueException) OrigErr() error {
+func (s *InvalidParameterValueException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidParameterValueException) Error() string {
+func (s *InvalidParameterValueException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidParameterValueException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidParameterValueException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidParameterValueException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidParameterValueException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListConfigurationsInput struct {
@@ -5588,8 +5588,8 @@ func (s *NeighborConnectionDetail) SetTransportProtocol(v string) *NeighborConne
 
 // This operation is not permitted.
 type OperationNotPermittedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5606,17 +5606,17 @@ func (s OperationNotPermittedException) GoString() string {
 
 func newErrorOperationNotPermittedException(v protocol.ResponseMetadata) error {
 	return &OperationNotPermittedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s OperationNotPermittedException) Code() string {
+func (s *OperationNotPermittedException) Code() string {
 	return "OperationNotPermittedException"
 }
 
 // Message returns the exception's message.
-func (s OperationNotPermittedException) Message() string {
+func (s *OperationNotPermittedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5624,22 +5624,22 @@ func (s OperationNotPermittedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s OperationNotPermittedException) OrigErr() error {
+func (s *OperationNotPermittedException) OrigErr() error {
 	return nil
 }
 
-func (s OperationNotPermittedException) Error() string {
+func (s *OperationNotPermittedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s OperationNotPermittedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *OperationNotPermittedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s OperationNotPermittedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *OperationNotPermittedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A field and direction for ordered output.
@@ -5696,8 +5696,8 @@ func (s *OrderByElement) SetSortOrder(v string) *OrderByElement {
 // the import tasks are meant to be different, use a different clientRequestToken,
 // and try again.
 type ResourceInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5714,17 +5714,17 @@ func (s ResourceInUseException) GoString() string {
 
 func newErrorResourceInUseException(v protocol.ResponseMetadata) error {
 	return &ResourceInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceInUseException) Code() string {
+func (s *ResourceInUseException) Code() string {
 	return "ResourceInUseException"
 }
 
 // Message returns the exception's message.
-func (s ResourceInUseException) Message() string {
+func (s *ResourceInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5732,29 +5732,29 @@ func (s ResourceInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceInUseException) OrigErr() error {
+func (s *ResourceInUseException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceInUseException) Error() string {
+func (s *ResourceInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified configuration ID was not located. Verify the configuration
 // ID and try again.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5771,17 +5771,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5789,28 +5789,28 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The server experienced an internal error. Try again.
 type ServerInternalErrorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5827,17 +5827,17 @@ func (s ServerInternalErrorException) GoString() string {
 
 func newErrorServerInternalErrorException(v protocol.ResponseMetadata) error {
 	return &ServerInternalErrorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServerInternalErrorException) Code() string {
+func (s *ServerInternalErrorException) Code() string {
 	return "ServerInternalErrorException"
 }
 
 // Message returns the exception's message.
-func (s ServerInternalErrorException) Message() string {
+func (s *ServerInternalErrorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5845,22 +5845,22 @@ func (s ServerInternalErrorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServerInternalErrorException) OrigErr() error {
+func (s *ServerInternalErrorException) OrigErr() error {
 	return nil
 }
 
-func (s ServerInternalErrorException) Error() string {
+func (s *ServerInternalErrorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServerInternalErrorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServerInternalErrorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServerInternalErrorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServerInternalErrorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type StartContinuousExportInput struct {
@@ -6546,6 +6546,18 @@ const (
 	AgentStatusShutdown = "SHUTDOWN"
 )
 
+// AgentStatus_Values returns all elements of the AgentStatus enum
+func AgentStatus_Values() []string {
+	return []string{
+		AgentStatusHealthy,
+		AgentStatusUnhealthy,
+		AgentStatusRunning,
+		AgentStatusUnknown,
+		AgentStatusBlacklisted,
+		AgentStatusShutdown,
+	}
+}
+
 const (
 	// BatchDeleteImportDataErrorCodeNotFound is a BatchDeleteImportDataErrorCode enum value
 	BatchDeleteImportDataErrorCodeNotFound = "NOT_FOUND"
@@ -6556,6 +6568,15 @@ const (
 	// BatchDeleteImportDataErrorCodeOverLimit is a BatchDeleteImportDataErrorCode enum value
 	BatchDeleteImportDataErrorCodeOverLimit = "OVER_LIMIT"
 )
+
+// BatchDeleteImportDataErrorCode_Values returns all elements of the BatchDeleteImportDataErrorCode enum
+func BatchDeleteImportDataErrorCode_Values() []string {
+	return []string{
+		BatchDeleteImportDataErrorCodeNotFound,
+		BatchDeleteImportDataErrorCodeInternalServerError,
+		BatchDeleteImportDataErrorCodeOverLimit,
+	}
+}
 
 const (
 	// ConfigurationItemTypeServer is a ConfigurationItemType enum value
@@ -6570,6 +6591,16 @@ const (
 	// ConfigurationItemTypeApplication is a ConfigurationItemType enum value
 	ConfigurationItemTypeApplication = "APPLICATION"
 )
+
+// ConfigurationItemType_Values returns all elements of the ConfigurationItemType enum
+func ConfigurationItemType_Values() []string {
+	return []string{
+		ConfigurationItemTypeServer,
+		ConfigurationItemTypeProcess,
+		ConfigurationItemTypeConnection,
+		ConfigurationItemTypeApplication,
+	}
+}
 
 const (
 	// ContinuousExportStatusStartInProgress is a ContinuousExportStatus enum value
@@ -6594,10 +6625,30 @@ const (
 	ContinuousExportStatusInactive = "INACTIVE"
 )
 
+// ContinuousExportStatus_Values returns all elements of the ContinuousExportStatus enum
+func ContinuousExportStatus_Values() []string {
+	return []string{
+		ContinuousExportStatusStartInProgress,
+		ContinuousExportStatusStartFailed,
+		ContinuousExportStatusActive,
+		ContinuousExportStatusError,
+		ContinuousExportStatusStopInProgress,
+		ContinuousExportStatusStopFailed,
+		ContinuousExportStatusInactive,
+	}
+}
+
 const (
 	// DataSourceAgent is a DataSource enum value
 	DataSourceAgent = "AGENT"
 )
+
+// DataSource_Values returns all elements of the DataSource enum
+func DataSource_Values() []string {
+	return []string{
+		DataSourceAgent,
+	}
+}
 
 const (
 	// ExportDataFormatCsv is a ExportDataFormat enum value
@@ -6606,6 +6657,14 @@ const (
 	// ExportDataFormatGraphml is a ExportDataFormat enum value
 	ExportDataFormatGraphml = "GRAPHML"
 )
+
+// ExportDataFormat_Values returns all elements of the ExportDataFormat enum
+func ExportDataFormat_Values() []string {
+	return []string{
+		ExportDataFormatCsv,
+		ExportDataFormatGraphml,
+	}
+}
 
 const (
 	// ExportStatusFailed is a ExportStatus enum value
@@ -6617,6 +6676,15 @@ const (
 	// ExportStatusInProgress is a ExportStatus enum value
 	ExportStatusInProgress = "IN_PROGRESS"
 )
+
+// ExportStatus_Values returns all elements of the ExportStatus enum
+func ExportStatus_Values() []string {
+	return []string{
+		ExportStatusFailed,
+		ExportStatusSucceeded,
+		ExportStatusInProgress,
+	}
+}
 
 const (
 	// ImportStatusImportInProgress is a ImportStatus enum value
@@ -6653,6 +6721,23 @@ const (
 	ImportStatusInternalError = "INTERNAL_ERROR"
 )
 
+// ImportStatus_Values returns all elements of the ImportStatus enum
+func ImportStatus_Values() []string {
+	return []string{
+		ImportStatusImportInProgress,
+		ImportStatusImportComplete,
+		ImportStatusImportCompleteWithErrors,
+		ImportStatusImportFailed,
+		ImportStatusImportFailedServerLimitExceeded,
+		ImportStatusImportFailedRecordLimitExceeded,
+		ImportStatusDeleteInProgress,
+		ImportStatusDeleteComplete,
+		ImportStatusDeleteFailed,
+		ImportStatusDeleteFailedLimitExceeded,
+		ImportStatusInternalError,
+	}
+}
+
 const (
 	// ImportTaskFilterNameImportTaskId is a ImportTaskFilterName enum value
 	ImportTaskFilterNameImportTaskId = "IMPORT_TASK_ID"
@@ -6664,6 +6749,15 @@ const (
 	ImportTaskFilterNameName = "NAME"
 )
 
+// ImportTaskFilterName_Values returns all elements of the ImportTaskFilterName enum
+func ImportTaskFilterName_Values() []string {
+	return []string{
+		ImportTaskFilterNameImportTaskId,
+		ImportTaskFilterNameStatus,
+		ImportTaskFilterNameName,
+	}
+}
+
 const (
 	// OrderStringAsc is a OrderString enum value
 	OrderStringAsc = "ASC"
@@ -6671,3 +6765,11 @@ const (
 	// OrderStringDesc is a OrderString enum value
 	OrderStringDesc = "DESC"
 )
+
+// OrderString_Values returns all elements of the OrderString enum
+func OrderString_Values() []string {
+	return []string{
+		OrderStringAsc,
+		OrderStringDesc,
+	}
+}

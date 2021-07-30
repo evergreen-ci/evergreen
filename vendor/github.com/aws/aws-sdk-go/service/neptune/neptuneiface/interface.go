@@ -92,6 +92,10 @@ type NeptuneAPI interface {
 	CreateDBClusterWithContext(aws.Context, *neptune.CreateDBClusterInput, ...request.Option) (*neptune.CreateDBClusterOutput, error)
 	CreateDBClusterRequest(*neptune.CreateDBClusterInput) (*request.Request, *neptune.CreateDBClusterOutput)
 
+	CreateDBClusterEndpoint(*neptune.CreateDBClusterEndpointInput) (*neptune.CreateDBClusterEndpointOutput, error)
+	CreateDBClusterEndpointWithContext(aws.Context, *neptune.CreateDBClusterEndpointInput, ...request.Option) (*neptune.CreateDBClusterEndpointOutput, error)
+	CreateDBClusterEndpointRequest(*neptune.CreateDBClusterEndpointInput) (*request.Request, *neptune.CreateDBClusterEndpointOutput)
+
 	CreateDBClusterParameterGroup(*neptune.CreateDBClusterParameterGroupInput) (*neptune.CreateDBClusterParameterGroupOutput, error)
 	CreateDBClusterParameterGroupWithContext(aws.Context, *neptune.CreateDBClusterParameterGroupInput, ...request.Option) (*neptune.CreateDBClusterParameterGroupOutput, error)
 	CreateDBClusterParameterGroupRequest(*neptune.CreateDBClusterParameterGroupInput) (*request.Request, *neptune.CreateDBClusterParameterGroupOutput)
@@ -120,6 +124,10 @@ type NeptuneAPI interface {
 	DeleteDBClusterWithContext(aws.Context, *neptune.DeleteDBClusterInput, ...request.Option) (*neptune.DeleteDBClusterOutput, error)
 	DeleteDBClusterRequest(*neptune.DeleteDBClusterInput) (*request.Request, *neptune.DeleteDBClusterOutput)
 
+	DeleteDBClusterEndpoint(*neptune.DeleteDBClusterEndpointInput) (*neptune.DeleteDBClusterEndpointOutput, error)
+	DeleteDBClusterEndpointWithContext(aws.Context, *neptune.DeleteDBClusterEndpointInput, ...request.Option) (*neptune.DeleteDBClusterEndpointOutput, error)
+	DeleteDBClusterEndpointRequest(*neptune.DeleteDBClusterEndpointInput) (*request.Request, *neptune.DeleteDBClusterEndpointOutput)
+
 	DeleteDBClusterParameterGroup(*neptune.DeleteDBClusterParameterGroupInput) (*neptune.DeleteDBClusterParameterGroupOutput, error)
 	DeleteDBClusterParameterGroupWithContext(aws.Context, *neptune.DeleteDBClusterParameterGroupInput, ...request.Option) (*neptune.DeleteDBClusterParameterGroupOutput, error)
 	DeleteDBClusterParameterGroupRequest(*neptune.DeleteDBClusterParameterGroupInput) (*request.Request, *neptune.DeleteDBClusterParameterGroupOutput)
@@ -144,13 +152,26 @@ type NeptuneAPI interface {
 	DeleteEventSubscriptionWithContext(aws.Context, *neptune.DeleteEventSubscriptionInput, ...request.Option) (*neptune.DeleteEventSubscriptionOutput, error)
 	DeleteEventSubscriptionRequest(*neptune.DeleteEventSubscriptionInput) (*request.Request, *neptune.DeleteEventSubscriptionOutput)
 
+	DescribeDBClusterEndpoints(*neptune.DescribeDBClusterEndpointsInput) (*neptune.DescribeDBClusterEndpointsOutput, error)
+	DescribeDBClusterEndpointsWithContext(aws.Context, *neptune.DescribeDBClusterEndpointsInput, ...request.Option) (*neptune.DescribeDBClusterEndpointsOutput, error)
+	DescribeDBClusterEndpointsRequest(*neptune.DescribeDBClusterEndpointsInput) (*request.Request, *neptune.DescribeDBClusterEndpointsOutput)
+
+	DescribeDBClusterEndpointsPages(*neptune.DescribeDBClusterEndpointsInput, func(*neptune.DescribeDBClusterEndpointsOutput, bool) bool) error
+	DescribeDBClusterEndpointsPagesWithContext(aws.Context, *neptune.DescribeDBClusterEndpointsInput, func(*neptune.DescribeDBClusterEndpointsOutput, bool) bool, ...request.Option) error
+
 	DescribeDBClusterParameterGroups(*neptune.DescribeDBClusterParameterGroupsInput) (*neptune.DescribeDBClusterParameterGroupsOutput, error)
 	DescribeDBClusterParameterGroupsWithContext(aws.Context, *neptune.DescribeDBClusterParameterGroupsInput, ...request.Option) (*neptune.DescribeDBClusterParameterGroupsOutput, error)
 	DescribeDBClusterParameterGroupsRequest(*neptune.DescribeDBClusterParameterGroupsInput) (*request.Request, *neptune.DescribeDBClusterParameterGroupsOutput)
 
+	DescribeDBClusterParameterGroupsPages(*neptune.DescribeDBClusterParameterGroupsInput, func(*neptune.DescribeDBClusterParameterGroupsOutput, bool) bool) error
+	DescribeDBClusterParameterGroupsPagesWithContext(aws.Context, *neptune.DescribeDBClusterParameterGroupsInput, func(*neptune.DescribeDBClusterParameterGroupsOutput, bool) bool, ...request.Option) error
+
 	DescribeDBClusterParameters(*neptune.DescribeDBClusterParametersInput) (*neptune.DescribeDBClusterParametersOutput, error)
 	DescribeDBClusterParametersWithContext(aws.Context, *neptune.DescribeDBClusterParametersInput, ...request.Option) (*neptune.DescribeDBClusterParametersOutput, error)
 	DescribeDBClusterParametersRequest(*neptune.DescribeDBClusterParametersInput) (*request.Request, *neptune.DescribeDBClusterParametersOutput)
+
+	DescribeDBClusterParametersPages(*neptune.DescribeDBClusterParametersInput, func(*neptune.DescribeDBClusterParametersOutput, bool) bool) error
+	DescribeDBClusterParametersPagesWithContext(aws.Context, *neptune.DescribeDBClusterParametersInput, func(*neptune.DescribeDBClusterParametersOutput, bool) bool, ...request.Option) error
 
 	DescribeDBClusterSnapshotAttributes(*neptune.DescribeDBClusterSnapshotAttributesInput) (*neptune.DescribeDBClusterSnapshotAttributesOutput, error)
 	DescribeDBClusterSnapshotAttributesWithContext(aws.Context, *neptune.DescribeDBClusterSnapshotAttributesInput, ...request.Option) (*neptune.DescribeDBClusterSnapshotAttributesOutput, error)
@@ -160,9 +181,15 @@ type NeptuneAPI interface {
 	DescribeDBClusterSnapshotsWithContext(aws.Context, *neptune.DescribeDBClusterSnapshotsInput, ...request.Option) (*neptune.DescribeDBClusterSnapshotsOutput, error)
 	DescribeDBClusterSnapshotsRequest(*neptune.DescribeDBClusterSnapshotsInput) (*request.Request, *neptune.DescribeDBClusterSnapshotsOutput)
 
+	DescribeDBClusterSnapshotsPages(*neptune.DescribeDBClusterSnapshotsInput, func(*neptune.DescribeDBClusterSnapshotsOutput, bool) bool) error
+	DescribeDBClusterSnapshotsPagesWithContext(aws.Context, *neptune.DescribeDBClusterSnapshotsInput, func(*neptune.DescribeDBClusterSnapshotsOutput, bool) bool, ...request.Option) error
+
 	DescribeDBClusters(*neptune.DescribeDBClustersInput) (*neptune.DescribeDBClustersOutput, error)
 	DescribeDBClustersWithContext(aws.Context, *neptune.DescribeDBClustersInput, ...request.Option) (*neptune.DescribeDBClustersOutput, error)
 	DescribeDBClustersRequest(*neptune.DescribeDBClustersInput) (*request.Request, *neptune.DescribeDBClustersOutput)
+
+	DescribeDBClustersPages(*neptune.DescribeDBClustersInput, func(*neptune.DescribeDBClustersOutput, bool) bool) error
+	DescribeDBClustersPagesWithContext(aws.Context, *neptune.DescribeDBClustersInput, func(*neptune.DescribeDBClustersOutput, bool) bool, ...request.Option) error
 
 	DescribeDBEngineVersions(*neptune.DescribeDBEngineVersionsInput) (*neptune.DescribeDBEngineVersionsOutput, error)
 	DescribeDBEngineVersionsWithContext(aws.Context, *neptune.DescribeDBEngineVersionsInput, ...request.Option) (*neptune.DescribeDBEngineVersionsOutput, error)
@@ -239,6 +266,9 @@ type NeptuneAPI interface {
 	DescribePendingMaintenanceActionsWithContext(aws.Context, *neptune.DescribePendingMaintenanceActionsInput, ...request.Option) (*neptune.DescribePendingMaintenanceActionsOutput, error)
 	DescribePendingMaintenanceActionsRequest(*neptune.DescribePendingMaintenanceActionsInput) (*request.Request, *neptune.DescribePendingMaintenanceActionsOutput)
 
+	DescribePendingMaintenanceActionsPages(*neptune.DescribePendingMaintenanceActionsInput, func(*neptune.DescribePendingMaintenanceActionsOutput, bool) bool) error
+	DescribePendingMaintenanceActionsPagesWithContext(aws.Context, *neptune.DescribePendingMaintenanceActionsInput, func(*neptune.DescribePendingMaintenanceActionsOutput, bool) bool, ...request.Option) error
+
 	DescribeValidDBInstanceModifications(*neptune.DescribeValidDBInstanceModificationsInput) (*neptune.DescribeValidDBInstanceModificationsOutput, error)
 	DescribeValidDBInstanceModificationsWithContext(aws.Context, *neptune.DescribeValidDBInstanceModificationsInput, ...request.Option) (*neptune.DescribeValidDBInstanceModificationsOutput, error)
 	DescribeValidDBInstanceModificationsRequest(*neptune.DescribeValidDBInstanceModificationsInput) (*request.Request, *neptune.DescribeValidDBInstanceModificationsOutput)
@@ -254,6 +284,10 @@ type NeptuneAPI interface {
 	ModifyDBCluster(*neptune.ModifyDBClusterInput) (*neptune.ModifyDBClusterOutput, error)
 	ModifyDBClusterWithContext(aws.Context, *neptune.ModifyDBClusterInput, ...request.Option) (*neptune.ModifyDBClusterOutput, error)
 	ModifyDBClusterRequest(*neptune.ModifyDBClusterInput) (*request.Request, *neptune.ModifyDBClusterOutput)
+
+	ModifyDBClusterEndpoint(*neptune.ModifyDBClusterEndpointInput) (*neptune.ModifyDBClusterEndpointOutput, error)
+	ModifyDBClusterEndpointWithContext(aws.Context, *neptune.ModifyDBClusterEndpointInput, ...request.Option) (*neptune.ModifyDBClusterEndpointOutput, error)
+	ModifyDBClusterEndpointRequest(*neptune.ModifyDBClusterEndpointInput) (*request.Request, *neptune.ModifyDBClusterEndpointOutput)
 
 	ModifyDBClusterParameterGroup(*neptune.ModifyDBClusterParameterGroupInput) (*neptune.ResetDBClusterParameterGroupOutput, error)
 	ModifyDBClusterParameterGroupWithContext(aws.Context, *neptune.ModifyDBClusterParameterGroupInput, ...request.Option) (*neptune.ResetDBClusterParameterGroupOutput, error)

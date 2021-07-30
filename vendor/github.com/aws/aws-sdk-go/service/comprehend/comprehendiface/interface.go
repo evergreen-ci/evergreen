@@ -84,6 +84,10 @@ type ComprehendAPI interface {
 	ClassifyDocumentWithContext(aws.Context, *comprehend.ClassifyDocumentInput, ...request.Option) (*comprehend.ClassifyDocumentOutput, error)
 	ClassifyDocumentRequest(*comprehend.ClassifyDocumentInput) (*request.Request, *comprehend.ClassifyDocumentOutput)
 
+	ContainsPiiEntities(*comprehend.ContainsPiiEntitiesInput) (*comprehend.ContainsPiiEntitiesOutput, error)
+	ContainsPiiEntitiesWithContext(aws.Context, *comprehend.ContainsPiiEntitiesInput, ...request.Option) (*comprehend.ContainsPiiEntitiesOutput, error)
+	ContainsPiiEntitiesRequest(*comprehend.ContainsPiiEntitiesInput) (*request.Request, *comprehend.ContainsPiiEntitiesOutput)
+
 	CreateDocumentClassifier(*comprehend.CreateDocumentClassifierInput) (*comprehend.CreateDocumentClassifierOutput, error)
 	CreateDocumentClassifierWithContext(aws.Context, *comprehend.CreateDocumentClassifierInput, ...request.Option) (*comprehend.CreateDocumentClassifierOutput, error)
 	CreateDocumentClassifierRequest(*comprehend.CreateDocumentClassifierInput) (*request.Request, *comprehend.CreateDocumentClassifierOutput)
@@ -132,9 +136,17 @@ type ComprehendAPI interface {
 	DescribeEntityRecognizerWithContext(aws.Context, *comprehend.DescribeEntityRecognizerInput, ...request.Option) (*comprehend.DescribeEntityRecognizerOutput, error)
 	DescribeEntityRecognizerRequest(*comprehend.DescribeEntityRecognizerInput) (*request.Request, *comprehend.DescribeEntityRecognizerOutput)
 
+	DescribeEventsDetectionJob(*comprehend.DescribeEventsDetectionJobInput) (*comprehend.DescribeEventsDetectionJobOutput, error)
+	DescribeEventsDetectionJobWithContext(aws.Context, *comprehend.DescribeEventsDetectionJobInput, ...request.Option) (*comprehend.DescribeEventsDetectionJobOutput, error)
+	DescribeEventsDetectionJobRequest(*comprehend.DescribeEventsDetectionJobInput) (*request.Request, *comprehend.DescribeEventsDetectionJobOutput)
+
 	DescribeKeyPhrasesDetectionJob(*comprehend.DescribeKeyPhrasesDetectionJobInput) (*comprehend.DescribeKeyPhrasesDetectionJobOutput, error)
 	DescribeKeyPhrasesDetectionJobWithContext(aws.Context, *comprehend.DescribeKeyPhrasesDetectionJobInput, ...request.Option) (*comprehend.DescribeKeyPhrasesDetectionJobOutput, error)
 	DescribeKeyPhrasesDetectionJobRequest(*comprehend.DescribeKeyPhrasesDetectionJobInput) (*request.Request, *comprehend.DescribeKeyPhrasesDetectionJobOutput)
+
+	DescribePiiEntitiesDetectionJob(*comprehend.DescribePiiEntitiesDetectionJobInput) (*comprehend.DescribePiiEntitiesDetectionJobOutput, error)
+	DescribePiiEntitiesDetectionJobWithContext(aws.Context, *comprehend.DescribePiiEntitiesDetectionJobInput, ...request.Option) (*comprehend.DescribePiiEntitiesDetectionJobOutput, error)
+	DescribePiiEntitiesDetectionJobRequest(*comprehend.DescribePiiEntitiesDetectionJobInput) (*request.Request, *comprehend.DescribePiiEntitiesDetectionJobOutput)
 
 	DescribeSentimentDetectionJob(*comprehend.DescribeSentimentDetectionJobInput) (*comprehend.DescribeSentimentDetectionJobOutput, error)
 	DescribeSentimentDetectionJobWithContext(aws.Context, *comprehend.DescribeSentimentDetectionJobInput, ...request.Option) (*comprehend.DescribeSentimentDetectionJobOutput, error)
@@ -155,6 +167,10 @@ type ComprehendAPI interface {
 	DetectKeyPhrases(*comprehend.DetectKeyPhrasesInput) (*comprehend.DetectKeyPhrasesOutput, error)
 	DetectKeyPhrasesWithContext(aws.Context, *comprehend.DetectKeyPhrasesInput, ...request.Option) (*comprehend.DetectKeyPhrasesOutput, error)
 	DetectKeyPhrasesRequest(*comprehend.DetectKeyPhrasesInput) (*request.Request, *comprehend.DetectKeyPhrasesOutput)
+
+	DetectPiiEntities(*comprehend.DetectPiiEntitiesInput) (*comprehend.DetectPiiEntitiesOutput, error)
+	DetectPiiEntitiesWithContext(aws.Context, *comprehend.DetectPiiEntitiesInput, ...request.Option) (*comprehend.DetectPiiEntitiesOutput, error)
+	DetectPiiEntitiesRequest(*comprehend.DetectPiiEntitiesInput) (*request.Request, *comprehend.DetectPiiEntitiesOutput)
 
 	DetectSentiment(*comprehend.DetectSentimentInput) (*comprehend.DetectSentimentOutput, error)
 	DetectSentimentWithContext(aws.Context, *comprehend.DetectSentimentInput, ...request.Option) (*comprehend.DetectSentimentOutput, error)
@@ -203,12 +219,23 @@ type ComprehendAPI interface {
 	ListEntityRecognizersPages(*comprehend.ListEntityRecognizersInput, func(*comprehend.ListEntityRecognizersOutput, bool) bool) error
 	ListEntityRecognizersPagesWithContext(aws.Context, *comprehend.ListEntityRecognizersInput, func(*comprehend.ListEntityRecognizersOutput, bool) bool, ...request.Option) error
 
+	ListEventsDetectionJobs(*comprehend.ListEventsDetectionJobsInput) (*comprehend.ListEventsDetectionJobsOutput, error)
+	ListEventsDetectionJobsWithContext(aws.Context, *comprehend.ListEventsDetectionJobsInput, ...request.Option) (*comprehend.ListEventsDetectionJobsOutput, error)
+	ListEventsDetectionJobsRequest(*comprehend.ListEventsDetectionJobsInput) (*request.Request, *comprehend.ListEventsDetectionJobsOutput)
+
+	ListEventsDetectionJobsPages(*comprehend.ListEventsDetectionJobsInput, func(*comprehend.ListEventsDetectionJobsOutput, bool) bool) error
+	ListEventsDetectionJobsPagesWithContext(aws.Context, *comprehend.ListEventsDetectionJobsInput, func(*comprehend.ListEventsDetectionJobsOutput, bool) bool, ...request.Option) error
+
 	ListKeyPhrasesDetectionJobs(*comprehend.ListKeyPhrasesDetectionJobsInput) (*comprehend.ListKeyPhrasesDetectionJobsOutput, error)
 	ListKeyPhrasesDetectionJobsWithContext(aws.Context, *comprehend.ListKeyPhrasesDetectionJobsInput, ...request.Option) (*comprehend.ListKeyPhrasesDetectionJobsOutput, error)
 	ListKeyPhrasesDetectionJobsRequest(*comprehend.ListKeyPhrasesDetectionJobsInput) (*request.Request, *comprehend.ListKeyPhrasesDetectionJobsOutput)
 
 	ListKeyPhrasesDetectionJobsPages(*comprehend.ListKeyPhrasesDetectionJobsInput, func(*comprehend.ListKeyPhrasesDetectionJobsOutput, bool) bool) error
 	ListKeyPhrasesDetectionJobsPagesWithContext(aws.Context, *comprehend.ListKeyPhrasesDetectionJobsInput, func(*comprehend.ListKeyPhrasesDetectionJobsOutput, bool) bool, ...request.Option) error
+
+	ListPiiEntitiesDetectionJobs(*comprehend.ListPiiEntitiesDetectionJobsInput) (*comprehend.ListPiiEntitiesDetectionJobsOutput, error)
+	ListPiiEntitiesDetectionJobsWithContext(aws.Context, *comprehend.ListPiiEntitiesDetectionJobsInput, ...request.Option) (*comprehend.ListPiiEntitiesDetectionJobsOutput, error)
+	ListPiiEntitiesDetectionJobsRequest(*comprehend.ListPiiEntitiesDetectionJobsInput) (*request.Request, *comprehend.ListPiiEntitiesDetectionJobsOutput)
 
 	ListSentimentDetectionJobs(*comprehend.ListSentimentDetectionJobsInput) (*comprehend.ListSentimentDetectionJobsOutput, error)
 	ListSentimentDetectionJobsWithContext(aws.Context, *comprehend.ListSentimentDetectionJobsInput, ...request.Option) (*comprehend.ListSentimentDetectionJobsOutput, error)
@@ -240,9 +267,17 @@ type ComprehendAPI interface {
 	StartEntitiesDetectionJobWithContext(aws.Context, *comprehend.StartEntitiesDetectionJobInput, ...request.Option) (*comprehend.StartEntitiesDetectionJobOutput, error)
 	StartEntitiesDetectionJobRequest(*comprehend.StartEntitiesDetectionJobInput) (*request.Request, *comprehend.StartEntitiesDetectionJobOutput)
 
+	StartEventsDetectionJob(*comprehend.StartEventsDetectionJobInput) (*comprehend.StartEventsDetectionJobOutput, error)
+	StartEventsDetectionJobWithContext(aws.Context, *comprehend.StartEventsDetectionJobInput, ...request.Option) (*comprehend.StartEventsDetectionJobOutput, error)
+	StartEventsDetectionJobRequest(*comprehend.StartEventsDetectionJobInput) (*request.Request, *comprehend.StartEventsDetectionJobOutput)
+
 	StartKeyPhrasesDetectionJob(*comprehend.StartKeyPhrasesDetectionJobInput) (*comprehend.StartKeyPhrasesDetectionJobOutput, error)
 	StartKeyPhrasesDetectionJobWithContext(aws.Context, *comprehend.StartKeyPhrasesDetectionJobInput, ...request.Option) (*comprehend.StartKeyPhrasesDetectionJobOutput, error)
 	StartKeyPhrasesDetectionJobRequest(*comprehend.StartKeyPhrasesDetectionJobInput) (*request.Request, *comprehend.StartKeyPhrasesDetectionJobOutput)
+
+	StartPiiEntitiesDetectionJob(*comprehend.StartPiiEntitiesDetectionJobInput) (*comprehend.StartPiiEntitiesDetectionJobOutput, error)
+	StartPiiEntitiesDetectionJobWithContext(aws.Context, *comprehend.StartPiiEntitiesDetectionJobInput, ...request.Option) (*comprehend.StartPiiEntitiesDetectionJobOutput, error)
+	StartPiiEntitiesDetectionJobRequest(*comprehend.StartPiiEntitiesDetectionJobInput) (*request.Request, *comprehend.StartPiiEntitiesDetectionJobOutput)
 
 	StartSentimentDetectionJob(*comprehend.StartSentimentDetectionJobInput) (*comprehend.StartSentimentDetectionJobOutput, error)
 	StartSentimentDetectionJobWithContext(aws.Context, *comprehend.StartSentimentDetectionJobInput, ...request.Option) (*comprehend.StartSentimentDetectionJobOutput, error)
@@ -260,9 +295,17 @@ type ComprehendAPI interface {
 	StopEntitiesDetectionJobWithContext(aws.Context, *comprehend.StopEntitiesDetectionJobInput, ...request.Option) (*comprehend.StopEntitiesDetectionJobOutput, error)
 	StopEntitiesDetectionJobRequest(*comprehend.StopEntitiesDetectionJobInput) (*request.Request, *comprehend.StopEntitiesDetectionJobOutput)
 
+	StopEventsDetectionJob(*comprehend.StopEventsDetectionJobInput) (*comprehend.StopEventsDetectionJobOutput, error)
+	StopEventsDetectionJobWithContext(aws.Context, *comprehend.StopEventsDetectionJobInput, ...request.Option) (*comprehend.StopEventsDetectionJobOutput, error)
+	StopEventsDetectionJobRequest(*comprehend.StopEventsDetectionJobInput) (*request.Request, *comprehend.StopEventsDetectionJobOutput)
+
 	StopKeyPhrasesDetectionJob(*comprehend.StopKeyPhrasesDetectionJobInput) (*comprehend.StopKeyPhrasesDetectionJobOutput, error)
 	StopKeyPhrasesDetectionJobWithContext(aws.Context, *comprehend.StopKeyPhrasesDetectionJobInput, ...request.Option) (*comprehend.StopKeyPhrasesDetectionJobOutput, error)
 	StopKeyPhrasesDetectionJobRequest(*comprehend.StopKeyPhrasesDetectionJobInput) (*request.Request, *comprehend.StopKeyPhrasesDetectionJobOutput)
+
+	StopPiiEntitiesDetectionJob(*comprehend.StopPiiEntitiesDetectionJobInput) (*comprehend.StopPiiEntitiesDetectionJobOutput, error)
+	StopPiiEntitiesDetectionJobWithContext(aws.Context, *comprehend.StopPiiEntitiesDetectionJobInput, ...request.Option) (*comprehend.StopPiiEntitiesDetectionJobOutput, error)
+	StopPiiEntitiesDetectionJobRequest(*comprehend.StopPiiEntitiesDetectionJobInput) (*request.Request, *comprehend.StopPiiEntitiesDetectionJobOutput)
 
 	StopSentimentDetectionJob(*comprehend.StopSentimentDetectionJobInput) (*comprehend.StopSentimentDetectionJobOutput, error)
 	StopSentimentDetectionJobWithContext(aws.Context, *comprehend.StopSentimentDetectionJobInput, ...request.Option) (*comprehend.StopSentimentDetectionJobOutput, error)

@@ -50,8 +50,24 @@ func ExampleElastiCache_AddTagsToResource_shared00() {
 			switch aerr.Code() {
 			case elasticache.ErrCodeCacheClusterNotFoundFault:
 				fmt.Println(elasticache.ErrCodeCacheClusterNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheParameterGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheParameterGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheSecurityGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheSecurityGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheSubnetGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheSubnetGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeInvalidReplicationGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidReplicationGroupStateFault, aerr.Error())
+			case elasticache.ErrCodeReplicationGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeReplicationGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeReservedCacheNodeNotFoundFault:
+				fmt.Println(elasticache.ErrCodeReservedCacheNodeNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeSnapshotNotFoundFault:
 				fmt.Println(elasticache.ErrCodeSnapshotNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeUserNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeUserGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserGroupNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
 				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidARNFault:
@@ -134,6 +150,8 @@ func ExampleElastiCache_CopySnapshot_shared00() {
 				fmt.Println(elasticache.ErrCodeSnapshotQuotaExceededFault, aerr.Error())
 			case elasticache.ErrCodeInvalidSnapshotStateFault:
 				fmt.Println(elasticache.ErrCodeInvalidSnapshotStateFault, aerr.Error())
+			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
+				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
@@ -299,6 +317,8 @@ func ExampleElastiCache_CreateCacheParameterGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeCacheParameterGroupAlreadyExistsFault, aerr.Error())
 			case elasticache.ErrCodeInvalidCacheParameterGroupStateFault:
 				fmt.Println(elasticache.ErrCodeInvalidCacheParameterGroupStateFault, aerr.Error())
+			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
+				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
@@ -336,6 +356,8 @@ func ExampleElastiCache_CreateCacheSecurityGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeCacheSecurityGroupAlreadyExistsFault, aerr.Error())
 			case elasticache.ErrCodeCacheSecurityGroupQuotaExceededFault:
 				fmt.Println(elasticache.ErrCodeCacheSecurityGroupQuotaExceededFault, aerr.Error())
+			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
+				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
@@ -379,8 +401,12 @@ func ExampleElastiCache_CreateCacheSubnetGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeCacheSubnetGroupQuotaExceededFault, aerr.Error())
 			case elasticache.ErrCodeCacheSubnetQuotaExceededFault:
 				fmt.Println(elasticache.ErrCodeCacheSubnetQuotaExceededFault, aerr.Error())
+			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
+				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidSubnet:
 				fmt.Println(elasticache.ErrCodeInvalidSubnet, aerr.Error())
+			case elasticache.ErrCodeSubnetNotAllowedFault:
+				fmt.Println(elasticache.ErrCodeSubnetNotAllowedFault, aerr.Error())
 			default:
 				fmt.Println(aerr.Error())
 			}
@@ -421,6 +447,10 @@ func ExampleElastiCache_CreateReplicationGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeInvalidCacheClusterStateFault, aerr.Error())
 			case elasticache.ErrCodeReplicationGroupAlreadyExistsFault:
 				fmt.Println(elasticache.ErrCodeReplicationGroupAlreadyExistsFault, aerr.Error())
+			case elasticache.ErrCodeInvalidUserGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidUserGroupStateFault, aerr.Error())
+			case elasticache.ErrCodeUserGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserGroupNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeInsufficientCacheClusterCapacityFault:
 				fmt.Println(elasticache.ErrCodeInsufficientCacheClusterCapacityFault, aerr.Error())
 			case elasticache.ErrCodeCacheSecurityGroupNotFoundFault:
@@ -441,6 +471,10 @@ func ExampleElastiCache_CreateReplicationGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeNodeGroupsPerReplicationGroupQuotaExceededFault:
 				fmt.Println(elasticache.ErrCodeNodeGroupsPerReplicationGroupQuotaExceededFault, aerr.Error())
+			case elasticache.ErrCodeGlobalReplicationGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeGlobalReplicationGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeInvalidGlobalReplicationGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidGlobalReplicationGroupStateFault, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
@@ -506,6 +540,10 @@ func ExampleElastiCache_CreateReplicationGroup_shared01() {
 				fmt.Println(elasticache.ErrCodeInvalidCacheClusterStateFault, aerr.Error())
 			case elasticache.ErrCodeReplicationGroupAlreadyExistsFault:
 				fmt.Println(elasticache.ErrCodeReplicationGroupAlreadyExistsFault, aerr.Error())
+			case elasticache.ErrCodeInvalidUserGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidUserGroupStateFault, aerr.Error())
+			case elasticache.ErrCodeUserGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserGroupNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeInsufficientCacheClusterCapacityFault:
 				fmt.Println(elasticache.ErrCodeInsufficientCacheClusterCapacityFault, aerr.Error())
 			case elasticache.ErrCodeCacheSecurityGroupNotFoundFault:
@@ -526,6 +564,10 @@ func ExampleElastiCache_CreateReplicationGroup_shared01() {
 				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeNodeGroupsPerReplicationGroupQuotaExceededFault:
 				fmt.Println(elasticache.ErrCodeNodeGroupsPerReplicationGroupQuotaExceededFault, aerr.Error())
+			case elasticache.ErrCodeGlobalReplicationGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeGlobalReplicationGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeInvalidGlobalReplicationGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidGlobalReplicationGroupStateFault, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
@@ -572,6 +614,8 @@ func ExampleElastiCache_CreateSnapshot_shared00() {
 				fmt.Println(elasticache.ErrCodeSnapshotQuotaExceededFault, aerr.Error())
 			case elasticache.ErrCodeSnapshotFeatureNotSupportedFault:
 				fmt.Println(elasticache.ErrCodeSnapshotFeatureNotSupportedFault, aerr.Error())
+			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
+				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterCombinationException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
@@ -619,6 +663,8 @@ func ExampleElastiCache_CreateSnapshot_shared01() {
 				fmt.Println(elasticache.ErrCodeSnapshotQuotaExceededFault, aerr.Error())
 			case elasticache.ErrCodeSnapshotFeatureNotSupportedFault:
 				fmt.Println(elasticache.ErrCodeSnapshotFeatureNotSupportedFault, aerr.Error())
+			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
+				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterCombinationException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
@@ -666,6 +712,8 @@ func ExampleElastiCache_CreateSnapshot_shared02() {
 				fmt.Println(elasticache.ErrCodeSnapshotQuotaExceededFault, aerr.Error())
 			case elasticache.ErrCodeSnapshotFeatureNotSupportedFault:
 				fmt.Println(elasticache.ErrCodeSnapshotFeatureNotSupportedFault, aerr.Error())
+			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
+				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterCombinationException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
@@ -1552,8 +1600,24 @@ func ExampleElastiCache_ListTagsForResource_shared00() {
 			switch aerr.Code() {
 			case elasticache.ErrCodeCacheClusterNotFoundFault:
 				fmt.Println(elasticache.ErrCodeCacheClusterNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheParameterGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheParameterGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheSecurityGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheSecurityGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheSubnetGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheSubnetGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeInvalidReplicationGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidReplicationGroupStateFault, aerr.Error())
+			case elasticache.ErrCodeReplicationGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeReplicationGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeReservedCacheNodeNotFoundFault:
+				fmt.Println(elasticache.ErrCodeReservedCacheNodeNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeSnapshotNotFoundFault:
 				fmt.Println(elasticache.ErrCodeSnapshotNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeUserNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeUserGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserGroupNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeInvalidARNFault:
 				fmt.Println(elasticache.ErrCodeInvalidARNFault, aerr.Error())
 			default:
@@ -1653,6 +1717,8 @@ func ExampleElastiCache_ModifyCacheParameterGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterCombinationException, aerr.Error())
+			case elasticache.ErrCodeInvalidGlobalReplicationGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidGlobalReplicationGroupStateFault, aerr.Error())
 			default:
 				fmt.Println(aerr.Error())
 			}
@@ -1691,6 +1757,8 @@ func ExampleElastiCache_ModifyCacheSubnetGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeSubnetInUse, aerr.Error())
 			case elasticache.ErrCodeInvalidSubnet:
 				fmt.Println(elasticache.ErrCodeInvalidSubnet, aerr.Error())
+			case elasticache.ErrCodeSubnetNotAllowedFault:
+				fmt.Println(elasticache.ErrCodeSubnetNotAllowedFault, aerr.Error())
 			default:
 				fmt.Println(aerr.Error())
 			}
@@ -1726,6 +1794,10 @@ func ExampleElastiCache_ModifyReplicationGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeReplicationGroupNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeInvalidReplicationGroupStateFault:
 				fmt.Println(elasticache.ErrCodeInvalidReplicationGroupStateFault, aerr.Error())
+			case elasticache.ErrCodeInvalidUserGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidUserGroupStateFault, aerr.Error())
+			case elasticache.ErrCodeUserGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserGroupNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeInvalidCacheClusterStateFault:
 				fmt.Println(elasticache.ErrCodeInvalidCacheClusterStateFault, aerr.Error())
 			case elasticache.ErrCodeInvalidCacheSecurityGroupStateFault:
@@ -1783,6 +1855,8 @@ func ExampleElastiCache_PurchaseReservedCacheNodesOffering_shared00() {
 				fmt.Println(elasticache.ErrCodeReservedCacheNodeAlreadyExistsFault, aerr.Error())
 			case elasticache.ErrCodeReservedCacheNodeQuotaExceededFault:
 				fmt.Println(elasticache.ErrCodeReservedCacheNodeQuotaExceededFault, aerr.Error())
+			case elasticache.ErrCodeTagQuotaPerResourceExceeded:
+				fmt.Println(elasticache.ErrCodeTagQuotaPerResourceExceeded, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterValueException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
@@ -1857,8 +1931,24 @@ func ExampleElastiCache_RemoveTagsFromResource_shared00() {
 			switch aerr.Code() {
 			case elasticache.ErrCodeCacheClusterNotFoundFault:
 				fmt.Println(elasticache.ErrCodeCacheClusterNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheParameterGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheParameterGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheSecurityGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheSecurityGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeCacheSubnetGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeCacheSubnetGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeInvalidReplicationGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidReplicationGroupStateFault, aerr.Error())
+			case elasticache.ErrCodeReplicationGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeReplicationGroupNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeReservedCacheNodeNotFoundFault:
+				fmt.Println(elasticache.ErrCodeReservedCacheNodeNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeSnapshotNotFoundFault:
 				fmt.Println(elasticache.ErrCodeSnapshotNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeUserNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserNotFoundFault, aerr.Error())
+			case elasticache.ErrCodeUserGroupNotFoundFault:
+				fmt.Println(elasticache.ErrCodeUserGroupNotFoundFault, aerr.Error())
 			case elasticache.ErrCodeInvalidARNFault:
 				fmt.Println(elasticache.ErrCodeInvalidARNFault, aerr.Error())
 			case elasticache.ErrCodeTagNotFoundFault:
@@ -1900,6 +1990,8 @@ func ExampleElastiCache_ResetCacheParameterGroup_shared00() {
 				fmt.Println(elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
 			case elasticache.ErrCodeInvalidParameterCombinationException:
 				fmt.Println(elasticache.ErrCodeInvalidParameterCombinationException, aerr.Error())
+			case elasticache.ErrCodeInvalidGlobalReplicationGroupStateFault:
+				fmt.Println(elasticache.ErrCodeInvalidGlobalReplicationGroupStateFault, aerr.Error())
 			default:
 				fmt.Println(aerr.Error())
 			}

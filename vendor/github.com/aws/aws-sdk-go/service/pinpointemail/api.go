@@ -4188,8 +4188,8 @@ func (c *PinpointEmail) UpdateConfigurationSetEventDestinationWithContext(ctx aw
 // The message can't be sent because the account's ability to send email has
 // been permanently restricted.
 type AccountSuspendedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4206,17 +4206,17 @@ func (s AccountSuspendedException) GoString() string {
 
 func newErrorAccountSuspendedException(v protocol.ResponseMetadata) error {
 	return &AccountSuspendedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s AccountSuspendedException) Code() string {
+func (s *AccountSuspendedException) Code() string {
 	return "AccountSuspendedException"
 }
 
 // Message returns the exception's message.
-func (s AccountSuspendedException) Message() string {
+func (s *AccountSuspendedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4224,28 +4224,28 @@ func (s AccountSuspendedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s AccountSuspendedException) OrigErr() error {
+func (s *AccountSuspendedException) OrigErr() error {
 	return nil
 }
 
-func (s AccountSuspendedException) Error() string {
+func (s *AccountSuspendedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s AccountSuspendedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *AccountSuspendedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s AccountSuspendedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *AccountSuspendedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The resource specified in your request already exists.
 type AlreadyExistsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4262,17 +4262,17 @@ func (s AlreadyExistsException) GoString() string {
 
 func newErrorAlreadyExistsException(v protocol.ResponseMetadata) error {
 	return &AlreadyExistsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s AlreadyExistsException) Code() string {
+func (s *AlreadyExistsException) Code() string {
 	return "AlreadyExistsException"
 }
 
 // Message returns the exception's message.
-func (s AlreadyExistsException) Message() string {
+func (s *AlreadyExistsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4280,28 +4280,28 @@ func (s AlreadyExistsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s AlreadyExistsException) OrigErr() error {
+func (s *AlreadyExistsException) OrigErr() error {
 	return nil
 }
 
-func (s AlreadyExistsException) Error() string {
+func (s *AlreadyExistsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s AlreadyExistsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *AlreadyExistsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s AlreadyExistsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *AlreadyExistsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The input you provided is invalid.
 type BadRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4318,17 +4318,17 @@ func (s BadRequestException) GoString() string {
 
 func newErrorBadRequestException(v protocol.ResponseMetadata) error {
 	return &BadRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BadRequestException) Code() string {
+func (s *BadRequestException) Code() string {
 	return "BadRequestException"
 }
 
 // Message returns the exception's message.
-func (s BadRequestException) Message() string {
+func (s *BadRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4336,22 +4336,22 @@ func (s BadRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BadRequestException) OrigErr() error {
+func (s *BadRequestException) OrigErr() error {
 	return nil
 }
 
-func (s BadRequestException) Error() string {
+func (s *BadRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BadRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BadRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BadRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BadRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that contains information about a blacklisting event that impacts
@@ -4595,8 +4595,8 @@ func (s *CloudWatchDimensionConfiguration) SetDimensionValueSource(v string) *Cl
 
 // The resource is being modified by another operation or thread.
 type ConcurrentModificationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4613,17 +4613,17 @@ func (s ConcurrentModificationException) GoString() string {
 
 func newErrorConcurrentModificationException(v protocol.ResponseMetadata) error {
 	return &ConcurrentModificationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConcurrentModificationException) Code() string {
+func (s *ConcurrentModificationException) Code() string {
 	return "ConcurrentModificationException"
 }
 
 // Message returns the exception's message.
-func (s ConcurrentModificationException) Message() string {
+func (s *ConcurrentModificationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4631,22 +4631,22 @@ func (s ConcurrentModificationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConcurrentModificationException) OrigErr() error {
+func (s *ConcurrentModificationException) OrigErr() error {
 	return nil
 }
 
-func (s ConcurrentModificationException) Error() string {
+func (s *ConcurrentModificationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConcurrentModificationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConcurrentModificationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConcurrentModificationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConcurrentModificationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that represents the content of the email, and optionally a character
@@ -7621,8 +7621,8 @@ func (s *KinesisFirehoseDestination) SetIamRoleArn(v string) *KinesisFirehoseDes
 
 // There are too many instances of the specified resource type.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7639,17 +7639,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7657,22 +7657,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A request to obtain a list of configuration sets for your Amazon Pinpoint
@@ -8257,8 +8257,8 @@ func (s *MailFromAttributes) SetMailFromDomainStatus(v string) *MailFromAttribut
 
 // The message can't be sent because the sending domain isn't verified.
 type MailFromDomainNotVerifiedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8275,17 +8275,17 @@ func (s MailFromDomainNotVerifiedException) GoString() string {
 
 func newErrorMailFromDomainNotVerifiedException(v protocol.ResponseMetadata) error {
 	return &MailFromDomainNotVerifiedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MailFromDomainNotVerifiedException) Code() string {
+func (s *MailFromDomainNotVerifiedException) Code() string {
 	return "MailFromDomainNotVerifiedException"
 }
 
 // Message returns the exception's message.
-func (s MailFromDomainNotVerifiedException) Message() string {
+func (s *MailFromDomainNotVerifiedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8293,22 +8293,22 @@ func (s MailFromDomainNotVerifiedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MailFromDomainNotVerifiedException) OrigErr() error {
+func (s *MailFromDomainNotVerifiedException) OrigErr() error {
 	return nil
 }
 
-func (s MailFromDomainNotVerifiedException) Error() string {
+func (s *MailFromDomainNotVerifiedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MailFromDomainNotVerifiedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MailFromDomainNotVerifiedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MailFromDomainNotVerifiedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MailFromDomainNotVerifiedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the email message that you're sending. The Message object consists
@@ -8380,8 +8380,8 @@ func (s *Message) SetSubject(v *Content) *Message {
 
 // The message can't be sent because it contains invalid content.
 type MessageRejected struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8398,17 +8398,17 @@ func (s MessageRejected) GoString() string {
 
 func newErrorMessageRejected(v protocol.ResponseMetadata) error {
 	return &MessageRejected{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MessageRejected) Code() string {
+func (s *MessageRejected) Code() string {
 	return "MessageRejected"
 }
 
 // Message returns the exception's message.
-func (s MessageRejected) Message() string {
+func (s *MessageRejected) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8416,22 +8416,22 @@ func (s MessageRejected) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MessageRejected) OrigErr() error {
+func (s *MessageRejected) OrigErr() error {
 	return nil
 }
 
-func (s MessageRejected) Error() string {
+func (s *MessageRejected) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MessageRejected) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MessageRejected) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MessageRejected) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MessageRejected) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains the name and value of a tag that you apply to an email. You can
@@ -8502,8 +8502,8 @@ func (s *MessageTag) SetValue(v string) *MessageTag {
 
 // The resource you attempted to access doesn't exist.
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8520,17 +8520,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8538,22 +8538,22 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that contains information about email that was sent from the selected
@@ -9864,8 +9864,8 @@ func (s *SendingOptions) SetSendingEnabled(v bool) *SendingOptions {
 // The message can't be sent because the account's ability to send email is
 // currently paused.
 type SendingPausedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -9882,17 +9882,17 @@ func (s SendingPausedException) GoString() string {
 
 func newErrorSendingPausedException(v protocol.ResponseMetadata) error {
 	return &SendingPausedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s SendingPausedException) Code() string {
+func (s *SendingPausedException) Code() string {
 	return "SendingPausedException"
 }
 
 // Message returns the exception's message.
-func (s SendingPausedException) Message() string {
+func (s *SendingPausedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9900,22 +9900,22 @@ func (s SendingPausedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s SendingPausedException) OrigErr() error {
+func (s *SendingPausedException) OrigErr() error {
 	return nil
 }
 
-func (s SendingPausedException) Error() string {
+func (s *SendingPausedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s SendingPausedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *SendingPausedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s SendingPausedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *SendingPausedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that defines an Amazon SNS destination for email events. You can
@@ -10162,8 +10162,8 @@ func (s *Template) SetTemplateData(v string) *Template {
 
 // Too many requests have been made to the operation.
 type TooManyRequestsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -10180,17 +10180,17 @@ func (s TooManyRequestsException) GoString() string {
 
 func newErrorTooManyRequestsException(v protocol.ResponseMetadata) error {
 	return &TooManyRequestsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyRequestsException) Code() string {
+func (s *TooManyRequestsException) Code() string {
 	return "TooManyRequestsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyRequestsException) Message() string {
+func (s *TooManyRequestsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10198,22 +10198,22 @@ func (s TooManyRequestsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyRequestsException) OrigErr() error {
+func (s *TooManyRequestsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyRequestsException) Error() string {
+func (s *TooManyRequestsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyRequestsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyRequestsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyRequestsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyRequestsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that defines the tracking options for a configuration set. When
@@ -10502,6 +10502,14 @@ const (
 	BehaviorOnMxFailureRejectMessage = "REJECT_MESSAGE"
 )
 
+// BehaviorOnMxFailure_Values returns all elements of the BehaviorOnMxFailure enum
+func BehaviorOnMxFailure_Values() []string {
+	return []string{
+		BehaviorOnMxFailureUseDefaultValue,
+		BehaviorOnMxFailureRejectMessage,
+	}
+}
+
 // The current status of your Deliverability dashboard subscription. If this
 // value is PENDING_EXPIRATION, your subscription is scheduled to expire at
 // the end of the current calendar month.
@@ -10516,6 +10524,15 @@ const (
 	DeliverabilityDashboardAccountStatusDisabled = "DISABLED"
 )
 
+// DeliverabilityDashboardAccountStatus_Values returns all elements of the DeliverabilityDashboardAccountStatus enum
+func DeliverabilityDashboardAccountStatus_Values() []string {
+	return []string{
+		DeliverabilityDashboardAccountStatusActive,
+		DeliverabilityDashboardAccountStatusPendingExpiration,
+		DeliverabilityDashboardAccountStatusDisabled,
+	}
+}
+
 // The status of a predictive inbox placement test. If the status is IN_PROGRESS,
 // then the predictive inbox placement test is currently running. Predictive
 // inbox placement tests are usually complete within 24 hours of creating the
@@ -10528,6 +10545,14 @@ const (
 	// DeliverabilityTestStatusCompleted is a DeliverabilityTestStatus enum value
 	DeliverabilityTestStatusCompleted = "COMPLETED"
 )
+
+// DeliverabilityTestStatus_Values returns all elements of the DeliverabilityTestStatus enum
+func DeliverabilityTestStatus_Values() []string {
+	return []string{
+		DeliverabilityTestStatusInProgress,
+		DeliverabilityTestStatusCompleted,
+	}
+}
 
 // The location where Amazon Pinpoint finds the value of a dimension to publish
 // to Amazon CloudWatch. If you want Amazon Pinpoint to use the message tags
@@ -10545,6 +10570,15 @@ const (
 	// DimensionValueSourceLinkTag is a DimensionValueSource enum value
 	DimensionValueSourceLinkTag = "LINK_TAG"
 )
+
+// DimensionValueSource_Values returns all elements of the DimensionValueSource enum
+func DimensionValueSource_Values() []string {
+	return []string{
+		DimensionValueSourceMessageTag,
+		DimensionValueSourceEmailHeader,
+		DimensionValueSourceLinkTag,
+	}
+}
 
 // The DKIM authentication status of the identity. The status can be one of
 // the following:
@@ -10581,6 +10615,17 @@ const (
 	DkimStatusNotStarted = "NOT_STARTED"
 )
 
+// DkimStatus_Values returns all elements of the DkimStatus enum
+func DkimStatus_Values() []string {
+	return []string{
+		DkimStatusPending,
+		DkimStatusSuccess,
+		DkimStatusFailed,
+		DkimStatusTemporaryFailure,
+		DkimStatusNotStarted,
+	}
+}
+
 // An email sending event type. For example, email sends, opens, and bounces
 // are all email events.
 const (
@@ -10609,6 +10654,20 @@ const (
 	EventTypeRenderingFailure = "RENDERING_FAILURE"
 )
 
+// EventType_Values returns all elements of the EventType enum
+func EventType_Values() []string {
+	return []string{
+		EventTypeSend,
+		EventTypeReject,
+		EventTypeBounce,
+		EventTypeComplaint,
+		EventTypeDelivery,
+		EventTypeOpen,
+		EventTypeClick,
+		EventTypeRenderingFailure,
+	}
+}
+
 // The email identity type. The identity type can be one of the following:
 //
 //    * EMAIL_ADDRESS – The identity is an email address.
@@ -10624,6 +10683,15 @@ const (
 	// IdentityTypeManagedDomain is a IdentityType enum value
 	IdentityTypeManagedDomain = "MANAGED_DOMAIN"
 )
+
+// IdentityType_Values returns all elements of the IdentityType enum
+func IdentityType_Values() []string {
+	return []string{
+		IdentityTypeEmailAddress,
+		IdentityTypeDomain,
+		IdentityTypeManagedDomain,
+	}
+}
 
 // The status of the MAIL FROM domain. This status can have the following values:
 //
@@ -10652,6 +10720,16 @@ const (
 	MailFromDomainStatusTemporaryFailure = "TEMPORARY_FAILURE"
 )
 
+// MailFromDomainStatus_Values returns all elements of the MailFromDomainStatus enum
+func MailFromDomainStatus_Values() []string {
+	return []string{
+		MailFromDomainStatusPending,
+		MailFromDomainStatusSuccess,
+		MailFromDomainStatusFailed,
+		MailFromDomainStatusTemporaryFailure,
+	}
+}
+
 // Specifies whether messages that use the configuration set are required to
 // use Transport Layer Security (TLS). If the value is Require, messages are
 // only delivered if a TLS connection can be established. If the value is Optional,
@@ -10664,6 +10742,14 @@ const (
 	TlsPolicyOptional = "OPTIONAL"
 )
 
+// TlsPolicy_Values returns all elements of the TlsPolicy enum
+func TlsPolicy_Values() []string {
+	return []string{
+		TlsPolicyRequire,
+		TlsPolicyOptional,
+	}
+}
+
 // The warmup status of a dedicated IP.
 const (
 	// WarmupStatusInProgress is a WarmupStatus enum value
@@ -10672,3 +10758,11 @@ const (
 	// WarmupStatusDone is a WarmupStatus enum value
 	WarmupStatusDone = "DONE"
 )
+
+// WarmupStatus_Values returns all elements of the WarmupStatus enum
+func WarmupStatus_Values() []string {
+	return []string{
+		WarmupStatusInProgress,
+		WarmupStatusDone,
+	}
+}

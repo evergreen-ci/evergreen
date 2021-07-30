@@ -112,11 +112,6 @@ func (c *Mock) SetTimeoutStart(timeoutStart time.Duration) { c.timeoutStart = ti
 func (c *Mock) SetTimeoutMax(timeoutMax time.Duration)     { c.timeoutMax = timeoutMax }
 func (c *Mock) SetMaxAttempts(attempts int)                { c.maxAttempts = attempts }
 
-func (c *Mock) SetHostID(hostID string)         { c.hostID = hostID }
-func (c *Mock) SetHostSecret(hostSecret string) { c.hostSecret = hostSecret }
-func (c *Mock) GetHostID() string               { return c.hostID }
-func (c *Mock) GetHostSecret() string           { return c.hostSecret }
-
 func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
 	return &apimodels.AgentSetupData{}, nil
 }
@@ -272,7 +267,7 @@ func (c *Mock) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, erro
 // GetCedarGRPCConn returns gRPC connection if it is set.
 func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 	if c.CedarGRPCConn == nil {
-		return nil, errors.New("Cedar gRPC connection is unset")
+		return nil, nil
 	}
 	return c.CedarGRPCConn, nil
 }

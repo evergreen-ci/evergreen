@@ -762,6 +762,101 @@ func (c *Neptune) CreateDBClusterWithContext(ctx aws.Context, input *CreateDBClu
 	return out, req.Send()
 }
 
+const opCreateDBClusterEndpoint = "CreateDBClusterEndpoint"
+
+// CreateDBClusterEndpointRequest generates a "aws/request.Request" representing the
+// client's request for the CreateDBClusterEndpoint operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See CreateDBClusterEndpoint for more information on using the CreateDBClusterEndpoint
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the CreateDBClusterEndpointRequest method.
+//    req, resp := client.CreateDBClusterEndpointRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/neptune-2014-10-31/CreateDBClusterEndpoint
+func (c *Neptune) CreateDBClusterEndpointRequest(input *CreateDBClusterEndpointInput) (req *request.Request, output *CreateDBClusterEndpointOutput) {
+	op := &request.Operation{
+		Name:       opCreateDBClusterEndpoint,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &CreateDBClusterEndpointInput{}
+	}
+
+	output = &CreateDBClusterEndpointOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// CreateDBClusterEndpoint API operation for Amazon Neptune.
+//
+// Creates a new custom endpoint and associates it with an Amazon Neptune DB
+// cluster.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Neptune's
+// API operation CreateDBClusterEndpoint for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeDBClusterEndpointQuotaExceededFault "DBClusterEndpointQuotaExceededFault"
+//   The cluster already has the maximum number of custom endpoints.
+//
+//   * ErrCodeDBClusterEndpointAlreadyExistsFault "DBClusterEndpointAlreadyExistsFault"
+//   The specified custom endpoint cannot be created because it already exists.
+//
+//   * ErrCodeDBClusterNotFoundFault "DBClusterNotFoundFault"
+//   DBClusterIdentifier does not refer to an existing DB cluster.
+//
+//   * ErrCodeInvalidDBClusterStateFault "InvalidDBClusterStateFault"
+//   The DB cluster is not in a valid state.
+//
+//   * ErrCodeDBInstanceNotFoundFault "DBInstanceNotFound"
+//   DBInstanceIdentifier does not refer to an existing DB instance.
+//
+//   * ErrCodeInvalidDBInstanceStateFault "InvalidDBInstanceState"
+//   The specified DB instance is not in the available state.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/neptune-2014-10-31/CreateDBClusterEndpoint
+func (c *Neptune) CreateDBClusterEndpoint(input *CreateDBClusterEndpointInput) (*CreateDBClusterEndpointOutput, error) {
+	req, out := c.CreateDBClusterEndpointRequest(input)
+	return out, req.Send()
+}
+
+// CreateDBClusterEndpointWithContext is the same as CreateDBClusterEndpoint with the addition of
+// the ability to pass a context and additional request options.
+//
+// See CreateDBClusterEndpoint for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) CreateDBClusterEndpointWithContext(ctx aws.Context, input *CreateDBClusterEndpointInput, opts ...request.Option) (*CreateDBClusterEndpointOutput, error) {
+	req, out := c.CreateDBClusterEndpointRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opCreateDBClusterParameterGroup = "CreateDBClusterParameterGroup"
 
 // CreateDBClusterParameterGroupRequest generates a "aws/request.Request" representing the
@@ -1247,7 +1342,7 @@ func (c *Neptune) CreateDBSubnetGroupRequest(input *CreateDBSubnetGroupInput) (r
 // CreateDBSubnetGroup API operation for Amazon Neptune.
 //
 // Creates a new DB subnet group. DB subnet groups must contain at least one
-// subnet in at least two AZs in the AWS Region.
+// subnet in at least two AZs in the Amazon Region.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1505,6 +1600,92 @@ func (c *Neptune) DeleteDBCluster(input *DeleteDBClusterInput) (*DeleteDBCluster
 // for more information on using Contexts.
 func (c *Neptune) DeleteDBClusterWithContext(ctx aws.Context, input *DeleteDBClusterInput, opts ...request.Option) (*DeleteDBClusterOutput, error) {
 	req, out := c.DeleteDBClusterRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeleteDBClusterEndpoint = "DeleteDBClusterEndpoint"
+
+// DeleteDBClusterEndpointRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteDBClusterEndpoint operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteDBClusterEndpoint for more information on using the DeleteDBClusterEndpoint
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteDBClusterEndpointRequest method.
+//    req, resp := client.DeleteDBClusterEndpointRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/neptune-2014-10-31/DeleteDBClusterEndpoint
+func (c *Neptune) DeleteDBClusterEndpointRequest(input *DeleteDBClusterEndpointInput) (req *request.Request, output *DeleteDBClusterEndpointOutput) {
+	op := &request.Operation{
+		Name:       opDeleteDBClusterEndpoint,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteDBClusterEndpointInput{}
+	}
+
+	output = &DeleteDBClusterEndpointOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DeleteDBClusterEndpoint API operation for Amazon Neptune.
+//
+// Deletes a custom endpoint and removes it from an Amazon Neptune DB cluster.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Neptune's
+// API operation DeleteDBClusterEndpoint for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInvalidDBClusterEndpointStateFault "InvalidDBClusterEndpointStateFault"
+//   The requested operation cannot be performed on the endpoint while the endpoint
+//   is in this state.
+//
+//   * ErrCodeDBClusterEndpointNotFoundFault "DBClusterEndpointNotFoundFault"
+//   The specified custom endpoint doesn't exist.
+//
+//   * ErrCodeInvalidDBClusterStateFault "InvalidDBClusterStateFault"
+//   The DB cluster is not in a valid state.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/neptune-2014-10-31/DeleteDBClusterEndpoint
+func (c *Neptune) DeleteDBClusterEndpoint(input *DeleteDBClusterEndpointInput) (*DeleteDBClusterEndpointOutput, error) {
+	req, out := c.DeleteDBClusterEndpointRequest(input)
+	return out, req.Send()
+}
+
+// DeleteDBClusterEndpointWithContext is the same as DeleteDBClusterEndpoint with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteDBClusterEndpoint for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) DeleteDBClusterEndpointWithContext(ctx aws.Context, input *DeleteDBClusterEndpointInput, opts ...request.Option) (*DeleteDBClusterEndpointOutput, error) {
+	req, out := c.DeleteDBClusterEndpointRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2043,6 +2224,146 @@ func (c *Neptune) DeleteEventSubscriptionWithContext(ctx aws.Context, input *Del
 	return out, req.Send()
 }
 
+const opDescribeDBClusterEndpoints = "DescribeDBClusterEndpoints"
+
+// DescribeDBClusterEndpointsRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeDBClusterEndpoints operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeDBClusterEndpoints for more information on using the DescribeDBClusterEndpoints
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeDBClusterEndpointsRequest method.
+//    req, resp := client.DescribeDBClusterEndpointsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/neptune-2014-10-31/DescribeDBClusterEndpoints
+func (c *Neptune) DescribeDBClusterEndpointsRequest(input *DescribeDBClusterEndpointsInput) (req *request.Request, output *DescribeDBClusterEndpointsOutput) {
+	op := &request.Operation{
+		Name:       opDescribeDBClusterEndpoints,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &DescribeDBClusterEndpointsInput{}
+	}
+
+	output = &DescribeDBClusterEndpointsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeDBClusterEndpoints API operation for Amazon Neptune.
+//
+// Returns information about endpoints for an Amazon Neptune DB cluster.
+//
+// This operation can also return information for Amazon RDS clusters and Amazon
+// DocDB clusters.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Neptune's
+// API operation DescribeDBClusterEndpoints for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeDBClusterNotFoundFault "DBClusterNotFoundFault"
+//   DBClusterIdentifier does not refer to an existing DB cluster.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/neptune-2014-10-31/DescribeDBClusterEndpoints
+func (c *Neptune) DescribeDBClusterEndpoints(input *DescribeDBClusterEndpointsInput) (*DescribeDBClusterEndpointsOutput, error) {
+	req, out := c.DescribeDBClusterEndpointsRequest(input)
+	return out, req.Send()
+}
+
+// DescribeDBClusterEndpointsWithContext is the same as DescribeDBClusterEndpoints with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeDBClusterEndpoints for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) DescribeDBClusterEndpointsWithContext(ctx aws.Context, input *DescribeDBClusterEndpointsInput, opts ...request.Option) (*DescribeDBClusterEndpointsOutput, error) {
+	req, out := c.DescribeDBClusterEndpointsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// DescribeDBClusterEndpointsPages iterates over the pages of a DescribeDBClusterEndpoints operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeDBClusterEndpoints method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeDBClusterEndpoints operation.
+//    pageNum := 0
+//    err := client.DescribeDBClusterEndpointsPages(params,
+//        func(page *neptune.DescribeDBClusterEndpointsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Neptune) DescribeDBClusterEndpointsPages(input *DescribeDBClusterEndpointsInput, fn func(*DescribeDBClusterEndpointsOutput, bool) bool) error {
+	return c.DescribeDBClusterEndpointsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeDBClusterEndpointsPagesWithContext same as DescribeDBClusterEndpointsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) DescribeDBClusterEndpointsPagesWithContext(ctx aws.Context, input *DescribeDBClusterEndpointsInput, fn func(*DescribeDBClusterEndpointsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeDBClusterEndpointsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeDBClusterEndpointsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeDBClusterEndpointsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeDBClusterParameterGroups = "DescribeDBClusterParameterGroups"
 
 // DescribeDBClusterParameterGroupsRequest generates a "aws/request.Request" representing the
@@ -2074,6 +2395,12 @@ func (c *Neptune) DescribeDBClusterParameterGroupsRequest(input *DescribeDBClust
 		Name:       opDescribeDBClusterParameterGroups,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2124,6 +2451,58 @@ func (c *Neptune) DescribeDBClusterParameterGroupsWithContext(ctx aws.Context, i
 	return out, req.Send()
 }
 
+// DescribeDBClusterParameterGroupsPages iterates over the pages of a DescribeDBClusterParameterGroups operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeDBClusterParameterGroups method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeDBClusterParameterGroups operation.
+//    pageNum := 0
+//    err := client.DescribeDBClusterParameterGroupsPages(params,
+//        func(page *neptune.DescribeDBClusterParameterGroupsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Neptune) DescribeDBClusterParameterGroupsPages(input *DescribeDBClusterParameterGroupsInput, fn func(*DescribeDBClusterParameterGroupsOutput, bool) bool) error {
+	return c.DescribeDBClusterParameterGroupsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeDBClusterParameterGroupsPagesWithContext same as DescribeDBClusterParameterGroupsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) DescribeDBClusterParameterGroupsPagesWithContext(ctx aws.Context, input *DescribeDBClusterParameterGroupsInput, fn func(*DescribeDBClusterParameterGroupsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeDBClusterParameterGroupsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeDBClusterParameterGroupsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeDBClusterParameterGroupsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeDBClusterParameters = "DescribeDBClusterParameters"
 
 // DescribeDBClusterParametersRequest generates a "aws/request.Request" representing the
@@ -2155,6 +2534,12 @@ func (c *Neptune) DescribeDBClusterParametersRequest(input *DescribeDBClusterPar
 		Name:       opDescribeDBClusterParameters,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2204,6 +2589,58 @@ func (c *Neptune) DescribeDBClusterParametersWithContext(ctx aws.Context, input 
 	return out, req.Send()
 }
 
+// DescribeDBClusterParametersPages iterates over the pages of a DescribeDBClusterParameters operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeDBClusterParameters method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeDBClusterParameters operation.
+//    pageNum := 0
+//    err := client.DescribeDBClusterParametersPages(params,
+//        func(page *neptune.DescribeDBClusterParametersOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Neptune) DescribeDBClusterParametersPages(input *DescribeDBClusterParametersInput, fn func(*DescribeDBClusterParametersOutput, bool) bool) error {
+	return c.DescribeDBClusterParametersPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeDBClusterParametersPagesWithContext same as DescribeDBClusterParametersPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) DescribeDBClusterParametersPagesWithContext(ctx aws.Context, input *DescribeDBClusterParametersInput, fn func(*DescribeDBClusterParametersOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeDBClusterParametersInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeDBClusterParametersRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeDBClusterParametersOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeDBClusterSnapshotAttributes = "DescribeDBClusterSnapshotAttributes"
 
 // DescribeDBClusterSnapshotAttributesRequest generates a "aws/request.Request" representing the
@@ -2251,15 +2688,16 @@ func (c *Neptune) DescribeDBClusterSnapshotAttributesRequest(input *DescribeDBCl
 // Returns a list of DB cluster snapshot attribute names and values for a manual
 // DB cluster snapshot.
 //
-// When sharing snapshots with other AWS accounts, DescribeDBClusterSnapshotAttributes
-// returns the restore attribute and a list of IDs for the AWS accounts that
+// When sharing snapshots with other Amazon accounts, DescribeDBClusterSnapshotAttributes
+// returns the restore attribute and a list of IDs for the Amazon accounts that
 // are authorized to copy or restore the manual DB cluster snapshot. If all
 // is included in the list of values for the restore attribute, then the manual
-// DB cluster snapshot is public and can be copied or restored by all AWS accounts.
+// DB cluster snapshot is public and can be copied or restored by all Amazon
+// accounts.
 //
-// To add or remove access for an AWS account to copy or restore a manual DB
-// cluster snapshot, or to make the manual DB cluster snapshot public or private,
-// use the ModifyDBClusterSnapshotAttribute API action.
+// To add or remove access for an Amazon account to copy or restore a manual
+// DB cluster snapshot, or to make the manual DB cluster snapshot public or
+// private, use the ModifyDBClusterSnapshotAttribute API action.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2325,6 +2763,12 @@ func (c *Neptune) DescribeDBClusterSnapshotsRequest(input *DescribeDBClusterSnap
 		Name:       opDescribeDBClusterSnapshots,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2374,6 +2818,58 @@ func (c *Neptune) DescribeDBClusterSnapshotsWithContext(ctx aws.Context, input *
 	return out, req.Send()
 }
 
+// DescribeDBClusterSnapshotsPages iterates over the pages of a DescribeDBClusterSnapshots operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeDBClusterSnapshots method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeDBClusterSnapshots operation.
+//    pageNum := 0
+//    err := client.DescribeDBClusterSnapshotsPages(params,
+//        func(page *neptune.DescribeDBClusterSnapshotsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Neptune) DescribeDBClusterSnapshotsPages(input *DescribeDBClusterSnapshotsInput, fn func(*DescribeDBClusterSnapshotsOutput, bool) bool) error {
+	return c.DescribeDBClusterSnapshotsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeDBClusterSnapshotsPagesWithContext same as DescribeDBClusterSnapshotsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) DescribeDBClusterSnapshotsPagesWithContext(ctx aws.Context, input *DescribeDBClusterSnapshotsInput, fn func(*DescribeDBClusterSnapshotsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeDBClusterSnapshotsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeDBClusterSnapshotsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeDBClusterSnapshotsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeDBClusters = "DescribeDBClusters"
 
 // DescribeDBClustersRequest generates a "aws/request.Request" representing the
@@ -2405,6 +2901,12 @@ func (c *Neptune) DescribeDBClustersRequest(input *DescribeDBClustersInput) (req
 		Name:       opDescribeDBClusters,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2454,6 +2956,58 @@ func (c *Neptune) DescribeDBClustersWithContext(ctx aws.Context, input *Describe
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeDBClustersPages iterates over the pages of a DescribeDBClusters operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeDBClusters method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeDBClusters operation.
+//    pageNum := 0
+//    err := client.DescribeDBClustersPages(params,
+//        func(page *neptune.DescribeDBClustersOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Neptune) DescribeDBClustersPages(input *DescribeDBClustersInput, fn func(*DescribeDBClustersOutput, bool) bool) error {
+	return c.DescribeDBClustersPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeDBClustersPagesWithContext same as DescribeDBClustersPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) DescribeDBClustersPagesWithContext(ctx aws.Context, input *DescribeDBClustersInput, fn func(*DescribeDBClustersOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeDBClustersInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeDBClustersRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeDBClustersOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeDBEngineVersions = "DescribeDBEngineVersions"
@@ -3867,6 +4421,12 @@ func (c *Neptune) DescribePendingMaintenanceActionsRequest(input *DescribePendin
 		Name:       opDescribePendingMaintenanceActions,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -3914,6 +4474,58 @@ func (c *Neptune) DescribePendingMaintenanceActionsWithContext(ctx aws.Context, 
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribePendingMaintenanceActionsPages iterates over the pages of a DescribePendingMaintenanceActions operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribePendingMaintenanceActions method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribePendingMaintenanceActions operation.
+//    pageNum := 0
+//    err := client.DescribePendingMaintenanceActionsPages(params,
+//        func(page *neptune.DescribePendingMaintenanceActionsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Neptune) DescribePendingMaintenanceActionsPages(input *DescribePendingMaintenanceActionsInput, fn func(*DescribePendingMaintenanceActionsOutput, bool) bool) error {
+	return c.DescribePendingMaintenanceActionsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribePendingMaintenanceActionsPagesWithContext same as DescribePendingMaintenanceActionsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) DescribePendingMaintenanceActionsPagesWithContext(ctx aws.Context, input *DescribePendingMaintenanceActionsInput, fn func(*DescribePendingMaintenanceActionsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribePendingMaintenanceActionsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribePendingMaintenanceActionsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribePendingMaintenanceActionsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeValidDBInstanceModifications = "DescribeValidDBInstanceModifications"
@@ -4294,6 +4906,98 @@ func (c *Neptune) ModifyDBClusterWithContext(ctx aws.Context, input *ModifyDBClu
 	return out, req.Send()
 }
 
+const opModifyDBClusterEndpoint = "ModifyDBClusterEndpoint"
+
+// ModifyDBClusterEndpointRequest generates a "aws/request.Request" representing the
+// client's request for the ModifyDBClusterEndpoint operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ModifyDBClusterEndpoint for more information on using the ModifyDBClusterEndpoint
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ModifyDBClusterEndpointRequest method.
+//    req, resp := client.ModifyDBClusterEndpointRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/neptune-2014-10-31/ModifyDBClusterEndpoint
+func (c *Neptune) ModifyDBClusterEndpointRequest(input *ModifyDBClusterEndpointInput) (req *request.Request, output *ModifyDBClusterEndpointOutput) {
+	op := &request.Operation{
+		Name:       opModifyDBClusterEndpoint,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ModifyDBClusterEndpointInput{}
+	}
+
+	output = &ModifyDBClusterEndpointOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ModifyDBClusterEndpoint API operation for Amazon Neptune.
+//
+// Modifies the properties of an endpoint in an Amazon Neptune DB cluster.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Neptune's
+// API operation ModifyDBClusterEndpoint for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInvalidDBClusterStateFault "InvalidDBClusterStateFault"
+//   The DB cluster is not in a valid state.
+//
+//   * ErrCodeInvalidDBClusterEndpointStateFault "InvalidDBClusterEndpointStateFault"
+//   The requested operation cannot be performed on the endpoint while the endpoint
+//   is in this state.
+//
+//   * ErrCodeDBClusterEndpointNotFoundFault "DBClusterEndpointNotFoundFault"
+//   The specified custom endpoint doesn't exist.
+//
+//   * ErrCodeDBInstanceNotFoundFault "DBInstanceNotFound"
+//   DBInstanceIdentifier does not refer to an existing DB instance.
+//
+//   * ErrCodeInvalidDBInstanceStateFault "InvalidDBInstanceState"
+//   The specified DB instance is not in the available state.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/neptune-2014-10-31/ModifyDBClusterEndpoint
+func (c *Neptune) ModifyDBClusterEndpoint(input *ModifyDBClusterEndpointInput) (*ModifyDBClusterEndpointOutput, error) {
+	req, out := c.ModifyDBClusterEndpointRequest(input)
+	return out, req.Send()
+}
+
+// ModifyDBClusterEndpointWithContext is the same as ModifyDBClusterEndpoint with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ModifyDBClusterEndpoint for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Neptune) ModifyDBClusterEndpointWithContext(ctx aws.Context, input *ModifyDBClusterEndpointInput, opts ...request.Option) (*ModifyDBClusterEndpointOutput, error) {
+	req, out := c.ModifyDBClusterEndpointRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opModifyDBClusterParameterGroup = "ModifyDBClusterParameterGroup"
 
 // ModifyDBClusterParameterGroupRequest generates a "aws/request.Request" representing the
@@ -4442,20 +5146,20 @@ func (c *Neptune) ModifyDBClusterSnapshotAttributeRequest(input *ModifyDBCluster
 // Adds an attribute and values to, or removes an attribute and values from,
 // a manual DB cluster snapshot.
 //
-// To share a manual DB cluster snapshot with other AWS accounts, specify restore
-// as the AttributeName and use the ValuesToAdd parameter to add a list of IDs
-// of the AWS accounts that are authorized to restore the manual DB cluster
-// snapshot. Use the value all to make the manual DB cluster snapshot public,
-// which means that it can be copied or restored by all AWS accounts. Do not
-// add the all value for any manual DB cluster snapshots that contain private
-// information that you don't want available to all AWS accounts. If a manual
-// DB cluster snapshot is encrypted, it can be shared, but only by specifying
-// a list of authorized AWS account IDs for the ValuesToAdd parameter. You can't
-// use all as a value for that parameter in this case.
+// To share a manual DB cluster snapshot with other Amazon accounts, specify
+// restore as the AttributeName and use the ValuesToAdd parameter to add a list
+// of IDs of the Amazon accounts that are authorized to restore the manual DB
+// cluster snapshot. Use the value all to make the manual DB cluster snapshot
+// public, which means that it can be copied or restored by all Amazon accounts.
+// Do not add the all value for any manual DB cluster snapshots that contain
+// private information that you don't want available to all Amazon accounts.
+// If a manual DB cluster snapshot is encrypted, it can be shared, but only
+// by specifying a list of authorized Amazon account IDs for the ValuesToAdd
+// parameter. You can't use all as a value for that parameter in this case.
 //
-// To view which AWS accounts have access to copy or restore a manual DB cluster
-// snapshot, or whether a manual DB cluster snapshot public or private, use
-// the DescribeDBClusterSnapshotAttributes API action.
+// To view which Amazon accounts have access to copy or restore a manual DB
+// cluster snapshot, or whether a manual DB cluster snapshot public or private,
+// use the DescribeDBClusterSnapshotAttributes API action.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4777,7 +5481,7 @@ func (c *Neptune) ModifyDBSubnetGroupRequest(input *ModifyDBSubnetGroupInput) (r
 // ModifyDBSubnetGroup API operation for Amazon Neptune.
 //
 // Modifies an existing DB subnet group. DB subnet groups must contain at least
-// one subnet in at least two AZs in the AWS Region.
+// one subnet in at least two AZs in the Amazon Region.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5872,7 +6576,7 @@ func (c *Neptune) StartDBClusterRequest(input *StartDBClusterInput) (req *reques
 // StartDBCluster API operation for Amazon Neptune.
 //
 // Starts an Amazon Neptune DB cluster that was stopped using the AWS console,
-// the AWS CLI stop-db-cluster command, or the StopDBCluster API.
+// the Amazon CLI stop-db-cluster command, or the StopDBCluster API.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -6010,6 +6714,10 @@ type AddRoleToDBClusterInput struct {
 	// DBClusterIdentifier is a required field
 	DBClusterIdentifier *string `type:"string" required:"true"`
 
+	// The name of the feature for the Neptune DB cluster that the IAM role is to
+	// be associated with. For the list of supported feature names, see DBEngineVersion.
+	FeatureName *string `type:"string"`
+
 	// The Amazon Resource Name (ARN) of the IAM role to associate with the Neptune
 	// DB cluster, for example arn:aws:iam::123456789012:role/NeptuneAccessRole.
 	//
@@ -6046,6 +6754,12 @@ func (s *AddRoleToDBClusterInput) Validate() error {
 // SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
 func (s *AddRoleToDBClusterInput) SetDBClusterIdentifier(v string) *AddRoleToDBClusterInput {
 	s.DBClusterIdentifier = &v
+	return s
+}
+
+// SetFeatureName sets the FeatureName field's value.
+func (s *AddRoleToDBClusterInput) SetFeatureName(v string) *AddRoleToDBClusterInput {
+	s.FeatureName = &v
 	return s
 }
 
@@ -6436,12 +7150,13 @@ type CopyDBClusterParameterGroupInput struct {
 	//
 	//    * Must specify a valid DB cluster parameter group.
 	//
-	//    * If the source DB cluster parameter group is in the same AWS Region as
-	//    the copy, specify a valid DB parameter group identifier, for example my-db-cluster-param-group,
-	//    or a valid ARN.
+	//    * If the source DB cluster parameter group is in the same Amazon Region
+	//    as the copy, specify a valid DB parameter group identifier, for example
+	//    my-db-cluster-param-group, or a valid ARN.
 	//
-	//    * If the source DB parameter group is in a different AWS Region than the
-	//    copy, specify a valid DB cluster parameter group ARN, for example arn:aws:rds:us-east-1:123456789012:cluster-pg:custom-cluster-group1.
+	//    * If the source DB parameter group is in a different Amazon Region than
+	//    the copy, specify a valid DB cluster parameter group ARN, for example
+	//    arn:aws:rds:us-east-1:123456789012:cluster-pg:custom-cluster-group1.
 	//
 	// SourceDBClusterParameterGroupIdentifier is a required field
 	SourceDBClusterParameterGroupIdentifier *string `type:"string" required:"true"`
@@ -6558,20 +7273,23 @@ type CopyDBClusterSnapshotInput struct {
 	// cluster snapshot, and otherwise false. The default is false.
 	CopyTags *bool `type:"boolean"`
 
-	// The AWS AWS KMS key ID for an encrypted DB cluster snapshot. The KMS key
-	// ID is the Amazon Resource Name (ARN), KMS key identifier, or the KMS key
-	// alias for the KMS encryption key.
+	// DestinationRegion is used for presigning the request to a given region.
+	DestinationRegion *string `type:"string"`
+
+	// The Amazon Amazon KMS key ID for an encrypted DB cluster snapshot. The KMS
+	// key ID is the Amazon Resource Name (ARN), KMS key identifier, or the KMS
+	// key alias for the KMS encryption key.
 	//
-	// If you copy an encrypted DB cluster snapshot from your AWS account, you can
-	// specify a value for KmsKeyId to encrypt the copy with a new KMS encryption
+	// If you copy an encrypted DB cluster snapshot from your Amazon account, you
+	// can specify a value for KmsKeyId to encrypt the copy with a new KMS encryption
 	// key. If you don't specify a value for KmsKeyId, then the copy of the DB cluster
 	// snapshot is encrypted with the same KMS key as the source DB cluster snapshot.
 	//
 	// If you copy an encrypted DB cluster snapshot that is shared from another
-	// AWS account, then you must specify a value for KmsKeyId.
+	// Amazon account, then you must specify a value for KmsKeyId.
 	//
-	// KMS encryption keys are specific to the AWS Region that they are created
-	// in, and you can't use encryption keys from one AWS Region in another AWS
+	// KMS encryption keys are specific to the Amazon Region that they are created
+	// in, and you can't use encryption keys from one Amazon Region in another Amazon
 	// Region.
 	//
 	// You cannot encrypt an unencrypted DB cluster snapshot when you copy it. If
@@ -6585,8 +7303,6 @@ type CopyDBClusterSnapshotInput struct {
 	// The identifier of the DB cluster snapshot to copy. This parameter is not
 	// case-sensitive.
 	//
-	// You can't copy from one AWS Region to another.
-	//
 	// Constraints:
 	//
 	//    * Must specify a valid system snapshot in the "available" state.
@@ -6597,6 +7313,11 @@ type CopyDBClusterSnapshotInput struct {
 	//
 	// SourceDBClusterSnapshotIdentifier is a required field
 	SourceDBClusterSnapshotIdentifier *string `type:"string" required:"true"`
+
+	// SourceRegion is the source region where the resource exists. This is not
+	// sent over the wire and is only used for presigning. This value should always
+	// have the same region as the source ARN.
+	SourceRegion *string `type:"string" ignore:"true"`
 
 	// The tags to assign to the new DB cluster snapshot copy.
 	Tags []*Tag `locationNameList:"Tag" type:"list"`
@@ -6650,6 +7371,12 @@ func (s *CopyDBClusterSnapshotInput) SetCopyTags(v bool) *CopyDBClusterSnapshotI
 	return s
 }
 
+// SetDestinationRegion sets the DestinationRegion field's value.
+func (s *CopyDBClusterSnapshotInput) SetDestinationRegion(v string) *CopyDBClusterSnapshotInput {
+	s.DestinationRegion = &v
+	return s
+}
+
 // SetKmsKeyId sets the KmsKeyId field's value.
 func (s *CopyDBClusterSnapshotInput) SetKmsKeyId(v string) *CopyDBClusterSnapshotInput {
 	s.KmsKeyId = &v
@@ -6665,6 +7392,12 @@ func (s *CopyDBClusterSnapshotInput) SetPreSignedUrl(v string) *CopyDBClusterSna
 // SetSourceDBClusterSnapshotIdentifier sets the SourceDBClusterSnapshotIdentifier field's value.
 func (s *CopyDBClusterSnapshotInput) SetSourceDBClusterSnapshotIdentifier(v string) *CopyDBClusterSnapshotInput {
 	s.SourceDBClusterSnapshotIdentifier = &v
+	return s
+}
+
+// SetSourceRegion sets the SourceRegion field's value.
+func (s *CopyDBClusterSnapshotInput) SetSourceRegion(v string) *CopyDBClusterSnapshotInput {
+	s.SourceRegion = &v
 	return s
 }
 
@@ -6827,6 +7560,229 @@ func (s *CopyDBParameterGroupOutput) SetDBParameterGroup(v *DBParameterGroup) *C
 	return s
 }
 
+type CreateDBClusterEndpointInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier to use for the new endpoint. This parameter is stored as a
+	// lowercase string.
+	//
+	// DBClusterEndpointIdentifier is a required field
+	DBClusterEndpointIdentifier *string `type:"string" required:"true"`
+
+	// The DB cluster identifier of the DB cluster associated with the endpoint.
+	// This parameter is stored as a lowercase string.
+	//
+	// DBClusterIdentifier is a required field
+	DBClusterIdentifier *string `type:"string" required:"true"`
+
+	// The type of the endpoint. One of: READER, WRITER, ANY.
+	//
+	// EndpointType is a required field
+	EndpointType *string `type:"string" required:"true"`
+
+	// List of DB instance identifiers that aren't part of the custom endpoint group.
+	// All other eligible instances are reachable through the custom endpoint. Only
+	// relevant if the list of static members is empty.
+	ExcludedMembers []*string `type:"list"`
+
+	// List of DB instance identifiers that are part of the custom endpoint group.
+	StaticMembers []*string `type:"list"`
+
+	// The tags to be assigned to the Amazon Neptune resource.
+	Tags []*Tag `locationNameList:"Tag" type:"list"`
+}
+
+// String returns the string representation
+func (s CreateDBClusterEndpointInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateDBClusterEndpointInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreateDBClusterEndpointInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreateDBClusterEndpointInput"}
+	if s.DBClusterEndpointIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("DBClusterEndpointIdentifier"))
+	}
+	if s.DBClusterIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("DBClusterIdentifier"))
+	}
+	if s.EndpointType == nil {
+		invalidParams.Add(request.NewErrParamRequired("EndpointType"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDBClusterEndpointIdentifier sets the DBClusterEndpointIdentifier field's value.
+func (s *CreateDBClusterEndpointInput) SetDBClusterEndpointIdentifier(v string) *CreateDBClusterEndpointInput {
+	s.DBClusterEndpointIdentifier = &v
+	return s
+}
+
+// SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
+func (s *CreateDBClusterEndpointInput) SetDBClusterIdentifier(v string) *CreateDBClusterEndpointInput {
+	s.DBClusterIdentifier = &v
+	return s
+}
+
+// SetEndpointType sets the EndpointType field's value.
+func (s *CreateDBClusterEndpointInput) SetEndpointType(v string) *CreateDBClusterEndpointInput {
+	s.EndpointType = &v
+	return s
+}
+
+// SetExcludedMembers sets the ExcludedMembers field's value.
+func (s *CreateDBClusterEndpointInput) SetExcludedMembers(v []*string) *CreateDBClusterEndpointInput {
+	s.ExcludedMembers = v
+	return s
+}
+
+// SetStaticMembers sets the StaticMembers field's value.
+func (s *CreateDBClusterEndpointInput) SetStaticMembers(v []*string) *CreateDBClusterEndpointInput {
+	s.StaticMembers = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateDBClusterEndpointInput) SetTags(v []*Tag) *CreateDBClusterEndpointInput {
+	s.Tags = v
+	return s
+}
+
+// This data type represents the information you need to connect to an Amazon
+// Neptune DB cluster. This data type is used as a response element in the following
+// actions:
+//
+//    * CreateDBClusterEndpoint
+//
+//    * DescribeDBClusterEndpoints
+//
+//    * ModifyDBClusterEndpoint
+//
+//    * DeleteDBClusterEndpoint
+//
+// For the data structure that represents Amazon Neptune DB instance endpoints,
+// see Endpoint.
+type CreateDBClusterEndpointOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The type associated with a custom endpoint. One of: READER, WRITER, ANY.
+	CustomEndpointType *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) for the endpoint.
+	DBClusterEndpointArn *string `type:"string"`
+
+	// The identifier associated with the endpoint. This parameter is stored as
+	// a lowercase string.
+	DBClusterEndpointIdentifier *string `type:"string"`
+
+	// A unique system-generated identifier for an endpoint. It remains the same
+	// for the whole life of the endpoint.
+	DBClusterEndpointResourceIdentifier *string `type:"string"`
+
+	// The DB cluster identifier of the DB cluster associated with the endpoint.
+	// This parameter is stored as a lowercase string.
+	DBClusterIdentifier *string `type:"string"`
+
+	// The DNS address of the endpoint.
+	Endpoint *string `type:"string"`
+
+	// The type of the endpoint. One of: READER, WRITER, CUSTOM.
+	EndpointType *string `type:"string"`
+
+	// List of DB instance identifiers that aren't part of the custom endpoint group.
+	// All other eligible instances are reachable through the custom endpoint. Only
+	// relevant if the list of static members is empty.
+	ExcludedMembers []*string `type:"list"`
+
+	// List of DB instance identifiers that are part of the custom endpoint group.
+	StaticMembers []*string `type:"list"`
+
+	// The current status of the endpoint. One of: creating, available, deleting,
+	// inactive, modifying. The inactive state applies to an endpoint that cannot
+	// be used for a certain kind of cluster, such as a writer endpoint for a read-only
+	// secondary cluster in a global database.
+	Status *string `type:"string"`
+}
+
+// String returns the string representation
+func (s CreateDBClusterEndpointOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateDBClusterEndpointOutput) GoString() string {
+	return s.String()
+}
+
+// SetCustomEndpointType sets the CustomEndpointType field's value.
+func (s *CreateDBClusterEndpointOutput) SetCustomEndpointType(v string) *CreateDBClusterEndpointOutput {
+	s.CustomEndpointType = &v
+	return s
+}
+
+// SetDBClusterEndpointArn sets the DBClusterEndpointArn field's value.
+func (s *CreateDBClusterEndpointOutput) SetDBClusterEndpointArn(v string) *CreateDBClusterEndpointOutput {
+	s.DBClusterEndpointArn = &v
+	return s
+}
+
+// SetDBClusterEndpointIdentifier sets the DBClusterEndpointIdentifier field's value.
+func (s *CreateDBClusterEndpointOutput) SetDBClusterEndpointIdentifier(v string) *CreateDBClusterEndpointOutput {
+	s.DBClusterEndpointIdentifier = &v
+	return s
+}
+
+// SetDBClusterEndpointResourceIdentifier sets the DBClusterEndpointResourceIdentifier field's value.
+func (s *CreateDBClusterEndpointOutput) SetDBClusterEndpointResourceIdentifier(v string) *CreateDBClusterEndpointOutput {
+	s.DBClusterEndpointResourceIdentifier = &v
+	return s
+}
+
+// SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
+func (s *CreateDBClusterEndpointOutput) SetDBClusterIdentifier(v string) *CreateDBClusterEndpointOutput {
+	s.DBClusterIdentifier = &v
+	return s
+}
+
+// SetEndpoint sets the Endpoint field's value.
+func (s *CreateDBClusterEndpointOutput) SetEndpoint(v string) *CreateDBClusterEndpointOutput {
+	s.Endpoint = &v
+	return s
+}
+
+// SetEndpointType sets the EndpointType field's value.
+func (s *CreateDBClusterEndpointOutput) SetEndpointType(v string) *CreateDBClusterEndpointOutput {
+	s.EndpointType = &v
+	return s
+}
+
+// SetExcludedMembers sets the ExcludedMembers field's value.
+func (s *CreateDBClusterEndpointOutput) SetExcludedMembers(v []*string) *CreateDBClusterEndpointOutput {
+	s.ExcludedMembers = v
+	return s
+}
+
+// SetStaticMembers sets the StaticMembers field's value.
+func (s *CreateDBClusterEndpointOutput) SetStaticMembers(v []*string) *CreateDBClusterEndpointOutput {
+	s.StaticMembers = v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *CreateDBClusterEndpointOutput) SetStatus(v string) *CreateDBClusterEndpointOutput {
+	s.Status = &v
+	return s
+}
+
 type CreateDBClusterInput struct {
 	_ struct{} `type:"structure"`
 
@@ -6846,6 +7802,10 @@ type CreateDBClusterInput struct {
 
 	// (Not supported by Neptune)
 	CharacterSetName *string `type:"string"`
+
+	// If set to true, tags are copied to any snapshot of the DB cluster that is
+	// created.
+	CopyTagsToSnapshot *bool `type:"boolean"`
 
 	// The DB cluster identifier. This parameter is stored as a lowercase string.
 	//
@@ -6888,14 +7848,17 @@ type CreateDBClusterInput struct {
 	// deletion protection is enabled.
 	DeletionProtection *bool `type:"boolean"`
 
+	// DestinationRegion is used for presigning the request to a given region.
+	DestinationRegion *string `type:"string"`
+
 	// The list of log types that need to be enabled for exporting to CloudWatch
 	// Logs.
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
-	// True to enable mapping of AWS Identity and Access Management (IAM) accounts
-	// to database accounts, and otherwise false.
+	// If set to true, enables Amazon Identity and Access Management (IAM) authentication
+	// for the entire DB cluster (this cannot be set at an instance level).
 	//
-	// Default: false
+	// Default: false.
 	EnableIAMDatabaseAuthentication *bool `type:"boolean"`
 
 	// The name of the database engine to be used for this DB cluster.
@@ -6905,16 +7868,15 @@ type CreateDBClusterInput struct {
 	// Engine is a required field
 	Engine *string `type:"string" required:"true"`
 
-	// The version number of the database engine to use. Currently, setting this
-	// parameter has no effect.
+	// The version number of the database engine to use for the new DB cluster.
 	//
-	// Example: 1.0.1
+	// Example: 1.0.2.1
 	EngineVersion *string `type:"string"`
 
-	// The AWS KMS key identifier for an encrypted DB cluster.
+	// The Amazon KMS key identifier for an encrypted DB cluster.
 	//
 	// The KMS key identifier is the Amazon Resource Name (ARN) for the KMS encryption
-	// key. If you are creating a DB cluster with the same AWS account that owns
+	// key. If you are creating a DB cluster with the same Amazon account that owns
 	// the KMS encryption key used to encrypt the new DB cluster, then you can use
 	// the KMS key alias instead of the ARN for the KMS encryption key.
 	//
@@ -6928,29 +7890,19 @@ type CreateDBClusterInput struct {
 	//    is not specified, then Amazon Neptune will use your default encryption
 	//    key.
 	//
-	// AWS KMS creates the default encryption key for your AWS account. Your AWS
-	// account has a different default encryption key for each AWS Region.
+	// Amazon KMS creates the default encryption key for your Amazon account. Your
+	// Amazon account has a different default encryption key for each Amazon Region.
 	//
-	// If you create a Read Replica of an encrypted DB cluster in another AWS Region,
-	// you must set KmsKeyId to a KMS key ID that is valid in the destination AWS
-	// Region. This key is used to encrypt the Read Replica in that AWS Region.
+	// If you create a Read Replica of an encrypted DB cluster in another Amazon
+	// Region, you must set KmsKeyId to a KMS key ID that is valid in the destination
+	// Amazon Region. This key is used to encrypt the Read Replica in that Amazon
+	// Region.
 	KmsKeyId *string `type:"string"`
 
-	// The password for the master database user. This password can contain any
-	// printable ASCII character except "/", """, or "@".
-	//
-	// Constraints: Must contain from 8 to 41 characters.
+	// Not supported by Neptune.
 	MasterUserPassword *string `type:"string"`
 
-	// The name of the master user for the DB cluster.
-	//
-	// Constraints:
-	//
-	//    * Must be 1 to 16 letters or numbers.
-	//
-	//    * First character must be a letter.
-	//
-	//    * Cannot be a reserved word for the chosen database engine.
+	// Not supported by Neptune.
 	MasterUsername *string `type:"string"`
 
 	// (Not supported by Neptune)
@@ -6968,7 +7920,7 @@ type CreateDBClusterInput struct {
 	// backups are enabled using the BackupRetentionPeriod parameter.
 	//
 	// The default is a 30-minute window selected at random from an 8-hour block
-	// of time for each AWS Region. To see the time blocks available, see Adjusting
+	// of time for each Amazon Region. To see the time blocks available, see Adjusting
 	// the Preferred Maintenance Window (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/AdjustingTheMaintenanceWindow.html)
 	// in the Amazon Neptune User Guide.
 	//
@@ -6989,8 +7941,8 @@ type CreateDBClusterInput struct {
 	// Format: ddd:hh24:mi-ddd:hh24:mi
 	//
 	// The default is a 30-minute window selected at random from an 8-hour block
-	// of time for each AWS Region, occurring on a random day of the week. To see
-	// the time blocks available, see Adjusting the Preferred Maintenance Window
+	// of time for each Amazon Region, occurring on a random day of the week. To
+	// see the time blocks available, see Adjusting the Preferred Maintenance Window
 	// (https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/AdjustingTheMaintenanceWindow.html)
 	// in the Amazon Neptune User Guide.
 	//
@@ -7002,6 +7954,11 @@ type CreateDBClusterInput struct {
 	// The Amazon Resource Name (ARN) of the source DB instance or DB cluster if
 	// this DB cluster is created as a Read Replica.
 	ReplicationSourceIdentifier *string `type:"string"`
+
+	// SourceRegion is the source region where the resource exists. This is not
+	// sent over the wire and is only used for presigning. This value should always
+	// have the same region as the source ARN.
+	SourceRegion *string `type:"string" ignore:"true"`
 
 	// Specifies whether the DB cluster is encrypted.
 	StorageEncrypted *bool `type:"boolean"`
@@ -7057,6 +8014,12 @@ func (s *CreateDBClusterInput) SetCharacterSetName(v string) *CreateDBClusterInp
 	return s
 }
 
+// SetCopyTagsToSnapshot sets the CopyTagsToSnapshot field's value.
+func (s *CreateDBClusterInput) SetCopyTagsToSnapshot(v bool) *CreateDBClusterInput {
+	s.CopyTagsToSnapshot = &v
+	return s
+}
+
 // SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
 func (s *CreateDBClusterInput) SetDBClusterIdentifier(v string) *CreateDBClusterInput {
 	s.DBClusterIdentifier = &v
@@ -7084,6 +8047,12 @@ func (s *CreateDBClusterInput) SetDatabaseName(v string) *CreateDBClusterInput {
 // SetDeletionProtection sets the DeletionProtection field's value.
 func (s *CreateDBClusterInput) SetDeletionProtection(v bool) *CreateDBClusterInput {
 	s.DeletionProtection = &v
+	return s
+}
+
+// SetDestinationRegion sets the DestinationRegion field's value.
+func (s *CreateDBClusterInput) SetDestinationRegion(v string) *CreateDBClusterInput {
+	s.DestinationRegion = &v
 	return s
 }
 
@@ -7162,6 +8131,12 @@ func (s *CreateDBClusterInput) SetPreferredMaintenanceWindow(v string) *CreateDB
 // SetReplicationSourceIdentifier sets the ReplicationSourceIdentifier field's value.
 func (s *CreateDBClusterInput) SetReplicationSourceIdentifier(v string) *CreateDBClusterInput {
 	s.ReplicationSourceIdentifier = &v
+	return s
+}
+
+// SetSourceRegion sets the SourceRegion field's value.
+func (s *CreateDBClusterInput) SetSourceRegion(v string) *CreateDBClusterInput {
+	s.SourceRegion = &v
 	return s
 }
 
@@ -7426,13 +8401,7 @@ func (s *CreateDBClusterSnapshotOutput) SetDBClusterSnapshot(v *DBClusterSnapsho
 type CreateDBInstanceInput struct {
 	_ struct{} `type:"structure"`
 
-	// The amount of storage (in gibibytes) to allocate for the DB instance.
-	//
-	// Type: Integer
-	//
-	// Not applicable. Neptune cluster volumes automatically grow as the amount
-	// of data in your database increases, though you are only charged for the space
-	// that you use in a Neptune cluster volume.
+	// Not supported by Neptune.
 	AllocatedStorage *int64 `type:"integer"`
 
 	// Indicates that minor engine upgrades are applied automatically to the DB
@@ -7443,14 +8412,14 @@ type CreateDBInstanceInput struct {
 
 	// The EC2 Availability Zone that the DB instance is created in
 	//
-	// Default: A random, system-chosen Availability Zone in the endpoint's AWS
+	// Default: A random, system-chosen Availability Zone in the endpoint's Amazon
 	// Region.
 	//
 	// Example: us-east-1d
 	//
 	// Constraint: The AvailabilityZone parameter can't be specified if the MultiAZ
 	// parameter is set to true. The specified Availability Zone must be in the
-	// same AWS Region as the current endpoint.
+	// same Amazon Region as the current endpoint.
 	AvailabilityZone *string `type:"string"`
 
 	// The number of days for which automated backups are retained.
@@ -7482,7 +8451,7 @@ type CreateDBInstanceInput struct {
 	DBClusterIdentifier *string `type:"string"`
 
 	// The compute and memory capacity of the DB instance, for example, db.m4.large.
-	// Not all DB instance classes are available in all AWS Regions.
+	// Not all DB instance classes are available in all Amazon Regions.
 	//
 	// DBInstanceClass is a required field
 	DBInstanceClass *string `type:"string" required:"true"`
@@ -7547,10 +8516,7 @@ type CreateDBInstanceInput struct {
 	// Logs.
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
-	// True to enable AWS Identity and Access Management (IAM) authentication for
-	// Neptune.
-	//
-	// Default: false
+	// Not supported by Neptune (ignored).
 	EnableIAMDatabaseAuthentication *bool `type:"boolean"`
 
 	// (Not supported by Neptune)
@@ -7571,20 +8537,21 @@ type CreateDBInstanceInput struct {
 	// initially allocated for the DB instance.
 	Iops *int64 `type:"integer"`
 
-	// The AWS KMS key identifier for an encrypted DB instance.
+	// The Amazon KMS key identifier for an encrypted DB instance.
 	//
 	// The KMS key identifier is the Amazon Resource Name (ARN) for the KMS encryption
-	// key. If you are creating a DB instance with the same AWS account that owns
-	// the KMS encryption key used to encrypt the new DB instance, then you can
-	// use the KMS key alias instead of the ARN for the KM encryption key.
+	// key. If you are creating a DB instance with the same Amazon account that
+	// owns the KMS encryption key used to encrypt the new DB instance, then you
+	// can use the KMS key alias instead of the ARN for the KM encryption key.
 	//
 	// Not applicable. The KMS key identifier is managed by the DB cluster. For
 	// more information, see CreateDBCluster.
 	//
 	// If the StorageEncrypted parameter is true, and you do not specify a value
 	// for the KmsKeyId parameter, then Amazon Neptune will use your default encryption
-	// key. AWS KMS creates the default encryption key for your AWS account. Your
-	// AWS account has a different default encryption key for each AWS Region.
+	// key. Amazon KMS creates the default encryption key for your Amazon account.
+	// Your Amazon account has a different default encryption key for each Amazon
+	// Region.
 	KmsKeyId *string `type:"string"`
 
 	// License model information for this DB instance.
@@ -7592,13 +8559,10 @@ type CreateDBInstanceInput struct {
 	// Valid values: license-included | bring-your-own-license | general-public-license
 	LicenseModel *string `type:"string"`
 
-	// The password for the master user. The password can include any printable
-	// ASCII character except "/", """, or "@".
-	//
-	// Not used.
+	// Not supported by Neptune.
 	MasterUserPassword *string `type:"string"`
 
-	// The name for the master user. Not used.
+	// Not supported by Neptune.
 	MasterUsername *string `type:"string"`
 
 	// The interval, in seconds, between points when Enhanced Monitoring metrics
@@ -7650,7 +8614,7 @@ type CreateDBInstanceInput struct {
 	// Format: ddd:hh24:mi-ddd:hh24:mi
 	//
 	// The default is a 30-minute window selected at random from an 8-hour block
-	// of time for each AWS Region, occurring on a random day of the week.
+	// of time for each Amazon Region, occurring on a random day of the week.
 	//
 	// Valid Days: Mon, Tue, Wed, Thu, Fri, Sat, Sun.
 	//
@@ -8399,11 +9363,14 @@ type DBCluster struct {
 	// is not fixed, but instead automatically adjusts as needed.
 	AllocatedStorage *int64 `type:"integer"`
 
-	// Provides a list of the AWS Identity and Access Management (IAM) roles that
-	// are associated with the DB cluster. IAM roles that are associated with a
-	// DB cluster grant permission for the DB cluster to access other AWS services
+	// Provides a list of the Amazon Identity and Access Management (IAM) roles
+	// that are associated with the DB cluster. IAM roles that are associated with
+	// a DB cluster grant permission for the DB cluster to access other Amazon services
 	// on your behalf.
 	AssociatedRoles []*DBClusterRole `locationNameList:"DBClusterRole" type:"list"`
+
+	// Time at which the DB cluster will be automatically restarted.
+	AutomaticRestartTime *time.Time `type:"timestamp"`
 
 	// Provides the list of EC2 Availability Zones that instances in the DB cluster
 	// can be created in.
@@ -8412,7 +9379,7 @@ type DBCluster struct {
 	// Specifies the number of days for which automatic DB snapshots are retained.
 	BackupRetentionPeriod *int64 `type:"integer"`
 
-	// (Not supported by Neptune)
+	// Not supported by Neptune.
 	CharacterSetName *string `type:"string"`
 
 	// Identifies the clone group to which the DB cluster is associated.
@@ -8421,6 +9388,13 @@ type DBCluster struct {
 	// Specifies the time when the DB cluster was created, in Universal Coordinated
 	// Time (UTC).
 	ClusterCreateTime *time.Time `type:"timestamp"`
+
+	// If set to true, tags are copied to any snapshot of the DB cluster that is
+	// created.
+	CopyTagsToSnapshot *bool `type:"boolean"`
+
+	// If set to true, the DB cluster can be cloned across accounts.
+	CrossAccountClone *bool `type:"boolean"`
 
 	// The Amazon Resource Name (ARN) for the DB cluster.
 	DBClusterArn *string `type:"string"`
@@ -8432,7 +9406,7 @@ type DBCluster struct {
 	// Provides the list of instances that make up the DB cluster.
 	DBClusterMembers []*DBClusterMember `locationNameList:"DBClusterMember" type:"list"`
 
-	// (Not supported by Neptune)
+	// Not supported by Neptune.
 	DBClusterOptionGroupMemberships []*DBClusterOptionGroupStatus `locationNameList:"DBClusterOptionGroup" type:"list"`
 
 	// Specifies the name of the DB cluster parameter group for the DB cluster.
@@ -8447,9 +9421,9 @@ type DBCluster struct {
 	// same name is returned for the life of the DB cluster.
 	DatabaseName *string `type:"string"`
 
-	// The AWS Region-unique, immutable identifier for the DB cluster. This identifier
-	// is found in AWS CloudTrail log entries whenever the AWS KMS key for the DB
-	// cluster is accessed.
+	// The Amazon Region-unique, immutable identifier for the DB cluster. This identifier
+	// is found in Amazon CloudTrail log entries whenever the Amazon KMS key for
+	// the DB cluster is accessed.
 	DbClusterResourceId *string `type:"string"`
 
 	// Indicates whether or not the DB cluster has deletion protection enabled.
@@ -8476,11 +9450,11 @@ type DBCluster struct {
 	// Specifies the ID that Amazon Route 53 assigns when you create a hosted zone.
 	HostedZoneId *string `type:"string"`
 
-	// True if mapping of AWS Identity and Access Management (IAM) accounts to database
-	// accounts is enabled, and otherwise false.
+	// True if mapping of Amazon Identity and Access Management (IAM) accounts to
+	// database accounts is enabled, and otherwise false.
 	IAMDatabaseAuthenticationEnabled *bool `type:"boolean"`
 
-	// If StorageEncrypted is true, the AWS KMS key identifier for the encrypted
+	// If StorageEncrypted is true, the Amazon KMS key identifier for the encrypted
 	// DB cluster.
 	KmsKeyId *string `type:"string"`
 
@@ -8488,7 +9462,7 @@ type DBCluster struct {
 	// restore.
 	LatestRestorableTime *time.Time `type:"timestamp"`
 
-	// Contains the master username for the DB cluster.
+	// Not supported by Neptune.
 	MasterUsername *string `type:"string"`
 
 	// Specifies whether the DB cluster has instances in multiple Availability Zones.
@@ -8560,6 +9534,12 @@ func (s *DBCluster) SetAssociatedRoles(v []*DBClusterRole) *DBCluster {
 	return s
 }
 
+// SetAutomaticRestartTime sets the AutomaticRestartTime field's value.
+func (s *DBCluster) SetAutomaticRestartTime(v time.Time) *DBCluster {
+	s.AutomaticRestartTime = &v
+	return s
+}
+
 // SetAvailabilityZones sets the AvailabilityZones field's value.
 func (s *DBCluster) SetAvailabilityZones(v []*string) *DBCluster {
 	s.AvailabilityZones = v
@@ -8587,6 +9567,18 @@ func (s *DBCluster) SetCloneGroupId(v string) *DBCluster {
 // SetClusterCreateTime sets the ClusterCreateTime field's value.
 func (s *DBCluster) SetClusterCreateTime(v time.Time) *DBCluster {
 	s.ClusterCreateTime = &v
+	return s
+}
+
+// SetCopyTagsToSnapshot sets the CopyTagsToSnapshot field's value.
+func (s *DBCluster) SetCopyTagsToSnapshot(v bool) *DBCluster {
+	s.CopyTagsToSnapshot = &v
+	return s
+}
+
+// SetCrossAccountClone sets the CrossAccountClone field's value.
+func (s *DBCluster) SetCrossAccountClone(v bool) *DBCluster {
+	s.CrossAccountClone = &v
 	return s
 }
 
@@ -8770,6 +9762,132 @@ func (s *DBCluster) SetVpcSecurityGroups(v []*VpcSecurityGroupMembership) *DBClu
 	return s
 }
 
+// This data type represents the information you need to connect to an Amazon
+// Neptune DB cluster. This data type is used as a response element in the following
+// actions:
+//
+//    * CreateDBClusterEndpoint
+//
+//    * DescribeDBClusterEndpoints
+//
+//    * ModifyDBClusterEndpoint
+//
+//    * DeleteDBClusterEndpoint
+//
+// For the data structure that represents Amazon Neptune DB instance endpoints,
+// see Endpoint.
+type DBClusterEndpoint struct {
+	_ struct{} `type:"structure"`
+
+	// The type associated with a custom endpoint. One of: READER, WRITER, ANY.
+	CustomEndpointType *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) for the endpoint.
+	DBClusterEndpointArn *string `type:"string"`
+
+	// The identifier associated with the endpoint. This parameter is stored as
+	// a lowercase string.
+	DBClusterEndpointIdentifier *string `type:"string"`
+
+	// A unique system-generated identifier for an endpoint. It remains the same
+	// for the whole life of the endpoint.
+	DBClusterEndpointResourceIdentifier *string `type:"string"`
+
+	// The DB cluster identifier of the DB cluster associated with the endpoint.
+	// This parameter is stored as a lowercase string.
+	DBClusterIdentifier *string `type:"string"`
+
+	// The DNS address of the endpoint.
+	Endpoint *string `type:"string"`
+
+	// The type of the endpoint. One of: READER, WRITER, CUSTOM.
+	EndpointType *string `type:"string"`
+
+	// List of DB instance identifiers that aren't part of the custom endpoint group.
+	// All other eligible instances are reachable through the custom endpoint. Only
+	// relevant if the list of static members is empty.
+	ExcludedMembers []*string `type:"list"`
+
+	// List of DB instance identifiers that are part of the custom endpoint group.
+	StaticMembers []*string `type:"list"`
+
+	// The current status of the endpoint. One of: creating, available, deleting,
+	// inactive, modifying. The inactive state applies to an endpoint that cannot
+	// be used for a certain kind of cluster, such as a writer endpoint for a read-only
+	// secondary cluster in a global database.
+	Status *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DBClusterEndpoint) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DBClusterEndpoint) GoString() string {
+	return s.String()
+}
+
+// SetCustomEndpointType sets the CustomEndpointType field's value.
+func (s *DBClusterEndpoint) SetCustomEndpointType(v string) *DBClusterEndpoint {
+	s.CustomEndpointType = &v
+	return s
+}
+
+// SetDBClusterEndpointArn sets the DBClusterEndpointArn field's value.
+func (s *DBClusterEndpoint) SetDBClusterEndpointArn(v string) *DBClusterEndpoint {
+	s.DBClusterEndpointArn = &v
+	return s
+}
+
+// SetDBClusterEndpointIdentifier sets the DBClusterEndpointIdentifier field's value.
+func (s *DBClusterEndpoint) SetDBClusterEndpointIdentifier(v string) *DBClusterEndpoint {
+	s.DBClusterEndpointIdentifier = &v
+	return s
+}
+
+// SetDBClusterEndpointResourceIdentifier sets the DBClusterEndpointResourceIdentifier field's value.
+func (s *DBClusterEndpoint) SetDBClusterEndpointResourceIdentifier(v string) *DBClusterEndpoint {
+	s.DBClusterEndpointResourceIdentifier = &v
+	return s
+}
+
+// SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
+func (s *DBClusterEndpoint) SetDBClusterIdentifier(v string) *DBClusterEndpoint {
+	s.DBClusterIdentifier = &v
+	return s
+}
+
+// SetEndpoint sets the Endpoint field's value.
+func (s *DBClusterEndpoint) SetEndpoint(v string) *DBClusterEndpoint {
+	s.Endpoint = &v
+	return s
+}
+
+// SetEndpointType sets the EndpointType field's value.
+func (s *DBClusterEndpoint) SetEndpointType(v string) *DBClusterEndpoint {
+	s.EndpointType = &v
+	return s
+}
+
+// SetExcludedMembers sets the ExcludedMembers field's value.
+func (s *DBClusterEndpoint) SetExcludedMembers(v []*string) *DBClusterEndpoint {
+	s.ExcludedMembers = v
+	return s
+}
+
+// SetStaticMembers sets the StaticMembers field's value.
+func (s *DBClusterEndpoint) SetStaticMembers(v []*string) *DBClusterEndpoint {
+	s.StaticMembers = v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *DBClusterEndpoint) SetStatus(v string) *DBClusterEndpoint {
+	s.Status = &v
+	return s
+}
+
 // Contains information about an instance that is part of a DB cluster.
 type DBClusterMember struct {
 	_ struct{} `type:"structure"`
@@ -8824,14 +9942,14 @@ func (s *DBClusterMember) SetPromotionTier(v int64) *DBClusterMember {
 	return s
 }
 
-// Contains status information for a DB cluster option group.
+// Not supported by Neptune.
 type DBClusterOptionGroupStatus struct {
 	_ struct{} `type:"structure"`
 
-	// Specifies the name of the DB cluster option group.
+	// Not supported by Neptune.
 	DBClusterOptionGroupName *string `type:"string"`
 
-	// Specifies the status of the DB cluster option group.
+	// Not supported by Neptune.
 	Status *string `type:"string"`
 }
 
@@ -8913,10 +10031,14 @@ func (s *DBClusterParameterGroup) SetDescription(v string) *DBClusterParameterGr
 	return s
 }
 
-// Describes an AWS Identity and Access Management (IAM) role that is associated
+// Describes an Amazon Identity and Access Management (IAM) role that is associated
 // with a DB cluster.
 type DBClusterRole struct {
 	_ struct{} `type:"structure"`
+
+	// The name of the feature associated with the Amazon Identity and Access Management
+	// (IAM) role. For the list of supported feature names, see DBEngineVersion.
+	FeatureName *string `type:"string"`
 
 	// The Amazon Resource Name (ARN) of the IAM role that is associated with the
 	// DB cluster.
@@ -8926,12 +10048,12 @@ type DBClusterRole struct {
 	// The Status property returns one of the following values:
 	//
 	//    * ACTIVE - the IAM role ARN is associated with the DB cluster and can
-	//    be used to access other AWS services on your behalf.
+	//    be used to access other Amazon services on your behalf.
 	//
 	//    * PENDING - the IAM role ARN is being associated with the DB cluster.
 	//
 	//    * INVALID - the IAM role ARN is associated with the DB cluster, but the
-	//    DB cluster is unable to assume the IAM role in order to access other AWS
+	//    DB cluster is unable to assume the IAM role in order to access other Amazon
 	//    services on your behalf.
 	Status *string `type:"string"`
 }
@@ -8944,6 +10066,12 @@ func (s DBClusterRole) String() string {
 // GoString returns the string representation
 func (s DBClusterRole) GoString() string {
 	return s.String()
+}
+
+// SetFeatureName sets the FeatureName field's value.
+func (s *DBClusterRole) SetFeatureName(v string) *DBClusterRole {
+	s.FeatureName = &v
+	return s
 }
 
 // SetRoleArn sets the RoleArn field's value.
@@ -9005,18 +10133,18 @@ type DBClusterSnapshot struct {
 	// Provides the version of the database engine for this DB cluster snapshot.
 	EngineVersion *string `type:"string"`
 
-	// True if mapping of AWS Identity and Access Management (IAM) accounts to database
-	// accounts is enabled, and otherwise false.
+	// True if mapping of Amazon Identity and Access Management (IAM) accounts to
+	// database accounts is enabled, and otherwise false.
 	IAMDatabaseAuthenticationEnabled *bool `type:"boolean"`
 
-	// If StorageEncrypted is true, the AWS KMS key identifier for the encrypted
+	// If StorageEncrypted is true, the Amazon KMS key identifier for the encrypted
 	// DB cluster snapshot.
 	KmsKeyId *string `type:"string"`
 
 	// Provides the license model information for this DB cluster snapshot.
 	LicenseModel *string `type:"string"`
 
-	// Provides the master username for the DB cluster snapshot.
+	// Not supported by Neptune.
 	MasterUsername *string `type:"string"`
 
 	// Specifies the percentage of the estimated data that has been transferred.
@@ -9180,15 +10308,15 @@ func (s *DBClusterSnapshot) SetVpcId(v string) *DBClusterSnapshot {
 
 // Contains the name and values of a manual DB cluster snapshot attribute.
 //
-// Manual DB cluster snapshot attributes are used to authorize other AWS accounts
-// to restore a manual DB cluster snapshot. For more information, see the ModifyDBClusterSnapshotAttribute
-// API action.
+// Manual DB cluster snapshot attributes are used to authorize other Amazon
+// accounts to restore a manual DB cluster snapshot. For more information, see
+// the ModifyDBClusterSnapshotAttribute API action.
 type DBClusterSnapshotAttribute struct {
 	_ struct{} `type:"structure"`
 
 	// The name of the manual DB cluster snapshot attribute.
 	//
-	// The attribute named restore refers to the list of AWS accounts that have
+	// The attribute named restore refers to the list of Amazon accounts that have
 	// permission to copy or restore the manual DB cluster snapshot. For more information,
 	// see the ModifyDBClusterSnapshotAttribute API action.
 	AttributeName *string `type:"string"`
@@ -9196,10 +10324,10 @@ type DBClusterSnapshotAttribute struct {
 	// The value(s) for the manual DB cluster snapshot attribute.
 	//
 	// If the AttributeName field is set to restore, then this element returns a
-	// list of IDs of the AWS accounts that are authorized to copy or restore the
-	// manual DB cluster snapshot. If a value of all is in the list, then the manual
-	// DB cluster snapshot is public and available for any AWS account to copy or
-	// restore.
+	// list of IDs of the Amazon accounts that are authorized to copy or restore
+	// the manual DB cluster snapshot. If a value of all is in the list, then the
+	// manual DB cluster snapshot is public and available for any Amazon account
+	// to copy or restore.
 	AttributeValues []*string `locationNameList:"AttributeValue" type:"list"`
 }
 
@@ -9228,9 +10356,9 @@ func (s *DBClusterSnapshotAttribute) SetAttributeValues(v []*string) *DBClusterS
 // Contains the results of a successful call to the DescribeDBClusterSnapshotAttributes
 // API action.
 //
-// Manual DB cluster snapshot attributes are used to authorize other AWS accounts
-// to copy or restore a manual DB cluster snapshot. For more information, see
-// the ModifyDBClusterSnapshotAttribute API action.
+// Manual DB cluster snapshot attributes are used to authorize other Amazon
+// accounts to copy or restore a manual DB cluster snapshot. For more information,
+// see the ModifyDBClusterSnapshotAttribute API action.
 type DBClusterSnapshotAttributesResult struct {
 	_ struct{} `type:"structure"`
 
@@ -9397,7 +10525,7 @@ func (s *DBEngineVersion) SetValidUpgradeTarget(v []*UpgradeTarget) *DBEngineVer
 type DBInstance struct {
 	_ struct{} `type:"structure"`
 
-	// Specifies the allocated storage size specified in gibibytes.
+	// Not supported by Neptune.
 	AllocatedStorage *int64 `type:"integer"`
 
 	// Indicates that minor version patches are applied automatically.
@@ -9454,9 +10582,9 @@ type DBInstance struct {
 	// part of a DB cluster, this can be a different port than the DB cluster port.
 	DbInstancePort *int64 `type:"integer"`
 
-	// The AWS Region-unique, immutable identifier for the DB instance. This identifier
-	// is found in AWS CloudTrail log entries whenever the AWS KMS key for the DB
-	// instance is accessed.
+	// The Amazon Region-unique, immutable identifier for the DB instance. This
+	// identifier is found in Amazon CloudTrail log entries whenever the Amazon
+	// KMS key for the DB instance is accessed.
 	DbiResourceId *string `type:"string"`
 
 	// Indicates whether or not the DB instance has deletion protection enabled.
@@ -9484,7 +10612,7 @@ type DBInstance struct {
 	// receives the Enhanced Monitoring metrics data for the DB instance.
 	EnhancedMonitoringResourceArn *string `type:"string"`
 
-	// True if AWS Identity and Access Management (IAM) authentication is enabled,
+	// True if Amazon Identity and Access Management (IAM) authentication is enabled,
 	// and otherwise false.
 	IAMDatabaseAuthenticationEnabled *bool `type:"boolean"`
 
@@ -9504,7 +10632,7 @@ type DBInstance struct {
 	// License model information for this DB instance.
 	LicenseModel *string `type:"string"`
 
-	// Contains the master username for the DB instance.
+	// Not supported by Neptune.
 	MasterUsername *string `type:"string"`
 
 	// The interval, in seconds, between points when Enhanced Monitoring metrics
@@ -10171,6 +11299,171 @@ func (s *DBSubnetGroup) SetVpcId(v string) *DBSubnetGroup {
 	return s
 }
 
+type DeleteDBClusterEndpointInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier associated with the custom endpoint. This parameter is stored
+	// as a lowercase string.
+	//
+	// DBClusterEndpointIdentifier is a required field
+	DBClusterEndpointIdentifier *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteDBClusterEndpointInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteDBClusterEndpointInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteDBClusterEndpointInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteDBClusterEndpointInput"}
+	if s.DBClusterEndpointIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("DBClusterEndpointIdentifier"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDBClusterEndpointIdentifier sets the DBClusterEndpointIdentifier field's value.
+func (s *DeleteDBClusterEndpointInput) SetDBClusterEndpointIdentifier(v string) *DeleteDBClusterEndpointInput {
+	s.DBClusterEndpointIdentifier = &v
+	return s
+}
+
+// This data type represents the information you need to connect to an Amazon
+// Neptune DB cluster. This data type is used as a response element in the following
+// actions:
+//
+//    * CreateDBClusterEndpoint
+//
+//    * DescribeDBClusterEndpoints
+//
+//    * ModifyDBClusterEndpoint
+//
+//    * DeleteDBClusterEndpoint
+//
+// For the data structure that represents Amazon RDS DB instance endpoints,
+// see Endpoint.
+type DeleteDBClusterEndpointOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The type associated with a custom endpoint. One of: READER, WRITER, ANY.
+	CustomEndpointType *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) for the endpoint.
+	DBClusterEndpointArn *string `type:"string"`
+
+	// The identifier associated with the endpoint. This parameter is stored as
+	// a lowercase string.
+	DBClusterEndpointIdentifier *string `type:"string"`
+
+	// A unique system-generated identifier for an endpoint. It remains the same
+	// for the whole life of the endpoint.
+	DBClusterEndpointResourceIdentifier *string `type:"string"`
+
+	// The DB cluster identifier of the DB cluster associated with the endpoint.
+	// This parameter is stored as a lowercase string.
+	DBClusterIdentifier *string `type:"string"`
+
+	// The DNS address of the endpoint.
+	Endpoint *string `type:"string"`
+
+	// The type of the endpoint. One of: READER, WRITER, CUSTOM.
+	EndpointType *string `type:"string"`
+
+	// List of DB instance identifiers that aren't part of the custom endpoint group.
+	// All other eligible instances are reachable through the custom endpoint. Only
+	// relevant if the list of static members is empty.
+	ExcludedMembers []*string `type:"list"`
+
+	// List of DB instance identifiers that are part of the custom endpoint group.
+	StaticMembers []*string `type:"list"`
+
+	// The current status of the endpoint. One of: creating, available, deleting,
+	// inactive, modifying. The inactive state applies to an endpoint that cannot
+	// be used for a certain kind of cluster, such as a writer endpoint for a read-only
+	// secondary cluster in a global database.
+	Status *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DeleteDBClusterEndpointOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteDBClusterEndpointOutput) GoString() string {
+	return s.String()
+}
+
+// SetCustomEndpointType sets the CustomEndpointType field's value.
+func (s *DeleteDBClusterEndpointOutput) SetCustomEndpointType(v string) *DeleteDBClusterEndpointOutput {
+	s.CustomEndpointType = &v
+	return s
+}
+
+// SetDBClusterEndpointArn sets the DBClusterEndpointArn field's value.
+func (s *DeleteDBClusterEndpointOutput) SetDBClusterEndpointArn(v string) *DeleteDBClusterEndpointOutput {
+	s.DBClusterEndpointArn = &v
+	return s
+}
+
+// SetDBClusterEndpointIdentifier sets the DBClusterEndpointIdentifier field's value.
+func (s *DeleteDBClusterEndpointOutput) SetDBClusterEndpointIdentifier(v string) *DeleteDBClusterEndpointOutput {
+	s.DBClusterEndpointIdentifier = &v
+	return s
+}
+
+// SetDBClusterEndpointResourceIdentifier sets the DBClusterEndpointResourceIdentifier field's value.
+func (s *DeleteDBClusterEndpointOutput) SetDBClusterEndpointResourceIdentifier(v string) *DeleteDBClusterEndpointOutput {
+	s.DBClusterEndpointResourceIdentifier = &v
+	return s
+}
+
+// SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
+func (s *DeleteDBClusterEndpointOutput) SetDBClusterIdentifier(v string) *DeleteDBClusterEndpointOutput {
+	s.DBClusterIdentifier = &v
+	return s
+}
+
+// SetEndpoint sets the Endpoint field's value.
+func (s *DeleteDBClusterEndpointOutput) SetEndpoint(v string) *DeleteDBClusterEndpointOutput {
+	s.Endpoint = &v
+	return s
+}
+
+// SetEndpointType sets the EndpointType field's value.
+func (s *DeleteDBClusterEndpointOutput) SetEndpointType(v string) *DeleteDBClusterEndpointOutput {
+	s.EndpointType = &v
+	return s
+}
+
+// SetExcludedMembers sets the ExcludedMembers field's value.
+func (s *DeleteDBClusterEndpointOutput) SetExcludedMembers(v []*string) *DeleteDBClusterEndpointOutput {
+	s.ExcludedMembers = v
+	return s
+}
+
+// SetStaticMembers sets the StaticMembers field's value.
+func (s *DeleteDBClusterEndpointOutput) SetStaticMembers(v []*string) *DeleteDBClusterEndpointOutput {
+	s.StaticMembers = v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *DeleteDBClusterEndpointOutput) SetStatus(v string) *DeleteDBClusterEndpointOutput {
+	s.Status = &v
+	return s
+}
+
 type DeleteDBClusterInput struct {
 	_ struct{} `type:"structure"`
 
@@ -10699,6 +11992,136 @@ func (s *DeleteEventSubscriptionOutput) SetEventSubscription(v *EventSubscriptio
 	return s
 }
 
+type DescribeDBClusterEndpointsInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the endpoint to describe. This parameter is stored as a
+	// lowercase string.
+	DBClusterEndpointIdentifier *string `type:"string"`
+
+	// The DB cluster identifier of the DB cluster associated with the endpoint.
+	// This parameter is stored as a lowercase string.
+	DBClusterIdentifier *string `type:"string"`
+
+	// A set of name-value pairs that define which endpoints to include in the output.
+	// The filters are specified as name-value pairs, in the format Name=endpoint_type,Values=endpoint_type1,endpoint_type2,....
+	// Name can be one of: db-cluster-endpoint-type, db-cluster-endpoint-custom-type,
+	// db-cluster-endpoint-id, db-cluster-endpoint-status. Values for the db-cluster-endpoint-type
+	// filter can be one or more of: reader, writer, custom. Values for the db-cluster-endpoint-custom-type
+	// filter can be one or more of: reader, any. Values for the db-cluster-endpoint-status
+	// filter can be one or more of: available, creating, deleting, inactive, modifying.
+	Filters []*Filter `locationNameList:"Filter" type:"list"`
+
+	// An optional pagination token provided by a previous DescribeDBClusterEndpoints
+	// request. If this parameter is specified, the response includes only records
+	// beyond the marker, up to the value specified by MaxRecords.
+	Marker *string `type:"string"`
+
+	// The maximum number of records to include in the response. If more records
+	// exist than the specified MaxRecords value, a pagination token called a marker
+	// is included in the response so you can retrieve the remaining results.
+	//
+	// Default: 100
+	//
+	// Constraints: Minimum 20, maximum 100.
+	MaxRecords *int64 `type:"integer"`
+}
+
+// String returns the string representation
+func (s DescribeDBClusterEndpointsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeDBClusterEndpointsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeDBClusterEndpointsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeDBClusterEndpointsInput"}
+	if s.Filters != nil {
+		for i, v := range s.Filters {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Filters", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDBClusterEndpointIdentifier sets the DBClusterEndpointIdentifier field's value.
+func (s *DescribeDBClusterEndpointsInput) SetDBClusterEndpointIdentifier(v string) *DescribeDBClusterEndpointsInput {
+	s.DBClusterEndpointIdentifier = &v
+	return s
+}
+
+// SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
+func (s *DescribeDBClusterEndpointsInput) SetDBClusterIdentifier(v string) *DescribeDBClusterEndpointsInput {
+	s.DBClusterIdentifier = &v
+	return s
+}
+
+// SetFilters sets the Filters field's value.
+func (s *DescribeDBClusterEndpointsInput) SetFilters(v []*Filter) *DescribeDBClusterEndpointsInput {
+	s.Filters = v
+	return s
+}
+
+// SetMarker sets the Marker field's value.
+func (s *DescribeDBClusterEndpointsInput) SetMarker(v string) *DescribeDBClusterEndpointsInput {
+	s.Marker = &v
+	return s
+}
+
+// SetMaxRecords sets the MaxRecords field's value.
+func (s *DescribeDBClusterEndpointsInput) SetMaxRecords(v int64) *DescribeDBClusterEndpointsInput {
+	s.MaxRecords = &v
+	return s
+}
+
+type DescribeDBClusterEndpointsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Contains the details of the endpoints associated with the cluster and matching
+	// any filter conditions.
+	DBClusterEndpoints []*DBClusterEndpoint `locationNameList:"DBClusterEndpointList" type:"list"`
+
+	// An optional pagination token provided by a previous DescribeDBClusterEndpoints
+	// request. If this parameter is specified, the response includes only records
+	// beyond the marker, up to the value specified by MaxRecords.
+	Marker *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DescribeDBClusterEndpointsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeDBClusterEndpointsOutput) GoString() string {
+	return s.String()
+}
+
+// SetDBClusterEndpoints sets the DBClusterEndpoints field's value.
+func (s *DescribeDBClusterEndpointsOutput) SetDBClusterEndpoints(v []*DBClusterEndpoint) *DescribeDBClusterEndpointsOutput {
+	s.DBClusterEndpoints = v
+	return s
+}
+
+// SetMarker sets the Marker field's value.
+func (s *DescribeDBClusterEndpointsOutput) SetMarker(v string) *DescribeDBClusterEndpointsOutput {
+	s.Marker = &v
+	return s
+}
+
 type DescribeDBClusterParameterGroupsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -10991,9 +12414,9 @@ type DescribeDBClusterSnapshotAttributesOutput struct {
 	// Contains the results of a successful call to the DescribeDBClusterSnapshotAttributes
 	// API action.
 	//
-	// Manual DB cluster snapshot attributes are used to authorize other AWS accounts
-	// to copy or restore a manual DB cluster snapshot. For more information, see
-	// the ModifyDBClusterSnapshotAttribute API action.
+	// Manual DB cluster snapshot attributes are used to authorize other Amazon
+	// accounts to copy or restore a manual DB cluster snapshot. For more information,
+	// see the ModifyDBClusterSnapshotAttribute API action.
 	DBClusterSnapshotAttributesResult *DBClusterSnapshotAttributesResult `type:"structure"`
 }
 
@@ -11041,19 +12464,20 @@ type DescribeDBClusterSnapshotsInput struct {
 	Filters []*Filter `locationNameList:"Filter" type:"list"`
 
 	// True to include manual DB cluster snapshots that are public and can be copied
-	// or restored by any AWS account, and otherwise false. The default is false.
+	// or restored by any Amazon account, and otherwise false. The default is false.
 	// The default is false.
 	//
 	// You can share a manual DB cluster snapshot as public by using the ModifyDBClusterSnapshotAttribute
 	// API action.
 	IncludePublic *bool `type:"boolean"`
 
-	// True to include shared manual DB cluster snapshots from other AWS accounts
+	// True to include shared manual DB cluster snapshots from other Amazon accounts
 	// that this AWS account has been given permission to copy or restore, and otherwise
 	// false. The default is false.
 	//
-	// You can give an AWS account permission to restore a manual DB cluster snapshot
-	// from another AWS account by the ModifyDBClusterSnapshotAttribute API action.
+	// You can give an Amazon account permission to restore a manual DB cluster
+	// snapshot from another Amazon account by the ModifyDBClusterSnapshotAttribute
+	// API action.
 	IncludeShared *bool `type:"boolean"`
 
 	// An optional pagination token provided by a previous DescribeDBClusterSnapshots
@@ -11074,13 +12498,13 @@ type DescribeDBClusterSnapshotsInput struct {
 	// following values:
 	//
 	//    * automated - Return all DB cluster snapshots that have been automatically
-	//    taken by Amazon Neptune for my AWS account.
+	//    taken by Amazon Neptune for my Amazon account.
 	//
 	//    * manual - Return all DB cluster snapshots that have been taken by my
 	//    AWS account.
 	//
 	//    * shared - Return all manual DB cluster snapshots that have been shared
-	//    to my AWS account.
+	//    to my Amazon account.
 	//
 	//    * public - Return all DB cluster snapshots that have been marked as public.
 	//
@@ -11232,7 +12656,7 @@ type DescribeDBClustersInput struct {
 	//    * engine - Accepts an engine name (such as neptune), and restricts the
 	//    results list to DB clusters created by that engine.
 	//
-	// For example, to invoke this API from the AWS CLI and filter so that only
+	// For example, to invoke this API from the Amazon CLI and filter so that only
 	// Neptune DB clusters are returned, you could use the following command:
 	Filters []*Filter `locationNameList:"Filter" type:"list"`
 
@@ -11528,7 +12952,7 @@ type DescribeDBInstancesInput struct {
 	//    * engine - Accepts an engine name (such as neptune), and restricts the
 	//    results list to DB instances created by that engine.
 	//
-	// For example, to invoke this API from the AWS CLI and filter so that only
+	// For example, to invoke this API from the Amazon CLI and filter so that only
 	// Neptune DB instances are returned, you could use the following command:
 	Filters []*Filter `locationNameList:"Filter" type:"list"`
 
@@ -13019,6 +14443,9 @@ func (s *DoubleRange) SetTo(v float64) *DoubleRange {
 }
 
 // Specifies a connection endpoint.
+//
+// For the data structure that represents Amazon Neptune DB cluster endpoints,
+// see DBClusterEndpoint.
 type Endpoint struct {
 	_ struct{} `type:"structure"`
 
@@ -13217,7 +14644,7 @@ type EventSubscription struct {
 	// The event notification subscription Id.
 	CustSubscriptionId *string `type:"string"`
 
-	// The AWS customer account associated with the event notification subscription.
+	// The Amazon customer account associated with the event notification subscription.
 	CustomerAwsId *string `type:"string"`
 
 	// A Boolean value indicating if the subscription is enabled. True indicates
@@ -13524,6 +14951,200 @@ func (s *ListTagsForResourceOutput) SetTagList(v []*Tag) *ListTagsForResourceOut
 	return s
 }
 
+type ModifyDBClusterEndpointInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the endpoint to modify. This parameter is stored as a lowercase
+	// string.
+	//
+	// DBClusterEndpointIdentifier is a required field
+	DBClusterEndpointIdentifier *string `type:"string" required:"true"`
+
+	// The type of the endpoint. One of: READER, WRITER, ANY.
+	EndpointType *string `type:"string"`
+
+	// List of DB instance identifiers that aren't part of the custom endpoint group.
+	// All other eligible instances are reachable through the custom endpoint. Only
+	// relevant if the list of static members is empty.
+	ExcludedMembers []*string `type:"list"`
+
+	// List of DB instance identifiers that are part of the custom endpoint group.
+	StaticMembers []*string `type:"list"`
+}
+
+// String returns the string representation
+func (s ModifyDBClusterEndpointInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ModifyDBClusterEndpointInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ModifyDBClusterEndpointInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ModifyDBClusterEndpointInput"}
+	if s.DBClusterEndpointIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("DBClusterEndpointIdentifier"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDBClusterEndpointIdentifier sets the DBClusterEndpointIdentifier field's value.
+func (s *ModifyDBClusterEndpointInput) SetDBClusterEndpointIdentifier(v string) *ModifyDBClusterEndpointInput {
+	s.DBClusterEndpointIdentifier = &v
+	return s
+}
+
+// SetEndpointType sets the EndpointType field's value.
+func (s *ModifyDBClusterEndpointInput) SetEndpointType(v string) *ModifyDBClusterEndpointInput {
+	s.EndpointType = &v
+	return s
+}
+
+// SetExcludedMembers sets the ExcludedMembers field's value.
+func (s *ModifyDBClusterEndpointInput) SetExcludedMembers(v []*string) *ModifyDBClusterEndpointInput {
+	s.ExcludedMembers = v
+	return s
+}
+
+// SetStaticMembers sets the StaticMembers field's value.
+func (s *ModifyDBClusterEndpointInput) SetStaticMembers(v []*string) *ModifyDBClusterEndpointInput {
+	s.StaticMembers = v
+	return s
+}
+
+// This data type represents the information you need to connect to an Amazon
+// Aurora DB cluster. This data type is used as a response element in the following
+// actions:
+//
+//    * CreateDBClusterEndpoint
+//
+//    * DescribeDBClusterEndpoints
+//
+//    * ModifyDBClusterEndpoint
+//
+//    * DeleteDBClusterEndpoint
+//
+// For the data structure that represents Amazon RDS DB instance endpoints,
+// see Endpoint.
+type ModifyDBClusterEndpointOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The type associated with a custom endpoint. One of: READER, WRITER, ANY.
+	CustomEndpointType *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) for the endpoint.
+	DBClusterEndpointArn *string `type:"string"`
+
+	// The identifier associated with the endpoint. This parameter is stored as
+	// a lowercase string.
+	DBClusterEndpointIdentifier *string `type:"string"`
+
+	// A unique system-generated identifier for an endpoint. It remains the same
+	// for the whole life of the endpoint.
+	DBClusterEndpointResourceIdentifier *string `type:"string"`
+
+	// The DB cluster identifier of the DB cluster associated with the endpoint.
+	// This parameter is stored as a lowercase string.
+	DBClusterIdentifier *string `type:"string"`
+
+	// The DNS address of the endpoint.
+	Endpoint *string `type:"string"`
+
+	// The type of the endpoint. One of: READER, WRITER, CUSTOM.
+	EndpointType *string `type:"string"`
+
+	// List of DB instance identifiers that aren't part of the custom endpoint group.
+	// All other eligible instances are reachable through the custom endpoint. Only
+	// relevant if the list of static members is empty.
+	ExcludedMembers []*string `type:"list"`
+
+	// List of DB instance identifiers that are part of the custom endpoint group.
+	StaticMembers []*string `type:"list"`
+
+	// The current status of the endpoint. One of: creating, available, deleting,
+	// inactive, modifying. The inactive state applies to an endpoint that cannot
+	// be used for a certain kind of cluster, such as a writer endpoint for a read-only
+	// secondary cluster in a global database.
+	Status *string `type:"string"`
+}
+
+// String returns the string representation
+func (s ModifyDBClusterEndpointOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ModifyDBClusterEndpointOutput) GoString() string {
+	return s.String()
+}
+
+// SetCustomEndpointType sets the CustomEndpointType field's value.
+func (s *ModifyDBClusterEndpointOutput) SetCustomEndpointType(v string) *ModifyDBClusterEndpointOutput {
+	s.CustomEndpointType = &v
+	return s
+}
+
+// SetDBClusterEndpointArn sets the DBClusterEndpointArn field's value.
+func (s *ModifyDBClusterEndpointOutput) SetDBClusterEndpointArn(v string) *ModifyDBClusterEndpointOutput {
+	s.DBClusterEndpointArn = &v
+	return s
+}
+
+// SetDBClusterEndpointIdentifier sets the DBClusterEndpointIdentifier field's value.
+func (s *ModifyDBClusterEndpointOutput) SetDBClusterEndpointIdentifier(v string) *ModifyDBClusterEndpointOutput {
+	s.DBClusterEndpointIdentifier = &v
+	return s
+}
+
+// SetDBClusterEndpointResourceIdentifier sets the DBClusterEndpointResourceIdentifier field's value.
+func (s *ModifyDBClusterEndpointOutput) SetDBClusterEndpointResourceIdentifier(v string) *ModifyDBClusterEndpointOutput {
+	s.DBClusterEndpointResourceIdentifier = &v
+	return s
+}
+
+// SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
+func (s *ModifyDBClusterEndpointOutput) SetDBClusterIdentifier(v string) *ModifyDBClusterEndpointOutput {
+	s.DBClusterIdentifier = &v
+	return s
+}
+
+// SetEndpoint sets the Endpoint field's value.
+func (s *ModifyDBClusterEndpointOutput) SetEndpoint(v string) *ModifyDBClusterEndpointOutput {
+	s.Endpoint = &v
+	return s
+}
+
+// SetEndpointType sets the EndpointType field's value.
+func (s *ModifyDBClusterEndpointOutput) SetEndpointType(v string) *ModifyDBClusterEndpointOutput {
+	s.EndpointType = &v
+	return s
+}
+
+// SetExcludedMembers sets the ExcludedMembers field's value.
+func (s *ModifyDBClusterEndpointOutput) SetExcludedMembers(v []*string) *ModifyDBClusterEndpointOutput {
+	s.ExcludedMembers = v
+	return s
+}
+
+// SetStaticMembers sets the StaticMembers field's value.
+func (s *ModifyDBClusterEndpointOutput) SetStaticMembers(v []*string) *ModifyDBClusterEndpointOutput {
+	s.StaticMembers = v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *ModifyDBClusterEndpointOutput) SetStatus(v string) *ModifyDBClusterEndpointOutput {
+	s.Status = &v
+	return s
+}
+
 type ModifyDBClusterInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13533,12 +15154,11 @@ type ModifyDBClusterInput struct {
 	// is set to false, changes to the DB cluster are applied during the next maintenance
 	// window.
 	//
-	// The ApplyImmediately parameter only affects the NewDBClusterIdentifier and
-	// MasterUserPassword values. If you set the ApplyImmediately parameter value
-	// to false, then changes to the NewDBClusterIdentifier and MasterUserPassword
-	// values are applied during the next maintenance window. All other changes
-	// are applied immediately, regardless of the value of the ApplyImmediately
-	// parameter.
+	// The ApplyImmediately parameter only affects NewDBClusterIdentifier values.
+	// If you set the ApplyImmediately parameter value to false, then changes to
+	// NewDBClusterIdentifier values are applied during the next maintenance window.
+	// All other changes are applied immediately, regardless of the value of the
+	// ApplyImmediately parameter.
 	//
 	// Default: false
 	ApplyImmediately *bool `type:"boolean"`
@@ -13556,6 +15176,10 @@ type ModifyDBClusterInput struct {
 	// The configuration setting for the log types to be enabled for export to CloudWatch
 	// Logs for a specific DB cluster.
 	CloudwatchLogsExportConfiguration *CloudwatchLogsExportConfiguration `type:"structure"`
+
+	// If set to true, tags are copied to any snapshot of the DB cluster that is
+	// created.
+	CopyTagsToSnapshot *bool `type:"boolean"`
 
 	// The DB cluster identifier for the cluster being modified. This parameter
 	// is not case-sensitive.
@@ -13575,23 +15199,22 @@ type ModifyDBClusterInput struct {
 	// deletion protection is disabled.
 	DeletionProtection *bool `type:"boolean"`
 
-	// True to enable mapping of AWS Identity and Access Management (IAM) accounts
+	// True to enable mapping of Amazon Identity and Access Management (IAM) accounts
 	// to database accounts, and otherwise false.
 	//
 	// Default: false
 	EnableIAMDatabaseAuthentication *bool `type:"boolean"`
 
-	// The version number of the database engine. Currently, setting this parameter
-	// has no effect. To upgrade your database engine to the most recent release,
-	// use the ApplyPendingMaintenanceAction API.
+	// The version number of the database engine to which you want to upgrade. Changing
+	// this parameter results in an outage. The change is applied during the next
+	// maintenance window unless the ApplyImmediately parameter is set to true.
 	//
-	// For a list of valid engine versions, see CreateDBInstance, or call DescribeDBEngineVersions.
+	// For a list of valid engine versions, see Engine Releases for Amazon Neptune
+	// (https://docs.aws.amazon.com/neptune/latest/userguide/engine-releases.html),
+	// or call DescribeDBEngineVersions (https://docs.aws.amazon.com/neptune/latest/userguide/api-other-apis.html#DescribeDBEngineVersions).
 	EngineVersion *string `type:"string"`
 
-	// The new password for the master database user. This password can contain
-	// any printable ASCII character except "/", """, or "@".
-	//
-	// Constraints: Must contain from 8 to 41 characters.
+	// Not supported by Neptune.
 	MasterUserPassword *string `type:"string"`
 
 	// The new DB cluster identifier for the DB cluster when renaming a DB cluster.
@@ -13608,7 +15231,7 @@ type ModifyDBClusterInput struct {
 	// Example: my-cluster2
 	NewDBClusterIdentifier *string `type:"string"`
 
-	// (Not supported by Neptune)
+	// Not supported by Neptune.
 	OptionGroupName *string `type:"string"`
 
 	// The port number on which the DB cluster accepts connections.
@@ -13622,7 +15245,7 @@ type ModifyDBClusterInput struct {
 	// backups are enabled, using the BackupRetentionPeriod parameter.
 	//
 	// The default is a 30-minute window selected at random from an 8-hour block
-	// of time for each AWS Region.
+	// of time for each Amazon Region.
 	//
 	// Constraints:
 	//
@@ -13641,7 +15264,7 @@ type ModifyDBClusterInput struct {
 	// Format: ddd:hh24:mi-ddd:hh24:mi
 	//
 	// The default is a 30-minute window selected at random from an 8-hour block
-	// of time for each AWS Region, occurring on a random day of the week.
+	// of time for each Amazon Region, occurring on a random day of the week.
 	//
 	// Valid Days: Mon, Tue, Wed, Thu, Fri, Sat, Sun.
 	//
@@ -13690,6 +15313,12 @@ func (s *ModifyDBClusterInput) SetBackupRetentionPeriod(v int64) *ModifyDBCluste
 // SetCloudwatchLogsExportConfiguration sets the CloudwatchLogsExportConfiguration field's value.
 func (s *ModifyDBClusterInput) SetCloudwatchLogsExportConfiguration(v *CloudwatchLogsExportConfiguration) *ModifyDBClusterInput {
 	s.CloudwatchLogsExportConfiguration = v
+	return s
+}
+
+// SetCopyTagsToSnapshot sets the CopyTagsToSnapshot field's value.
+func (s *ModifyDBClusterInput) SetCopyTagsToSnapshot(v bool) *ModifyDBClusterInput {
+	s.CopyTagsToSnapshot = &v
 	return s
 }
 
@@ -13847,7 +15476,7 @@ type ModifyDBClusterSnapshotAttributeInput struct {
 
 	// The name of the DB cluster snapshot attribute to modify.
 	//
-	// To manage authorization for other AWS accounts to copy or restore a manual
+	// To manage authorization for other Amazon accounts to copy or restore a manual
 	// DB cluster snapshot, set this value to restore.
 	//
 	// AttributeName is a required field
@@ -13861,22 +15490,22 @@ type ModifyDBClusterSnapshotAttributeInput struct {
 	// A list of DB cluster snapshot attributes to add to the attribute specified
 	// by AttributeName.
 	//
-	// To authorize other AWS accounts to copy or restore a manual DB cluster snapshot,
-	// set this list to include one or more AWS account IDs, or all to make the
-	// manual DB cluster snapshot restorable by any AWS account. Do not add the
-	// all value for any manual DB cluster snapshots that contain private information
-	// that you don't want available to all AWS accounts.
+	// To authorize other Amazon accounts to copy or restore a manual DB cluster
+	// snapshot, set this list to include one or more Amazon account IDs, or all
+	// to make the manual DB cluster snapshot restorable by any Amazon account.
+	// Do not add the all value for any manual DB cluster snapshots that contain
+	// private information that you don't want available to all AWS accounts.
 	ValuesToAdd []*string `locationNameList:"AttributeValue" type:"list"`
 
 	// A list of DB cluster snapshot attributes to remove from the attribute specified
 	// by AttributeName.
 	//
-	// To remove authorization for other AWS accounts to copy or restore a manual
-	// DB cluster snapshot, set this list to include one or more AWS account identifiers,
-	// or all to remove authorization for any AWS account to copy or restore the
-	// DB cluster snapshot. If you specify all, an AWS account whose account ID
-	// is explicitly added to the restore attribute can still copy or restore a
-	// manual DB cluster snapshot.
+	// To remove authorization for other Amazon accounts to copy or restore a manual
+	// DB cluster snapshot, set this list to include one or more Amazon account
+	// identifiers, or all to remove authorization for any Amazon account to copy
+	// or restore the DB cluster snapshot. If you specify all, an Amazon account
+	// whose account ID is explicitly added to the restore attribute can still copy
+	// or restore a manual DB cluster snapshot.
 	ValuesToRemove []*string `locationNameList:"AttributeValue" type:"list"`
 }
 
@@ -13936,9 +15565,9 @@ type ModifyDBClusterSnapshotAttributeOutput struct {
 	// Contains the results of a successful call to the DescribeDBClusterSnapshotAttributes
 	// API action.
 	//
-	// Manual DB cluster snapshot attributes are used to authorize other AWS accounts
-	// to copy or restore a manual DB cluster snapshot. For more information, see
-	// the ModifyDBClusterSnapshotAttribute API action.
+	// Manual DB cluster snapshot attributes are used to authorize other Amazon
+	// accounts to copy or restore a manual DB cluster snapshot. For more information,
+	// see the ModifyDBClusterSnapshotAttribute API action.
 	DBClusterSnapshotAttributesResult *DBClusterSnapshotAttributesResult `type:"structure"`
 }
 
@@ -13961,9 +15590,7 @@ func (s *ModifyDBClusterSnapshotAttributeOutput) SetDBClusterSnapshotAttributesR
 type ModifyDBInstanceInput struct {
 	_ struct{} `type:"structure"`
 
-	// The new amount of storage (in gibibytes) to allocate for the DB instance.
-	//
-	// Not applicable. Storage is managed by the DB Cluster.
+	// Not supported by Neptune.
 	AllocatedStorage *int64 `type:"integer"`
 
 	// Indicates that major version upgrades are allowed. Changing this parameter
@@ -14083,12 +15710,12 @@ type ModifyDBInstanceInput struct {
 	// Not supported
 	DomainIAMRoleName *string `type:"string"`
 
-	// True to enable mapping of AWS Identity and Access Management (IAM) accounts
+	// True to enable mapping of Amazon Identity and Access Management (IAM) accounts
 	// to database accounts, and otherwise false.
 	//
 	// You can enable IAM database authentication for the following database engines
 	//
-	// Not applicable. Mapping AWS IAM accounts to database accounts is managed
+	// Not applicable. Mapping Amazon IAM accounts to database accounts is managed
 	// by the DB cluster. For more information, see ModifyDBCluster.
 	//
 	// Default: false
@@ -14111,10 +15738,10 @@ type ModifyDBInstanceInput struct {
 	// Default: Uses existing setting
 	Iops *int64 `type:"integer"`
 
-	// Not supported.
+	// Not supported by Neptune.
 	LicenseModel *string `type:"string"`
 
-	// Not applicable.
+	// Not supported by Neptune.
 	MasterUserPassword *string `type:"string"`
 
 	// The interval, in seconds, between points when Enhanced Monitoring metrics
@@ -14766,16 +16393,14 @@ func (s *ModifyEventSubscriptionOutput) SetEventSubscription(v *EventSubscriptio
 	return s
 }
 
-// Provides information on the option groups the DB instance is a member of.
+// Not supported by Neptune.
 type OptionGroupMembership struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the option group that the instance belongs to.
+	// Not supported by Neptune.
 	OptionGroupName *string `type:"string"`
 
-	// The status of the DB instance's option group membership. Valid values are:
-	// in-sync, pending-apply, pending-removal, pending-maintenance-apply, pending-maintenance-removal,
-	// applying, removing, and failed.
+	// Not supported by Neptune.
 	Status *string `type:"string"`
 }
 
@@ -15254,13 +16879,10 @@ type PendingModifiedValues struct {
 	// applied or is currently being applied.
 	Iops *int64 `type:"integer"`
 
-	// The license model for the DB instance.
-	//
-	// Valid values: license-included | bring-your-own-license | general-public-license
+	// Not supported by Neptune.
 	LicenseModel *string `type:"string"`
 
-	// Contains the pending or currently-in-progress change of the master credentials
-	// for the DB instance.
+	// Not supported by Neptune.
 	MasterUserPassword *string `type:"string"`
 
 	// Indicates that the Single-AZ DB instance is to change to a Multi-AZ deployment.
@@ -15566,6 +17188,10 @@ type RemoveRoleFromDBClusterInput struct {
 	// DBClusterIdentifier is a required field
 	DBClusterIdentifier *string `type:"string" required:"true"`
 
+	// The name of the feature for the DB cluster that the IAM role is to be disassociated
+	// from. For the list of supported feature names, see DBEngineVersion.
+	FeatureName *string `type:"string"`
+
 	// The Amazon Resource Name (ARN) of the IAM role to disassociate from the DB
 	// cluster, for example arn:aws:iam::123456789012:role/NeptuneAccessRole.
 	//
@@ -15602,6 +17228,12 @@ func (s *RemoveRoleFromDBClusterInput) Validate() error {
 // SetDBClusterIdentifier sets the DBClusterIdentifier field's value.
 func (s *RemoveRoleFromDBClusterInput) SetDBClusterIdentifier(v string) *RemoveRoleFromDBClusterInput {
 	s.DBClusterIdentifier = &v
+	return s
+}
+
+// SetFeatureName sets the FeatureName field's value.
+func (s *RemoveRoleFromDBClusterInput) SetFeatureName(v string) *RemoveRoleFromDBClusterInput {
+	s.FeatureName = &v
 	return s
 }
 
@@ -15996,6 +17628,10 @@ type RestoreDBClusterFromSnapshotInput struct {
 	// DB cluster can be created in.
 	AvailabilityZones []*string `locationNameList:"AvailabilityZone" type:"list"`
 
+	// If set to true, tags are copied to any snapshot of the restored DB cluster
+	// that is created.
+	CopyTagsToSnapshot *bool `type:"boolean"`
+
 	// The name of the DB cluster to create from the DB snapshot or DB cluster snapshot.
 	// This parameter isn't case-sensitive.
 	//
@@ -16038,7 +17674,7 @@ type RestoreDBClusterFromSnapshotInput struct {
 	// Logs.
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
-	// True to enable mapping of AWS Identity and Access Management (IAM) accounts
+	// True to enable mapping of Amazon Identity and Access Management (IAM) accounts
 	// to database accounts, and otherwise false.
 	//
 	// Default: false
@@ -16056,13 +17692,13 @@ type RestoreDBClusterFromSnapshotInput struct {
 	// The version of the database engine to use for the new DB cluster.
 	EngineVersion *string `type:"string"`
 
-	// The AWS KMS key identifier to use when restoring an encrypted DB cluster
+	// The Amazon KMS key identifier to use when restoring an encrypted DB cluster
 	// from a DB snapshot or DB cluster snapshot.
 	//
 	// The KMS key identifier is the Amazon Resource Name (ARN) for the KMS encryption
-	// key. If you are restoring a DB cluster with the same AWS account that owns
-	// the KMS encryption key used to encrypt the new DB cluster, then you can use
-	// the KMS key alias instead of the ARN for the KMS encryption key.
+	// key. If you are restoring a DB cluster with the same Amazon account that
+	// owns the KMS encryption key used to encrypt the new DB cluster, then you
+	// can use the KMS key alias instead of the ARN for the KMS encryption key.
 	//
 	// If you do not specify a value for the KmsKeyId parameter, then the following
 	// will occur:
@@ -16137,6 +17773,12 @@ func (s *RestoreDBClusterFromSnapshotInput) Validate() error {
 // SetAvailabilityZones sets the AvailabilityZones field's value.
 func (s *RestoreDBClusterFromSnapshotInput) SetAvailabilityZones(v []*string) *RestoreDBClusterFromSnapshotInput {
 	s.AvailabilityZones = v
+	return s
+}
+
+// SetCopyTagsToSnapshot sets the CopyTagsToSnapshot field's value.
+func (s *RestoreDBClusterFromSnapshotInput) SetCopyTagsToSnapshot(v bool) *RestoreDBClusterFromSnapshotInput {
+	s.CopyTagsToSnapshot = &v
 	return s
 }
 
@@ -16294,19 +17936,19 @@ type RestoreDBClusterToPointInTimeInput struct {
 	// Logs.
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
-	// True to enable mapping of AWS Identity and Access Management (IAM) accounts
+	// True to enable mapping of Amazon Identity and Access Management (IAM) accounts
 	// to database accounts, and otherwise false.
 	//
 	// Default: false
 	EnableIAMDatabaseAuthentication *bool `type:"boolean"`
 
-	// The AWS KMS key identifier to use when restoring an encrypted DB cluster
+	// The Amazon KMS key identifier to use when restoring an encrypted DB cluster
 	// from an encrypted DB cluster.
 	//
 	// The KMS key identifier is the Amazon Resource Name (ARN) for the KMS encryption
-	// key. If you are restoring a DB cluster with the same AWS account that owns
-	// the KMS encryption key used to encrypt the new DB cluster, then you can use
-	// the KMS key alias instead of the ARN for the KMS encryption key.
+	// key. If you are restoring a DB cluster with the same Amazon account that
+	// owns the KMS encryption key used to encrypt the new DB cluster, then you
+	// can use the KMS key alias instead of the ARN for the KMS encryption key.
 	//
 	// You can restore to a new DB cluster and encrypt the new DB cluster with a
 	// KMS key that is different than the KMS key used to encrypt the source DB
@@ -16953,6 +18595,14 @@ const (
 	ApplyMethodPendingReboot = "pending-reboot"
 )
 
+// ApplyMethod_Values returns all elements of the ApplyMethod enum
+func ApplyMethod_Values() []string {
+	return []string{
+		ApplyMethodImmediate,
+		ApplyMethodPendingReboot,
+	}
+}
+
 const (
 	// SourceTypeDbInstance is a SourceType enum value
 	SourceTypeDbInstance = "db-instance"
@@ -16972,3 +18622,15 @@ const (
 	// SourceTypeDbClusterSnapshot is a SourceType enum value
 	SourceTypeDbClusterSnapshot = "db-cluster-snapshot"
 )
+
+// SourceType_Values returns all elements of the SourceType enum
+func SourceType_Values() []string {
+	return []string{
+		SourceTypeDbInstance,
+		SourceTypeDbParameterGroup,
+		SourceTypeDbSecurityGroup,
+		SourceTypeDbSnapshot,
+		SourceTypeDbCluster,
+		SourceTypeDbClusterSnapshot,
+	}
+}

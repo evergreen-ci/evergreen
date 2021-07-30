@@ -365,7 +365,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 
 func (hc *MockHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
 	for _, h := range hc.CachedHosts {
-		if h.IP == ip {
+		if h.IP == ip || h.IPv4 == ip {
 			return &h, nil
 		}
 	}

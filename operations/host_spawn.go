@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/shlex"
@@ -174,6 +175,8 @@ func hostModify() cli.Command {
 		noExpireFlagName     = "no-expire"
 		expireFlagName       = "expire"
 		extendFlagName       = "extend"
+		addSSHKeyFlag        = "add-ssh-key"
+		addSSHKeyNameFlag    = "add-ssh-key-name"
 	)
 
 	return cli.Command{
@@ -208,13 +211,22 @@ func hostModify() cli.Command {
 				Name:  expireFlagName,
 				Usage: "make host expire like a normal spawn host, in 24 hours",
 			},
+			cli.StringFlag{
+				Name:  addSSHKeyFlag,
+				Usage: "add public key from local file `PATH` to the host's authorized_keys",
+			},
+			cli.StringFlag{
+				Name:  addSSHKeyNameFlag,
+				Usage: "add user defined public key named `KEY_NAME` to the host's authorized_keys",
+			},
 		)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireHostFlag,
-			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName),
+			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, addSSHKeyFlag, addSSHKeyNameFlag),
 			mutuallyExclusiveArgs(false, noExpireFlagName, extendFlagName),
 			mutuallyExclusiveArgs(false, noExpireFlagName, expireFlagName),
+			mutuallyExclusiveArgs(false, addSSHKeyFlag, addSSHKeyNameFlag),
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
@@ -227,6 +239,8 @@ func hostModify() cli.Command {
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
+			publicKeyFile := c.String(addSSHKeyFlag)
+			publicKeyName := c.String(addSSHKeyNameFlag)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -243,6 +257,11 @@ func hostModify() cli.Command {
 				return errors.Wrap(err, "problem generating tags to add")
 			}
 
+			publicKey, err := getPublicKey(ctx, client, publicKeyFile, publicKeyName)
+			if err != nil {
+				return errors.Wrap(err, "public key failed validation")
+			}
+
 			hostChanges := host.HostModifyOptions{
 				AddInstanceTags:    addTags,
 				DeleteInstanceTags: deleteTagSlice,
@@ -250,6 +269,7 @@ func hostModify() cli.Command {
 				AddHours:           time.Duration(extension) * time.Hour,
 				SubscriptionType:   subscriptionType,
 				NewName:            displayName,
+				AddKey:             publicKey,
 			}
 
 			if noExpire {
@@ -271,6 +291,46 @@ func hostModify() cli.Command {
 			return nil
 		},
 	}
+}
+
+func getPublicKey(ctx context.Context, client client.Communicator, keyFile, keyName string) (string, error) {
+	if keyFile != "" {
+		return readKeyFromFile(keyFile)
+	}
+
+	if keyName != "" {
+		return getUserKeyByName(ctx, client, keyName)
+	}
+
+	return "", nil
+}
+
+func readKeyFromFile(keyFile string) (string, error) {
+	if !utility.FileExists(keyFile) {
+		return "", errors.Errorf("key file '%s' does not exist", keyFile)
+	}
+
+	publicKeyBytes, err := os.ReadFile(keyFile)
+	if err != nil {
+		return "", errors.Wrapf(err, "reading public key from file")
+	}
+
+	return string(publicKeyBytes), nil
+}
+
+func getUserKeyByName(ctx context.Context, client client.Communicator, keyName string) (string, error) {
+	userKeys, err := client.GetCurrentUsersKeys(ctx)
+	if err != nil {
+		return "", errors.New("problem retrieving user keys")
+	}
+
+	for _, pubKey := range userKeys {
+		if utility.FromStringPtr(pubKey.Name) == keyName {
+			return utility.FromStringPtr(pubKey.Key), nil
+		}
+	}
+
+	return "", errors.Errorf("key name '%s' is not defined for the authenticated user", keyName)
 }
 
 func hostConfigure() cli.Command {
@@ -1412,7 +1472,7 @@ func hostFindBy() cli.Command {
 			}
 
 			hostId := utility.FromStringPtr(host.Id)
-			hostUser := utility.FromStringPtr(host.User)
+			hostUser := utility.FromStringPtr(host.StartedBy)
 			link := fmt.Sprintf("%s/host/%s", conf.UIServerHost, hostId)
 			fmt.Printf(`
 	     ID : %s

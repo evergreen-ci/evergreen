@@ -8,6 +8,12 @@ import (
 
 const (
 
+	// ErrCodeConflictException for service response error code
+	// "ConflictException".
+	//
+	// Two conflicting operations have been made on the same resource.
+	ErrCodeConflictException = "ConflictException"
+
 	// ErrCodeLimitExceededException for service response error code
 	// "LimitExceededException".
 	//
@@ -19,9 +25,24 @@ const (
 	//
 	// Resource not found. Verify the connection resource ARN and try again.
 	ErrCodeResourceNotFoundException = "ResourceNotFoundException"
+
+	// ErrCodeResourceUnavailableException for service response error code
+	// "ResourceUnavailableException".
+	//
+	// Resource not found. Verify the ARN for the host resource and try again.
+	ErrCodeResourceUnavailableException = "ResourceUnavailableException"
+
+	// ErrCodeUnsupportedOperationException for service response error code
+	// "UnsupportedOperationException".
+	//
+	// The operation is not supported. Check the connection status and try again.
+	ErrCodeUnsupportedOperationException = "UnsupportedOperationException"
 )
 
 var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
-	"LimitExceededException":    newErrorLimitExceededException,
-	"ResourceNotFoundException": newErrorResourceNotFoundException,
+	"ConflictException":             newErrorConflictException,
+	"LimitExceededException":        newErrorLimitExceededException,
+	"ResourceNotFoundException":     newErrorResourceNotFoundException,
+	"ResourceUnavailableException":  newErrorResourceUnavailableException,
+	"UnsupportedOperationException": newErrorUnsupportedOperationException,
 }

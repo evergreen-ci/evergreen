@@ -19,6 +19,8 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -972,4 +974,44 @@ func (p PatchesByCreateTime) Less(i, j int) bool {
 
 func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
+}
+
+// GetCollectiveStatus answers the question of what the patch status should be
+// when the patch status and the status of it's children are different
+func GetCollectiveStatus(statuses []string) string {
+	hasCreated := false
+	hasFailure := false
+	hasSuccess := false
+
+	for _, s := range statuses {
+		switch s {
+		case evergreen.PatchStarted:
+			return evergreen.PatchStarted
+		case evergreen.PatchCreated:
+			hasCreated = true
+		case evergreen.PatchFailed:
+			hasFailure = true
+		case evergreen.PatchSucceeded:
+			hasSuccess = true
+		}
+	}
+
+	if !(hasCreated || hasFailure || hasSuccess) {
+		grip.Critical(message.Fields{
+			"message":  "An unknown patch status was found",
+			"cause":    "Programmer error: new statuses should be added to patch.getCollectiveStatus().",
+			"statuses": statuses,
+		})
+	}
+
+	if hasCreated && (hasFailure || hasSuccess) {
+		return evergreen.PatchStarted
+	} else if hasCreated {
+		return evergreen.PatchCreated
+	} else if hasFailure {
+		return evergreen.PatchFailed
+	} else if hasSuccess {
+		return evergreen.PatchSucceeded
+	}
+	return evergreen.PatchCreated
 }

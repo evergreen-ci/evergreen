@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -193,7 +194,7 @@ func makeDownstreamProjectFromCommand(identifier, command, generateFile string) 
 		},
 	}
 	pp := &model.ParserProject{
-		Identifier: identifier,
+		Identifier: utility.ToStringPtr(identifier),
 	}
 
 	pp.AddTask(fullProject.Tasks[0].Name, fullProject.Tasks[0].Commands)

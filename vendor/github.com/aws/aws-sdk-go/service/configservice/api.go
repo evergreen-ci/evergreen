@@ -78,6 +78,14 @@ func (c *ConfigService) BatchGetAggregateResourceConfigRequest(input *BatchGetAg
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * NoSuchConfigurationAggregatorException
 //   You have specified a configuration aggregator that does not exist.
 //
@@ -167,6 +175,14 @@ func (c *ConfigService) BatchGetResourceConfigRequest(input *BatchGetResourceCon
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * NoAvailableConfigurationRecorderException
 //   There are no configuration recorders available to provide the role needed
@@ -915,8 +931,12 @@ func (c *ConfigService) DeleteOrganizationConfigRuleRequest(input *DeleteOrganiz
 // DeleteOrganizationConfigRule API operation for AWS Config.
 //
 // Deletes the specified organization config rule and all of its evaluation
-// results from all member accounts in that organization. Only a master account
-// can delete an organization config rule.
+// results from all member accounts in that organization.
+//
+// Only a master account and a delegated administrator account can delete an
+// organization config rule. When calling this API with a delegated administrator,
+// you must ensure AWS Organizations ListDelegatedAdministrator permissions
+// are added.
 //
 // AWS Config sets the state of a rule to DELETE_IN_PROGRESS until the deletion
 // is complete. You cannot update a rule while it is in this state.
@@ -960,8 +980,23 @@ func (c *ConfigService) DeleteOrganizationConfigRuleRequest(input *DeleteOrganiz
 //      deletion is in progress. Try your request again later.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -1036,7 +1071,11 @@ func (c *ConfigService) DeleteOrganizationConformancePackRequest(input *DeleteOr
 //
 // Deletes the specified organization conformance pack and all of the config
 // rules and remediation actions from all member accounts in that organization.
-// Only a master account can delete an organization conformance pack.
+//
+// Only a master account or a delegated administrator account can delete an
+// organization conformance pack. When calling this API with a delegated administrator,
+// you must ensure AWS Organizations ListDelegatedAdministrator permissions
+// are added.
 //
 // AWS Config sets the state of a conformance pack to DELETE_IN_PROGRESS until
 // the deletion is complete. You cannot update a conformance pack while it is
@@ -1085,8 +1124,23 @@ func (c *ConfigService) DeleteOrganizationConformancePackRequest(input *DeleteOr
 //      deletion is in progress. Try your request again later.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -1258,6 +1312,27 @@ func (c *ConfigService) DeleteRemediationConfigurationRequest(input *DeleteRemed
 //   Remediation action is in progress. You can either cancel execution in AWS
 //   Systems Manager or wait and try again later.
 //
+//   * InsufficientPermissionsException
+//   Indicates one of the following errors:
+//
+//      * For PutConfigRule, the rule cannot be created because the IAM role assigned
+//      to AWS Config lacks permissions to perform the config:Put* action.
+//
+//      * For PutConfigRule, the AWS Lambda function cannot be invoked. Check
+//      the function ARN, and check the function's permissions.
+//
+//      * For PutOrganizationConfigRule, organization config rule cannot be created
+//      because you do not have permissions to call IAM GetRole action or create
+//      a service linked role.
+//
+//      * For PutConformancePack and PutOrganizationConformancePack, a conformance
+//      pack cannot be created because you do not have permissions: To call IAM
+//      GetRole action or create a service linked role. To read Amazon S3 bucket.
+//
+//   * InvalidParameterValueException
+//   One or more of the specified parameters are invalid. Verify that your parameters
+//   are valid and try again.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/DeleteRemediationConfiguration
 func (c *ConfigService) DeleteRemediationConfiguration(input *DeleteRemediationConfigurationInput) (*DeleteRemediationConfigurationOutput, error) {
 	req, out := c.DeleteRemediationConfigurationRequest(input)
@@ -1325,6 +1400,10 @@ func (c *ConfigService) DeleteRemediationExceptionsRequest(input *DeleteRemediat
 // DeleteRemediationExceptions API operation for AWS Config.
 //
 // Deletes one or more remediation exceptions mentioned in the resource keys.
+//
+// AWS Config generates a remediation exception when a problem occurs executing
+// a remediation action to a specific resource. Remediation exceptions blocks
+// auto-remediation until the exception is cleared.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1419,6 +1498,14 @@ func (c *ConfigService) DeleteResourceConfigRequest(input *DeleteResourceConfigI
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * NoRunningConfigurationRecorderException
 //   There is no configuration recorder running.
@@ -1524,6 +1611,97 @@ func (c *ConfigService) DeleteRetentionConfiguration(input *DeleteRetentionConfi
 // for more information on using Contexts.
 func (c *ConfigService) DeleteRetentionConfigurationWithContext(ctx aws.Context, input *DeleteRetentionConfigurationInput, opts ...request.Option) (*DeleteRetentionConfigurationOutput, error) {
 	req, out := c.DeleteRetentionConfigurationRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeleteStoredQuery = "DeleteStoredQuery"
+
+// DeleteStoredQueryRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteStoredQuery operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteStoredQuery for more information on using the DeleteStoredQuery
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteStoredQueryRequest method.
+//    req, resp := client.DeleteStoredQueryRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/DeleteStoredQuery
+func (c *ConfigService) DeleteStoredQueryRequest(input *DeleteStoredQueryInput) (req *request.Request, output *DeleteStoredQueryOutput) {
+	op := &request.Operation{
+		Name:       opDeleteStoredQuery,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteStoredQueryInput{}
+	}
+
+	output = &DeleteStoredQueryOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// DeleteStoredQuery API operation for AWS Config.
+//
+// Deletes the stored query for a single AWS account and a single AWS Region.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Config's
+// API operation DeleteStoredQuery for usage and error information.
+//
+// Returned Error Types:
+//   * ValidationException
+//   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
+//   * ResourceNotFoundException
+//   You have specified a resource that does not exist.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/DeleteStoredQuery
+func (c *ConfigService) DeleteStoredQuery(input *DeleteStoredQueryInput) (*DeleteStoredQueryOutput, error) {
+	req, out := c.DeleteStoredQueryRequest(input)
+	return out, req.Send()
+}
+
+// DeleteStoredQueryWithContext is the same as DeleteStoredQuery with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteStoredQuery for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DeleteStoredQueryWithContext(ctx aws.Context, input *DeleteStoredQueryInput, opts ...request.Option) (*DeleteStoredQueryOutput, error) {
+	req, out := c.DeleteStoredQueryRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1656,6 +1834,12 @@ func (c *ConfigService) DescribeAggregateComplianceByConfigRulesRequest(input *D
 		Name:       opDescribeAggregateComplianceByConfigRules,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -1685,6 +1869,14 @@ func (c *ConfigService) DescribeAggregateComplianceByConfigRulesRequest(input *D
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * InvalidLimitException
 //   The specified limit is outside the allowable range.
@@ -1718,6 +1910,220 @@ func (c *ConfigService) DescribeAggregateComplianceByConfigRulesWithContext(ctx 
 	return out, req.Send()
 }
 
+// DescribeAggregateComplianceByConfigRulesPages iterates over the pages of a DescribeAggregateComplianceByConfigRules operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeAggregateComplianceByConfigRules method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeAggregateComplianceByConfigRules operation.
+//    pageNum := 0
+//    err := client.DescribeAggregateComplianceByConfigRulesPages(params,
+//        func(page *configservice.DescribeAggregateComplianceByConfigRulesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeAggregateComplianceByConfigRulesPages(input *DescribeAggregateComplianceByConfigRulesInput, fn func(*DescribeAggregateComplianceByConfigRulesOutput, bool) bool) error {
+	return c.DescribeAggregateComplianceByConfigRulesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeAggregateComplianceByConfigRulesPagesWithContext same as DescribeAggregateComplianceByConfigRulesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeAggregateComplianceByConfigRulesPagesWithContext(ctx aws.Context, input *DescribeAggregateComplianceByConfigRulesInput, fn func(*DescribeAggregateComplianceByConfigRulesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeAggregateComplianceByConfigRulesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeAggregateComplianceByConfigRulesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeAggregateComplianceByConfigRulesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
+const opDescribeAggregateComplianceByConformancePacks = "DescribeAggregateComplianceByConformancePacks"
+
+// DescribeAggregateComplianceByConformancePacksRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeAggregateComplianceByConformancePacks operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeAggregateComplianceByConformancePacks for more information on using the DescribeAggregateComplianceByConformancePacks
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeAggregateComplianceByConformancePacksRequest method.
+//    req, resp := client.DescribeAggregateComplianceByConformancePacksRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/DescribeAggregateComplianceByConformancePacks
+func (c *ConfigService) DescribeAggregateComplianceByConformancePacksRequest(input *DescribeAggregateComplianceByConformancePacksInput) (req *request.Request, output *DescribeAggregateComplianceByConformancePacksOutput) {
+	op := &request.Operation{
+		Name:       opDescribeAggregateComplianceByConformancePacks,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &DescribeAggregateComplianceByConformancePacksInput{}
+	}
+
+	output = &DescribeAggregateComplianceByConformancePacksOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeAggregateComplianceByConformancePacks API operation for AWS Config.
+//
+// Returns a list of the conformance packs and their associated compliance status
+// with the count of compliant and noncompliant AWS Config rules within each
+// conformance pack. Also returns the total rule count which includes compliant
+// rules, noncompliant rules, and rules that cannot be evaluated due to insufficient
+// data.
+//
+// The results can return an empty result page, but if you have a nextToken,
+// the results are displayed on the next page.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Config's
+// API operation DescribeAggregateComplianceByConformancePacks for usage and error information.
+//
+// Returned Error Types:
+//   * ValidationException
+//   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
+//   * InvalidLimitException
+//   The specified limit is outside the allowable range.
+//
+//   * InvalidNextTokenException
+//   The specified next token is invalid. Specify the nextToken string that was
+//   returned in the previous response to get the next page of results.
+//
+//   * NoSuchConfigurationAggregatorException
+//   You have specified a configuration aggregator that does not exist.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/DescribeAggregateComplianceByConformancePacks
+func (c *ConfigService) DescribeAggregateComplianceByConformancePacks(input *DescribeAggregateComplianceByConformancePacksInput) (*DescribeAggregateComplianceByConformancePacksOutput, error) {
+	req, out := c.DescribeAggregateComplianceByConformancePacksRequest(input)
+	return out, req.Send()
+}
+
+// DescribeAggregateComplianceByConformancePacksWithContext is the same as DescribeAggregateComplianceByConformancePacks with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeAggregateComplianceByConformancePacks for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeAggregateComplianceByConformancePacksWithContext(ctx aws.Context, input *DescribeAggregateComplianceByConformancePacksInput, opts ...request.Option) (*DescribeAggregateComplianceByConformancePacksOutput, error) {
+	req, out := c.DescribeAggregateComplianceByConformancePacksRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// DescribeAggregateComplianceByConformancePacksPages iterates over the pages of a DescribeAggregateComplianceByConformancePacks operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeAggregateComplianceByConformancePacks method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeAggregateComplianceByConformancePacks operation.
+//    pageNum := 0
+//    err := client.DescribeAggregateComplianceByConformancePacksPages(params,
+//        func(page *configservice.DescribeAggregateComplianceByConformancePacksOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeAggregateComplianceByConformancePacksPages(input *DescribeAggregateComplianceByConformancePacksInput, fn func(*DescribeAggregateComplianceByConformancePacksOutput, bool) bool) error {
+	return c.DescribeAggregateComplianceByConformancePacksPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeAggregateComplianceByConformancePacksPagesWithContext same as DescribeAggregateComplianceByConformancePacksPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeAggregateComplianceByConformancePacksPagesWithContext(ctx aws.Context, input *DescribeAggregateComplianceByConformancePacksInput, fn func(*DescribeAggregateComplianceByConformancePacksOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeAggregateComplianceByConformancePacksInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeAggregateComplianceByConformancePacksRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeAggregateComplianceByConformancePacksOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeAggregationAuthorizations = "DescribeAggregationAuthorizations"
 
 // DescribeAggregationAuthorizationsRequest generates a "aws/request.Request" representing the
@@ -1749,6 +2155,12 @@ func (c *ConfigService) DescribeAggregationAuthorizationsRequest(input *Describe
 		Name:       opDescribeAggregationAuthorizations,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -1806,6 +2218,58 @@ func (c *ConfigService) DescribeAggregationAuthorizationsWithContext(ctx aws.Con
 	return out, req.Send()
 }
 
+// DescribeAggregationAuthorizationsPages iterates over the pages of a DescribeAggregationAuthorizations operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeAggregationAuthorizations method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeAggregationAuthorizations operation.
+//    pageNum := 0
+//    err := client.DescribeAggregationAuthorizationsPages(params,
+//        func(page *configservice.DescribeAggregationAuthorizationsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeAggregationAuthorizationsPages(input *DescribeAggregationAuthorizationsInput, fn func(*DescribeAggregationAuthorizationsOutput, bool) bool) error {
+	return c.DescribeAggregationAuthorizationsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeAggregationAuthorizationsPagesWithContext same as DescribeAggregationAuthorizationsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeAggregationAuthorizationsPagesWithContext(ctx aws.Context, input *DescribeAggregationAuthorizationsInput, fn func(*DescribeAggregationAuthorizationsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeAggregationAuthorizationsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeAggregationAuthorizationsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeAggregationAuthorizationsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeComplianceByConfigRule = "DescribeComplianceByConfigRule"
 
 // DescribeComplianceByConfigRuleRequest generates a "aws/request.Request" representing the
@@ -1837,6 +2301,12 @@ func (c *ConfigService) DescribeComplianceByConfigRuleRequest(input *DescribeCom
 		Name:       opDescribeComplianceByConfigRule,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -1916,6 +2386,58 @@ func (c *ConfigService) DescribeComplianceByConfigRuleWithContext(ctx aws.Contex
 	return out, req.Send()
 }
 
+// DescribeComplianceByConfigRulePages iterates over the pages of a DescribeComplianceByConfigRule operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeComplianceByConfigRule method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeComplianceByConfigRule operation.
+//    pageNum := 0
+//    err := client.DescribeComplianceByConfigRulePages(params,
+//        func(page *configservice.DescribeComplianceByConfigRuleOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeComplianceByConfigRulePages(input *DescribeComplianceByConfigRuleInput, fn func(*DescribeComplianceByConfigRuleOutput, bool) bool) error {
+	return c.DescribeComplianceByConfigRulePagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeComplianceByConfigRulePagesWithContext same as DescribeComplianceByConfigRulePages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeComplianceByConfigRulePagesWithContext(ctx aws.Context, input *DescribeComplianceByConfigRuleInput, fn func(*DescribeComplianceByConfigRuleOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeComplianceByConfigRuleInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeComplianceByConfigRuleRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeComplianceByConfigRuleOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeComplianceByResource = "DescribeComplianceByResource"
 
 // DescribeComplianceByResourceRequest generates a "aws/request.Request" representing the
@@ -1947,6 +2469,12 @@ func (c *ConfigService) DescribeComplianceByResourceRequest(input *DescribeCompl
 		Name:       opDescribeComplianceByResource,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2024,6 +2552,58 @@ func (c *ConfigService) DescribeComplianceByResourceWithContext(ctx aws.Context,
 	return out, req.Send()
 }
 
+// DescribeComplianceByResourcePages iterates over the pages of a DescribeComplianceByResource operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeComplianceByResource method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeComplianceByResource operation.
+//    pageNum := 0
+//    err := client.DescribeComplianceByResourcePages(params,
+//        func(page *configservice.DescribeComplianceByResourceOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeComplianceByResourcePages(input *DescribeComplianceByResourceInput, fn func(*DescribeComplianceByResourceOutput, bool) bool) error {
+	return c.DescribeComplianceByResourcePagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeComplianceByResourcePagesWithContext same as DescribeComplianceByResourcePages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeComplianceByResourcePagesWithContext(ctx aws.Context, input *DescribeComplianceByResourceInput, fn func(*DescribeComplianceByResourceOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeComplianceByResourceInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeComplianceByResourceRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeComplianceByResourceOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeConfigRuleEvaluationStatus = "DescribeConfigRuleEvaluationStatus"
 
 // DescribeConfigRuleEvaluationStatusRequest generates a "aws/request.Request" representing the
@@ -2055,6 +2635,12 @@ func (c *ConfigService) DescribeConfigRuleEvaluationStatusRequest(input *Describ
 		Name:       opDescribeConfigRuleEvaluationStatus,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2115,6 +2701,58 @@ func (c *ConfigService) DescribeConfigRuleEvaluationStatusWithContext(ctx aws.Co
 	return out, req.Send()
 }
 
+// DescribeConfigRuleEvaluationStatusPages iterates over the pages of a DescribeConfigRuleEvaluationStatus operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeConfigRuleEvaluationStatus method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeConfigRuleEvaluationStatus operation.
+//    pageNum := 0
+//    err := client.DescribeConfigRuleEvaluationStatusPages(params,
+//        func(page *configservice.DescribeConfigRuleEvaluationStatusOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeConfigRuleEvaluationStatusPages(input *DescribeConfigRuleEvaluationStatusInput, fn func(*DescribeConfigRuleEvaluationStatusOutput, bool) bool) error {
+	return c.DescribeConfigRuleEvaluationStatusPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeConfigRuleEvaluationStatusPagesWithContext same as DescribeConfigRuleEvaluationStatusPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeConfigRuleEvaluationStatusPagesWithContext(ctx aws.Context, input *DescribeConfigRuleEvaluationStatusInput, fn func(*DescribeConfigRuleEvaluationStatusOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeConfigRuleEvaluationStatusInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeConfigRuleEvaluationStatusRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeConfigRuleEvaluationStatusOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeConfigRules = "DescribeConfigRules"
 
 // DescribeConfigRulesRequest generates a "aws/request.Request" representing the
@@ -2146,6 +2784,12 @@ func (c *ConfigService) DescribeConfigRulesRequest(input *DescribeConfigRulesInp
 		Name:       opDescribeConfigRules,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2199,6 +2843,58 @@ func (c *ConfigService) DescribeConfigRulesWithContext(ctx aws.Context, input *D
 	return out, req.Send()
 }
 
+// DescribeConfigRulesPages iterates over the pages of a DescribeConfigRules operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeConfigRules method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeConfigRules operation.
+//    pageNum := 0
+//    err := client.DescribeConfigRulesPages(params,
+//        func(page *configservice.DescribeConfigRulesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeConfigRulesPages(input *DescribeConfigRulesInput, fn func(*DescribeConfigRulesOutput, bool) bool) error {
+	return c.DescribeConfigRulesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeConfigRulesPagesWithContext same as DescribeConfigRulesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeConfigRulesPagesWithContext(ctx aws.Context, input *DescribeConfigRulesInput, fn func(*DescribeConfigRulesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeConfigRulesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeConfigRulesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeConfigRulesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeConfigurationAggregatorSourcesStatus = "DescribeConfigurationAggregatorSourcesStatus"
 
 // DescribeConfigurationAggregatorSourcesStatusRequest generates a "aws/request.Request" representing the
@@ -2230,6 +2926,12 @@ func (c *ConfigService) DescribeConfigurationAggregatorSourcesStatusRequest(inpu
 		Name:       opDescribeConfigurationAggregatorSourcesStatus,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2292,6 +2994,58 @@ func (c *ConfigService) DescribeConfigurationAggregatorSourcesStatusWithContext(
 	return out, req.Send()
 }
 
+// DescribeConfigurationAggregatorSourcesStatusPages iterates over the pages of a DescribeConfigurationAggregatorSourcesStatus operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeConfigurationAggregatorSourcesStatus method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeConfigurationAggregatorSourcesStatus operation.
+//    pageNum := 0
+//    err := client.DescribeConfigurationAggregatorSourcesStatusPages(params,
+//        func(page *configservice.DescribeConfigurationAggregatorSourcesStatusOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeConfigurationAggregatorSourcesStatusPages(input *DescribeConfigurationAggregatorSourcesStatusInput, fn func(*DescribeConfigurationAggregatorSourcesStatusOutput, bool) bool) error {
+	return c.DescribeConfigurationAggregatorSourcesStatusPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeConfigurationAggregatorSourcesStatusPagesWithContext same as DescribeConfigurationAggregatorSourcesStatusPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeConfigurationAggregatorSourcesStatusPagesWithContext(ctx aws.Context, input *DescribeConfigurationAggregatorSourcesStatusInput, fn func(*DescribeConfigurationAggregatorSourcesStatusOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeConfigurationAggregatorSourcesStatusInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeConfigurationAggregatorSourcesStatusRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeConfigurationAggregatorSourcesStatusOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeConfigurationAggregators = "DescribeConfigurationAggregators"
 
 // DescribeConfigurationAggregatorsRequest generates a "aws/request.Request" representing the
@@ -2323,6 +3077,12 @@ func (c *ConfigService) DescribeConfigurationAggregatorsRequest(input *DescribeC
 		Name:       opDescribeConfigurationAggregators,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2382,6 +3142,58 @@ func (c *ConfigService) DescribeConfigurationAggregatorsWithContext(ctx aws.Cont
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeConfigurationAggregatorsPages iterates over the pages of a DescribeConfigurationAggregators operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeConfigurationAggregators method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeConfigurationAggregators operation.
+//    pageNum := 0
+//    err := client.DescribeConfigurationAggregatorsPages(params,
+//        func(page *configservice.DescribeConfigurationAggregatorsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeConfigurationAggregatorsPages(input *DescribeConfigurationAggregatorsInput, fn func(*DescribeConfigurationAggregatorsOutput, bool) bool) error {
+	return c.DescribeConfigurationAggregatorsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeConfigurationAggregatorsPagesWithContext same as DescribeConfigurationAggregatorsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeConfigurationAggregatorsPagesWithContext(ctx aws.Context, input *DescribeConfigurationAggregatorsInput, fn func(*DescribeConfigurationAggregatorsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeConfigurationAggregatorsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeConfigurationAggregatorsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeConfigurationAggregatorsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeConfigurationRecorderStatus = "DescribeConfigurationRecorderStatus"
@@ -2583,6 +3395,12 @@ func (c *ConfigService) DescribeConformancePackComplianceRequest(input *Describe
 		Name:       opDescribeConformancePackCompliance,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2647,6 +3465,58 @@ func (c *ConfigService) DescribeConformancePackComplianceWithContext(ctx aws.Con
 	return out, req.Send()
 }
 
+// DescribeConformancePackCompliancePages iterates over the pages of a DescribeConformancePackCompliance operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeConformancePackCompliance method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeConformancePackCompliance operation.
+//    pageNum := 0
+//    err := client.DescribeConformancePackCompliancePages(params,
+//        func(page *configservice.DescribeConformancePackComplianceOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeConformancePackCompliancePages(input *DescribeConformancePackComplianceInput, fn func(*DescribeConformancePackComplianceOutput, bool) bool) error {
+	return c.DescribeConformancePackCompliancePagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeConformancePackCompliancePagesWithContext same as DescribeConformancePackCompliancePages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeConformancePackCompliancePagesWithContext(ctx aws.Context, input *DescribeConformancePackComplianceInput, fn func(*DescribeConformancePackComplianceOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeConformancePackComplianceInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeConformancePackComplianceRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeConformancePackComplianceOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeConformancePackStatus = "DescribeConformancePackStatus"
 
 // DescribeConformancePackStatusRequest generates a "aws/request.Request" representing the
@@ -2678,6 +3548,12 @@ func (c *ConfigService) DescribeConformancePackStatusRequest(input *DescribeConf
 		Name:       opDescribeConformancePackStatus,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2710,6 +3586,10 @@ func (c *ConfigService) DescribeConformancePackStatusRequest(input *DescribeConf
 //   The specified next token is invalid. Specify the nextToken string that was
 //   returned in the previous response to get the next page of results.
 //
+//   * InvalidParameterValueException
+//   One or more of the specified parameters are invalid. Verify that your parameters
+//   are valid and try again.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/DescribeConformancePackStatus
 func (c *ConfigService) DescribeConformancePackStatus(input *DescribeConformancePackStatusInput) (*DescribeConformancePackStatusOutput, error) {
 	req, out := c.DescribeConformancePackStatusRequest(input)
@@ -2730,6 +3610,58 @@ func (c *ConfigService) DescribeConformancePackStatusWithContext(ctx aws.Context
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeConformancePackStatusPages iterates over the pages of a DescribeConformancePackStatus operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeConformancePackStatus method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeConformancePackStatus operation.
+//    pageNum := 0
+//    err := client.DescribeConformancePackStatusPages(params,
+//        func(page *configservice.DescribeConformancePackStatusOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeConformancePackStatusPages(input *DescribeConformancePackStatusInput, fn func(*DescribeConformancePackStatusOutput, bool) bool) error {
+	return c.DescribeConformancePackStatusPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeConformancePackStatusPagesWithContext same as DescribeConformancePackStatusPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeConformancePackStatusPagesWithContext(ctx aws.Context, input *DescribeConformancePackStatusInput, fn func(*DescribeConformancePackStatusOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeConformancePackStatusInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeConformancePackStatusRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeConformancePackStatusOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeConformancePacks = "DescribeConformancePacks"
@@ -2763,6 +3695,12 @@ func (c *ConfigService) DescribeConformancePacksRequest(input *DescribeConforman
 		Name:       opDescribeConformancePacks,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2796,6 +3734,10 @@ func (c *ConfigService) DescribeConformancePacksRequest(input *DescribeConforman
 //   The specified next token is invalid. Specify the nextToken string that was
 //   returned in the previous response to get the next page of results.
 //
+//   * InvalidParameterValueException
+//   One or more of the specified parameters are invalid. Verify that your parameters
+//   are valid and try again.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/DescribeConformancePacks
 func (c *ConfigService) DescribeConformancePacks(input *DescribeConformancePacksInput) (*DescribeConformancePacksOutput, error) {
 	req, out := c.DescribeConformancePacksRequest(input)
@@ -2816,6 +3758,58 @@ func (c *ConfigService) DescribeConformancePacksWithContext(ctx aws.Context, inp
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeConformancePacksPages iterates over the pages of a DescribeConformancePacks operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeConformancePacks method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeConformancePacks operation.
+//    pageNum := 0
+//    err := client.DescribeConformancePacksPages(params,
+//        func(page *configservice.DescribeConformancePacksOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeConformancePacksPages(input *DescribeConformancePacksInput, fn func(*DescribeConformancePacksOutput, bool) bool) error {
+	return c.DescribeConformancePacksPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeConformancePacksPagesWithContext same as DescribeConformancePacksPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeConformancePacksPagesWithContext(ctx aws.Context, input *DescribeConformancePacksInput, fn func(*DescribeConformancePacksOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeConformancePacksInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeConformancePacksRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeConformancePacksOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeDeliveryChannelStatus = "DescribeDeliveryChannelStatus"
@@ -3015,6 +4009,12 @@ func (c *ConfigService) DescribeOrganizationConfigRuleStatusesRequest(input *Des
 		Name:       opDescribeOrganizationConfigRuleStatuses,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -3039,8 +4039,6 @@ func (c *ConfigService) DescribeOrganizationConfigRuleStatusesRequest(input *Des
 // rule names. It is only applicable, when you request all the organization
 // config rules.
 //
-// Only a master account can call this API.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -3060,8 +4058,23 @@ func (c *ConfigService) DescribeOrganizationConfigRuleStatusesRequest(input *Des
 //   returned in the previous response to get the next page of results.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -3087,6 +4100,58 @@ func (c *ConfigService) DescribeOrganizationConfigRuleStatusesWithContext(ctx aw
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeOrganizationConfigRuleStatusesPages iterates over the pages of a DescribeOrganizationConfigRuleStatuses operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeOrganizationConfigRuleStatuses method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeOrganizationConfigRuleStatuses operation.
+//    pageNum := 0
+//    err := client.DescribeOrganizationConfigRuleStatusesPages(params,
+//        func(page *configservice.DescribeOrganizationConfigRuleStatusesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeOrganizationConfigRuleStatusesPages(input *DescribeOrganizationConfigRuleStatusesInput, fn func(*DescribeOrganizationConfigRuleStatusesOutput, bool) bool) error {
+	return c.DescribeOrganizationConfigRuleStatusesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeOrganizationConfigRuleStatusesPagesWithContext same as DescribeOrganizationConfigRuleStatusesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeOrganizationConfigRuleStatusesPagesWithContext(ctx aws.Context, input *DescribeOrganizationConfigRuleStatusesInput, fn func(*DescribeOrganizationConfigRuleStatusesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeOrganizationConfigRuleStatusesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeOrganizationConfigRuleStatusesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeOrganizationConfigRuleStatusesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeOrganizationConfigRules = "DescribeOrganizationConfigRules"
@@ -3120,6 +4185,12 @@ func (c *ConfigService) DescribeOrganizationConfigRulesRequest(input *DescribeOr
 		Name:       opDescribeOrganizationConfigRules,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -3140,8 +4211,6 @@ func (c *ConfigService) DescribeOrganizationConfigRulesRequest(input *DescribeOr
 // rule names. It is only applicable, when you request all the organization
 // config rules.
 //
-// Only a master account can call this API.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -3161,8 +4230,23 @@ func (c *ConfigService) DescribeOrganizationConfigRulesRequest(input *DescribeOr
 //   The specified limit is outside the allowable range.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -3188,6 +4272,58 @@ func (c *ConfigService) DescribeOrganizationConfigRulesWithContext(ctx aws.Conte
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeOrganizationConfigRulesPages iterates over the pages of a DescribeOrganizationConfigRules operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeOrganizationConfigRules method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeOrganizationConfigRules operation.
+//    pageNum := 0
+//    err := client.DescribeOrganizationConfigRulesPages(params,
+//        func(page *configservice.DescribeOrganizationConfigRulesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeOrganizationConfigRulesPages(input *DescribeOrganizationConfigRulesInput, fn func(*DescribeOrganizationConfigRulesOutput, bool) bool) error {
+	return c.DescribeOrganizationConfigRulesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeOrganizationConfigRulesPagesWithContext same as DescribeOrganizationConfigRulesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeOrganizationConfigRulesPagesWithContext(ctx aws.Context, input *DescribeOrganizationConfigRulesInput, fn func(*DescribeOrganizationConfigRulesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeOrganizationConfigRulesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeOrganizationConfigRulesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeOrganizationConfigRulesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeOrganizationConformancePackStatuses = "DescribeOrganizationConformancePackStatuses"
@@ -3221,6 +4357,12 @@ func (c *ConfigService) DescribeOrganizationConformancePackStatusesRequest(input
 		Name:       opDescribeOrganizationConformancePackStatuses,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -3245,8 +4387,6 @@ func (c *ConfigService) DescribeOrganizationConformancePackStatusesRequest(input
 // pack names. They are only applicable, when you request all the organization
 // conformance packs.
 //
-// Only a master account can call this API.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -3270,8 +4410,23 @@ func (c *ConfigService) DescribeOrganizationConformancePackStatusesRequest(input
 //   returned in the previous response to get the next page of results.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -3297,6 +4452,58 @@ func (c *ConfigService) DescribeOrganizationConformancePackStatusesWithContext(c
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeOrganizationConformancePackStatusesPages iterates over the pages of a DescribeOrganizationConformancePackStatuses operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeOrganizationConformancePackStatuses method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeOrganizationConformancePackStatuses operation.
+//    pageNum := 0
+//    err := client.DescribeOrganizationConformancePackStatusesPages(params,
+//        func(page *configservice.DescribeOrganizationConformancePackStatusesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeOrganizationConformancePackStatusesPages(input *DescribeOrganizationConformancePackStatusesInput, fn func(*DescribeOrganizationConformancePackStatusesOutput, bool) bool) error {
+	return c.DescribeOrganizationConformancePackStatusesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeOrganizationConformancePackStatusesPagesWithContext same as DescribeOrganizationConformancePackStatusesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeOrganizationConformancePackStatusesPagesWithContext(ctx aws.Context, input *DescribeOrganizationConformancePackStatusesInput, fn func(*DescribeOrganizationConformancePackStatusesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeOrganizationConformancePackStatusesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeOrganizationConformancePackStatusesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeOrganizationConformancePackStatusesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeOrganizationConformancePacks = "DescribeOrganizationConformancePacks"
@@ -3330,6 +4537,12 @@ func (c *ConfigService) DescribeOrganizationConformancePacksRequest(input *Descr
 		Name:       opDescribeOrganizationConformancePacks,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -3350,8 +4563,6 @@ func (c *ConfigService) DescribeOrganizationConformancePacksRequest(input *Descr
 // Limit and next token are not applicable if you specify organization conformance
 // packs names. They are only applicable, when you request all the organization
 // conformance packs.
-//
-// Only a master account can call this API.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -3376,8 +4587,23 @@ func (c *ConfigService) DescribeOrganizationConformancePacksRequest(input *Descr
 //   The specified limit is outside the allowable range.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -3403,6 +4629,58 @@ func (c *ConfigService) DescribeOrganizationConformancePacksWithContext(ctx aws.
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeOrganizationConformancePacksPages iterates over the pages of a DescribeOrganizationConformancePacks operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeOrganizationConformancePacks method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeOrganizationConformancePacks operation.
+//    pageNum := 0
+//    err := client.DescribeOrganizationConformancePacksPages(params,
+//        func(page *configservice.DescribeOrganizationConformancePacksOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeOrganizationConformancePacksPages(input *DescribeOrganizationConformancePacksInput, fn func(*DescribeOrganizationConformancePacksOutput, bool) bool) error {
+	return c.DescribeOrganizationConformancePacksPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeOrganizationConformancePacksPagesWithContext same as DescribeOrganizationConformancePacksPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeOrganizationConformancePacksPagesWithContext(ctx aws.Context, input *DescribeOrganizationConformancePacksInput, fn func(*DescribeOrganizationConformancePacksOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeOrganizationConformancePacksInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeOrganizationConformancePacksRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeOrganizationConformancePacksOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribePendingAggregationRequests = "DescribePendingAggregationRequests"
@@ -3436,6 +4714,12 @@ func (c *ConfigService) DescribePendingAggregationRequestsRequest(input *Describ
 		Name:       opDescribePendingAggregationRequests,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -3490,6 +4774,58 @@ func (c *ConfigService) DescribePendingAggregationRequestsWithContext(ctx aws.Co
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribePendingAggregationRequestsPages iterates over the pages of a DescribePendingAggregationRequests operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribePendingAggregationRequests method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribePendingAggregationRequests operation.
+//    pageNum := 0
+//    err := client.DescribePendingAggregationRequestsPages(params,
+//        func(page *configservice.DescribePendingAggregationRequestsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribePendingAggregationRequestsPages(input *DescribePendingAggregationRequestsInput, fn func(*DescribePendingAggregationRequestsOutput, bool) bool) error {
+	return c.DescribePendingAggregationRequestsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribePendingAggregationRequestsPagesWithContext same as DescribePendingAggregationRequestsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribePendingAggregationRequestsPagesWithContext(ctx aws.Context, input *DescribePendingAggregationRequestsInput, fn func(*DescribePendingAggregationRequestsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribePendingAggregationRequestsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribePendingAggregationRequestsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribePendingAggregationRequestsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeRemediationConfigurations = "DescribeRemediationConfigurations"
@@ -3620,6 +4956,10 @@ func (c *ConfigService) DescribeRemediationExceptionsRequest(input *DescribeReme
 // of a remediation exception for a set of resources that includes an explanation
 // of an exception and the time when the exception will be deleted. When you
 // specify the limit and the next token, you receive a paginated response.
+//
+// AWS Config generates a remediation exception when a problem occurs executing
+// a remediation action to a specific resource. Remediation exceptions blocks
+// auto-remediation until the exception is cleared.
 //
 // When you specify the limit and the next token, you receive a paginated response.
 //
@@ -3786,6 +5126,10 @@ func (c *ConfigService) DescribeRemediationExecutionStatusRequest(input *Describ
 //   The specified next token is invalid. Specify the nextToken string that was
 //   returned in the previous response to get the next page of results.
 //
+//   * InvalidParameterValueException
+//   One or more of the specified parameters are invalid. Verify that your parameters
+//   are valid and try again.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/DescribeRemediationExecutionStatus
 func (c *ConfigService) DescribeRemediationExecutionStatus(input *DescribeRemediationExecutionStatusInput) (*DescribeRemediationExecutionStatusOutput, error) {
 	req, out := c.DescribeRemediationExecutionStatusRequest(input)
@@ -3891,6 +5235,12 @@ func (c *ConfigService) DescribeRetentionConfigurationsRequest(input *DescribeRe
 		Name:       opDescribeRetentionConfigurations,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -3952,6 +5302,58 @@ func (c *ConfigService) DescribeRetentionConfigurationsWithContext(ctx aws.Conte
 	return out, req.Send()
 }
 
+// DescribeRetentionConfigurationsPages iterates over the pages of a DescribeRetentionConfigurations operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeRetentionConfigurations method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeRetentionConfigurations operation.
+//    pageNum := 0
+//    err := client.DescribeRetentionConfigurationsPages(params,
+//        func(page *configservice.DescribeRetentionConfigurationsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) DescribeRetentionConfigurationsPages(input *DescribeRetentionConfigurationsInput, fn func(*DescribeRetentionConfigurationsOutput, bool) bool) error {
+	return c.DescribeRetentionConfigurationsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeRetentionConfigurationsPagesWithContext same as DescribeRetentionConfigurationsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) DescribeRetentionConfigurationsPagesWithContext(ctx aws.Context, input *DescribeRetentionConfigurationsInput, fn func(*DescribeRetentionConfigurationsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeRetentionConfigurationsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeRetentionConfigurationsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeRetentionConfigurationsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opGetAggregateComplianceDetailsByConfigRule = "GetAggregateComplianceDetailsByConfigRule"
 
 // GetAggregateComplianceDetailsByConfigRuleRequest generates a "aws/request.Request" representing the
@@ -3983,6 +5385,12 @@ func (c *ConfigService) GetAggregateComplianceDetailsByConfigRuleRequest(input *
 		Name:       opGetAggregateComplianceDetailsByConfigRule,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -4014,6 +5422,14 @@ func (c *ConfigService) GetAggregateComplianceDetailsByConfigRuleRequest(input *
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * InvalidLimitException
 //   The specified limit is outside the allowable range.
@@ -4047,6 +5463,58 @@ func (c *ConfigService) GetAggregateComplianceDetailsByConfigRuleWithContext(ctx
 	return out, req.Send()
 }
 
+// GetAggregateComplianceDetailsByConfigRulePages iterates over the pages of a GetAggregateComplianceDetailsByConfigRule operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetAggregateComplianceDetailsByConfigRule method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetAggregateComplianceDetailsByConfigRule operation.
+//    pageNum := 0
+//    err := client.GetAggregateComplianceDetailsByConfigRulePages(params,
+//        func(page *configservice.GetAggregateComplianceDetailsByConfigRuleOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetAggregateComplianceDetailsByConfigRulePages(input *GetAggregateComplianceDetailsByConfigRuleInput, fn func(*GetAggregateComplianceDetailsByConfigRuleOutput, bool) bool) error {
+	return c.GetAggregateComplianceDetailsByConfigRulePagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetAggregateComplianceDetailsByConfigRulePagesWithContext same as GetAggregateComplianceDetailsByConfigRulePages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetAggregateComplianceDetailsByConfigRulePagesWithContext(ctx aws.Context, input *GetAggregateComplianceDetailsByConfigRuleInput, fn func(*GetAggregateComplianceDetailsByConfigRuleOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetAggregateComplianceDetailsByConfigRuleInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetAggregateComplianceDetailsByConfigRuleRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetAggregateComplianceDetailsByConfigRuleOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opGetAggregateConfigRuleComplianceSummary = "GetAggregateConfigRuleComplianceSummary"
 
 // GetAggregateConfigRuleComplianceSummaryRequest generates a "aws/request.Request" representing the
@@ -4078,6 +5546,12 @@ func (c *ConfigService) GetAggregateConfigRuleComplianceSummaryRequest(input *Ge
 		Name:       opGetAggregateConfigRuleComplianceSummary,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -4107,6 +5581,14 @@ func (c *ConfigService) GetAggregateConfigRuleComplianceSummaryRequest(input *Ge
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * InvalidLimitException
 //   The specified limit is outside the allowable range.
@@ -4140,6 +5622,218 @@ func (c *ConfigService) GetAggregateConfigRuleComplianceSummaryWithContext(ctx a
 	return out, req.Send()
 }
 
+// GetAggregateConfigRuleComplianceSummaryPages iterates over the pages of a GetAggregateConfigRuleComplianceSummary operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetAggregateConfigRuleComplianceSummary method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetAggregateConfigRuleComplianceSummary operation.
+//    pageNum := 0
+//    err := client.GetAggregateConfigRuleComplianceSummaryPages(params,
+//        func(page *configservice.GetAggregateConfigRuleComplianceSummaryOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetAggregateConfigRuleComplianceSummaryPages(input *GetAggregateConfigRuleComplianceSummaryInput, fn func(*GetAggregateConfigRuleComplianceSummaryOutput, bool) bool) error {
+	return c.GetAggregateConfigRuleComplianceSummaryPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetAggregateConfigRuleComplianceSummaryPagesWithContext same as GetAggregateConfigRuleComplianceSummaryPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetAggregateConfigRuleComplianceSummaryPagesWithContext(ctx aws.Context, input *GetAggregateConfigRuleComplianceSummaryInput, fn func(*GetAggregateConfigRuleComplianceSummaryOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetAggregateConfigRuleComplianceSummaryInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetAggregateConfigRuleComplianceSummaryRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetAggregateConfigRuleComplianceSummaryOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
+const opGetAggregateConformancePackComplianceSummary = "GetAggregateConformancePackComplianceSummary"
+
+// GetAggregateConformancePackComplianceSummaryRequest generates a "aws/request.Request" representing the
+// client's request for the GetAggregateConformancePackComplianceSummary operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetAggregateConformancePackComplianceSummary for more information on using the GetAggregateConformancePackComplianceSummary
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetAggregateConformancePackComplianceSummaryRequest method.
+//    req, resp := client.GetAggregateConformancePackComplianceSummaryRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/GetAggregateConformancePackComplianceSummary
+func (c *ConfigService) GetAggregateConformancePackComplianceSummaryRequest(input *GetAggregateConformancePackComplianceSummaryInput) (req *request.Request, output *GetAggregateConformancePackComplianceSummaryOutput) {
+	op := &request.Operation{
+		Name:       opGetAggregateConformancePackComplianceSummary,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &GetAggregateConformancePackComplianceSummaryInput{}
+	}
+
+	output = &GetAggregateConformancePackComplianceSummaryOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetAggregateConformancePackComplianceSummary API operation for AWS Config.
+//
+// Returns the count of compliant and noncompliant conformance packs across
+// all AWS Accounts and AWS Regions in an aggregator. You can filter based on
+// AWS Account ID or AWS Region.
+//
+// The results can return an empty result page, but if you have a nextToken,
+// the results are displayed on the next page.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Config's
+// API operation GetAggregateConformancePackComplianceSummary for usage and error information.
+//
+// Returned Error Types:
+//   * ValidationException
+//   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
+//   * InvalidLimitException
+//   The specified limit is outside the allowable range.
+//
+//   * InvalidNextTokenException
+//   The specified next token is invalid. Specify the nextToken string that was
+//   returned in the previous response to get the next page of results.
+//
+//   * NoSuchConfigurationAggregatorException
+//   You have specified a configuration aggregator that does not exist.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/GetAggregateConformancePackComplianceSummary
+func (c *ConfigService) GetAggregateConformancePackComplianceSummary(input *GetAggregateConformancePackComplianceSummaryInput) (*GetAggregateConformancePackComplianceSummaryOutput, error) {
+	req, out := c.GetAggregateConformancePackComplianceSummaryRequest(input)
+	return out, req.Send()
+}
+
+// GetAggregateConformancePackComplianceSummaryWithContext is the same as GetAggregateConformancePackComplianceSummary with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetAggregateConformancePackComplianceSummary for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetAggregateConformancePackComplianceSummaryWithContext(ctx aws.Context, input *GetAggregateConformancePackComplianceSummaryInput, opts ...request.Option) (*GetAggregateConformancePackComplianceSummaryOutput, error) {
+	req, out := c.GetAggregateConformancePackComplianceSummaryRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// GetAggregateConformancePackComplianceSummaryPages iterates over the pages of a GetAggregateConformancePackComplianceSummary operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetAggregateConformancePackComplianceSummary method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetAggregateConformancePackComplianceSummary operation.
+//    pageNum := 0
+//    err := client.GetAggregateConformancePackComplianceSummaryPages(params,
+//        func(page *configservice.GetAggregateConformancePackComplianceSummaryOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetAggregateConformancePackComplianceSummaryPages(input *GetAggregateConformancePackComplianceSummaryInput, fn func(*GetAggregateConformancePackComplianceSummaryOutput, bool) bool) error {
+	return c.GetAggregateConformancePackComplianceSummaryPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetAggregateConformancePackComplianceSummaryPagesWithContext same as GetAggregateConformancePackComplianceSummaryPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetAggregateConformancePackComplianceSummaryPagesWithContext(ctx aws.Context, input *GetAggregateConformancePackComplianceSummaryInput, fn func(*GetAggregateConformancePackComplianceSummaryOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetAggregateConformancePackComplianceSummaryInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetAggregateConformancePackComplianceSummaryRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetAggregateConformancePackComplianceSummaryOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opGetAggregateDiscoveredResourceCounts = "GetAggregateDiscoveredResourceCounts"
 
 // GetAggregateDiscoveredResourceCountsRequest generates a "aws/request.Request" representing the
@@ -4171,6 +5865,12 @@ func (c *ConfigService) GetAggregateDiscoveredResourceCountsRequest(input *GetAg
 		Name:       opGetAggregateDiscoveredResourceCounts,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -4205,6 +5905,14 @@ func (c *ConfigService) GetAggregateDiscoveredResourceCountsRequest(input *GetAg
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * InvalidLimitException
 //   The specified limit is outside the allowable range.
 //
@@ -4235,6 +5943,58 @@ func (c *ConfigService) GetAggregateDiscoveredResourceCountsWithContext(ctx aws.
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// GetAggregateDiscoveredResourceCountsPages iterates over the pages of a GetAggregateDiscoveredResourceCounts operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetAggregateDiscoveredResourceCounts method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetAggregateDiscoveredResourceCounts operation.
+//    pageNum := 0
+//    err := client.GetAggregateDiscoveredResourceCountsPages(params,
+//        func(page *configservice.GetAggregateDiscoveredResourceCountsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetAggregateDiscoveredResourceCountsPages(input *GetAggregateDiscoveredResourceCountsInput, fn func(*GetAggregateDiscoveredResourceCountsOutput, bool) bool) error {
+	return c.GetAggregateDiscoveredResourceCountsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetAggregateDiscoveredResourceCountsPagesWithContext same as GetAggregateDiscoveredResourceCountsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetAggregateDiscoveredResourceCountsPagesWithContext(ctx aws.Context, input *GetAggregateDiscoveredResourceCountsInput, fn func(*GetAggregateDiscoveredResourceCountsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetAggregateDiscoveredResourceCountsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetAggregateDiscoveredResourceCountsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetAggregateDiscoveredResourceCountsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opGetAggregateResourceConfig = "GetAggregateResourceConfig"
@@ -4294,6 +6054,14 @@ func (c *ConfigService) GetAggregateResourceConfigRequest(input *GetAggregateRes
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * NoSuchConfigurationAggregatorException
 //   You have specified a configuration aggregator that does not exist.
@@ -4357,6 +6125,12 @@ func (c *ConfigService) GetComplianceDetailsByConfigRuleRequest(input *GetCompli
 		Name:       opGetComplianceDetailsByConfigRule,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -4416,6 +6190,58 @@ func (c *ConfigService) GetComplianceDetailsByConfigRuleWithContext(ctx aws.Cont
 	return out, req.Send()
 }
 
+// GetComplianceDetailsByConfigRulePages iterates over the pages of a GetComplianceDetailsByConfigRule operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetComplianceDetailsByConfigRule method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetComplianceDetailsByConfigRule operation.
+//    pageNum := 0
+//    err := client.GetComplianceDetailsByConfigRulePages(params,
+//        func(page *configservice.GetComplianceDetailsByConfigRuleOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetComplianceDetailsByConfigRulePages(input *GetComplianceDetailsByConfigRuleInput, fn func(*GetComplianceDetailsByConfigRuleOutput, bool) bool) error {
+	return c.GetComplianceDetailsByConfigRulePagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetComplianceDetailsByConfigRulePagesWithContext same as GetComplianceDetailsByConfigRulePages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetComplianceDetailsByConfigRulePagesWithContext(ctx aws.Context, input *GetComplianceDetailsByConfigRuleInput, fn func(*GetComplianceDetailsByConfigRuleOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetComplianceDetailsByConfigRuleInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetComplianceDetailsByConfigRuleRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetComplianceDetailsByConfigRuleOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opGetComplianceDetailsByResource = "GetComplianceDetailsByResource"
 
 // GetComplianceDetailsByResourceRequest generates a "aws/request.Request" representing the
@@ -4447,6 +6273,12 @@ func (c *ConfigService) GetComplianceDetailsByResourceRequest(input *GetComplian
 		Name:       opGetComplianceDetailsByResource,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -4496,6 +6328,58 @@ func (c *ConfigService) GetComplianceDetailsByResourceWithContext(ctx aws.Contex
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// GetComplianceDetailsByResourcePages iterates over the pages of a GetComplianceDetailsByResource operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetComplianceDetailsByResource method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetComplianceDetailsByResource operation.
+//    pageNum := 0
+//    err := client.GetComplianceDetailsByResourcePages(params,
+//        func(page *configservice.GetComplianceDetailsByResourceOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetComplianceDetailsByResourcePages(input *GetComplianceDetailsByResourceInput, fn func(*GetComplianceDetailsByResourceOutput, bool) bool) error {
+	return c.GetComplianceDetailsByResourcePagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetComplianceDetailsByResourcePagesWithContext same as GetComplianceDetailsByResourcePages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetComplianceDetailsByResourcePagesWithContext(ctx aws.Context, input *GetComplianceDetailsByResourceInput, fn func(*GetComplianceDetailsByResourceOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetComplianceDetailsByResourceInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetComplianceDetailsByResourceRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetComplianceDetailsByResourceOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opGetComplianceSummaryByConfigRule = "GetComplianceSummaryByConfigRule"
@@ -4686,6 +6570,12 @@ func (c *ConfigService) GetConformancePackComplianceDetailsRequest(input *GetCon
 		Name:       opGetConformancePackComplianceDetails,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -4749,6 +6639,58 @@ func (c *ConfigService) GetConformancePackComplianceDetailsWithContext(ctx aws.C
 	return out, req.Send()
 }
 
+// GetConformancePackComplianceDetailsPages iterates over the pages of a GetConformancePackComplianceDetails operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetConformancePackComplianceDetails method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetConformancePackComplianceDetails operation.
+//    pageNum := 0
+//    err := client.GetConformancePackComplianceDetailsPages(params,
+//        func(page *configservice.GetConformancePackComplianceDetailsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetConformancePackComplianceDetailsPages(input *GetConformancePackComplianceDetailsInput, fn func(*GetConformancePackComplianceDetailsOutput, bool) bool) error {
+	return c.GetConformancePackComplianceDetailsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetConformancePackComplianceDetailsPagesWithContext same as GetConformancePackComplianceDetailsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetConformancePackComplianceDetailsPagesWithContext(ctx aws.Context, input *GetConformancePackComplianceDetailsInput, fn func(*GetConformancePackComplianceDetailsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetConformancePackComplianceDetailsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetConformancePackComplianceDetailsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetConformancePackComplianceDetailsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opGetConformancePackComplianceSummary = "GetConformancePackComplianceSummary"
 
 // GetConformancePackComplianceSummaryRequest generates a "aws/request.Request" representing the
@@ -4780,6 +6722,12 @@ func (c *ConfigService) GetConformancePackComplianceSummaryRequest(input *GetCon
 		Name:       opGetConformancePackComplianceSummary,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -4836,6 +6784,58 @@ func (c *ConfigService) GetConformancePackComplianceSummaryWithContext(ctx aws.C
 	return out, req.Send()
 }
 
+// GetConformancePackComplianceSummaryPages iterates over the pages of a GetConformancePackComplianceSummary operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetConformancePackComplianceSummary method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetConformancePackComplianceSummary operation.
+//    pageNum := 0
+//    err := client.GetConformancePackComplianceSummaryPages(params,
+//        func(page *configservice.GetConformancePackComplianceSummaryOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetConformancePackComplianceSummaryPages(input *GetConformancePackComplianceSummaryInput, fn func(*GetConformancePackComplianceSummaryOutput, bool) bool) error {
+	return c.GetConformancePackComplianceSummaryPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetConformancePackComplianceSummaryPagesWithContext same as GetConformancePackComplianceSummaryPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetConformancePackComplianceSummaryPagesWithContext(ctx aws.Context, input *GetConformancePackComplianceSummaryInput, fn func(*GetConformancePackComplianceSummaryOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetConformancePackComplianceSummaryInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetConformancePackComplianceSummaryRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetConformancePackComplianceSummaryOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opGetDiscoveredResourceCounts = "GetDiscoveredResourceCounts"
 
 // GetDiscoveredResourceCountsRequest generates a "aws/request.Request" representing the
@@ -4867,6 +6867,12 @@ func (c *ConfigService) GetDiscoveredResourceCountsRequest(input *GetDiscoveredR
 		Name:       opGetDiscoveredResourceCounts,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"nextToken"},
+			OutputTokens:    []string{"nextToken"},
+			LimitToken:      "limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -4926,6 +6932,14 @@ func (c *ConfigService) GetDiscoveredResourceCountsRequest(input *GetDiscoveredR
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * InvalidLimitException
 //   The specified limit is outside the allowable range.
 //
@@ -4953,6 +6967,58 @@ func (c *ConfigService) GetDiscoveredResourceCountsWithContext(ctx aws.Context, 
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// GetDiscoveredResourceCountsPages iterates over the pages of a GetDiscoveredResourceCounts operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetDiscoveredResourceCounts method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetDiscoveredResourceCounts operation.
+//    pageNum := 0
+//    err := client.GetDiscoveredResourceCountsPages(params,
+//        func(page *configservice.GetDiscoveredResourceCountsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetDiscoveredResourceCountsPages(input *GetDiscoveredResourceCountsInput, fn func(*GetDiscoveredResourceCountsOutput, bool) bool) error {
+	return c.GetDiscoveredResourceCountsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetDiscoveredResourceCountsPagesWithContext same as GetDiscoveredResourceCountsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetDiscoveredResourceCountsPagesWithContext(ctx aws.Context, input *GetDiscoveredResourceCountsInput, fn func(*GetDiscoveredResourceCountsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetDiscoveredResourceCountsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetDiscoveredResourceCountsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetDiscoveredResourceCountsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opGetOrganizationConfigRuleDetailedStatus = "GetOrganizationConfigRuleDetailedStatus"
@@ -4986,6 +7052,12 @@ func (c *ConfigService) GetOrganizationConfigRuleDetailedStatusRequest(input *Ge
 		Name:       opGetOrganizationConfigRuleDetailedStatus,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -5001,8 +7073,6 @@ func (c *ConfigService) GetOrganizationConfigRuleDetailedStatusRequest(input *Ge
 //
 // Returns detailed status for each member account within an organization for
 // a given organization config rule.
-//
-// Only a master account can call this API.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5023,8 +7093,23 @@ func (c *ConfigService) GetOrganizationConfigRuleDetailedStatusRequest(input *Ge
 //   returned in the previous response to get the next page of results.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -5050,6 +7135,58 @@ func (c *ConfigService) GetOrganizationConfigRuleDetailedStatusWithContext(ctx a
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// GetOrganizationConfigRuleDetailedStatusPages iterates over the pages of a GetOrganizationConfigRuleDetailedStatus operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetOrganizationConfigRuleDetailedStatus method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetOrganizationConfigRuleDetailedStatus operation.
+//    pageNum := 0
+//    err := client.GetOrganizationConfigRuleDetailedStatusPages(params,
+//        func(page *configservice.GetOrganizationConfigRuleDetailedStatusOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetOrganizationConfigRuleDetailedStatusPages(input *GetOrganizationConfigRuleDetailedStatusInput, fn func(*GetOrganizationConfigRuleDetailedStatusOutput, bool) bool) error {
+	return c.GetOrganizationConfigRuleDetailedStatusPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetOrganizationConfigRuleDetailedStatusPagesWithContext same as GetOrganizationConfigRuleDetailedStatusPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetOrganizationConfigRuleDetailedStatusPagesWithContext(ctx aws.Context, input *GetOrganizationConfigRuleDetailedStatusInput, fn func(*GetOrganizationConfigRuleDetailedStatusOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetOrganizationConfigRuleDetailedStatusInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetOrganizationConfigRuleDetailedStatusRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetOrganizationConfigRuleDetailedStatusOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opGetOrganizationConformancePackDetailedStatus = "GetOrganizationConformancePackDetailedStatus"
@@ -5083,6 +7220,12 @@ func (c *ConfigService) GetOrganizationConformancePackDetailedStatusRequest(inpu
 		Name:       opGetOrganizationConformancePackDetailedStatus,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -5098,8 +7241,6 @@ func (c *ConfigService) GetOrganizationConformancePackDetailedStatusRequest(inpu
 //
 // Returns detailed status for each member account within an organization for
 // a given organization conformance pack.
-//
-// Only a master account can call this API.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5124,8 +7265,23 @@ func (c *ConfigService) GetOrganizationConformancePackDetailedStatusRequest(inpu
 //   returned in the previous response to get the next page of results.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -5151,6 +7307,58 @@ func (c *ConfigService) GetOrganizationConformancePackDetailedStatusWithContext(
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// GetOrganizationConformancePackDetailedStatusPages iterates over the pages of a GetOrganizationConformancePackDetailedStatus operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See GetOrganizationConformancePackDetailedStatus method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a GetOrganizationConformancePackDetailedStatus operation.
+//    pageNum := 0
+//    err := client.GetOrganizationConformancePackDetailedStatusPages(params,
+//        func(page *configservice.GetOrganizationConformancePackDetailedStatusOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) GetOrganizationConformancePackDetailedStatusPages(input *GetOrganizationConformancePackDetailedStatusInput, fn func(*GetOrganizationConformancePackDetailedStatusOutput, bool) bool) error {
+	return c.GetOrganizationConformancePackDetailedStatusPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// GetOrganizationConformancePackDetailedStatusPagesWithContext same as GetOrganizationConformancePackDetailedStatusPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetOrganizationConformancePackDetailedStatusPagesWithContext(ctx aws.Context, input *GetOrganizationConformancePackDetailedStatusInput, fn func(*GetOrganizationConformancePackDetailedStatusOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *GetOrganizationConformancePackDetailedStatusInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.GetOrganizationConformancePackDetailedStatusRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*GetOrganizationConformancePackDetailedStatusOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opGetResourceConfigHistory = "GetResourceConfigHistory"
@@ -5228,6 +7436,14 @@ func (c *ConfigService) GetResourceConfigHistoryRequest(input *GetResourceConfig
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * InvalidTimeRangeException
 //   The specified time range is not valid. The earlier time is not chronologically
@@ -5321,6 +7537,96 @@ func (c *ConfigService) GetResourceConfigHistoryPagesWithContext(ctx aws.Context
 	return p.Err()
 }
 
+const opGetStoredQuery = "GetStoredQuery"
+
+// GetStoredQueryRequest generates a "aws/request.Request" representing the
+// client's request for the GetStoredQuery operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetStoredQuery for more information on using the GetStoredQuery
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetStoredQueryRequest method.
+//    req, resp := client.GetStoredQueryRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/GetStoredQuery
+func (c *ConfigService) GetStoredQueryRequest(input *GetStoredQueryInput) (req *request.Request, output *GetStoredQueryOutput) {
+	op := &request.Operation{
+		Name:       opGetStoredQuery,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &GetStoredQueryInput{}
+	}
+
+	output = &GetStoredQueryOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetStoredQuery API operation for AWS Config.
+//
+// Returns the details of a specific stored query.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Config's
+// API operation GetStoredQuery for usage and error information.
+//
+// Returned Error Types:
+//   * ValidationException
+//   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
+//   * ResourceNotFoundException
+//   You have specified a resource that does not exist.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/GetStoredQuery
+func (c *ConfigService) GetStoredQuery(input *GetStoredQueryInput) (*GetStoredQueryOutput, error) {
+	req, out := c.GetStoredQueryRequest(input)
+	return out, req.Send()
+}
+
+// GetStoredQueryWithContext is the same as GetStoredQuery with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetStoredQuery for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) GetStoredQueryWithContext(ctx aws.Context, input *GetStoredQueryInput, opts ...request.Option) (*GetStoredQueryOutput, error) {
+	req, out := c.GetStoredQueryRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opListAggregateDiscoveredResources = "ListAggregateDiscoveredResources"
 
 // ListAggregateDiscoveredResourcesRequest generates a "aws/request.Request" representing the
@@ -5352,6 +7658,12 @@ func (c *ConfigService) ListAggregateDiscoveredResourcesRequest(input *ListAggre
 		Name:       opListAggregateDiscoveredResources,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -5387,6 +7699,14 @@ func (c *ConfigService) ListAggregateDiscoveredResourcesRequest(input *ListAggre
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * InvalidLimitException
 //   The specified limit is outside the allowable range.
 //
@@ -5417,6 +7737,58 @@ func (c *ConfigService) ListAggregateDiscoveredResourcesWithContext(ctx aws.Cont
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// ListAggregateDiscoveredResourcesPages iterates over the pages of a ListAggregateDiscoveredResources operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListAggregateDiscoveredResources method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListAggregateDiscoveredResources operation.
+//    pageNum := 0
+//    err := client.ListAggregateDiscoveredResourcesPages(params,
+//        func(page *configservice.ListAggregateDiscoveredResourcesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) ListAggregateDiscoveredResourcesPages(input *ListAggregateDiscoveredResourcesInput, fn func(*ListAggregateDiscoveredResourcesOutput, bool) bool) error {
+	return c.ListAggregateDiscoveredResourcesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListAggregateDiscoveredResourcesPagesWithContext same as ListAggregateDiscoveredResourcesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) ListAggregateDiscoveredResourcesPagesWithContext(ctx aws.Context, input *ListAggregateDiscoveredResourcesInput, fn func(*ListAggregateDiscoveredResourcesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListAggregateDiscoveredResourcesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListAggregateDiscoveredResourcesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListAggregateDiscoveredResourcesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opListDiscoveredResources = "ListDiscoveredResources"
@@ -5450,6 +7822,12 @@ func (c *ConfigService) ListDiscoveredResourcesRequest(input *ListDiscoveredReso
 		Name:       opListDiscoveredResources,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"nextToken"},
+			OutputTokens:    []string{"nextToken"},
+			LimitToken:      "limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -5489,6 +7867,14 @@ func (c *ConfigService) ListDiscoveredResourcesRequest(input *ListDiscoveredReso
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * InvalidLimitException
 //   The specified limit is outside the allowable range.
 //
@@ -5522,6 +7908,208 @@ func (c *ConfigService) ListDiscoveredResourcesWithContext(ctx aws.Context, inpu
 	return out, req.Send()
 }
 
+// ListDiscoveredResourcesPages iterates over the pages of a ListDiscoveredResources operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListDiscoveredResources method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListDiscoveredResources operation.
+//    pageNum := 0
+//    err := client.ListDiscoveredResourcesPages(params,
+//        func(page *configservice.ListDiscoveredResourcesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) ListDiscoveredResourcesPages(input *ListDiscoveredResourcesInput, fn func(*ListDiscoveredResourcesOutput, bool) bool) error {
+	return c.ListDiscoveredResourcesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListDiscoveredResourcesPagesWithContext same as ListDiscoveredResourcesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) ListDiscoveredResourcesPagesWithContext(ctx aws.Context, input *ListDiscoveredResourcesInput, fn func(*ListDiscoveredResourcesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListDiscoveredResourcesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListDiscoveredResourcesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListDiscoveredResourcesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
+const opListStoredQueries = "ListStoredQueries"
+
+// ListStoredQueriesRequest generates a "aws/request.Request" representing the
+// client's request for the ListStoredQueries operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListStoredQueries for more information on using the ListStoredQueries
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListStoredQueriesRequest method.
+//    req, resp := client.ListStoredQueriesRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/ListStoredQueries
+func (c *ConfigService) ListStoredQueriesRequest(input *ListStoredQueriesInput) (req *request.Request, output *ListStoredQueriesOutput) {
+	op := &request.Operation{
+		Name:       opListStoredQueries,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxResults",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &ListStoredQueriesInput{}
+	}
+
+	output = &ListStoredQueriesOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListStoredQueries API operation for AWS Config.
+//
+// Lists the stored queries for a single AWS account and a single AWS Region.
+// The default is 100.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Config's
+// API operation ListStoredQueries for usage and error information.
+//
+// Returned Error Types:
+//   * ValidationException
+//   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
+//   * InvalidNextTokenException
+//   The specified next token is invalid. Specify the nextToken string that was
+//   returned in the previous response to get the next page of results.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/ListStoredQueries
+func (c *ConfigService) ListStoredQueries(input *ListStoredQueriesInput) (*ListStoredQueriesOutput, error) {
+	req, out := c.ListStoredQueriesRequest(input)
+	return out, req.Send()
+}
+
+// ListStoredQueriesWithContext is the same as ListStoredQueries with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListStoredQueries for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) ListStoredQueriesWithContext(ctx aws.Context, input *ListStoredQueriesInput, opts ...request.Option) (*ListStoredQueriesOutput, error) {
+	req, out := c.ListStoredQueriesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// ListStoredQueriesPages iterates over the pages of a ListStoredQueries operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListStoredQueries method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListStoredQueries operation.
+//    pageNum := 0
+//    err := client.ListStoredQueriesPages(params,
+//        func(page *configservice.ListStoredQueriesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) ListStoredQueriesPages(input *ListStoredQueriesInput, fn func(*ListStoredQueriesOutput, bool) bool) error {
+	return c.ListStoredQueriesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListStoredQueriesPagesWithContext same as ListStoredQueriesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) ListStoredQueriesPagesWithContext(ctx aws.Context, input *ListStoredQueriesInput, fn func(*ListStoredQueriesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListStoredQueriesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListStoredQueriesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListStoredQueriesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opListTagsForResource = "ListTagsForResource"
 
 // ListTagsForResourceRequest generates a "aws/request.Request" representing the
@@ -5553,6 +8141,12 @@ func (c *ConfigService) ListTagsForResourceRequest(input *ListTagsForResourceInp
 		Name:       opListTagsForResource,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -5582,6 +8176,14 @@ func (c *ConfigService) ListTagsForResourceRequest(input *ListTagsForResourceInp
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * InvalidLimitException
 //   The specified limit is outside the allowable range.
 //
@@ -5609,6 +8211,58 @@ func (c *ConfigService) ListTagsForResourceWithContext(ctx aws.Context, input *L
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// ListTagsForResourcePages iterates over the pages of a ListTagsForResource operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListTagsForResource method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListTagsForResource operation.
+//    pageNum := 0
+//    err := client.ListTagsForResourcePages(params,
+//        func(page *configservice.ListTagsForResourceOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) ListTagsForResourcePages(input *ListTagsForResourceInput, fn func(*ListTagsForResourceOutput, bool) bool) error {
+	return c.ListTagsForResourcePagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListTagsForResourcePagesWithContext same as ListTagsForResourcePages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) ListTagsForResourcePagesWithContext(ctx aws.Context, input *ListTagsForResourceInput, fn func(*ListTagsForResourceOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListTagsForResourceInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListTagsForResourceRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListTagsForResourceOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opPutAggregationAuthorization = "PutAggregationAuthorization"
@@ -5909,12 +8563,23 @@ func (c *ConfigService) PutConfigurationAggregatorRequest(input *PutConfiguratio
 // accounts and regions. The source account can be individual account(s) or
 // an organization.
 //
+// accountIds that are passed will be replaced with existing accounts. If you
+// want to add additional accounts into the aggregator, call DescribeAggregator
+// to get the previous accounts and then append new ones.
+//
 // AWS Config should be enabled in source accounts and regions you want to aggregate.
 //
-// If your source type is an organization, you must be signed in to the master
-// account and all features must be enabled in your organization. AWS Config
-// calls EnableAwsServiceAccess API to enable integration between AWS Config
-// and AWS Organizations.
+// If your source type is an organization, you must be signed in to the management
+// account or a registered delegated administrator and all the features must
+// be enabled in your organization. If the caller is a management account, AWS
+// Config calls EnableAwsServiceAccess API to enable integration between AWS
+// Config and AWS Organizations. If the caller is a registered delegated administrator,
+// AWS Config calls ListDelegatedAdministrators API to verify whether the caller
+// is a valid delegated administrator.
+//
+// To register a delegated administrator, see Register a Delegated Administrator
+// (https://docs.aws.amazon.com/config/latest/developerguide/set-up-aggregator-cli.html#register-a-delegated-administrator-cli)
+// in the AWS Config developer guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5940,8 +8605,23 @@ func (c *ConfigService) PutConfigurationAggregatorRequest(input *PutConfiguratio
 //   You have provided a null or empty role ARN.
 //
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -6126,8 +8806,7 @@ func (c *ConfigService) PutConformancePackRequest(input *PutConformancePackInput
 //
 // This API creates a service linked role AWSServiceRoleForConfigConforms in
 // your account. The service linked role is created only when the role does
-// not exist in your account. AWS Config verifies the existence of role with
-// GetRole action.
+// not exist in your account.
 //
 // You must specify either the TemplateS3Uri or the TemplateBody parameter,
 // but not both. If you provide both AWS Config uses the TemplateS3Uri parameter
@@ -6302,6 +8981,9 @@ func (c *ConfigService) PutDeliveryChannelRequest(input *PutDeliveryChannelInput
 //   * InvalidS3KeyPrefixException
 //   The specified Amazon S3 key prefix is not valid.
 //
+//   * InvalidS3KmsKeyArnException
+//   The specified Amazon KMS Key ARN is not valid.
+//
 //   * InvalidSNSTopicARNException
 //   The specified Amazon SNS topic does not exist.
 //
@@ -6419,6 +9101,92 @@ func (c *ConfigService) PutEvaluationsWithContext(ctx aws.Context, input *PutEva
 	return out, req.Send()
 }
 
+const opPutExternalEvaluation = "PutExternalEvaluation"
+
+// PutExternalEvaluationRequest generates a "aws/request.Request" representing the
+// client's request for the PutExternalEvaluation operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See PutExternalEvaluation for more information on using the PutExternalEvaluation
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the PutExternalEvaluationRequest method.
+//    req, resp := client.PutExternalEvaluationRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/PutExternalEvaluation
+func (c *ConfigService) PutExternalEvaluationRequest(input *PutExternalEvaluationInput) (req *request.Request, output *PutExternalEvaluationOutput) {
+	op := &request.Operation{
+		Name:       opPutExternalEvaluation,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &PutExternalEvaluationInput{}
+	}
+
+	output = &PutExternalEvaluationOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// PutExternalEvaluation API operation for AWS Config.
+//
+// Add or updates the evaluations for process checks. This API checks if the
+// rule is a process check when the name of the AWS Config rule is provided.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Config's
+// API operation PutExternalEvaluation for usage and error information.
+//
+// Returned Error Types:
+//   * NoSuchConfigRuleException
+//   One or more AWS Config rules in the request are invalid. Verify that the
+//   rule names are correct and try again.
+//
+//   * InvalidParameterValueException
+//   One or more of the specified parameters are invalid. Verify that your parameters
+//   are valid and try again.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/PutExternalEvaluation
+func (c *ConfigService) PutExternalEvaluation(input *PutExternalEvaluationInput) (*PutExternalEvaluationOutput, error) {
+	req, out := c.PutExternalEvaluationRequest(input)
+	return out, req.Send()
+}
+
+// PutExternalEvaluationWithContext is the same as PutExternalEvaluation with the addition of
+// the ability to pass a context and additional request options.
+//
+// See PutExternalEvaluation for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) PutExternalEvaluationWithContext(ctx aws.Context, input *PutExternalEvaluationInput, opts ...request.Option) (*PutExternalEvaluationOutput, error) {
+	req, out := c.PutExternalEvaluationRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opPutOrganizationConfigRule = "PutOrganizationConfigRule"
 
 // PutOrganizationConfigRuleRequest generates a "aws/request.Request" representing the
@@ -6464,25 +9232,36 @@ func (c *ConfigService) PutOrganizationConfigRuleRequest(input *PutOrganizationC
 // PutOrganizationConfigRule API operation for AWS Config.
 //
 // Adds or updates organization config rule for your entire organization evaluating
-// whether your AWS resources comply with your desired configurations. Only
-// a master account can create or update an organization config rule.
+// whether your AWS resources comply with your desired configurations.
+//
+// Only a master account and a delegated administrator can create or update
+// an organization config rule. When calling this API with a delegated administrator,
+// you must ensure AWS Organizations ListDelegatedAdministrator permissions
+// are added.
 //
 // This API enables organization service access through the EnableAWSServiceAccess
 // action and creates a service linked role AWSServiceRoleForConfigMultiAccountSetup
-// in the master account of your organization. The service linked role is created
-// only when the role does not exist in the master account. AWS Config verifies
-// the existence of role with GetRole action.
+// in the master or delegated administrator account of your organization. The
+// service linked role is created only when the role does not exist in the caller
+// account. AWS Config verifies the existence of role with GetRole action.
+//
+// To use this API with delegated administrator, register a delegated administrator
+// by calling AWS Organization register-delegated-administrator for config-multiaccountsetup.amazonaws.com.
 //
 // You can use this action to create both custom AWS Config rules and AWS managed
 // Config rules. If you are adding a new custom AWS Config rule, you must first
-// create AWS Lambda function in the master account that the rule invokes to
-// evaluate your resources. When you use the PutOrganizationConfigRule action
-// to add the rule to AWS Config, you must specify the Amazon Resource Name
-// (ARN) that AWS Lambda assigns to the function. If you are adding an AWS managed
-// Config rule, specify the rule's identifier for the RuleIdentifier key.
+// create AWS Lambda function in the master account or a delegated administrator
+// that the rule invokes to evaluate your resources. When you use the PutOrganizationConfigRule
+// action to add the rule to AWS Config, you must specify the Amazon Resource
+// Name (ARN) that AWS Lambda assigns to the function. If you are adding an
+// AWS managed Config rule, specify the rule's identifier for the RuleIdentifier
+// key.
 //
 // The maximum number of organization config rules that AWS Config supports
-// is 150.
+// is 150 and 3 delegated administrator per organization.
+//
+// Prerequisite: Ensure you call EnableAllFeatures API to enable all features
+// in an organization.
 //
 // Specify either OrganizationCustomRuleMetadata or OrganizationManagedRuleMetadata.
 //
@@ -6532,9 +9311,32 @@ func (c *ConfigService) PutOrganizationConfigRuleRequest(input *PutOrganizationC
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -6632,21 +9434,31 @@ func (c *ConfigService) PutOrganizationConformancePackRequest(input *PutOrganiza
 //
 // Deploys conformance packs across member accounts in an AWS Organization.
 //
+// Only a master account and a delegated administrator can call this API. When
+// calling this API with a delegated administrator, you must ensure AWS Organizations
+// ListDelegatedAdministrator permissions are added.
+//
 // This API enables organization service access for config-multiaccountsetup.amazonaws.com
 // through the EnableAWSServiceAccess action and creates a service linked role
-// AWSServiceRoleForConfigMultiAccountSetup in the master account of your organization.
-// The service linked role is created only when the role does not exist in the
-// master account. AWS Config verifies the existence of role with GetRole action.
+// AWSServiceRoleForConfigMultiAccountSetup in the master or delegated administrator
+// account of your organization. The service linked role is created only when
+// the role does not exist in the caller account. To use this API with delegated
+// administrator, register a delegated administrator by calling AWS Organization
+// register-delegate-admin for config-multiaccountsetup.amazonaws.com.
+//
+// Prerequisite: Ensure you call EnableAllFeatures API to enable all features
+// in an organization.
 //
 // You must specify either the TemplateS3Uri or the TemplateBody parameter,
 // but not both. If you provide both AWS Config uses the TemplateS3Uri parameter
 // and ignores the TemplateBody parameter.
 //
 // AWS Config sets the state of a conformance pack to CREATE_IN_PROGRESS and
-// UPDATE_IN_PROGRESS until the confomance pack is created or updated. You cannot
-// update a conformance pack while it is in this state.
+// UPDATE_IN_PROGRESS until the conformance pack is created or updated. You
+// cannot update a conformance pack while it is in this state.
 //
-// You can create 6 conformance packs with 25 AWS Config rules in each pack.
+// You can create 50 conformance packs with 25 AWS Config rules in each pack
+// and 3 delegated administrator per organization.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -6691,9 +9503,32 @@ func (c *ConfigService) PutOrganizationConformancePackRequest(input *PutOrganiza
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * OrganizationAccessDeniedException
-//   For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-//   API.
+//   For PutConfigurationAggregator API, you can see this exception for the following
+//   reasons:
+//
+//      * No permission to call EnableAWSServiceAccess API
+//
+//      * The configuration aggregator cannot be updated because your AWS Organization
+//      management account or the delegated administrator role changed. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * The configuration aggregator is associated with a previous AWS Organization
+//      and AWS Config cannot aggregate data with current AWS Organization. Delete
+//      this aggregator and create a new one with the current AWS Organization.
+//
+//      * You are not a registered delegated administrator for AWS Config with
+//      permissions to call ListDelegatedAdministrators API. Ensure that the management
+//      account registers delagated administrator for AWS Config service principle
+//      name before the delegated administrator creates an aggregator.
 //
 //   For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 //   Config throws an exception if APIs are called from member accounts. All APIs
@@ -6798,6 +9633,13 @@ func (c *ConfigService) PutRemediationConfigurationsRequest(input *PutRemediatio
 // you to add a remediation configuration. The target (SSM document) must exist
 // and have permissions to use the target.
 //
+// If you make backward incompatible changes to the SSM document, you must call
+// this again to ensure the remediations can run.
+//
+// This API does not support adding remediation configurations for service-linked
+// AWS Config Rules such as Organization Config rules, the rules deployed by
+// conformance packs, and rules deployed by AWS Security Hub.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -6894,8 +9736,12 @@ func (c *ConfigService) PutRemediationExceptionsRequest(input *PutRemediationExc
 // PutRemediationExceptions API operation for AWS Config.
 //
 // A remediation exception is when a specific resource is no longer considered
-// for auto-remediation. This API adds a new exception or updates an exisiting
+// for auto-remediation. This API adds a new exception or updates an existing
 // exception for a specific resource with a specific AWS Config rule.
+//
+// AWS Config generates a remediation exception when a problem occurs executing
+// a remediation action to a specific resource. Remediation exceptions blocks
+// auto-remediation until the exception is cleared.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -6908,6 +9754,23 @@ func (c *ConfigService) PutRemediationExceptionsRequest(input *PutRemediationExc
 //   * InvalidParameterValueException
 //   One or more of the specified parameters are invalid. Verify that your parameters
 //   are valid and try again.
+//
+//   * InsufficientPermissionsException
+//   Indicates one of the following errors:
+//
+//      * For PutConfigRule, the rule cannot be created because the IAM role assigned
+//      to AWS Config lacks permissions to perform the config:Put* action.
+//
+//      * For PutConfigRule, the AWS Lambda function cannot be invoked. Check
+//      the function ARN, and check the function's permissions.
+//
+//      * For PutOrganizationConfigRule, organization config rule cannot be created
+//      because you do not have permissions to call IAM GetRole action or create
+//      a service linked role.
+//
+//      * For PutConformancePack and PutOrganizationConformancePack, a conformance
+//      pack cannot be created because you do not have permissions: To call IAM
+//      GetRole action or create a service linked role. To read Amazon S3 bucket.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/PutRemediationExceptions
 func (c *ConfigService) PutRemediationExceptions(input *PutRemediationExceptionsInput) (*PutRemediationExceptionsOutput, error) {
@@ -6989,6 +9852,9 @@ func (c *ConfigService) PutResourceConfigRequest(input *PutResourceConfigInput) 
 // resource provided in the request. This API does not change or remediate the
 // configuration of the resource.
 //
+// Write-only schema properites are not recorded as part of the published configuration
+// item.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -6999,6 +9865,14 @@ func (c *ConfigService) PutResourceConfigRequest(input *PutResourceConfigInput) 
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * InsufficientPermissionsException
 //   Indicates one of the following errors:
@@ -7137,6 +10011,256 @@ func (c *ConfigService) PutRetentionConfigurationWithContext(ctx aws.Context, in
 	return out, req.Send()
 }
 
+const opPutStoredQuery = "PutStoredQuery"
+
+// PutStoredQueryRequest generates a "aws/request.Request" representing the
+// client's request for the PutStoredQuery operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See PutStoredQuery for more information on using the PutStoredQuery
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the PutStoredQueryRequest method.
+//    req, resp := client.PutStoredQueryRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/PutStoredQuery
+func (c *ConfigService) PutStoredQueryRequest(input *PutStoredQueryInput) (req *request.Request, output *PutStoredQueryOutput) {
+	op := &request.Operation{
+		Name:       opPutStoredQuery,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &PutStoredQueryInput{}
+	}
+
+	output = &PutStoredQueryOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// PutStoredQuery API operation for AWS Config.
+//
+// Saves a new query or updates an existing saved query. The QueryName must
+// be unique for a single AWS account and a single AWS Region. You can create
+// upto 300 queries in a single AWS account and a single AWS Region.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Config's
+// API operation PutStoredQuery for usage and error information.
+//
+// Returned Error Types:
+//   * ValidationException
+//   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
+//   * TooManyTagsException
+//   You have reached the limit of the number of tags you can use. You have more
+//   than 50 tags.
+//
+//   * ResourceConcurrentModificationException
+//   Two users are trying to modify the same query at the same time. Wait for
+//   a moment and try again.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/PutStoredQuery
+func (c *ConfigService) PutStoredQuery(input *PutStoredQueryInput) (*PutStoredQueryOutput, error) {
+	req, out := c.PutStoredQueryRequest(input)
+	return out, req.Send()
+}
+
+// PutStoredQueryWithContext is the same as PutStoredQuery with the addition of
+// the ability to pass a context and additional request options.
+//
+// See PutStoredQuery for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) PutStoredQueryWithContext(ctx aws.Context, input *PutStoredQueryInput, opts ...request.Option) (*PutStoredQueryOutput, error) {
+	req, out := c.PutStoredQueryRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opSelectAggregateResourceConfig = "SelectAggregateResourceConfig"
+
+// SelectAggregateResourceConfigRequest generates a "aws/request.Request" representing the
+// client's request for the SelectAggregateResourceConfig operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See SelectAggregateResourceConfig for more information on using the SelectAggregateResourceConfig
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the SelectAggregateResourceConfigRequest method.
+//    req, resp := client.SelectAggregateResourceConfigRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/SelectAggregateResourceConfig
+func (c *ConfigService) SelectAggregateResourceConfigRequest(input *SelectAggregateResourceConfigInput) (req *request.Request, output *SelectAggregateResourceConfigOutput) {
+	op := &request.Operation{
+		Name:       opSelectAggregateResourceConfig,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &SelectAggregateResourceConfigInput{}
+	}
+
+	output = &SelectAggregateResourceConfigOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// SelectAggregateResourceConfig API operation for AWS Config.
+//
+// Accepts a structured query language (SQL) SELECT command and an aggregator
+// to query configuration state of AWS resources across multiple accounts and
+// regions, performs the corresponding search, and returns resource configurations
+// matching the properties.
+//
+// For more information about query components, see the Query Components (https://docs.aws.amazon.com/config/latest/developerguide/query-components.html)
+// section in the AWS Config Developer Guide.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Config's
+// API operation SelectAggregateResourceConfig for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidExpressionException
+//   The syntax of the query is incorrect.
+//
+//   * NoSuchConfigurationAggregatorException
+//   You have specified a configuration aggregator that does not exist.
+//
+//   * InvalidLimitException
+//   The specified limit is outside the allowable range.
+//
+//   * InvalidNextTokenException
+//   The specified next token is invalid. Specify the nextToken string that was
+//   returned in the previous response to get the next page of results.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/config-2014-11-12/SelectAggregateResourceConfig
+func (c *ConfigService) SelectAggregateResourceConfig(input *SelectAggregateResourceConfigInput) (*SelectAggregateResourceConfigOutput, error) {
+	req, out := c.SelectAggregateResourceConfigRequest(input)
+	return out, req.Send()
+}
+
+// SelectAggregateResourceConfigWithContext is the same as SelectAggregateResourceConfig with the addition of
+// the ability to pass a context and additional request options.
+//
+// See SelectAggregateResourceConfig for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) SelectAggregateResourceConfigWithContext(ctx aws.Context, input *SelectAggregateResourceConfigInput, opts ...request.Option) (*SelectAggregateResourceConfigOutput, error) {
+	req, out := c.SelectAggregateResourceConfigRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// SelectAggregateResourceConfigPages iterates over the pages of a SelectAggregateResourceConfig operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See SelectAggregateResourceConfig method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a SelectAggregateResourceConfig operation.
+//    pageNum := 0
+//    err := client.SelectAggregateResourceConfigPages(params,
+//        func(page *configservice.SelectAggregateResourceConfigOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) SelectAggregateResourceConfigPages(input *SelectAggregateResourceConfigInput, fn func(*SelectAggregateResourceConfigOutput, bool) bool) error {
+	return c.SelectAggregateResourceConfigPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// SelectAggregateResourceConfigPagesWithContext same as SelectAggregateResourceConfigPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) SelectAggregateResourceConfigPagesWithContext(ctx aws.Context, input *SelectAggregateResourceConfigInput, fn func(*SelectAggregateResourceConfigOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *SelectAggregateResourceConfigInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.SelectAggregateResourceConfigRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*SelectAggregateResourceConfigOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opSelectResourceConfig = "SelectResourceConfig"
 
 // SelectResourceConfigRequest generates a "aws/request.Request" representing the
@@ -7168,6 +10292,12 @@ func (c *ConfigService) SelectResourceConfigRequest(input *SelectResourceConfigI
 		Name:       opSelectResourceConfig,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "Limit",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -7225,6 +10355,58 @@ func (c *ConfigService) SelectResourceConfigWithContext(ctx aws.Context, input *
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// SelectResourceConfigPages iterates over the pages of a SelectResourceConfig operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See SelectResourceConfig method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a SelectResourceConfig operation.
+//    pageNum := 0
+//    err := client.SelectResourceConfigPages(params,
+//        func(page *configservice.SelectResourceConfigOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ConfigService) SelectResourceConfigPages(input *SelectResourceConfigInput, fn func(*SelectResourceConfigOutput, bool) bool) error {
+	return c.SelectResourceConfigPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// SelectResourceConfigPagesWithContext same as SelectResourceConfigPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ConfigService) SelectResourceConfigPagesWithContext(ctx aws.Context, input *SelectResourceConfigInput, fn func(*SelectResourceConfigOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *SelectResourceConfigInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.SelectResourceConfigRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*SelectResourceConfigOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opStartConfigRulesEvaluation = "StartConfigRulesEvaluation"
@@ -7711,6 +10893,14 @@ func (c *ConfigService) TagResourceRequest(input *TagResourceInput) (req *reques
 //   * ValidationException
 //   The requested action is not valid.
 //
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
+//
 //   * ResourceNotFoundException
 //   You have specified a resource that does not exist.
 //
@@ -7797,6 +10987,14 @@ func (c *ConfigService) UntagResourceRequest(input *UntagResourceInput) (req *re
 // Returned Error Types:
 //   * ValidationException
 //   The requested action is not valid.
+//
+//   For PutStoredQuery, you will see this exception if there are missing required
+//   fields or if the input value fails the validation, or if you are trying to
+//   create more than 300 queries.
+//
+//   For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+//   exception if there are missing required fields or if the input value fails
+//   the validation.
 //
 //   * ResourceNotFoundException
 //   You have specified a resource that does not exist.
@@ -7942,6 +11140,67 @@ func (s *AggregateComplianceByConfigRule) SetConfigRuleName(v string) *Aggregate
 	return s
 }
 
+// Provides aggregate compliance of the conformance pack. Indicates whether
+// a conformance pack is compliant based on the name of the conformance pack,
+// account ID, and region.
+//
+// A conformance pack is compliant if all of the rules in a conformance packs
+// are compliant. It is noncompliant if any of the rules are not compliant.
+// The compliance status of a conformance pack is INSUFFICIENT_DATA only if
+// all rules within a conformance pack cannot be evaluated due to insufficient
+// data. If some of the rules in a conformance pack are compliant but the compliance
+// status of other rules in that same conformance pack is INSUFFICIENT_DATA,
+// the conformance pack shows compliant.
+type AggregateComplianceByConformancePack struct {
+	_ struct{} `type:"structure"`
+
+	// The 12-digit AWS account ID of the source account.
+	AccountId *string `type:"string"`
+
+	// The source AWS Region from where the data is aggregated.
+	AwsRegion *string `min:"1" type:"string"`
+
+	// The compliance status of the conformance pack.
+	Compliance *AggregateConformancePackCompliance `type:"structure"`
+
+	// The name of the conformance pack.
+	ConformancePackName *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s AggregateComplianceByConformancePack) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AggregateComplianceByConformancePack) GoString() string {
+	return s.String()
+}
+
+// SetAccountId sets the AccountId field's value.
+func (s *AggregateComplianceByConformancePack) SetAccountId(v string) *AggregateComplianceByConformancePack {
+	s.AccountId = &v
+	return s
+}
+
+// SetAwsRegion sets the AwsRegion field's value.
+func (s *AggregateComplianceByConformancePack) SetAwsRegion(v string) *AggregateComplianceByConformancePack {
+	s.AwsRegion = &v
+	return s
+}
+
+// SetCompliance sets the Compliance field's value.
+func (s *AggregateComplianceByConformancePack) SetCompliance(v *AggregateConformancePackCompliance) *AggregateComplianceByConformancePack {
+	s.Compliance = v
+	return s
+}
+
+// SetConformancePackName sets the ConformancePackName field's value.
+func (s *AggregateComplianceByConformancePack) SetConformancePackName(v string) *AggregateComplianceByConformancePack {
+	s.ConformancePackName = &v
+	return s
+}
+
 // Returns the number of compliant and noncompliant rules for one or more accounts
 // and regions in an aggregator.
 type AggregateComplianceCount struct {
@@ -7973,6 +11232,250 @@ func (s *AggregateComplianceCount) SetComplianceSummary(v *ComplianceSummary) *A
 // SetGroupName sets the GroupName field's value.
 func (s *AggregateComplianceCount) SetGroupName(v string) *AggregateComplianceCount {
 	s.GroupName = &v
+	return s
+}
+
+// Provides the number of compliant and noncompliant rules within a conformance
+// pack. Also provides the compliance status of the conformance pack and the
+// total rule count which includes compliant rules, noncompliant rules, and
+// rules that cannot be evaluated due to insufficient data.
+//
+// A conformance pack is compliant if all of the rules in a conformance packs
+// are compliant. It is noncompliant if any of the rules are not compliant.
+// The compliance status of a conformance pack is INSUFFICIENT_DATA only if
+// all rules within a conformance pack cannot be evaluated due to insufficient
+// data. If some of the rules in a conformance pack are compliant but the compliance
+// status of other rules in that same conformance pack is INSUFFICIENT_DATA,
+// the conformance pack shows compliant.
+type AggregateConformancePackCompliance struct {
+	_ struct{} `type:"structure"`
+
+	// The compliance status of the conformance pack.
+	ComplianceType *string `type:"string" enum:"ConformancePackComplianceType"`
+
+	// The number of compliant AWS Config Rules.
+	CompliantRuleCount *int64 `type:"integer"`
+
+	// The number of noncompliant AWS Config Rules.
+	NonCompliantRuleCount *int64 `type:"integer"`
+
+	// Total number of compliant rules, noncompliant rules, and the rules that do
+	// not have any applicable resources to evaluate upon resulting in insufficient
+	// data.
+	TotalRuleCount *int64 `type:"integer"`
+}
+
+// String returns the string representation
+func (s AggregateConformancePackCompliance) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AggregateConformancePackCompliance) GoString() string {
+	return s.String()
+}
+
+// SetComplianceType sets the ComplianceType field's value.
+func (s *AggregateConformancePackCompliance) SetComplianceType(v string) *AggregateConformancePackCompliance {
+	s.ComplianceType = &v
+	return s
+}
+
+// SetCompliantRuleCount sets the CompliantRuleCount field's value.
+func (s *AggregateConformancePackCompliance) SetCompliantRuleCount(v int64) *AggregateConformancePackCompliance {
+	s.CompliantRuleCount = &v
+	return s
+}
+
+// SetNonCompliantRuleCount sets the NonCompliantRuleCount field's value.
+func (s *AggregateConformancePackCompliance) SetNonCompliantRuleCount(v int64) *AggregateConformancePackCompliance {
+	s.NonCompliantRuleCount = &v
+	return s
+}
+
+// SetTotalRuleCount sets the TotalRuleCount field's value.
+func (s *AggregateConformancePackCompliance) SetTotalRuleCount(v int64) *AggregateConformancePackCompliance {
+	s.TotalRuleCount = &v
+	return s
+}
+
+// The number of conformance packs that are compliant and noncompliant.
+type AggregateConformancePackComplianceCount struct {
+	_ struct{} `type:"structure"`
+
+	// Number of compliant conformance packs.
+	CompliantConformancePackCount *int64 `type:"integer"`
+
+	// Number of noncompliant conformance packs.
+	NonCompliantConformancePackCount *int64 `type:"integer"`
+}
+
+// String returns the string representation
+func (s AggregateConformancePackComplianceCount) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AggregateConformancePackComplianceCount) GoString() string {
+	return s.String()
+}
+
+// SetCompliantConformancePackCount sets the CompliantConformancePackCount field's value.
+func (s *AggregateConformancePackComplianceCount) SetCompliantConformancePackCount(v int64) *AggregateConformancePackComplianceCount {
+	s.CompliantConformancePackCount = &v
+	return s
+}
+
+// SetNonCompliantConformancePackCount sets the NonCompliantConformancePackCount field's value.
+func (s *AggregateConformancePackComplianceCount) SetNonCompliantConformancePackCount(v int64) *AggregateConformancePackComplianceCount {
+	s.NonCompliantConformancePackCount = &v
+	return s
+}
+
+// Filters the conformance packs based on an account ID, region, compliance
+// type, and the name of the conformance pack.
+type AggregateConformancePackComplianceFilters struct {
+	_ struct{} `type:"structure"`
+
+	// The 12-digit AWS account ID of the source account.
+	AccountId *string `type:"string"`
+
+	// The source AWS Region from where the data is aggregated.
+	AwsRegion *string `min:"1" type:"string"`
+
+	// The compliance status of the conformance pack.
+	ComplianceType *string `type:"string" enum:"ConformancePackComplianceType"`
+
+	// The name of the conformance pack.
+	ConformancePackName *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s AggregateConformancePackComplianceFilters) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AggregateConformancePackComplianceFilters) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *AggregateConformancePackComplianceFilters) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "AggregateConformancePackComplianceFilters"}
+	if s.AwsRegion != nil && len(*s.AwsRegion) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AwsRegion", 1))
+	}
+	if s.ConformancePackName != nil && len(*s.ConformancePackName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ConformancePackName", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAccountId sets the AccountId field's value.
+func (s *AggregateConformancePackComplianceFilters) SetAccountId(v string) *AggregateConformancePackComplianceFilters {
+	s.AccountId = &v
+	return s
+}
+
+// SetAwsRegion sets the AwsRegion field's value.
+func (s *AggregateConformancePackComplianceFilters) SetAwsRegion(v string) *AggregateConformancePackComplianceFilters {
+	s.AwsRegion = &v
+	return s
+}
+
+// SetComplianceType sets the ComplianceType field's value.
+func (s *AggregateConformancePackComplianceFilters) SetComplianceType(v string) *AggregateConformancePackComplianceFilters {
+	s.ComplianceType = &v
+	return s
+}
+
+// SetConformancePackName sets the ConformancePackName field's value.
+func (s *AggregateConformancePackComplianceFilters) SetConformancePackName(v string) *AggregateConformancePackComplianceFilters {
+	s.ConformancePackName = &v
+	return s
+}
+
+// Provides a summary of compliance based on either account ID or region.
+type AggregateConformancePackComplianceSummary struct {
+	_ struct{} `type:"structure"`
+
+	// Returns an AggregateConformancePackComplianceCount object.
+	ComplianceSummary *AggregateConformancePackComplianceCount `type:"structure"`
+
+	// Groups the result based on AWS Account ID or AWS Region.
+	GroupName *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s AggregateConformancePackComplianceSummary) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AggregateConformancePackComplianceSummary) GoString() string {
+	return s.String()
+}
+
+// SetComplianceSummary sets the ComplianceSummary field's value.
+func (s *AggregateConformancePackComplianceSummary) SetComplianceSummary(v *AggregateConformancePackComplianceCount) *AggregateConformancePackComplianceSummary {
+	s.ComplianceSummary = v
+	return s
+}
+
+// SetGroupName sets the GroupName field's value.
+func (s *AggregateConformancePackComplianceSummary) SetGroupName(v string) *AggregateConformancePackComplianceSummary {
+	s.GroupName = &v
+	return s
+}
+
+// Filters the results based on account ID and region.
+type AggregateConformancePackComplianceSummaryFilters struct {
+	_ struct{} `type:"structure"`
+
+	// The 12-digit AWS account ID of the source account.
+	AccountId *string `type:"string"`
+
+	// The source AWS Region from where the data is aggregated.
+	AwsRegion *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s AggregateConformancePackComplianceSummaryFilters) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AggregateConformancePackComplianceSummaryFilters) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *AggregateConformancePackComplianceSummaryFilters) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "AggregateConformancePackComplianceSummaryFilters"}
+	if s.AwsRegion != nil && len(*s.AwsRegion) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AwsRegion", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAccountId sets the AccountId field's value.
+func (s *AggregateConformancePackComplianceSummaryFilters) SetAccountId(v string) *AggregateConformancePackComplianceSummaryFilters {
+	s.AccountId = &v
+	return s
+}
+
+// SetAwsRegion sets the AwsRegion field's value.
+func (s *AggregateConformancePackComplianceSummaryFilters) SetAwsRegion(v string) *AggregateConformancePackComplianceSummaryFilters {
+	s.AwsRegion = &v
 	return s
 }
 
@@ -8319,7 +11822,23 @@ type BaseConfigurationItem struct {
 	// The time when the configuration recording was initiated.
 	ConfigurationItemCaptureTime *time.Time `locationName:"configurationItemCaptureTime" type:"timestamp"`
 
-	// The configuration item status.
+	// The configuration item status. The valid values are:
+	//
+	//    * OK – The resource configuration has been updated
+	//
+	//    * ResourceDiscovered – The resource was newly discovered
+	//
+	//    * ResourceNotRecorded – The resource was discovered but its configuration
+	//    was not recorded since the recorder excludes the recording of resources
+	//    of this type
+	//
+	//    * ResourceDeleted – The resource was deleted
+	//
+	//    * ResourceDeletedNotRecorded – The resource was deleted but its configuration
+	//    was not recorded since the recorder excludes the recording of resources
+	//    of this type
+	//
+	// The CIs do not incur any cost.
 	ConfigurationItemStatus *string `locationName:"configurationItemStatus" type:"string" enum:"ConfigurationItemStatus"`
 
 	// An identifier that indicates the ordering of the configuration items of a
@@ -8962,10 +12481,10 @@ type ConfigRule struct {
 	_ struct{} `type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the AWS Config rule.
-	ConfigRuleArn *string `type:"string"`
+	ConfigRuleArn *string `min:"1" type:"string"`
 
 	// The ID of the AWS Config rule.
-	ConfigRuleId *string `type:"string"`
+	ConfigRuleId *string `min:"1" type:"string"`
 
 	// The name that you assign to the AWS Config rule. The name is required if
 	// you are adding a new rule.
@@ -9020,6 +12539,8 @@ type ConfigRule struct {
 	// to constrain the resources that can trigger an evaluation for the rule. If
 	// you do not specify a scope, evaluations are triggered when any resource in
 	// the recording group changes.
+	//
+	// The scope can be empty.
 	Scope *Scope `type:"structure"`
 
 	// Provides the rule owner (AWS or customer), the rule identifier, and the notifications
@@ -9042,6 +12563,12 @@ func (s ConfigRule) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *ConfigRule) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ConfigRule"}
+	if s.ConfigRuleArn != nil && len(*s.ConfigRuleArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ConfigRuleArn", 1))
+	}
+	if s.ConfigRuleId != nil && len(*s.ConfigRuleId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ConfigRuleId", 1))
+	}
 	if s.ConfigRuleName != nil && len(*s.ConfigRuleName) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("ConfigRuleName", 1))
 	}
@@ -9279,6 +12806,9 @@ type ConfigRuleEvaluationStatus struct {
 	//    against the rule.
 	FirstEvaluationStarted *bool `type:"boolean"`
 
+	// The time that you last turned off the AWS Config rule.
+	LastDeactivatedTime *time.Time `type:"timestamp"`
+
 	// The error code that AWS Config returned when the rule last failed.
 	LastErrorCode *string `type:"string"`
 
@@ -9339,6 +12869,12 @@ func (s *ConfigRuleEvaluationStatus) SetFirstActivatedTime(v time.Time) *ConfigR
 // SetFirstEvaluationStarted sets the FirstEvaluationStarted field's value.
 func (s *ConfigRuleEvaluationStatus) SetFirstEvaluationStarted(v bool) *ConfigRuleEvaluationStatus {
 	s.FirstEvaluationStarted = &v
+	return s
+}
+
+// SetLastDeactivatedTime sets the LastDeactivatedTime field's value.
+func (s *ConfigRuleEvaluationStatus) SetLastDeactivatedTime(v time.Time) *ConfigRuleEvaluationStatus {
+	s.LastDeactivatedTime = &v
 	return s
 }
 
@@ -9507,6 +13043,9 @@ type ConfigurationAggregator struct {
 	// The name of the aggregator.
 	ConfigurationAggregatorName *string `min:"1" type:"string"`
 
+	// AWS service that created the configuration aggregator.
+	CreatedBy *string `min:"1" type:"string"`
+
 	// The time stamp when the configuration aggregator was created.
 	CreationTime *time.Time `type:"timestamp"`
 
@@ -9545,6 +13084,12 @@ func (s *ConfigurationAggregator) SetConfigurationAggregatorName(v string) *Conf
 	return s
 }
 
+// SetCreatedBy sets the CreatedBy field's value.
+func (s *ConfigurationAggregator) SetCreatedBy(v string) *ConfigurationAggregator {
+	s.CreatedBy = &v
+	return s
+}
+
 // SetCreationTime sets the CreationTime field's value.
 func (s *ConfigurationAggregator) SetCreationTime(v time.Time) *ConfigurationAggregator {
 	s.CreationTime = &v
@@ -9570,7 +13115,7 @@ type ConfigurationItem struct {
 	// The 12-digit AWS account ID associated with the resource.
 	AccountId *string `locationName:"accountId" type:"string"`
 
-	// accoun
+	// Amazon Resource Name (ARN) associated with the resource.
 	Arn *string `locationName:"arn" type:"string"`
 
 	// The Availability Zone associated with the resource.
@@ -9591,7 +13136,23 @@ type ConfigurationItem struct {
 	// that are associated with the same resource.
 	ConfigurationItemMD5Hash *string `locationName:"configurationItemMD5Hash" type:"string"`
 
-	// The configuration item status.
+	// The configuration item status. The valid values are:
+	//
+	//    * OK – The resource configuration has been updated
+	//
+	//    * ResourceDiscovered – The resource was newly discovered
+	//
+	//    * ResourceNotRecorded – The resource was discovered but its configuration
+	//    was not recorded since the recorder excludes the recording of resources
+	//    of this type
+	//
+	//    * ResourceDeleted – The resource was deleted
+	//
+	//    * ResourceDeletedNotRecorded – The resource was deleted but its configuration
+	//    was not recorded since the recorder excludes the recording of resources
+	//    of this type
+	//
+	// The CIs do not incur any cost.
 	ConfigurationItemStatus *string `locationName:"configurationItemStatus" type:"string" enum:"ConfigurationItemStatus"`
 
 	// An identifier that indicates the ordering of the configuration items of a
@@ -9907,7 +13468,8 @@ type ConformancePackComplianceFilters struct {
 
 	// Filters the results by compliance.
 	//
-	// The allowed values are COMPLIANT and NON_COMPLIANT.
+	// The allowed values are COMPLIANT and NON_COMPLIANT. INSUFFICIENT_DATA is
+	// not supported.
 	ComplianceType *string `type:"string" enum:"ConformancePackComplianceType"`
 
 	// Filters the results by AWS Config rule names.
@@ -9940,8 +13502,8 @@ func (s *ConformancePackComplianceFilters) SetConfigRuleNames(v []*string) *Conf
 type ConformancePackComplianceSummary struct {
 	_ struct{} `type:"structure"`
 
-	// The status of the conformance pack. The allowed values are COMPLIANT and
-	// NON_COMPLIANT.
+	// The status of the conformance pack. The allowed values are COMPLIANT, NON_COMPLIANT
+	// and INSUFFICIENT_DATA.
 	//
 	// ConformancePackComplianceStatus is a required field
 	ConformancePackComplianceStatus *string `type:"string" required:"true" enum:"ConformancePackComplianceType"`
@@ -10001,14 +13563,15 @@ type ConformancePackDetail struct {
 	// AWS service that created the conformance pack.
 	CreatedBy *string `min:"1" type:"string"`
 
-	// Conformance pack template that is used to create a pack. The delivery bucket
-	// name should start with awsconfigconforms. For example: "Resource": "arn:aws:s3:::your_bucket_name/*".
+	// Amazon S3 bucket where AWS Config stores conformance pack templates.
 	//
-	// DeliveryS3Bucket is a required field
-	DeliveryS3Bucket *string `min:"3" type:"string" required:"true"`
+	// This field is optional.
+	DeliveryS3Bucket *string `type:"string"`
 
 	// The prefix for the Amazon S3 bucket.
-	DeliveryS3KeyPrefix *string `min:"1" type:"string"`
+	//
+	// This field is optional.
+	DeliveryS3KeyPrefix *string `type:"string"`
 
 	// Last time when conformation pack update was requested.
 	LastUpdateRequestedTime *time.Time `type:"timestamp"`
@@ -10079,7 +13642,8 @@ type ConformancePackEvaluationFilters struct {
 
 	// Filters the results by compliance.
 	//
-	// The allowed values are COMPLIANT and NON_COMPLIANT.
+	// The allowed values are COMPLIANT and NON_COMPLIANT. INSUFFICIENT_DATA is
+	// not supported.
 	ComplianceType *string `type:"string" enum:"ConformancePackComplianceType"`
 
 	// Filters the results by AWS Config rule names.
@@ -10152,6 +13716,7 @@ type ConformancePackEvaluationResult struct {
 	Annotation *string `type:"string"`
 
 	// The compliance type. The allowed values are COMPLIANT and NON_COMPLIANT.
+	// INSUFFICIENT_DATA is not supported.
 	//
 	// ComplianceType is a required field
 	ComplianceType *string `type:"string" required:"true" enum:"ConformancePackComplianceType"`
@@ -10213,8 +13778,8 @@ func (s *ConformancePackEvaluationResult) SetResultRecordedTime(v time.Time) *Co
 }
 
 // Input parameters in the form of key-value pairs for the conformance pack,
-// both of which you define. Keys can have a maximum character length of 128
-// characters, and values can have a maximum length of 256 characters.
+// both of which you define. Keys can have a maximum character length of 255
+// characters, and values can have a maximum length of 4096 characters.
 type ConformancePackInputParameter struct {
 	_ struct{} `type:"structure"`
 
@@ -10272,13 +13837,18 @@ func (s *ConformancePackInputParameter) SetParameterValue(v string) *Conformance
 type ConformancePackRuleCompliance struct {
 	_ struct{} `type:"structure"`
 
-	// Compliance of the AWS Config rule
+	// Compliance of the AWS Config rule.
 	//
-	// The allowed values are COMPLIANT and NON_COMPLIANT.
+	// The allowed values are COMPLIANT, NON_COMPLIANT, and INSUFFICIENT_DATA.
 	ComplianceType *string `type:"string" enum:"ConformancePackComplianceType"`
 
 	// Name of the config rule.
 	ConfigRuleName *string `min:"1" type:"string"`
+
+	// Controls for the conformance pack. A control is a process to prevent or detect
+	// problems while meeting objectives. A control can align with a specific compliance
+	// regime or map to internal controls defined by an organization.
+	Controls []*string `type:"list"`
 }
 
 // String returns the string representation
@@ -10300,6 +13870,12 @@ func (s *ConformancePackRuleCompliance) SetComplianceType(v string) *Conformance
 // SetConfigRuleName sets the ConfigRuleName field's value.
 func (s *ConformancePackRuleCompliance) SetConfigRuleName(v string) *ConformancePackRuleCompliance {
 	s.ConfigRuleName = &v
+	return s
+}
+
+// SetControls sets the Controls field's value.
+func (s *ConformancePackRuleCompliance) SetControls(v []*string) *ConformancePackRuleCompliance {
+	s.Controls = v
 	return s
 }
 
@@ -10418,8 +13994,8 @@ func (s *ConformancePackStatusDetail) SetStackArn(v string) *ConformancePackStat
 
 // You have specified a template that is not valid or supported.
 type ConformancePackTemplateValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -10436,17 +14012,17 @@ func (s ConformancePackTemplateValidationException) GoString() string {
 
 func newErrorConformancePackTemplateValidationException(v protocol.ResponseMetadata) error {
 	return &ConformancePackTemplateValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConformancePackTemplateValidationException) Code() string {
+func (s *ConformancePackTemplateValidationException) Code() string {
 	return "ConformancePackTemplateValidationException"
 }
 
 // Message returns the exception's message.
-func (s ConformancePackTemplateValidationException) Message() string {
+func (s *ConformancePackTemplateValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10454,22 +14030,22 @@ func (s ConformancePackTemplateValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConformancePackTemplateValidationException) OrigErr() error {
+func (s *ConformancePackTemplateValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ConformancePackTemplateValidationException) Error() string {
+func (s *ConformancePackTemplateValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConformancePackTemplateValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConformancePackTemplateValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConformancePackTemplateValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConformancePackTemplateValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type DeleteAggregationAuthorizationInput struct {
@@ -11345,6 +14921,61 @@ func (s DeleteRetentionConfigurationOutput) GoString() string {
 	return s.String()
 }
 
+type DeleteStoredQueryInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the query that you want to delete.
+	//
+	// QueryName is a required field
+	QueryName *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteStoredQueryInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteStoredQueryInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteStoredQueryInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteStoredQueryInput"}
+	if s.QueryName == nil {
+		invalidParams.Add(request.NewErrParamRequired("QueryName"))
+	}
+	if s.QueryName != nil && len(*s.QueryName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("QueryName", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetQueryName sets the QueryName field's value.
+func (s *DeleteStoredQueryInput) SetQueryName(v string) *DeleteStoredQueryInput {
+	s.QueryName = &v
+	return s
+}
+
+type DeleteStoredQueryOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteStoredQueryOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteStoredQueryOutput) GoString() string {
+	return s.String()
+}
+
 // The input for the DeliverConfigSnapshot action.
 type DeliverConfigSnapshotInput struct {
 	_ struct{} `type:"structure"`
@@ -11439,6 +15070,11 @@ type DeliveryChannel struct {
 	// The prefix for the specified Amazon S3 bucket.
 	S3KeyPrefix *string `locationName:"s3KeyPrefix" type:"string"`
 
+	// The Amazon Resource Name (ARN) of the AWS Key Management Service (KMS) customer
+	// managed key (CMK) used to encrypt objects delivered by AWS Config. Must belong
+	// to the same Region as the destination S3 bucket.
+	S3KmsKeyArn *string `locationName:"s3KmsKeyArn" type:"string"`
+
 	// The Amazon Resource Name (ARN) of the Amazon SNS topic to which AWS Config
 	// sends notifications about configuration changes.
 	//
@@ -11493,6 +15129,12 @@ func (s *DeliveryChannel) SetS3BucketName(v string) *DeliveryChannel {
 // SetS3KeyPrefix sets the S3KeyPrefix field's value.
 func (s *DeliveryChannel) SetS3KeyPrefix(v string) *DeliveryChannel {
 	s.S3KeyPrefix = &v
+	return s
+}
+
+// SetS3KmsKeyArn sets the S3KmsKeyArn field's value.
+func (s *DeliveryChannel) SetS3KmsKeyArn(v string) *DeliveryChannel {
+	s.S3KmsKeyArn = &v
 	return s
 }
 
@@ -11662,6 +15304,114 @@ func (s *DescribeAggregateComplianceByConfigRulesOutput) SetAggregateComplianceB
 
 // SetNextToken sets the NextToken field's value.
 func (s *DescribeAggregateComplianceByConfigRulesOutput) SetNextToken(v string) *DescribeAggregateComplianceByConfigRulesOutput {
+	s.NextToken = &v
+	return s
+}
+
+type DescribeAggregateComplianceByConformancePacksInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the configuration aggregator.
+	//
+	// ConfigurationAggregatorName is a required field
+	ConfigurationAggregatorName *string `min:"1" type:"string" required:"true"`
+
+	// Filters the result by AggregateConformancePackComplianceFilters object.
+	Filters *AggregateConformancePackComplianceFilters `type:"structure"`
+
+	// The maximum number of conformance packs compliance details returned on each
+	// page. The default is maximum. If you specify 0, AWS Config uses the default.
+	Limit *int64 `type:"integer"`
+
+	// The nextToken string returned on a previous page that you use to get the
+	// next page of results in a paginated response.
+	NextToken *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DescribeAggregateComplianceByConformancePacksInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeAggregateComplianceByConformancePacksInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeAggregateComplianceByConformancePacksInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeAggregateComplianceByConformancePacksInput"}
+	if s.ConfigurationAggregatorName == nil {
+		invalidParams.Add(request.NewErrParamRequired("ConfigurationAggregatorName"))
+	}
+	if s.ConfigurationAggregatorName != nil && len(*s.ConfigurationAggregatorName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ConfigurationAggregatorName", 1))
+	}
+	if s.Filters != nil {
+		if err := s.Filters.Validate(); err != nil {
+			invalidParams.AddNested("Filters", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConfigurationAggregatorName sets the ConfigurationAggregatorName field's value.
+func (s *DescribeAggregateComplianceByConformancePacksInput) SetConfigurationAggregatorName(v string) *DescribeAggregateComplianceByConformancePacksInput {
+	s.ConfigurationAggregatorName = &v
+	return s
+}
+
+// SetFilters sets the Filters field's value.
+func (s *DescribeAggregateComplianceByConformancePacksInput) SetFilters(v *AggregateConformancePackComplianceFilters) *DescribeAggregateComplianceByConformancePacksInput {
+	s.Filters = v
+	return s
+}
+
+// SetLimit sets the Limit field's value.
+func (s *DescribeAggregateComplianceByConformancePacksInput) SetLimit(v int64) *DescribeAggregateComplianceByConformancePacksInput {
+	s.Limit = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *DescribeAggregateComplianceByConformancePacksInput) SetNextToken(v string) *DescribeAggregateComplianceByConformancePacksInput {
+	s.NextToken = &v
+	return s
+}
+
+type DescribeAggregateComplianceByConformancePacksOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Returns the AggregateComplianceByConformancePack object.
+	AggregateComplianceByConformancePacks []*AggregateComplianceByConformancePack `type:"list"`
+
+	// The nextToken string returned on a previous page that you use to get the
+	// next page of results in a paginated response.
+	NextToken *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DescribeAggregateComplianceByConformancePacksOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeAggregateComplianceByConformancePacksOutput) GoString() string {
+	return s.String()
+}
+
+// SetAggregateComplianceByConformancePacks sets the AggregateComplianceByConformancePacks field's value.
+func (s *DescribeAggregateComplianceByConformancePacksOutput) SetAggregateComplianceByConformancePacks(v []*AggregateComplianceByConformancePack) *DescribeAggregateComplianceByConformancePacksOutput {
+	s.AggregateComplianceByConformancePacks = v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *DescribeAggregateComplianceByConformancePacksOutput) SetNextToken(v string) *DescribeAggregateComplianceByConformancePacksOutput {
 	s.NextToken = &v
 	return s
 }
@@ -13788,6 +17538,110 @@ func (s *ExecutionControls) SetSsmControls(v *SsmControls) *ExecutionControls {
 	return s
 }
 
+// Identifies an AWS resource and indicates whether it complies with the AWS
+// Config rule that it was evaluated against.
+type ExternalEvaluation struct {
+	_ struct{} `type:"structure"`
+
+	// Supplementary information about the reason of compliance. For example, this
+	// task was completed on a specific date.
+	Annotation *string `min:"1" type:"string"`
+
+	// The evaluated compliance resource ID. AWS Config accepts only AWS account
+	// ID.
+	//
+	// ComplianceResourceId is a required field
+	ComplianceResourceId *string `min:"1" type:"string" required:"true"`
+
+	// The evaluated compliance resource type. AWS Config accepts AWS::::Account
+	// resource type.
+	//
+	// ComplianceResourceType is a required field
+	ComplianceResourceType *string `min:"1" type:"string" required:"true"`
+
+	// The compliance of the AWS resource. The valid values are COMPLIANT, NON_COMPLIANT,
+	// and NOT_APPLICABLE.
+	//
+	// ComplianceType is a required field
+	ComplianceType *string `type:"string" required:"true" enum:"ComplianceType"`
+
+	// The time when the compliance was recorded.
+	//
+	// OrderingTimestamp is a required field
+	OrderingTimestamp *time.Time `type:"timestamp" required:"true"`
+}
+
+// String returns the string representation
+func (s ExternalEvaluation) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ExternalEvaluation) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ExternalEvaluation) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ExternalEvaluation"}
+	if s.Annotation != nil && len(*s.Annotation) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Annotation", 1))
+	}
+	if s.ComplianceResourceId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ComplianceResourceId"))
+	}
+	if s.ComplianceResourceId != nil && len(*s.ComplianceResourceId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComplianceResourceId", 1))
+	}
+	if s.ComplianceResourceType == nil {
+		invalidParams.Add(request.NewErrParamRequired("ComplianceResourceType"))
+	}
+	if s.ComplianceResourceType != nil && len(*s.ComplianceResourceType) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComplianceResourceType", 1))
+	}
+	if s.ComplianceType == nil {
+		invalidParams.Add(request.NewErrParamRequired("ComplianceType"))
+	}
+	if s.OrderingTimestamp == nil {
+		invalidParams.Add(request.NewErrParamRequired("OrderingTimestamp"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAnnotation sets the Annotation field's value.
+func (s *ExternalEvaluation) SetAnnotation(v string) *ExternalEvaluation {
+	s.Annotation = &v
+	return s
+}
+
+// SetComplianceResourceId sets the ComplianceResourceId field's value.
+func (s *ExternalEvaluation) SetComplianceResourceId(v string) *ExternalEvaluation {
+	s.ComplianceResourceId = &v
+	return s
+}
+
+// SetComplianceResourceType sets the ComplianceResourceType field's value.
+func (s *ExternalEvaluation) SetComplianceResourceType(v string) *ExternalEvaluation {
+	s.ComplianceResourceType = &v
+	return s
+}
+
+// SetComplianceType sets the ComplianceType field's value.
+func (s *ExternalEvaluation) SetComplianceType(v string) *ExternalEvaluation {
+	s.ComplianceType = &v
+	return s
+}
+
+// SetOrderingTimestamp sets the OrderingTimestamp field's value.
+func (s *ExternalEvaluation) SetOrderingTimestamp(v time.Time) *ExternalEvaluation {
+	s.OrderingTimestamp = &v
+	return s
+}
+
 // List of each of the failed delete remediation exceptions with specific reasons.
 type FailedDeleteRemediationExceptionsBatch struct {
 	_ struct{} `type:"structure"`
@@ -14191,6 +18045,133 @@ func (s *GetAggregateConfigRuleComplianceSummaryOutput) SetGroupByKey(v string) 
 
 // SetNextToken sets the NextToken field's value.
 func (s *GetAggregateConfigRuleComplianceSummaryOutput) SetNextToken(v string) *GetAggregateConfigRuleComplianceSummaryOutput {
+	s.NextToken = &v
+	return s
+}
+
+type GetAggregateConformancePackComplianceSummaryInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the configuration aggregator.
+	//
+	// ConfigurationAggregatorName is a required field
+	ConfigurationAggregatorName *string `min:"1" type:"string" required:"true"`
+
+	// Filters the results based on the AggregateConformancePackComplianceSummaryFilters
+	// object.
+	Filters *AggregateConformancePackComplianceSummaryFilters `type:"structure"`
+
+	// Groups the result based on AWS Account ID or AWS Region.
+	GroupByKey *string `type:"string" enum:"AggregateConformancePackComplianceSummaryGroupKey"`
+
+	// The maximum number of results returned on each page. The default is maximum.
+	// If you specify 0, AWS Config uses the default.
+	Limit *int64 `type:"integer"`
+
+	// The nextToken string returned on a previous page that you use to get the
+	// next page of results in a paginated response.
+	NextToken *string `type:"string"`
+}
+
+// String returns the string representation
+func (s GetAggregateConformancePackComplianceSummaryInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetAggregateConformancePackComplianceSummaryInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GetAggregateConformancePackComplianceSummaryInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GetAggregateConformancePackComplianceSummaryInput"}
+	if s.ConfigurationAggregatorName == nil {
+		invalidParams.Add(request.NewErrParamRequired("ConfigurationAggregatorName"))
+	}
+	if s.ConfigurationAggregatorName != nil && len(*s.ConfigurationAggregatorName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ConfigurationAggregatorName", 1))
+	}
+	if s.Filters != nil {
+		if err := s.Filters.Validate(); err != nil {
+			invalidParams.AddNested("Filters", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConfigurationAggregatorName sets the ConfigurationAggregatorName field's value.
+func (s *GetAggregateConformancePackComplianceSummaryInput) SetConfigurationAggregatorName(v string) *GetAggregateConformancePackComplianceSummaryInput {
+	s.ConfigurationAggregatorName = &v
+	return s
+}
+
+// SetFilters sets the Filters field's value.
+func (s *GetAggregateConformancePackComplianceSummaryInput) SetFilters(v *AggregateConformancePackComplianceSummaryFilters) *GetAggregateConformancePackComplianceSummaryInput {
+	s.Filters = v
+	return s
+}
+
+// SetGroupByKey sets the GroupByKey field's value.
+func (s *GetAggregateConformancePackComplianceSummaryInput) SetGroupByKey(v string) *GetAggregateConformancePackComplianceSummaryInput {
+	s.GroupByKey = &v
+	return s
+}
+
+// SetLimit sets the Limit field's value.
+func (s *GetAggregateConformancePackComplianceSummaryInput) SetLimit(v int64) *GetAggregateConformancePackComplianceSummaryInput {
+	s.Limit = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *GetAggregateConformancePackComplianceSummaryInput) SetNextToken(v string) *GetAggregateConformancePackComplianceSummaryInput {
+	s.NextToken = &v
+	return s
+}
+
+type GetAggregateConformancePackComplianceSummaryOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Returns a list of AggregateConformancePackComplianceSummary object.
+	AggregateConformancePackComplianceSummaries []*AggregateConformancePackComplianceSummary `type:"list"`
+
+	// Groups the result based on AWS Account ID or AWS Region.
+	GroupByKey *string `min:"1" type:"string"`
+
+	// The nextToken string returned on a previous page that you use to get the
+	// next page of results in a paginated response.
+	NextToken *string `type:"string"`
+}
+
+// String returns the string representation
+func (s GetAggregateConformancePackComplianceSummaryOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetAggregateConformancePackComplianceSummaryOutput) GoString() string {
+	return s.String()
+}
+
+// SetAggregateConformancePackComplianceSummaries sets the AggregateConformancePackComplianceSummaries field's value.
+func (s *GetAggregateConformancePackComplianceSummaryOutput) SetAggregateConformancePackComplianceSummaries(v []*AggregateConformancePackComplianceSummary) *GetAggregateConformancePackComplianceSummaryOutput {
+	s.AggregateConformancePackComplianceSummaries = v
+	return s
+}
+
+// SetGroupByKey sets the GroupByKey field's value.
+func (s *GetAggregateConformancePackComplianceSummaryOutput) SetGroupByKey(v string) *GetAggregateConformancePackComplianceSummaryOutput {
+	s.GroupByKey = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *GetAggregateConformancePackComplianceSummaryOutput) SetNextToken(v string) *GetAggregateConformancePackComplianceSummaryOutput {
 	s.NextToken = &v
 	return s
 }
@@ -15400,6 +19381,70 @@ func (s *GetResourceConfigHistoryOutput) SetNextToken(v string) *GetResourceConf
 	return s
 }
 
+type GetStoredQueryInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the query.
+	//
+	// QueryName is a required field
+	QueryName *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s GetStoredQueryInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetStoredQueryInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GetStoredQueryInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GetStoredQueryInput"}
+	if s.QueryName == nil {
+		invalidParams.Add(request.NewErrParamRequired("QueryName"))
+	}
+	if s.QueryName != nil && len(*s.QueryName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("QueryName", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetQueryName sets the QueryName field's value.
+func (s *GetStoredQueryInput) SetQueryName(v string) *GetStoredQueryInput {
+	s.QueryName = &v
+	return s
+}
+
+type GetStoredQueryOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Returns a StoredQuery object.
+	StoredQuery *StoredQuery `type:"structure"`
+}
+
+// String returns the string representation
+func (s GetStoredQueryOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetStoredQueryOutput) GoString() string {
+	return s.String()
+}
+
+// SetStoredQuery sets the StoredQuery field's value.
+func (s *GetStoredQueryOutput) SetStoredQuery(v *StoredQuery) *GetStoredQueryOutput {
+	s.StoredQuery = v
+	return s
+}
+
 // The count of resources that are grouped by the group name.
 type GroupedResourceCount struct {
 	_ struct{} `type:"structure"`
@@ -15440,8 +19485,8 @@ func (s *GroupedResourceCount) SetResourceCount(v int64) *GroupedResourceCount {
 
 // Your Amazon S3 bucket policy does not permit AWS Config to write to it.
 type InsufficientDeliveryPolicyException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15458,17 +19503,17 @@ func (s InsufficientDeliveryPolicyException) GoString() string {
 
 func newErrorInsufficientDeliveryPolicyException(v protocol.ResponseMetadata) error {
 	return &InsufficientDeliveryPolicyException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InsufficientDeliveryPolicyException) Code() string {
+func (s *InsufficientDeliveryPolicyException) Code() string {
 	return "InsufficientDeliveryPolicyException"
 }
 
 // Message returns the exception's message.
-func (s InsufficientDeliveryPolicyException) Message() string {
+func (s *InsufficientDeliveryPolicyException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15476,22 +19521,22 @@ func (s InsufficientDeliveryPolicyException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InsufficientDeliveryPolicyException) OrigErr() error {
+func (s *InsufficientDeliveryPolicyException) OrigErr() error {
 	return nil
 }
 
-func (s InsufficientDeliveryPolicyException) Error() string {
+func (s *InsufficientDeliveryPolicyException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InsufficientDeliveryPolicyException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InsufficientDeliveryPolicyException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InsufficientDeliveryPolicyException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InsufficientDeliveryPolicyException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Indicates one of the following errors:
@@ -15510,8 +19555,8 @@ func (s InsufficientDeliveryPolicyException) RequestID() string {
 //    pack cannot be created because you do not have permissions: To call IAM
 //    GetRole action or create a service linked role. To read Amazon S3 bucket.
 type InsufficientPermissionsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15528,17 +19573,17 @@ func (s InsufficientPermissionsException) GoString() string {
 
 func newErrorInsufficientPermissionsException(v protocol.ResponseMetadata) error {
 	return &InsufficientPermissionsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InsufficientPermissionsException) Code() string {
+func (s *InsufficientPermissionsException) Code() string {
 	return "InsufficientPermissionsException"
 }
 
 // Message returns the exception's message.
-func (s InsufficientPermissionsException) Message() string {
+func (s *InsufficientPermissionsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15546,28 +19591,28 @@ func (s InsufficientPermissionsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InsufficientPermissionsException) OrigErr() error {
+func (s *InsufficientPermissionsException) OrigErr() error {
 	return nil
 }
 
-func (s InsufficientPermissionsException) Error() string {
+func (s *InsufficientPermissionsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InsufficientPermissionsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InsufficientPermissionsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InsufficientPermissionsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InsufficientPermissionsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have provided a configuration recorder name that is not valid.
 type InvalidConfigurationRecorderNameException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15584,17 +19629,17 @@ func (s InvalidConfigurationRecorderNameException) GoString() string {
 
 func newErrorInvalidConfigurationRecorderNameException(v protocol.ResponseMetadata) error {
 	return &InvalidConfigurationRecorderNameException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidConfigurationRecorderNameException) Code() string {
+func (s *InvalidConfigurationRecorderNameException) Code() string {
 	return "InvalidConfigurationRecorderNameException"
 }
 
 // Message returns the exception's message.
-func (s InvalidConfigurationRecorderNameException) Message() string {
+func (s *InvalidConfigurationRecorderNameException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15602,28 +19647,28 @@ func (s InvalidConfigurationRecorderNameException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidConfigurationRecorderNameException) OrigErr() error {
+func (s *InvalidConfigurationRecorderNameException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidConfigurationRecorderNameException) Error() string {
+func (s *InvalidConfigurationRecorderNameException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidConfigurationRecorderNameException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidConfigurationRecorderNameException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidConfigurationRecorderNameException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidConfigurationRecorderNameException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified delivery channel name is not valid.
 type InvalidDeliveryChannelNameException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15640,17 +19685,17 @@ func (s InvalidDeliveryChannelNameException) GoString() string {
 
 func newErrorInvalidDeliveryChannelNameException(v protocol.ResponseMetadata) error {
 	return &InvalidDeliveryChannelNameException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidDeliveryChannelNameException) Code() string {
+func (s *InvalidDeliveryChannelNameException) Code() string {
 	return "InvalidDeliveryChannelNameException"
 }
 
 // Message returns the exception's message.
-func (s InvalidDeliveryChannelNameException) Message() string {
+func (s *InvalidDeliveryChannelNameException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15658,28 +19703,28 @@ func (s InvalidDeliveryChannelNameException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidDeliveryChannelNameException) OrigErr() error {
+func (s *InvalidDeliveryChannelNameException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidDeliveryChannelNameException) Error() string {
+func (s *InvalidDeliveryChannelNameException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidDeliveryChannelNameException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidDeliveryChannelNameException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidDeliveryChannelNameException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidDeliveryChannelNameException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The syntax of the query is incorrect.
 type InvalidExpressionException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15696,17 +19741,17 @@ func (s InvalidExpressionException) GoString() string {
 
 func newErrorInvalidExpressionException(v protocol.ResponseMetadata) error {
 	return &InvalidExpressionException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidExpressionException) Code() string {
+func (s *InvalidExpressionException) Code() string {
 	return "InvalidExpressionException"
 }
 
 // Message returns the exception's message.
-func (s InvalidExpressionException) Message() string {
+func (s *InvalidExpressionException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15714,28 +19759,28 @@ func (s InvalidExpressionException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidExpressionException) OrigErr() error {
+func (s *InvalidExpressionException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidExpressionException) Error() string {
+func (s *InvalidExpressionException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidExpressionException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidExpressionException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidExpressionException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidExpressionException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified limit is outside the allowable range.
 type InvalidLimitException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15752,17 +19797,17 @@ func (s InvalidLimitException) GoString() string {
 
 func newErrorInvalidLimitException(v protocol.ResponseMetadata) error {
 	return &InvalidLimitException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidLimitException) Code() string {
+func (s *InvalidLimitException) Code() string {
 	return "InvalidLimitException"
 }
 
 // Message returns the exception's message.
-func (s InvalidLimitException) Message() string {
+func (s *InvalidLimitException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15770,29 +19815,29 @@ func (s InvalidLimitException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidLimitException) OrigErr() error {
+func (s *InvalidLimitException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidLimitException) Error() string {
+func (s *InvalidLimitException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidLimitException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidLimitException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidLimitException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidLimitException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified next token is invalid. Specify the nextToken string that was
 // returned in the previous response to get the next page of results.
 type InvalidNextTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15809,17 +19854,17 @@ func (s InvalidNextTokenException) GoString() string {
 
 func newErrorInvalidNextTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidNextTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidNextTokenException) Code() string {
+func (s *InvalidNextTokenException) Code() string {
 	return "InvalidNextTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidNextTokenException) Message() string {
+func (s *InvalidNextTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15827,29 +19872,29 @@ func (s InvalidNextTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidNextTokenException) OrigErr() error {
+func (s *InvalidNextTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidNextTokenException) Error() string {
+func (s *InvalidNextTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidNextTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidNextTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidNextTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidNextTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // One or more of the specified parameters are invalid. Verify that your parameters
 // are valid and try again.
 type InvalidParameterValueException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15866,17 +19911,17 @@ func (s InvalidParameterValueException) GoString() string {
 
 func newErrorInvalidParameterValueException(v protocol.ResponseMetadata) error {
 	return &InvalidParameterValueException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidParameterValueException) Code() string {
+func (s *InvalidParameterValueException) Code() string {
 	return "InvalidParameterValueException"
 }
 
 // Message returns the exception's message.
-func (s InvalidParameterValueException) Message() string {
+func (s *InvalidParameterValueException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15884,29 +19929,29 @@ func (s InvalidParameterValueException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidParameterValueException) OrigErr() error {
+func (s *InvalidParameterValueException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidParameterValueException) Error() string {
+func (s *InvalidParameterValueException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidParameterValueException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidParameterValueException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidParameterValueException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidParameterValueException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // AWS Config throws an exception if the recording group does not contain a
 // valid list of resource types. Invalid values might also be incorrectly formatted.
 type InvalidRecordingGroupException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15923,17 +19968,17 @@ func (s InvalidRecordingGroupException) GoString() string {
 
 func newErrorInvalidRecordingGroupException(v protocol.ResponseMetadata) error {
 	return &InvalidRecordingGroupException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidRecordingGroupException) Code() string {
+func (s *InvalidRecordingGroupException) Code() string {
 	return "InvalidRecordingGroupException"
 }
 
 // Message returns the exception's message.
-func (s InvalidRecordingGroupException) Message() string {
+func (s *InvalidRecordingGroupException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15941,28 +19986,28 @@ func (s InvalidRecordingGroupException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidRecordingGroupException) OrigErr() error {
+func (s *InvalidRecordingGroupException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidRecordingGroupException) Error() string {
+func (s *InvalidRecordingGroupException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidRecordingGroupException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidRecordingGroupException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidRecordingGroupException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidRecordingGroupException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified ResultToken is invalid.
 type InvalidResultTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -15979,17 +20024,17 @@ func (s InvalidResultTokenException) GoString() string {
 
 func newErrorInvalidResultTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidResultTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidResultTokenException) Code() string {
+func (s *InvalidResultTokenException) Code() string {
 	return "InvalidResultTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidResultTokenException) Message() string {
+func (s *InvalidResultTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15997,28 +20042,28 @@ func (s InvalidResultTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidResultTokenException) OrigErr() error {
+func (s *InvalidResultTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidResultTokenException) Error() string {
+func (s *InvalidResultTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidResultTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidResultTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidResultTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidResultTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have provided a null or empty role ARN.
 type InvalidRoleException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16035,17 +20080,17 @@ func (s InvalidRoleException) GoString() string {
 
 func newErrorInvalidRoleException(v protocol.ResponseMetadata) error {
 	return &InvalidRoleException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidRoleException) Code() string {
+func (s *InvalidRoleException) Code() string {
 	return "InvalidRoleException"
 }
 
 // Message returns the exception's message.
-func (s InvalidRoleException) Message() string {
+func (s *InvalidRoleException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16053,28 +20098,28 @@ func (s InvalidRoleException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidRoleException) OrigErr() error {
+func (s *InvalidRoleException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidRoleException) Error() string {
+func (s *InvalidRoleException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidRoleException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidRoleException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidRoleException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidRoleException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified Amazon S3 key prefix is not valid.
 type InvalidS3KeyPrefixException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16091,17 +20136,17 @@ func (s InvalidS3KeyPrefixException) GoString() string {
 
 func newErrorInvalidS3KeyPrefixException(v protocol.ResponseMetadata) error {
 	return &InvalidS3KeyPrefixException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidS3KeyPrefixException) Code() string {
+func (s *InvalidS3KeyPrefixException) Code() string {
 	return "InvalidS3KeyPrefixException"
 }
 
 // Message returns the exception's message.
-func (s InvalidS3KeyPrefixException) Message() string {
+func (s *InvalidS3KeyPrefixException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16109,28 +20154,84 @@ func (s InvalidS3KeyPrefixException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidS3KeyPrefixException) OrigErr() error {
+func (s *InvalidS3KeyPrefixException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidS3KeyPrefixException) Error() string {
+func (s *InvalidS3KeyPrefixException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidS3KeyPrefixException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidS3KeyPrefixException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidS3KeyPrefixException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidS3KeyPrefixException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// The specified Amazon KMS Key ARN is not valid.
+type InvalidS3KmsKeyArnException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s InvalidS3KmsKeyArnException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s InvalidS3KmsKeyArnException) GoString() string {
+	return s.String()
+}
+
+func newErrorInvalidS3KmsKeyArnException(v protocol.ResponseMetadata) error {
+	return &InvalidS3KmsKeyArnException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *InvalidS3KmsKeyArnException) Code() string {
+	return "InvalidS3KmsKeyArnException"
+}
+
+// Message returns the exception's message.
+func (s *InvalidS3KmsKeyArnException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *InvalidS3KmsKeyArnException) OrigErr() error {
+	return nil
+}
+
+func (s *InvalidS3KmsKeyArnException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *InvalidS3KmsKeyArnException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *InvalidS3KmsKeyArnException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified Amazon SNS topic does not exist.
 type InvalidSNSTopicARNException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16147,17 +20248,17 @@ func (s InvalidSNSTopicARNException) GoString() string {
 
 func newErrorInvalidSNSTopicARNException(v protocol.ResponseMetadata) error {
 	return &InvalidSNSTopicARNException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidSNSTopicARNException) Code() string {
+func (s *InvalidSNSTopicARNException) Code() string {
 	return "InvalidSNSTopicARNException"
 }
 
 // Message returns the exception's message.
-func (s InvalidSNSTopicARNException) Message() string {
+func (s *InvalidSNSTopicARNException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16165,29 +20266,29 @@ func (s InvalidSNSTopicARNException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidSNSTopicARNException) OrigErr() error {
+func (s *InvalidSNSTopicARNException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidSNSTopicARNException) Error() string {
+func (s *InvalidSNSTopicARNException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidSNSTopicARNException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidSNSTopicARNException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidSNSTopicARNException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidSNSTopicARNException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified time range is not valid. The earlier time is not chronologically
 // before the later time.
 type InvalidTimeRangeException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16204,17 +20305,17 @@ func (s InvalidTimeRangeException) GoString() string {
 
 func newErrorInvalidTimeRangeException(v protocol.ResponseMetadata) error {
 	return &InvalidTimeRangeException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidTimeRangeException) Code() string {
+func (s *InvalidTimeRangeException) Code() string {
 	return "InvalidTimeRangeException"
 }
 
 // Message returns the exception's message.
-func (s InvalidTimeRangeException) Message() string {
+func (s *InvalidTimeRangeException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16222,29 +20323,29 @@ func (s InvalidTimeRangeException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidTimeRangeException) OrigErr() error {
+func (s *InvalidTimeRangeException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidTimeRangeException) Error() string {
+func (s *InvalidTimeRangeException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidTimeRangeException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidTimeRangeException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidTimeRangeException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidTimeRangeException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You cannot delete the delivery channel you specified because the configuration
 // recorder is running.
 type LastDeliveryChannelDeleteFailedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16261,17 +20362,17 @@ func (s LastDeliveryChannelDeleteFailedException) GoString() string {
 
 func newErrorLastDeliveryChannelDeleteFailedException(v protocol.ResponseMetadata) error {
 	return &LastDeliveryChannelDeleteFailedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LastDeliveryChannelDeleteFailedException) Code() string {
+func (s *LastDeliveryChannelDeleteFailedException) Code() string {
 	return "LastDeliveryChannelDeleteFailedException"
 }
 
 // Message returns the exception's message.
-func (s LastDeliveryChannelDeleteFailedException) Message() string {
+func (s *LastDeliveryChannelDeleteFailedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16279,22 +20380,22 @@ func (s LastDeliveryChannelDeleteFailedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LastDeliveryChannelDeleteFailedException) OrigErr() error {
+func (s *LastDeliveryChannelDeleteFailedException) OrigErr() error {
 	return nil
 }
 
-func (s LastDeliveryChannelDeleteFailedException) Error() string {
+func (s *LastDeliveryChannelDeleteFailedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LastDeliveryChannelDeleteFailedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LastDeliveryChannelDeleteFailedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LastDeliveryChannelDeleteFailedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LastDeliveryChannelDeleteFailedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // For StartConfigRulesEvaluation API, this exception is thrown if an evaluation
@@ -16304,8 +20405,8 @@ func (s LastDeliveryChannelDeleteFailedException) RequestID() string {
 // For PutConfigurationAggregator API, this exception is thrown if the number
 // of accounts and aggregators exceeds the limit.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16322,17 +20423,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16340,22 +20441,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListAggregateDiscoveredResourcesInput struct {
@@ -16369,9 +20470,9 @@ type ListAggregateDiscoveredResourcesInput struct {
 	// Filters the results based on the ResourceFilters object.
 	Filters *ResourceFilters `type:"structure"`
 
-	// The maximum number of resource identifiers returned on each page. The default
-	// is 100. You cannot specify a number greater than 100. If you specify 0, AWS
-	// Config uses the default.
+	// The maximum number of resource identifiers returned on each page. You cannot
+	// specify a number greater than 100. If you specify 0, AWS Config uses the
+	// default.
 	Limit *int64 `type:"integer"`
 
 	// The nextToken string returned on a previous page that you use to get the
@@ -16606,6 +20707,75 @@ func (s *ListDiscoveredResourcesOutput) SetResourceIdentifiers(v []*ResourceIden
 	return s
 }
 
+type ListStoredQueriesInput struct {
+	_ struct{} `type:"structure"`
+
+	// The maximum number of results to be returned with a single call.
+	MaxResults *int64 `type:"integer"`
+
+	// The nextToken string returned in a previous request that you use to request
+	// the next page of results in a paginated response.
+	NextToken *string `type:"string"`
+}
+
+// String returns the string representation
+func (s ListStoredQueriesInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListStoredQueriesInput) GoString() string {
+	return s.String()
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListStoredQueriesInput) SetMaxResults(v int64) *ListStoredQueriesInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListStoredQueriesInput) SetNextToken(v string) *ListStoredQueriesInput {
+	s.NextToken = &v
+	return s
+}
+
+type ListStoredQueriesOutput struct {
+	_ struct{} `type:"structure"`
+
+	// If the previous paginated request didn't return all of the remaining results,
+	// the response object's NextToken parameter value is set to a token. To retrieve
+	// the next set of results, call this action again and assign that token to
+	// the request object's NextToken parameter. If there are no remaining results,
+	// the previous response object's NextToken parameter is set to null.
+	NextToken *string `type:"string"`
+
+	// A list of StoredQueryMetadata objects.
+	StoredQueryMetadata []*StoredQueryMetadata `type:"list"`
+}
+
+// String returns the string representation
+func (s ListStoredQueriesOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListStoredQueriesOutput) GoString() string {
+	return s.String()
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListStoredQueriesOutput) SetNextToken(v string) *ListStoredQueriesOutput {
+	s.NextToken = &v
+	return s
+}
+
+// SetStoredQueryMetadata sets the StoredQueryMetadata field's value.
+func (s *ListStoredQueriesOutput) SetStoredQueryMetadata(v []*StoredQueryMetadata) *ListStoredQueriesOutput {
+	s.StoredQueryMetadata = v
+	return s
+}
+
 type ListTagsForResourceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -16706,8 +20876,8 @@ func (s *ListTagsForResourceOutput) SetTags(v []*Tag) *ListTagsForResourceOutput
 // You have reached the limit (100,000) of active custom resource types in your
 // account. Delete unused resources using DeleteResourceConfig.
 type MaxActiveResourcesExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16724,17 +20894,17 @@ func (s MaxActiveResourcesExceededException) GoString() string {
 
 func newErrorMaxActiveResourcesExceededException(v protocol.ResponseMetadata) error {
 	return &MaxActiveResourcesExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxActiveResourcesExceededException) Code() string {
+func (s *MaxActiveResourcesExceededException) Code() string {
 	return "MaxActiveResourcesExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxActiveResourcesExceededException) Message() string {
+func (s *MaxActiveResourcesExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16742,30 +20912,30 @@ func (s MaxActiveResourcesExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxActiveResourcesExceededException) OrigErr() error {
+func (s *MaxActiveResourcesExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxActiveResourcesExceededException) Error() string {
+func (s *MaxActiveResourcesExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxActiveResourcesExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxActiveResourcesExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxActiveResourcesExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxActiveResourcesExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Failed to add the AWS Config rule because the account already contains the
 // maximum number of 150 rules. Consider deleting any deactivated rules before
 // you add new rules.
 type MaxNumberOfConfigRulesExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16782,17 +20952,17 @@ func (s MaxNumberOfConfigRulesExceededException) GoString() string {
 
 func newErrorMaxNumberOfConfigRulesExceededException(v protocol.ResponseMetadata) error {
 	return &MaxNumberOfConfigRulesExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxNumberOfConfigRulesExceededException) Code() string {
+func (s *MaxNumberOfConfigRulesExceededException) Code() string {
 	return "MaxNumberOfConfigRulesExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxNumberOfConfigRulesExceededException) Message() string {
+func (s *MaxNumberOfConfigRulesExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16800,28 +20970,28 @@ func (s MaxNumberOfConfigRulesExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxNumberOfConfigRulesExceededException) OrigErr() error {
+func (s *MaxNumberOfConfigRulesExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxNumberOfConfigRulesExceededException) Error() string {
+func (s *MaxNumberOfConfigRulesExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxNumberOfConfigRulesExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxNumberOfConfigRulesExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxNumberOfConfigRulesExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxNumberOfConfigRulesExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have reached the limit of the number of recorders you can create.
 type MaxNumberOfConfigurationRecordersExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16838,17 +21008,17 @@ func (s MaxNumberOfConfigurationRecordersExceededException) GoString() string {
 
 func newErrorMaxNumberOfConfigurationRecordersExceededException(v protocol.ResponseMetadata) error {
 	return &MaxNumberOfConfigurationRecordersExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxNumberOfConfigurationRecordersExceededException) Code() string {
+func (s *MaxNumberOfConfigurationRecordersExceededException) Code() string {
 	return "MaxNumberOfConfigurationRecordersExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxNumberOfConfigurationRecordersExceededException) Message() string {
+func (s *MaxNumberOfConfigurationRecordersExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16856,29 +21026,29 @@ func (s MaxNumberOfConfigurationRecordersExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxNumberOfConfigurationRecordersExceededException) OrigErr() error {
+func (s *MaxNumberOfConfigurationRecordersExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxNumberOfConfigurationRecordersExceededException) Error() string {
+func (s *MaxNumberOfConfigurationRecordersExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxNumberOfConfigurationRecordersExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxNumberOfConfigurationRecordersExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxNumberOfConfigurationRecordersExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxNumberOfConfigurationRecordersExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have reached the limit (6) of the number of conformance packs in an account
 // (6 conformance pack with 25 AWS Config rules per pack).
 type MaxNumberOfConformancePacksExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16895,17 +21065,17 @@ func (s MaxNumberOfConformancePacksExceededException) GoString() string {
 
 func newErrorMaxNumberOfConformancePacksExceededException(v protocol.ResponseMetadata) error {
 	return &MaxNumberOfConformancePacksExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxNumberOfConformancePacksExceededException) Code() string {
+func (s *MaxNumberOfConformancePacksExceededException) Code() string {
 	return "MaxNumberOfConformancePacksExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxNumberOfConformancePacksExceededException) Message() string {
+func (s *MaxNumberOfConformancePacksExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16913,28 +21083,28 @@ func (s MaxNumberOfConformancePacksExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxNumberOfConformancePacksExceededException) OrigErr() error {
+func (s *MaxNumberOfConformancePacksExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxNumberOfConformancePacksExceededException) Error() string {
+func (s *MaxNumberOfConformancePacksExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxNumberOfConformancePacksExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxNumberOfConformancePacksExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxNumberOfConformancePacksExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxNumberOfConformancePacksExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have reached the limit of the number of delivery channels you can create.
 type MaxNumberOfDeliveryChannelsExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -16951,17 +21121,17 @@ func (s MaxNumberOfDeliveryChannelsExceededException) GoString() string {
 
 func newErrorMaxNumberOfDeliveryChannelsExceededException(v protocol.ResponseMetadata) error {
 	return &MaxNumberOfDeliveryChannelsExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxNumberOfDeliveryChannelsExceededException) Code() string {
+func (s *MaxNumberOfDeliveryChannelsExceededException) Code() string {
 	return "MaxNumberOfDeliveryChannelsExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxNumberOfDeliveryChannelsExceededException) Message() string {
+func (s *MaxNumberOfDeliveryChannelsExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -16969,29 +21139,29 @@ func (s MaxNumberOfDeliveryChannelsExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxNumberOfDeliveryChannelsExceededException) OrigErr() error {
+func (s *MaxNumberOfDeliveryChannelsExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxNumberOfDeliveryChannelsExceededException) Error() string {
+func (s *MaxNumberOfDeliveryChannelsExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxNumberOfDeliveryChannelsExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxNumberOfDeliveryChannelsExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxNumberOfDeliveryChannelsExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxNumberOfDeliveryChannelsExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have reached the limit of the number of organization config rules you
 // can create.
 type MaxNumberOfOrganizationConfigRulesExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17008,17 +21178,17 @@ func (s MaxNumberOfOrganizationConfigRulesExceededException) GoString() string {
 
 func newErrorMaxNumberOfOrganizationConfigRulesExceededException(v protocol.ResponseMetadata) error {
 	return &MaxNumberOfOrganizationConfigRulesExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxNumberOfOrganizationConfigRulesExceededException) Code() string {
+func (s *MaxNumberOfOrganizationConfigRulesExceededException) Code() string {
 	return "MaxNumberOfOrganizationConfigRulesExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxNumberOfOrganizationConfigRulesExceededException) Message() string {
+func (s *MaxNumberOfOrganizationConfigRulesExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17026,30 +21196,30 @@ func (s MaxNumberOfOrganizationConfigRulesExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxNumberOfOrganizationConfigRulesExceededException) OrigErr() error {
+func (s *MaxNumberOfOrganizationConfigRulesExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxNumberOfOrganizationConfigRulesExceededException) Error() string {
+func (s *MaxNumberOfOrganizationConfigRulesExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxNumberOfOrganizationConfigRulesExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxNumberOfOrganizationConfigRulesExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxNumberOfOrganizationConfigRulesExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxNumberOfOrganizationConfigRulesExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have reached the limit (6) of the number of organization conformance
 // packs in an account (6 conformance pack with 25 AWS Config rules per pack
 // per account).
 type MaxNumberOfOrganizationConformancePacksExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17066,17 +21236,17 @@ func (s MaxNumberOfOrganizationConformancePacksExceededException) GoString() str
 
 func newErrorMaxNumberOfOrganizationConformancePacksExceededException(v protocol.ResponseMetadata) error {
 	return &MaxNumberOfOrganizationConformancePacksExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxNumberOfOrganizationConformancePacksExceededException) Code() string {
+func (s *MaxNumberOfOrganizationConformancePacksExceededException) Code() string {
 	return "MaxNumberOfOrganizationConformancePacksExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxNumberOfOrganizationConformancePacksExceededException) Message() string {
+func (s *MaxNumberOfOrganizationConformancePacksExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17084,29 +21254,29 @@ func (s MaxNumberOfOrganizationConformancePacksExceededException) Message() stri
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxNumberOfOrganizationConformancePacksExceededException) OrigErr() error {
+func (s *MaxNumberOfOrganizationConformancePacksExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxNumberOfOrganizationConformancePacksExceededException) Error() string {
+func (s *MaxNumberOfOrganizationConformancePacksExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxNumberOfOrganizationConformancePacksExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxNumberOfOrganizationConformancePacksExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxNumberOfOrganizationConformancePacksExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxNumberOfOrganizationConformancePacksExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Failed to add the retention configuration because a retention configuration
 // with that name already exists.
 type MaxNumberOfRetentionConfigurationsExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17123,17 +21293,17 @@ func (s MaxNumberOfRetentionConfigurationsExceededException) GoString() string {
 
 func newErrorMaxNumberOfRetentionConfigurationsExceededException(v protocol.ResponseMetadata) error {
 	return &MaxNumberOfRetentionConfigurationsExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxNumberOfRetentionConfigurationsExceededException) Code() string {
+func (s *MaxNumberOfRetentionConfigurationsExceededException) Code() string {
 	return "MaxNumberOfRetentionConfigurationsExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxNumberOfRetentionConfigurationsExceededException) Message() string {
+func (s *MaxNumberOfRetentionConfigurationsExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17141,22 +21311,22 @@ func (s MaxNumberOfRetentionConfigurationsExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxNumberOfRetentionConfigurationsExceededException) OrigErr() error {
+func (s *MaxNumberOfRetentionConfigurationsExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxNumberOfRetentionConfigurationsExceededException) Error() string {
+func (s *MaxNumberOfRetentionConfigurationsExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxNumberOfRetentionConfigurationsExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxNumberOfRetentionConfigurationsExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxNumberOfRetentionConfigurationsExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxNumberOfRetentionConfigurationsExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Organization config rule creation or deletion status in each member account.
@@ -17266,8 +21436,8 @@ func (s *MemberAccountStatus) SetMemberAccountRuleStatus(v string) *MemberAccoun
 // There are no configuration recorders available to provide the role needed
 // to describe your resources. Create a configuration recorder.
 type NoAvailableConfigurationRecorderException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17284,17 +21454,17 @@ func (s NoAvailableConfigurationRecorderException) GoString() string {
 
 func newErrorNoAvailableConfigurationRecorderException(v protocol.ResponseMetadata) error {
 	return &NoAvailableConfigurationRecorderException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoAvailableConfigurationRecorderException) Code() string {
+func (s *NoAvailableConfigurationRecorderException) Code() string {
 	return "NoAvailableConfigurationRecorderException"
 }
 
 // Message returns the exception's message.
-func (s NoAvailableConfigurationRecorderException) Message() string {
+func (s *NoAvailableConfigurationRecorderException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17302,28 +21472,28 @@ func (s NoAvailableConfigurationRecorderException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoAvailableConfigurationRecorderException) OrigErr() error {
+func (s *NoAvailableConfigurationRecorderException) OrigErr() error {
 	return nil
 }
 
-func (s NoAvailableConfigurationRecorderException) Error() string {
+func (s *NoAvailableConfigurationRecorderException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoAvailableConfigurationRecorderException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoAvailableConfigurationRecorderException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoAvailableConfigurationRecorderException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoAvailableConfigurationRecorderException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // There is no delivery channel available to record configurations.
 type NoAvailableDeliveryChannelException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17340,17 +21510,17 @@ func (s NoAvailableDeliveryChannelException) GoString() string {
 
 func newErrorNoAvailableDeliveryChannelException(v protocol.ResponseMetadata) error {
 	return &NoAvailableDeliveryChannelException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoAvailableDeliveryChannelException) Code() string {
+func (s *NoAvailableDeliveryChannelException) Code() string {
 	return "NoAvailableDeliveryChannelException"
 }
 
 // Message returns the exception's message.
-func (s NoAvailableDeliveryChannelException) Message() string {
+func (s *NoAvailableDeliveryChannelException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17358,28 +21528,28 @@ func (s NoAvailableDeliveryChannelException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoAvailableDeliveryChannelException) OrigErr() error {
+func (s *NoAvailableDeliveryChannelException) OrigErr() error {
 	return nil
 }
 
-func (s NoAvailableDeliveryChannelException) Error() string {
+func (s *NoAvailableDeliveryChannelException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoAvailableDeliveryChannelException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoAvailableDeliveryChannelException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoAvailableDeliveryChannelException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoAvailableDeliveryChannelException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Organization is no longer available.
 type NoAvailableOrganizationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17396,17 +21566,17 @@ func (s NoAvailableOrganizationException) GoString() string {
 
 func newErrorNoAvailableOrganizationException(v protocol.ResponseMetadata) error {
 	return &NoAvailableOrganizationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoAvailableOrganizationException) Code() string {
+func (s *NoAvailableOrganizationException) Code() string {
 	return "NoAvailableOrganizationException"
 }
 
 // Message returns the exception's message.
-func (s NoAvailableOrganizationException) Message() string {
+func (s *NoAvailableOrganizationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17414,28 +21584,28 @@ func (s NoAvailableOrganizationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoAvailableOrganizationException) OrigErr() error {
+func (s *NoAvailableOrganizationException) OrigErr() error {
 	return nil
 }
 
-func (s NoAvailableOrganizationException) Error() string {
+func (s *NoAvailableOrganizationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoAvailableOrganizationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoAvailableOrganizationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoAvailableOrganizationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoAvailableOrganizationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // There is no configuration recorder running.
 type NoRunningConfigurationRecorderException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17452,17 +21622,17 @@ func (s NoRunningConfigurationRecorderException) GoString() string {
 
 func newErrorNoRunningConfigurationRecorderException(v protocol.ResponseMetadata) error {
 	return &NoRunningConfigurationRecorderException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoRunningConfigurationRecorderException) Code() string {
+func (s *NoRunningConfigurationRecorderException) Code() string {
 	return "NoRunningConfigurationRecorderException"
 }
 
 // Message returns the exception's message.
-func (s NoRunningConfigurationRecorderException) Message() string {
+func (s *NoRunningConfigurationRecorderException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17470,28 +21640,28 @@ func (s NoRunningConfigurationRecorderException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoRunningConfigurationRecorderException) OrigErr() error {
+func (s *NoRunningConfigurationRecorderException) OrigErr() error {
 	return nil
 }
 
-func (s NoRunningConfigurationRecorderException) Error() string {
+func (s *NoRunningConfigurationRecorderException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoRunningConfigurationRecorderException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoRunningConfigurationRecorderException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoRunningConfigurationRecorderException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoRunningConfigurationRecorderException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified Amazon S3 bucket does not exist.
 type NoSuchBucketException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17508,17 +21678,17 @@ func (s NoSuchBucketException) GoString() string {
 
 func newErrorNoSuchBucketException(v protocol.ResponseMetadata) error {
 	return &NoSuchBucketException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchBucketException) Code() string {
+func (s *NoSuchBucketException) Code() string {
 	return "NoSuchBucketException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchBucketException) Message() string {
+func (s *NoSuchBucketException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17526,29 +21696,29 @@ func (s NoSuchBucketException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchBucketException) OrigErr() error {
+func (s *NoSuchBucketException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchBucketException) Error() string {
+func (s *NoSuchBucketException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchBucketException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchBucketException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchBucketException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchBucketException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // One or more AWS Config rules in the request are invalid. Verify that the
 // rule names are correct and try again.
 type NoSuchConfigRuleException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17565,17 +21735,17 @@ func (s NoSuchConfigRuleException) GoString() string {
 
 func newErrorNoSuchConfigRuleException(v protocol.ResponseMetadata) error {
 	return &NoSuchConfigRuleException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchConfigRuleException) Code() string {
+func (s *NoSuchConfigRuleException) Code() string {
 	return "NoSuchConfigRuleException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchConfigRuleException) Message() string {
+func (s *NoSuchConfigRuleException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17583,28 +21753,28 @@ func (s NoSuchConfigRuleException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchConfigRuleException) OrigErr() error {
+func (s *NoSuchConfigRuleException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchConfigRuleException) Error() string {
+func (s *NoSuchConfigRuleException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchConfigRuleException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchConfigRuleException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchConfigRuleException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchConfigRuleException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // AWS Config rule that you passed in the filter does not exist.
 type NoSuchConfigRuleInConformancePackException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17621,17 +21791,17 @@ func (s NoSuchConfigRuleInConformancePackException) GoString() string {
 
 func newErrorNoSuchConfigRuleInConformancePackException(v protocol.ResponseMetadata) error {
 	return &NoSuchConfigRuleInConformancePackException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchConfigRuleInConformancePackException) Code() string {
+func (s *NoSuchConfigRuleInConformancePackException) Code() string {
 	return "NoSuchConfigRuleInConformancePackException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchConfigRuleInConformancePackException) Message() string {
+func (s *NoSuchConfigRuleInConformancePackException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17639,28 +21809,28 @@ func (s NoSuchConfigRuleInConformancePackException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchConfigRuleInConformancePackException) OrigErr() error {
+func (s *NoSuchConfigRuleInConformancePackException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchConfigRuleInConformancePackException) Error() string {
+func (s *NoSuchConfigRuleInConformancePackException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchConfigRuleInConformancePackException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchConfigRuleInConformancePackException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchConfigRuleInConformancePackException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchConfigRuleInConformancePackException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have specified a configuration aggregator that does not exist.
 type NoSuchConfigurationAggregatorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17677,17 +21847,17 @@ func (s NoSuchConfigurationAggregatorException) GoString() string {
 
 func newErrorNoSuchConfigurationAggregatorException(v protocol.ResponseMetadata) error {
 	return &NoSuchConfigurationAggregatorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchConfigurationAggregatorException) Code() string {
+func (s *NoSuchConfigurationAggregatorException) Code() string {
 	return "NoSuchConfigurationAggregatorException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchConfigurationAggregatorException) Message() string {
+func (s *NoSuchConfigurationAggregatorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17695,28 +21865,28 @@ func (s NoSuchConfigurationAggregatorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchConfigurationAggregatorException) OrigErr() error {
+func (s *NoSuchConfigurationAggregatorException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchConfigurationAggregatorException) Error() string {
+func (s *NoSuchConfigurationAggregatorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchConfigurationAggregatorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchConfigurationAggregatorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchConfigurationAggregatorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchConfigurationAggregatorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have specified a configuration recorder that does not exist.
 type NoSuchConfigurationRecorderException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17733,17 +21903,17 @@ func (s NoSuchConfigurationRecorderException) GoString() string {
 
 func newErrorNoSuchConfigurationRecorderException(v protocol.ResponseMetadata) error {
 	return &NoSuchConfigurationRecorderException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchConfigurationRecorderException) Code() string {
+func (s *NoSuchConfigurationRecorderException) Code() string {
 	return "NoSuchConfigurationRecorderException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchConfigurationRecorderException) Message() string {
+func (s *NoSuchConfigurationRecorderException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17751,28 +21921,28 @@ func (s NoSuchConfigurationRecorderException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchConfigurationRecorderException) OrigErr() error {
+func (s *NoSuchConfigurationRecorderException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchConfigurationRecorderException) Error() string {
+func (s *NoSuchConfigurationRecorderException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchConfigurationRecorderException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchConfigurationRecorderException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchConfigurationRecorderException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchConfigurationRecorderException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You specified one or more conformance packs that do not exist.
 type NoSuchConformancePackException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17789,17 +21959,17 @@ func (s NoSuchConformancePackException) GoString() string {
 
 func newErrorNoSuchConformancePackException(v protocol.ResponseMetadata) error {
 	return &NoSuchConformancePackException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchConformancePackException) Code() string {
+func (s *NoSuchConformancePackException) Code() string {
 	return "NoSuchConformancePackException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchConformancePackException) Message() string {
+func (s *NoSuchConformancePackException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17807,28 +21977,28 @@ func (s NoSuchConformancePackException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchConformancePackException) OrigErr() error {
+func (s *NoSuchConformancePackException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchConformancePackException) Error() string {
+func (s *NoSuchConformancePackException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchConformancePackException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchConformancePackException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchConformancePackException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchConformancePackException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have specified a delivery channel that does not exist.
 type NoSuchDeliveryChannelException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17845,17 +22015,17 @@ func (s NoSuchDeliveryChannelException) GoString() string {
 
 func newErrorNoSuchDeliveryChannelException(v protocol.ResponseMetadata) error {
 	return &NoSuchDeliveryChannelException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchDeliveryChannelException) Code() string {
+func (s *NoSuchDeliveryChannelException) Code() string {
 	return "NoSuchDeliveryChannelException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchDeliveryChannelException) Message() string {
+func (s *NoSuchDeliveryChannelException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17863,28 +22033,28 @@ func (s NoSuchDeliveryChannelException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchDeliveryChannelException) OrigErr() error {
+func (s *NoSuchDeliveryChannelException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchDeliveryChannelException) Error() string {
+func (s *NoSuchDeliveryChannelException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchDeliveryChannelException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchDeliveryChannelException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchDeliveryChannelException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchDeliveryChannelException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You specified one or more organization config rules that do not exist.
 type NoSuchOrganizationConfigRuleException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17901,17 +22071,17 @@ func (s NoSuchOrganizationConfigRuleException) GoString() string {
 
 func newErrorNoSuchOrganizationConfigRuleException(v protocol.ResponseMetadata) error {
 	return &NoSuchOrganizationConfigRuleException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchOrganizationConfigRuleException) Code() string {
+func (s *NoSuchOrganizationConfigRuleException) Code() string {
 	return "NoSuchOrganizationConfigRuleException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchOrganizationConfigRuleException) Message() string {
+func (s *NoSuchOrganizationConfigRuleException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17919,22 +22089,22 @@ func (s NoSuchOrganizationConfigRuleException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchOrganizationConfigRuleException) OrigErr() error {
+func (s *NoSuchOrganizationConfigRuleException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchOrganizationConfigRuleException) Error() string {
+func (s *NoSuchOrganizationConfigRuleException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchOrganizationConfigRuleException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchOrganizationConfigRuleException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchOrganizationConfigRuleException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchOrganizationConfigRuleException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // AWS Config organization conformance pack that you passed in the filter does
@@ -17943,8 +22113,8 @@ func (s NoSuchOrganizationConfigRuleException) RequestID() string {
 // For DeleteOrganizationConformancePack, you tried to delete an organization
 // conformance pack that does not exist.
 type NoSuchOrganizationConformancePackException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -17961,17 +22131,17 @@ func (s NoSuchOrganizationConformancePackException) GoString() string {
 
 func newErrorNoSuchOrganizationConformancePackException(v protocol.ResponseMetadata) error {
 	return &NoSuchOrganizationConformancePackException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchOrganizationConformancePackException) Code() string {
+func (s *NoSuchOrganizationConformancePackException) Code() string {
 	return "NoSuchOrganizationConformancePackException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchOrganizationConformancePackException) Message() string {
+func (s *NoSuchOrganizationConformancePackException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17979,28 +22149,28 @@ func (s NoSuchOrganizationConformancePackException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchOrganizationConformancePackException) OrigErr() error {
+func (s *NoSuchOrganizationConformancePackException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchOrganizationConformancePackException) Error() string {
+func (s *NoSuchOrganizationConformancePackException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchOrganizationConformancePackException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchOrganizationConformancePackException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchOrganizationConformancePackException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchOrganizationConformancePackException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You specified an AWS Config rule without a remediation configuration.
 type NoSuchRemediationConfigurationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -18017,17 +22187,17 @@ func (s NoSuchRemediationConfigurationException) GoString() string {
 
 func newErrorNoSuchRemediationConfigurationException(v protocol.ResponseMetadata) error {
 	return &NoSuchRemediationConfigurationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchRemediationConfigurationException) Code() string {
+func (s *NoSuchRemediationConfigurationException) Code() string {
 	return "NoSuchRemediationConfigurationException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchRemediationConfigurationException) Message() string {
+func (s *NoSuchRemediationConfigurationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18035,28 +22205,28 @@ func (s NoSuchRemediationConfigurationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchRemediationConfigurationException) OrigErr() error {
+func (s *NoSuchRemediationConfigurationException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchRemediationConfigurationException) Error() string {
+func (s *NoSuchRemediationConfigurationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchRemediationConfigurationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchRemediationConfigurationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchRemediationConfigurationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchRemediationConfigurationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You tried to delete a remediation exception that does not exist.
 type NoSuchRemediationExceptionException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -18073,17 +22243,17 @@ func (s NoSuchRemediationExceptionException) GoString() string {
 
 func newErrorNoSuchRemediationExceptionException(v protocol.ResponseMetadata) error {
 	return &NoSuchRemediationExceptionException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchRemediationExceptionException) Code() string {
+func (s *NoSuchRemediationExceptionException) Code() string {
 	return "NoSuchRemediationExceptionException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchRemediationExceptionException) Message() string {
+func (s *NoSuchRemediationExceptionException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18091,28 +22261,28 @@ func (s NoSuchRemediationExceptionException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchRemediationExceptionException) OrigErr() error {
+func (s *NoSuchRemediationExceptionException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchRemediationExceptionException) Error() string {
+func (s *NoSuchRemediationExceptionException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchRemediationExceptionException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchRemediationExceptionException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchRemediationExceptionException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchRemediationExceptionException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have specified a retention configuration that does not exist.
 type NoSuchRetentionConfigurationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -18129,17 +22299,17 @@ func (s NoSuchRetentionConfigurationException) GoString() string {
 
 func newErrorNoSuchRetentionConfigurationException(v protocol.ResponseMetadata) error {
 	return &NoSuchRetentionConfigurationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NoSuchRetentionConfigurationException) Code() string {
+func (s *NoSuchRetentionConfigurationException) Code() string {
 	return "NoSuchRetentionConfigurationException"
 }
 
 // Message returns the exception's message.
-func (s NoSuchRetentionConfigurationException) Message() string {
+func (s *NoSuchRetentionConfigurationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18147,33 +22317,48 @@ func (s NoSuchRetentionConfigurationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NoSuchRetentionConfigurationException) OrigErr() error {
+func (s *NoSuchRetentionConfigurationException) OrigErr() error {
 	return nil
 }
 
-func (s NoSuchRetentionConfigurationException) Error() string {
+func (s *NoSuchRetentionConfigurationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NoSuchRetentionConfigurationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NoSuchRetentionConfigurationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NoSuchRetentionConfigurationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NoSuchRetentionConfigurationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// For PutConfigAggregator API, no permission to call EnableAWSServiceAccess
-// API.
+// For PutConfigurationAggregator API, you can see this exception for the following
+// reasons:
+//
+//    * No permission to call EnableAWSServiceAccess API
+//
+//    * The configuration aggregator cannot be updated because your AWS Organization
+//    management account or the delegated administrator role changed. Delete
+//    this aggregator and create a new one with the current AWS Organization.
+//
+//    * The configuration aggregator is associated with a previous AWS Organization
+//    and AWS Config cannot aggregate data with current AWS Organization. Delete
+//    this aggregator and create a new one with the current AWS Organization.
+//
+//    * You are not a registered delegated administrator for AWS Config with
+//    permissions to call ListDelegatedAdministrators API. Ensure that the management
+//    account registers delagated administrator for AWS Config service principle
+//    name before the delegated administrator creates an aggregator.
 //
 // For all OrganizationConfigRule and OrganizationConformancePack APIs, AWS
 // Config throws an exception if APIs are called from member accounts. All APIs
 // must be called from organization master account.
 type OrganizationAccessDeniedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -18190,17 +22375,17 @@ func (s OrganizationAccessDeniedException) GoString() string {
 
 func newErrorOrganizationAccessDeniedException(v protocol.ResponseMetadata) error {
 	return &OrganizationAccessDeniedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s OrganizationAccessDeniedException) Code() string {
+func (s *OrganizationAccessDeniedException) Code() string {
 	return "OrganizationAccessDeniedException"
 }
 
 // Message returns the exception's message.
-func (s OrganizationAccessDeniedException) Message() string {
+func (s *OrganizationAccessDeniedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18208,22 +22393,22 @@ func (s OrganizationAccessDeniedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s OrganizationAccessDeniedException) OrigErr() error {
+func (s *OrganizationAccessDeniedException) OrigErr() error {
 	return nil
 }
 
-func (s OrganizationAccessDeniedException) Error() string {
+func (s *OrganizationAccessDeniedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s OrganizationAccessDeniedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *OrganizationAccessDeniedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s OrganizationAccessDeniedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *OrganizationAccessDeniedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // This object contains regions to set up the aggregator and an IAM role to
@@ -18291,8 +22476,8 @@ func (s *OrganizationAggregationSource) SetRoleArn(v string) *OrganizationAggreg
 // AWS Config resource cannot be created because your organization does not
 // have all features enabled.
 type OrganizationAllFeaturesNotEnabledException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -18309,17 +22494,17 @@ func (s OrganizationAllFeaturesNotEnabledException) GoString() string {
 
 func newErrorOrganizationAllFeaturesNotEnabledException(v protocol.ResponseMetadata) error {
 	return &OrganizationAllFeaturesNotEnabledException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s OrganizationAllFeaturesNotEnabledException) Code() string {
+func (s *OrganizationAllFeaturesNotEnabledException) Code() string {
 	return "OrganizationAllFeaturesNotEnabledException"
 }
 
 // Message returns the exception's message.
-func (s OrganizationAllFeaturesNotEnabledException) Message() string {
+func (s *OrganizationAllFeaturesNotEnabledException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18327,22 +22512,22 @@ func (s OrganizationAllFeaturesNotEnabledException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s OrganizationAllFeaturesNotEnabledException) OrigErr() error {
+func (s *OrganizationAllFeaturesNotEnabledException) OrigErr() error {
 	return nil
 }
 
-func (s OrganizationAllFeaturesNotEnabledException) Error() string {
+func (s *OrganizationAllFeaturesNotEnabledException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s OrganizationAllFeaturesNotEnabledException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *OrganizationAllFeaturesNotEnabledException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s OrganizationAllFeaturesNotEnabledException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *OrganizationAllFeaturesNotEnabledException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An organization config rule that has information about config rules that
@@ -18526,14 +22711,15 @@ type OrganizationConformancePack struct {
 	// A list of ConformancePackInputParameter objects.
 	ConformancePackInputParameters []*ConformancePackInputParameter `type:"list"`
 
-	// Location of an Amazon S3 bucket where AWS Config can deliver evaluation results
-	// and conformance pack template that is used to create a pack.
+	// Amazon S3 bucket where AWS Config stores conformance pack templates.
 	//
-	// DeliveryS3Bucket is a required field
-	DeliveryS3Bucket *string `min:"3" type:"string" required:"true"`
+	// This field is optional.
+	DeliveryS3Bucket *string `type:"string"`
 
 	// Any folder structure you want to add to an Amazon S3 bucket.
-	DeliveryS3KeyPrefix *string `min:"1" type:"string"`
+	//
+	// This field is optional.
+	DeliveryS3KeyPrefix *string `type:"string"`
 
 	// A comma-separated list of accounts excluded from organization conformance
 	// pack.
@@ -18825,8 +23011,8 @@ func (s *OrganizationConformancePackStatus) SetStatus(v string) *OrganizationCon
 
 // You have specified a template that is not valid or supported.
 type OrganizationConformancePackTemplateValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -18843,17 +23029,17 @@ func (s OrganizationConformancePackTemplateValidationException) GoString() strin
 
 func newErrorOrganizationConformancePackTemplateValidationException(v protocol.ResponseMetadata) error {
 	return &OrganizationConformancePackTemplateValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s OrganizationConformancePackTemplateValidationException) Code() string {
+func (s *OrganizationConformancePackTemplateValidationException) Code() string {
 	return "OrganizationConformancePackTemplateValidationException"
 }
 
 // Message returns the exception's message.
-func (s OrganizationConformancePackTemplateValidationException) Message() string {
+func (s *OrganizationConformancePackTemplateValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18861,22 +23047,22 @@ func (s OrganizationConformancePackTemplateValidationException) Message() string
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s OrganizationConformancePackTemplateValidationException) OrigErr() error {
+func (s *OrganizationConformancePackTemplateValidationException) OrigErr() error {
 	return nil
 }
 
-func (s OrganizationConformancePackTemplateValidationException) Error() string {
+func (s *OrganizationConformancePackTemplateValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s OrganizationConformancePackTemplateValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *OrganizationConformancePackTemplateValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s OrganizationConformancePackTemplateValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *OrganizationConformancePackTemplateValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that specifies organization custom rule metadata such as resource
@@ -19236,8 +23422,8 @@ func (s *OrganizationResourceDetailedStatusFilters) SetStatus(v string) *Organiz
 
 // The configuration item size is outside the allowable range.
 type OversizedConfigurationItemException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -19254,17 +23440,17 @@ func (s OversizedConfigurationItemException) GoString() string {
 
 func newErrorOversizedConfigurationItemException(v protocol.ResponseMetadata) error {
 	return &OversizedConfigurationItemException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s OversizedConfigurationItemException) Code() string {
+func (s *OversizedConfigurationItemException) Code() string {
 	return "OversizedConfigurationItemException"
 }
 
 // Message returns the exception's message.
-func (s OversizedConfigurationItemException) Message() string {
+func (s *OversizedConfigurationItemException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -19272,22 +23458,22 @@ func (s OversizedConfigurationItemException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s OversizedConfigurationItemException) OrigErr() error {
+func (s *OversizedConfigurationItemException) OrigErr() error {
 	return nil
 }
 
-func (s OversizedConfigurationItemException) Error() string {
+func (s *OversizedConfigurationItemException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s OversizedConfigurationItemException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *OversizedConfigurationItemException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s OversizedConfigurationItemException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *OversizedConfigurationItemException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that represents the account ID and region of an aggregator account
@@ -19683,13 +23869,15 @@ type PutConformancePackInput struct {
 	// ConformancePackName is a required field
 	ConformancePackName *string `min:"1" type:"string" required:"true"`
 
-	// AWS Config stores intermediate files while processing conformance pack template.
+	// Amazon S3 bucket where AWS Config stores conformance pack templates.
 	//
-	// DeliveryS3Bucket is a required field
-	DeliveryS3Bucket *string `min:"3" type:"string" required:"true"`
+	// This field is optional.
+	DeliveryS3Bucket *string `type:"string"`
 
 	// The prefix for the Amazon S3 bucket.
-	DeliveryS3KeyPrefix *string `min:"1" type:"string"`
+	//
+	// This field is optional.
+	DeliveryS3KeyPrefix *string `type:"string"`
 
 	// A string containing full conformance pack template body. Structure containing
 	// the template body with a minimum length of 1 byte and a maximum length of
@@ -19725,15 +23913,6 @@ func (s *PutConformancePackInput) Validate() error {
 	}
 	if s.ConformancePackName != nil && len(*s.ConformancePackName) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("ConformancePackName", 1))
-	}
-	if s.DeliveryS3Bucket == nil {
-		invalidParams.Add(request.NewErrParamRequired("DeliveryS3Bucket"))
-	}
-	if s.DeliveryS3Bucket != nil && len(*s.DeliveryS3Bucket) < 3 {
-		invalidParams.Add(request.NewErrParamMinLen("DeliveryS3Bucket", 3))
-	}
-	if s.DeliveryS3KeyPrefix != nil && len(*s.DeliveryS3KeyPrefix) < 1 {
-		invalidParams.Add(request.NewErrParamMinLen("DeliveryS3KeyPrefix", 1))
 	}
 	if s.TemplateBody != nil && len(*s.TemplateBody) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("TemplateBody", 1))
@@ -19974,6 +24153,80 @@ func (s *PutEvaluationsOutput) SetFailedEvaluations(v []*Evaluation) *PutEvaluat
 	return s
 }
 
+type PutExternalEvaluationInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the AWS Config rule.
+	//
+	// ConfigRuleName is a required field
+	ConfigRuleName *string `min:"1" type:"string" required:"true"`
+
+	// An ExternalEvaluation object that provides details about compliance.
+	//
+	// ExternalEvaluation is a required field
+	ExternalEvaluation *ExternalEvaluation `type:"structure" required:"true"`
+}
+
+// String returns the string representation
+func (s PutExternalEvaluationInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutExternalEvaluationInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PutExternalEvaluationInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PutExternalEvaluationInput"}
+	if s.ConfigRuleName == nil {
+		invalidParams.Add(request.NewErrParamRequired("ConfigRuleName"))
+	}
+	if s.ConfigRuleName != nil && len(*s.ConfigRuleName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ConfigRuleName", 1))
+	}
+	if s.ExternalEvaluation == nil {
+		invalidParams.Add(request.NewErrParamRequired("ExternalEvaluation"))
+	}
+	if s.ExternalEvaluation != nil {
+		if err := s.ExternalEvaluation.Validate(); err != nil {
+			invalidParams.AddNested("ExternalEvaluation", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConfigRuleName sets the ConfigRuleName field's value.
+func (s *PutExternalEvaluationInput) SetConfigRuleName(v string) *PutExternalEvaluationInput {
+	s.ConfigRuleName = &v
+	return s
+}
+
+// SetExternalEvaluation sets the ExternalEvaluation field's value.
+func (s *PutExternalEvaluationInput) SetExternalEvaluation(v *ExternalEvaluation) *PutExternalEvaluationInput {
+	s.ExternalEvaluation = v
+	return s
+}
+
+type PutExternalEvaluationOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s PutExternalEvaluationOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutExternalEvaluationOutput) GoString() string {
+	return s.String()
+}
+
 type PutOrganizationConfigRuleInput struct {
 	_ struct{} `type:"structure"`
 
@@ -20082,18 +24335,15 @@ type PutOrganizationConformancePackInput struct {
 	// A list of ConformancePackInputParameter objects.
 	ConformancePackInputParameters []*ConformancePackInputParameter `type:"list"`
 
-	// Location of an Amazon S3 bucket where AWS Config can deliver evaluation results.
-	// AWS Config stores intermediate files while processing conformance pack template.
+	// Amazon S3 bucket where AWS Config stores conformance pack templates.
 	//
-	// The delivery bucket name should start with awsconfigconforms. For example:
-	// "Resource": "arn:aws:s3:::your_bucket_name/*". For more information, see
-	// Permissions for cross account bucket access (https://docs.aws.amazon.com/config/latest/developerguide/conformance-pack-organization-apis.html).
-	//
-	// DeliveryS3Bucket is a required field
-	DeliveryS3Bucket *string `min:"3" type:"string" required:"true"`
+	// This field is optional. If used, it must be prefixed with awsconfigconforms.
+	DeliveryS3Bucket *string `type:"string"`
 
 	// The prefix for the Amazon S3 bucket.
-	DeliveryS3KeyPrefix *string `min:"1" type:"string"`
+	//
+	// This field is optional.
+	DeliveryS3KeyPrefix *string `type:"string"`
 
 	// A list of AWS accounts to be excluded from an organization conformance pack
 	// while deploying a conformance pack.
@@ -20129,15 +24379,6 @@ func (s PutOrganizationConformancePackInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *PutOrganizationConformancePackInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "PutOrganizationConformancePackInput"}
-	if s.DeliveryS3Bucket == nil {
-		invalidParams.Add(request.NewErrParamRequired("DeliveryS3Bucket"))
-	}
-	if s.DeliveryS3Bucket != nil && len(*s.DeliveryS3Bucket) < 3 {
-		invalidParams.Add(request.NewErrParamMinLen("DeliveryS3Bucket", 3))
-	}
-	if s.DeliveryS3KeyPrefix != nil && len(*s.DeliveryS3KeyPrefix) < 1 {
-		invalidParams.Add(request.NewErrParamMinLen("DeliveryS3KeyPrefix", 1))
-	}
 	if s.OrganizationConformancePackName == nil {
 		invalidParams.Add(request.NewErrParamRequired("OrganizationConformancePackName"))
 	}
@@ -20614,6 +24855,95 @@ func (s *PutRetentionConfigurationOutput) SetRetentionConfiguration(v *Retention
 	return s
 }
 
+type PutStoredQueryInput struct {
+	_ struct{} `type:"structure"`
+
+	// A list of StoredQuery objects. The mandatory fields are QueryName and Expression.
+	//
+	// When you are creating a query, you must provide a query name and an expression.
+	// When you are updating a query, you must provide a query name but updating
+	// the description is optional.
+	//
+	// StoredQuery is a required field
+	StoredQuery *StoredQuery `type:"structure" required:"true"`
+
+	// A list of Tags object.
+	Tags []*Tag `type:"list"`
+}
+
+// String returns the string representation
+func (s PutStoredQueryInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutStoredQueryInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PutStoredQueryInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PutStoredQueryInput"}
+	if s.StoredQuery == nil {
+		invalidParams.Add(request.NewErrParamRequired("StoredQuery"))
+	}
+	if s.StoredQuery != nil {
+		if err := s.StoredQuery.Validate(); err != nil {
+			invalidParams.AddNested("StoredQuery", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetStoredQuery sets the StoredQuery field's value.
+func (s *PutStoredQueryInput) SetStoredQuery(v *StoredQuery) *PutStoredQueryInput {
+	s.StoredQuery = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *PutStoredQueryInput) SetTags(v []*Tag) *PutStoredQueryInput {
+	s.Tags = v
+	return s
+}
+
+type PutStoredQueryOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Amazon Resource Name (ARN) of the query. For example, arn:partition:service:region:account-id:resource-type/resource-name/resource-id.
+	QueryArn *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s PutStoredQueryOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutStoredQueryOutput) GoString() string {
+	return s.String()
+}
+
+// SetQueryArn sets the QueryArn field's value.
+func (s *PutStoredQueryOutput) SetQueryArn(v string) *PutStoredQueryOutput {
+	s.QueryArn = &v
+	return s
+}
+
 // Details about the query.
 type QueryInfo struct {
 	_ struct{} `type:"structure"`
@@ -20698,10 +25028,10 @@ type RecordingGroup struct {
 	// AWS Config records configuration changes (for example, AWS::EC2::Instance
 	// or AWS::CloudTrail::Trail).
 	//
-	// Before you can set this option to true, you must set the allSupported option
-	// to false.
+	// To record all configuration changes, you must set the allSupported option
+	// to true.
 	//
-	// If you set this option to true, when AWS Config adds support for a new type
+	// If you set this option to false, when AWS Config adds support for a new type
 	// of resource, it will not record resources of that type unless you manually
 	// add that type to your recording group.
 	//
@@ -20815,9 +25145,9 @@ type RemediationConfiguration struct {
 	// The maximum number of failed attempts for auto-remediation. If you do not
 	// select a number, the default is 5.
 	//
-	// For example, if you specify MaximumAutomaticAttempts as 5 with RetryAttemptsSeconds
-	// as 50 seconds, AWS Config throws an exception after the 5th failed attempt
-	// within 50 seconds.
+	// For example, if you specify MaximumAutomaticAttempts as 5 with RetryAttemptSeconds
+	// as 50 seconds, AWS Config will put a RemediationException on your behalf
+	// for the failing resource after the 5th failed attempt within 50 seconds.
 	MaximumAutomaticAttempts *int64 `min:"1" type:"integer"`
 
 	// An object of the RemediationParameterValue.
@@ -20829,7 +25159,7 @@ type RemediationConfiguration struct {
 	// Maximum time in seconds that AWS Config runs auto-remediation. If you do
 	// not select a number, the default is 60 seconds.
 	//
-	// For example, if you specify RetryAttemptsSeconds as 50 seconds and MaximumAutomaticAttempts
+	// For example, if you specify RetryAttemptSeconds as 50 seconds and MaximumAutomaticAttempts
 	// as 5, AWS Config will run auto-remediations 5 times within 50 seconds before
 	// throwing an exception.
 	RetryAttemptSeconds *int64 `min:"1" type:"long"`
@@ -20845,6 +25175,9 @@ type RemediationConfiguration struct {
 	TargetType *string `type:"string" required:"true" enum:"RemediationTargetType"`
 
 	// Version of the target. For example, version of the SSM document.
+	//
+	// If you make backward incompatible changes to the SSM document, you must call
+	// PutRemediationConfiguration API again to ensure the remediations can run.
 	TargetVersion *string `type:"string"`
 }
 
@@ -21225,8 +25558,8 @@ func (s *RemediationExecutionStep) SetStopTime(v time.Time) *RemediationExecutio
 // Remediation action is in progress. You can either cancel execution in AWS
 // Systems Manager or wait and try again later.
 type RemediationInProgressException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -21243,17 +25576,17 @@ func (s RemediationInProgressException) GoString() string {
 
 func newErrorRemediationInProgressException(v protocol.ResponseMetadata) error {
 	return &RemediationInProgressException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s RemediationInProgressException) Code() string {
+func (s *RemediationInProgressException) Code() string {
 	return "RemediationInProgressException"
 }
 
 // Message returns the exception's message.
-func (s RemediationInProgressException) Message() string {
+func (s *RemediationInProgressException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -21261,22 +25594,22 @@ func (s RemediationInProgressException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s RemediationInProgressException) OrigErr() error {
+func (s *RemediationInProgressException) OrigErr() error {
 	return nil
 }
 
-func (s RemediationInProgressException) Error() string {
+func (s *RemediationInProgressException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s RemediationInProgressException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *RemediationInProgressException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s RemediationInProgressException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *RemediationInProgressException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The value is either a dynamic (resource) value or a static value. You must
@@ -21331,6 +25664,63 @@ func (s *RemediationParameterValue) SetResourceValue(v *ResourceValue) *Remediat
 func (s *RemediationParameterValue) SetStaticValue(v *StaticValue) *RemediationParameterValue {
 	s.StaticValue = v
 	return s
+}
+
+// Two users are trying to modify the same query at the same time. Wait for
+// a moment and try again.
+type ResourceConcurrentModificationException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s ResourceConcurrentModificationException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ResourceConcurrentModificationException) GoString() string {
+	return s.String()
+}
+
+func newErrorResourceConcurrentModificationException(v protocol.ResponseMetadata) error {
+	return &ResourceConcurrentModificationException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *ResourceConcurrentModificationException) Code() string {
+	return "ResourceConcurrentModificationException"
+}
+
+// Message returns the exception's message.
+func (s *ResourceConcurrentModificationException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *ResourceConcurrentModificationException) OrigErr() error {
+	return nil
+}
+
+func (s *ResourceConcurrentModificationException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *ResourceConcurrentModificationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *ResourceConcurrentModificationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that contains the resource type and the number of resources.
@@ -21567,8 +25957,8 @@ func (s *ResourceIdentifier) SetResourceType(v string) *ResourceIdentifier {
 //    * For DeleteConformancePack, a conformance pack creation, update, and
 //    deletion is in progress. Try your request again later.
 type ResourceInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -21585,17 +25975,17 @@ func (s ResourceInUseException) GoString() string {
 
 func newErrorResourceInUseException(v protocol.ResponseMetadata) error {
 	return &ResourceInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceInUseException) Code() string {
+func (s *ResourceInUseException) Code() string {
 	return "ResourceInUseException"
 }
 
 // Message returns the exception's message.
-func (s ResourceInUseException) Message() string {
+func (s *ResourceInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -21603,22 +25993,22 @@ func (s ResourceInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceInUseException) OrigErr() error {
+func (s *ResourceInUseException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceInUseException) Error() string {
+func (s *ResourceInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The details that identify a resource within AWS Config, including the resource
@@ -21680,8 +26070,8 @@ func (s *ResourceKey) SetResourceType(v string) *ResourceKey {
 
 // You have specified a resource that is either unknown or has not been discovered.
 type ResourceNotDiscoveredException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -21698,17 +26088,17 @@ func (s ResourceNotDiscoveredException) GoString() string {
 
 func newErrorResourceNotDiscoveredException(v protocol.ResponseMetadata) error {
 	return &ResourceNotDiscoveredException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotDiscoveredException) Code() string {
+func (s *ResourceNotDiscoveredException) Code() string {
 	return "ResourceNotDiscoveredException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotDiscoveredException) Message() string {
+func (s *ResourceNotDiscoveredException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -21716,28 +26106,28 @@ func (s ResourceNotDiscoveredException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotDiscoveredException) OrigErr() error {
+func (s *ResourceNotDiscoveredException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotDiscoveredException) Error() string {
+func (s *ResourceNotDiscoveredException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotDiscoveredException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotDiscoveredException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotDiscoveredException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotDiscoveredException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // You have specified a resource that does not exist.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -21754,17 +26144,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -21772,22 +26162,22 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The dynamic value of the resource.
@@ -21949,6 +26339,135 @@ func (s *Scope) SetTagKey(v string) *Scope {
 // SetTagValue sets the TagValue field's value.
 func (s *Scope) SetTagValue(v string) *Scope {
 	s.TagValue = &v
+	return s
+}
+
+type SelectAggregateResourceConfigInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the configuration aggregator.
+	//
+	// ConfigurationAggregatorName is a required field
+	ConfigurationAggregatorName *string `min:"1" type:"string" required:"true"`
+
+	// The SQL query SELECT command.
+	//
+	// Expression is a required field
+	Expression *string `min:"1" type:"string" required:"true"`
+
+	// The maximum number of query results returned on each page.
+	Limit *int64 `type:"integer"`
+
+	// The maximum number of query results returned on each page. AWS Config also
+	// allows the Limit request parameter.
+	MaxResults *int64 `type:"integer"`
+
+	// The nextToken string returned in a previous request that you use to request
+	// the next page of results in a paginated response.
+	NextToken *string `type:"string"`
+}
+
+// String returns the string representation
+func (s SelectAggregateResourceConfigInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s SelectAggregateResourceConfigInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *SelectAggregateResourceConfigInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "SelectAggregateResourceConfigInput"}
+	if s.ConfigurationAggregatorName == nil {
+		invalidParams.Add(request.NewErrParamRequired("ConfigurationAggregatorName"))
+	}
+	if s.ConfigurationAggregatorName != nil && len(*s.ConfigurationAggregatorName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ConfigurationAggregatorName", 1))
+	}
+	if s.Expression == nil {
+		invalidParams.Add(request.NewErrParamRequired("Expression"))
+	}
+	if s.Expression != nil && len(*s.Expression) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Expression", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConfigurationAggregatorName sets the ConfigurationAggregatorName field's value.
+func (s *SelectAggregateResourceConfigInput) SetConfigurationAggregatorName(v string) *SelectAggregateResourceConfigInput {
+	s.ConfigurationAggregatorName = &v
+	return s
+}
+
+// SetExpression sets the Expression field's value.
+func (s *SelectAggregateResourceConfigInput) SetExpression(v string) *SelectAggregateResourceConfigInput {
+	s.Expression = &v
+	return s
+}
+
+// SetLimit sets the Limit field's value.
+func (s *SelectAggregateResourceConfigInput) SetLimit(v int64) *SelectAggregateResourceConfigInput {
+	s.Limit = &v
+	return s
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *SelectAggregateResourceConfigInput) SetMaxResults(v int64) *SelectAggregateResourceConfigInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *SelectAggregateResourceConfigInput) SetNextToken(v string) *SelectAggregateResourceConfigInput {
+	s.NextToken = &v
+	return s
+}
+
+type SelectAggregateResourceConfigOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The nextToken string returned in a previous request that you use to request
+	// the next page of results in a paginated response.
+	NextToken *string `type:"string"`
+
+	// Details about the query.
+	QueryInfo *QueryInfo `type:"structure"`
+
+	// Returns the results for the SQL query.
+	Results []*string `type:"list"`
+}
+
+// String returns the string representation
+func (s SelectAggregateResourceConfigOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s SelectAggregateResourceConfigOutput) GoString() string {
+	return s.String()
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *SelectAggregateResourceConfigOutput) SetNextToken(v string) *SelectAggregateResourceConfigOutput {
+	s.NextToken = &v
+	return s
+}
+
+// SetQueryInfo sets the QueryInfo field's value.
+func (s *SelectAggregateResourceConfigOutput) SetQueryInfo(v *QueryInfo) *SelectAggregateResourceConfigOutput {
+	s.QueryInfo = v
+	return s
+}
+
+// SetResults sets the Results field's value.
+func (s *SelectAggregateResourceConfigOutput) SetResults(v []*string) *SelectAggregateResourceConfigOutput {
+	s.Results = v
 	return s
 }
 
@@ -22625,6 +27144,153 @@ func (s StopConfigurationRecorderOutput) GoString() string {
 	return s.String()
 }
 
+// Provides the details of a stored query.
+type StoredQuery struct {
+	_ struct{} `type:"structure"`
+
+	// A unique description for the query.
+	Description *string `type:"string"`
+
+	// The expression of the query. For example, SELECT resourceId, resourceType,
+	// supplementaryConfiguration.BucketVersioningConfiguration.status WHERE resourceType
+	// = 'AWS::S3::Bucket' AND supplementaryConfiguration.BucketVersioningConfiguration.status
+	// = 'Off'.
+	Expression *string `min:"1" type:"string"`
+
+	// Amazon Resource Name (ARN) of the query. For example, arn:partition:service:region:account-id:resource-type/resource-name/resource-id.
+	QueryArn *string `min:"1" type:"string"`
+
+	// The ID of the query.
+	QueryId *string `min:"1" type:"string"`
+
+	// The name of the query.
+	//
+	// QueryName is a required field
+	QueryName *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StoredQuery) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StoredQuery) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StoredQuery) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StoredQuery"}
+	if s.Expression != nil && len(*s.Expression) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Expression", 1))
+	}
+	if s.QueryArn != nil && len(*s.QueryArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("QueryArn", 1))
+	}
+	if s.QueryId != nil && len(*s.QueryId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("QueryId", 1))
+	}
+	if s.QueryName == nil {
+		invalidParams.Add(request.NewErrParamRequired("QueryName"))
+	}
+	if s.QueryName != nil && len(*s.QueryName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("QueryName", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDescription sets the Description field's value.
+func (s *StoredQuery) SetDescription(v string) *StoredQuery {
+	s.Description = &v
+	return s
+}
+
+// SetExpression sets the Expression field's value.
+func (s *StoredQuery) SetExpression(v string) *StoredQuery {
+	s.Expression = &v
+	return s
+}
+
+// SetQueryArn sets the QueryArn field's value.
+func (s *StoredQuery) SetQueryArn(v string) *StoredQuery {
+	s.QueryArn = &v
+	return s
+}
+
+// SetQueryId sets the QueryId field's value.
+func (s *StoredQuery) SetQueryId(v string) *StoredQuery {
+	s.QueryId = &v
+	return s
+}
+
+// SetQueryName sets the QueryName field's value.
+func (s *StoredQuery) SetQueryName(v string) *StoredQuery {
+	s.QueryName = &v
+	return s
+}
+
+// Returns details of a specific query.
+type StoredQueryMetadata struct {
+	_ struct{} `type:"structure"`
+
+	// A unique description for the query.
+	Description *string `type:"string"`
+
+	// Amazon Resource Name (ARN) of the query. For example, arn:partition:service:region:account-id:resource-type/resource-name/resource-id.
+	//
+	// QueryArn is a required field
+	QueryArn *string `min:"1" type:"string" required:"true"`
+
+	// The ID of the query.
+	//
+	// QueryId is a required field
+	QueryId *string `min:"1" type:"string" required:"true"`
+
+	// The name of the query.
+	//
+	// QueryName is a required field
+	QueryName *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StoredQueryMetadata) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StoredQueryMetadata) GoString() string {
+	return s.String()
+}
+
+// SetDescription sets the Description field's value.
+func (s *StoredQueryMetadata) SetDescription(v string) *StoredQueryMetadata {
+	s.Description = &v
+	return s
+}
+
+// SetQueryArn sets the QueryArn field's value.
+func (s *StoredQueryMetadata) SetQueryArn(v string) *StoredQueryMetadata {
+	s.QueryArn = &v
+	return s
+}
+
+// SetQueryId sets the QueryId field's value.
+func (s *StoredQueryMetadata) SetQueryId(v string) *StoredQueryMetadata {
+	s.QueryId = &v
+	return s
+}
+
+// SetQueryName sets the QueryName field's value.
+func (s *StoredQueryMetadata) SetQueryName(v string) *StoredQueryMetadata {
+	s.QueryName = &v
+	return s
+}
+
 // The tags for the resource. The metadata that you apply to a resource to help
 // you categorize and organize them. Each tag consists of a key and an optional
 // value, both of which you define. Tag keys can have a maximum character length
@@ -22763,8 +27429,8 @@ func (s TagResourceOutput) GoString() string {
 // You have reached the limit of the number of tags you can use. You have more
 // than 50 tags.
 type TooManyTagsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -22781,17 +27447,17 @@ func (s TooManyTagsException) GoString() string {
 
 func newErrorTooManyTagsException(v protocol.ResponseMetadata) error {
 	return &TooManyTagsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyTagsException) Code() string {
+func (s *TooManyTagsException) Code() string {
 	return "TooManyTagsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyTagsException) Message() string {
+func (s *TooManyTagsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -22799,22 +27465,22 @@ func (s TooManyTagsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyTagsException) OrigErr() error {
+func (s *TooManyTagsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyTagsException) Error() string {
+func (s *TooManyTagsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyTagsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyTagsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyTagsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyTagsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
@@ -22892,9 +27558,17 @@ func (s UntagResourceOutput) GoString() string {
 }
 
 // The requested action is not valid.
+//
+// For PutStoredQuery, you will see this exception if there are missing required
+// fields or if the input value fails the validation, or if you are trying to
+// create more than 300 queries.
+//
+// For GetStoredQuery, ListStoredQuery, and DeleteStoredQuery you will see this
+// exception if there are missing required fields or if the input value fails
+// the validation.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -22911,17 +27585,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -22929,22 +27603,38 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+const (
+	// AggregateConformancePackComplianceSummaryGroupKeyAccountId is a AggregateConformancePackComplianceSummaryGroupKey enum value
+	AggregateConformancePackComplianceSummaryGroupKeyAccountId = "ACCOUNT_ID"
+
+	// AggregateConformancePackComplianceSummaryGroupKeyAwsRegion is a AggregateConformancePackComplianceSummaryGroupKey enum value
+	AggregateConformancePackComplianceSummaryGroupKeyAwsRegion = "AWS_REGION"
+)
+
+// AggregateConformancePackComplianceSummaryGroupKey_Values returns all elements of the AggregateConformancePackComplianceSummaryGroupKey enum
+func AggregateConformancePackComplianceSummaryGroupKey_Values() []string {
+	return []string{
+		AggregateConformancePackComplianceSummaryGroupKeyAccountId,
+		AggregateConformancePackComplianceSummaryGroupKeyAwsRegion,
+	}
 }
 
 const (
@@ -22958,6 +27648,15 @@ const (
 	AggregatedSourceStatusTypeOutdated = "OUTDATED"
 )
 
+// AggregatedSourceStatusType_Values returns all elements of the AggregatedSourceStatusType enum
+func AggregatedSourceStatusType_Values() []string {
+	return []string{
+		AggregatedSourceStatusTypeFailed,
+		AggregatedSourceStatusTypeSucceeded,
+		AggregatedSourceStatusTypeOutdated,
+	}
+}
+
 const (
 	// AggregatedSourceTypeAccount is a AggregatedSourceType enum value
 	AggregatedSourceTypeAccount = "ACCOUNT"
@@ -22966,6 +27665,14 @@ const (
 	AggregatedSourceTypeOrganization = "ORGANIZATION"
 )
 
+// AggregatedSourceType_Values returns all elements of the AggregatedSourceType enum
+func AggregatedSourceType_Values() []string {
+	return []string{
+		AggregatedSourceTypeAccount,
+		AggregatedSourceTypeOrganization,
+	}
+}
+
 const (
 	// ChronologicalOrderReverse is a ChronologicalOrder enum value
 	ChronologicalOrderReverse = "Reverse"
@@ -22973,6 +27680,14 @@ const (
 	// ChronologicalOrderForward is a ChronologicalOrder enum value
 	ChronologicalOrderForward = "Forward"
 )
+
+// ChronologicalOrder_Values returns all elements of the ChronologicalOrder enum
+func ChronologicalOrder_Values() []string {
+	return []string{
+		ChronologicalOrderReverse,
+		ChronologicalOrderForward,
+	}
+}
 
 const (
 	// ComplianceTypeCompliant is a ComplianceType enum value
@@ -22988,6 +27703,16 @@ const (
 	ComplianceTypeInsufficientData = "INSUFFICIENT_DATA"
 )
 
+// ComplianceType_Values returns all elements of the ComplianceType enum
+func ComplianceType_Values() []string {
+	return []string{
+		ComplianceTypeCompliant,
+		ComplianceTypeNonCompliant,
+		ComplianceTypeNotApplicable,
+		ComplianceTypeInsufficientData,
+	}
+}
+
 const (
 	// ConfigRuleComplianceSummaryGroupKeyAccountId is a ConfigRuleComplianceSummaryGroupKey enum value
 	ConfigRuleComplianceSummaryGroupKeyAccountId = "ACCOUNT_ID"
@@ -22995,6 +27720,14 @@ const (
 	// ConfigRuleComplianceSummaryGroupKeyAwsRegion is a ConfigRuleComplianceSummaryGroupKey enum value
 	ConfigRuleComplianceSummaryGroupKeyAwsRegion = "AWS_REGION"
 )
+
+// ConfigRuleComplianceSummaryGroupKey_Values returns all elements of the ConfigRuleComplianceSummaryGroupKey enum
+func ConfigRuleComplianceSummaryGroupKey_Values() []string {
+	return []string{
+		ConfigRuleComplianceSummaryGroupKeyAccountId,
+		ConfigRuleComplianceSummaryGroupKeyAwsRegion,
+	}
+}
 
 const (
 	// ConfigRuleStateActive is a ConfigRuleState enum value
@@ -23009,6 +27742,16 @@ const (
 	// ConfigRuleStateEvaluating is a ConfigRuleState enum value
 	ConfigRuleStateEvaluating = "EVALUATING"
 )
+
+// ConfigRuleState_Values returns all elements of the ConfigRuleState enum
+func ConfigRuleState_Values() []string {
+	return []string{
+		ConfigRuleStateActive,
+		ConfigRuleStateDeleting,
+		ConfigRuleStateDeletingResults,
+		ConfigRuleStateEvaluating,
+	}
+}
 
 const (
 	// ConfigurationItemStatusOk is a ConfigurationItemStatus enum value
@@ -23027,13 +27770,36 @@ const (
 	ConfigurationItemStatusResourceDeletedNotRecorded = "ResourceDeletedNotRecorded"
 )
 
+// ConfigurationItemStatus_Values returns all elements of the ConfigurationItemStatus enum
+func ConfigurationItemStatus_Values() []string {
+	return []string{
+		ConfigurationItemStatusOk,
+		ConfigurationItemStatusResourceDiscovered,
+		ConfigurationItemStatusResourceNotRecorded,
+		ConfigurationItemStatusResourceDeleted,
+		ConfigurationItemStatusResourceDeletedNotRecorded,
+	}
+}
+
 const (
 	// ConformancePackComplianceTypeCompliant is a ConformancePackComplianceType enum value
 	ConformancePackComplianceTypeCompliant = "COMPLIANT"
 
 	// ConformancePackComplianceTypeNonCompliant is a ConformancePackComplianceType enum value
 	ConformancePackComplianceTypeNonCompliant = "NON_COMPLIANT"
+
+	// ConformancePackComplianceTypeInsufficientData is a ConformancePackComplianceType enum value
+	ConformancePackComplianceTypeInsufficientData = "INSUFFICIENT_DATA"
 )
+
+// ConformancePackComplianceType_Values returns all elements of the ConformancePackComplianceType enum
+func ConformancePackComplianceType_Values() []string {
+	return []string{
+		ConformancePackComplianceTypeCompliant,
+		ConformancePackComplianceTypeNonCompliant,
+		ConformancePackComplianceTypeInsufficientData,
+	}
+}
 
 const (
 	// ConformancePackStateCreateInProgress is a ConformancePackState enum value
@@ -23052,6 +27818,17 @@ const (
 	ConformancePackStateDeleteFailed = "DELETE_FAILED"
 )
 
+// ConformancePackState_Values returns all elements of the ConformancePackState enum
+func ConformancePackState_Values() []string {
+	return []string{
+		ConformancePackStateCreateInProgress,
+		ConformancePackStateCreateComplete,
+		ConformancePackStateCreateFailed,
+		ConformancePackStateDeleteInProgress,
+		ConformancePackStateDeleteFailed,
+	}
+}
+
 const (
 	// DeliveryStatusSuccess is a DeliveryStatus enum value
 	DeliveryStatusSuccess = "Success"
@@ -23063,10 +27840,26 @@ const (
 	DeliveryStatusNotApplicable = "Not_Applicable"
 )
 
+// DeliveryStatus_Values returns all elements of the DeliveryStatus enum
+func DeliveryStatus_Values() []string {
+	return []string{
+		DeliveryStatusSuccess,
+		DeliveryStatusFailure,
+		DeliveryStatusNotApplicable,
+	}
+}
+
 const (
 	// EventSourceAwsConfig is a EventSource enum value
 	EventSourceAwsConfig = "aws.config"
 )
+
+// EventSource_Values returns all elements of the EventSource enum
+func EventSource_Values() []string {
+	return []string{
+		EventSourceAwsConfig,
+	}
+}
 
 const (
 	// MaximumExecutionFrequencyOneHour is a MaximumExecutionFrequency enum value
@@ -23084,6 +27877,17 @@ const (
 	// MaximumExecutionFrequencyTwentyFourHours is a MaximumExecutionFrequency enum value
 	MaximumExecutionFrequencyTwentyFourHours = "TwentyFour_Hours"
 )
+
+// MaximumExecutionFrequency_Values returns all elements of the MaximumExecutionFrequency enum
+func MaximumExecutionFrequency_Values() []string {
+	return []string{
+		MaximumExecutionFrequencyOneHour,
+		MaximumExecutionFrequencyThreeHours,
+		MaximumExecutionFrequencySixHours,
+		MaximumExecutionFrequencyTwelveHours,
+		MaximumExecutionFrequencyTwentyFourHours,
+	}
+}
 
 const (
 	// MemberAccountRuleStatusCreateSuccessful is a MemberAccountRuleStatus enum value
@@ -23114,6 +27918,21 @@ const (
 	MemberAccountRuleStatusUpdateFailed = "UPDATE_FAILED"
 )
 
+// MemberAccountRuleStatus_Values returns all elements of the MemberAccountRuleStatus enum
+func MemberAccountRuleStatus_Values() []string {
+	return []string{
+		MemberAccountRuleStatusCreateSuccessful,
+		MemberAccountRuleStatusCreateInProgress,
+		MemberAccountRuleStatusCreateFailed,
+		MemberAccountRuleStatusDeleteSuccessful,
+		MemberAccountRuleStatusDeleteFailed,
+		MemberAccountRuleStatusDeleteInProgress,
+		MemberAccountRuleStatusUpdateSuccessful,
+		MemberAccountRuleStatusUpdateInProgress,
+		MemberAccountRuleStatusUpdateFailed,
+	}
+}
+
 const (
 	// MessageTypeConfigurationItemChangeNotification is a MessageType enum value
 	MessageTypeConfigurationItemChangeNotification = "ConfigurationItemChangeNotification"
@@ -23128,6 +27947,16 @@ const (
 	MessageTypeOversizedConfigurationItemChangeNotification = "OversizedConfigurationItemChangeNotification"
 )
 
+// MessageType_Values returns all elements of the MessageType enum
+func MessageType_Values() []string {
+	return []string{
+		MessageTypeConfigurationItemChangeNotification,
+		MessageTypeConfigurationSnapshotDeliveryCompleted,
+		MessageTypeScheduledNotification,
+		MessageTypeOversizedConfigurationItemChangeNotification,
+	}
+}
+
 const (
 	// OrganizationConfigRuleTriggerTypeConfigurationItemChangeNotification is a OrganizationConfigRuleTriggerType enum value
 	OrganizationConfigRuleTriggerTypeConfigurationItemChangeNotification = "ConfigurationItemChangeNotification"
@@ -23138,6 +27967,15 @@ const (
 	// OrganizationConfigRuleTriggerTypeScheduledNotification is a OrganizationConfigRuleTriggerType enum value
 	OrganizationConfigRuleTriggerTypeScheduledNotification = "ScheduledNotification"
 )
+
+// OrganizationConfigRuleTriggerType_Values returns all elements of the OrganizationConfigRuleTriggerType enum
+func OrganizationConfigRuleTriggerType_Values() []string {
+	return []string{
+		OrganizationConfigRuleTriggerTypeConfigurationItemChangeNotification,
+		OrganizationConfigRuleTriggerTypeOversizedConfigurationItemChangeNotification,
+		OrganizationConfigRuleTriggerTypeScheduledNotification,
+	}
+}
 
 const (
 	// OrganizationResourceDetailedStatusCreateSuccessful is a OrganizationResourceDetailedStatus enum value
@@ -23168,6 +28006,21 @@ const (
 	OrganizationResourceDetailedStatusUpdateFailed = "UPDATE_FAILED"
 )
 
+// OrganizationResourceDetailedStatus_Values returns all elements of the OrganizationResourceDetailedStatus enum
+func OrganizationResourceDetailedStatus_Values() []string {
+	return []string{
+		OrganizationResourceDetailedStatusCreateSuccessful,
+		OrganizationResourceDetailedStatusCreateInProgress,
+		OrganizationResourceDetailedStatusCreateFailed,
+		OrganizationResourceDetailedStatusDeleteSuccessful,
+		OrganizationResourceDetailedStatusDeleteFailed,
+		OrganizationResourceDetailedStatusDeleteInProgress,
+		OrganizationResourceDetailedStatusUpdateSuccessful,
+		OrganizationResourceDetailedStatusUpdateInProgress,
+		OrganizationResourceDetailedStatusUpdateFailed,
+	}
+}
+
 const (
 	// OrganizationResourceStatusCreateSuccessful is a OrganizationResourceStatus enum value
 	OrganizationResourceStatusCreateSuccessful = "CREATE_SUCCESSFUL"
@@ -23196,6 +28049,21 @@ const (
 	// OrganizationResourceStatusUpdateFailed is a OrganizationResourceStatus enum value
 	OrganizationResourceStatusUpdateFailed = "UPDATE_FAILED"
 )
+
+// OrganizationResourceStatus_Values returns all elements of the OrganizationResourceStatus enum
+func OrganizationResourceStatus_Values() []string {
+	return []string{
+		OrganizationResourceStatusCreateSuccessful,
+		OrganizationResourceStatusCreateInProgress,
+		OrganizationResourceStatusCreateFailed,
+		OrganizationResourceStatusDeleteSuccessful,
+		OrganizationResourceStatusDeleteFailed,
+		OrganizationResourceStatusDeleteInProgress,
+		OrganizationResourceStatusUpdateSuccessful,
+		OrganizationResourceStatusUpdateInProgress,
+		OrganizationResourceStatusUpdateFailed,
+	}
+}
 
 const (
 	// OrganizationRuleStatusCreateSuccessful is a OrganizationRuleStatus enum value
@@ -23226,6 +28094,21 @@ const (
 	OrganizationRuleStatusUpdateFailed = "UPDATE_FAILED"
 )
 
+// OrganizationRuleStatus_Values returns all elements of the OrganizationRuleStatus enum
+func OrganizationRuleStatus_Values() []string {
+	return []string{
+		OrganizationRuleStatusCreateSuccessful,
+		OrganizationRuleStatusCreateInProgress,
+		OrganizationRuleStatusCreateFailed,
+		OrganizationRuleStatusDeleteSuccessful,
+		OrganizationRuleStatusDeleteFailed,
+		OrganizationRuleStatusDeleteInProgress,
+		OrganizationRuleStatusUpdateSuccessful,
+		OrganizationRuleStatusUpdateInProgress,
+		OrganizationRuleStatusUpdateFailed,
+	}
+}
+
 const (
 	// OwnerCustomLambda is a Owner enum value
 	OwnerCustomLambda = "CUSTOM_LAMBDA"
@@ -23233,6 +28116,14 @@ const (
 	// OwnerAws is a Owner enum value
 	OwnerAws = "AWS"
 )
+
+// Owner_Values returns all elements of the Owner enum
+func Owner_Values() []string {
+	return []string{
+		OwnerCustomLambda,
+		OwnerAws,
+	}
+}
 
 const (
 	// RecorderStatusPending is a RecorderStatus enum value
@@ -23244,6 +28135,15 @@ const (
 	// RecorderStatusFailure is a RecorderStatus enum value
 	RecorderStatusFailure = "Failure"
 )
+
+// RecorderStatus_Values returns all elements of the RecorderStatus enum
+func RecorderStatus_Values() []string {
+	return []string{
+		RecorderStatusPending,
+		RecorderStatusSuccess,
+		RecorderStatusFailure,
+	}
+}
 
 const (
 	// RemediationExecutionStateQueued is a RemediationExecutionState enum value
@@ -23259,6 +28159,16 @@ const (
 	RemediationExecutionStateFailed = "FAILED"
 )
 
+// RemediationExecutionState_Values returns all elements of the RemediationExecutionState enum
+func RemediationExecutionState_Values() []string {
+	return []string{
+		RemediationExecutionStateQueued,
+		RemediationExecutionStateInProgress,
+		RemediationExecutionStateSucceeded,
+		RemediationExecutionStateFailed,
+	}
+}
+
 const (
 	// RemediationExecutionStepStateSucceeded is a RemediationExecutionStepState enum value
 	RemediationExecutionStepStateSucceeded = "SUCCEEDED"
@@ -23270,10 +28180,26 @@ const (
 	RemediationExecutionStepStateFailed = "FAILED"
 )
 
+// RemediationExecutionStepState_Values returns all elements of the RemediationExecutionStepState enum
+func RemediationExecutionStepState_Values() []string {
+	return []string{
+		RemediationExecutionStepStateSucceeded,
+		RemediationExecutionStepStatePending,
+		RemediationExecutionStepStateFailed,
+	}
+}
+
 const (
 	// RemediationTargetTypeSsmDocument is a RemediationTargetType enum value
 	RemediationTargetTypeSsmDocument = "SSM_DOCUMENT"
 )
+
+// RemediationTargetType_Values returns all elements of the RemediationTargetType enum
+func RemediationTargetType_Values() []string {
+	return []string{
+		RemediationTargetTypeSsmDocument,
+	}
+}
 
 const (
 	// ResourceCountGroupKeyResourceType is a ResourceCountGroupKey enum value
@@ -23285,6 +28211,15 @@ const (
 	// ResourceCountGroupKeyAwsRegion is a ResourceCountGroupKey enum value
 	ResourceCountGroupKeyAwsRegion = "AWS_REGION"
 )
+
+// ResourceCountGroupKey_Values returns all elements of the ResourceCountGroupKey enum
+func ResourceCountGroupKey_Values() []string {
+	return []string{
+		ResourceCountGroupKeyResourceType,
+		ResourceCountGroupKeyAccountId,
+		ResourceCountGroupKeyAwsRegion,
+	}
+}
 
 const (
 	// ResourceTypeAwsEc2CustomerGateway is a ResourceType enum value
@@ -23353,6 +28288,9 @@ const (
 	// ResourceTypeAwsEc2VpcpeeringConnection is a ResourceType enum value
 	ResourceTypeAwsEc2VpcpeeringConnection = "AWS::EC2::VPCPeeringConnection"
 
+	// ResourceTypeAwsElasticsearchDomain is a ResourceType enum value
+	ResourceTypeAwsElasticsearchDomain = "AWS::Elasticsearch::Domain"
+
 	// ResourceTypeAwsIamGroup is a ResourceType enum value
 	ResourceTypeAwsIamGroup = "AWS::IAM::Group"
 
@@ -23374,12 +28312,6 @@ const (
 	// ResourceTypeAwsRdsDbinstance is a ResourceType enum value
 	ResourceTypeAwsRdsDbinstance = "AWS::RDS::DBInstance"
 
-	// ResourceTypeAwsRdsDbparameterGroup is a ResourceType enum value
-	ResourceTypeAwsRdsDbparameterGroup = "AWS::RDS::DBParameterGroup"
-
-	// ResourceTypeAwsRdsDboptionGroup is a ResourceType enum value
-	ResourceTypeAwsRdsDboptionGroup = "AWS::RDS::DBOptionGroup"
-
 	// ResourceTypeAwsRdsDbsubnetGroup is a ResourceType enum value
 	ResourceTypeAwsRdsDbsubnetGroup = "AWS::RDS::DBSubnetGroup"
 
@@ -23391,9 +28323,6 @@ const (
 
 	// ResourceTypeAwsRdsDbcluster is a ResourceType enum value
 	ResourceTypeAwsRdsDbcluster = "AWS::RDS::DBCluster"
-
-	// ResourceTypeAwsRdsDbclusterParameterGroup is a ResourceType enum value
-	ResourceTypeAwsRdsDbclusterParameterGroup = "AWS::RDS::DBClusterParameterGroup"
 
 	// ResourceTypeAwsRdsDbclusterSnapshot is a ResourceType enum value
 	ResourceTypeAwsRdsDbclusterSnapshot = "AWS::RDS::DBClusterSnapshot"
@@ -23485,11 +28414,17 @@ const (
 	// ResourceTypeAwsCloudFrontStreamingDistribution is a ResourceType enum value
 	ResourceTypeAwsCloudFrontStreamingDistribution = "AWS::CloudFront::StreamingDistribution"
 
-	// ResourceTypeAwsLambdaAlias is a ResourceType enum value
-	ResourceTypeAwsLambdaAlias = "AWS::Lambda::Alias"
-
 	// ResourceTypeAwsLambdaFunction is a ResourceType enum value
 	ResourceTypeAwsLambdaFunction = "AWS::Lambda::Function"
+
+	// ResourceTypeAwsNetworkFirewallFirewall is a ResourceType enum value
+	ResourceTypeAwsNetworkFirewallFirewall = "AWS::NetworkFirewall::Firewall"
+
+	// ResourceTypeAwsNetworkFirewallFirewallPolicy is a ResourceType enum value
+	ResourceTypeAwsNetworkFirewallFirewallPolicy = "AWS::NetworkFirewall::FirewallPolicy"
+
+	// ResourceTypeAwsNetworkFirewallRuleGroup is a ResourceType enum value
+	ResourceTypeAwsNetworkFirewallRuleGroup = "AWS::NetworkFirewall::RuleGroup"
 
 	// ResourceTypeAwsElasticBeanstalkApplication is a ResourceType enum value
 	ResourceTypeAwsElasticBeanstalkApplication = "AWS::ElasticBeanstalk::Application"
@@ -23500,8 +28435,20 @@ const (
 	// ResourceTypeAwsElasticBeanstalkEnvironment is a ResourceType enum value
 	ResourceTypeAwsElasticBeanstalkEnvironment = "AWS::ElasticBeanstalk::Environment"
 
-	// ResourceTypeAwsMobileHubProject is a ResourceType enum value
-	ResourceTypeAwsMobileHubProject = "AWS::MobileHub::Project"
+	// ResourceTypeAwsWafv2WebAcl is a ResourceType enum value
+	ResourceTypeAwsWafv2WebAcl = "AWS::WAFv2::WebACL"
+
+	// ResourceTypeAwsWafv2RuleGroup is a ResourceType enum value
+	ResourceTypeAwsWafv2RuleGroup = "AWS::WAFv2::RuleGroup"
+
+	// ResourceTypeAwsWafv2Ipset is a ResourceType enum value
+	ResourceTypeAwsWafv2Ipset = "AWS::WAFv2::IPSet"
+
+	// ResourceTypeAwsWafv2RegexPatternSet is a ResourceType enum value
+	ResourceTypeAwsWafv2RegexPatternSet = "AWS::WAFv2::RegexPatternSet"
+
+	// ResourceTypeAwsWafv2ManagedRuleSet is a ResourceType enum value
+	ResourceTypeAwsWafv2ManagedRuleSet = "AWS::WAFv2::ManagedRuleSet"
 
 	// ResourceTypeAwsXrayEncryptionConfig is a ResourceType enum value
 	ResourceTypeAwsXrayEncryptionConfig = "AWS::XRay::EncryptionConfig"
@@ -23518,26 +28465,17 @@ const (
 	// ResourceTypeAwsShieldRegionalProtection is a ResourceType enum value
 	ResourceTypeAwsShieldRegionalProtection = "AWS::ShieldRegional::Protection"
 
+	// ResourceTypeAwsConfigConformancePackCompliance is a ResourceType enum value
+	ResourceTypeAwsConfigConformancePackCompliance = "AWS::Config::ConformancePackCompliance"
+
 	// ResourceTypeAwsConfigResourceCompliance is a ResourceType enum value
 	ResourceTypeAwsConfigResourceCompliance = "AWS::Config::ResourceCompliance"
-
-	// ResourceTypeAwsLicenseManagerLicenseConfiguration is a ResourceType enum value
-	ResourceTypeAwsLicenseManagerLicenseConfiguration = "AWS::LicenseManager::LicenseConfiguration"
-
-	// ResourceTypeAwsApiGatewayDomainName is a ResourceType enum value
-	ResourceTypeAwsApiGatewayDomainName = "AWS::ApiGateway::DomainName"
-
-	// ResourceTypeAwsApiGatewayMethod is a ResourceType enum value
-	ResourceTypeAwsApiGatewayMethod = "AWS::ApiGateway::Method"
 
 	// ResourceTypeAwsApiGatewayStage is a ResourceType enum value
 	ResourceTypeAwsApiGatewayStage = "AWS::ApiGateway::Stage"
 
 	// ResourceTypeAwsApiGatewayRestApi is a ResourceType enum value
 	ResourceTypeAwsApiGatewayRestApi = "AWS::ApiGateway::RestApi"
-
-	// ResourceTypeAwsApiGatewayV2DomainName is a ResourceType enum value
-	ResourceTypeAwsApiGatewayV2DomainName = "AWS::ApiGatewayV2::DomainName"
 
 	// ResourceTypeAwsApiGatewayV2Stage is a ResourceType enum value
 	ResourceTypeAwsApiGatewayV2Stage = "AWS::ApiGatewayV2::Stage"
@@ -23556,9 +28494,137 @@ const (
 
 	// ResourceTypeAwsServiceCatalogPortfolio is a ResourceType enum value
 	ResourceTypeAwsServiceCatalogPortfolio = "AWS::ServiceCatalog::Portfolio"
+
+	// ResourceTypeAwsSqsQueue is a ResourceType enum value
+	ResourceTypeAwsSqsQueue = "AWS::SQS::Queue"
+
+	// ResourceTypeAwsKmsKey is a ResourceType enum value
+	ResourceTypeAwsKmsKey = "AWS::KMS::Key"
+
+	// ResourceTypeAwsQldbLedger is a ResourceType enum value
+	ResourceTypeAwsQldbLedger = "AWS::QLDB::Ledger"
+
+	// ResourceTypeAwsSecretsManagerSecret is a ResourceType enum value
+	ResourceTypeAwsSecretsManagerSecret = "AWS::SecretsManager::Secret"
+
+	// ResourceTypeAwsSnsTopic is a ResourceType enum value
+	ResourceTypeAwsSnsTopic = "AWS::SNS::Topic"
+
+	// ResourceTypeAwsSsmFileData is a ResourceType enum value
+	ResourceTypeAwsSsmFileData = "AWS::SSM::FileData"
 )
+
+// ResourceType_Values returns all elements of the ResourceType enum
+func ResourceType_Values() []string {
+	return []string{
+		ResourceTypeAwsEc2CustomerGateway,
+		ResourceTypeAwsEc2Eip,
+		ResourceTypeAwsEc2Host,
+		ResourceTypeAwsEc2Instance,
+		ResourceTypeAwsEc2InternetGateway,
+		ResourceTypeAwsEc2NetworkAcl,
+		ResourceTypeAwsEc2NetworkInterface,
+		ResourceTypeAwsEc2RouteTable,
+		ResourceTypeAwsEc2SecurityGroup,
+		ResourceTypeAwsEc2Subnet,
+		ResourceTypeAwsCloudTrailTrail,
+		ResourceTypeAwsEc2Volume,
+		ResourceTypeAwsEc2Vpc,
+		ResourceTypeAwsEc2Vpnconnection,
+		ResourceTypeAwsEc2Vpngateway,
+		ResourceTypeAwsEc2RegisteredHainstance,
+		ResourceTypeAwsEc2NatGateway,
+		ResourceTypeAwsEc2EgressOnlyInternetGateway,
+		ResourceTypeAwsEc2Vpcendpoint,
+		ResourceTypeAwsEc2VpcendpointService,
+		ResourceTypeAwsEc2FlowLog,
+		ResourceTypeAwsEc2VpcpeeringConnection,
+		ResourceTypeAwsElasticsearchDomain,
+		ResourceTypeAwsIamGroup,
+		ResourceTypeAwsIamPolicy,
+		ResourceTypeAwsIamRole,
+		ResourceTypeAwsIamUser,
+		ResourceTypeAwsElasticLoadBalancingV2LoadBalancer,
+		ResourceTypeAwsAcmCertificate,
+		ResourceTypeAwsRdsDbinstance,
+		ResourceTypeAwsRdsDbsubnetGroup,
+		ResourceTypeAwsRdsDbsecurityGroup,
+		ResourceTypeAwsRdsDbsnapshot,
+		ResourceTypeAwsRdsDbcluster,
+		ResourceTypeAwsRdsDbclusterSnapshot,
+		ResourceTypeAwsRdsEventSubscription,
+		ResourceTypeAwsS3Bucket,
+		ResourceTypeAwsS3AccountPublicAccessBlock,
+		ResourceTypeAwsRedshiftCluster,
+		ResourceTypeAwsRedshiftClusterSnapshot,
+		ResourceTypeAwsRedshiftClusterParameterGroup,
+		ResourceTypeAwsRedshiftClusterSecurityGroup,
+		ResourceTypeAwsRedshiftClusterSubnetGroup,
+		ResourceTypeAwsRedshiftEventSubscription,
+		ResourceTypeAwsSsmManagedInstanceInventory,
+		ResourceTypeAwsCloudWatchAlarm,
+		ResourceTypeAwsCloudFormationStack,
+		ResourceTypeAwsElasticLoadBalancingLoadBalancer,
+		ResourceTypeAwsAutoScalingAutoScalingGroup,
+		ResourceTypeAwsAutoScalingLaunchConfiguration,
+		ResourceTypeAwsAutoScalingScalingPolicy,
+		ResourceTypeAwsAutoScalingScheduledAction,
+		ResourceTypeAwsDynamoDbTable,
+		ResourceTypeAwsCodeBuildProject,
+		ResourceTypeAwsWafRateBasedRule,
+		ResourceTypeAwsWafRule,
+		ResourceTypeAwsWafRuleGroup,
+		ResourceTypeAwsWafWebAcl,
+		ResourceTypeAwsWafregionalRateBasedRule,
+		ResourceTypeAwsWafregionalRule,
+		ResourceTypeAwsWafregionalRuleGroup,
+		ResourceTypeAwsWafregionalWebAcl,
+		ResourceTypeAwsCloudFrontDistribution,
+		ResourceTypeAwsCloudFrontStreamingDistribution,
+		ResourceTypeAwsLambdaFunction,
+		ResourceTypeAwsNetworkFirewallFirewall,
+		ResourceTypeAwsNetworkFirewallFirewallPolicy,
+		ResourceTypeAwsNetworkFirewallRuleGroup,
+		ResourceTypeAwsElasticBeanstalkApplication,
+		ResourceTypeAwsElasticBeanstalkApplicationVersion,
+		ResourceTypeAwsElasticBeanstalkEnvironment,
+		ResourceTypeAwsWafv2WebAcl,
+		ResourceTypeAwsWafv2RuleGroup,
+		ResourceTypeAwsWafv2Ipset,
+		ResourceTypeAwsWafv2RegexPatternSet,
+		ResourceTypeAwsWafv2ManagedRuleSet,
+		ResourceTypeAwsXrayEncryptionConfig,
+		ResourceTypeAwsSsmAssociationCompliance,
+		ResourceTypeAwsSsmPatchCompliance,
+		ResourceTypeAwsShieldProtection,
+		ResourceTypeAwsShieldRegionalProtection,
+		ResourceTypeAwsConfigConformancePackCompliance,
+		ResourceTypeAwsConfigResourceCompliance,
+		ResourceTypeAwsApiGatewayStage,
+		ResourceTypeAwsApiGatewayRestApi,
+		ResourceTypeAwsApiGatewayV2Stage,
+		ResourceTypeAwsApiGatewayV2Api,
+		ResourceTypeAwsCodePipelinePipeline,
+		ResourceTypeAwsServiceCatalogCloudFormationProvisionedProduct,
+		ResourceTypeAwsServiceCatalogCloudFormationProduct,
+		ResourceTypeAwsServiceCatalogPortfolio,
+		ResourceTypeAwsSqsQueue,
+		ResourceTypeAwsKmsKey,
+		ResourceTypeAwsQldbLedger,
+		ResourceTypeAwsSecretsManagerSecret,
+		ResourceTypeAwsSnsTopic,
+		ResourceTypeAwsSsmFileData,
+	}
+}
 
 const (
 	// ResourceValueTypeResourceId is a ResourceValueType enum value
 	ResourceValueTypeResourceId = "RESOURCE_ID"
 )
+
+// ResourceValueType_Values returns all elements of the ResourceValueType enum
+func ResourceValueType_Values() []string {
+	return []string{
+		ResourceValueTypeResourceId,
+	}
+}

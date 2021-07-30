@@ -62,11 +62,12 @@ type LDAPConfig struct {
 }
 
 type OktaConfig struct {
-	ClientID           string `bson:"client_id" json:"client_id" yaml:"client_id"`
-	ClientSecret       string `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
-	Issuer             string `bson:"issuer" json:"issuer" yaml:"issuer"`
-	UserGroup          string `bson:"user_group" json:"user_group" yaml:"user_group"`
-	ExpireAfterMinutes int    `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
+	ClientID           string   `bson:"client_id" json:"client_id" yaml:"client_id"`
+	ClientSecret       string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
+	Issuer             string   `bson:"issuer" json:"issuer" yaml:"issuer"`
+	Scopes             []string `bson:"scopes" json:"scopes" yaml:"scopes"`
+	UserGroup          string   `bson:"user_group" json:"user_group" yaml:"user_group"`
+	ExpireAfterMinutes int      `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
 }
 
 // GithubAuthConfig contains settings for interacting with Github Authentication

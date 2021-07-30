@@ -138,7 +138,7 @@ func (r *paginatedReadCloser) Read(p []byte) (int, error) {
 	for offset < len(p) {
 		n, err = r.ReadCloser.Read(p[offset:])
 		offset += n
-		if err == io.EOF && n > 0 {
+		if err == io.EOF {
 			err = r.getNextPage()
 		}
 		if err != nil {

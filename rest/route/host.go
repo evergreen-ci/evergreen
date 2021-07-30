@@ -621,7 +621,7 @@ func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if host == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host with ip address '%s' not found", h.IP),
+			Message:    fmt.Sprintf("host with ip address '%s' may not exist or may not have IP address stored", h.IP),
 		})
 	}
 
