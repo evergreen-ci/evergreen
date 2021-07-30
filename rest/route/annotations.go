@@ -260,9 +260,14 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	if taskExec, err := strconv.Atoi(taskExecutionsAsString); err != nil {
-		h.annotation.TaskExecution = &taskExec
+	taskExec, err := strconv.Atoi(taskExecutionsAsString)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "cannot convert task execution to integer",
+			StatusCode: http.StatusBadRequest,
+		}
 	}
+	h.annotation.TaskExecution = &taskExec
 
 	// check if the task exists
 	t, err := task.FindOne(task.ById(h.taskId))
