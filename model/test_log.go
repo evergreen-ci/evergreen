@@ -35,6 +35,10 @@ var (
 	TestLogLinesKey         = bsonutil.MustHaveTag(TestLog{}, "Lines")
 )
 
+func TestLogFilter(ts time.Time) map[string]interface{} {
+	return bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}
+}
+
 func FindOneTestLogById(id string) (*TestLog, error) {
 	tl := &TestLog{}
 	err := db.FindOne(

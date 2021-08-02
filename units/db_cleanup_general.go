@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -19,7 +17,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -29,19 +26,22 @@ const (
 
 func init() {
 	registry.AddJobType(dbCleanupJobName, func() amboy.Job {
-		return makeDbCleanupJob()
+		return makeDBCleanupJob()
 	})
 }
 
+type FilterFunc func(time.Time) map[string]interface{}
+
 type dataCleanup struct {
 	job.Base       `bson:"metadata" json:"metadata" yaml:"metadata"`
-	CollectionName string `bson:"collection_name" json:"collection_name" yaml:"collection_name"`
-	TTLDays        int    `bson:"ttl_days" json:"ttl_days" yaml:"ttl_days"`
+	CollectionName string        `bson:"collection_name" json:"collection_name" yaml:"collection_name"`
+	TTL            time.Duration `bson:"ttl" json:"ttl" yaml:"ttl"`
+	FilterFunc     FilterFunc    `bson:"filter_func" json:"filter_func" yaml:"filter_func"`
 
 	env evergreen.Environment
 }
 
-func makeDbCleanupJob() *dataCleanup {
+func makeDBCleanupJob() *dataCleanup {
 	j := &dataCleanup{
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -56,12 +56,14 @@ func makeDbCleanupJob() *dataCleanup {
 	return j
 }
 
-func NewDbCleanupJob(ts time.Time, collectionName string, ttlDays int) amboy.Job {
-	j := makeDbCleanupJob()
+// NewDBCleanupJob batch deletes documents in the given collection older than the TTL.
+func NewDBCleanupJob(ts time.Time, collectionName string, filter FilterFunc, ttl time.Duration) amboy.Job {
+	j := makeDBCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", dbCleanupJobName, ts.Format(TSFormat)))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: time.Minute})
 	j.CollectionName = collectionName
-	j.TTLDays = ttlDays
+	j.TTL = ttl
+	j.FilterFunc = filter
 	return j
 }
 
@@ -95,7 +97,7 @@ func (j *dataCleanup) Run(ctx context.Context) {
 	)
 
 	totalDocs, _ := j.env.DB().Collection(j.CollectionName).EstimatedDocumentCount(ctx)
-	timestamp := time.Now().Add(time.Duration(-j.TTLDays*24) * time.Hour)
+	timestamp := time.Now().Add(j.TTL)
 
 LOOP:
 	for {
@@ -107,7 +109,7 @@ LOOP:
 				break LOOP
 			}
 			opStart := time.Now()
-			num, err := j.deleteCollectionWithLimit(ctx, j.env, timestamp, cleanupBatchSize)
+			num, err := j.deleteCollectionWithLimit(ctx, timestamp, cleanupBatchSize)
 			j.AddError(err)
 
 			batches++
@@ -139,37 +141,17 @@ LOOP:
 	})
 }
 
-func (j *dataCleanup) deleteCollectionWithLimit(ctx context.Context, env evergreen.Environment, ts time.Time, limit int) (int, error) {
+func (j *dataCleanup) deleteCollectionWithLimit(ctx context.Context, ts time.Time, limit int) (int, error) {
 	if limit > 100*1000 {
 		panic("cannot delete more than 100k documents in a single operation")
 	}
 
 	ops := make([]mongo.WriteModel, limit)
 	for idx := 0; idx < limit; idx++ {
-		var filter map[string]interface{}
-		if j.CollectionName == testresult.Collection {
-			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}}
-		} else if j.CollectionName == "event_log" {
-			rTypes := []string{
-				"TASK",
-				"SCHEDULER",
-				"PATCH",
-			}
-			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}, "r_type": bson.M{"$in": rTypes}}
-
-		} else if j.CollectionName == model.TestLogCollection {
-			filter = bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}
-		} else {
-			grip.Error(message.Fields{
-				"message":    "Programmer error: behavior is not defined for collection",
-				"collection": j.CollectionName,
-			})
-
-		}
-		ops[idx] = mongo.NewDeleteOneModel().SetFilter(filter)
+		ops[idx] = mongo.NewDeleteOneModel().SetFilter(j.FilterFunc(ts))
 	}
 
-	res, err := env.DB().Collection(j.CollectionName).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
+	res, err := j.env.DB().Collection(j.CollectionName).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}

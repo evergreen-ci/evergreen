@@ -92,6 +92,10 @@ func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
 
+func TestResultFilter(ts time.Time) map[string]interface{} {
+	return bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}}
+}
+
 // FindByTaskIDAndExecution returns test results from the testresults collection for a given task.
 func FindByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
 	return Find(FilterByTaskIDAndExecution(taskID, execution))
