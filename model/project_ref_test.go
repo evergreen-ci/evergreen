@@ -5,11 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/event"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
@@ -301,11 +300,11 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, varsFromDb.RestrictedVars)
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
-		ProjectRefGithubSection: func(t *testing.T, p ProjectRef) {
+		ProjectRefGithubAndCQSection: func(t *testing.T, p ProjectRef) {
 			aliases, err := FindAliasesForProject(p.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefGithubSection, "me"))
+			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefGithubAndCQSection, "me"))
 
 			pRefFromDb, err := FindOneProjectRef(p.Id)
 			assert.NoError(t, err)

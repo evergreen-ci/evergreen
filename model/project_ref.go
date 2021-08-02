@@ -327,7 +327,7 @@ const (
 	ProjectRefGeneralSection        = "general"
 	ProjectRefAccessSection         = "access"
 	ProjectRefVariablesSection      = "variables"
-	ProjectRefGithubSection         = "github"
+	ProjectRefGithubAndCQSection    = "github_and_commit_queue"
 	ProjectRefNotificationsSection  = "notifications"
 	ProjectRefAliasSection          = "alias"
 	ProjectRefWorkstationsSection   = "workstations"
@@ -1306,7 +1306,7 @@ func (projectRef *ProjectRef) Upsert() error {
 
 // DefaultSectionToRepo modifies a subset of the project ref to use the repo values instead.
 // This subset is based on the pages used in Spruce.
-func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller string) error {
+func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, userId string) error {
 	before, err := GetProjectSettingsEvents(p)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
@@ -1329,7 +1329,7 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller stri
 					projectRefDefaultLoggerKey:           1,
 					projectRefCedarTestResultsEnabledKey: 1,
 					projectRefPatchingDisabledKey:        1,
-					projectRefTaskSyncKey:                1, // TODO: look into whether this works for individual settings
+					projectRefTaskSyncKey:                1,
 					ProjectRefDisabledStatsCacheKey:      1,
 					ProjectRefFilesIgnoredFromCacheKey:   1,
 				},
@@ -1363,7 +1363,7 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller stri
 		if err != nil {
 			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
 		}
-	case ProjectRefGithubSection:
+	case ProjectRefGithubAndCQSection:
 		err = db.Update(ProjectRefCollection,
 			bson.M{ProjectRefIdKey: p.Id},
 			bson.M{
@@ -1389,7 +1389,7 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller stri
 		}
 		if catcher.HasErrors() {
 			// log the changes before returning whatever errors were caught
-			_ = getAndLogProjectModified(p.Id, caller, before)
+			_ = getAndLogProjectModified(p.Id, userId, before)
 			return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
 		}
 
@@ -1409,7 +1409,7 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller stri
 		}
 		if catcher.HasErrors() {
 			// log the changes before returning whatever errors were caught
-			_ = getAndLogProjectModified(p.Id, caller, before)
+			_ = getAndLogProjectModified(p.Id, userId, before)
 			return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
 		}
 	case ProjectRefAliasSection:
@@ -1422,8 +1422,17 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller stri
 		}
 		if catcher.HasErrors() {
 			// log any changes before returning whatever errors were caught
-			_ = getAndLogProjectModified(p.Id, caller, before)
+			_ = getAndLogProjectModified(p.Id, userId, before)
 			return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
+		}
+	case ProjectRefWorkstationsSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: p.Id},
+			bson.M{
+				"$unset": bson.M{projectRefWorkstationConfigKey: 1},
+			})
+		if err != nil {
+			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
 		}
 	case ProjectRefTriggersSection:
 		err = db.Update(ProjectRefCollection,
@@ -1433,15 +1442,6 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller stri
 					projectRefTriggersKey:            1,
 					projectRefPatchTriggerAliasesKey: 1, // is this where we decided patch trigger aliases would go?
 				},
-			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
-	case ProjectRefWorkstationsSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: p.Id},
-			bson.M{
-				"$unset": bson.M{projectRefWorkstationConfigKey: 1},
 			})
 		if err != nil {
 			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
@@ -1459,23 +1459,23 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, caller stri
 		return errors.Errorf("invalid section '%s'", section)
 	}
 
-	return getAndLogProjectModified(p.Id, caller, before)
+	return getAndLogProjectModified(p.Id, userId, before)
 }
 
-func getAndLogProjectModified(id, caller string, before *ProjectSettingsEvent) error {
+func getAndLogProjectModified(id, userId string, before *ProjectSettingsEvent) error {
 	p, err := FindOneProjectRef(id)
 	if err != nil {
 		return errors.Wrapf(err, "error getting new project ref")
 	}
 	if p == nil {
-
+		return errors.Errorf("project ref '%s' not found", id)
 	}
 	// still modify the project as logged before erroring
 	after, err := GetProjectSettingsEvents(p)
 	if err != nil {
 		return errors.Wrap(err, "error getting after project settings event")
 	}
-	return errors.Wrapf(LogProjectModified(p.Id, caller, before, after), "error logging project modified")
+	return errors.Wrapf(LogProjectModified(p.Id, userId, before, after), "error logging project modified")
 }
 
 // getBatchTimeForVariant returns the Batch Time to be used for this variant
