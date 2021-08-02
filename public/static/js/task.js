@@ -375,7 +375,11 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
         url += lineNum;
       }
     }
-
+    const deprecatedLogkeeperLobsterURL = "https://logkeeper.mongodb.org";
+    const isLogkeeperLink = url.includes(`${deprecatedLogkeeperLobsterURL}/build`);
+    if(isLogkeeperLink) {
+      url = url.replace(deprecatedLogkeeperLobsterURL, `${window.evgBaseUrl}/lobster`);
+    }
     return url;
   };
 
