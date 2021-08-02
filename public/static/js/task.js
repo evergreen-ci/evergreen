@@ -377,7 +377,7 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
     }
     const deprecatedLogkeeperLobsterURL = "https://logkeeper.mongodb.org";
     const isLogkeeperLink = url.includes(`${deprecatedLogkeeperLobsterURL}/build`);
-    if(isLogkeeperLink) {
+    if(!isRaw && isLogkeeperLink) {
       url = url.replace(deprecatedLogkeeperLobsterURL, `${window.evgBaseUrl}/lobster`);
     }
     return url;
