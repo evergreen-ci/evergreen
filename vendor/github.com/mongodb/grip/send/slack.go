@@ -41,9 +41,9 @@ func NewSlackLogger(opts *SlackOptions, token string, l LevelInfo) (Sender, erro
 		return nil, err
 	}
 
-	// if _, err := s.opts.client.AuthTest(); err != nil {
-	// 	return nil, fmt.Errorf("slack authentication error: %v", err)
-	// }
+	if _, err := s.opts.client.AuthTest(); err != nil {
+		return nil, fmt.Errorf("slack authentication error: %v", err)
+	}
 
 	fallback := log.New(os.Stdout, "", log.LstdFlags)
 	if err := s.SetErrorHandler(ErrorHandlerFromLogger(fallback)); err != nil {
