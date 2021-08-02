@@ -162,7 +162,7 @@ func exportEnvVars(envVars map[string]string, secrets map[string]string) []cocoa
 	}
 
 	for k, v := range secrets {
-		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetSecretOptions(
+		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetSecretOptions(
 			*cocoa.NewSecretOptions().
 				SetName(k).
 				SetValue(v).

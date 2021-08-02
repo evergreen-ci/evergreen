@@ -84,6 +84,10 @@ func (j *createPodJob) Run(ctx context.Context) {
 			j.AddError(j.ecsClient.Close(ctx))
 		}
 	}()
+	if err := j.populateIfUnset(ctx); err != nil {
+		j.AddError(err)
+		return
+	}
 
 	switch j.pod.Status {
 	case pod.StatusInitializing:
@@ -98,6 +102,8 @@ func (j *createPodJob) Run(ctx context.Context) {
 			return
 		}
 
+		j.ecsPod = p
+
 		info, err := p.Info(ctx)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "getting pod info"))
@@ -107,7 +113,7 @@ func (j *createPodJob) Run(ctx context.Context) {
 		j.pod.Resources.DefinitionID = *info.Resources.TaskDefinition.ID
 		j.pod.Resources.ExternalID = *info.Resources.TaskID
 		for _, secret := range info.Resources.Secrets {
-			j.pod.Resources.SecretIDs = append(j.pod.Resources.SecretIDs, *secret.NamedSecret.Name)
+			j.pod.Resources.SecretIDs = append(j.pod.Resources.SecretIDs, utility.FromStringPtr(secret.NamedSecret.Name))
 		}
 
 		if err := j.pod.UpdateStatus(pod.StatusStarting); err != nil {
@@ -117,4 +123,56 @@ func (j *createPodJob) Run(ctx context.Context) {
 	default:
 		j.AddError(errors.New("not starting pod because pod has already started or stopped"))
 	}
+}
+
+func (j *createPodJob) populateIfUnset(ctx context.Context) error {
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
+	if j.pod == nil {
+		p, err := pod.FindOneByID(j.PodID)
+		if err != nil {
+			return err
+		}
+		if p == nil {
+			return errors.New("pod not found")
+		}
+		j.pod = p
+	}
+
+	if j.pod.Status != pod.StatusInitializing {
+		return nil
+	}
+
+	settings := j.env.Settings()
+
+	if j.vault == nil {
+		if j.smClient == nil {
+			client, err := cloud.MakeSecretsManagerClient(settings)
+			if err != nil {
+				return errors.Wrap(err, "initializing Secrets Manager client")
+			}
+			j.smClient = client
+		}
+		j.vault = cloud.MakeSecretsManagerVault(j.smClient)
+	}
+
+	if j.ecsClient == nil {
+		client, err := cloud.MakeECSClient(settings)
+		if err != nil {
+			return errors.Wrap(err, "initializing ECS client")
+		}
+		j.ecsClient = client
+	}
+
+	if j.ecsPodCreator == nil {
+		creator, err := cloud.MakeECSPodCreator(j.ecsClient, j.vault)
+		if err != nil {
+			return errors.Wrap(err, "initializing ECS pod creator")
+		}
+		j.ecsPodCreator = creator
+	}
+
+	return nil
 }
