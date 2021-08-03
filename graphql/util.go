@@ -766,11 +766,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch not found %s: %s", patchID, err.Error()))
 			}
 			if p.IsParent() {
-				childPatchIds := []string{}
-				if p != nil && err != nil {
-					childPatchIds = p.Triggers.ChildPatches
-				}
-				for _, childPatchId := range childPatchIds {
+				for _, childPatchId := range p.Triggers.ChildPatches {
 					err = ModifyVersionHandler(ctx, dataConnector, childPatchId, modifications)
 					if err != nil {
 						return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
