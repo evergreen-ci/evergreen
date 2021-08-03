@@ -98,7 +98,7 @@ func (j *createPodJob) Run(ctx context.Context) {
 
 		p, err := j.ecsPodCreator.CreatePod(ctx, opts)
 		if err != nil {
-			j.AddError(errors.Wrap(err, "starting pod"))
+			j.AddRetryableError(errors.Wrap(err, "starting pod"))
 			return
 		}
 
@@ -109,11 +109,20 @@ func (j *createPodJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(err, "getting pod info"))
 		}
 
-		j.pod.Resources.Cluster = *info.Resources.Cluster
-		j.pod.Resources.DefinitionID = *info.Resources.TaskDefinition.ID
-		j.pod.Resources.ExternalID = *info.Resources.TaskID
+		var ids []string
 		for _, secret := range info.Resources.Secrets {
-			j.pod.Resources.SecretIDs = append(j.pod.Resources.SecretIDs, utility.FromStringPtr(secret.NamedSecret.Name))
+			ids = append(ids, utility.FromStringPtr(secret.NamedSecret.Name))
+		}
+
+		resourceInfo := pod.ResourceInfo{
+			ExternalID:   utility.FromStringPtr(info.Resources.TaskID),
+			DefinitionID: utility.FromStringPtr(info.Resources.TaskDefinition.ID),
+			Cluster:      utility.FromStringPtr(info.Resources.Cluster),
+			SecretIDs:    ids,
+		}
+
+		if err := j.pod.UpdateResources(resourceInfo); err != nil {
+			j.AddError(errors.Wrap(err, "updating pod resources"))
 		}
 
 		if err := j.pod.UpdateStatus(pod.StatusStarting); err != nil {
@@ -121,7 +130,7 @@ func (j *createPodJob) Run(ctx context.Context) {
 		}
 
 	default:
-		j.AddError(errors.New("not starting pod because pod has already started or stopped"))
+		j.AddError(errors.Errorf("not starting pod because pod status is '%s'", j.pod.Status))
 	}
 }
 
