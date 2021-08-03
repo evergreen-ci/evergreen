@@ -81,7 +81,7 @@ func (j *dbCleanupTestLogJob) Run(ctx context.Context) {
 		return
 	}
 
-	message, errors := j.DataCleanup.RunWithDeleteFn(ctx, testresult.TestResultFilter)
+	message, errors := j.DataCleanup.runWithDeleteFn(ctx, testresult.TestResultFilter)
 	if len(errors) != 0 {
 		//add errors
 		for _, err := range errors {

@@ -21,13 +21,12 @@ type FilterFunc func(time.Time) map[string]interface{}
 type DataCleanupJobBase struct {
 	CollectionName string        `bson:"collection_name" json:"collection_name" yaml:"collection_name"`
 	TTL            time.Duration `bson:"ttl" json:"ttl" yaml:"ttl"`
-	Errors         []error       `bson:"errors" json:"errors" yaml:"errors"`
 
-	env evergreen.Environment
+	errors []error
+	env    evergreen.Environment
 }
 
-func (b *DataCleanupJobBase) RunWithDeleteFn(ctx context.Context, filterFunc FilterFunc) (message.Fields, []error) {
-
+func (b *DataCleanupJobBase) runWithDeleteFn(ctx context.Context, filterFunc FilterFunc) (message.Fields, []error) {
 	startAt := time.Now()
 
 	if b.env == nil {
@@ -54,13 +53,13 @@ LOOP:
 			}
 			opStart := time.Now()
 			num, err := b.deleteCollectionWithLimit(ctx, timestamp, cleanupBatchSize, filterFunc)
-			b.Errors = append(b.Errors, err)
+			b.errors = append(b.errors, err)
 
 			batches++
 			numDocs += num
 			timeSpent += time.Since(opStart)
 			if num < cleanupBatchSize {
-				break
+				break LOOP
 			}
 		}
 	}
@@ -79,12 +78,12 @@ LOOP:
 		"num_batches":        batches,
 		"num_docs":           numDocs,
 		"time_spent_seconds": timeSpent.Seconds(),
-	}, b.Errors
+	}, b.errors
 }
 
 func (b *DataCleanupJobBase) deleteCollectionWithLimit(ctx context.Context, ts time.Time, limit int, filterFunc FilterFunc) (int, error) {
 	if limit > 100*1000 {
-		panic("cannot delete more than 100k documents in a single operation")
+		return 0, errors.New("cannot delete more than 100k documents in a single operation")
 	}
 
 	ops := make([]mongo.WriteModel, limit)
