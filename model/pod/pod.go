@@ -221,3 +221,63 @@ func (p *Pod) UpdateStatus(s Status) error {
 
 	return nil
 }
+
+// UpdateResources updates the pod resources. If the new status is identical to the current one, this is a no-op.
+func (p *Pod) UpdateResources(info ResourceInfo) error {
+	if p.Resources.Cluster == info.Cluster && p.Resources.ExternalID == info.ExternalID && p.Resources.DefinitionID == info.DefinitionID && p.checkSecretIDs(p.Resources.SecretIDs, info.SecretIDs) {
+		return nil
+	}
+
+	if info.Cluster == "" {
+		info.Cluster = p.Resources.Cluster
+	}
+
+	if info.ExternalID == "" {
+		info.ExternalID = p.Resources.ExternalID
+	}
+
+	if info.DefinitionID == "" {
+		info.DefinitionID = p.Resources.DefinitionID
+	}
+
+	if len(info.SecretIDs) == 0 {
+		info.SecretIDs = p.Resources.SecretIDs
+	}
+
+	setFields := bson.M{
+		ResourcesKey: info,
+	}
+
+	if err := UpdateOne(ByID(p.ID), bson.M{
+		"$set": setFields,
+	}); err != nil {
+		return err
+	}
+
+	p.Resources = info
+
+	return nil
+}
+
+// checkSecretIDs checks to see if the two given slices have the same IDs.
+func (p *Pod) checkSecretIDs(oldIDs, newIDs []string) bool {
+	if len(oldIDs) != len(newIDs) {
+		return false
+	}
+
+	oldMap := make(map[string]int)
+	newMap := make(map[string]int)
+
+	for i := range oldIDs {
+		oldMap[oldIDs[i]]++
+		newMap[newIDs[i]]++
+	}
+
+	for k, v := range oldMap {
+		if v != newMap[k] {
+			return false
+		}
+	}
+
+	return true
+}

@@ -102,9 +102,6 @@ func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 
 // ExportPodContainerDef exports the ECS pod container definition into the equivalent cocoa.ECSContainerDefintion.
 func ExportPodContainerDef(opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
-	if opts.Image == "" {
-		return nil, errors.New("must specify an image")
-	}
 	return cocoa.NewECSContainerDefinition().
 		SetImage(opts.Image).
 		SetMemoryMB(opts.MemoryMB).
@@ -113,17 +110,20 @@ func ExportPodContainerDef(opts pod.TaskContainerCreationOptions) (*cocoa.ECSCon
 }
 
 // ExportPodExecutionOptions exports the ECS configuration into cocoa.ECSPodExecutionOptions.
-func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig) (*cocoa.ECSPodExecutionOptions, error) {
+func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*cocoa.ECSPodExecutionOptions, error) {
 	if len(ecsConfig.Clusters) == 0 {
 		return nil, errors.New("must specify at least one cluster to use")
 	}
-	return cocoa.NewECSPodExecutionOptions().
-		SetCluster(ecsConfig.Clusters[0].Name), nil
+	if string(podOS) != string(ecsConfig.Clusters[0].Platform) {
+		return nil, errors.Errorf("cluster platform ('%s') and pod OS ('%s') must match", string(podOS), string(ecsConfig.Clusters[0].Platform))
+	}
+
+	return cocoa.NewECSPodExecutionOptions().SetCluster(ecsConfig.Clusters[0].Name), nil
 }
 
 // ExportPodCreationOptions exports the ECS pod resources into cocoa.ECSPodExecutionOptions.
 func ExportPodCreationOptions(ecsConfig evergreen.ECSConfig, taskContainerCreationOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodCreationOptions, error) {
-	execOpts, err := ExportPodExecutionOptions(ecsConfig)
+	execOpts, err := ExportPodExecutionOptions(ecsConfig, taskContainerCreationOpts.OS)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod execution options")
 	}
@@ -137,7 +137,7 @@ func ExportPodCreationOptions(ecsConfig evergreen.ECSConfig, taskContainerCreati
 		SetTaskRole(ecsConfig.TaskRole).
 		SetExecutionRole(ecsConfig.ExecutionRole).
 		SetExecutionOptions(*execOpts).
-		SetContainerDefinitions([]cocoa.ECSContainerDefinition{*containerDef}), nil
+		AddContainerDefinitions(*containerDef), nil
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.

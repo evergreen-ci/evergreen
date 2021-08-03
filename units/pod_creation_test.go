@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
@@ -33,6 +32,7 @@ func TestNewCreatePodJob(t *testing.T) {
 	assert.Equal(t, podID, j.PodID)
 	assert.Equal(t, pod.StatusInitializing, j.pod.Status)
 }
+
 func TestCreatePodJob(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *createPodJob){
 		"Succeeds": func(ctx context.Context, t *testing.T, j *createPodJob) {
@@ -48,7 +48,13 @@ func TestCreatePodJob(t *testing.T) {
 			assert.Equal(t, pod.StatusStarting, j.pod.Status)
 			require.NotZero(t, info.Resources)
 			assert.Equal(t, "cluster", utility.FromStringPtr(info.Resources.Cluster))
-			assert.Len(t, info.Resources.Secrets, 2)
+			assert.Equal(t, j.pod.Resources.DefinitionID, utility.FromStringPtr(info.Resources.TaskDefinition.ID))
+			assert.Equal(t, j.pod.Resources.ExternalID, utility.FromStringPtr(info.Resources.TaskID))
+			require.Len(t, info.Resources.Secrets, 2)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 2)
+			for _, secret := range info.Resources.Secrets {
+				assert.Contains(t, j.pod.Resources.SecretIDs, utility.FromStringPtr(secret.Name))
+			}
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -62,6 +68,9 @@ func TestCreatePodJob(t *testing.T) {
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
+			require.Zero(t, j.ecsPod)
+			require.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -75,6 +84,9 @@ func TestCreatePodJob(t *testing.T) {
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
+			require.Zero(t, j.ecsPod)
+			require.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -87,6 +99,9 @@ func TestCreatePodJob(t *testing.T) {
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
+			require.Zero(t, j.ecsPod)
+			require.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -99,6 +114,10 @@ func TestCreatePodJob(t *testing.T) {
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
+			require.Zero(t, j.ecsPod)
+			require.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
@@ -110,6 +129,24 @@ func TestCreatePodJob(t *testing.T) {
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
+			require.Zero(t, j.ecsPod)
+			require.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+
+			dbPod, err := pod.FindOneByID(j.PodID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
+		},
+		"FailsWithMismatchedPlatformOS": func(ctx context.Context, t *testing.T, j *createPodJob) {
+			j.pod.TaskContainerCreationOpts.OS = "windows"
+			require.NoError(t, j.pod.Insert())
+
+			j.Run(ctx)
+			require.Error(t, j.Error())
+			require.Zero(t, j.ecsPod)
+			require.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -158,7 +195,8 @@ func TestCreatePodJob(t *testing.T) {
 			var envClusters []evergreen.ECSClusterConfig
 			for name := range cocoaMock.GlobalECSService.Clusters {
 				envClusters = append(envClusters, evergreen.ECSClusterConfig{
-					Name: name,
+					Name:     name,
+					Platform: evergreen.ECSClusterPlatformLinux,
 				})
 			}
 			env.EvergreenSettings.Providers.AWS.Pod.ECS.Clusters = envClusters
@@ -183,13 +221,6 @@ func TestCreatePodJob(t *testing.T) {
 			pc, err := ecs.NewBasicECSPodCreator(j.ecsClient, j.vault)
 			require.NoError(t, err)
 			j.ecsPodCreator = pc
-
-			for name, val := range p.TaskContainerCreationOpts.EnvSecrets {
-				cocoaMock.GlobalSecretCache[name] = cocoaMock.StoredSecret{
-					Value:   val,
-					Created: time.Now(),
-				}
-			}
 
 			tCase(ctx, t, j)
 		})

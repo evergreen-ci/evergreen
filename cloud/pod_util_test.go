@@ -211,20 +211,6 @@ func TestExportPodCreationOptions(t *testing.T) {
 		require.NotZero(t, err)
 		require.Zero(t, opts)
 	})
-	t.Run("FailsWithNoTaskContainerCreationOptions", func(t *testing.T) {
-		opts, err := ExportPodCreationOptions(
-			evergreen.ECSConfig{
-				TaskRole:      "role",
-				ExecutionRole: "role",
-				Clusters: []evergreen.ECSClusterConfig{
-					{
-						Name: "cluster",
-					},
-				},
-			}, pod.TaskContainerCreationOptions{})
-		require.NotZero(t, err)
-		require.Zero(t, opts)
-	})
 	t.Run("FailsWithNoClusterName", func(t *testing.T) {
 		opts, err := ExportPodCreationOptions(
 			evergreen.ECSConfig{
@@ -236,23 +222,6 @@ func TestExportPodCreationOptions(t *testing.T) {
 					},
 				},
 			}, pod.TaskContainerCreationOptions{})
-		require.NotZero(t, err)
-		require.Zero(t, opts)
-	})
-	t.Run("FailsWithNoContainerImage", func(t *testing.T) {
-		opts, err := ExportPodCreationOptions(
-			evergreen.ECSConfig{
-				TaskRole:      "role",
-				ExecutionRole: "role",
-				Clusters: []evergreen.ECSClusterConfig{
-					{
-						Name: "cluster",
-					},
-				},
-			}, pod.TaskContainerCreationOptions{
-				MemoryMB: 128,
-				CPU:      128,
-			})
 		require.NotZero(t, err)
 		require.Zero(t, opts)
 	})

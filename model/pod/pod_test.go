@@ -211,3 +211,94 @@ func TestUpdateStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateResources(t *testing.T) {
+	checkResources := func(t *testing.T, p Pod) {
+		dbPod, err := FindOneByID(p.ID)
+		require.NoError(t, err)
+		require.NotZero(t, dbPod)
+		assert.Equal(t, p.Resources.Cluster, dbPod.Resources.Cluster)
+		assert.Equal(t, p.Resources.ExternalID, dbPod.Resources.ExternalID)
+		assert.Equal(t, p.Resources.DefinitionID, dbPod.Resources.DefinitionID)
+		assert.True(t, p.checkSecretIDs(dbPod.Resources.SecretIDs, p.Resources.SecretIDs))
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T, p Pod){
+		"NoopsWithIdenticalResources": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateResources(p.Resources))
+			checkResources(t, p)
+		},
+		"SuccessWithCluster": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			info := ResourceInfo{
+				Cluster: "cluster",
+			}
+			require.NoError(t, p.UpdateResources(info))
+			assert.Equal(t, "cluster", p.Resources.Cluster)
+
+			checkResources(t, p)
+		},
+		"SuccessWithExternalID": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			info := ResourceInfo{
+				ExternalID: "external",
+			}
+			require.NoError(t, p.UpdateResources(info))
+			assert.Equal(t, "external", p.Resources.ExternalID)
+
+			checkResources(t, p)
+		},
+		"SuccessWithDefinitionID": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			info := ResourceInfo{
+				DefinitionID: "definition",
+			}
+			require.NoError(t, p.UpdateResources(info))
+			assert.Equal(t, "definition", p.Resources.DefinitionID)
+
+			checkResources(t, p)
+		},
+		"SuccessWithSecretIDs": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			info := ResourceInfo{
+				SecretIDs: []string{"secret2"},
+			}
+			require.NoError(t, p.UpdateResources(info))
+			require.Len(t, p.Resources.SecretIDs, 1)
+			assert.Equal(t, "secret2", p.Resources.SecretIDs[0])
+
+			checkResources(t, p)
+		},
+		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
+			assert.Error(t, p.UpdateResources(ResourceInfo{}))
+
+			dbPod, err := FindOneByID(p.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPod)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			defer func() {
+				assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			}()
+			tCase(t, Pod{
+				ID:     "id",
+				Status: StatusRunning,
+				Resources: ResourceInfo{
+					ExternalID:   utility.RandomString(),
+					DefinitionID: utility.RandomString(),
+					Cluster:      utility.RandomString(),
+					SecretIDs:    []string{"secret0", "secret1"},
+				},
+			})
+		})
+	}
+
+}
