@@ -636,11 +636,11 @@ func (e *envState) initSenders(ctx context.Context) error {
 			if err == nil {
 				return
 			}
-
+			notificationTarget := name
 			grip.Error(message.WrapError(err, message.Fields{
 				"notification":        m.String(),
 				"message_type":        fmt.Sprintf("%T", m),
-				"notification_target": name.String(),
+				"notification_target": notificationTarget.String(),
 				"event":               m,
 			}))
 		}))
