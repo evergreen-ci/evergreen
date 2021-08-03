@@ -247,7 +247,7 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.taskId = gimlet.GetVars(r)["task_id"]
-	taskExecutionsAsString := gimlet.GetVars(r)["execution"]
+	taskExecutionsAsString := r.URL.Query().Get("execution")
 	if h.taskId == "" {
 		return gimlet.ErrorResponse{
 			Message:    "task ID cannot be empty",
@@ -257,13 +257,6 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 	if taskExecutionsAsString == "" {
 		return gimlet.ErrorResponse{
 			Message:    "task execution cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	h.annotation.TaskExecution, err = strconv.Atoi(taskExecutionsAsString)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    "cannot convert execution to integer value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -306,6 +299,23 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 	if catcher.HasErrors() {
 		return gimlet.ErrorResponse{
 			Message:    catcher.Resolve().Error(),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	taskExecution, err := strconv.Atoi(taskExecutionsAsString)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "cannot convert execution to integer value",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if h.annotation.TaskExecution == 0 {
+		h.annotation.TaskExecution = taskExecution
+	} else if h.annotation.TaskExecution != taskExecution {
+		return gimlet.ErrorResponse{
+			Message:    "Task execution must equal the task execution specified in the annotation",
 			StatusCode: http.StatusBadRequest,
 		}
 	}

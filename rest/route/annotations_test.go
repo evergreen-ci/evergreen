@@ -385,8 +385,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	require.NoError(t, err)
 	buffer := bytes.NewBuffer(jsonBody)
 
-	r, err := http.NewRequest("PUT", "/task/TaskFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId", "execution": "1"})
+	r, err := http.NewRequest("PUT", "/task/TaskFailedId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	assert.NoError(t, h.Parse(ctx, r))
 
@@ -417,9 +417,9 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations", buffer)
+	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations?execution=1", buffer)
 	assert.NoError(t, err)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId", "execution": "1"})
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "error parsing request uri 'issuelink.com'")
@@ -437,8 +437,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "the task 'non-existent' does not exist")
@@ -456,7 +456,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent"})
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "someTask"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "task execution cannot be empty")
@@ -467,14 +467,14 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	}
 	a = &model.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
-		TaskId:        utility.ToStringPtr("someTask"),
+		TaskId:        utility.ToStringPtr("TaskFailedId"),
 		TaskExecution: execution0,
 	}
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent", "execution": "1_"})
+	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations?execution=abc", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "cannot convert execution to integer value")
@@ -486,8 +486,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	a = &model.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
-	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Equal(t, "TaskFailedId", h.taskId)
@@ -504,8 +504,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "TaskID must equal the taskId specified in the annotation")
@@ -518,8 +518,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	jsonBody, err = json.Marshal(a)
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
-	r, err = http.NewRequest("PUT", "/task/TaskSystemFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSystemFailedId", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskSystemFailedId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSystemFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.NoError(t, err)
@@ -529,8 +529,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	jsonBody, err = json.Marshal(a)
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
-	r, err = http.NewRequest("PUT", "/task/TaskTimedOutId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskTimedOutId", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskTimedOutId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskTimedOutId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.NoError(t, err)
@@ -540,8 +540,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	jsonBody, err = json.Marshal(a)
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
-	r, err = http.NewRequest("PUT", "/task/TaskSetupFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSetupFailedId", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskSetupFailedId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSetupFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.NoError(t, err)
@@ -560,8 +560,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PUT", "/task/TaskSucceededId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSucceededId", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskSucceededId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSucceededId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
@@ -575,8 +575,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PUT", "/task/TaskWillRunId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskWillRunId", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskWillRunId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskWillRunId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
@@ -590,8 +590,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PUT", "/task/TaskDispatchedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskDispatchedId", "execution": "1"})
+	r, err = http.NewRequest("PUT", "/task/TaskDispatchedId/annotations?execution=1", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskDispatchedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
