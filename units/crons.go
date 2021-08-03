@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -1248,9 +1247,9 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		catcher.Add(queue.Put(ctx, NewDBCleanupJob(utility.RoundPartOfMinute(2), testresult.Collection, testresult.TestResultFilter, 365*24*time.Hour)))
-		catcher.Add(queue.Put(ctx, NewDBCleanupJob(utility.RoundPartOfMinute(2), model.TestLogCollection, model.TestLogFilter, 365*24*time.Hour)))
-		catcher.Add(queue.Put(ctx, NewDBCleanupJob(utility.RoundPartOfMinute(2), event.AllLogCollection, event.TTLFilter, 90*24*time.Hour)))
+		catcher.Add(queue.Put(ctx, NewDBCleanupTestResultJob(utility.RoundPartOfMinute(2), 365*24*time.Hour)))
+		catcher.Add(queue.Put(ctx, NewDBCleanupTestLogJob(utility.RoundPartOfMinute(2), 365*24*time.Hour)))
+		catcher.Add(queue.Put(ctx, NewDBCleanupEventLogJob(utility.RoundPartOfMinute(2), 90*24*time.Hour)))
 
 		return catcher.Resolve()
 	}

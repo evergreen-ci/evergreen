@@ -2,17 +2,10 @@ package units
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
-	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,74 +13,25 @@ import (
 )
 
 const (
-	dbCleanupJobName = "db-cleanup"
 	cleanupBatchSize = 100 * 1000
 )
 
-func init() {
-	registry.AddJobType(dbCleanupJobName, func() amboy.Job {
-		return makeDBCleanupJob()
-	})
-}
-
 type FilterFunc func(time.Time) map[string]interface{}
 
-type dataCleanup struct {
-	job.Base       `bson:"metadata" json:"metadata" yaml:"metadata"`
+type DataCleanupJobBase struct {
 	CollectionName string        `bson:"collection_name" json:"collection_name" yaml:"collection_name"`
 	TTL            time.Duration `bson:"ttl" json:"ttl" yaml:"ttl"`
-	FilterFunc     FilterFunc    `bson:"filter_func" json:"filter_func" yaml:"filter_func"`
+	Errors         []error       `bson:"errors" json:"errors" yaml:"errors"`
 
 	env evergreen.Environment
 }
 
-func makeDBCleanupJob() *dataCleanup {
-	j := &dataCleanup{
-		Base: job.Base{
-			JobType: amboy.JobType{
-				Name:    dbCleanupJobName,
-				Version: 0,
-			},
-		},
-	}
+func (b *DataCleanupJobBase) RunWithDeleteFn(ctx context.Context, filterFunc FilterFunc) (message.Fields, []error) {
 
-	j.SetDependency(dependency.NewAlways())
-
-	return j
-}
-
-// NewDBCleanupJob batch deletes documents in the given collection older than the TTL.
-func NewDBCleanupJob(ts time.Time, collectionName string, filter FilterFunc, ttl time.Duration) amboy.Job {
-	j := makeDBCleanupJob()
-	j.SetID(fmt.Sprintf("%s.%s", dbCleanupJobName, ts.Format(TSFormat)))
-	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: time.Minute})
-	j.CollectionName = collectionName
-	j.TTL = ttl
-	j.FilterFunc = filter
-	return j
-}
-
-func (j *dataCleanup) Run(ctx context.Context) {
-	defer j.MarkComplete()
 	startAt := time.Now()
 
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		j.AddError(err)
-		return
-	}
-
-	if flags.BackgroundCleanupDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"job_type": dbCleanupJobName,
-			"job_id":   j.ID(),
-			"message":  "disaster recovery backups disabled, also disabling cleanup",
-		})
-		return
+	if b.env == nil {
+		b.env = evergreen.GetEnvironment()
 	}
 
 	var (
@@ -96,8 +40,8 @@ func (j *dataCleanup) Run(ctx context.Context) {
 		timeSpent time.Duration
 	)
 
-	totalDocs, _ := j.env.DB().Collection(j.CollectionName).EstimatedDocumentCount(ctx)
-	timestamp := time.Now().Add(j.TTL)
+	totalDocs, _ := b.env.DB().Collection(b.CollectionName).EstimatedDocumentCount(ctx)
+	timestamp := time.Now().Add(b.TTL)
 
 LOOP:
 	for {
@@ -109,8 +53,8 @@ LOOP:
 				break LOOP
 			}
 			opStart := time.Now()
-			num, err := j.deleteCollectionWithLimit(ctx, timestamp, cleanupBatchSize)
-			j.AddError(err)
+			num, err := b.deleteCollectionWithLimit(ctx, timestamp, cleanupBatchSize, filterFunc)
+			b.Errors = append(b.Errors, err)
 
 			batches++
 			numDocs += num
@@ -121,37 +65,34 @@ LOOP:
 		}
 	}
 
-	grip.Info(message.Fields{
-		"job_id":             j.ID(),
-		"job_type":           j.Type().Name,
+	return message.Fields{
 		"batch_size":         cleanupBatchSize,
 		"total_docs":         totalDocs,
-		"collection":         j.CollectionName,
+		"collection":         b.CollectionName,
 		"message":            "timing-info",
 		"run_start_at":       startAt,
 		"oid":                primitive.NewObjectIDFromTimestamp(timestamp).Hex(),
 		"oid_ts":             timestamp.Format(TSFormat),
-		"has_errors":         j.HasErrors(),
 		"aborted":            ctx.Err() != nil,
 		"total":              time.Since(startAt).Seconds(),
 		"run_end_at":         time.Now(),
 		"num_batches":        batches,
 		"num_docs":           numDocs,
 		"time_spent_seconds": timeSpent.Seconds(),
-	})
+	}, b.Errors
 }
 
-func (j *dataCleanup) deleteCollectionWithLimit(ctx context.Context, ts time.Time, limit int) (int, error) {
+func (b *DataCleanupJobBase) deleteCollectionWithLimit(ctx context.Context, ts time.Time, limit int, filterFunc FilterFunc) (int, error) {
 	if limit > 100*1000 {
 		panic("cannot delete more than 100k documents in a single operation")
 	}
 
 	ops := make([]mongo.WriteModel, limit)
 	for idx := 0; idx < limit; idx++ {
-		ops[idx] = mongo.NewDeleteOneModel().SetFilter(j.FilterFunc(ts))
+		ops[idx] = mongo.NewDeleteOneModel().SetFilter(filterFunc(ts))
 	}
 
-	res, err := j.env.DB().Collection(j.CollectionName).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
+	res, err := b.env.DB().Collection(b.CollectionName).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
