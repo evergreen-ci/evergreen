@@ -753,7 +753,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	if version.Requester == evergreen.PatchVersionRequester || version.Requester == evergreen.GithubPRRequester {
+	if evergreen.IsPatchRequester(version.Requester) {
 		// restart is handled through graphql because we need the user to specify
 		// which downstream tasks they want to restart
 		if modifications.Action != Restart {
@@ -763,7 +763,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 				return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
 			}
 			if p == nil {
-				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch not found %s: %s", patchID, err.Error()))
+				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found ", patchID))
 			}
 			if p.IsParent() {
 				for _, childPatchId := range p.Triggers.ChildPatches {
