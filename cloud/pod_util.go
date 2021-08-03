@@ -116,12 +116,12 @@ func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*co
 	}
 
 	for _, cluster := range ecsConfig.Clusters {
-		if string(podOS) != string(cluster.Platform) {
-			return nil, errors.Errorf("cluster platform ('%s') and pod OS ('%s') must match", string(podOS), string(ecsConfig.Clusters[0].Platform))
+		if string(podOS) == string(cluster.Platform) {
+			return cocoa.NewECSPodExecutionOptions().SetCluster(cluster.Name), nil
 		}
 	}
 
-	return cocoa.NewECSPodExecutionOptions().SetCluster(ecsConfig.Clusters[0].Name), nil
+	return nil, errors.Errorf("cluster platform ('%s') and pod OS ('%s') must match", string(podOS), string(ecsConfig.Clusters[0].Platform))
 }
 
 // ExportPodCreationOptions exports the ECS pod resources into cocoa.ECSPodExecutionOptions.
