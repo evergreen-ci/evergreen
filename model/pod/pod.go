@@ -238,26 +238,3 @@ func (p *Pod) UpdateResources(info ResourceInfo) error {
 
 	return nil
 }
-
-// checkSecretIDs checks to see if the two given slices have the same IDs.
-func (p *Pod) checkSecretIDs(oldIDs, newIDs []string) bool {
-	if len(oldIDs) != len(newIDs) {
-		return false
-	}
-
-	oldMap := make(map[string]int)
-	newMap := make(map[string]int)
-
-	for i := range oldIDs {
-		oldMap[oldIDs[i]]++
-		newMap[newIDs[i]]++
-	}
-
-	for k, v := range oldMap {
-		if v != newMap[k] {
-			return false
-		}
-	}
-
-	return true
-}
