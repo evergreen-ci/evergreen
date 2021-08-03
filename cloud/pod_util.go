@@ -114,8 +114,11 @@ func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*co
 	if len(ecsConfig.Clusters) == 0 {
 		return nil, errors.New("must specify at least one cluster to use")
 	}
-	if string(podOS) != string(ecsConfig.Clusters[0].Platform) {
-		return nil, errors.Errorf("cluster platform ('%s') and pod OS ('%s') must match", string(podOS), string(ecsConfig.Clusters[0].Platform))
+
+	for _, cluster := range ecsConfig.Clusters {
+		if string(podOS) != string(cluster.Platform) {
+			return nil, errors.Errorf("cluster platform ('%s') and pod OS ('%s') must match", string(podOS), string(ecsConfig.Clusters[0].Platform))
+		}
 	}
 
 	return cocoa.NewECSPodExecutionOptions().SetCluster(ecsConfig.Clusters[0].Name), nil

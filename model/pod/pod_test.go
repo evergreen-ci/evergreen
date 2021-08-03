@@ -220,7 +220,9 @@ func TestUpdateResources(t *testing.T) {
 		assert.Equal(t, p.Resources.Cluster, dbPod.Resources.Cluster)
 		assert.Equal(t, p.Resources.ExternalID, dbPod.Resources.ExternalID)
 		assert.Equal(t, p.Resources.DefinitionID, dbPod.Resources.DefinitionID)
-		assert.True(t, p.checkSecretIDs(dbPod.Resources.SecretIDs, p.Resources.SecretIDs))
+		diff1, diff2 := utility.StringSliceSymmetricDifference(dbPod.Resources.SecretIDs, p.Resources.SecretIDs)
+		assert.Zero(t, diff1)
+		assert.Zero(t, diff2)
 	}
 
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
