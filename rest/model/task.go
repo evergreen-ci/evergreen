@@ -256,6 +256,9 @@ func (at *APITask) BuildFromService(t interface{}) error {
 
 		if v.ParentPatchID != "" {
 			at.Version = utility.ToStringPtr(v.ParentPatchID)
+			if v.ParentPatchNumber != 0 {
+				at.Order = v.ParentPatchNumber
+			}
 		}
 
 		if err := at.Details.BuildFromService(v.Details); err != nil {
