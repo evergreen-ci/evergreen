@@ -254,12 +254,6 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	if taskExecutionsAsString == "" {
-		return gimlet.ErrorResponse{
-			Message:    "task execution cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
 
 	// check if the task exists
 	t, err := task.FindOne(task.ById(h.taskId))
@@ -303,20 +297,27 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 		}
 	}
 
-	taskExecution, err := strconv.Atoi(taskExecutionsAsString)
-	if err != nil {
+	if h.annotation.TaskExecution == 0 && taskExecutionsAsString == "" {
 		return gimlet.ErrorResponse{
-			Message:    "cannot convert execution to integer value",
+			Message:    "task execution must be specified in the url or request body",
 			StatusCode: http.StatusBadRequest,
 		}
-	}
+	} else if taskExecutionsAsString != "" {
+		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    "cannot convert execution to integer value",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
 
-	if h.annotation.TaskExecution == 0 {
-		h.annotation.TaskExecution = taskExecution
-	} else if h.annotation.TaskExecution != taskExecution {
-		return gimlet.ErrorResponse{
-			Message:    "Task execution must equal the task execution specified in the annotation",
-			StatusCode: http.StatusBadRequest,
+		if h.annotation.TaskExecution == 0 {
+			h.annotation.TaskExecution = taskExecution
+		} else if taskExecution != 0 && h.annotation.TaskExecution != taskExecution {
+			return gimlet.ErrorResponse{
+				Message:    "Task execution must equal the task execution specified in the annotation",
+				StatusCode: http.StatusBadRequest,
+			}
 		}
 	}
 
