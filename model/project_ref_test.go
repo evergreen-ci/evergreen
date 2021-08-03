@@ -187,7 +187,7 @@ func TestGetActivationTimeForTask(t *testing.T) {
 		BuildVariants: []VersionBuildStatus{
 			{
 				BuildVariant:     "bv1",
-				ActivationStatus: ActivationStatus{Activated: true, ActivateAt: prevTime.Add(-1 * time.Hour)},
+				ActivationStatus: ActivationStatus{Activated: false, ActivateAt: prevTime.Add(-1 * time.Hour)},
 				BatchTimeTasks: []BatchTimeTaskStatus{
 					{
 						TaskName:         "myTask",
