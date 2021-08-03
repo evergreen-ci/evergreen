@@ -856,8 +856,7 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts:           defaultSort,
-		FieldsToProject: []string{task.DisplayNameKey},
+		Sorts: defaultSort,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
