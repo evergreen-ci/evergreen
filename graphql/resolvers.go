@@ -2895,8 +2895,6 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 type versionResolver struct{ *Resolver }
 
-// task status resolver for a version
-
 func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVersion) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
