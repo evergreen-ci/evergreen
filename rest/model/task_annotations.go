@@ -16,7 +16,7 @@ import (
 type APITaskAnnotation struct {
 	Id              *string         `bson:"_id" json:"id"`
 	TaskId          *string         `bson:"task_id" json:"task_id"`
-	TaskExecution   *int            `bson:"task_execution" json:"task_execution"`
+	TaskExecution   int             `bson:"task_execution" json:"task_execution"`
 	Metadata        *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty"`
 	Note            *APINote        `bson:"note,omitempty" json:"note,omitempty"`
 	Issues          []APIIssueLink  `bson:"issues,omitempty" json:"issues,omitempty"`
@@ -118,7 +118,7 @@ func APINoteToService(m *APINote) *annotations.Note {
 func APITaskAnnotationBuildFromService(t annotations.TaskAnnotation) *APITaskAnnotation {
 	m := APITaskAnnotation{}
 	m.Id = StringStringPtr(t.Id)
-	m.TaskExecution = &t.TaskExecution
+	m.TaskExecution = t.TaskExecution
 	m.TaskId = StringStringPtr(t.TaskId)
 	m.Metadata = t.Metadata
 	m.Issues = ArrtaskannotationsIssueLinkArrAPIIssueLink(t.Issues)
@@ -133,7 +133,7 @@ func APITaskAnnotationBuildFromService(t annotations.TaskAnnotation) *APITaskAnn
 func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation {
 	out := &annotations.TaskAnnotation{}
 	out.Id = StringPtrString(m.Id)
-	out.TaskExecution = *m.TaskExecution
+	out.TaskExecution = m.TaskExecution
 	out.TaskId = StringPtrString(m.TaskId)
 	out.Metadata = m.Metadata
 	out.Issues = ArrAPIIssueLinkArrtaskannotationsIssueLink(m.Issues)

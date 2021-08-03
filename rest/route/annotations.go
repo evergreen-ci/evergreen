@@ -165,7 +165,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 
 	if execution != "" && h.fetchAllExecutions == true {
 		return gimlet.ErrorResponse{
-			Message:    "fetchAllExecutions=true cannot be combined with execution={task_execution}",
+			Message:    "fetchAllExecutions=true cannot be combined with execution={execution}",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -247,7 +247,7 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.taskId = gimlet.GetVars(r)["task_id"]
-	taskExecutionsAsString := gimlet.GetVars(r)["task_execution"]
+	taskExecutionsAsString := gimlet.GetVars(r)["execution"]
 	if h.taskId == "" {
 		return gimlet.ErrorResponse{
 			Message:    "task ID cannot be empty",
@@ -260,14 +260,13 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	taskExec, err := strconv.Atoi(taskExecutionsAsString)
+	h.annotation.TaskExecution, err = strconv.Atoi(taskExecutionsAsString)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "cannot convert task execution to integer",
+			Message:    "cannot convert execution to integer value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	h.annotation.TaskExecution = &taskExec
 
 	// check if the task exists
 	t, err := task.FindOne(task.ById(h.taskId))
