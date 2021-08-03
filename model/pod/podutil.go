@@ -9,10 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO: for binaryName, check for pod OS
 const (
 	workingDir = "/data/mci"
-	binaryName = "evergreen"
 	shell      = "CMD-SHELL"
 )
 
@@ -29,8 +27,6 @@ const (
 // Assume CURL comes w/ container image (simplicity)
 
 // (curl -LO <some retry options> <evergreen S3 URL> || curl -LO <some retry options> <evergreen app URL>) && ./evergreen agent <agent args>
-
-// TODO: somewhere, put "CMD-SHELL"
 
 // CurlCommandWithRetry returns the command to curl the evergreen client and retries the request.
 func (p *Pod) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, maxRetrySecs int) (string, error) {
@@ -56,13 +52,12 @@ func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]str
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
 	}
+	var agentArgs string // TODO: write agent args
 	var curlCmd string
 	if !flags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
-		// Include -f to return an error code from curl if the HTTP request
-		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		curlCmd = fmt.Sprintf("(curl -fLO '%s'%s || curl -LO '%s'%s)", p.S3ClientURL(settings), curlArgs, p.ClientURL(settings), curlArgs)
+		curlCmd = fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s) && ./evergreen agent '%s", curlArgs, p.S3ClientURL(settings), curlArgs, p.ClientURL(settings), agentArgs)
 	} else {
 		curlCmd += fmt.Sprintf("curl -LO '%s'%s", p.ClientURL(settings), curlArgs)
 	}
@@ -70,7 +65,7 @@ func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]str
 		fmt.Sprintf("cd %s", workingDir),
 		shell,
 		curlCmd,
-		fmt.Sprintf("chmod +x %s", binaryName),
+		fmt.Sprintf("chmod +x %s", p.BinaryName()),
 	}, nil
 }
 
@@ -78,7 +73,7 @@ func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]str
 // will be assumed to be in the regular place.
 func (p *Pod) AgentCommand(settings *evergreen.Settings, executablePath string) []string {
 	if executablePath == "" {
-		executablePath = filepath.Join(workingDir, binaryName)
+		executablePath = filepath.Join(workingDir, p.BinaryName())
 	}
 
 	return []string{
@@ -126,7 +121,7 @@ func (p *Pod) BinaryName() string {
 
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (p *Pod) ExecutableSubPath() string {
-	return filepath.Join(string(p.TaskContainerCreationOpts.Arch), binaryName)
+	return filepath.Join(string(p.TaskContainerCreationOpts.Arch), p.BinaryName())
 }
 
 func curlRetryArgs(numRetries, maxSecs int) string {
