@@ -753,21 +753,31 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	if modifications.Action != Restart {
-		//do the same for child patches
-		p, err := patch.FindOneId(patchID)
-		if err != nil {
-			return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version for child patch %s: %s", patchID, err.Error()))
-		}
-		childPatchIds := []string{}
-		if p != nil {
-			childPatchIds = p.Triggers.ChildPatches
-		}
-		for _, childPatchId := range childPatchIds {
-			err = ModifyVersionHandler(ctx, dataConnector, childPatchId, modifications)
+	if version.Requester == evergreen.PatchVersionRequester || version.Requester == evergreen.GithubPRRequester {
+		// restart is handled through graphql because we need the user to specify
+		// which downstream tasks they want to restart
+		if modifications.Action != Restart {
+			//do the same for child patches
+			p, err := patch.FindOneId(patchID)
 			if err != nil {
-				return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
+				return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
 			}
+			if p == nil {
+				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch not found %s: %s", patchID, err.Error()))
+			}
+			if p.IsParent() {
+				childPatchIds := []string{}
+				if p != nil && err != nil {
+					childPatchIds = p.Triggers.ChildPatches
+				}
+				for _, childPatchId := range childPatchIds {
+					err = ModifyVersionHandler(ctx, dataConnector, childPatchId, modifications)
+					if err != nil {
+						return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
+					}
+				}
+			}
+
 		}
 	}
 
