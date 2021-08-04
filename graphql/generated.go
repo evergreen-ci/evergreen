@@ -314,6 +314,16 @@ type ComplexityRoot struct {
 		Versions            func(childComplexity int) int
 	}
 
+	Manifest struct {
+		Branch          func(childComplexity int) int
+		ID              func(childComplexity int) int
+		IsBase          func(childComplexity int) int
+		ModuleOverrides func(childComplexity int) int
+		Modules         func(childComplexity int) int
+		Project         func(childComplexity int) int
+		Revision        func(childComplexity int) int
+	}
+
 	Module struct {
 		Issue  func(childComplexity int) int
 		Module func(childComplexity int) int
@@ -788,6 +798,7 @@ type ComplexityRoot struct {
 		FinishTime        func(childComplexity int) int
 		Id                func(childComplexity int) int
 		IsPatch           func(childComplexity int) int
+		Manifest          func(childComplexity int) int
 		Message           func(childComplexity int) int
 		Order             func(childComplexity int) int
 		Parameters        func(childComplexity int) int
@@ -1006,6 +1017,7 @@ type VersionResolver interface {
 
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
+	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -2082,6 +2094,55 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.MainlineCommits.Versions(childComplexity), true
+
+	case "Manifest.branch":
+		if e.complexity.Manifest.Branch == nil {
+			break
+		}
+
+		return e.complexity.Manifest.Branch(childComplexity), true
+
+	case "Manifest.id":
+		if e.complexity.Manifest.ID == nil {
+			break
+		}
+
+		return e.complexity.Manifest.ID(childComplexity), true
+
+	case "Manifest.isBase":
+		if e.complexity.Manifest.IsBase == nil {
+			break
+		}
+
+		return e.complexity.Manifest.IsBase(childComplexity), true
+
+	case "Manifest.moduleOverrides":
+		if e.complexity.Manifest.ModuleOverrides == nil {
+			break
+		}
+
+		return e.complexity.Manifest.ModuleOverrides(childComplexity), true
+
+	case "Manifest.modules":
+		if e.complexity.Manifest.Modules == nil {
+			break
+		}
+
+		return e.complexity.Manifest.Modules(childComplexity), true
+
+	case "Manifest.project":
+		if e.complexity.Manifest.Project == nil {
+			break
+		}
+
+		return e.complexity.Manifest.Project(childComplexity), true
+
+	case "Manifest.revision":
+		if e.complexity.Manifest.Revision == nil {
+			break
+		}
+
+		return e.complexity.Manifest.Revision(childComplexity), true
 
 	case "Module.issue":
 		if e.complexity.Module.Issue == nil {
@@ -4744,6 +4805,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.IsPatch(childComplexity), true
 
+	case "Version.manifest":
+		if e.complexity.Version.Manifest == nil {
+			break
+		}
+
+		return e.complexity.Version.Manifest(childComplexity), true
+
 	case "Version.message":
 		if e.complexity.Version.Message == nil {
 			break
@@ -5203,6 +5271,17 @@ type Version {
   parameters: [Parameter!]!
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
+  manifest: Manifest
+}
+
+type Manifest {
+  id: String!
+  revision: String!
+  project: String!
+  branch: String!
+  isBase: Boolean!
+  moduleOverrides: StringMap
+  modules: Map
 }
 
 type VersionTiming {
@@ -6068,7 +6147,7 @@ type Source {
 scalar Time
 scalar Duration
 scalar StringMap
-`, BuiltIn: false},
+scalar Map`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -12362,6 +12441,238 @@ func (ec *executionContext) _MainlineCommits_versions(ctx context.Context, field
 	res := resTmp.([]*MainlineCommitVersion)
 	fc.Result = res
 	return ec.marshalNMainlineCommitVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommitVersionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Manifest_id(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Manifest",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Manifest_revision(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Manifest",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Revision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Manifest_project(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Manifest",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Project, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Manifest_branch(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Manifest",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Branch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Manifest_isBase(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Manifest",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsBase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Manifest_moduleOverrides(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Manifest",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ModuleOverrides, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]string)
+	fc.Result = res
+	return ec.marshalOStringMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Manifest_modules(ctx context.Context, field graphql.CollectedField, obj *Manifest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Manifest",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Modules, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Module_module(ctx context.Context, field graphql.CollectedField, obj *model.APIModule) (ret graphql.Marshaler) {
@@ -24456,6 +24767,37 @@ func (ec *executionContext) _Version_baseTaskStatuses(ctx context.Context, field
 	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_manifest(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Version",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().Manifest(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*Manifest)
+	fc.Result = res
+	return ec.marshalOManifest2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐManifest(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _VersionTiming_makespan(ctx context.Context, field graphql.CollectedField, obj *VersionTiming) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28233,6 +28575,57 @@ func (ec *executionContext) _MainlineCommits(ctx context.Context, sel ast.Select
 	return out
 }
 
+var manifestImplementors = []string{"Manifest"}
+
+func (ec *executionContext) _Manifest(ctx context.Context, sel ast.SelectionSet, obj *Manifest) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, manifestImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Manifest")
+		case "id":
+			out.Values[i] = ec._Manifest_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "revision":
+			out.Values[i] = ec._Manifest_revision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "project":
+			out.Values[i] = ec._Manifest_project(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "branch":
+			out.Values[i] = ec._Manifest_branch(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "isBase":
+			out.Values[i] = ec._Manifest_isBase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "moduleOverrides":
+			out.Values[i] = ec._Manifest_moduleOverrides(ctx, field, obj)
+		case "modules":
+			out.Values[i] = ec._Manifest_modules(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var moduleImplementors = []string{"Module"}
 
 func (ec *executionContext) _Module(ctx context.Context, sel ast.SelectionSet, obj *model.APIModule) graphql.Marshaler {
@@ -31402,6 +31795,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			})
+		case "manifest":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_manifest(ctx, field, obj)
 				return res
 			})
 		default:
@@ -34653,6 +35057,31 @@ func (ec *executionContext) marshalOMainlineCommits2ᚖgithubᚗcomᚋevergreen�
 	return ec._MainlineCommits(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOManifest2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐManifest(ctx context.Context, sel ast.SelectionSet, v Manifest) graphql.Marshaler {
+	return ec._Manifest(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOManifest2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐManifest(ctx context.Context, sel ast.SelectionSet, v *Manifest) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Manifest(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOMap2map(ctx context.Context, v interface{}) (map[string]interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+	return graphql.UnmarshalMap(v)
+}
+
+func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]interface{}) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalMap(v)
+}
+
 func (ec *executionContext) marshalOModule2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModuleᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIModule) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -35080,6 +35509,20 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalOString2string(ctx, sel, *v)
+}
+
+func (ec *executionContext) unmarshalOStringMap2map(ctx context.Context, v interface{}) (map[string]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	return UnmarshalStringMap(v)
+}
+
+func (ec *executionContext) marshalOStringMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return MarshalStringMap(v)
 }
 
 func (ec *executionContext) marshalOTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {
