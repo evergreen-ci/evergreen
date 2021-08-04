@@ -121,7 +121,7 @@ func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*co
 		}
 	}
 
-	return nil, errors.Errorf("cluster platform ('%s') and pod OS ('%s') must match", string(podOS), string(ecsConfig.Clusters[0].Platform))
+	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(podOS))
 }
 
 // ExportPodCreationOptions exports the ECS pod resources into cocoa.ECSPodExecutionOptions.
