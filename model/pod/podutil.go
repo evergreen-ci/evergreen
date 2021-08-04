@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	workingDir = "/data/mci"
+	executable = "./evergreen"
 	shell      = "CMD-SHELL"
 )
 
@@ -19,14 +19,6 @@ const (
 	curlDefaultNumRetries = 10
 	curlDefaultMaxSecs    = 100
 )
-
-///////////////////////////////////////////////////////////////////////////
-// BIG TODO: build shell script that downloads + runs agent
-// - download agent + start it inside of container working directory
-// TODO: CURL command to download agent
-// Assume CURL comes w/ container image (simplicity)
-
-// (curl -LO <some retry options> <evergreen S3 URL> || curl -LO <some retry options> <evergreen app URL>) && ./evergreen agent <agent args>
 
 // CurlCommandWithRetry returns the command to curl the evergreen client and retries the request.
 func (p *Pod) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, maxRetrySecs int) (string, error) {
@@ -52,39 +44,37 @@ func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]str
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
 	}
-	var agentArgs string // TODO: write agent args
+
 	var curlCmd string
-	if !flags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
+	if !flags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
-		curlCmd = fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s) && ./evergreen agent '%s", curlArgs, p.S3ClientURL(settings), curlArgs, p.ClientURL(settings), agentArgs)
+		curlCmd = fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s)", curlArgs, p.S3ClientURL(settings), curlArgs, p.ClientURL(settings))
 	} else {
 		curlCmd += fmt.Sprintf("curl -LO '%s'%s", p.ClientURL(settings), curlArgs)
 	}
+
+	agentCmd := strings.Join(p.AgentCommand(settings), " ")
+
 	return []string{
-		fmt.Sprintf("cd %s", workingDir),
 		shell,
 		curlCmd,
+		agentCmd,
 		fmt.Sprintf("chmod +x %s", p.BinaryName()),
 	}, nil
 }
 
-// AgentCommand returns the arguments to start the agent. If executablePath is not specified, it
-// will be assumed to be in the regular place.
-func (p *Pod) AgentCommand(settings *evergreen.Settings, executablePath string) []string {
-	if executablePath == "" {
-		executablePath = filepath.Join(workingDir, p.BinaryName())
-	}
-
+// AgentCommand returns the arguments to start the agent.
+func (p *Pod) AgentCommand(settings *evergreen.Settings) []string {
 	return []string{
-		executablePath,
+		executable,
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
 		fmt.Sprintf("--mode=pod"),
 		fmt.Sprintf("--pod_id=%s", p.ID),
 		fmt.Sprintf("pod_secret=%s", p.Secret),
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(workingDir, "agent")),
-		fmt.Sprintf("--working_directory=%s", workingDir),
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(p.TaskContainerCreationOpts.WorkingDir, "agent")),
+		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
 		"--cleanup",
 	}
 }
@@ -103,8 +93,7 @@ func (p *Pod) ClientURL(settings *evergreen.Settings) string {
 // retrieved for this server's particular Evergreen build version.
 func (p *Pod) S3ClientURL(settings *evergreen.Settings) string {
 	return strings.Join([]string{
-		// TODO (EVG-15165): Add admin setting for S3 base URL for pod
-		strings.TrimSuffix(settings.HostInit.S3BaseURL, "/"),
+		strings.TrimSuffix(settings.PodInit.S3BaseURL, "/"),
 		evergreen.BuildRevision,
 		p.ExecutableSubPath(),
 	}, "/")

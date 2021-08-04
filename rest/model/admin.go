@@ -74,6 +74,7 @@ type APIAdminSettings struct {
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
+	PodInit             *APIPodInitConfig                 `json:"podinit,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
@@ -882,6 +883,26 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 		CloudStatusBatchSize: a.CloudStatusBatchSize,
 		MaxTotalDynamicHosts: a.MaxTotalDynamicHosts,
 		S3BaseURL:            utility.FromStringPtr(a.S3BaseURL),
+	}, nil
+}
+
+type APIPodInitConfig struct {
+	S3BaseURL *string `json:"s3_base_url"`
+}
+
+func (a *APIPodInitConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.PodInitConfig:
+		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIPodInitConfig) ToService() (interface{}, error) {
+	return evergreen.PodInitConfig{
+		S3BaseURL: utility.FromStringPtr(a.S3BaseURL),
 	}, nil
 }
 

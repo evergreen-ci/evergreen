@@ -9,6 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const workingDir = "/data/mci"
+
+// (curl -LO <some retry options> <evergreen S3 URL> || curl -LO <some retry options> <evergreen app URL>) && ./evergreen agent <agent args>
+
 func TestCurlCommandWithRetry(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, p *Pod, settings *evergreen.Settings){
 		"WithoutS3Linux": func(t *testing.T, p *Pod, settings *evergreen.Settings) {
@@ -19,11 +23,12 @@ func TestCurlCommandWithRetry(t *testing.T) {
 			p = &Pod{
 				ID: utility.RandomString(),
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
-					Image:    "image",
-					MemoryMB: 128,
-					CPU:      128,
-					OS:       OSLinux,
-					Arch:     ArchARM64,
+					Image:      "image",
+					MemoryMB:   128,
+					CPU:        128,
+					OS:         OSLinux,
+					Arch:       ArchARM64,
+					WorkingDir: workingDir,
 				},
 				Resources: ResourceInfo{
 					Cluster: "cluster",
@@ -32,7 +37,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 			cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
-			// TODO: are retry options before or after URL? 
+			// TODO: are retry options before or after URL?
 			expected := "cd /data/mci && CMD-SHELL && curl -LO --retry 5 --retry-max-time 10 'www.test.com/clients/windows_amd64/evergreen.exe' && ./evergreen agent <agent args>"
 			// TODO: continue with this mysteriously long command
 			assert.Equal(t, expected, cmd)
@@ -62,11 +67,12 @@ func TestCurlCommandWithDefaulRetry(t *testing.T) {
 			p = &Pod{
 				ID: utility.RandomString(),
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
-					Image:    "image",
-					MemoryMB: 128,
-					CPU:      128,
-					OS:       OSLinux,
-					Arch:     ArchARM64,
+					Image:      "image",
+					MemoryMB:   128,
+					CPU:        128,
+					OS:         OSLinux,
+					Arch:       ArchARM64,
+					WorkingDir: workingDir,
 				},
 				Resources: ResourceInfo{
 					Cluster: "cluster",
