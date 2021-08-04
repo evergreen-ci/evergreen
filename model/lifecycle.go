@@ -868,6 +868,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		if !createAll && !utility.StringSliceContains(displayNames, dt.Name) {
 			// this display task already exists, but may need to be updated
 			execTaskIds := []string{}
+			displayTaskActivated := false
 			for _, et := range dt.ExecTasks {
 				execTaskId := execTable.GetId(b.BuildVariant, et)
 				if execTaskId == "" {
@@ -883,8 +884,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 					continue
 				}
 				execTaskIds = append(execTaskIds, execTaskId)
+				if execTask, ok := taskMap[execTaskId]; ok && execTask.Activated {
+					displayTaskActivated = true
+				}
 			}
-			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds), message.Fields{
+			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds, displayTaskActivated), message.Fields{
 				"message":      "problem adding exec tasks to display tasks",
 				"exec_tasks":   execTaskIds,
 				"display_task": dt.Name,
