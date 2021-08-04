@@ -1570,3 +1570,106 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 		}
 	}
 }
+
+func TestMergeMultipleProjectConfigs(t *testing.T) {
+	mainYaml := `
+include: 
+  - filename: small.yml
+    module: something_different
+post:
+  - command: command_number_1
+tasks:
+  - name: my_task
+    commands:
+      - func: main_function
+functions:
+  main_function:
+    command: definition_1
+modules:
+- name: "something_different"
+  repo: "git@github.com:foo/bar.git"
+  prefix: "src/third_party"
+  branch: "master"
+ignore:
+  - "*.md"
+  - "scripts/*"
+`
+	smallYaml := `
+stepback: true
+tasks:
+  - name: small_task
+    commands:
+      - func: small_function
+functions:
+  small_function:
+    command: definition_3
+ignore:
+  - ".github/*"
+`
+
+	p1, err := createIntermediateProject([]byte(mainYaml))
+	assert.NoError(t, err)
+	assert.NotNil(t, p1)
+	p2, err := createIntermediateProject([]byte(smallYaml))
+	assert.NoError(t, err)
+	assert.NotNil(t, p2)
+	mergedProject, err := mergeMultipleProjectConfigs(p1, p2)
+	assert.NoError(t, err)
+	assert.NotNil(t, mergedProject)
+	assert.Equal(t, len(mergedProject.Functions), 2)
+	assert.Equal(t, len(mergedProject.Tasks), 2)
+	assert.Equal(t, len(mergedProject.Ignore), 3)
+	assert.Equal(t, mergedProject.Stepback, boolPtr(true))
+	assert.NotEqual(t, mergedProject.Post, nil)
+}
+
+func TestMergeMultipleProjectConfigsBuildVariant(t *testing.T) {
+	mainYaml := `
+include: 
+  - filename: small.yml
+buildvariants:
+  - name: bv1
+    display_name: bv1_display
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: task1
+`
+	succeed := `
+buildvariants:
+  - name: bv1
+    tasks:
+      - name: task2
+  - name: bv2
+    display_name: bv2_display
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: task3
+`
+
+	fail := `
+buildvariants:
+  - name: bv1
+    display_name: bv1_display
+    tasks:
+      - name: task3
+`
+
+	p1, err := createIntermediateProject([]byte(mainYaml))
+	assert.NoError(t, err)
+	assert.NotNil(t, p1)
+	p2, err := createIntermediateProject([]byte(succeed))
+	assert.NoError(t, err)
+	assert.NotNil(t, p2)
+	p3, err := createIntermediateProject([]byte(fail))
+	assert.NoError(t, err)
+	assert.NotNil(t, p3)
+	mergedProject, err := mergeMultipleProjectConfigs(p1, p2)
+	assert.NoError(t, err)
+	assert.NotNil(t, mergedProject)
+	assert.Equal(t, len(mergedProject.BuildVariants), 2)
+	assert.Equal(t, len(mergedProject.BuildVariants[0].Tasks), 2)
+	_, err = mergeMultipleProjectConfigs(p1, p3)
+	assert.Error(t, err)
+}

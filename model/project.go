@@ -575,6 +575,20 @@ func (o *LogOpts) IsValid() error {
 	return catcher.Resolve()
 }
 
+// also does not work
+func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
+	for _, log := range add.Agent {
+		main.Agent = append(main.Agent, log)
+	}
+	for _, log := range add.System {
+		main.System = append(main.System, log)
+	}
+	for _, log := range add.Task {
+		main.Task = append(main.Task, log)
+	}
+	return main
+}
+
 const (
 	EvergreenLogSender   = "evergreen"
 	FileLogSender        = "file"

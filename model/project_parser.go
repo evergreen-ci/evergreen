@@ -367,6 +367,28 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+func (pbv *parserBV) canMerge() bool {
+	return pbv.Name != "" &&
+		len(pbv.Tasks) != 0 &&
+		pbv.DisplayName == "" &&
+		pbv.Expansions == nil &&
+		pbv.Tags == nil &&
+		pbv.Modules == nil &&
+		!pbv.Disabled &&
+		!pbv.Push &&
+		pbv.BatchTime == nil &&
+		pbv.CronBatchTime == "" &&
+		pbv.Stepback == nil &&
+		pbv.RunOn == nil &&
+		pbv.DisplayTasks == nil &&
+		pbv.DependsOn == nil &&
+		pbv.Activate == nil &&
+		pbv.MatrixId == "" &&
+		pbv.MatrixVal == nil &&
+		pbv.Matrix == nil &&
+		pbv.MatrixRules == nil
+}
+
 // parserBVTaskUnit is a helper type storing intermediary variant task configurations.
 type parserBVTaskUnit struct {
 	Name             string             `yaml:"name,omitempty" bson:"name,omitempty"`
@@ -462,6 +484,13 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	}
 	*pss = slice
 	return nil
+}
+
+func mergeParserStringSlice(main, add parserStringSlice) parserStringSlice {
+	for _, str := range add {
+		main = append(main, str)
+	}
+	return main
 }
 
 // LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
@@ -1050,4 +1079,200 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 		}
 	}
 	return newDeps, evalErrs
+}
+
+func mergeMultipleProjectConfigs(pp1, pp2 *ParserProject) (*ParserProject, error) {
+	catcher := grip.NewBasicCatcher()
+
+	// Unordered list, consider naming conflict
+	taskNameExist := map[string]bool{}
+	for _, task := range pp1.Tasks {
+		taskNameExist[task.Name] = true
+	}
+	for _, task := range pp2.Tasks {
+		if _, ok := taskNameExist[task.Name]; ok {
+			catcher.Add(errors.Errorf("task '%s' has been declared already", task.Name))
+		} else {
+			pp1.Tasks = append(pp1.Tasks, task)
+			taskNameExist[task.Name] = true
+		}
+	}
+
+	taskGroupNameExist := map[string]bool{}
+	for _, taskGroup := range pp1.TaskGroups {
+		taskGroupNameExist[taskGroup.Name] = true
+	}
+	for _, taskGroup := range pp2.TaskGroups {
+		if _, ok := taskGroupNameExist[taskGroup.Name]; ok {
+			catcher.Add(errors.Errorf("taskGroup '%s' has been declared already", taskGroup.Name))
+		} else {
+			pp1.TaskGroups = append(pp1.TaskGroups, taskGroup)
+			taskGroupNameExist[taskGroup.Name] = true
+		}
+	}
+
+	parameterKeyExist := map[string]bool{}
+	for _, parameter := range pp1.Parameters {
+		parameterKeyExist[parameter.Key] = true
+	}
+	for _, parameter := range pp2.Parameters {
+		if _, ok := parameterKeyExist[parameter.Key]; ok {
+			catcher.Add(errors.Errorf("parameter key '%s' has been declared already", parameter.Key))
+		} else {
+			pp1.Parameters = append(pp1.Parameters, parameter)
+			parameterKeyExist[parameter.Key] = true
+		}
+	}
+
+	moduleExist := map[string]bool{}
+	for _, module := range pp1.Modules {
+		moduleExist[module.Name] = true
+	}
+	for _, module := range pp2.Modules {
+		if _, ok := moduleExist[module.Name]; ok {
+			catcher.Add(errors.Errorf("module '%s' has been declared already", module.Name))
+		} else {
+			pp1.Modules = append(pp1.Modules, module)
+			moduleExist[module.Name] = true
+		}
+	}
+
+	for key, val := range pp2.Functions {
+		if _, ok := pp1.Functions[key]; ok {
+			catcher.Add(errors.Errorf("function '%s' has been declared already", key))
+		} else {
+			pp1.Functions[key] = val
+		}
+	}
+	// Unordered list, don't consider naming conflict
+	pp1.Ignore = mergeParserStringSlice(pp1.Ignore, pp2.Ignore)
+	// for _, log := range pp2.Loggers.Agent {
+	// 	pp1.Loggers.Agent = append(pp1.Loggers.Agent, log)
+	// }
+	// pp1.Loggers.Agent = append(pp1.Loggers.Agent, pp2.Loggers.Agent...)
+
+	// not sure why this doesn't work
+	// pp1.Loggers = mergeAllLogs(pp1.Loggers, pp2.Loggers)
+
+	// Ordered list, cannot be defined for more than one yaml
+	if pp1.Pre != nil && pp2.Pre != nil {
+		catcher.Add(errors.New("pre can only be defined in one yaml"))
+	} else {
+		if pp2.Pre != nil {
+			pp1.Pre = pp2.Pre
+		}
+	}
+
+	if pp1.Post != nil && pp2.Post != nil {
+		catcher.Add(errors.New("post can only be defined in one yaml"))
+	} else {
+		if pp2.Post != nil {
+			pp1.Post = pp2.Post
+		}
+	}
+
+	if pp1.Timeout != nil && pp2.Timeout != nil {
+		catcher.Add(errors.New("timeout can only be defined in one yaml"))
+	} else {
+		if pp2.Timeout != nil {
+			pp1.Timeout = pp2.Timeout
+		}
+	}
+
+	if pp1.EarlyTermination != nil && pp2.EarlyTermination != nil {
+		catcher.Add(errors.New("earlyTermination can only be defined in one yaml"))
+	} else {
+		if pp2.EarlyTermination != nil {
+			pp1.EarlyTermination = pp2.EarlyTermination
+		}
+	}
+
+	// Non-list, cannot be defined for more than one yaml
+	if pp1.Stepback != nil && pp2.Stepback != nil {
+		catcher.Add(errors.New("stepback can only be defined in one yaml"))
+	} else {
+		if pp2.Stepback != nil {
+			pp1.Stepback = pp2.Stepback
+		}
+	}
+
+	if pp1.BatchTime != nil && pp2.Stepback != nil {
+		catcher.Add(errors.New("batchTime can only be defined in one yaml"))
+	} else {
+		if pp2.BatchTime != nil {
+			pp1.BatchTime = pp2.BatchTime
+		}
+	}
+
+	if pp1.OomTracker != nil && pp2.OomTracker != nil {
+		catcher.Add(errors.New("oomTracker can only be defined in one yaml"))
+	} else {
+		if pp2.OomTracker != nil {
+			pp1.OomTracker = pp2.OomTracker
+		}
+	}
+
+	if pp1.DisplayName != nil && pp2.DisplayName != nil {
+		catcher.Add(errors.New("displayName can only be defined in one yaml"))
+	} else {
+		if pp2.DisplayName != nil {
+			pp1.DisplayName = pp2.DisplayName
+		}
+	}
+
+	if pp1.CommandType != nil && pp2.CommandType != nil {
+		catcher.Add(errors.New("commandType can only be defined in one yaml"))
+	} else {
+		if pp2.CommandType != nil {
+			pp1.CommandType = pp2.CommandType
+		}
+	}
+
+	if pp1.CallbackTimeout != nil && pp2.CallbackTimeout != nil {
+		catcher.Add(errors.New("callbackTimeout can only be defined in one yaml"))
+	} else {
+		if pp2.CallbackTimeout != nil {
+			pp1.CallbackTimeout = pp2.CallbackTimeout
+		}
+	}
+
+	if pp1.ExecTimeoutSecs != nil && pp2.ExecTimeoutSecs != nil {
+		catcher.Add(errors.New("execTimeoutSecs can only be defined in one yaml"))
+	} else {
+		if pp2.ExecTimeoutSecs != nil {
+			pp1.ExecTimeoutSecs = pp2.ExecTimeoutSecs
+		}
+	}
+
+	bvs := map[string]*parserBV{}
+	for _, bv := range pp1.BuildVariants {
+		bvs[bv.Name] = &bv
+	}
+	for _, bv := range pp2.BuildVariants {
+		if _, ok := bvs[bv.Name]; ok {
+			if !bv.canMerge() {
+				catcher.Add(errors.Errorf("buildVariant '%s' has been declared already", bv.Name))
+			} else {
+				bvs[bv.Name].Tasks = append(bvs[bv.Name].Tasks, bv.Tasks...)
+				bvs[bv.Name].DisplayTasks = append(bvs[bv.Name].DisplayTasks, bv.DisplayTasks...)
+			}
+		} else {
+			pp1.BuildVariants = append(pp1.BuildVariants, bv)
+			bvs[bv.Name] = &bv
+		}
+	}
+	pp1.BuildVariants = make([]parserBV, 0, len(bvs))
+	for _, bv := range bvs {
+		pp1.BuildVariants = append(pp1.BuildVariants, *bv)
+	}
+
+	if pp1.Axes != nil && pp2.Axes != nil {
+		catcher.Add(errors.New("matrixes can only be defined in one yaml"))
+	} else {
+		if pp2.Axes != nil {
+			pp1.Axes = pp2.Axes
+		}
+	}
+
+	return pp1, errors.Wrap(catcher.Resolve(), "error merging project configs")
 }
