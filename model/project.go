@@ -575,16 +575,15 @@ func (o *LogOpts) IsValid() error {
 	return catcher.Resolve()
 }
 
-// also does not work
 func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
-	for _, log := range add.Agent {
-		main.Agent = append(main.Agent, log)
-	}
-	for _, log := range add.System {
-		main.System = append(main.System, log)
-	}
-	for _, log := range add.Task {
-		main.Task = append(main.Task, log)
+	if main == nil {
+		return add
+	} else if add == nil {
+		return main
+	} else {
+		main.Agent = append(main.Agent, add.Agent...)
+		main.System = append(main.System, add.System...)
+		main.Task = append(main.Task, add.Task...)
 	}
 	return main
 }

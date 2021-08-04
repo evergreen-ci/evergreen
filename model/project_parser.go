@@ -1146,13 +1146,7 @@ func mergeMultipleProjectConfigs(pp1, pp2 *ParserProject) (*ParserProject, error
 	}
 	// Unordered list, don't consider naming conflict
 	pp1.Ignore = mergeParserStringSlice(pp1.Ignore, pp2.Ignore)
-	// for _, log := range pp2.Loggers.Agent {
-	// 	pp1.Loggers.Agent = append(pp1.Loggers.Agent, log)
-	// }
-	// pp1.Loggers.Agent = append(pp1.Loggers.Agent, pp2.Loggers.Agent...)
-
-	// not sure why this doesn't work
-	// pp1.Loggers = mergeAllLogs(pp1.Loggers, pp2.Loggers)
+	pp1.Loggers = mergeAllLogs(pp1.Loggers, pp2.Loggers)
 
 	// Ordered list, cannot be defined for more than one yaml
 	if pp1.Pre != nil && pp2.Pre != nil {
