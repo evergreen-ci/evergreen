@@ -2898,7 +2898,10 @@ type versionResolver struct{ *Resolver }
 func (r *versionResolver) Manifest(ctx context.Context, v *restModel.APIVersion) (*Manifest, error) {
 	m, err := manifest.FindFromVersion(*v.Id, *v.Project, *v.Revision, *v.Requester)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding manifest for version %s : %s", *v.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching manifest for version %s : %s", *v.Id, err.Error()))
+	}
+	if m == nil {
+		return nil, nil
 	}
 	versionManifest := Manifest{
 		ID:              m.Id,
