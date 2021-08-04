@@ -1170,6 +1170,17 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	return projectRefs, nil
 }
 
+func GetProjectSettingsEventById(projectId string) (*ProjectSettingsEvent, error) {
+	pRef, err := FindOneProjectRef(projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding project ref")
+	}
+	if pRef == nil {
+		return nil, errors.Errorf("couldn't find project ref")
+	}
+	return GetProjectSettingsEvents(pRef)
+}
+
 func GetProjectSettingsEvents(p *ProjectRef) (*ProjectSettingsEvent, error) {
 	hook, err := FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
@@ -1304,55 +1315,126 @@ func (projectRef *ProjectRef) Upsert() error {
 	return err
 }
 
+// if projectSettings aren't given, default the section to the repo
+func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRefSection) (bool, error) {
+	if p == nil {
+		p = &ProjectRef{} // use a blank project ref to default the section to repo
+	}
+	var err error
+	switch section {
+	case ProjectRefGeneralSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					ProjectRefEnabledKey:                 p.Enabled,
+					ProjectRefBatchTimeKey:               p.BatchTime,
+					ProjectRefRemotePathKey:              p.RemotePath,
+					projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
+					projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+					ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
+					projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
+					projectRefDefaultLoggerKey:           p.DefaultLogger,
+					projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
+					projectRefPatchingDisabledKey:        p.PatchingDisabled,
+					projectRefTaskSyncKey:                p.TaskSync,
+					ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
+					ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
+				},
+			})
+	case ProjectRefAccessSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					ProjectRefPrivateKey:    p.Private,
+					ProjectRefRestrictedKey: p.Restricted,
+					ProjectRefAdminsKey:     p.Admins,
+				},
+			})
+	case ProjectRefGithubAndCQSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefPRTestingEnabledKey:      p.PRTestingEnabled,
+					projectRefGithubChecksEnabledKey:   p.GithubChecksEnabled,
+					projectRefGithubTriggerAliasesKey:  p.PatchTriggerAliases,
+					projectRefGitTagVersionsEnabledKey: p.GitTagVersionsEnabled,
+					ProjectRefGitTagAuthorizedUsersKey: p.GitTagAuthorizedUsers,
+					ProjectRefGitTagAuthorizedTeamsKey: p.GitTagAuthorizedTeams,
+					projectRefCommitQueueKey:           p.CommitQueue,
+				},
+			})
+	case ProjectRefNotificationsSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{projectRefNotifyOnFailureKey: p.NotifyOnBuildFailure},
+			})
+	case ProjectRefWorkstationsSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{projectRefWorkstationConfigKey: p.WorkstationConfig},
+			})
+	case ProjectRefTriggersSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefTriggersKey: p.Triggers,
+				},
+			})
+	case ProjectRefAliasSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefPatchTriggerAliasesKey: p.PatchTriggerAliases,
+				},
+			})
+	case ProjectRefPeriodicBuildsSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
+			})
+	case ProjectRefVariablesSection:
+		// this section doesn't modify the project ref
+		return false, nil
+	default:
+		return false, errors.Errorf("invalid section")
+	}
+
+	if err != nil {
+		return false, errors.Wrapf(err, "error defaulting to repo for section '%s'", ProjectRefGithubAndCQSection)
+	}
+	return true, nil
+}
+
 // DefaultSectionToRepo modifies a subset of the project ref to use the repo values instead.
 // This subset is based on the pages used in Spruce.
-func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, userId string) error {
-	before, err := GetProjectSettingsEvents(p)
+// If project settings aren't given, we should assume we're defaulting to repo and we need
+// to create our own project settings event  after completing the update.
+func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId string) error {
+	before, err := GetProjectSettingsEventById(projectId)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
 
+	modified, err := saveProjectRefForSection(projectId, nil, section)
+	if err != nil {
+		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
+	}
+
+	// Handle sections that modify collections outside of the project ref.
+	// Handle errors at the end so that we can still log the project as modified, if applicable.
+	catcher := grip.NewBasicCatcher()
 	switch section {
-	// check if the sections cover all the settings
-	case ProjectRefGeneralSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: p.Id},
-			bson.M{
-				"$unset": bson.M{
-					ProjectRefEnabledKey:                 1,
-					ProjectRefBatchTimeKey:               1,
-					ProjectRefRemotePathKey:              1,
-					projectRefSpawnHostScriptPathKey:     1,
-					projectRefDispatchingDisabledKey:     1,
-					ProjectRefDeactivatePreviousKey:      1,
-					projectRefRepotrackerDisabledKey:     1,
-					projectRefDefaultLoggerKey:           1,
-					projectRefCedarTestResultsEnabledKey: 1,
-					projectRefPatchingDisabledKey:        1,
-					projectRefTaskSyncKey:                1,
-					ProjectRefDisabledStatsCacheKey:      1,
-					ProjectRefFilesIgnoredFromCacheKey:   1,
-				},
-			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
-	case ProjectRefAccessSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: p.Id},
-			bson.M{
-				"$unset": bson.M{
-					ProjectRefPrivateKey:    1,
-					ProjectRefRestrictedKey: 1,
-					ProjectRefAdminsKey:     1,
-				},
-			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
 	case ProjectRefVariablesSection:
 		err = db.Update(ProjectVarsCollection,
-			bson.M{ProjectRefIdKey: p.Id},
+			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$unset": bson.M{
 					projectVarsMapKey:    1,
@@ -1360,27 +1442,9 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, userId stri
 					restrictedVarsMapKey: 1,
 				},
 			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
+
+		catcher.Wrapf(err, "error defaulting to repo for section '%s'", section)
 	case ProjectRefGithubAndCQSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: p.Id},
-			bson.M{
-				"$unset": bson.M{
-					projectRefPRTestingEnabledKey:      1,
-					projectRefGithubChecksEnabledKey:   1,
-					projectRefGithubTriggerAliasesKey:  1,
-					projectRefGitTagVersionsEnabledKey: 1,
-					ProjectRefGitTagAuthorizedUsersKey: 1,
-					ProjectRefGitTagAuthorizedTeamsKey: 1,
-					projectRefCommitQueueKey:           1,
-				},
-			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
-		catcher := grip.NewBasicCatcher()
 		for _, a := range before.Aliases {
 			// remove only internal aliases
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
@@ -1389,28 +1453,13 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, userId stri
 		}
 		if catcher.HasErrors() {
 			// log the changes before returning whatever errors were caught
-			_ = getAndLogProjectModified(p.Id, userId, before)
+			_ = getAndLogProjectModified(projectId, userId, before)
 			return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
 		}
-
 	case ProjectRefNotificationsSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: p.Id},
-			bson.M{
-				"$unset": bson.M{projectRefNotifyOnFailureKey: 1},
-			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
 		// handle subscriptions
-		catcher := grip.NewBasicCatcher()
 		for _, sub := range before.Subscriptions {
 			catcher.Add(event.RemoveSubscription(sub.ID))
-		}
-		if catcher.HasErrors() {
-			// log the changes before returning whatever errors were caught
-			_ = getAndLogProjectModified(p.Id, userId, before)
-			return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
 		}
 	case ProjectRefAliasSection:
 		catcher := grip.NewBasicCatcher()
@@ -1420,62 +1469,20 @@ func (p *ProjectRef) DefaultSectionToRepo(section ProjectRefSection, userId stri
 				catcher.Add(RemoveProjectAlias(a.ID.Hex()))
 			}
 		}
-		if catcher.HasErrors() {
-			// log any changes before returning whatever errors were caught
-			_ = getAndLogProjectModified(p.Id, userId, before)
-			return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
-		}
-	case ProjectRefWorkstationsSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: p.Id},
-			bson.M{
-				"$unset": bson.M{projectRefWorkstationConfigKey: 1},
-			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
-	case ProjectRefTriggersSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: p.Id},
-			bson.M{
-				"$unset": bson.M{
-					projectRefTriggersKey:            1,
-					projectRefPatchTriggerAliasesKey: 1, // is this where we decided patch trigger aliases would go?
-				},
-			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
-	case ProjectRefPeriodicBuildsSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: p.Id},
-			bson.M{
-				"$unset": bson.M{projectRefPeriodicBuildsKey: 1},
-			})
-		if err != nil {
-			return errors.Wrapf(err, "error defaulting to repo for section '%s'", section)
-		}
-	default:
-		return errors.Errorf("invalid section '%s'", section)
+	}
+	if modified {
+		_ = getAndLogProjectModified(projectId, userId, before)
 	}
 
-	return getAndLogProjectModified(p.Id, userId, before)
+	return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
 }
 
 func getAndLogProjectModified(id, userId string, before *ProjectSettingsEvent) error {
-	p, err := FindOneProjectRef(id)
-	if err != nil {
-		return errors.Wrapf(err, "error getting new project ref")
-	}
-	if p == nil {
-		return errors.Errorf("project ref '%s' not found", id)
-	}
-	// still modify the project as logged before erroring
-	after, err := GetProjectSettingsEvents(p)
+	after, err := GetProjectSettingsEventById(id)
 	if err != nil {
 		return errors.Wrap(err, "error getting after project settings event")
 	}
-	return errors.Wrapf(LogProjectModified(p.Id, userId, before, after), "error logging project modified")
+	return errors.Wrapf(LogProjectModified(id, userId, before, after), "error logging project modified")
 }
 
 // getBatchTimeForVariant returns the Batch Time to be used for this variant

@@ -265,11 +265,11 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 }
 
 func TestDefaultRepoBySection(t *testing.T) {
-	for name, test := range map[string]func(t *testing.T, p ProjectRef){
-		ProjectRefGeneralSection: func(t *testing.T, p ProjectRef) {
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefGeneralSection, "me"))
+	for name, test := range map[string]func(t *testing.T, id string){
+		ProjectRefGeneralSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefGeneralSection, "me"))
 
-			pRefFromDb, err := FindOneProjectRef(p.Id)
+			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Equal(t, pRefFromDb.BatchTime, 0)
@@ -279,20 +279,20 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.TaskSync.ConfigEnabled)
 			assert.Nil(t, pRefFromDb.FilesIgnoredFromCache)
 		},
-		ProjectRefAccessSection: func(t *testing.T, p ProjectRef) {
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefAccessSection, "me"))
+		ProjectRefAccessSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefAccessSection, "me"))
 
-			pRefFromDb, err := FindOneProjectRef(p.Id)
+			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.Private)
 			assert.Nil(t, pRefFromDb.Restricted)
 			assert.Nil(t, pRefFromDb.Admins)
 		},
-		ProjectRefVariablesSection: func(t *testing.T, p ProjectRef) {
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefVariablesSection, "me"))
+		ProjectRefVariablesSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefVariablesSection, "me"))
 
-			varsFromDb, err := FindOneProjectVars(p.Id)
+			varsFromDb, err := FindOneProjectVars(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
 			assert.Nil(t, varsFromDb.Vars)
@@ -300,19 +300,19 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, varsFromDb.RestrictedVars)
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
-		ProjectRefGithubAndCQSection: func(t *testing.T, p ProjectRef) {
-			aliases, err := FindAliasesForProject(p.Id)
+		ProjectRefGithubAndCQSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefGithubAndCQSection, "me"))
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefGithubAndCQSection, "me"))
 
-			pRefFromDb, err := FindOneProjectRef(p.Id)
+			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
 			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
-			aliases, err = FindAliasesForProject(p.Id)
+			aliases, err = FindAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			// assert that only patch aliases are left
@@ -320,20 +320,25 @@ func TestDefaultRepoBySection(t *testing.T) {
 				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
 			}
 		},
-		ProjectRefNotificationsSection: func(t *testing.T, p ProjectRef) {
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefNotificationsSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(p.Id)
+		ProjectRefNotificationsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefNotificationsSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
 		},
-		ProjectRefAliasSection: func(t *testing.T, p ProjectRef) {
-			aliases, err := FindAliasesForProject(p.Id)
+		ProjectRefAliasSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefAliasSection, "me"))
-			aliases, err = FindAliasesForProject(p.Id)
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefAliasSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
+
+			aliases, err = FindAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 4)
 			// assert that no patch aliases are left
@@ -341,25 +346,24 @@ func TestDefaultRepoBySection(t *testing.T) {
 				assert.Contains(t, evergreen.InternalAliases, a.Alias)
 			}
 		},
-		ProjectRefTriggersSection: func(t *testing.T, p ProjectRef) {
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefTriggersSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(p.Id)
+		ProjectRefTriggersSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefTriggersSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.Triggers)
-			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
 		},
-		ProjectRefWorkstationsSection: func(t *testing.T, p ProjectRef) {
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefWorkstationsSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(p.Id)
+		ProjectRefWorkstationsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefWorkstationsSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.GitClone)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.SetupCommands)
 		},
-		ProjectRefPeriodicBuildsSection: func(t *testing.T, p ProjectRef) {
-			assert.NoError(t, p.DefaultSectionToRepo(ProjectRefPeriodicBuildsSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(p.Id)
+		ProjectRefPeriodicBuildsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefPeriodicBuildsSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PeriodicBuilds)
@@ -455,7 +459,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			for _, a := range aliases {
 				assert.NoError(t, a.Upsert())
 			}
-			test(t, pRef)
+			test(t, pRef.Id)
 		})
 	}
 }
