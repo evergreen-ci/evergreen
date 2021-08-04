@@ -1911,7 +1911,7 @@ func (t *Task) Archive() error {
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
-			"$unset": bson.M{AbortedKey: "", AbortInfoKey: ""},
+			"$unset": bson.M{AbortedKey: "", AbortInfoKey: "", OverrideDependenciesKey: ""},
 			"$inc":   inc,
 		})
 	if err != nil {
@@ -3122,15 +3122,33 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 	}
 }
 
-func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
+func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, displayTaskActivated bool) error {
 	if len(execTasks) == 0 {
 		return nil
+	}
+	update := bson.M{"$addToSet": bson.M{
+		ExecutionTasksKey: bson.M{"$each": execTasks},
+	}}
+
+	if displayTaskActivated {
+		// verify that the display task isn't already activated
+		dt, err := FindOneId(displayTaskId)
+		if err != nil {
+			return errors.Wrap(err, "error getting display task")
+		}
+		if dt == nil {
+			return errors.Errorf("display task not found")
+		}
+		if !dt.Activated {
+			update["$set"] = bson.M{
+				ActivatedKey:     true,
+				ActivatedTimeKey: time.Now(),
+			}
+		}
 	}
 
 	return UpdateOne(
 		bson.M{IdKey: displayTaskId},
-		bson.M{"$addToSet": bson.M{
-			ExecutionTasksKey: bson.M{"$each": execTasks},
-		}},
+		update,
 	)
 }
