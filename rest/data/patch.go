@@ -39,9 +39,13 @@ type DBPatchConnector struct{}
 // FindPatchesByProject uses the service layer's patches type to query the backing database for
 // the patches.
 func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
-	patches, err := patch.Find(patch.PatchesByProject(projectId, ts, limit))
+	id, err := model.GetIdForProject(projectId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching patches for project %s", projectId)
+		return nil, errors.Wrapf(err, "problem fetching project with id %s", projectId)
+	}
+	patches, err := patch.Find(patch.PatchesByProject(id, ts, limit))
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching patches for project %s", id)
 	}
 	apiPatches := []restModel.APIPatch{}
 	for _, p := range patches {
@@ -342,7 +346,7 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 	}
 	for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
 		p := hp.CachedPatches[i]
-		if *p.ProjectId == projectId && !p.CreateTime.After(ts) {
+		if (*p.ProjectId == projectId || *p.ProjectIdentifier == projectId) && !p.CreateTime.After(ts) {
 			patchesToReturn = append(patchesToReturn, p)
 			if len(patchesToReturn) == limit {
 				break
