@@ -1354,7 +1354,8 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 	}
 
 	for _, buildStatus := range lastActivated.BuildVariants {
-		if buildStatus.BuildVariant != t.Variant || !buildStatus.Activated {
+		// don't check buildStatus activation; this corresponds to the batchtime for the overall variant, not the individual tasks.
+		if buildStatus.BuildVariant != t.Variant {
 			continue
 		}
 		for _, taskStatus := range buildStatus.BatchTimeTasks {

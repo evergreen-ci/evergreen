@@ -176,6 +176,8 @@ type Version {
   baseVersionID: String
   versionTiming: VersionTiming
   parameters: [Parameter!]!
+  taskStatuses: [String!]!
+  baseTaskStatuses: [String!]!
 }
 
 type VersionTiming {

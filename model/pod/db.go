@@ -1,6 +1,8 @@
 package pod
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -38,6 +40,12 @@ var (
 	ResourceInfoSecretIDsKey    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
 )
 
+// Find finds all pods matching the given query.
+func Find(q bson.M) ([]Pod, error) {
+	pods := []Pod{}
+	return pods, errors.WithStack(db.FindAllQ(Collection, db.Query(q), &pods))
+}
+
 // FindOne finds one pod by the given query.
 func FindOne(q bson.M) (*Pod, error) {
 	var p Pod
@@ -70,4 +78,14 @@ func UpdateOne(query interface{}, update interface{}) error {
 		query,
 		update,
 	)
+}
+
+// FindByStaleStarting finds all pods running tasks that have been stuck in
+// the starting state for an extended period of time.
+func FindByStaleStarting() ([]Pod, error) {
+	startingCutoff := time.Now().Add(-15 * time.Minute)
+	return Find(bson.M{
+		bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey): bson.M{"$lte": startingCutoff},
+		StatusKey: StatusStarting,
+	})
 }

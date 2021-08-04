@@ -468,8 +468,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
+	r, err = http.NewRequest("PUT", "/task/TaskSystemFailedId/annotations", buffer)
+	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSystemFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "TaskID must equal the taskId specified in the annotation")

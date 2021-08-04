@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
@@ -1251,6 +1252,21 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(queue.Put(ctx, NewDBCleanupTestLogJob(utility.RoundPartOfMinute(2), 365*24*time.Hour)))
 		catcher.Add(queue.Put(ctx, NewDBCleanupEventLogJob(utility.RoundPartOfMinute(2), 90*24*time.Hour)))
 
+		return catcher.Resolve()
+	}
+}
+
+func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByStaleStarting()
+		if err != nil {
+			return errors.Wrap(err, "finding pods that have been stuck starting for too long")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewTerminatePodJob(p.ID, "pod has been stuck starting for too long", utility.RoundPartOfMinute(0))), "pod '%s'", p.ID)
+		}
 		return catcher.Resolve()
 	}
 }
