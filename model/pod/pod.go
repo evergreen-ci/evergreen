@@ -221,3 +221,20 @@ func (p *Pod) UpdateStatus(s Status) error {
 
 	return nil
 }
+
+// UpdateResources updates the pod resources.
+func (p *Pod) UpdateResources(info ResourceInfo) error {
+	setFields := bson.M{
+		ResourcesKey: info,
+	}
+
+	if err := UpdateOne(ByID(p.ID), bson.M{
+		"$set": setFields,
+	}); err != nil {
+		return err
+	}
+
+	p.Resources = info
+
+	return nil
+}

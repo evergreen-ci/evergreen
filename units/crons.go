@@ -1232,6 +1232,22 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
+func PopulatePodInitializingJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "error fetching initializing pods")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewCreatePodJob(env, &p, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing job to create pod %s", p.ID)
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
