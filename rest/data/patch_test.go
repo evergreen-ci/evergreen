@@ -76,7 +76,9 @@ func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
 		proj1 := "project1"
+		proj1Identifier := "project_one"
 		proj2 := "project2"
+		proj2Identifier := "project_two"
 		proj3 := "project3"
 		proj3Identifier := "project_three"
 		nowPlus2 := s.time.Add(time.Second * 2)
@@ -94,6 +96,11 @@ func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
 				{ProjectId: &proj2, CreateTime: &nowPlus8},
 				{ProjectId: &proj1, CreateTime: &nowPlus10},
 				{ProjectId: &proj3, ProjectIdentifier: &proj3Identifier, CreateTime: &nowPlus12},
+			},
+			CachedProjectRefs: []model.APIProjectRef{
+				{Id: &proj1, Identifier: &proj1Identifier},
+				{Id: &proj2, Identifier: &proj2Identifier},
+				{Id: &proj3, Identifier: &proj3Identifier},
 			},
 		},
 		}

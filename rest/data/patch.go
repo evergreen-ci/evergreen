@@ -331,10 +331,20 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockPatchConnector struct {
-	CachedPatches    []restModel.APIPatch
-	CachedAborted    map[string]string
-	CachedPriority   map[string]int64
-	CachedRawPatches map[string]string
+	CachedPatches     []restModel.APIPatch
+	CachedProjectRefs []restModel.APIProjectRef
+	CachedAborted     map[string]string
+	CachedPriority    map[string]int64
+	CachedRawPatches  map[string]string
+}
+
+func (hp *MockPatchConnector) GetIdForProject(identifier string) (string, error) {
+	for _, p := range hp.CachedProjectRefs {
+		if *p.Id == identifier || *p.Identifier == identifier {
+			return *p.Id, nil
+		}
+	}
+	return "", errors.Errorf("project with identifier %s not found", identifier)
 }
 
 // FindPatchesByProject queries the cached patches splice for the matching patches.
@@ -344,9 +354,13 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 	if limit <= 0 {
 		return patchesToReturn, nil
 	}
+	id, err := hp.GetIdForProject(projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching project with id %s", projectId)
+	}
 	for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
 		p := hp.CachedPatches[i]
-		if (*p.ProjectId == projectId || *p.ProjectIdentifier == projectId) && !p.CreateTime.After(ts) {
+		if *p.ProjectId == id && !p.CreateTime.After(ts) {
 			patchesToReturn = append(patchesToReturn, p)
 			if len(patchesToReturn) == limit {
 				break
