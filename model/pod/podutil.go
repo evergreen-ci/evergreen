@@ -39,31 +39,6 @@ func (p *Pod) CurlCommandWithDefaultRetry(settings *evergreen.Settings) (string,
 	return p.CurlCommandWithRetry(settings, curlDefaultNumRetries, curlDefaultMaxSecs)
 }
 
-func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting service flags")
-	}
-
-	var curlCmd string
-	if !flags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
-		// Attempt to download the agent from S3, but fall back to downloading from
-		// the app server if it fails.
-		curlCmd = fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s)", curlArgs, p.S3ClientURL(settings), curlArgs, p.ClientURL(settings))
-	} else {
-		curlCmd += fmt.Sprintf("curl -LO '%s'%s", p.ClientURL(settings), curlArgs)
-	}
-
-	agentCmd := strings.Join(p.AgentCommand(settings), " ")
-
-	return []string{
-		shell,
-		curlCmd,
-		agentCmd,
-		fmt.Sprintf("chmod +x %s", p.BinaryName()),
-	}, nil
-}
-
 // AgentCommand returns the arguments to start the agent.
 func (p *Pod) AgentCommand(settings *evergreen.Settings) []string {
 	return []string{
@@ -111,6 +86,31 @@ func (p *Pod) BinaryName() string {
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (p *Pod) ExecutableSubPath() string {
 	return filepath.Join(string(p.TaskContainerCreationOpts.Arch), p.BinaryName())
+}
+
+func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+
+	var curlCmd string
+	if !flags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
+		// Attempt to download the agent from S3, but fall back to downloading from
+		// the app server if it fails.
+		curlCmd = fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s)", curlArgs, p.S3ClientURL(settings), curlArgs, p.ClientURL(settings))
+	} else {
+		curlCmd += fmt.Sprintf("curl -LO '%s'%s", p.ClientURL(settings), curlArgs)
+	}
+
+	agentCmd := strings.Join(p.AgentCommand(settings), " ")
+
+	return []string{
+		shell,
+		curlCmd,
+		agentCmd,
+		fmt.Sprintf("chmod +x %s", p.BinaryName()),
+	}, nil
 }
 
 func curlRetryArgs(numRetries, maxSecs int) string {
