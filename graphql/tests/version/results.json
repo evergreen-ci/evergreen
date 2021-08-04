@@ -44,7 +44,8 @@
                   "owner":"evergreen-ci",
                   "url":"https://api.github.com/repos/evergreen-ci/evergreen/commits/08d8cc896f586d8a23edf9bab940d6f2d3e70ffa"
                 }
-              }
+              },
+              "moduleOverrides": null
             }       
           }
         }
