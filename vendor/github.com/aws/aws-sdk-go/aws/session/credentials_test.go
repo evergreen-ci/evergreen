@@ -4,9 +4,11 @@ package session
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -21,8 +23,29 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/internal/sdktesting"
 	"github.com/aws/aws-sdk-go/internal/shareddefaults"
+	"github.com/aws/aws-sdk-go/private/protocol"
 	"github.com/aws/aws-sdk-go/service/sts"
 )
+
+func newEc2MetadataServer(key, secret string, closeAfterGetCreds bool) *httptest.Server {
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/latest/meta-data/iam/security-credentials/RoleName" {
+				w.Write([]byte(fmt.Sprintf(ec2MetadataResponse, key, secret)))
+
+				if closeAfterGetCreds {
+					go server.Close()
+				}
+			} else if r.URL.Path == "/latest/meta-data/iam/security-credentials/" {
+				w.Write([]byte("RoleName"))
+			} else {
+				w.Write([]byte(""))
+			}
+		}))
+
+	return server
+}
 
 func setupCredentialsEndpoints(t *testing.T) (endpoints.Resolver, func()) {
 	origECSEndpoint := shareddefaults.ECSContainerCredentialsURI
@@ -37,25 +60,44 @@ func setupCredentialsEndpoints(t *testing.T) (endpoints.Resolver, func()) {
 		}))
 	shareddefaults.ECSContainerCredentialsURI = ecsMetadataServer.URL
 
-	ec2MetadataServer := httptest.NewServer(http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/meta-data/iam/security-credentials/RoleName" {
-				w.Write([]byte(ec2MetadataResponse))
-			} else if r.URL.Path == "/meta-data/iam/security-credentials/" {
-				w.Write([]byte("RoleName"))
-			} else {
-				w.Write([]byte(""))
-			}
-		}))
+	ec2MetadataServer := newEc2MetadataServer("ec2_key", "ec2_secret", false)
 
 	stsServer := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(fmt.Sprintf(
-				assumeRoleRespMsg,
-				time.Now().
-					Add(15*time.Minute).
-					Format("2006-01-02T15:04:05Z"))))
+			if err := r.ParseForm(); err != nil {
+				w.WriteHeader(500)
+				return
+			}
+
+			form := r.Form
+
+			switch form.Get("Action") {
+			case "AssumeRole":
+				w.Write([]byte(fmt.Sprintf(
+					assumeRoleRespMsg,
+					time.Now().
+						Add(15*time.Minute).
+						Format(protocol.ISO8601TimeFormat))))
+				return
+			case "AssumeRoleWithWebIdentity":
+				w.Write([]byte(fmt.Sprintf(assumeRoleWithWebIdentityResponse,
+					time.Now().
+						Add(15*time.Minute).
+						Format(protocol.ISO8601TimeFormat))))
+				return
+			default:
+				w.WriteHeader(404)
+				return
+			}
 		}))
+
+	ssoServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(fmt.Sprintf(
+			getRoleCredentialsResponse,
+			time.Now().
+				Add(15*time.Minute).
+				UnixNano()/int64(time.Millisecond))))
+	}))
 
 	resolver := endpoints.ResolverFunc(
 		func(service, region string, opts ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
@@ -68,6 +110,10 @@ func setupCredentialsEndpoints(t *testing.T) (endpoints.Resolver, func()) {
 				return endpoints.ResolvedEndpoint{
 					URL: stsServer.URL,
 				}, nil
+			case "portal.sso":
+				return endpoints.ResolvedEndpoint{
+					URL: ssoServer.URL,
+				}, nil
 			default:
 				return endpoints.ResolvedEndpoint{},
 					fmt.Errorf("unknown service endpoint, %s", service)
@@ -78,6 +124,7 @@ func setupCredentialsEndpoints(t *testing.T) (endpoints.Resolver, func()) {
 		shareddefaults.ECSContainerCredentialsURI = origECSEndpoint
 		ecsMetadataServer.Close()
 		ec2MetadataServer.Close()
+		ssoServer.Close()
 		stsServer.Close()
 	}
 }
@@ -87,36 +134,41 @@ func TestSharedConfigCredentialSource(t *testing.T) {
 	const configFile = "testdata/credential_source_config"
 
 	cases := []struct {
-		name              string
-		profile           string
-		sessOptProfile    string
-		expectedError     error
-		expectedAccessKey string
-		expectedSecretKey string
-		expectedChain     []string
-		init              func()
-		dependentOnOS     bool
+		name                   string
+		profile                string
+		sessOptProfile         string
+		sessOptEC2IMDSEndpoint string
+		expectedError          error
+		expectedAccessKey      string
+		expectedSecretKey      string
+		expectedSessionToken   string
+		expectedChain          []string
+		init                   func() (func(), error)
+		dependentOnOS          bool
 	}{
 		{
 			name:          "credential source and source profile",
 			profile:       "invalid_source_and_credential_source",
 			expectedError: ErrSharedConfigSourceCollision,
-			init: func() {
+			init: func() (func(), error) {
 				os.Setenv("AWS_ACCESS_KEY", "access_key")
 				os.Setenv("AWS_SECRET_KEY", "secret_key")
+				return func() {}, nil
 			},
 		},
 		{
-			name:              "env var credential source",
-			sessOptProfile:    "env_var_credential_source",
-			expectedAccessKey: "AKID",
-			expectedSecretKey: "SECRET",
+			name:                 "env var credential source",
+			sessOptProfile:       "env_var_credential_source",
+			expectedAccessKey:    "AKID",
+			expectedSecretKey:    "SECRET",
+			expectedSessionToken: "SESSION_TOKEN",
 			expectedChain: []string{
 				"assume_role_w_creds_role_arn_env",
 			},
-			init: func() {
+			init: func() (func(), error) {
 				os.Setenv("AWS_ACCESS_KEY", "access_key")
 				os.Setenv("AWS_SECRET_KEY", "secret_key")
+				return func() {}, nil
 			},
 		},
 		{
@@ -125,26 +177,42 @@ func TestSharedConfigCredentialSource(t *testing.T) {
 			expectedChain: []string{
 				"assume_role_w_creds_role_arn_ec2",
 			},
-			expectedAccessKey: "AKID",
-			expectedSecretKey: "SECRET",
+			expectedAccessKey:    "AKID",
+			expectedSecretKey:    "SECRET",
+			expectedSessionToken: "SESSION_TOKEN",
 		},
 		{
-			name:              "ecs container credential source",
-			profile:           "ecscontainer",
-			expectedAccessKey: "AKID",
-			expectedSecretKey: "SECRET",
+			name:                 "ec2metadata custom EC2 IMDS endpoint, env var",
+			profile:              "not-exists-profile",
+			expectedAccessKey:    "ec2_custom_key",
+			expectedSecretKey:    "ec2_custom_secret",
+			expectedSessionToken: "token",
+			init: func() (func(), error) {
+				altServer := newEc2MetadataServer("ec2_custom_key", "ec2_custom_secret", true)
+				os.Setenv("AWS_EC2_METADATA_SERVICE_ENDPOINT", altServer.URL)
+				return func() {}, nil
+			},
+		},
+		{
+			name:                 "ecs container credential source",
+			profile:              "ecscontainer",
+			expectedAccessKey:    "AKID",
+			expectedSecretKey:    "SECRET",
+			expectedSessionToken: "SESSION_TOKEN",
 			expectedChain: []string{
 				"assume_role_w_creds_role_arn_ecs",
 			},
-			init: func() {
+			init: func() (func(), error) {
 				os.Setenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "/ECS")
+				return func() {}, nil
 			},
 		},
 		{
-			name:              "chained assume role with env creds",
-			profile:           "chained_assume_role",
-			expectedAccessKey: "AKID",
-			expectedSecretKey: "SECRET",
+			name:                 "chained assume role with env creds",
+			profile:              "chained_assume_role",
+			expectedAccessKey:    "AKID",
+			expectedSecretKey:    "SECRET",
+			expectedSessionToken: "SESSION_TOKEN",
 			expectedChain: []string{
 				"assume_role_w_creds_role_arn_chain",
 				"assume_role_w_creds_role_arn_ec2",
@@ -158,24 +226,92 @@ func TestSharedConfigCredentialSource(t *testing.T) {
 			expectedSecretKey: "cred_proc_secret",
 		},
 		{
-			name:              "credential process with ARN set",
-			profile:           "cred_proc_arn_set",
-			dependentOnOS:     true,
-			expectedAccessKey: "AKID",
-			expectedSecretKey: "SECRET",
+			name:                 "credential process with ARN set",
+			profile:              "cred_proc_arn_set",
+			dependentOnOS:        true,
+			expectedAccessKey:    "AKID",
+			expectedSecretKey:    "SECRET",
+			expectedSessionToken: "SESSION_TOKEN",
 			expectedChain: []string{
 				"assume_role_w_creds_proc_role_arn",
 			},
 		},
 		{
-			name:              "chained assume role with credential process",
-			profile:           "chained_cred_proc",
-			dependentOnOS:     true,
-			expectedAccessKey: "AKID",
-			expectedSecretKey: "SECRET",
+			name:                 "chained assume role with credential process",
+			profile:              "chained_cred_proc",
+			dependentOnOS:        true,
+			expectedAccessKey:    "AKID",
+			expectedSecretKey:    "SECRET",
+			expectedSessionToken: "SESSION_TOKEN",
 			expectedChain: []string{
 				"assume_role_w_creds_proc_source_prof",
 			},
+		},
+		{
+			name:                 "sso credentials",
+			profile:              "sso_creds",
+			expectedAccessKey:    "SSO_AKID",
+			expectedSecretKey:    "SSO_SECRET_KEY",
+			expectedSessionToken: "SSO_SESSION_TOKEN",
+			init: func() (func(), error) {
+				return ssoTestSetup()
+			},
+		},
+		{
+			name:                 "chained assume role with sso credentials",
+			profile:              "source_sso_creds",
+			expectedAccessKey:    "AKID",
+			expectedSecretKey:    "SECRET",
+			expectedSessionToken: "SESSION_TOKEN",
+			expectedChain: []string{
+				"source_sso_creds_arn",
+			},
+			init: func() (func(), error) {
+				return ssoTestSetup()
+			},
+		},
+		{
+			name:                 "chained assume role with sso and static credentials",
+			profile:              "assume_sso_and_static",
+			expectedAccessKey:    "AKID",
+			expectedSecretKey:    "SECRET",
+			expectedSessionToken: "SESSION_TOKEN",
+			expectedChain: []string{
+				"assume_sso_and_static_arn",
+			},
+		},
+		{
+			name:          "invalid sso configuration",
+			profile:       "sso_invalid",
+			expectedError: fmt.Errorf("profile \"sso_invalid\" is configured to use SSO but is missing required configuration: sso_region, sso_start_url"),
+		},
+		{
+			name:              "environment credentials with invalid sso",
+			profile:           "sso_invalid",
+			expectedAccessKey: "access_key",
+			expectedSecretKey: "secret_key",
+			init: func() (func(), error) {
+				os.Setenv("AWS_ACCESS_KEY", "access_key")
+				os.Setenv("AWS_SECRET_KEY", "secret_key")
+				return func() {}, nil
+			},
+		},
+		{
+			name:                 "sso mixed with credential process provider",
+			profile:              "sso_mixed_credproc",
+			expectedAccessKey:    "SSO_AKID",
+			expectedSecretKey:    "SSO_SECRET_KEY",
+			expectedSessionToken: "SSO_SESSION_TOKEN",
+			init: func() (func(), error) {
+				return ssoTestSetup()
+			},
+		},
+		{
+			name:                 "sso mixed with web identity token provider",
+			profile:              "sso_mixed_webident",
+			expectedAccessKey:    "WEB_IDENTITY_AKID",
+			expectedSecretKey:    "WEB_IDENTITY_SECRET",
+			expectedSessionToken: "WEB_IDENTITY_SESSION_TOKEN",
 		},
 	}
 
@@ -200,7 +336,11 @@ func TestSharedConfigCredentialSource(t *testing.T) {
 			defer cleanupFn()
 
 			if c.init != nil {
-				c.init()
+				cleanup, err := c.init()
+				if err != nil {
+					t.Fatalf("expect no error, got %v", err)
+				}
+				defer cleanup()
 			}
 
 			var credChain []string
@@ -219,10 +359,18 @@ func TestSharedConfigCredentialSource(t *testing.T) {
 					Logger:           t,
 					EndpointResolver: endpointResolver,
 				},
-				Handlers: handlers,
+				Handlers:        handlers,
+				EC2IMDSEndpoint: c.sessOptEC2IMDSEndpoint,
 			})
-			if e, a := c.expectedError, err; e != a {
-				t.Fatalf("expected %v, but received %v", e, a)
+
+			if c.expectedError != nil {
+				var errStr string
+				if err != nil {
+					errStr = err.Error()
+				}
+				if e, a := c.expectedError.Error(), errStr; !strings.Contains(a, e) {
+					t.Fatalf("expected %v, but received %v", e, a)
+				}
 			}
 
 			if c.expectedError != nil {
@@ -245,6 +393,10 @@ func TestSharedConfigCredentialSource(t *testing.T) {
 			if e, a := c.expectedSecretKey, creds.SecretAccessKey; e != a {
 				t.Errorf("expected %v, but received %v", e, a)
 			}
+
+			if e, a := c.expectedSessionToken, creds.SessionToken; e != a {
+				t.Errorf("expected %v, but received %v", e, a)
+			}
 		})
 	}
 }
@@ -262,8 +414,8 @@ const ecsResponse = `{
 const ec2MetadataResponse = `{
 	  "Code": "Success",
 	  "Type": "AWS-HMAC",
-	  "AccessKeyId" : "ec2-access-key",
-	  "SecretAccessKey" : "ec2-secret-key",
+	  "AccessKeyId" : "%s",
+	  "SecretAccessKey" : "%s",
 	  "Token" : "token",
 	  "Expiration" : "2100-01-01T00:00:00Z",
 	  "LastUpdated" : "2009-11-23T0:00:00Z"
@@ -288,6 +440,42 @@ const assumeRoleRespMsg = `
   </ResponseMetadata>
 </AssumeRoleResponse>
 `
+
+var assumeRoleWithWebIdentityResponse = `<AssumeRoleWithWebIdentityResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
+  <AssumeRoleWithWebIdentityResult>
+    <SubjectFromWebIdentityToken>amzn1.account.AF6RHO7KZU5XRVQJGXK6HB56KR2A</SubjectFromWebIdentityToken>
+    <Audience>client.5498841531868486423.1548@apps.example.com</Audience>
+    <AssumedRoleUser>
+      <Arn>arn:aws:sts::123456789012:assumed-role/FederatedWebIdentityRole/app1</Arn>
+      <AssumedRoleId>AROACLKWSDQRAOEXAMPLE:app1</AssumedRoleId>
+    </AssumedRoleUser>
+    <Credentials>
+      <AccessKeyId>WEB_IDENTITY_AKID</AccessKeyId>
+      <SecretAccessKey>WEB_IDENTITY_SECRET</SecretAccessKey>
+      <SessionToken>WEB_IDENTITY_SESSION_TOKEN</SessionToken>
+      <Expiration>%s</Expiration>
+    </Credentials>
+    <Provider>www.amazon.com</Provider>
+  </AssumeRoleWithWebIdentityResult>
+  <ResponseMetadata>
+    <RequestId>request-id</RequestId>
+  </ResponseMetadata>
+</AssumeRoleWithWebIdentityResponse>
+`
+
+const getRoleCredentialsResponse = `{
+  "roleCredentials": {
+    "accessKeyId": "SSO_AKID",
+    "secretAccessKey": "SSO_SECRET_KEY",
+    "sessionToken": "SSO_SESSION_TOKEN",
+    "expiration": %d
+  }
+}`
+
+const ssoTokenCacheFile = `{
+  "accessToken": "ssoAccessToken",
+  "expiresAt": "%s"
+}`
 
 func TestSessionAssumeRole(t *testing.T) {
 	restoreEnvFn := initSessionTestEnv()
@@ -476,50 +664,84 @@ func TestSessionAssumeRole_ExtendedDuration(t *testing.T) {
 	restoreEnvFn := initSessionTestEnv()
 	defer restoreEnvFn()
 
-	os.Setenv("AWS_REGION", "us-east-1")
-	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
-	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", testConfigFilename)
-	os.Setenv("AWS_PROFILE", "assume_role_w_creds")
+	cases := []struct {
+		profile          string
+		optionDuration   time.Duration
+		expectedDuration string
+	}{
+		{
+			profile:          "assume_role_w_creds",
+			expectedDuration: "900",
+		},
+		{
+			profile:          "assume_role_w_creds",
+			optionDuration:   30 * time.Minute,
+			expectedDuration: "1800",
+		},
+		{
+			profile:          "assume_role_w_creds_w_duration",
+			expectedDuration: "1800",
+		},
+		{
+			profile:          "assume_role_w_creds_w_invalid_duration",
+			expectedDuration: "900",
+		},
+	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if e, a := "1800", r.FormValue("DurationSeconds"); e != a {
-			t.Errorf("expect %v, got %v", e, a)
+	for _, tt := range cases {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if e, a := tt.expectedDuration, r.FormValue("DurationSeconds"); e != a {
+				t.Errorf("expect %v, got %v", e, a)
+			}
+
+			w.Write([]byte(fmt.Sprintf(
+				assumeRoleRespMsg,
+				time.Now().Add(15*time.Minute).Format("2006-01-02T15:04:05Z"))))
+		}))
+
+		os.Setenv("AWS_REGION", "us-east-1")
+		os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
+		os.Setenv("AWS_SHARED_CREDENTIALS_FILE", testConfigFilename)
+		os.Setenv("AWS_PROFILE", "assume_role_w_creds")
+
+		opts := Options{
+			Profile: tt.profile,
+			Config: aws.Config{
+				Endpoint:   aws.String(server.URL),
+				DisableSSL: aws.Bool(true),
+			},
+			SharedConfigState: SharedConfigEnable,
+		}
+		if tt.optionDuration != 0 {
+			opts.AssumeRoleDuration = tt.optionDuration
 		}
 
-		w.Write([]byte(fmt.Sprintf(
-			assumeRoleRespMsg,
-			time.Now().Add(15*time.Minute).Format("2006-01-02T15:04:05Z"))))
-	}))
-	defer server.Close()
+		s, err := NewSessionWithOptions(opts)
+		if err != nil {
+			server.Close()
+			t.Fatalf("expect no error, got %v", err)
+		}
 
-	s, err := NewSessionWithOptions(Options{
-		Profile: "assume_role_w_creds",
-		Config: aws.Config{
-			Endpoint:   aws.String(server.URL),
-			DisableSSL: aws.Bool(true),
-		},
-		SharedConfigState:  SharedConfigEnable,
-		AssumeRoleDuration: 30 * time.Minute,
-	})
-	if err != nil {
-		t.Fatalf("expect no error, got %v", err)
-	}
+		creds, err := s.Config.Credentials.Get()
+		if err != nil {
+			server.Close()
+			t.Fatalf("expect no error, got %v", err)
+		}
 
-	creds, err := s.Config.Credentials.Get()
-	if err != nil {
-		t.Fatalf("expect no error, got %v", err)
-	}
-	if e, a := "AKID", creds.AccessKeyID; e != a {
-		t.Errorf("expect %v, got %v", e, a)
-	}
-	if e, a := "SECRET", creds.SecretAccessKey; e != a {
-		t.Errorf("expect %v, got %v", e, a)
-	}
-	if e, a := "SESSION_TOKEN", creds.SessionToken; e != a {
-		t.Errorf("expect %v, got %v", e, a)
-	}
-	if e, a := "AssumeRoleProvider", creds.ProviderName; !strings.Contains(a, e) {
-		t.Errorf("expect %v, to be in %v", e, a)
+		if e, a := "AKID", creds.AccessKeyID; e != a {
+			t.Errorf("expect %v, got %v", e, a)
+		}
+		if e, a := "SECRET", creds.SecretAccessKey; e != a {
+			t.Errorf("expect %v, got %v", e, a)
+		}
+		if e, a := "SESSION_TOKEN", creds.SessionToken; e != a {
+			t.Errorf("expect %v, got %v", e, a)
+		}
+		if e, a := "AssumeRoleProvider", creds.ProviderName; !strings.Contains(a, e) {
+			t.Errorf("expect %v, to be in %v", e, a)
+		}
+
+		server.Close()
 	}
 }
 
@@ -589,4 +811,43 @@ func TestSessionAssumeRole_WithMFA_ExtendedDuration(t *testing.T) {
 	if e, a := "AssumeRoleProvider", creds.ProviderName; !strings.Contains(a, e) {
 		t.Errorf("expect %v, to be in %v", e, a)
 	}
+}
+
+func ssoTestSetup() (func(), error) {
+	dir, err := ioutil.TempDir("", "sso-test")
+	if err != nil {
+		return nil, err
+	}
+
+	cacheDir := filepath.Join(dir, ".aws", "sso", "cache")
+	err = os.MkdirAll(cacheDir, 0750)
+	if err != nil {
+		os.RemoveAll(dir)
+		return nil, err
+	}
+
+	tokenFile, err := os.Create(filepath.Join(cacheDir, "eb5e43e71ce87dd92ec58903d76debd8ee42aefd.json"))
+	if err != nil {
+		os.RemoveAll(dir)
+		return nil, err
+	}
+	defer tokenFile.Close()
+
+	_, err = tokenFile.WriteString(fmt.Sprintf(ssoTokenCacheFile, time.Now().
+		Add(15*time.Minute).
+		Format(time.RFC3339)))
+	if err != nil {
+		os.RemoveAll(dir)
+		return nil, err
+	}
+
+	if runtime.GOOS == "windows" {
+		os.Setenv("USERPROFILE", dir)
+	} else {
+		os.Setenv("HOME", dir)
+	}
+
+	return func() {
+		os.RemoveAll(dir)
+	}, nil
 }

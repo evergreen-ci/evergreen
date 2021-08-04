@@ -13,6 +13,104 @@ import (
 	"github.com/aws/aws-sdk-go/private/protocol/jsonrpc"
 )
 
+const opCreateAccess = "CreateAccess"
+
+// CreateAccessRequest generates a "aws/request.Request" representing the
+// client's request for the CreateAccess operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See CreateAccess for more information on using the CreateAccess
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the CreateAccessRequest method.
+//    req, resp := client.CreateAccessRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/CreateAccess
+func (c *Transfer) CreateAccessRequest(input *CreateAccessInput) (req *request.Request, output *CreateAccessOutput) {
+	op := &request.Operation{
+		Name:       opCreateAccess,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &CreateAccessInput{}
+	}
+
+	output = &CreateAccessOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// CreateAccess API operation for AWS Transfer Family.
+//
+// Used by administrators to choose which groups in the directory should have
+// access to upload and download files over the enabled protocols using AWS
+// Transfer Family. For example, a Microsoft Active Directory might contain
+// 50,000 users, but only a small fraction might need the ability to transfer
+// files to the server. An administrator can use CreateAccess to limit the access
+// to the correct set of users who need this ability.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Transfer Family's
+// API operation CreateAccess for usage and error information.
+//
+// Returned Error Types:
+//   * ServiceUnavailableException
+//   The request has failed because the AWS Transfer Family service is not available.
+//
+//   * InternalServiceError
+//   This exception is thrown when an error occurs in the AWS Transfer Family
+//   service.
+//
+//   * InvalidRequestException
+//   This exception is thrown when the client submits a malformed request.
+//
+//   * ResourceExistsException
+//   The requested resource does not exist.
+//
+//   * ResourceNotFoundException
+//   This exception is thrown when a resource is not found by the AWS Transfer
+//   Family service.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/CreateAccess
+func (c *Transfer) CreateAccess(input *CreateAccessInput) (*CreateAccessOutput, error) {
+	req, out := c.CreateAccessRequest(input)
+	return out, req.Send()
+}
+
+// CreateAccessWithContext is the same as CreateAccess with the addition of
+// the ability to pass a context and additional request options.
+//
+// See CreateAccess for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) CreateAccessWithContext(ctx aws.Context, input *CreateAccessInput, opts ...request.Option) (*CreateAccessOutput, error) {
+	req, out := c.CreateAccessRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opCreateServer = "CreateServer"
 
 // CreateServerRequest generates a "aws/request.Request" representing the
@@ -55,26 +153,29 @@ func (c *Transfer) CreateServerRequest(input *CreateServerInput) (req *request.R
 	return
 }
 
-// CreateServer API operation for AWS Transfer for SFTP.
+// CreateServer API operation for AWS Transfer Family.
 //
-// Instantiates an autoscaling virtual server based on Secure File Transfer
-// Protocol (SFTP) in AWS. When you make updates to your server or when you
-// work with users, use the service-generated ServerId property that is assigned
-// to the newly created server.
+// Instantiates an auto-scaling virtual server based on the selected file transfer
+// protocol in AWS. When you make updates to your file transfer protocol-enabled
+// server or when you work with users, use the service-generated ServerId property
+// that is assigned to the newly created server.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation CreateServer for usage and error information.
 //
 // Returned Error Types:
+//   * AccessDeniedException
+//   You do not have sufficient access to perform this action.
+//
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -82,6 +183,11 @@ func (c *Transfer) CreateServerRequest(input *CreateServerInput) (req *request.R
 //
 //   * ResourceExistsException
 //   The requested resource does not exist.
+//
+//   * ThrottlingException
+//   The request was denied due to request throttling.
+//
+//   HTTP Status Code: 400
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/CreateServer
 func (c *Transfer) CreateServer(input *CreateServerInput) (*CreateServerOutput, error) {
@@ -147,29 +253,29 @@ func (c *Transfer) CreateUserRequest(input *CreateUserInput) (req *request.Reque
 	return
 }
 
-// CreateUser API operation for AWS Transfer for SFTP.
+// CreateUser API operation for AWS Transfer Family.
 //
-// Creates a user and associates them with an existing Secure File Transfer
-// Protocol (SFTP) server. You can only create and associate users with SFTP
-// servers that have the IdentityProviderType set to SERVICE_MANAGED. Using
-// parameters for CreateUser, you can specify the user name, set the home directory,
-// store the user's public key, and assign the user's AWS Identity and Access
-// Management (IAM) role. You can also optionally add a scope-down policy, and
-// assign metadata with tags that can be used to group and search for users.
+// Creates a user and associates them with an existing file transfer protocol-enabled
+// server. You can only create and associate users with servers that have the
+// IdentityProviderType set to SERVICE_MANAGED. Using parameters for CreateUser,
+// you can specify the user name, set the home directory, store the user's public
+// key, and assign the user's AWS Identity and Access Management (IAM) role.
+// You can also optionally add a scope-down policy, and assign metadata with
+// tags that can be used to group and search for users.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation CreateUser for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -180,7 +286,7 @@ func (c *Transfer) CreateUserRequest(input *CreateUserInput) (req *request.Reque
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/CreateUser
 func (c *Transfer) CreateUser(input *CreateUserInput) (*CreateUserOutput, error) {
@@ -199,6 +305,98 @@ func (c *Transfer) CreateUser(input *CreateUserInput) (*CreateUserOutput, error)
 // for more information on using Contexts.
 func (c *Transfer) CreateUserWithContext(ctx aws.Context, input *CreateUserInput, opts ...request.Option) (*CreateUserOutput, error) {
 	req, out := c.CreateUserRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeleteAccess = "DeleteAccess"
+
+// DeleteAccessRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteAccess operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteAccess for more information on using the DeleteAccess
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteAccessRequest method.
+//    req, resp := client.DeleteAccessRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DeleteAccess
+func (c *Transfer) DeleteAccessRequest(input *DeleteAccessInput) (req *request.Request, output *DeleteAccessOutput) {
+	op := &request.Operation{
+		Name:       opDeleteAccess,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteAccessInput{}
+	}
+
+	output = &DeleteAccessOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// DeleteAccess API operation for AWS Transfer Family.
+//
+// Allows you to delete the access specified in the ServerID and ExternalID
+// parameters.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Transfer Family's
+// API operation DeleteAccess for usage and error information.
+//
+// Returned Error Types:
+//   * ServiceUnavailableException
+//   The request has failed because the AWS Transfer Family service is not available.
+//
+//   * InternalServiceError
+//   This exception is thrown when an error occurs in the AWS Transfer Family
+//   service.
+//
+//   * InvalidRequestException
+//   This exception is thrown when the client submits a malformed request.
+//
+//   * ResourceNotFoundException
+//   This exception is thrown when a resource is not found by the AWS Transfer
+//   Family service.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DeleteAccess
+func (c *Transfer) DeleteAccess(input *DeleteAccessInput) (*DeleteAccessOutput, error) {
+	req, out := c.DeleteAccessRequest(input)
+	return out, req.Send()
+}
+
+// DeleteAccessWithContext is the same as DeleteAccess with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteAccess for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) DeleteAccessWithContext(ctx aws.Context, input *DeleteAccessInput, opts ...request.Option) (*DeleteAccessOutput, error) {
+	req, out := c.DeleteAccessRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -247,9 +445,9 @@ func (c *Transfer) DeleteServerRequest(input *DeleteServerInput) (req *request.R
 	return
 }
 
-// DeleteServer API operation for AWS Transfer for SFTP.
+// DeleteServer API operation for AWS Transfer Family.
 //
-// Deletes the Secure File Transfer Protocol (SFTP) server that you specify.
+// Deletes the file transfer protocol-enabled server that you specify.
 //
 // No response returns from this operation.
 //
@@ -257,15 +455,18 @@ func (c *Transfer) DeleteServerRequest(input *DeleteServerInput) (req *request.R
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation DeleteServer for usage and error information.
 //
 // Returned Error Types:
+//   * AccessDeniedException
+//   You do not have sufficient access to perform this action.
+//
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -273,7 +474,7 @@ func (c *Transfer) DeleteServerRequest(input *DeleteServerInput) (req *request.R
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DeleteServer
 func (c *Transfer) DeleteServer(input *DeleteServerInput) (*DeleteServerOutput, error) {
@@ -340,7 +541,7 @@ func (c *Transfer) DeleteSshPublicKeyRequest(input *DeleteSshPublicKeyInput) (re
 	return
 }
 
-// DeleteSshPublicKey API operation for AWS Transfer for SFTP.
+// DeleteSshPublicKey API operation for AWS Transfer Family.
 //
 // Deletes a user's Secure Shell (SSH) public key.
 //
@@ -350,15 +551,15 @@ func (c *Transfer) DeleteSshPublicKeyRequest(input *DeleteSshPublicKeyInput) (re
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation DeleteSshPublicKey for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -366,7 +567,7 @@ func (c *Transfer) DeleteSshPublicKeyRequest(input *DeleteSshPublicKeyInput) (re
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 //   * ThrottlingException
 //   The request was denied due to request throttling.
@@ -438,9 +639,10 @@ func (c *Transfer) DeleteUserRequest(input *DeleteUserInput) (req *request.Reque
 	return
 }
 
-// DeleteUser API operation for AWS Transfer for SFTP.
+// DeleteUser API operation for AWS Transfer Family.
 //
-// Deletes the user belonging to the server you specify.
+// Deletes the user belonging to a file transfer protocol-enabled server you
+// specify.
 //
 // No response returns from this operation.
 //
@@ -450,15 +652,15 @@ func (c *Transfer) DeleteUserRequest(input *DeleteUserInput) (req *request.Reque
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation DeleteUser for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -466,7 +668,7 @@ func (c *Transfer) DeleteUserRequest(input *DeleteUserInput) (req *request.Reque
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DeleteUser
 func (c *Transfer) DeleteUser(input *DeleteUserInput) (*DeleteUserOutput, error) {
@@ -485,6 +687,193 @@ func (c *Transfer) DeleteUser(input *DeleteUserInput) (*DeleteUserOutput, error)
 // for more information on using Contexts.
 func (c *Transfer) DeleteUserWithContext(ctx aws.Context, input *DeleteUserInput, opts ...request.Option) (*DeleteUserOutput, error) {
 	req, out := c.DeleteUserRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDescribeAccess = "DescribeAccess"
+
+// DescribeAccessRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeAccess operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeAccess for more information on using the DescribeAccess
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeAccessRequest method.
+//    req, resp := client.DescribeAccessRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DescribeAccess
+func (c *Transfer) DescribeAccessRequest(input *DescribeAccessInput) (req *request.Request, output *DescribeAccessOutput) {
+	op := &request.Operation{
+		Name:       opDescribeAccess,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribeAccessInput{}
+	}
+
+	output = &DescribeAccessOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeAccess API operation for AWS Transfer Family.
+//
+// Describes the access that is assigned to the specific file transfer protocol-enabled
+// server, as identified by its ServerId property and its ExternalID.
+//
+// The response from this call returns the properties of the access that is
+// associated with the ServerId value that was specified.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Transfer Family's
+// API operation DescribeAccess for usage and error information.
+//
+// Returned Error Types:
+//   * ServiceUnavailableException
+//   The request has failed because the AWS Transfer Family service is not available.
+//
+//   * InternalServiceError
+//   This exception is thrown when an error occurs in the AWS Transfer Family
+//   service.
+//
+//   * InvalidRequestException
+//   This exception is thrown when the client submits a malformed request.
+//
+//   * ResourceNotFoundException
+//   This exception is thrown when a resource is not found by the AWS Transfer
+//   Family service.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DescribeAccess
+func (c *Transfer) DescribeAccess(input *DescribeAccessInput) (*DescribeAccessOutput, error) {
+	req, out := c.DescribeAccessRequest(input)
+	return out, req.Send()
+}
+
+// DescribeAccessWithContext is the same as DescribeAccess with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeAccess for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) DescribeAccessWithContext(ctx aws.Context, input *DescribeAccessInput, opts ...request.Option) (*DescribeAccessOutput, error) {
+	req, out := c.DescribeAccessRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDescribeSecurityPolicy = "DescribeSecurityPolicy"
+
+// DescribeSecurityPolicyRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeSecurityPolicy operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeSecurityPolicy for more information on using the DescribeSecurityPolicy
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeSecurityPolicyRequest method.
+//    req, resp := client.DescribeSecurityPolicyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DescribeSecurityPolicy
+func (c *Transfer) DescribeSecurityPolicyRequest(input *DescribeSecurityPolicyInput) (req *request.Request, output *DescribeSecurityPolicyOutput) {
+	op := &request.Operation{
+		Name:       opDescribeSecurityPolicy,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribeSecurityPolicyInput{}
+	}
+
+	output = &DescribeSecurityPolicyOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeSecurityPolicy API operation for AWS Transfer Family.
+//
+// Describes the security policy that is attached to your file transfer protocol-enabled
+// server. The response contains a description of the security policy's properties.
+// For more information about security policies, see Working with security policies
+// (https://docs.aws.amazon.com/transfer/latest/userguide/security-policies.html).
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Transfer Family's
+// API operation DescribeSecurityPolicy for usage and error information.
+//
+// Returned Error Types:
+//   * ServiceUnavailableException
+//   The request has failed because the AWS Transfer Family service is not available.
+//
+//   * InternalServiceError
+//   This exception is thrown when an error occurs in the AWS Transfer Family
+//   service.
+//
+//   * InvalidRequestException
+//   This exception is thrown when the client submits a malformed request.
+//
+//   * ResourceNotFoundException
+//   This exception is thrown when a resource is not found by the AWS Transfer
+//   Family service.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DescribeSecurityPolicy
+func (c *Transfer) DescribeSecurityPolicy(input *DescribeSecurityPolicyInput) (*DescribeSecurityPolicyOutput, error) {
+	req, out := c.DescribeSecurityPolicyRequest(input)
+	return out, req.Send()
+}
+
+// DescribeSecurityPolicyWithContext is the same as DescribeSecurityPolicy with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeSecurityPolicy for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) DescribeSecurityPolicyWithContext(ctx aws.Context, input *DescribeSecurityPolicyInput, opts ...request.Option) (*DescribeSecurityPolicyOutput, error) {
+	req, out := c.DescribeSecurityPolicyRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -532,26 +921,27 @@ func (c *Transfer) DescribeServerRequest(input *DescribeServerInput) (req *reque
 	return
 }
 
-// DescribeServer API operation for AWS Transfer for SFTP.
+// DescribeServer API operation for AWS Transfer Family.
 //
-// Describes the server that you specify by passing the ServerId parameter.
+// Describes a file transfer protocol-enabled server that you specify by passing
+// the ServerId parameter.
 //
-// The response contains a description of the server's properties. When you
-// set EndpointType to VPC, the response will contain the EndpointDetails.
+// The response contains a description of a server's properties. When you set
+// EndpointType to VPC, the response will contain the EndpointDetails.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation DescribeServer for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -559,7 +949,7 @@ func (c *Transfer) DescribeServerRequest(input *DescribeServerInput) (req *reque
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DescribeServer
 func (c *Transfer) DescribeServer(input *DescribeServerInput) (*DescribeServerOutput, error) {
@@ -625,10 +1015,10 @@ func (c *Transfer) DescribeUserRequest(input *DescribeUserInput) (req *request.R
 	return
 }
 
-// DescribeUser API operation for AWS Transfer for SFTP.
+// DescribeUser API operation for AWS Transfer Family.
 //
-// Describes the user assigned to a specific server, as identified by its ServerId
-// property.
+// Describes the user assigned to the specific file transfer protocol-enabled
+// server, as identified by its ServerId property.
 //
 // The response from this call returns the properties of the user associated
 // with the ServerId value that was specified.
@@ -637,15 +1027,15 @@ func (c *Transfer) DescribeUserRequest(input *DescribeUserInput) (req *request.R
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation DescribeUser for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -653,7 +1043,7 @@ func (c *Transfer) DescribeUserRequest(input *DescribeUserInput) (req *request.R
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/DescribeUser
 func (c *Transfer) DescribeUser(input *DescribeUserInput) (*DescribeUserOutput, error) {
@@ -719,10 +1109,11 @@ func (c *Transfer) ImportSshPublicKeyRequest(input *ImportSshPublicKeyInput) (re
 	return
 }
 
-// ImportSshPublicKey API operation for AWS Transfer for SFTP.
+// ImportSshPublicKey API operation for AWS Transfer Family.
 //
 // Adds a Secure Shell (SSH) public key to a user account identified by a UserName
-// value assigned to a specific server, identified by ServerId.
+// value assigned to the specific file transfer protocol-enabled server, identified
+// by ServerId.
 //
 // The response returns the UserName value, the ServerId value, and the name
 // of the SshPublicKeyId.
@@ -731,15 +1122,15 @@ func (c *Transfer) ImportSshPublicKeyRequest(input *ImportSshPublicKeyInput) (re
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation ImportSshPublicKey for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -750,7 +1141,7 @@ func (c *Transfer) ImportSshPublicKeyRequest(input *ImportSshPublicKeyInput) (re
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 //   * ThrottlingException
 //   The request was denied due to request throttling.
@@ -777,6 +1168,305 @@ func (c *Transfer) ImportSshPublicKeyWithContext(ctx aws.Context, input *ImportS
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+const opListAccesses = "ListAccesses"
+
+// ListAccessesRequest generates a "aws/request.Request" representing the
+// client's request for the ListAccesses operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListAccesses for more information on using the ListAccesses
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListAccessesRequest method.
+//    req, resp := client.ListAccessesRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/ListAccesses
+func (c *Transfer) ListAccessesRequest(input *ListAccessesInput) (req *request.Request, output *ListAccessesOutput) {
+	op := &request.Operation{
+		Name:       opListAccesses,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxResults",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &ListAccessesInput{}
+	}
+
+	output = &ListAccessesOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListAccesses API operation for AWS Transfer Family.
+//
+// Lists the details for all the accesses you have on your server.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Transfer Family's
+// API operation ListAccesses for usage and error information.
+//
+// Returned Error Types:
+//   * ServiceUnavailableException
+//   The request has failed because the AWS Transfer Family service is not available.
+//
+//   * InternalServiceError
+//   This exception is thrown when an error occurs in the AWS Transfer Family
+//   service.
+//
+//   * InvalidNextTokenException
+//   The NextToken parameter that was passed is invalid.
+//
+//   * InvalidRequestException
+//   This exception is thrown when the client submits a malformed request.
+//
+//   * ResourceNotFoundException
+//   This exception is thrown when a resource is not found by the AWS Transfer
+//   Family service.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/ListAccesses
+func (c *Transfer) ListAccesses(input *ListAccessesInput) (*ListAccessesOutput, error) {
+	req, out := c.ListAccessesRequest(input)
+	return out, req.Send()
+}
+
+// ListAccessesWithContext is the same as ListAccesses with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListAccesses for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) ListAccessesWithContext(ctx aws.Context, input *ListAccessesInput, opts ...request.Option) (*ListAccessesOutput, error) {
+	req, out := c.ListAccessesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// ListAccessesPages iterates over the pages of a ListAccesses operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListAccesses method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListAccesses operation.
+//    pageNum := 0
+//    err := client.ListAccessesPages(params,
+//        func(page *transfer.ListAccessesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Transfer) ListAccessesPages(input *ListAccessesInput, fn func(*ListAccessesOutput, bool) bool) error {
+	return c.ListAccessesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListAccessesPagesWithContext same as ListAccessesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) ListAccessesPagesWithContext(ctx aws.Context, input *ListAccessesInput, fn func(*ListAccessesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListAccessesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListAccessesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListAccessesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
+const opListSecurityPolicies = "ListSecurityPolicies"
+
+// ListSecurityPoliciesRequest generates a "aws/request.Request" representing the
+// client's request for the ListSecurityPolicies operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListSecurityPolicies for more information on using the ListSecurityPolicies
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListSecurityPoliciesRequest method.
+//    req, resp := client.ListSecurityPoliciesRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/ListSecurityPolicies
+func (c *Transfer) ListSecurityPoliciesRequest(input *ListSecurityPoliciesInput) (req *request.Request, output *ListSecurityPoliciesOutput) {
+	op := &request.Operation{
+		Name:       opListSecurityPolicies,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxResults",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &ListSecurityPoliciesInput{}
+	}
+
+	output = &ListSecurityPoliciesOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListSecurityPolicies API operation for AWS Transfer Family.
+//
+// Lists the security policies that are attached to your file transfer protocol-enabled
+// servers.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Transfer Family's
+// API operation ListSecurityPolicies for usage and error information.
+//
+// Returned Error Types:
+//   * ServiceUnavailableException
+//   The request has failed because the AWS Transfer Family service is not available.
+//
+//   * InternalServiceError
+//   This exception is thrown when an error occurs in the AWS Transfer Family
+//   service.
+//
+//   * InvalidNextTokenException
+//   The NextToken parameter that was passed is invalid.
+//
+//   * InvalidRequestException
+//   This exception is thrown when the client submits a malformed request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/ListSecurityPolicies
+func (c *Transfer) ListSecurityPolicies(input *ListSecurityPoliciesInput) (*ListSecurityPoliciesOutput, error) {
+	req, out := c.ListSecurityPoliciesRequest(input)
+	return out, req.Send()
+}
+
+// ListSecurityPoliciesWithContext is the same as ListSecurityPolicies with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListSecurityPolicies for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) ListSecurityPoliciesWithContext(ctx aws.Context, input *ListSecurityPoliciesInput, opts ...request.Option) (*ListSecurityPoliciesOutput, error) {
+	req, out := c.ListSecurityPoliciesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// ListSecurityPoliciesPages iterates over the pages of a ListSecurityPolicies operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListSecurityPolicies method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListSecurityPolicies operation.
+//    pageNum := 0
+//    err := client.ListSecurityPoliciesPages(params,
+//        func(page *transfer.ListSecurityPoliciesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Transfer) ListSecurityPoliciesPages(input *ListSecurityPoliciesInput, fn func(*ListSecurityPoliciesOutput, bool) bool) error {
+	return c.ListSecurityPoliciesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListSecurityPoliciesPagesWithContext same as ListSecurityPoliciesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) ListSecurityPoliciesPagesWithContext(ctx aws.Context, input *ListSecurityPoliciesInput, fn func(*ListSecurityPoliciesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListSecurityPoliciesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListSecurityPoliciesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListSecurityPoliciesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opListServers = "ListServers"
@@ -827,24 +1517,24 @@ func (c *Transfer) ListServersRequest(input *ListServersInput) (req *request.Req
 	return
 }
 
-// ListServers API operation for AWS Transfer for SFTP.
+// ListServers API operation for AWS Transfer Family.
 //
-// Lists the Secure File Transfer Protocol (SFTP) servers that are associated
-// with your AWS account.
+// Lists the file transfer protocol-enabled servers that are associated with
+// your AWS account.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation ListServers for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidNextTokenException
@@ -975,24 +1665,24 @@ func (c *Transfer) ListTagsForResourceRequest(input *ListTagsForResourceInput) (
 	return
 }
 
-// ListTagsForResource API operation for AWS Transfer for SFTP.
+// ListTagsForResource API operation for AWS Transfer Family.
 //
-// Lists all of the tags associated with the Amazon Resource Number (ARN) you
-// specify. The resource can be a user, server, or role.
+// Lists all of the tags associated with the Amazon Resource Name (ARN) that
+// you specify. The resource can be a user, server, or role.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation ListTagsForResource for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidNextTokenException
@@ -1123,23 +1813,24 @@ func (c *Transfer) ListUsersRequest(input *ListUsersInput) (req *request.Request
 	return
 }
 
-// ListUsers API operation for AWS Transfer for SFTP.
+// ListUsers API operation for AWS Transfer Family.
 //
-// Lists the users for the server that you specify by passing the ServerId parameter.
+// Lists the users for a file transfer protocol-enabled server that you specify
+// by passing the ServerId parameter.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation ListUsers for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidNextTokenException
@@ -1150,7 +1841,7 @@ func (c *Transfer) ListUsersRequest(input *ListUsersInput) (req *request.Request
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/ListUsers
 func (c *Transfer) ListUsers(input *ListUsersInput) (*ListUsersOutput, error) {
@@ -1269,11 +1960,11 @@ func (c *Transfer) StartServerRequest(input *StartServerInput) (req *request.Req
 	return
 }
 
-// StartServer API operation for AWS Transfer for SFTP.
+// StartServer API operation for AWS Transfer Family.
 //
-// Changes the state of a Secure File Transfer Protocol (SFTP) server from OFFLINE
-// to ONLINE. It has no impact on an SFTP server that is already ONLINE. An
-// ONLINE server can accept and process file transfer jobs.
+// Changes the state of a file transfer protocol-enabled server from OFFLINE
+// to ONLINE. It has no impact on a server that is already ONLINE. An ONLINE
+// server can accept and process file transfer jobs.
 //
 // The state of STARTING indicates that the server is in an intermediate state,
 // either not fully able to respond, or not fully online. The values of START_FAILED
@@ -1285,15 +1976,15 @@ func (c *Transfer) StartServerRequest(input *StartServerInput) (req *request.Req
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation StartServer for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -1301,7 +1992,7 @@ func (c *Transfer) StartServerRequest(input *StartServerInput) (req *request.Req
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 //   * ThrottlingException
 //   The request was denied due to request throttling.
@@ -1373,13 +2064,15 @@ func (c *Transfer) StopServerRequest(input *StopServerInput) (req *request.Reque
 	return
 }
 
-// StopServer API operation for AWS Transfer for SFTP.
+// StopServer API operation for AWS Transfer Family.
 //
-// Changes the state of an SFTP server from ONLINE to OFFLINE. An OFFLINE server
-// cannot accept and process file transfer jobs. Information tied to your server
-// such as server and user properties are not affected by stopping your server.
-// Stopping a server will not reduce or impact your Secure File Transfer Protocol
-// (SFTP) endpoint billing.
+// Changes the state of a file transfer protocol-enabled server from ONLINE
+// to OFFLINE. An OFFLINE server cannot accept and process file transfer jobs.
+// Information tied to your server, such as server and user properties, are
+// not affected by stopping your server.
+//
+// Stopping the server will not reduce or impact your file transfer protocol
+// endpoint billing; you must delete the server to stop being billed.
 //
 // The state of STOPPING indicates that the server is in an intermediate state,
 // either not fully able to respond, or not fully offline. The values of STOP_FAILED
@@ -1391,15 +2084,15 @@ func (c *Transfer) StopServerRequest(input *StopServerInput) (req *request.Reque
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation StopServer for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -1407,7 +2100,7 @@ func (c *Transfer) StopServerRequest(input *StopServerInput) (req *request.Reque
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 //   * ThrottlingException
 //   The request was denied due to request throttling.
@@ -1479,7 +2172,7 @@ func (c *Transfer) TagResourceRequest(input *TagResourceInput) (req *request.Req
 	return
 }
 
-// TagResource API operation for AWS Transfer for SFTP.
+// TagResource API operation for AWS Transfer Family.
 //
 // Attaches a key-value pair to a resource, as identified by its Amazon Resource
 // Name (ARN). Resources are users, servers, roles, and other entities.
@@ -1490,15 +2183,15 @@ func (c *Transfer) TagResourceRequest(input *TagResourceInput) (req *request.Req
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation TagResource for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -1506,7 +2199,7 @@ func (c *Transfer) TagResourceRequest(input *TagResourceInput) (req *request.Req
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/TagResource
 func (c *Transfer) TagResource(input *TagResourceInput) (*TagResourceOutput, error) {
@@ -1572,27 +2265,28 @@ func (c *Transfer) TestIdentityProviderRequest(input *TestIdentityProviderInput)
 	return
 }
 
-// TestIdentityProvider API operation for AWS Transfer for SFTP.
+// TestIdentityProvider API operation for AWS Transfer Family.
 //
-// If the IdentityProviderType of the server is API_Gateway, tests whether your
-// API Gateway is set up successfully. We highly recommend that you call this
-// operation to test your authentication method as soon as you create your server.
-// By doing so, you can troubleshoot issues with the API Gateway integration
+// If the IdentityProviderType of a file transfer protocol-enabled server is
+// AWS_DIRECTORY_SERVICE or API_Gateway, tests whether your identity provider
+// is set up successfully. We highly recommend that you call this operation
+// to test your authentication method as soon as you create your server. By
+// doing so, you can troubleshoot issues with the identity provider integration
 // to ensure that your users can successfully use the service.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation TestIdentityProvider for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -1600,7 +2294,7 @@ func (c *Transfer) TestIdentityProviderRequest(input *TestIdentityProviderInput)
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/TestIdentityProvider
 func (c *Transfer) TestIdentityProvider(input *TestIdentityProviderInput) (*TestIdentityProviderOutput, error) {
@@ -1667,7 +2361,7 @@ func (c *Transfer) UntagResourceRequest(input *UntagResourceInput) (req *request
 	return
 }
 
-// UntagResource API operation for AWS Transfer for SFTP.
+// UntagResource API operation for AWS Transfer Family.
 //
 // Detaches a key-value pair from a resource, as identified by its Amazon Resource
 // Name (ARN). Resources are users, servers, roles, and other entities.
@@ -1678,15 +2372,15 @@ func (c *Transfer) UntagResourceRequest(input *UntagResourceInput) (req *request
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation UntagResource for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -1694,7 +2388,7 @@ func (c *Transfer) UntagResourceRequest(input *UntagResourceInput) (req *request
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/UntagResource
 func (c *Transfer) UntagResource(input *UntagResourceInput) (*UntagResourceOutput, error) {
@@ -1713,6 +2407,100 @@ func (c *Transfer) UntagResource(input *UntagResourceInput) (*UntagResourceOutpu
 // for more information on using Contexts.
 func (c *Transfer) UntagResourceWithContext(ctx aws.Context, input *UntagResourceInput, opts ...request.Option) (*UntagResourceOutput, error) {
 	req, out := c.UntagResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opUpdateAccess = "UpdateAccess"
+
+// UpdateAccessRequest generates a "aws/request.Request" representing the
+// client's request for the UpdateAccess operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UpdateAccess for more information on using the UpdateAccess
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UpdateAccessRequest method.
+//    req, resp := client.UpdateAccessRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/UpdateAccess
+func (c *Transfer) UpdateAccessRequest(input *UpdateAccessInput) (req *request.Request, output *UpdateAccessOutput) {
+	op := &request.Operation{
+		Name:       opUpdateAccess,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &UpdateAccessInput{}
+	}
+
+	output = &UpdateAccessOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// UpdateAccess API operation for AWS Transfer Family.
+//
+// Allows you to update parameters for the access specified in the ServerID
+// and ExternalID parameters.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Transfer Family's
+// API operation UpdateAccess for usage and error information.
+//
+// Returned Error Types:
+//   * ServiceUnavailableException
+//   The request has failed because the AWS Transfer Family service is not available.
+//
+//   * InternalServiceError
+//   This exception is thrown when an error occurs in the AWS Transfer Family
+//   service.
+//
+//   * InvalidRequestException
+//   This exception is thrown when the client submits a malformed request.
+//
+//   * ResourceExistsException
+//   The requested resource does not exist.
+//
+//   * ResourceNotFoundException
+//   This exception is thrown when a resource is not found by the AWS Transfer
+//   Family service.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/transfer-2018-11-05/UpdateAccess
+func (c *Transfer) UpdateAccess(input *UpdateAccessInput) (*UpdateAccessOutput, error) {
+	req, out := c.UpdateAccessRequest(input)
+	return out, req.Send()
+}
+
+// UpdateAccessWithContext is the same as UpdateAccess with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UpdateAccess for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Transfer) UpdateAccessWithContext(ctx aws.Context, input *UpdateAccessInput, opts ...request.Option) (*UpdateAccessOutput, error) {
+	req, out := c.UpdateAccessRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1760,31 +2548,34 @@ func (c *Transfer) UpdateServerRequest(input *UpdateServerInput) (req *request.R
 	return
 }
 
-// UpdateServer API operation for AWS Transfer for SFTP.
+// UpdateServer API operation for AWS Transfer Family.
 //
-// Updates the server properties after that server has been created.
+// Updates the file transfer protocol-enabled server's properties after that
+// server has been created.
 //
-// The UpdateServer call returns the ServerId of the Secure File Transfer Protocol
-// (SFTP) server you updated.
+// The UpdateServer call returns the ServerId of the server you updated.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation UpdateServer for usage and error information.
 //
 // Returned Error Types:
+//   * AccessDeniedException
+//   You do not have sufficient access to perform this action.
+//
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * ConflictException
-//   This exception is thrown when the UpdatServer is called for a server that
-//   has VPC as the endpoint type and the server's VpcEndpointID is not in the
-//   available state.
+//   This exception is thrown when the UpdatServer is called for a file transfer
+//   protocol-enabled server that has VPC as the endpoint type and the server's
+//   VpcEndpointID is not in the available state.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -1795,7 +2586,7 @@ func (c *Transfer) UpdateServerRequest(input *UpdateServerInput) (req *request.R
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 //   * ThrottlingException
 //   The request was denied due to request throttling.
@@ -1866,7 +2657,7 @@ func (c *Transfer) UpdateUserRequest(input *UpdateUserInput) (req *request.Reque
 	return
 }
 
-// UpdateUser API operation for AWS Transfer for SFTP.
+// UpdateUser API operation for AWS Transfer Family.
 //
 // Assigns new properties to a user. Parameters you pass modify any or all of
 // the following: the home directory, role, and policy for the UserName and
@@ -1878,15 +2669,15 @@ func (c *Transfer) UpdateUserRequest(input *UpdateUserInput) (req *request.Reque
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
 //
-// See the AWS API reference guide for AWS Transfer for SFTP's
+// See the AWS API reference guide for AWS Transfer Family's
 // API operation UpdateUser for usage and error information.
 //
 // Returned Error Types:
 //   * ServiceUnavailableException
-//   The request has failed because the AWS Transfer for SFTP service is not available.
+//   The request has failed because the AWS Transfer Family service is not available.
 //
 //   * InternalServiceError
-//   This exception is thrown when an error occurs in the AWS Transfer for SFTP
+//   This exception is thrown when an error occurs in the AWS Transfer Family
 //   service.
 //
 //   * InvalidRequestException
@@ -1894,7 +2685,7 @@ func (c *Transfer) UpdateUserRequest(input *UpdateUserInput) (req *request.Reque
 //
 //   * ResourceNotFoundException
 //   This exception is thrown when a resource is not found by the AWS Transfer
-//   for SFTP service.
+//   Family service.
 //
 //   * ThrottlingException
 //   The request was denied due to request throttling.
@@ -1923,12 +2714,68 @@ func (c *Transfer) UpdateUserWithContext(ctx aws.Context, input *UpdateUserInput
 	return out, req.Send()
 }
 
-// This exception is thrown when the UpdatServer is called for a server that
-// has VPC as the endpoint type and the server's VpcEndpointID is not in the
-// available state.
+// You do not have sufficient access to perform this action.
+type AccessDeniedException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"Message" type:"string"`
+}
+
+// String returns the string representation
+func (s AccessDeniedException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AccessDeniedException) GoString() string {
+	return s.String()
+}
+
+func newErrorAccessDeniedException(v protocol.ResponseMetadata) error {
+	return &AccessDeniedException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *AccessDeniedException) Code() string {
+	return "AccessDeniedException"
+}
+
+// Message returns the exception's message.
+func (s *AccessDeniedException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *AccessDeniedException) OrigErr() error {
+	return nil
+}
+
+func (s *AccessDeniedException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *AccessDeniedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *AccessDeniedException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// This exception is thrown when the UpdatServer is called for a file transfer
+// protocol-enabled server that has VPC as the endpoint type and the server's
+// VpcEndpointID is not in the available state.
 type ConflictException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1945,17 +2792,17 @@ func (s ConflictException) GoString() string {
 
 func newErrorConflictException(v protocol.ResponseMetadata) error {
 	return &ConflictException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConflictException) Code() string {
+func (s *ConflictException) Code() string {
 	return "ConflictException"
 }
 
 // Message returns the exception's message.
-func (s ConflictException) Message() string {
+func (s *ConflictException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1963,68 +2810,407 @@ func (s ConflictException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConflictException) OrigErr() error {
+func (s *ConflictException) OrigErr() error {
 	return nil
 }
 
-func (s ConflictException) Error() string {
+func (s *ConflictException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConflictException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConflictException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+type CreateAccessInput struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier that is required to identify specific groups within your
+	// directory. The users of the group that you associate have access to your
+	// Amazon S3 or Amazon EFS resources over the enabled protocols using AWS Transfer
+	// Family. If you know the group name, you can view the SID values by running
+	// the following command using Windows PowerShell.
+	//
+	// Get-ADGroup -Filter {samAccountName -like "YourGroupName*"} -Properties *
+	// | Select SamaccountName,ObjectSid
+	//
+	// In that command, replace YourGroupName with the name of your Active Directory
+	// group.
+	//
+	// The regex used to validate this parameter is a string of characters consisting
+	// of uppercase and lowercase alphanumeric characters with no spaces. You can
+	// also include underscores or any of the following characters: =,.@:/-
+	//
+	// ExternalId is a required field
+	ExternalId *string `min:"1" type:"string" required:"true"`
+
+	// The landing directory (folder) for a user when they log in to the server
+	// using the client.
+	//
+	// A HomeDirectory example is /directory_name/home/mydirectory.
+	HomeDirectory *string `type:"string"`
+
+	// Logical directory mappings that specify what Amazon S3 or Amazon EFS paths
+	// and keys should be visible to your user and how you want to make them visible.
+	// You must specify the Entry and Target pair, where Entry shows how the path
+	// is made visible and Target is the actual Amazon S3 or Amazon EFS path. If
+	// you only specify a target, it will be displayed as is. You also must ensure
+	// that your AWS Identity and Access Management (IAM) role provides access to
+	// paths in Target. This value can only be set when HomeDirectoryType is set
+	// to LOGICAL.
+	//
+	// The following is an Entry and Target pair example.
+	//
+	// [ { "Entry": "your-personal-report.pdf", "Target": "/bucket3/customized-reports/${transfer:UserName}.pdf"
+	// } ]
+	//
+	// In most cases, you can use this value instead of the scope-down policy to
+	// lock down your user to the designated home directory ("chroot"). To do this,
+	// you can set Entry to / and set Target to the HomeDirectory parameter value.
+	//
+	// The following is an Entry and Target pair example for chroot.
+	//
+	// [ { "Entry": "/", "Target": "/bucket_name/home/mydirectory" } ]
+	//
+	// If the target of a logical directory entry does not exist in Amazon S3 or
+	// Amazon EFS, the entry will be ignored. As a workaround, you can use the Amazon
+	// S3 API or EFS API to create 0-byte objects as place holders for your directory.
+	// If using the AWS CLI, use the s3api or efsapi call instead of s3 or efs so
+	// you can use the put-object operation. For example, you can use the following.
+	//
+	// aws s3api put-object --bucket bucketname --key path/to/folder/
+	//
+	// The end of the key name must end in a / for it to be considered a folder.
+	//
+	// Required: No
+	HomeDirectoryMappings []*HomeDirectoryMapEntry `min:"1" type:"list"`
+
+	// The type of landing directory (folder) that you want your users' home directory
+	// to be when they log in to the server. If you set it to PATH, the user will
+	// see the absolute Amazon S3 bucket paths as is in their file transfer protocol
+	// clients. If you set it LOGICAL, you must provide mappings in the HomeDirectoryMappings
+	// for how you want to make Amazon S3 paths visible to your users.
+	HomeDirectoryType *string `type:"string" enum:"HomeDirectoryType"`
+
+	// A scope-down policy for your user so that you can use the same IAM role across
+	// multiple users. This policy scopes down user access to portions of their
+	// Amazon S3 bucket. Variables that you can use inside this policy include ${Transfer:UserName},
+	// ${Transfer:HomeDirectory}, and ${Transfer:HomeBucket}.
+	//
+	// This only applies when domain of ServerId is S3. Amazon EFS does not use
+	// scope down policy.
+	//
+	// For scope-down policies, AWS Transfer Family stores the policy as a JSON
+	// blob, instead of the Amazon Resource Name (ARN) of the policy. You save the
+	// policy as a JSON blob and pass it in the Policy argument.
+	//
+	// For an example of a scope-down policy, see Example scope-down policy (https://docs.aws.amazon.com/transfer/latest/userguide/scope-down-policy.html).
+	//
+	// For more information, see AssumeRole (https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)
+	// in the AWS Security Token Service API Reference.
+	Policy *string `type:"string"`
+
+	// The full POSIX identity, including user ID (Uid), group ID (Gid), and any
+	// secondary groups IDs (SecondaryGids), that controls your users' access to
+	// your Amazon EFS file systems. The POSIX permissions that are set on files
+	// and directories in your file system determine the level of access your users
+	// get when transferring files into and out of your Amazon EFS file systems.
+	PosixProfile *PosixProfile `type:"structure"`
+
+	// Specifies the IAM role that controls your users' access to your Amazon S3
+	// bucket or EFS file system. The policies attached to this role determine the
+	// level of access that you want to provide your users when transferring files
+	// into and out of your Amazon S3 bucket or EFS file system. The IAM role should
+	// also contain a trust relationship that allows the server to access your resources
+	// when servicing your users' transfer requests.
+	//
+	// Role is a required field
+	Role *string `min:"20" type:"string" required:"true"`
+
+	// A system-assigned unique identifier for a server instance. This is the specific
+	// server that you added your user to.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s CreateAccessInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateAccessInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreateAccessInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreateAccessInput"}
+	if s.ExternalId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ExternalId"))
+	}
+	if s.ExternalId != nil && len(*s.ExternalId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ExternalId", 1))
+	}
+	if s.HomeDirectoryMappings != nil && len(s.HomeDirectoryMappings) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("HomeDirectoryMappings", 1))
+	}
+	if s.Role == nil {
+		invalidParams.Add(request.NewErrParamRequired("Role"))
+	}
+	if s.Role != nil && len(*s.Role) < 20 {
+		invalidParams.Add(request.NewErrParamMinLen("Role", 20))
+	}
+	if s.ServerId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ServerId"))
+	}
+	if s.ServerId != nil && len(*s.ServerId) < 19 {
+		invalidParams.Add(request.NewErrParamMinLen("ServerId", 19))
+	}
+	if s.HomeDirectoryMappings != nil {
+		for i, v := range s.HomeDirectoryMappings {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "HomeDirectoryMappings", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.PosixProfile != nil {
+		if err := s.PosixProfile.Validate(); err != nil {
+			invalidParams.AddNested("PosixProfile", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetExternalId sets the ExternalId field's value.
+func (s *CreateAccessInput) SetExternalId(v string) *CreateAccessInput {
+	s.ExternalId = &v
+	return s
+}
+
+// SetHomeDirectory sets the HomeDirectory field's value.
+func (s *CreateAccessInput) SetHomeDirectory(v string) *CreateAccessInput {
+	s.HomeDirectory = &v
+	return s
+}
+
+// SetHomeDirectoryMappings sets the HomeDirectoryMappings field's value.
+func (s *CreateAccessInput) SetHomeDirectoryMappings(v []*HomeDirectoryMapEntry) *CreateAccessInput {
+	s.HomeDirectoryMappings = v
+	return s
+}
+
+// SetHomeDirectoryType sets the HomeDirectoryType field's value.
+func (s *CreateAccessInput) SetHomeDirectoryType(v string) *CreateAccessInput {
+	s.HomeDirectoryType = &v
+	return s
+}
+
+// SetPolicy sets the Policy field's value.
+func (s *CreateAccessInput) SetPolicy(v string) *CreateAccessInput {
+	s.Policy = &v
+	return s
+}
+
+// SetPosixProfile sets the PosixProfile field's value.
+func (s *CreateAccessInput) SetPosixProfile(v *PosixProfile) *CreateAccessInput {
+	s.PosixProfile = v
+	return s
+}
+
+// SetRole sets the Role field's value.
+func (s *CreateAccessInput) SetRole(v string) *CreateAccessInput {
+	s.Role = &v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *CreateAccessInput) SetServerId(v string) *CreateAccessInput {
+	s.ServerId = &v
+	return s
+}
+
+type CreateAccessOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The external ID of the group whose users have access to your Amazon S3 or
+	// Amazon EFS resources over the enabled protocols using AWS Transfer Family.
+	//
+	// ExternalId is a required field
+	ExternalId *string `min:"1" type:"string" required:"true"`
+
+	// The ID of the server that the user is attached to.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s CreateAccessOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateAccessOutput) GoString() string {
+	return s.String()
+}
+
+// SetExternalId sets the ExternalId field's value.
+func (s *CreateAccessOutput) SetExternalId(v string) *CreateAccessOutput {
+	s.ExternalId = &v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *CreateAccessOutput) SetServerId(v string) *CreateAccessOutput {
+	s.ServerId = &v
+	return s
 }
 
 type CreateServerInput struct {
 	_ struct{} `type:"structure"`
 
+	// The Amazon Resource Name (ARN) of the AWS Certificate Manager (ACM) certificate.
+	// Required when Protocols is set to FTPS.
+	//
+	// To request a new public certificate, see Request a public certificate (https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html)
+	// in the AWS Certificate Manager User Guide.
+	//
+	// To import an existing certificate into ACM, see Importing certificates into
+	// ACM (https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html)
+	// in the AWS Certificate Manager User Guide.
+	//
+	// To request a private certificate to use FTPS through private IP addresses,
+	// see Request a private certificate (https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-private.html)
+	// in the AWS Certificate Manager User Guide.
+	//
+	// Certificates with the following cryptographic algorithms and key sizes are
+	// supported:
+	//
+	//    * 2048-bit RSA (RSA_2048)
+	//
+	//    * 4096-bit RSA (RSA_4096)
+	//
+	//    * Elliptic Prime Curve 256 bit (EC_prime256v1)
+	//
+	//    * Elliptic Prime Curve 384 bit (EC_secp384r1)
+	//
+	//    * Elliptic Prime Curve 521 bit (EC_secp521r1)
+	//
+	// The certificate must be a valid SSL/TLS X.509 version 3 certificate with
+	// FQDN or IP address specified and information about the issuer.
+	Certificate *string `type:"string"`
+
+	// The domain of the storage system that is used for file transfers. There are
+	// two domains available: Amazon Simple Storage Service (Amazon S3) and Amazon
+	// Elastic File System (Amazon EFS). The default value is S3.
+	//
+	// After the server is created, the domain cannot be changed.
+	Domain *string `type:"string" enum:"Domain"`
+
 	// The virtual private cloud (VPC) endpoint settings that are configured for
-	// your SFTP server. With a VPC endpoint, you can restrict access to your SFTP
-	// server to resources only within your VPC. To control incoming internet traffic,
-	// you will need to invoke the UpdateServer API and attach an Elastic IP to
-	// your server's endpoint.
+	// your server. When you host your endpoint within your VPC, you can make it
+	// accessible only to resources within your VPC, or you can attach Elastic IP
+	// addresses and make it accessible to clients over the internet. Your VPC's
+	// default security groups are automatically assigned to your endpoint.
 	EndpointDetails *EndpointDetails `type:"structure"`
 
-	// The type of VPC endpoint that you want your SFTP server to connect to. You
-	// can choose to connect to the public internet or a virtual private cloud (VPC)
-	// endpoint. With a VPC endpoint, you can restrict access to your SFTP server
-	// and resources only within your VPC.
+	// The type of endpoint that you want your server to use. You can choose to
+	// make your server's endpoint publicly accessible (PUBLIC) or host it inside
+	// your VPC. With an endpoint that is hosted in a VPC, you can restrict access
+	// to your server and resources only within your VPC or choose to make it internet
+	// facing by attaching Elastic IP addresses directly to it.
+	//
+	// After March 31, 2021, you won't be able to create a server using EndpointType=VPC_ENDPOINT
+	// in your AWS account if your account hasn't already done so before March 31,
+	// 2021. If you have already created servers with EndpointType=VPC_ENDPOINT
+	// in your AWS account on or before March 31, 2021, you will not be affected.
+	// After this date, use EndpointType=VPC.
+	//
+	// For more information, see https://docs.aws.amazon.com/transfer/latest/userguide/create-server-in-vpc.html#deprecate-vpc-endpoint.
+	//
+	// It is recommended that you use VPC as the EndpointType. With this endpoint
+	// type, you have the option to directly associate up to three Elastic IPv4
+	// addresses (BYO IP included) with your server's endpoint and use VPC security
+	// groups to restrict traffic by the client's public IP address. This is not
+	// possible with EndpointType set to VPC_ENDPOINT.
 	EndpointType *string `type:"string" enum:"EndpointType"`
 
-	// The RSA private key as generated by the ssh-keygen -N "" -f my-new-server-key
+	// The RSA private key as generated by the ssh-keygen -N "" -m PEM -f my-new-server-key
 	// command.
 	//
-	// If you aren't planning to migrate existing users from an existing SFTP server
-	// to a new AWS SFTP server, don't update the host key. Accidentally changing
+	// If you aren't planning to migrate existing users from an existing SFTP-enabled
+	// server to a new server, don't update the host key. Accidentally changing
 	// a server's host key can be disruptive.
 	//
-	// For more information, see "https://alpha-docs-aws.amazon.com/transfer/latest/userguide/configuring-servers.html#change-host-key"
-	// in the AWS SFTP User Guide.
+	// For more information, see Change the host key for your SFTP-enabled server
+	// (https://docs.aws.amazon.com/transfer/latest/userguide/edit-server-config.html#configuring-servers-change-host-key)
+	// in the AWS Transfer Family User Guide.
 	HostKey *string `type:"string" sensitive:"true"`
 
-	// This parameter is required when the IdentityProviderType is set to API_GATEWAY.
-	// Accepts an array containing all of the information required to call a customer-supplied
-	// authentication API, including the API Gateway URL. This property is not required
-	// when the IdentityProviderType is set to SERVICE_MANAGED.
+	// Required when IdentityProviderType is set to AWS_DIRECTORY_SERVICE or API_GATEWAY.
+	// Accepts an array containing all of the information required to use a directory
+	// in AWS_DIRECTORY_SERVICE or invoke a customer-supplied authentication API,
+	// including the API Gateway URL. Not required when IdentityProviderType is
+	// set to SERVICE_MANAGED.
 	IdentityProviderDetails *IdentityProviderDetails `type:"structure"`
 
-	// Specifies the mode of authentication for the SFTP server. The default value
-	// is SERVICE_MANAGED, which allows you to store and access SFTP user credentials
-	// within the AWS Transfer for SFTP service. Use the API_GATEWAY value to integrate
-	// with an identity provider of your choosing. The API_GATEWAY setting requires
-	// you to provide an API Gateway endpoint URL to call for authentication using
-	// the IdentityProviderDetails parameter.
+	// Specifies the mode of authentication for a server. The default value is SERVICE_MANAGED,
+	// which allows you to store and access user credentials within the AWS Transfer
+	// Family service. Use AWS_DIRECTORY_SERVICE to provide access to Active Directory
+	// groups in AWS Managed Active Directory or Microsoft Active Directory in your
+	// on-premises environment or in AWS using AD Connectors. This option also requires
+	// you to provide a Directory ID using the IdentityProviderDetails parameter.
+	// Use the API_GATEWAY value to integrate with an identity provider of your
+	// choosing. The API_GATEWAY setting requires you to provide an API Gateway
+	// endpoint URL to call for authentication using the IdentityProviderDetails
+	// parameter.
 	IdentityProviderType *string `type:"string" enum:"IdentityProviderType"`
 
-	// A value that allows the service to write your SFTP users' activity to your
-	// Amazon CloudWatch logs for monitoring and auditing purposes.
+	// Allows the service to write your users' activity to your Amazon CloudWatch
+	// logs for monitoring and auditing purposes.
 	LoggingRole *string `min:"20" type:"string"`
+
+	// Specifies the file transfer protocol or protocols over which your file transfer
+	// protocol client can connect to your server's endpoint. The available protocols
+	// are:
+	//
+	//    * SFTP (Secure Shell (SSH) File Transfer Protocol): File transfer over
+	//    SSH
+	//
+	//    * FTPS (File Transfer Protocol Secure): File transfer with TLS encryption
+	//
+	//    * FTP (File Transfer Protocol): Unencrypted file transfer
+	//
+	// If you select FTPS, you must choose a certificate stored in AWS Certificate
+	// Manager (ACM) which will be used to identify your server when clients connect
+	// to it over FTPS.
+	//
+	// If Protocol includes either FTP or FTPS, then the EndpointType must be VPC
+	// and the IdentityProviderType must be AWS_DIRECTORY_SERVICE or API_GATEWAY.
+	//
+	// If Protocol includes FTP, then AddressAllocationIds cannot be associated.
+	//
+	// If Protocol is set only to SFTP, the EndpointType can be set to PUBLIC and
+	// the IdentityProviderType can be set to SERVICE_MANAGED.
+	Protocols []*string `min:"1" type:"list"`
+
+	// Specifies the name of the security policy that is attached to the server.
+	SecurityPolicyName *string `type:"string"`
 
 	// Key-value pairs that can be used to group and search for servers.
 	Tags []*Tag `min:"1" type:"list"`
@@ -2045,6 +3231,9 @@ func (s *CreateServerInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "CreateServerInput"}
 	if s.LoggingRole != nil && len(*s.LoggingRole) < 20 {
 		invalidParams.Add(request.NewErrParamMinLen("LoggingRole", 20))
+	}
+	if s.Protocols != nil && len(s.Protocols) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Protocols", 1))
 	}
 	if s.Tags != nil && len(s.Tags) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("Tags", 1))
@@ -2074,6 +3263,18 @@ func (s *CreateServerInput) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetCertificate sets the Certificate field's value.
+func (s *CreateServerInput) SetCertificate(v string) *CreateServerInput {
+	s.Certificate = &v
+	return s
+}
+
+// SetDomain sets the Domain field's value.
+func (s *CreateServerInput) SetDomain(v string) *CreateServerInput {
+	s.Domain = &v
+	return s
 }
 
 // SetEndpointDetails sets the EndpointDetails field's value.
@@ -2112,6 +3313,18 @@ func (s *CreateServerInput) SetLoggingRole(v string) *CreateServerInput {
 	return s
 }
 
+// SetProtocols sets the Protocols field's value.
+func (s *CreateServerInput) SetProtocols(v []*string) *CreateServerInput {
+	s.Protocols = v
+	return s
+}
+
+// SetSecurityPolicyName sets the SecurityPolicyName field's value.
+func (s *CreateServerInput) SetSecurityPolicyName(v string) *CreateServerInput {
+	s.SecurityPolicyName = &v
+	return s
+}
+
 // SetTags sets the Tags field's value.
 func (s *CreateServerInput) SetTags(v []*Tag) *CreateServerInput {
 	s.Tags = v
@@ -2121,7 +3334,7 @@ func (s *CreateServerInput) SetTags(v []*Tag) *CreateServerInput {
 type CreateServerOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The service-assigned ID of the SFTP server that is created.
+	// The service-assigned ID of the server that is created.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -2147,39 +3360,47 @@ type CreateUserInput struct {
 	_ struct{} `type:"structure"`
 
 	// The landing directory (folder) for a user when they log in to the server
-	// using their SFTP client.
+	// using the client.
 	//
-	// An example is <your-Amazon-S3-bucket-name>/home/username.
+	// A HomeDirectory example is /bucket_name/home/mydirectory.
 	HomeDirectory *string `type:"string"`
 
-	// Logical directory mappings that specify what S3 paths and keys should be
-	// visible to your user and how you want to make them visible. You will need
-	// to specify the "Entry" and "Target" pair, where Entry shows how the path
-	// is made visible and Target is the actual S3 path. If you only specify a target,
-	// it will be displayed as is. You will need to also make sure that your AWS
-	// IAM Role provides access to paths in Target. The following is an example.
+	// Logical directory mappings that specify what Amazon S3 or EFS paths and keys
+	// should be visible to your user and how you want to make them visible. You
+	// will need to specify the Entry and Target pair, where Entry shows how the
+	// path is made visible and Target is the actual Amazon S3 or EFS path. If you
+	// only specify a target, it will be displayed as is. You will need to also
+	// make sure that your IAM role provides access to paths in Target. This value
+	// can only be set when HomeDirectoryType is set to LOGICAL.
 	//
-	// '[ "/bucket2/documentation", { "Entry": "your-personal-report.pdf", "Target":
-	// "/bucket3/customized-reports/${transfer:UserName}.pdf" } ]'
+	// The following is an Entry and Target pair example.
 	//
-	// In most cases, you can use this value instead of the scope down policy to
+	// [ { "Entry": "your-personal-report.pdf", "Target": "/bucket3/customized-reports/${transfer:UserName}.pdf"
+	// } ]
+	//
+	// In most cases, you can use this value instead of the scope-down policy to
 	// lock your user down to the designated home directory ("chroot"). To do this,
-	// you can set Entry to '/' and set Target to the HomeDirectory parameter value.
+	// you can set Entry to / and set Target to the HomeDirectory parameter value.
 	//
-	// If the target of a logical directory entry does not exist in S3, the entry
-	// will be ignored. As a workaround, you can use the S3 api to create 0 byte
-	// objects as place holders for your directory. If using the CLI, use the s3api
-	// call instead of s3 so you can use the put-object operation. For example,
-	// you use the following: aws s3api put-object --bucket bucketname --key path/to/folder/.
-	// Make sure that the end of the key name ends in a / for it to be considered
-	// a folder.
+	// The following is an Entry and Target pair example for chroot.
+	//
+	// [ { "Entry": "/", "Target": "/bucket_name/home/mydirectory" } ]
+	//
+	// If the target of a logical directory entry does not exist in Amazon S3 or
+	// EFS, the entry will be ignored. As a workaround, you can use the Amazon S3
+	// API or EFS API to create 0 byte objects as place holders for your directory.
+	// If using the CLI, use the s3api or efsapi call instead of s3 or efs so you
+	// can use the put-object operation. For example, you use the following: aws
+	// s3api put-object --bucket bucketname --key path/to/folder/. Make sure that
+	// the end of the key name ends in a / for it to be considered a folder.
 	HomeDirectoryMappings []*HomeDirectoryMapEntry `min:"1" type:"list"`
 
 	// The type of landing directory (folder) you want your users' home directory
-	// to be when they log into the SFTP server. If you set it to PATH, the user
-	// will see the absolute Amazon S3 bucket paths as is in their SFTP clients.
-	// If you set it LOGICAL, you will need to provide mappings in the HomeDirectoryMappings
-	// for how you want to make S3 paths visible to your user.
+	// to be when they log into the server. If you set it to PATH, the user will
+	// see the absolute Amazon S3 bucket paths as is in their file transfer protocol
+	// clients. If you set it LOGICAL, you will need to provide mappings in the
+	// HomeDirectoryMappings for how you want to make Amazon S3 paths visible to
+	// your users.
 	HomeDirectoryType *string `type:"string" enum:"HomeDirectoryType"`
 
 	// A scope-down policy for your user so you can use the same IAM role across
@@ -2187,45 +3408,55 @@ type CreateUserInput struct {
 	// Amazon S3 bucket. Variables that you can use inside this policy include ${Transfer:UserName},
 	// ${Transfer:HomeDirectory}, and ${Transfer:HomeBucket}.
 	//
-	// For scope-down policies, AWS Transfer for SFTP stores the policy as a JSON
+	// This only applies when domain of ServerId is S3. EFS does not use scope down
+	// policy.
+	//
+	// For scope-down policies, AWS Transfer Family stores the policy as a JSON
 	// blob, instead of the Amazon Resource Name (ARN) of the policy. You save the
 	// policy as a JSON blob and pass it in the Policy argument.
 	//
-	// For an example of a scope-down policy, see "https://docs.aws.amazon.com/transfer/latest/userguide/users.html#users-policies-scope-down">Creating
-	// a Scope-Down Policy.
+	// For an example of a scope-down policy, see Example scope-down policy (https://docs.aws.amazon.com/transfer/latest/userguide/scope-down-policy.html).
 	//
-	// For more information, see "https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html"
+	// For more information, see AssumeRole (https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)
 	// in the AWS Security Token Service API Reference.
 	Policy *string `type:"string"`
 
-	// The IAM role that controls your user's access to your Amazon S3 bucket. The
-	// policies attached to this role will determine the level of access you want
-	// to provide your users when transferring files into and out of your Amazon
-	// S3 bucket or buckets. The IAM role should also contain a trust relationship
-	// that allows the SFTP server to access your resources when servicing your
-	// SFTP user's transfer requests.
+	// Specifies the full POSIX identity, including user ID (Uid), group ID (Gid),
+	// and any secondary groups IDs (SecondaryGids), that controls your users' access
+	// to your Amazon EFS file systems. The POSIX permissions that are set on files
+	// and directories in Amazon EFS determine the level of access your users get
+	// when transferring files into and out of your Amazon EFS file systems.
+	PosixProfile *PosixProfile `type:"structure"`
+
+	// Specifies the IAM role that controls your users' access to your Amazon S3
+	// bucket or EFS file system. The policies attached to this role will determine
+	// the level of access you want to provide your users when transferring files
+	// into and out of your Amazon S3 bucket or EFS file system. The IAM role should
+	// also contain a trust relationship that allows the server to access your resources
+	// when servicing your users' transfer requests.
 	//
 	// Role is a required field
 	Role *string `min:"20" type:"string" required:"true"`
 
-	// A system-assigned unique identifier for an SFTP server instance. This is
-	// the specific SFTP server that you added your user to.
+	// A system-assigned unique identifier for a server instance. This is the specific
+	// server that you added your user to.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
 
 	// The public portion of the Secure Shell (SSH) key used to authenticate the
-	// user to the SFTP server.
+	// user to the server.
 	SshPublicKeyBody *string `type:"string"`
 
 	// Key-value pairs that can be used to group and search for users. Tags are
 	// metadata attached to users for any purpose.
 	Tags []*Tag `min:"1" type:"list"`
 
-	// A unique string that identifies a user and is associated with a server as
-	// specified by the ServerId. This user name must be a minimum of 3 and a maximum
-	// of 32 characters long. The following are valid characters: a-z, A-Z, 0-9,
-	// underscore, and hyphen. The user name can't start with a hyphen.
+	// A unique string that identifies a user and is associated with a as specified
+	// by the ServerId. This user name must be a minimum of 3 and a maximum of 100
+	// characters long. The following are valid characters: a-z, A-Z, 0-9, underscore
+	// '_', hyphen '-', period '.', and at sign '@'. The user name can't start with
+	// a hyphen, period, or at sign.
 	//
 	// UserName is a required field
 	UserName *string `min:"3" type:"string" required:"true"`
@@ -2278,6 +3509,11 @@ func (s *CreateUserInput) Validate() error {
 			}
 		}
 	}
+	if s.PosixProfile != nil {
+		if err := s.PosixProfile.Validate(); err != nil {
+			invalidParams.AddNested("PosixProfile", err.(request.ErrInvalidParams))
+		}
+	}
 	if s.Tags != nil {
 		for i, v := range s.Tags {
 			if v == nil {
@@ -2319,6 +3555,12 @@ func (s *CreateUserInput) SetPolicy(v string) *CreateUserInput {
 	return s
 }
 
+// SetPosixProfile sets the PosixProfile field's value.
+func (s *CreateUserInput) SetPosixProfile(v *PosixProfile) *CreateUserInput {
+	s.PosixProfile = v
+	return s
+}
+
 // SetRole sets the Role field's value.
 func (s *CreateUserInput) SetRole(v string) *CreateUserInput {
 	s.Role = &v
@@ -2352,12 +3594,12 @@ func (s *CreateUserInput) SetUserName(v string) *CreateUserInput {
 type CreateUserOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The ID of the SFTP server that the user is attached to.
+	// The ID of the server that the user is attached to.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
 
-	// A unique string that identifies a user account associated with an SFTP server.
+	// A unique string that identifies a user account associated with a server.
 	//
 	// UserName is a required field
 	UserName *string `min:"3" type:"string" required:"true"`
@@ -2385,10 +3627,96 @@ func (s *CreateUserOutput) SetUserName(v string) *CreateUserOutput {
 	return s
 }
 
+type DeleteAccessInput struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier that is required to identify specific groups within your
+	// directory. The users of the group that you associate have access to your
+	// Amazon S3 or Amazon EFS resources over the enabled protocols using AWS Transfer
+	// Family. If you know the group name, you can view the SID values by running
+	// the following command using Windows PowerShell.
+	//
+	// Get-ADGroup -Filter {samAccountName -like "YourGroupName*"} -Properties *
+	// | Select SamaccountName,ObjectSid
+	//
+	// In that command, replace YourGroupName with the name of your Active Directory
+	// group.
+	//
+	// The regex used to validate this parameter is a string of characters consisting
+	// of uppercase and lowercase alphanumeric characters with no spaces. You can
+	// also include underscores or any of the following characters: =,.@:/-
+	//
+	// ExternalId is a required field
+	ExternalId *string `min:"1" type:"string" required:"true"`
+
+	// A system-assigned unique identifier for a server that has this user assigned.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteAccessInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteAccessInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteAccessInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteAccessInput"}
+	if s.ExternalId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ExternalId"))
+	}
+	if s.ExternalId != nil && len(*s.ExternalId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ExternalId", 1))
+	}
+	if s.ServerId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ServerId"))
+	}
+	if s.ServerId != nil && len(*s.ServerId) < 19 {
+		invalidParams.Add(request.NewErrParamMinLen("ServerId", 19))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetExternalId sets the ExternalId field's value.
+func (s *DeleteAccessInput) SetExternalId(v string) *DeleteAccessInput {
+	s.ExternalId = &v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *DeleteAccessInput) SetServerId(v string) *DeleteAccessInput {
+	s.ServerId = &v
+	return s
+}
+
+type DeleteAccessOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteAccessOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteAccessOutput) GoString() string {
+	return s.String()
+}
+
 type DeleteServerInput struct {
 	_ struct{} `type:"structure"`
 
-	// A unique system-assigned identifier for an SFTP server instance.
+	// A unique system-assigned identifier for a server instance.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -2443,7 +3771,7 @@ func (s DeleteServerOutput) GoString() string {
 type DeleteSshPublicKeyInput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for a Secure File Transfer Protocol (SFTP)
+	// A system-assigned unique identifier for a file transfer protocol-enabled
 	// server instance that has the user assigned to it.
 	//
 	// ServerId is a required field
@@ -2533,13 +3861,13 @@ func (s DeleteSshPublicKeyOutput) GoString() string {
 type DeleteUserInput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server instance that has
-	// the user assigned to it.
+	// A system-assigned unique identifier for a server instance that has the user
+	// assigned to it.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
 
-	// A unique string that identifies a user that is being deleted from the server.
+	// A unique string that identifies a user that is being deleted from a server.
 	//
 	// UserName is a required field
 	UserName *string `min:"3" type:"string" required:"true"`
@@ -2603,10 +3931,181 @@ func (s DeleteUserOutput) GoString() string {
 	return s.String()
 }
 
+type DescribeAccessInput struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier that is required to identify specific groups within your
+	// directory. The users of the group you associate have access to your Amazon
+	// S3 or Amazon EFS resources over the enabled protocols using AWS Transfer
+	// Family. If you know the group name, you can view the SID values by running
+	// the following command using Windows PowerShell.
+	//
+	// Get-ADGroup -Filter {samAccountName -like "YourGroupName*"} -Properties *
+	// | Select SamaccountName,ObjectSid
+	//
+	// In that command, replace YourGroupName with the name of your Active Directory
+	// group.
+	//
+	// The regex used to validate this parameter is a string of characters consisting
+	// of uppercase and lowercase alphanumeric characters with no spaces. You can
+	// also include underscores or any of the following characters: =,.@:/-
+	//
+	// ExternalId is a required field
+	ExternalId *string `min:"1" type:"string" required:"true"`
+
+	// A system-assigned unique identifier for a server that has this access assigned.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribeAccessInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeAccessInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeAccessInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeAccessInput"}
+	if s.ExternalId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ExternalId"))
+	}
+	if s.ExternalId != nil && len(*s.ExternalId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ExternalId", 1))
+	}
+	if s.ServerId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ServerId"))
+	}
+	if s.ServerId != nil && len(*s.ServerId) < 19 {
+		invalidParams.Add(request.NewErrParamMinLen("ServerId", 19))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetExternalId sets the ExternalId field's value.
+func (s *DescribeAccessInput) SetExternalId(v string) *DescribeAccessInput {
+	s.ExternalId = &v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *DescribeAccessInput) SetServerId(v string) *DescribeAccessInput {
+	s.ServerId = &v
+	return s
+}
+
+type DescribeAccessOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The external ID of the server that the access is attached to.
+	//
+	// Access is a required field
+	Access *DescribedAccess `type:"structure" required:"true"`
+
+	// A system-assigned unique identifier for a server that has this access assigned.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribeAccessOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeAccessOutput) GoString() string {
+	return s.String()
+}
+
+// SetAccess sets the Access field's value.
+func (s *DescribeAccessOutput) SetAccess(v *DescribedAccess) *DescribeAccessOutput {
+	s.Access = v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *DescribeAccessOutput) SetServerId(v string) *DescribeAccessOutput {
+	s.ServerId = &v
+	return s
+}
+
+type DescribeSecurityPolicyInput struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies the name of the security policy that is attached to the server.
+	//
+	// SecurityPolicyName is a required field
+	SecurityPolicyName *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribeSecurityPolicyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeSecurityPolicyInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeSecurityPolicyInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeSecurityPolicyInput"}
+	if s.SecurityPolicyName == nil {
+		invalidParams.Add(request.NewErrParamRequired("SecurityPolicyName"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetSecurityPolicyName sets the SecurityPolicyName field's value.
+func (s *DescribeSecurityPolicyInput) SetSecurityPolicyName(v string) *DescribeSecurityPolicyInput {
+	s.SecurityPolicyName = &v
+	return s
+}
+
+type DescribeSecurityPolicyOutput struct {
+	_ struct{} `type:"structure"`
+
+	// An array containing the properties of the security policy.
+	//
+	// SecurityPolicy is a required field
+	SecurityPolicy *DescribedSecurityPolicy `type:"structure" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribeSecurityPolicyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeSecurityPolicyOutput) GoString() string {
+	return s.String()
+}
+
+// SetSecurityPolicy sets the SecurityPolicy field's value.
+func (s *DescribeSecurityPolicyOutput) SetSecurityPolicy(v *DescribedSecurityPolicy) *DescribeSecurityPolicyOutput {
+	s.SecurityPolicy = v
+	return s
+}
+
 type DescribeServerInput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server.
+	// A system-assigned unique identifier for a server.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -2647,7 +4146,7 @@ func (s *DescribeServerInput) SetServerId(v string) *DescribeServerInput {
 type DescribeServerOutput struct {
 	_ struct{} `type:"structure"`
 
-	// An array containing the properties of the server with the ServerID you specified.
+	// An array containing the properties of a server with the ServerID you specified.
 	//
 	// Server is a required field
 	Server *DescribedServer `type:"structure" required:"true"`
@@ -2672,14 +4171,13 @@ func (s *DescribeServerOutput) SetServer(v *DescribedServer) *DescribeServerOutp
 type DescribeUserInput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server that has this user
-	// assigned.
+	// A system-assigned unique identifier for a server that has this user assigned.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
 
 	// The name of the user assigned to one or more servers. User names are part
-	// of the sign-in credentials to use the AWS Transfer for SFTP service and perform
+	// of the sign-in credentials to use the AWS Transfer Family service and perform
 	// file transfer tasks.
 	//
 	// UserName is a required field
@@ -2733,8 +4231,7 @@ func (s *DescribeUserInput) SetUserName(v string) *DescribeUserInput {
 type DescribeUserOutput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server that has this user
-	// assigned.
+	// A system-assigned unique identifier for a server that has this user assigned.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -2768,55 +4265,274 @@ func (s *DescribeUserOutput) SetUser(v *DescribedUser) *DescribeUserOutput {
 	return s
 }
 
-// Describes the properties of the server that was specified. Information returned
-// includes the following: the server Amazon Resource Name (ARN), the authentication
-// configuration and type, the logging role, the server ID and state, and assigned
-// tags or metadata.
+// Describes the properties of the access that was specified.
+type DescribedAccess struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier that might be required when you assume a role in another
+	// account. Think of the ExternalID as a group membership mechanism that uses
+	// a unique identifier (often a SID, but could be a group name or something
+	// else) as a basis. If the administrator of the account to which the role belongs
+	// provided you with an external ID, then provide that value in the ExternalId
+	// parameter. A cross-account role is usually set up to trust everyone in an
+	// account. Therefore, the administrator of the trusting account might send
+	// an external ID to the administrator of the trusted account. That way, only
+	// someone with the ID can assume the role, rather than everyone in the account.
+	//
+	// The regex used to validate this parameter is a string of characters consisting
+	// of uppercase and lowercase alphanumeric characters with no spaces. You can
+	// also include underscores or any of the following characters: =,.@:/-
+	ExternalId *string `min:"1" type:"string"`
+
+	// Specifies the landing directory (or folder), which is the location that files
+	// are written to or read from in an Amazon S3 bucket, for the described access.
+	HomeDirectory *string `type:"string"`
+
+	// Specifies the logical directory mappings that specify what Amazon S3 or Amazon
+	// EFS paths and keys should be visible to the associated access and how you
+	// want to make them visible. You must specify the "Entry" and "Target" pair,
+	// where Entry shows how the path is made visible and Target is the actual Amazon
+	// S3 or EFS path. If you only specify a target, it will be displayed as is.
+	// You also must ensure that your AWS Identity and Access Management (IAM) role
+	// provides access to paths in Target.
+	//
+	// In most cases, you can use this value instead of the scope-down policy to
+	// lock down the associated access to the designated home directory ("chroot").
+	// To do this, you can set Entry to '/' and set Target to the HomeDirectory
+	// parameter value.
+	HomeDirectoryMappings []*HomeDirectoryMapEntry `min:"1" type:"list"`
+
+	// The type of landing directory (folder) that you want your users' home directory
+	// to be when they log in to the server. If you set it to PATH, the user will
+	// see the absolute Amazon S3 bucket paths as is in their file transfer protocol
+	// clients. If you set it to LOGICAL, you must provide mappings in the HomeDirectoryMappings
+	// for how you want to make Amazon S3 paths visible to your users.
+	HomeDirectoryType *string `type:"string" enum:"HomeDirectoryType"`
+
+	// A scope-down policy for your user so that you can use the same AWS Identity
+	// and Access Management (IAM) role across multiple users. This policy scopes
+	// down user access to portions of their Amazon S3 bucket. Variables that you
+	// can use inside this policy include ${Transfer:UserName}, ${Transfer:HomeDirectory},
+	// and ${Transfer:HomeBucket}.
+	Policy *string `type:"string"`
+
+	// The full POSIX identity, including user ID (Uid), group ID (Gid), and any
+	// secondary groups IDs (SecondaryGids), that controls your users' access to
+	// your Amazon EFS file systems. The POSIX permissions that are set on files
+	// and directories in your file system determine the level of access your users
+	// get when transferring files into and out of your Amazon EFS file systems.
+	PosixProfile *PosixProfile `type:"structure"`
+
+	// The IAM role that controls access to your Amazon S3 bucket from the specified
+	// associated access. The policies attached to this role will determine the
+	// level of access that you want to provide the associated access when transferring
+	// files into and out of your Amazon S3 bucket or buckets. The IAM role should
+	// also contain a trust relationship that allows a server to access your resources
+	// when servicing transfer requests for the associated access.
+	Role *string `min:"20" type:"string"`
+}
+
+// String returns the string representation
+func (s DescribedAccess) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribedAccess) GoString() string {
+	return s.String()
+}
+
+// SetExternalId sets the ExternalId field's value.
+func (s *DescribedAccess) SetExternalId(v string) *DescribedAccess {
+	s.ExternalId = &v
+	return s
+}
+
+// SetHomeDirectory sets the HomeDirectory field's value.
+func (s *DescribedAccess) SetHomeDirectory(v string) *DescribedAccess {
+	s.HomeDirectory = &v
+	return s
+}
+
+// SetHomeDirectoryMappings sets the HomeDirectoryMappings field's value.
+func (s *DescribedAccess) SetHomeDirectoryMappings(v []*HomeDirectoryMapEntry) *DescribedAccess {
+	s.HomeDirectoryMappings = v
+	return s
+}
+
+// SetHomeDirectoryType sets the HomeDirectoryType field's value.
+func (s *DescribedAccess) SetHomeDirectoryType(v string) *DescribedAccess {
+	s.HomeDirectoryType = &v
+	return s
+}
+
+// SetPolicy sets the Policy field's value.
+func (s *DescribedAccess) SetPolicy(v string) *DescribedAccess {
+	s.Policy = &v
+	return s
+}
+
+// SetPosixProfile sets the PosixProfile field's value.
+func (s *DescribedAccess) SetPosixProfile(v *PosixProfile) *DescribedAccess {
+	s.PosixProfile = v
+	return s
+}
+
+// SetRole sets the Role field's value.
+func (s *DescribedAccess) SetRole(v string) *DescribedAccess {
+	s.Role = &v
+	return s
+}
+
+// Describes the properties of a security policy that was specified. For more
+// information about security policies, see Working with security policies (https://docs.aws.amazon.com/transfer/latest/userguide/security-policies.html).
+type DescribedSecurityPolicy struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies whether this policy enables Federal Information Processing Standards
+	// (FIPS).
+	Fips *bool `type:"boolean"`
+
+	// Specifies the name of the security policy that is attached to the server.
+	//
+	// SecurityPolicyName is a required field
+	SecurityPolicyName *string `type:"string" required:"true"`
+
+	// Specifies the enabled Secure Shell (SSH) cipher encryption algorithms in
+	// the security policy that is attached to the server.
+	SshCiphers []*string `type:"list"`
+
+	// Specifies the enabled SSH key exchange (KEX) encryption algorithms in the
+	// security policy that is attached to the server.
+	SshKexs []*string `type:"list"`
+
+	// Specifies the enabled SSH message authentication code (MAC) encryption algorithms
+	// in the security policy that is attached to the server.
+	SshMacs []*string `type:"list"`
+
+	// Specifies the enabled Transport Layer Security (TLS) cipher encryption algorithms
+	// in the security policy that is attached to the server.
+	TlsCiphers []*string `type:"list"`
+}
+
+// String returns the string representation
+func (s DescribedSecurityPolicy) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribedSecurityPolicy) GoString() string {
+	return s.String()
+}
+
+// SetFips sets the Fips field's value.
+func (s *DescribedSecurityPolicy) SetFips(v bool) *DescribedSecurityPolicy {
+	s.Fips = &v
+	return s
+}
+
+// SetSecurityPolicyName sets the SecurityPolicyName field's value.
+func (s *DescribedSecurityPolicy) SetSecurityPolicyName(v string) *DescribedSecurityPolicy {
+	s.SecurityPolicyName = &v
+	return s
+}
+
+// SetSshCiphers sets the SshCiphers field's value.
+func (s *DescribedSecurityPolicy) SetSshCiphers(v []*string) *DescribedSecurityPolicy {
+	s.SshCiphers = v
+	return s
+}
+
+// SetSshKexs sets the SshKexs field's value.
+func (s *DescribedSecurityPolicy) SetSshKexs(v []*string) *DescribedSecurityPolicy {
+	s.SshKexs = v
+	return s
+}
+
+// SetSshMacs sets the SshMacs field's value.
+func (s *DescribedSecurityPolicy) SetSshMacs(v []*string) *DescribedSecurityPolicy {
+	s.SshMacs = v
+	return s
+}
+
+// SetTlsCiphers sets the TlsCiphers field's value.
+func (s *DescribedSecurityPolicy) SetTlsCiphers(v []*string) *DescribedSecurityPolicy {
+	s.TlsCiphers = v
+	return s
+}
+
+// Describes the properties of a file transfer protocol-enabled server that
+// was specified.
 type DescribedServer struct {
 	_ struct{} `type:"structure"`
 
-	// Specifies the unique Amazon Resource Name (ARN) for the server to be described.
+	// Specifies the unique Amazon Resource Name (ARN) of the server.
 	//
 	// Arn is a required field
 	Arn *string `min:"20" type:"string" required:"true"`
 
-	// The virtual private cloud (VPC) endpoint settings that you configured for
-	// your SFTP server.
+	// Specifies the ARN of the AWS Certificate Manager (ACM) certificate. Required
+	// when Protocols is set to FTPS.
+	Certificate *string `type:"string"`
+
+	// Specifies the domain of the storage system that is used for file transfers.
+	Domain *string `type:"string" enum:"Domain"`
+
+	// Specifies the virtual private cloud (VPC) endpoint settings that you configured
+	// for your server.
 	EndpointDetails *EndpointDetails `type:"structure"`
 
-	// The type of endpoint that your SFTP server is connected to. If your SFTP
-	// server is connected to a VPC endpoint, your server isn't accessible over
-	// the public internet.
+	// Defines the type of endpoint that your server is connected to. If your server
+	// is connected to a VPC endpoint, your server isn't accessible over the public
+	// internet.
 	EndpointType *string `type:"string" enum:"EndpointType"`
 
-	// This value contains the message-digest algorithm (MD5) hash of the server's
-	// host key. This value is equivalent to the output of the ssh-keygen -l -E
-	// md5 -f my-new-server-key command.
+	// Specifies the Base64-encoded SHA256 fingerprint of the server's host key.
+	// This value is equivalent to the output of the ssh-keygen -l -f my-new-server-key
+	// command.
 	HostKeyFingerprint *string `type:"string"`
 
 	// Specifies information to call a customer-supplied authentication API. This
-	// field is not populated when the IdentityProviderType of the server is SERVICE_MANAGED>.
+	// field is not populated when the IdentityProviderType of a server is AWS_DIRECTORY_SERVICE
+	// or SERVICE_MANAGED.
 	IdentityProviderDetails *IdentityProviderDetails `type:"structure"`
 
-	// This property defines the mode of authentication method enabled for this
-	// service. A value of SERVICE_MANAGED means that you are using this server
-	// to store and access SFTP user credentials within the service. A value of
-	// API_GATEWAY indicates that you have integrated an API Gateway endpoint that
-	// will be invoked for authenticating your user into the service.
+	// Specifies the mode of authentication method enabled for this service. A value
+	// of AWS_DIRECTORY_SERVICE means that you are providing access to Active Directory
+	// groups in AWS Managed Active Directory or Microsoft Active Directory in your
+	// on-premises environment or in AWS using AD Connectors. A value of SERVICE_MANAGED
+	// means that you are using this server to store and access user credentials
+	// within the service. A value of API_GATEWAY indicates that you have integrated
+	// an API Gateway endpoint that will be invoked for authenticating your user
+	// into the service.
 	IdentityProviderType *string `type:"string" enum:"IdentityProviderType"`
 
-	// This property is an AWS Identity and Access Management (IAM) entity that
-	// allows the server to turn on Amazon CloudWatch logging for Amazon S3 events.
+	// Specifies the AWS Identity and Access Management (IAM) role that allows a
+	// server to turn on Amazon CloudWatch logging for Amazon S3 or Amazon EFS events.
 	// When set, user activity can be viewed in your CloudWatch logs.
 	LoggingRole *string `min:"20" type:"string"`
 
-	// This property is a unique system-assigned identifier for the SFTP server
-	// that you instantiate.
+	// Specifies the file transfer protocol or protocols over which your file transfer
+	// protocol client can connect to your server's endpoint. The available protocols
+	// are:
+	//
+	//    * SFTP (Secure Shell (SSH) File Transfer Protocol): File transfer over
+	//    SSH
+	//
+	//    * FTPS (File Transfer Protocol Secure): File transfer with TLS encryption
+	//
+	//    * FTP (File Transfer Protocol): Unencrypted file transfer
+	Protocols []*string `min:"1" type:"list"`
+
+	// Specifies the name of the security policy that is attached to the server.
+	SecurityPolicyName *string `type:"string"`
+
+	// Specifies the unique system-assigned identifier for a server that you instantiate.
 	ServerId *string `min:"19" type:"string"`
 
-	// The condition of the SFTP server for the server that was described. A value
-	// of ONLINE indicates that the server can accept jobs and transfer files. A
-	// State value of OFFLINE means that the server cannot perform file transfer
+	// Specifies the condition of a server for the server that was described. A
+	// value of ONLINE indicates that the server can accept jobs and transfer files.
+	// A State value of OFFLINE means that the server cannot perform file transfer
 	// operations.
 	//
 	// The states of STARTING and STOPPING indicate that the server is in an intermediate
@@ -2824,12 +4540,12 @@ type DescribedServer struct {
 	// of START_FAILED or STOP_FAILED can indicate an error condition.
 	State *string `type:"string" enum:"State"`
 
-	// This property contains the key-value pairs that you can use to search for
-	// and group servers that were assigned to the server that was described.
+	// Specifies the key-value pairs that you can use to search for and group servers
+	// that were assigned to the server that was described.
 	Tags []*Tag `min:"1" type:"list"`
 
-	// The number of users that are assigned to the SFTP server you specified with
-	// the ServerId.
+	// Specifies the number of users that are assigned to a server you specified
+	// with the ServerId.
 	UserCount *int64 `type:"integer"`
 }
 
@@ -2846,6 +4562,18 @@ func (s DescribedServer) GoString() string {
 // SetArn sets the Arn field's value.
 func (s *DescribedServer) SetArn(v string) *DescribedServer {
 	s.Arn = &v
+	return s
+}
+
+// SetCertificate sets the Certificate field's value.
+func (s *DescribedServer) SetCertificate(v string) *DescribedServer {
+	s.Certificate = &v
+	return s
+}
+
+// SetDomain sets the Domain field's value.
+func (s *DescribedServer) SetDomain(v string) *DescribedServer {
+	s.Domain = &v
 	return s
 }
 
@@ -2885,6 +4613,18 @@ func (s *DescribedServer) SetLoggingRole(v string) *DescribedServer {
 	return s
 }
 
+// SetProtocols sets the Protocols field's value.
+func (s *DescribedServer) SetProtocols(v []*string) *DescribedServer {
+	s.Protocols = v
+	return s
+}
+
+// SetSecurityPolicyName sets the SecurityPolicyName field's value.
+func (s *DescribedServer) SetSecurityPolicyName(v string) *DescribedServer {
+	s.SecurityPolicyName = &v
+	return s
+}
+
 // SetServerId sets the ServerId field's value.
 func (s *DescribedServer) SetServerId(v string) *DescribedServer {
 	s.ServerId = &v
@@ -2909,66 +4649,72 @@ func (s *DescribedServer) SetUserCount(v int64) *DescribedServer {
 	return s
 }
 
-// Returns properties of the user that you want to describe.
+// Describes the properties of a user that was specified.
 type DescribedUser struct {
 	_ struct{} `type:"structure"`
 
-	// This property contains the unique Amazon Resource Name (ARN) for the user
-	// that was requested to be described.
+	// Specifies the unique Amazon Resource Name (ARN) for the user that was requested
+	// to be described.
 	//
 	// Arn is a required field
 	Arn *string `min:"20" type:"string" required:"true"`
 
-	// This property specifies the landing directory (or folder), which is the location
-	// that files are written to or read from in an Amazon S3 bucket for the described
-	// user. An example is /your s3 bucket name/home/username .
+	// Specifies the landing directory (or folder), which is the location that files
+	// are written to or read from in an Amazon S3 bucket, for the described user.
+	// An example is your-Amazon-S3-bucket-name>/home/username .
 	HomeDirectory *string `type:"string"`
 
-	// Logical directory mappings that you specified for what S3 paths and keys
-	// should be visible to your user and how you want to make them visible. You
-	// will need to specify the "Entry" and "Target" pair, where Entry shows how
-	// the path is made visible and Target is the actual S3 path. If you only specify
-	// a target, it will be displayed as is. You will need to also make sure that
-	// your AWS IAM Role provides access to paths in Target.
+	// Specifies the logical directory mappings that specify what Amazon S3 or EFS
+	// paths and keys should be visible to your user and how you want to make them
+	// visible. You will need to specify the "Entry" and "Target" pair, where Entry
+	// shows how the path is made visible and Target is the actual Amazon S3 or
+	// EFS path. If you only specify a target, it will be displayed as is. You will
+	// need to also make sure that your AWS Identity and Access Management (IAM)
+	// role provides access to paths in Target.
 	//
-	// In most cases, you can use this value instead of the scope down policy to
-	// lock your user down to the designated home directory ("chroot"). To do this,
-	// you can set Entry to '/' and set Target to the HomeDirectory parameter value.
-	//
-	// In most cases, you can use this value instead of the scope down policy to
+	// In most cases, you can use this value instead of the scope-down policy to
 	// lock your user down to the designated home directory ("chroot"). To do this,
 	// you can set Entry to '/' and set Target to the HomeDirectory parameter value.
 	HomeDirectoryMappings []*HomeDirectoryMapEntry `min:"1" type:"list"`
 
-	// The type of landing directory (folder) you mapped for your users' to see
-	// when they log into the SFTP server. If you set it to PATH, the user will
-	// see the absolute Amazon S3 bucket paths as is in their SFTP clients. If you
-	// set it LOGICAL, you will need to provide mappings in the HomeDirectoryMappings
-	// for how you want to make S3 paths visible to your user.
+	// Specifies the type of landing directory (folder) you mapped for your users
+	// to see when they log into the file transfer protocol-enabled server. If you
+	// set it to PATH, the user will see the absolute Amazon S3 bucket or EFS paths
+	// as is in their file transfer protocol clients. If you set it LOGICAL, you
+	// will need to provide mappings in the HomeDirectoryMappings for how you want
+	// to make Amazon S3 or EFS paths visible to your users.
 	HomeDirectoryType *string `type:"string" enum:"HomeDirectoryType"`
 
 	// Specifies the name of the policy in use for the described user.
 	Policy *string `type:"string"`
 
-	// This property specifies the IAM role that controls your user's access to
-	// your Amazon S3 bucket. The policies attached to this role will determine
-	// the level of access you want to provide your users when transferring files
-	// into and out of your Amazon S3 bucket or buckets. The IAM role should also
-	// contain a trust relationship that allows the SFTP server to access your resources
-	// when servicing your SFTP user's transfer requests.
+	// Specifies the full POSIX identity, including user ID (Uid), group ID (Gid),
+	// and any secondary groups IDs (SecondaryGids), that controls your users' access
+	// to your Amazon Elastic File System (Amazon EFS) file systems. The POSIX permissions
+	// that are set on files and directories in your file system determine the level
+	// of access your users get when transferring files into and out of your Amazon
+	// EFS file systems.
+	PosixProfile *PosixProfile `type:"structure"`
+
+	// The IAM role that controls your users' access to your Amazon S3 bucket. The
+	// policies attached to this role will determine the level of access you want
+	// to provide your users when transferring files into and out of your Amazon
+	// S3 bucket or buckets. The IAM role should also contain a trust relationship
+	// that allows a server to access your resources when servicing your users'
+	// transfer requests.
 	Role *string `min:"20" type:"string"`
 
-	// This property contains the public key portion of the Secure Shell (SSH) keys
-	// stored for the described user.
+	// Specifies the public key portion of the Secure Shell (SSH) keys stored for
+	// the described user.
 	SshPublicKeys []*SshPublicKey `type:"list"`
 
-	// This property contains the key-value pairs for the user requested. Tag can
-	// be used to search for and group users for a variety of purposes.
+	// Specifies the key-value pairs for the user requested. Tag can be used to
+	// search for and group users for a variety of purposes.
 	Tags []*Tag `min:"1" type:"list"`
 
-	// This property is the name of the user that was requested to be described.
-	// User names are used for authentication purposes. This is the string that
-	// will be used by your user when they log in to your SFTP server.
+	// Specifies the name of the user that was requested to be described. User names
+	// are used for authentication purposes. This is the string that will be used
+	// by your user when they log in to your server.
 	UserName *string `min:"3" type:"string"`
 }
 
@@ -3012,6 +4758,12 @@ func (s *DescribedUser) SetPolicy(v string) *DescribedUser {
 	return s
 }
 
+// SetPosixProfile sets the PosixProfile field's value.
+func (s *DescribedUser) SetPosixProfile(v *PosixProfile) *DescribedUser {
+	s.PosixProfile = v
+	return s
+}
+
 // SetRole sets the Role field's value.
 func (s *DescribedUser) SetRole(v string) *DescribedUser {
 	s.Role = &v
@@ -3037,28 +4789,56 @@ func (s *DescribedUser) SetUserName(v string) *DescribedUser {
 }
 
 // The virtual private cloud (VPC) endpoint settings that are configured for
-// your SFTP server. With a VPC endpoint, you can restrict access to your SFTP
-// server and resources only within your VPC. To control incoming internet traffic,
-// invoke the UpdateServer API and attach an Elastic IP to your server's endpoint.
+// your file transfer protocol-enabled server. With a VPC endpoint, you can
+// restrict access to your server and resources only within your VPC. To control
+// incoming internet traffic, invoke the UpdateServer API and attach an Elastic
+// IP address to your server's endpoint.
+//
+// After March 31, 2021, you won't be able to create a server using EndpointType=VPC_ENDPOINT
+// in your AWS account if your account hasn't already done so before March 31,
+// 2021. If you have already created servers with EndpointType=VPC_ENDPOINT
+// in your AWS account on or before March 31, 2021, you will not be affected.
+// After this date, use EndpointType=VPC.
+//
+// For more information, see https://docs.aws.amazon.com/transfer/latest/userguide/create-server-in-vpc.html#deprecate-vpc-endpoint.
 type EndpointDetails struct {
 	_ struct{} `type:"structure"`
 
 	// A list of address allocation IDs that are required to attach an Elastic IP
-	// address to your SFTP server's endpoint. This is only valid in the UpdateServer
-	// API.
+	// address to your server's endpoint.
 	//
-	// This property can only be use when EndpointType is set to VPC.
+	// This property can only be set when EndpointType is set to VPC and it is only
+	// valid in the UpdateServer API.
 	AddressAllocationIds []*string `type:"list"`
 
-	// A list of subnet IDs that are required to host your SFTP server endpoint
-	// in your VPC.
+	// A list of security groups IDs that are available to attach to your server's
+	// endpoint.
+	//
+	// This property can only be set when EndpointType is set to VPC.
+	//
+	// You can edit the SecurityGroupIds property in the UpdateServer (https://docs.aws.amazon.com/transfer/latest/userguide/API_UpdateServer.html)
+	// API only if you are changing the EndpointType from PUBLIC or VPC_ENDPOINT
+	// to VPC. To change security groups associated with your server's VPC endpoint
+	// after creation, use the Amazon EC2 ModifyVpcEndpoint (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyVpcEndpoint.html)
+	// API.
+	SecurityGroupIds []*string `type:"list"`
+
+	// A list of subnet IDs that are required to host your server endpoint in your
+	// VPC.
+	//
+	// This property can only be set when EndpointType is set to VPC.
 	SubnetIds []*string `type:"list"`
 
 	// The ID of the VPC endpoint.
+	//
+	// This property can only be set when EndpointType is set to VPC_ENDPOINT.
+	//
+	// For more information, see https://docs.aws.amazon.com/transfer/latest/userguide/create-server-in-vpc.html#deprecate-vpc-endpoint.
 	VpcEndpointId *string `min:"22" type:"string"`
 
-	// The VPC ID of the virtual private cloud in which the SFTP server's endpoint
-	// will be hosted.
+	// The VPC ID of the VPC in which a server's endpoint will be hosted.
+	//
+	// This property can only be set when EndpointType is set to VPC.
 	VpcId *string `type:"string"`
 }
 
@@ -3091,6 +4871,12 @@ func (s *EndpointDetails) SetAddressAllocationIds(v []*string) *EndpointDetails 
 	return s
 }
 
+// SetSecurityGroupIds sets the SecurityGroupIds field's value.
+func (s *EndpointDetails) SetSecurityGroupIds(v []*string) *EndpointDetails {
+	s.SecurityGroupIds = v
+	return s
+}
+
 // SetSubnetIds sets the SubnetIds field's value.
 func (s *EndpointDetails) SetSubnetIds(v []*string) *EndpointDetails {
 	s.SubnetIds = v
@@ -3109,7 +4895,7 @@ func (s *EndpointDetails) SetVpcId(v string) *EndpointDetails {
 	return s
 }
 
-// Represents an object that contains entries and a targets for HomeDirectoryMappings.
+// Represents an object that contains entries and targets for HomeDirectoryMappings.
 type HomeDirectoryMapEntry struct {
 	_ struct{} `type:"structure"`
 
@@ -3163,16 +4949,19 @@ func (s *HomeDirectoryMapEntry) SetTarget(v string) *HomeDirectoryMapEntry {
 }
 
 // Returns information related to the type of user authentication that is in
-// use for a server's users. A server can have only one method of authentication.
+// use for a file transfer protocol-enabled server's users. A server can have
+// only one method of authentication.
 type IdentityProviderDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The InvocationRole parameter provides the type of InvocationRole used to
-	// authenticate the user account.
+	// The identifier of the AWS Directory Service directory that you want to stop
+	// sharing.
+	DirectoryId *string `min:"12" type:"string"`
+
+	// Provides the type of InvocationRole used to authenticate the user account.
 	InvocationRole *string `min:"20" type:"string"`
 
-	// The Url parameter provides contains the location of the service endpoint
-	// used to authenticate users.
+	// Provides the location of the service endpoint used to authenticate users.
 	Url *string `type:"string"`
 }
 
@@ -3189,6 +4978,9 @@ func (s IdentityProviderDetails) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *IdentityProviderDetails) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "IdentityProviderDetails"}
+	if s.DirectoryId != nil && len(*s.DirectoryId) < 12 {
+		invalidParams.Add(request.NewErrParamMinLen("DirectoryId", 12))
+	}
 	if s.InvocationRole != nil && len(*s.InvocationRole) < 20 {
 		invalidParams.Add(request.NewErrParamMinLen("InvocationRole", 20))
 	}
@@ -3197,6 +4989,12 @@ func (s *IdentityProviderDetails) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetDirectoryId sets the DirectoryId field's value.
+func (s *IdentityProviderDetails) SetDirectoryId(v string) *IdentityProviderDetails {
+	s.DirectoryId = &v
+	return s
 }
 
 // SetInvocationRole sets the InvocationRole field's value.
@@ -3214,7 +5012,7 @@ func (s *IdentityProviderDetails) SetUrl(v string) *IdentityProviderDetails {
 type ImportSshPublicKeyInput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server.
+	// A system-assigned unique identifier for a server.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -3283,19 +5081,18 @@ func (s *ImportSshPublicKeyInput) SetUserName(v string) *ImportSshPublicKeyInput
 	return s
 }
 
-// This response identifies the user, the server they belong to, and the identifier
-// of the SSH public key associated with that user. A user can have more than
-// one key on each server that they are associated with.
+// Identifies the user, the server they belong to, and the identifier of the
+// SSH public key associated with that user. A user can have more than one key
+// on each server that they are associated with.
 type ImportSshPublicKeyOutput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server.
+	// A system-assigned unique identifier for a server.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
 
-	// This identifier is the name given to a public key by the system that was
-	// imported.
+	// The name given to a public key by the system that was imported.
 	//
 	// SshPublicKeyId is a required field
 	SshPublicKeyId *string `min:"21" type:"string" required:"true"`
@@ -3334,11 +5131,11 @@ func (s *ImportSshPublicKeyOutput) SetUserName(v string) *ImportSshPublicKeyOutp
 	return s
 }
 
-// This exception is thrown when an error occurs in the AWS Transfer for SFTP
+// This exception is thrown when an error occurs in the AWS Transfer Family
 // service.
 type InternalServiceError struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3355,17 +5152,17 @@ func (s InternalServiceError) GoString() string {
 
 func newErrorInternalServiceError(v protocol.ResponseMetadata) error {
 	return &InternalServiceError{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServiceError) Code() string {
+func (s *InternalServiceError) Code() string {
 	return "InternalServiceError"
 }
 
 // Message returns the exception's message.
-func (s InternalServiceError) Message() string {
+func (s *InternalServiceError) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3373,28 +5170,28 @@ func (s InternalServiceError) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServiceError) OrigErr() error {
+func (s *InternalServiceError) OrigErr() error {
 	return nil
 }
 
-func (s InternalServiceError) Error() string {
+func (s *InternalServiceError) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServiceError) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServiceError) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServiceError) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServiceError) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The NextToken parameter that was passed is invalid.
 type InvalidNextTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3411,17 +5208,17 @@ func (s InvalidNextTokenException) GoString() string {
 
 func newErrorInvalidNextTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidNextTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidNextTokenException) Code() string {
+func (s *InvalidNextTokenException) Code() string {
 	return "InvalidNextTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidNextTokenException) Message() string {
+func (s *InvalidNextTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3429,28 +5226,28 @@ func (s InvalidNextTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidNextTokenException) OrigErr() error {
+func (s *InvalidNextTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidNextTokenException) Error() string {
+func (s *InvalidNextTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidNextTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidNextTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidNextTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidNextTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // This exception is thrown when the client submits a malformed request.
 type InvalidRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -3467,17 +5264,17 @@ func (s InvalidRequestException) GoString() string {
 
 func newErrorInvalidRequestException(v protocol.ResponseMetadata) error {
 	return &InvalidRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidRequestException) Code() string {
+func (s *InvalidRequestException) Code() string {
 	return "InvalidRequestException"
 }
 
 // Message returns the exception's message.
-func (s InvalidRequestException) Message() string {
+func (s *InvalidRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3485,22 +5282,227 @@ func (s InvalidRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidRequestException) OrigErr() error {
+func (s *InvalidRequestException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidRequestException) Error() string {
+func (s *InvalidRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+type ListAccessesInput struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies the maximum number of access SIDs to return.
+	MaxResults *int64 `min:"1" type:"integer"`
+
+	// When you can get additional results from the ListAccesses call, a NextToken
+	// parameter is returned in the output. You can then pass in a subsequent command
+	// to the NextToken parameter to continue listing additional accesses.
+	NextToken *string `min:"1" type:"string"`
+
+	// A system-assigned unique identifier for a server that has users assigned
+	// to it.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ListAccessesInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListAccessesInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListAccessesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListAccessesInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
+	}
+	if s.ServerId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ServerId"))
+	}
+	if s.ServerId != nil && len(*s.ServerId) < 19 {
+		invalidParams.Add(request.NewErrParamMinLen("ServerId", 19))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListAccessesInput) SetMaxResults(v int64) *ListAccessesInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListAccessesInput) SetNextToken(v string) *ListAccessesInput {
+	s.NextToken = &v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *ListAccessesInput) SetServerId(v string) *ListAccessesInput {
+	s.ServerId = &v
+	return s
+}
+
+type ListAccessesOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Returns the accesses and their properties for the ServerId value that you
+	// specify.
+	//
+	// Accesses is a required field
+	Accesses []*ListedAccess `type:"list" required:"true"`
+
+	// When you can get additional results from the ListAccesses call, a NextToken
+	// parameter is returned in the output. You can then pass in a subsequent command
+	// to the NextToken parameter to continue listing additional accesses.
+	NextToken *string `min:"1" type:"string"`
+
+	// A system-assigned unique identifier for a server that has users assigned
+	// to it.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ListAccessesOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListAccessesOutput) GoString() string {
+	return s.String()
+}
+
+// SetAccesses sets the Accesses field's value.
+func (s *ListAccessesOutput) SetAccesses(v []*ListedAccess) *ListAccessesOutput {
+	s.Accesses = v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListAccessesOutput) SetNextToken(v string) *ListAccessesOutput {
+	s.NextToken = &v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *ListAccessesOutput) SetServerId(v string) *ListAccessesOutput {
+	s.ServerId = &v
+	return s
+}
+
+type ListSecurityPoliciesInput struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies the number of security policies to return as a response to the
+	// ListSecurityPolicies query.
+	MaxResults *int64 `min:"1" type:"integer"`
+
+	// When additional results are obtained from the ListSecurityPolicies command,
+	// a NextToken parameter is returned in the output. You can then pass the NextToken
+	// parameter in a subsequent command to continue listing additional security
+	// policies.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListSecurityPoliciesInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListSecurityPoliciesInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListSecurityPoliciesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListSecurityPoliciesInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListSecurityPoliciesInput) SetMaxResults(v int64) *ListSecurityPoliciesInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListSecurityPoliciesInput) SetNextToken(v string) *ListSecurityPoliciesInput {
+	s.NextToken = &v
+	return s
+}
+
+type ListSecurityPoliciesOutput struct {
+	_ struct{} `type:"structure"`
+
+	// When you can get additional results from the ListSecurityPolicies operation,
+	// a NextToken parameter is returned in the output. In a following command,
+	// you can pass in the NextToken parameter to continue listing security policies.
+	NextToken *string `min:"1" type:"string"`
+
+	// An array of security policies that were listed.
+	//
+	// SecurityPolicyNames is a required field
+	SecurityPolicyNames []*string `type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s ListSecurityPoliciesOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListSecurityPoliciesOutput) GoString() string {
+	return s.String()
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListSecurityPoliciesOutput) SetNextToken(v string) *ListSecurityPoliciesOutput {
+	s.NextToken = &v
+	return s
+}
+
+// SetSecurityPolicyNames sets the SecurityPolicyNames field's value.
+func (s *ListSecurityPoliciesOutput) SetSecurityPolicyNames(v []*string) *ListSecurityPoliciesOutput {
+	s.SecurityPolicyNames = v
+	return s
 }
 
 type ListServersInput struct {
@@ -3663,7 +5665,7 @@ func (s *ListTagsForResourceInput) SetNextToken(v string) *ListTagsForResourceIn
 type ListTagsForResourceOutput struct {
 	_ struct{} `type:"structure"`
 
-	// This value is the ARN you specified to list the tags of.
+	// The ARN you specified to list the tags of.
 	Arn *string `min:"20" type:"string"`
 
 	// When you can get additional results from the ListTagsForResource call, a
@@ -3715,8 +5717,8 @@ type ListUsersInput struct {
 	// to the NextToken parameter to continue listing additional users.
 	NextToken *string `min:"1" type:"string"`
 
-	// A system-assigned unique identifier for a Secure File Transfer Protocol (SFTP)
-	// server that has users assigned to it.
+	// A system-assigned unique identifier for a server that has users assigned
+	// to it.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -3780,8 +5782,8 @@ type ListUsersOutput struct {
 	// to the NextToken parameter to continue listing additional users.
 	NextToken *string `min:"1" type:"string"`
 
-	// A system-assigned unique identifier for an SFTP server that the users are
-	// assigned to.
+	// A system-assigned unique identifier for a server that the users are assigned
+	// to.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -3821,46 +5823,123 @@ func (s *ListUsersOutput) SetUsers(v []*ListedUser) *ListUsersOutput {
 	return s
 }
 
-// Returns properties of the server that was specified.
+// Lists the properties for one or more specified associated accesses.
+type ListedAccess struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier that might be required when you assume a role in another
+	// account. Think of the ExternalID as a group membership mechanism that uses
+	// a unique identifier (often a SID, but could be a group name or something
+	// else) as a basis. If the administrator of the account to which the role belongs
+	// provided you with an external ID, then provide that value in the ExternalId
+	// parameter. A cross-account role is usually set up to trust everyone in an
+	// account. Therefore, the administrator of the trusting account might send
+	// an external ID to the administrator of the trusted account. That way, only
+	// someone with the ID can assume the role, rather than everyone in the account.
+	//
+	// The regex used to validate this parameter is a string of characters consisting
+	// of uppercase and lowercase alphanumeric characters with no spaces. You can
+	// also include underscores or any of the following characters: =,.@:/-
+	ExternalId *string `min:"1" type:"string"`
+
+	// Specifies the landing directory (or folder), which is the location that files
+	// are written to or read from in an Amazon S3 bucket, for the described access.
+	HomeDirectory *string `type:"string"`
+
+	// The type of landing directory (folder) that you want your users' home directory
+	// to be when they log in to the server. If you set it to PATH, the user will
+	// see the absolute Amazon S3 bucket paths as is in their file transfer protocol
+	// clients. If you set it to LOGICAL, you must provide mappings in the HomeDirectoryMappings
+	// for how you want to make Amazon S3 paths visible to your users.
+	HomeDirectoryType *string `type:"string" enum:"HomeDirectoryType"`
+
+	// The AWS Identity and Access Management (IAM) role that controls access to
+	// your Amazon S3 bucket from the specified associated access. The policies
+	// attached to this role will determine the level of access that you want to
+	// provide the associated access when transferring files into and out of your
+	// Amazon S3 bucket or buckets. The IAM role should also contain a trust relationship
+	// that allows a server to access your resources when servicing transfer requests
+	// for the associated access.
+	Role *string `min:"20" type:"string"`
+}
+
+// String returns the string representation
+func (s ListedAccess) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListedAccess) GoString() string {
+	return s.String()
+}
+
+// SetExternalId sets the ExternalId field's value.
+func (s *ListedAccess) SetExternalId(v string) *ListedAccess {
+	s.ExternalId = &v
+	return s
+}
+
+// SetHomeDirectory sets the HomeDirectory field's value.
+func (s *ListedAccess) SetHomeDirectory(v string) *ListedAccess {
+	s.HomeDirectory = &v
+	return s
+}
+
+// SetHomeDirectoryType sets the HomeDirectoryType field's value.
+func (s *ListedAccess) SetHomeDirectoryType(v string) *ListedAccess {
+	s.HomeDirectoryType = &v
+	return s
+}
+
+// SetRole sets the Role field's value.
+func (s *ListedAccess) SetRole(v string) *ListedAccess {
+	s.Role = &v
+	return s
+}
+
+// Returns properties of a file transfer protocol-enabled server that was specified.
 type ListedServer struct {
 	_ struct{} `type:"structure"`
 
-	// The unique Amazon Resource Name (ARN) for the server to be listed.
+	// Specifies the unique Amazon Resource Name (ARN) for a server to be listed.
 	//
 	// Arn is a required field
 	Arn *string `min:"20" type:"string" required:"true"`
 
-	// The type of VPC endpoint that your SFTP server is connected to. If your SFTP
+	// Specifies the domain of the storage system that is used for file transfers.
+	Domain *string `type:"string" enum:"Domain"`
+
+	// Specifies the type of VPC endpoint that your server is connected to. If your
 	// server is connected to a VPC endpoint, your server isn't accessible over
 	// the public internet.
 	EndpointType *string `type:"string" enum:"EndpointType"`
 
-	// The authentication method used to validate a user for the server that was
-	// specified. This can include Secure Shell (SSH), user name and password combinations,
-	// or your own custom authentication method. Valid values include SERVICE_MANAGED
-	// or API_GATEWAY.
+	// Specifies the authentication method used to validate a user for a server
+	// that was specified. This can include Secure Shell (SSH), Active Directory
+	// groups, user name and password combinations, or your own custom authentication
+	// method.
 	IdentityProviderType *string `type:"string" enum:"IdentityProviderType"`
 
-	// The AWS Identity and Access Management entity that allows the server to turn
-	// on Amazon CloudWatch logging.
+	// Specifies the AWS Identity and Access Management (IAM) role that allows a
+	// server to turn on Amazon CloudWatch logging.
 	LoggingRole *string `min:"20" type:"string"`
 
-	// This value is the unique system assigned identifier for the SFTP servers
-	// that were listed.
+	// Specifies the unique system assigned identifier for the servers that were
+	// listed.
 	ServerId *string `min:"19" type:"string"`
 
-	// This property describes the condition of the SFTP server for the server that
-	// was described. A value of ONLINE> indicates that the server can accept jobs
-	// and transfer files. A State value of OFFLINE means that the server cannot
-	// perform file transfer operations.
+	// Specifies the condition of a server for the server that was described. A
+	// value of ONLINE indicates that the server can accept jobs and transfer files.
+	// A State value of OFFLINE means that the server cannot perform file transfer
+	// operations.
 	//
 	// The states of STARTING and STOPPING indicate that the server is in an intermediate
 	// state, either not fully able to respond, or not fully offline. The values
 	// of START_FAILED or STOP_FAILED can indicate an error condition.
 	State *string `type:"string" enum:"State"`
 
-	// This property is a numeric value that indicates the number of users that
-	// are assigned to the SFTP server you specified with the ServerId.
+	// Specifies the number of users that are assigned to a server you specified
+	// with the ServerId.
 	UserCount *int64 `type:"integer"`
 }
 
@@ -3877,6 +5956,12 @@ func (s ListedServer) GoString() string {
 // SetArn sets the Arn field's value.
 func (s *ListedServer) SetArn(v string) *ListedServer {
 	s.Arn = &v
+	return s
+}
+
+// SetDomain sets the Domain field's value.
+func (s *ListedServer) SetDomain(v string) *ListedServer {
+	s.Domain = &v
 	return s
 }
 
@@ -3920,34 +6005,42 @@ func (s *ListedServer) SetUserCount(v int64) *ListedServer {
 type ListedUser struct {
 	_ struct{} `type:"structure"`
 
-	// This property is the unique Amazon Resource Name (ARN) for the user that
-	// you want to learn about.
+	// Provides the unique Amazon Resource Name (ARN) for the user that you want
+	// to learn about.
 	//
 	// Arn is a required field
 	Arn *string `min:"20" type:"string" required:"true"`
 
-	// This value specifies the location that files are written to or read from
-	// an Amazon S3 bucket for the user you specify by their ARN.
+	// Specifies the location that files are written to or read from an Amazon S3
+	// bucket for the user you specify by their ARN.
 	HomeDirectory *string `type:"string"`
 
-	// The type of landing directory (folder) you mapped for your users' home directory.
-	// If you set it to PATH, the user will see the absolute Amazon S3 bucket paths
-	// as is in their SFTP clients. If you set it LOGICAL, you will need to provide
-	// mappings in the HomeDirectoryMappings for how you want to make S3 paths visible
-	// to your user.
+	// Specifies the type of landing directory (folder) you mapped for your users'
+	// home directory. If you set it to PATH, the user will see the absolute Amazon
+	// S3 bucket paths as is in their file transfer protocol clients. If you set
+	// it LOGICAL, you will need to provide mappings in the HomeDirectoryMappings
+	// for how you want to make Amazon S3 paths visible to your users.
 	HomeDirectoryType *string `type:"string" enum:"HomeDirectoryType"`
 
-	// The role in use by this user. A role is an AWS Identity and Access Management
-	// (IAM) entity that, in this case, allows the SFTP server to act on a user's
-	// behalf. It allows the server to inherit the trust relationship that enables
-	// that user to perform file operations to their Amazon S3 bucket.
+	// Specifies the role that is in use by this user. A role is an AWS Identity
+	// and Access Management (IAM) entity that, in this case, allows a file transfer
+	// protocol-enabled server to act on a user's behalf. It allows the server to
+	// inherit the trust relationship that enables that user to perform file operations
+	// to their Amazon S3 bucket.
+	//
+	// The IAM role that controls your users' access to your Amazon S3 bucket for
+	// servers with Domain=S3, or your EFS file system for servers with Domain=EFS.
+	//
+	// The policies attached to this role determine the level of access you want
+	// to provide your users when transferring files into and out of your S3 buckets
+	// or EFS file systems.
 	Role *string `min:"20" type:"string"`
 
-	// This value is the number of SSH public keys stored for the user you specified.
+	// Specifies the number of SSH public keys stored for the user you specified.
 	SshPublicKeyCount *int64 `type:"integer"`
 
-	// The name of the user whose ARN was specified. User names are used for authentication
-	// purposes.
+	// Specifies the name of the user whose ARN was specified. User names are used
+	// for authentication purposes.
 	UserName *string `min:"3" type:"string"`
 }
 
@@ -3997,10 +6090,76 @@ func (s *ListedUser) SetUserName(v string) *ListedUser {
 	return s
 }
 
+// The full POSIX identity, including user ID (Uid), group ID (Gid), and any
+// secondary groups IDs (SecondaryGids), that controls your users' access to
+// your Amazon EFS file systems. The POSIX permissions that are set on files
+// and directories in your file system determine the level of access your users
+// get when transferring files into and out of your Amazon EFS file systems.
+type PosixProfile struct {
+	_ struct{} `type:"structure"`
+
+	// The POSIX group ID used for all EFS operations by this user.
+	//
+	// Gid is a required field
+	Gid *int64 `type:"long" required:"true"`
+
+	// The secondary POSIX group IDs used for all EFS operations by this user.
+	SecondaryGids []*int64 `type:"list"`
+
+	// The POSIX user ID used for all EFS operations by this user.
+	//
+	// Uid is a required field
+	Uid *int64 `type:"long" required:"true"`
+}
+
+// String returns the string representation
+func (s PosixProfile) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PosixProfile) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PosixProfile) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PosixProfile"}
+	if s.Gid == nil {
+		invalidParams.Add(request.NewErrParamRequired("Gid"))
+	}
+	if s.Uid == nil {
+		invalidParams.Add(request.NewErrParamRequired("Uid"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetGid sets the Gid field's value.
+func (s *PosixProfile) SetGid(v int64) *PosixProfile {
+	s.Gid = &v
+	return s
+}
+
+// SetSecondaryGids sets the SecondaryGids field's value.
+func (s *PosixProfile) SetSecondaryGids(v []*int64) *PosixProfile {
+	s.SecondaryGids = v
+	return s
+}
+
+// SetUid sets the Uid field's value.
+func (s *PosixProfile) SetUid(v int64) *PosixProfile {
+	s.Uid = &v
+	return s
+}
+
 // The requested resource does not exist.
 type ResourceExistsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 
@@ -4023,17 +6182,17 @@ func (s ResourceExistsException) GoString() string {
 
 func newErrorResourceExistsException(v protocol.ResponseMetadata) error {
 	return &ResourceExistsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceExistsException) Code() string {
+func (s *ResourceExistsException) Code() string {
 	return "ResourceExistsException"
 }
 
 // Message returns the exception's message.
-func (s ResourceExistsException) Message() string {
+func (s *ResourceExistsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4041,29 +6200,29 @@ func (s ResourceExistsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceExistsException) OrigErr() error {
+func (s *ResourceExistsException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceExistsException) Error() string {
+func (s *ResourceExistsException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceExistsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceExistsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceExistsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceExistsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // This exception is thrown when a resource is not found by the AWS Transfer
-// for SFTP service.
+// Family service.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 
@@ -4086,17 +6245,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4104,28 +6263,28 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// The request has failed because the AWS Transfer for SFTP service is not available.
+// The request has failed because the AWS Transfer Family service is not available.
 type ServiceUnavailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -4142,17 +6301,17 @@ func (s ServiceUnavailableException) GoString() string {
 
 func newErrorServiceUnavailableException(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailableException) Code() string {
+func (s *ServiceUnavailableException) Code() string {
 	return "ServiceUnavailableException"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailableException) Message() string {
+func (s *ServiceUnavailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4160,43 +6319,45 @@ func (s ServiceUnavailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailableException) OrigErr() error {
+func (s *ServiceUnavailableException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailableException) Error() string {
+func (s *ServiceUnavailableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Provides information about the public Secure Shell (SSH) key that is associated
-// with a user account for a specific server (as identified by ServerId). The
-// information returned includes the date the key was imported, the public key
-// contents, and the public key ID. A user can store more than one SSH public
-// key associated with their user name on a specific SFTP server.
+// with a user account for the specific file transfer protocol-enabled server
+// (as identified by ServerId). The information returned includes the date the
+// key was imported, the public key contents, and the public key ID. A user
+// can store more than one SSH public key associated with their user name on
+// a specific server.
 type SshPublicKey struct {
 	_ struct{} `type:"structure"`
 
-	// The date that the public key was added to the user account.
+	// Specifies the date that the public key was added to the user account.
 	//
 	// DateImported is a required field
 	DateImported *time.Time `type:"timestamp" required:"true"`
 
-	// The content of the SSH public key as specified by the PublicKeyId.
+	// Specifies the content of the SSH public key as specified by the PublicKeyId.
 	//
 	// SshPublicKeyBody is a required field
 	SshPublicKeyBody *string `type:"string" required:"true"`
 
-	// The SshPublicKeyId parameter contains the identifier of the public key.
+	// Specifies the SshPublicKeyId parameter contains the identifier of the public
+	// key.
 	//
 	// SshPublicKeyId is a required field
 	SshPublicKeyId *string `min:"21" type:"string" required:"true"`
@@ -4233,7 +6394,7 @@ func (s *SshPublicKey) SetSshPublicKeyId(v string) *SshPublicKey {
 type StartServerInput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server that you start.
+	// A system-assigned unique identifier for a server that you start.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -4288,7 +6449,7 @@ func (s StartServerOutput) GoString() string {
 type StopServerInput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server that you stopped.
+	// A system-assigned unique identifier for a server that you stopped.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -4354,8 +6515,7 @@ type Tag struct {
 	// Key is a required field
 	Key *string `type:"string" required:"true"`
 
-	// This property contains one or more values that you assigned to the key name
-	// you create.
+	// Contains one or more values that you assigned to the key name you create.
 	//
 	// Value is a required field
 	Value *string `type:"string" required:"true"`
@@ -4493,7 +6653,21 @@ type TestIdentityProviderInput struct {
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
 
-	// This request parameter is the name of the user account to be tested.
+	// The type of file transfer protocol to be tested.
+	//
+	// The available protocols are:
+	//
+	//    * Secure Shell (SSH) File Transfer Protocol (SFTP)
+	//
+	//    * File Transfer Protocol Secure (FTPS)
+	//
+	//    * File Transfer Protocol (FTP)
+	ServerProtocol *string `type:"string" enum:"Protocol"`
+
+	// The source IP address of the user account to be tested.
+	SourceIp *string `type:"string"`
+
+	// The name of the user account to be tested.
 	//
 	// UserName is a required field
 	UserName *string `min:"3" type:"string" required:"true"`
@@ -4537,6 +6711,18 @@ func (s *TestIdentityProviderInput) Validate() error {
 // SetServerId sets the ServerId field's value.
 func (s *TestIdentityProviderInput) SetServerId(v string) *TestIdentityProviderInput {
 	s.ServerId = &v
+	return s
+}
+
+// SetServerProtocol sets the ServerProtocol field's value.
+func (s *TestIdentityProviderInput) SetServerProtocol(v string) *TestIdentityProviderInput {
+	s.ServerProtocol = &v
+	return s
+}
+
+// SetSourceIp sets the SourceIp field's value.
+func (s *TestIdentityProviderInput) SetSourceIp(v string) *TestIdentityProviderInput {
+	s.SourceIp = &v
 	return s
 }
 
@@ -4610,8 +6796,8 @@ func (s *TestIdentityProviderOutput) SetUrl(v string) *TestIdentityProviderOutpu
 //
 // HTTP Status Code: 400
 type ThrottlingException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -4630,17 +6816,17 @@ func (s ThrottlingException) GoString() string {
 
 func newErrorThrottlingException(v protocol.ResponseMetadata) error {
 	return &ThrottlingException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ThrottlingException) Code() string {
+func (s *ThrottlingException) Code() string {
 	return "ThrottlingException"
 }
 
 // Message returns the exception's message.
-func (s ThrottlingException) Message() string {
+func (s *ThrottlingException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4648,30 +6834,30 @@ func (s ThrottlingException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ThrottlingException) OrigErr() error {
+func (s *ThrottlingException) OrigErr() error {
 	return nil
 }
 
-func (s ThrottlingException) Error() string {
+func (s *ThrottlingException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ThrottlingException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ThrottlingException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ThrottlingException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ThrottlingException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
 	_ struct{} `type:"structure"`
 
-	// This is the value of the resource that will have the tag removed. An Amazon
-	// Resource Name (ARN) is an identifier for a specific AWS resource, such as
-	// a server, user, or role.
+	// The value of the resource that will have the tag removed. An Amazon Resource
+	// Name (ARN) is an identifier for a specific AWS resource, such as a server,
+	// user, or role.
 	//
 	// Arn is a required field
 	Arn *string `min:"20" type:"string" required:"true"`
@@ -4742,43 +6928,365 @@ func (s UntagResourceOutput) GoString() string {
 	return s.String()
 }
 
+type UpdateAccessInput struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier that is required to identify specific groups within your
+	// directory. The users of the group that you associate have access to your
+	// Amazon S3 or Amazon EFS resources over the enabled protocols using AWS Transfer
+	// Family. If you know the group name, you can view the SID values by running
+	// the following command using Windows PowerShell.
+	//
+	// Get-ADGroup -Filter {samAccountName -like "YourGroupName*"} -Properties *
+	// | Select SamaccountName,ObjectSid
+	//
+	// In that command, replace YourGroupName with the name of your Active Directory
+	// group.
+	//
+	// The regex used to validate this parameter is a string of characters consisting
+	// of uppercase and lowercase alphanumeric characters with no spaces. You can
+	// also include underscores or any of the following characters: =,.@:/-
+	//
+	// ExternalId is a required field
+	ExternalId *string `min:"1" type:"string" required:"true"`
+
+	// The landing directory (folder) for a user when they log in to the server
+	// using the client.
+	//
+	// A HomeDirectory example is /directory_name/home/mydirectory.
+	HomeDirectory *string `type:"string"`
+
+	// Logical directory mappings that specify what Amazon S3 or Amazon EFS paths
+	// and keys should be visible to your user and how you want to make them visible.
+	// You must specify the Entry and Target pair, where Entry shows how the path
+	// is made visible and Target is the actual Amazon S3 or Amazon EFS path. If
+	// you only specify a target, it will be displayed as is. You also must ensure
+	// that your AWS Identity and Access Management (IAM) role provides access to
+	// paths in Target. This value can only be set when HomeDirectoryType is set
+	// to LOGICAL.
+	//
+	// The following is an Entry and Target pair example.
+	//
+	// [ { "Entry": "your-personal-report.pdf", "Target": "/bucket3/customized-reports/${transfer:UserName}.pdf"
+	// } ]
+	//
+	// In most cases, you can use this value instead of the scope-down policy to
+	// lock down your user to the designated home directory ("chroot"). To do this,
+	// you can set Entry to / and set Target to the HomeDirectory parameter value.
+	//
+	// The following is an Entry and Target pair example for chroot.
+	//
+	// [ { "Entry": "/", "Target": "/bucket_name/home/mydirectory" } ]
+	//
+	// If the target of a logical directory entry does not exist in Amazon S3 or
+	// Amazon EFS, the entry will be ignored. As a workaround, you can use the Amazon
+	// S3 API or EFS API to create 0-byte objects as place holders for your directory.
+	// If using the AWS CLI, use the s3api or efsapi call instead of s3 or efs so
+	// you can use the put-object operation. For example, you can use the following.
+	//
+	// aws s3api put-object --bucket bucketname --key path/to/folder/
+	//
+	// The end of the key name must end in a / for it to be considered a folder.
+	//
+	// Required: No
+	HomeDirectoryMappings []*HomeDirectoryMapEntry `min:"1" type:"list"`
+
+	// The type of landing directory (folder) that you want your users' home directory
+	// to be when they log in to the server. If you set it to PATH, the user will
+	// see the absolute Amazon S3 bucket paths as is in their file transfer protocol
+	// clients. If you set it LOGICAL, you must provide mappings in the HomeDirectoryMappings
+	// for how you want to make Amazon S3 paths visible to your users.
+	HomeDirectoryType *string `type:"string" enum:"HomeDirectoryType"`
+
+	// A scope-down policy for your user so that you can use the same IAM role across
+	// multiple users. This policy scopes down user access to portions of their
+	// Amazon S3 bucket. Variables that you can use inside this policy include ${Transfer:UserName},
+	// ${Transfer:HomeDirectory}, and ${Transfer:HomeBucket}.
+	//
+	// This only applies when domain of ServerId is S3. Amazon EFS does not use
+	// scope down policy.
+	//
+	// For scope-down policies, AWS Transfer Family stores the policy as a JSON
+	// blob, instead of the Amazon Resource Name (ARN) of the policy. You save the
+	// policy as a JSON blob and pass it in the Policy argument.
+	//
+	// For an example of a scope-down policy, see Example scope-down policy (https://docs.aws.amazon.com/transfer/latest/userguide/scope-down-policy.html).
+	//
+	// For more information, see AssumeRole (https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)
+	// in the AWS Security Token Service API Reference.
+	Policy *string `type:"string"`
+
+	// The full POSIX identity, including user ID (Uid), group ID (Gid), and any
+	// secondary groups IDs (SecondaryGids), that controls your users' access to
+	// your Amazon EFS file systems. The POSIX permissions that are set on files
+	// and directories in your file system determine the level of access your users
+	// get when transferring files into and out of your Amazon EFS file systems.
+	PosixProfile *PosixProfile `type:"structure"`
+
+	// Specifies the IAM role that controls your users' access to your Amazon S3
+	// bucket or EFS file system. The policies attached to this role determine the
+	// level of access that you want to provide your users when transferring files
+	// into and out of your Amazon S3 bucket or EFS file system. The IAM role should
+	// also contain a trust relationship that allows the server to access your resources
+	// when servicing your users' transfer requests.
+	Role *string `min:"20" type:"string"`
+
+	// A system-assigned unique identifier for a server instance. This is the specific
+	// server that you added your user to.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s UpdateAccessInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdateAccessInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UpdateAccessInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UpdateAccessInput"}
+	if s.ExternalId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ExternalId"))
+	}
+	if s.ExternalId != nil && len(*s.ExternalId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ExternalId", 1))
+	}
+	if s.HomeDirectoryMappings != nil && len(s.HomeDirectoryMappings) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("HomeDirectoryMappings", 1))
+	}
+	if s.Role != nil && len(*s.Role) < 20 {
+		invalidParams.Add(request.NewErrParamMinLen("Role", 20))
+	}
+	if s.ServerId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ServerId"))
+	}
+	if s.ServerId != nil && len(*s.ServerId) < 19 {
+		invalidParams.Add(request.NewErrParamMinLen("ServerId", 19))
+	}
+	if s.HomeDirectoryMappings != nil {
+		for i, v := range s.HomeDirectoryMappings {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "HomeDirectoryMappings", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.PosixProfile != nil {
+		if err := s.PosixProfile.Validate(); err != nil {
+			invalidParams.AddNested("PosixProfile", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetExternalId sets the ExternalId field's value.
+func (s *UpdateAccessInput) SetExternalId(v string) *UpdateAccessInput {
+	s.ExternalId = &v
+	return s
+}
+
+// SetHomeDirectory sets the HomeDirectory field's value.
+func (s *UpdateAccessInput) SetHomeDirectory(v string) *UpdateAccessInput {
+	s.HomeDirectory = &v
+	return s
+}
+
+// SetHomeDirectoryMappings sets the HomeDirectoryMappings field's value.
+func (s *UpdateAccessInput) SetHomeDirectoryMappings(v []*HomeDirectoryMapEntry) *UpdateAccessInput {
+	s.HomeDirectoryMappings = v
+	return s
+}
+
+// SetHomeDirectoryType sets the HomeDirectoryType field's value.
+func (s *UpdateAccessInput) SetHomeDirectoryType(v string) *UpdateAccessInput {
+	s.HomeDirectoryType = &v
+	return s
+}
+
+// SetPolicy sets the Policy field's value.
+func (s *UpdateAccessInput) SetPolicy(v string) *UpdateAccessInput {
+	s.Policy = &v
+	return s
+}
+
+// SetPosixProfile sets the PosixProfile field's value.
+func (s *UpdateAccessInput) SetPosixProfile(v *PosixProfile) *UpdateAccessInput {
+	s.PosixProfile = v
+	return s
+}
+
+// SetRole sets the Role field's value.
+func (s *UpdateAccessInput) SetRole(v string) *UpdateAccessInput {
+	s.Role = &v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *UpdateAccessInput) SetServerId(v string) *UpdateAccessInput {
+	s.ServerId = &v
+	return s
+}
+
+type UpdateAccessOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The external ID of the group whose users have access to your Amazon S3 or
+	// Amazon EFS resources over the enabled protocols using AWS Transfer Family.
+	//
+	// ExternalId is a required field
+	ExternalId *string `min:"1" type:"string" required:"true"`
+
+	// The ID of the server that the user is attached to.
+	//
+	// ServerId is a required field
+	ServerId *string `min:"19" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s UpdateAccessOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdateAccessOutput) GoString() string {
+	return s.String()
+}
+
+// SetExternalId sets the ExternalId field's value.
+func (s *UpdateAccessOutput) SetExternalId(v string) *UpdateAccessOutput {
+	s.ExternalId = &v
+	return s
+}
+
+// SetServerId sets the ServerId field's value.
+func (s *UpdateAccessOutput) SetServerId(v string) *UpdateAccessOutput {
+	s.ServerId = &v
+	return s
+}
+
 type UpdateServerInput struct {
 	_ struct{} `type:"structure"`
 
+	// The Amazon Resource Name (ARN) of the AWS Certificate Manager (ACM) certificate.
+	// Required when Protocols is set to FTPS.
+	//
+	// To request a new public certificate, see Request a public certificate (https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html)
+	// in the AWS Certificate Manager User Guide.
+	//
+	// To import an existing certificate into ACM, see Importing certificates into
+	// ACM (https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html)
+	// in the AWS Certificate Manager User Guide.
+	//
+	// To request a private certificate to use FTPS through private IP addresses,
+	// see Request a private certificate (https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-private.html)
+	// in the AWS Certificate Manager User Guide.
+	//
+	// Certificates with the following cryptographic algorithms and key sizes are
+	// supported:
+	//
+	//    * 2048-bit RSA (RSA_2048)
+	//
+	//    * 4096-bit RSA (RSA_4096)
+	//
+	//    * Elliptic Prime Curve 256 bit (EC_prime256v1)
+	//
+	//    * Elliptic Prime Curve 384 bit (EC_secp384r1)
+	//
+	//    * Elliptic Prime Curve 521 bit (EC_secp521r1)
+	//
+	// The certificate must be a valid SSL/TLS X.509 version 3 certificate with
+	// FQDN or IP address specified and information about the issuer.
+	Certificate *string `type:"string"`
+
 	// The virtual private cloud (VPC) endpoint settings that are configured for
-	// your SFTP server. With a VPC endpoint, you can restrict access to your SFTP
-	// server to resources only within your VPC. To control incoming internet traffic,
+	// your server. With a VPC endpoint, you can restrict access to your server
+	// to resources only within your VPC. To control incoming internet traffic,
 	// you will need to associate one or more Elastic IP addresses with your server's
 	// endpoint.
 	EndpointDetails *EndpointDetails `type:"structure"`
 
-	// The type of endpoint that you want your SFTP server to connect to. You can
-	// choose to connect to the public internet or a virtual private cloud (VPC)
-	// endpoint. With a VPC endpoint, your SFTP server isn't accessible over the
-	// public internet.
+	// The type of endpoint that you want your server to use. You can choose to
+	// make your server's endpoint publicly accessible (PUBLIC) or host it inside
+	// your VPC. With an endpoint that is hosted in a VPC, you can restrict access
+	// to your server and resources only within your VPC or choose to make it internet
+	// facing by attaching Elastic IP addresses directly to it.
+	//
+	// After March 31, 2021, you won't be able to create a server using EndpointType=VPC_ENDPOINT
+	// in your AWS account if your account hasn't already done so before March 31,
+	// 2021. If you have already created servers with EndpointType=VPC_ENDPOINT
+	// in your AWS account on or before March 31, 2021, you will not be affected.
+	// After this date, use EndpointType=VPC.
+	//
+	// For more information, see https://docs.aws.amazon.com/transfer/latest/userguide/create-server-in-vpc.html#deprecate-vpc-endpoint.
+	//
+	// It is recommended that you use VPC as the EndpointType. With this endpoint
+	// type, you have the option to directly associate up to three Elastic IPv4
+	// addresses (BYO IP included) with your server's endpoint and use VPC security
+	// groups to restrict traffic by the client's public IP address. This is not
+	// possible with EndpointType set to VPC_ENDPOINT.
 	EndpointType *string `type:"string" enum:"EndpointType"`
 
-	// The RSA private key as generated by ssh-keygen -N "" -f my-new-server-key.
+	// The RSA private key as generated by ssh-keygen -N "" -m PEM -f my-new-server-key.
 	//
-	// If you aren't planning to migrate existing users from an existing SFTP server
-	// to a new AWS SFTP server, don't update the host key. Accidentally changing
-	// a server's host key can be disruptive.
+	// If you aren't planning to migrate existing users from an existing server
+	// to a new server, don't update the host key. Accidentally changing a server's
+	// host key can be disruptive.
 	//
-	// For more information, see "https://docs.aws.amazon.com/transfer/latest/userguide/configuring-servers.html#change-host-key"
-	// in the AWS SFTP User Guide.
+	// For more information, see Change the host key for your SFTP-enabled server
+	// (https://docs.aws.amazon.com/transfer/latest/userguide/edit-server-config.html#configuring-servers-change-host-key)
+	// in the AWS Transfer Family User Guide.
 	HostKey *string `type:"string" sensitive:"true"`
 
-	// This response parameter is an array containing all of the information required
-	// to call a customer's authentication API method.
+	// An array containing all of the information required to call a customer's
+	// authentication API method.
 	IdentityProviderDetails *IdentityProviderDetails `type:"structure"`
 
-	// A value that changes the AWS Identity and Access Management (IAM) role that
-	// allows Amazon S3 events to be logged in Amazon CloudWatch, turning logging
+	// Changes the AWS Identity and Access Management (IAM) role that allows Amazon
+	// S3 or Amazon EFS events to be logged in Amazon CloudWatch, turning logging
 	// on or off.
 	LoggingRole *string `type:"string"`
 
-	// A system-assigned unique identifier for an SFTP server instance that the
-	// user account is assigned to.
+	// Specifies the file transfer protocol or protocols over which your file transfer
+	// protocol client can connect to your server's endpoint. The available protocols
+	// are:
+	//
+	//    * Secure Shell (SSH) File Transfer Protocol (SFTP): File transfer over
+	//    SSH
+	//
+	//    * File Transfer Protocol Secure (FTPS): File transfer with TLS encryption
+	//
+	//    * File Transfer Protocol (FTP): Unencrypted file transfer
+	//
+	// If you select FTPS, you must choose a certificate stored in AWS Certificate
+	// Manager (ACM) which will be used to identify your server when clients connect
+	// to it over FTPS.
+	//
+	// If Protocol includes either FTP or FTPS, then the EndpointType must be VPC
+	// and the IdentityProviderType must be AWS_DIRECTORY_SERVICE or API_GATEWAY.
+	//
+	// If Protocol includes FTP, then AddressAllocationIds cannot be associated.
+	//
+	// If Protocol is set only to SFTP, the EndpointType can be set to PUBLIC and
+	// the IdentityProviderType can be set to SERVICE_MANAGED.
+	Protocols []*string `min:"1" type:"list"`
+
+	// Specifies the name of the security policy that is attached to the server.
+	SecurityPolicyName *string `type:"string"`
+
+	// A system-assigned unique identifier for a server instance that the user account
+	// is assigned to.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -4797,6 +7305,9 @@ func (s UpdateServerInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *UpdateServerInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "UpdateServerInput"}
+	if s.Protocols != nil && len(s.Protocols) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Protocols", 1))
+	}
 	if s.ServerId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ServerId"))
 	}
@@ -4818,6 +7329,12 @@ func (s *UpdateServerInput) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetCertificate sets the Certificate field's value.
+func (s *UpdateServerInput) SetCertificate(v string) *UpdateServerInput {
+	s.Certificate = &v
+	return s
 }
 
 // SetEndpointDetails sets the EndpointDetails field's value.
@@ -4850,6 +7367,18 @@ func (s *UpdateServerInput) SetLoggingRole(v string) *UpdateServerInput {
 	return s
 }
 
+// SetProtocols sets the Protocols field's value.
+func (s *UpdateServerInput) SetProtocols(v []*string) *UpdateServerInput {
+	s.Protocols = v
+	return s
+}
+
+// SetSecurityPolicyName sets the SecurityPolicyName field's value.
+func (s *UpdateServerInput) SetSecurityPolicyName(v string) *UpdateServerInput {
+	s.SecurityPolicyName = &v
+	return s
+}
+
 // SetServerId sets the ServerId field's value.
 func (s *UpdateServerInput) SetServerId(v string) *UpdateServerInput {
 	s.ServerId = &v
@@ -4859,8 +7388,8 @@ func (s *UpdateServerInput) SetServerId(v string) *UpdateServerInput {
 type UpdateServerOutput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server that the user account
-	// is assigned to.
+	// A system-assigned unique identifier for a server that the user account is
+	// assigned to.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
@@ -4885,78 +7414,85 @@ func (s *UpdateServerOutput) SetServerId(v string) *UpdateServerOutput {
 type UpdateUserInput struct {
 	_ struct{} `type:"structure"`
 
-	// A parameter that specifies the landing directory (folder) for a user when
-	// they log in to the server using their client.
+	// Specifies the landing directory (folder) for a user when they log in to the
+	// server using their file transfer protocol client.
 	//
-	// An example is <your-Amazon-S3-bucket-name>/home/username.
+	// An example is your-Amazon-S3-bucket-name>/home/username.
 	HomeDirectory *string `type:"string"`
 
-	// Logical directory mappings that specify what S3 paths and keys should be
-	// visible to your user and how you want to make them visible. You will need
-	// to specify the "Entry" and "Target" pair, where Entry shows how the path
-	// is made visible and Target is the actual S3 path. If you only specify a target,
-	// it will be displayed as is. You will need to also make sure that your AWS
-	// IAM Role provides access to paths in Target. The following is an example.
+	// Logical directory mappings that specify what Amazon S3 or Amazon EFS paths
+	// and keys should be visible to your user and how you want to make them visible.
+	// You will need to specify the "Entry" and "Target" pair, where Entry shows
+	// how the path is made visible and Target is the actual Amazon S3 or Amazon
+	// EFS path. If you only specify a target, it will be displayed as is. You will
+	// need to also make sure that your IAM role provides access to paths in Target.
+	// The following is an example.
 	//
 	// '[ "/bucket2/documentation", { "Entry": "your-personal-report.pdf", "Target":
 	// "/bucket3/customized-reports/${transfer:UserName}.pdf" } ]'
 	//
-	// In most cases, you can use this value instead of the scope down policy to
-	// lock your user down to the designated home directory ("chroot"). To do this,
+	// In most cases, you can use this value instead of the scope-down policy to
+	// lock down your user to the designated home directory ("chroot"). To do this,
 	// you can set Entry to '/' and set Target to the HomeDirectory parameter value.
 	//
-	// If the target of a logical directory entry does not exist in S3, the entry
-	// will be ignored. As a workaround, you can use the S3 api to create 0 byte
-	// objects as place holders for your directory. If using the CLI, use the s3api
-	// call instead of s3 so you can use the put-object operation. For example,
-	// you use the following: aws s3api put-object --bucket bucketname --key path/to/folder/.
-	// Make sure that the end of the key name ends in a / for it to be considered
-	// a folder.
+	// If the target of a logical directory entry does not exist in Amazon S3 or
+	// EFS, the entry will be ignored. As a workaround, you can use the Amazon S3
+	// API or EFS API to create 0-byte objects as place holders for your directory.
+	// If using the AWS CLI, use the s3api or efsapi call instead of s3 efs so you
+	// can use the put-object operation. For example, you use the following: aws
+	// s3api put-object --bucket bucketname --key path/to/folder/. Make sure that
+	// the end of the key name ends in a / for it to be considered a folder.
 	HomeDirectoryMappings []*HomeDirectoryMapEntry `min:"1" type:"list"`
 
 	// The type of landing directory (folder) you want your users' home directory
-	// to be when they log into the SFTP serve. If you set it to PATH, the user
-	// will see the absolute Amazon S3 bucket paths as is in their SFTP clients.
-	// If you set it LOGICAL, you will need to provide mappings in the HomeDirectoryMappings
-	// for how you want to make S3 paths visible to your user.
+	// to be when they log into the server. If you set it to PATH, the user will
+	// see the absolute Amazon S3 bucket or EFS paths as is in their file transfer
+	// protocol clients. If you set it LOGICAL, you will need to provide mappings
+	// in the HomeDirectoryMappings for how you want to make Amazon S3 or EFS paths
+	// visible to your users.
 	HomeDirectoryType *string `type:"string" enum:"HomeDirectoryType"`
 
 	// Allows you to supply a scope-down policy for your user so you can use the
-	// same AWS Identity and Access Management (IAM) role across multiple users.
-	// The policy scopes down user access to portions of your Amazon S3 bucket.
-	// Variables you can use inside this policy include ${Transfer:UserName}, ${Transfer:HomeDirectory},
-	// and ${Transfer:HomeBucket}.
+	// same IAM role across multiple users. The policy scopes down user access to
+	// portions of your Amazon S3 bucket. Variables you can use inside this policy
+	// include ${Transfer:UserName}, ${Transfer:HomeDirectory}, and ${Transfer:HomeBucket}.
 	//
-	// For scope-down policies, AWS Transfer for SFTP stores the policy as a JSON
+	// For scope-down policies, AWS Transfer Family stores the policy as a JSON
 	// blob, instead of the Amazon Resource Name (ARN) of the policy. You save the
 	// policy as a JSON blob and pass it in the Policy argument.
 	//
-	// For an example of a scope-down policy, see "https://docs.aws.amazon.com/transfer/latest/userguide/users.html#users-policies-scope-down">Creating
-	// a Scope-Down Policy.
+	// For an example of a scope-down policy, see Creating a scope-down policy (https://docs.aws.amazon.com/transfer/latest/userguide/users.html#users-policies-scope-down).
 	//
-	// For more information, see "https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html"
+	// For more information, see AssumeRole (https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)
 	// in the AWS Security Token Service API Reference.
 	Policy *string `type:"string"`
 
-	// The IAM role that controls your user's access to your Amazon S3 bucket. The
-	// policies attached to this role will determine the level of access you want
-	// to provide your users when transferring files into and out of your Amazon
-	// S3 bucket or buckets. The IAM role should also contain a trust relationship
-	// that allows the Secure File Transfer Protocol (SFTP) server to access your
-	// resources when servicing your SFTP user's transfer requests.
+	// Specifies the full POSIX identity, including user ID (Uid), group ID (Gid),
+	// and any secondary groups IDs (SecondaryGids), that controls your users' access
+	// to your Amazon Elastic File Systems (Amazon EFS). The POSIX permissions that
+	// are set on files and directories in your file system determines the level
+	// of access your users get when transferring files into and out of your Amazon
+	// EFS file systems.
+	PosixProfile *PosixProfile `type:"structure"`
+
+	// The IAM role that controls your users' access to your Amazon S3 bucket. The
+	// policies attached to this role determine the level of access you want to
+	// provide your users when transferring files into and out of your S3 bucket
+	// or buckets. The IAM role should also contain a trust relationship that allows
+	// the server to access your resources when servicing your users' transfer requests.
 	Role *string `min:"20" type:"string"`
 
-	// A system-assigned unique identifier for an SFTP server instance that the
-	// user account is assigned to.
+	// A system-assigned unique identifier for a server instance that the user account
+	// is assigned to.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
 
 	// A unique string that identifies a user and is associated with a server as
-	// specified by the ServerId. This is the string that will be used by your user
-	// when they log in to your SFTP server. This user name is a minimum of 3 and
-	// a maximum of 32 characters long. The following are valid characters: a-z,
-	// A-Z, 0-9, underscore, and hyphen. The user name can't start with a hyphen.
+	// specified by the ServerId. This user name must be a minimum of 3 and a maximum
+	// of 100 characters long. The following are valid characters: a-z, A-Z, 0-9,
+	// underscore '_', hyphen '-', period '.', and at sign '@'. The user name can't
+	// start with a hyphen, period, or at sign.
 	//
 	// UserName is a required field
 	UserName *string `min:"3" type:"string" required:"true"`
@@ -5003,6 +7539,11 @@ func (s *UpdateUserInput) Validate() error {
 			}
 		}
 	}
+	if s.PosixProfile != nil {
+		if err := s.PosixProfile.Validate(); err != nil {
+			invalidParams.AddNested("PosixProfile", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -5034,6 +7575,12 @@ func (s *UpdateUserInput) SetPolicy(v string) *UpdateUserInput {
 	return s
 }
 
+// SetPosixProfile sets the PosixProfile field's value.
+func (s *UpdateUserInput) SetPosixProfile(v *PosixProfile) *UpdateUserInput {
+	s.PosixProfile = v
+	return s
+}
+
 // SetRole sets the Role field's value.
 func (s *UpdateUserInput) SetRole(v string) *UpdateUserInput {
 	s.Role = &v
@@ -5052,19 +7599,19 @@ func (s *UpdateUserInput) SetUserName(v string) *UpdateUserInput {
 	return s
 }
 
-// UpdateUserResponse returns the user name and server identifier for the request
-// to update a user's properties.
+// UpdateUserResponse returns the user name and identifier for the request to
+// update a user's properties.
 type UpdateUserOutput struct {
 	_ struct{} `type:"structure"`
 
-	// A system-assigned unique identifier for an SFTP server instance that the
-	// user account is assigned to.
+	// A system-assigned unique identifier for a server instance that the user account
+	// is assigned to.
 	//
 	// ServerId is a required field
 	ServerId *string `min:"19" type:"string" required:"true"`
 
-	// The unique identifier for a user that is assigned to the SFTP server instance
-	// that was specified in the request.
+	// The unique identifier for a user that is assigned to a server instance that
+	// was specified in the request.
 	//
 	// UserName is a required field
 	UserName *string `min:"3" type:"string" required:"true"`
@@ -5093,6 +7640,22 @@ func (s *UpdateUserOutput) SetUserName(v string) *UpdateUserOutput {
 }
 
 const (
+	// DomainS3 is a Domain enum value
+	DomainS3 = "S3"
+
+	// DomainEfs is a Domain enum value
+	DomainEfs = "EFS"
+)
+
+// Domain_Values returns all elements of the Domain enum
+func Domain_Values() []string {
+	return []string{
+		DomainS3,
+		DomainEfs,
+	}
+}
+
+const (
 	// EndpointTypePublic is a EndpointType enum value
 	EndpointTypePublic = "PUBLIC"
 
@@ -5103,6 +7666,15 @@ const (
 	EndpointTypeVpcEndpoint = "VPC_ENDPOINT"
 )
 
+// EndpointType_Values returns all elements of the EndpointType enum
+func EndpointType_Values() []string {
+	return []string{
+		EndpointTypePublic,
+		EndpointTypeVpc,
+		EndpointTypeVpcEndpoint,
+	}
+}
+
 const (
 	// HomeDirectoryTypePath is a HomeDirectoryType enum value
 	HomeDirectoryTypePath = "PATH"
@@ -5111,28 +7683,69 @@ const (
 	HomeDirectoryTypeLogical = "LOGICAL"
 )
 
+// HomeDirectoryType_Values returns all elements of the HomeDirectoryType enum
+func HomeDirectoryType_Values() []string {
+	return []string{
+		HomeDirectoryTypePath,
+		HomeDirectoryTypeLogical,
+	}
+}
+
 // Returns information related to the type of user authentication that is in
-// use for a server's users. For SERVICE_MANAGED authentication, the Secure
-// Shell (SSH) public keys are stored with a user on an SFTP server instance.
-// For API_GATEWAY authentication, your custom authentication method is implemented
-// by using an API call. A server can have only one method of authentication.
+// use for a file transfer protocol-enabled server's users. For AWS_DIRECTORY_SERVICE
+// or SERVICE_MANAGED authentication, the Secure Shell (SSH) public keys are
+// stored with a user on the server instance. For API_GATEWAY authentication,
+// your custom authentication method is implemented by using an API call. The
+// server can have only one method of authentication.
 const (
 	// IdentityProviderTypeServiceManaged is a IdentityProviderType enum value
 	IdentityProviderTypeServiceManaged = "SERVICE_MANAGED"
 
 	// IdentityProviderTypeApiGateway is a IdentityProviderType enum value
 	IdentityProviderTypeApiGateway = "API_GATEWAY"
+
+	// IdentityProviderTypeAwsDirectoryService is a IdentityProviderType enum value
+	IdentityProviderTypeAwsDirectoryService = "AWS_DIRECTORY_SERVICE"
 )
 
-// Describes the condition of the SFTP server with respect to its ability to
-// perform file operations. There are six possible states: OFFLINE, ONLINE,
-// STARTING, STOPPING, START_FAILED, and STOP_FAILED.
+// IdentityProviderType_Values returns all elements of the IdentityProviderType enum
+func IdentityProviderType_Values() []string {
+	return []string{
+		IdentityProviderTypeServiceManaged,
+		IdentityProviderTypeApiGateway,
+		IdentityProviderTypeAwsDirectoryService,
+	}
+}
+
+const (
+	// ProtocolSftp is a Protocol enum value
+	ProtocolSftp = "SFTP"
+
+	// ProtocolFtp is a Protocol enum value
+	ProtocolFtp = "FTP"
+
+	// ProtocolFtps is a Protocol enum value
+	ProtocolFtps = "FTPS"
+)
+
+// Protocol_Values returns all elements of the Protocol enum
+func Protocol_Values() []string {
+	return []string{
+		ProtocolSftp,
+		ProtocolFtp,
+		ProtocolFtps,
+	}
+}
+
+// Describes the condition of a file transfer protocol-enabled server with respect
+// to its ability to perform file operations. There are six possible states:
+// OFFLINE, ONLINE, STARTING, STOPPING, START_FAILED, and STOP_FAILED.
 //
-// OFFLINE indicates that the SFTP server exists, but that it is not available
-// for file operations. ONLINE indicates that the SFTP server is available to
-// perform file operations. STARTING indicates that the SFTP server's was instantiated,
-// but the server is not yet available to perform file operations. Under normal
-// conditions, it can take a couple of minutes for an SFTP server to be completely
+// OFFLINE indicates that the server exists, but that it is not available for
+// file operations. ONLINE indicates that the server is available to perform
+// file operations. STARTING indicates that the server's was instantiated, but
+// the server is not yet available to perform file operations. Under normal
+// conditions, it can take a couple of minutes for the server to be completely
 // operational. Both START_FAILED and STOP_FAILED are error conditions.
 const (
 	// StateOffline is a State enum value
@@ -5153,3 +7766,15 @@ const (
 	// StateStopFailed is a State enum value
 	StateStopFailed = "STOP_FAILED"
 )
+
+// State_Values returns all elements of the State enum
+func State_Values() []string {
+	return []string{
+		StateOffline,
+		StateOnline,
+		StateStarting,
+		StateStopping,
+		StateStartFailed,
+		StateStopFailed,
+	}
+}

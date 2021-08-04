@@ -597,7 +597,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
 					dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
 				} else if nextTask.TaskGroupOrder > 1 {
-					// if the previous task in the group has yet to run and should run, then wait for it
+					// If the previous task in the group has yet to run and should run, then wait for it.
 					tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
 					if err != nil {
 						return nil, false, errors.WithStack(err)
@@ -606,7 +606,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 						if tgTask.TaskGroupOrder == nextTask.TaskGroupOrder {
 							break
 						}
-						if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsDispatchable() {
+						if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsDispatchable() && !tgTask.Blocked() {
 							dispatchRace = fmt.Sprintf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
 						}
 					}

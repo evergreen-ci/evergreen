@@ -166,11 +166,9 @@ func (c *Comprehend) BatchDetectEntitiesRequest(input *BatchDetectEntitiesInput)
 //   The size of the input text exceeds the limit. Use a smaller document.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * BatchSizeLimitExceededException
 //   The number of documents in the request exceeds the limit of 25. Try your
@@ -262,11 +260,9 @@ func (c *Comprehend) BatchDetectKeyPhrasesRequest(input *BatchDetectKeyPhrasesIn
 //   The size of the input text exceeds the limit. Use a smaller document.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * BatchSizeLimitExceededException
 //   The number of documents in the request exceeds the limit of 25. Try your
@@ -359,11 +355,9 @@ func (c *Comprehend) BatchDetectSentimentRequest(input *BatchDetectSentimentInpu
 //   The size of the input text exceeds the limit. Use a smaller document.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * BatchSizeLimitExceededException
 //   The number of documents in the request exceeds the limit of 25. Try your
@@ -457,11 +451,9 @@ func (c *Comprehend) BatchDetectSyntaxRequest(input *BatchDetectSyntaxInput) (re
 //   The size of the input text exceeds the limit. Use a smaller document.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * BatchSizeLimitExceededException
 //   The number of documents in the request exceeds the limit of 25. Try your
@@ -552,8 +544,8 @@ func (c *Comprehend) ClassifyDocumentRequest(input *ClassifyDocumentInput) (req 
 //   The request is invalid.
 //
 //   * ResourceUnavailableException
-//   The specified resource is not available. Check to see if the resource is
-//   in the TRAINED state and try your request again.
+//   The specified resource is not available. Check the resource and try your
+//   request again.
 //
 //   * TextSizeLimitExceededException
 //   The size of the input text exceeds the limit. Use a smaller document.
@@ -578,6 +570,98 @@ func (c *Comprehend) ClassifyDocument(input *ClassifyDocumentInput) (*ClassifyDo
 // for more information on using Contexts.
 func (c *Comprehend) ClassifyDocumentWithContext(ctx aws.Context, input *ClassifyDocumentInput, opts ...request.Option) (*ClassifyDocumentOutput, error) {
 	req, out := c.ClassifyDocumentRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opContainsPiiEntities = "ContainsPiiEntities"
+
+// ContainsPiiEntitiesRequest generates a "aws/request.Request" representing the
+// client's request for the ContainsPiiEntities operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ContainsPiiEntities for more information on using the ContainsPiiEntities
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ContainsPiiEntitiesRequest method.
+//    req, resp := client.ContainsPiiEntitiesRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/ContainsPiiEntities
+func (c *Comprehend) ContainsPiiEntitiesRequest(input *ContainsPiiEntitiesInput) (req *request.Request, output *ContainsPiiEntitiesOutput) {
+	op := &request.Operation{
+		Name:       opContainsPiiEntities,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ContainsPiiEntitiesInput{}
+	}
+
+	output = &ContainsPiiEntitiesOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ContainsPiiEntities API operation for Amazon Comprehend.
+//
+// Analyzes input text for the presence of personally identifiable information
+// (PII) and returns the labels of identified PII entity types such as name,
+// address, bank account number, or phone number.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation ContainsPiiEntities for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * TextSizeLimitExceededException
+//   The size of the input text exceeds the limit. Use a smaller document.
+//
+//   * UnsupportedLanguageException
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/ContainsPiiEntities
+func (c *Comprehend) ContainsPiiEntities(input *ContainsPiiEntitiesInput) (*ContainsPiiEntitiesOutput, error) {
+	req, out := c.ContainsPiiEntitiesRequest(input)
+	return out, req.Send()
+}
+
+// ContainsPiiEntitiesWithContext is the same as ContainsPiiEntities with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ContainsPiiEntities for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) ContainsPiiEntitiesWithContext(ctx aws.Context, input *ContainsPiiEntitiesInput, opts ...request.Option) (*ContainsPiiEntitiesOutput, error) {
+	req, out := c.ContainsPiiEntitiesRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -628,7 +712,7 @@ func (c *Comprehend) CreateDocumentClassifierRequest(input *CreateDocumentClassi
 // CreateDocumentClassifier API operation for Amazon Comprehend.
 //
 // Creates a new document classifier that you can use to categorize documents.
-// To create a classifier you provide a set of training documents that labeled
+// To create a classifier, you provide a set of training documents that labeled
 // with the categories that you want to use. After the classifier is trained
 // you can use it to categorize a set of labeled documents into the categories.
 // For more information, see how-document-classification.
@@ -645,8 +729,8 @@ func (c *Comprehend) CreateDocumentClassifierRequest(input *CreateDocumentClassi
 //   The request is invalid.
 //
 //   * ResourceInUseException
-//   The specified name is already in use. Use a different name and try your request
-//   again.
+//   The specified resource name is already in use. Use a different name and try
+//   your request again.
 //
 //   * TooManyTagsException
 //   The request contains more tags than can be associated with a resource (50
@@ -657,15 +741,13 @@ func (c *Comprehend) CreateDocumentClassifierRequest(input *CreateDocumentClassi
 //   The number of requests exceeds the limit. Resubmit your request later.
 //
 //   * ResourceLimitExceededException
-//   The maximum number of recognizers per account has been exceeded. Review the
-//   recognizers, perform cleanup, and then try your request again.
+//   The maximum number of resources per account has been exceeded. Review the
+//   resources, and then try your request again.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * KmsKeyValidationException
 //   The KMS customer managed key (CMK) entered cannot be validated. Verify the
@@ -755,20 +837,20 @@ func (c *Comprehend) CreateEndpointRequest(input *CreateEndpointInput) (req *req
 //   The request is invalid.
 //
 //   * ResourceInUseException
-//   The specified name is already in use. Use a different name and try your request
-//   again.
+//   The specified resource name is already in use. Use a different name and try
+//   your request again.
 //
 //   * ResourceLimitExceededException
-//   The maximum number of recognizers per account has been exceeded. Review the
-//   recognizers, perform cleanup, and then try your request again.
+//   The maximum number of resources per account has been exceeded. Review the
+//   resources, and then try your request again.
 //
 //   * ResourceNotFoundException
 //   The specified resource ARN was not found. Check the ARN and try your request
 //   again.
 //
 //   * ResourceUnavailableException
-//   The specified resource is not available. Check to see if the resource is
-//   in the TRAINED state and try your request again.
+//   The specified resource is not available. Check the resource and try your
+//   request again.
 //
 //   * TooManyRequestsException
 //   The number of requests exceeds the limit. Resubmit your request later.
@@ -862,8 +944,8 @@ func (c *Comprehend) CreateEntityRecognizerRequest(input *CreateEntityRecognizer
 //   The request is invalid.
 //
 //   * ResourceInUseException
-//   The specified name is already in use. Use a different name and try your request
-//   again.
+//   The specified resource name is already in use. Use a different name and try
+//   your request again.
 //
 //   * TooManyTagsException
 //   The request contains more tags than can be associated with a resource (50
@@ -874,15 +956,13 @@ func (c *Comprehend) CreateEntityRecognizerRequest(input *CreateEntityRecognizer
 //   The number of requests exceeds the limit. Resubmit your request later.
 //
 //   * ResourceLimitExceededException
-//   The maximum number of recognizers per account has been exceeded. Review the
-//   recognizers, perform cleanup, and then try your request again.
+//   The maximum number of resources per account has been exceeded. Review the
+//   resources, and then try your request again.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * KmsKeyValidationException
 //   The KMS customer managed key (CMK) entered cannot be validated. Verify the
@@ -987,12 +1067,12 @@ func (c *Comprehend) DeleteDocumentClassifierRequest(input *DeleteDocumentClassi
 //   again.
 //
 //   * ResourceUnavailableException
-//   The specified resource is not available. Check to see if the resource is
-//   in the TRAINED state and try your request again.
+//   The specified resource is not available. Check the resource and try your
+//   request again.
 //
 //   * ResourceInUseException
-//   The specified name is already in use. Use a different name and try your request
-//   again.
+//   The specified resource name is already in use. Use a different name and try
+//   your request again.
 //
 //   * InternalServerException
 //   An internal server error occurred. Retry your request.
@@ -1079,8 +1159,8 @@ func (c *Comprehend) DeleteEndpointRequest(input *DeleteEndpointInput) (req *req
 //   The request is invalid.
 //
 //   * ResourceInUseException
-//   The specified name is already in use. Use a different name and try your request
-//   again.
+//   The specified resource name is already in use. Use a different name and try
+//   your request again.
 //
 //   * ResourceNotFoundException
 //   The specified resource ARN was not found. Check the ARN and try your request
@@ -1188,12 +1268,12 @@ func (c *Comprehend) DeleteEntityRecognizerRequest(input *DeleteEntityRecognizer
 //   again.
 //
 //   * ResourceUnavailableException
-//   The specified resource is not available. Check to see if the resource is
-//   in the TRAINED state and try your request again.
+//   The specified resource is not available. Check the resource and try your
+//   request again.
 //
 //   * ResourceInUseException
-//   The specified name is already in use. Use a different name and try your request
-//   again.
+//   The specified resource name is already in use. Use a different name and try
+//   your request again.
 //
 //   * InternalServerException
 //   An internal server error occurred. Retry your request.
@@ -1756,6 +1836,94 @@ func (c *Comprehend) DescribeEntityRecognizerWithContext(ctx aws.Context, input 
 	return out, req.Send()
 }
 
+const opDescribeEventsDetectionJob = "DescribeEventsDetectionJob"
+
+// DescribeEventsDetectionJobRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeEventsDetectionJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeEventsDetectionJob for more information on using the DescribeEventsDetectionJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeEventsDetectionJobRequest method.
+//    req, resp := client.DescribeEventsDetectionJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/DescribeEventsDetectionJob
+func (c *Comprehend) DescribeEventsDetectionJobRequest(input *DescribeEventsDetectionJobInput) (req *request.Request, output *DescribeEventsDetectionJobOutput) {
+	op := &request.Operation{
+		Name:       opDescribeEventsDetectionJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribeEventsDetectionJobInput{}
+	}
+
+	output = &DescribeEventsDetectionJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeEventsDetectionJob API operation for Amazon Comprehend.
+//
+// Gets the status and details of an events detection job.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation DescribeEventsDetectionJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * JobNotFoundException
+//   The specified job was not found. Check the job ID and try again.
+//
+//   * TooManyRequestsException
+//   The number of requests exceeds the limit. Resubmit your request later.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/DescribeEventsDetectionJob
+func (c *Comprehend) DescribeEventsDetectionJob(input *DescribeEventsDetectionJobInput) (*DescribeEventsDetectionJobOutput, error) {
+	req, out := c.DescribeEventsDetectionJobRequest(input)
+	return out, req.Send()
+}
+
+// DescribeEventsDetectionJobWithContext is the same as DescribeEventsDetectionJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeEventsDetectionJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) DescribeEventsDetectionJobWithContext(ctx aws.Context, input *DescribeEventsDetectionJobInput, opts ...request.Option) (*DescribeEventsDetectionJobOutput, error) {
+	req, out := c.DescribeEventsDetectionJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opDescribeKeyPhrasesDetectionJob = "DescribeKeyPhrasesDetectionJob"
 
 // DescribeKeyPhrasesDetectionJobRequest generates a "aws/request.Request" representing the
@@ -1840,6 +2008,95 @@ func (c *Comprehend) DescribeKeyPhrasesDetectionJob(input *DescribeKeyPhrasesDet
 // for more information on using Contexts.
 func (c *Comprehend) DescribeKeyPhrasesDetectionJobWithContext(ctx aws.Context, input *DescribeKeyPhrasesDetectionJobInput, opts ...request.Option) (*DescribeKeyPhrasesDetectionJobOutput, error) {
 	req, out := c.DescribeKeyPhrasesDetectionJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDescribePiiEntitiesDetectionJob = "DescribePiiEntitiesDetectionJob"
+
+// DescribePiiEntitiesDetectionJobRequest generates a "aws/request.Request" representing the
+// client's request for the DescribePiiEntitiesDetectionJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribePiiEntitiesDetectionJob for more information on using the DescribePiiEntitiesDetectionJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribePiiEntitiesDetectionJobRequest method.
+//    req, resp := client.DescribePiiEntitiesDetectionJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/DescribePiiEntitiesDetectionJob
+func (c *Comprehend) DescribePiiEntitiesDetectionJobRequest(input *DescribePiiEntitiesDetectionJobInput) (req *request.Request, output *DescribePiiEntitiesDetectionJobOutput) {
+	op := &request.Operation{
+		Name:       opDescribePiiEntitiesDetectionJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribePiiEntitiesDetectionJobInput{}
+	}
+
+	output = &DescribePiiEntitiesDetectionJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribePiiEntitiesDetectionJob API operation for Amazon Comprehend.
+//
+// Gets the properties associated with a PII entities detection job. For example,
+// you can use this operation to get the job status.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation DescribePiiEntitiesDetectionJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * JobNotFoundException
+//   The specified job was not found. Check the job ID and try again.
+//
+//   * TooManyRequestsException
+//   The number of requests exceeds the limit. Resubmit your request later.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/DescribePiiEntitiesDetectionJob
+func (c *Comprehend) DescribePiiEntitiesDetectionJob(input *DescribePiiEntitiesDetectionJobInput) (*DescribePiiEntitiesDetectionJobOutput, error) {
+	req, out := c.DescribePiiEntitiesDetectionJobRequest(input)
+	return out, req.Send()
+}
+
+// DescribePiiEntitiesDetectionJobWithContext is the same as DescribePiiEntitiesDetectionJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribePiiEntitiesDetectionJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) DescribePiiEntitiesDetectionJobWithContext(ctx aws.Context, input *DescribePiiEntitiesDetectionJobInput, opts ...request.Option) (*DescribePiiEntitiesDetectionJobOutput, error) {
+	req, out := c.DescribePiiEntitiesDetectionJobRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2168,15 +2425,17 @@ func (c *Comprehend) DetectEntitiesRequest(input *DetectEntitiesInput) (req *req
 //   * InvalidRequestException
 //   The request is invalid.
 //
+//   * ResourceUnavailableException
+//   The specified resource is not available. Check the resource and try your
+//   request again.
+//
 //   * TextSizeLimitExceededException
 //   The size of the input text exceeds the limit. Use a smaller document.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * InternalServerException
 //   An internal server error occurred. Retry your request.
@@ -2264,11 +2523,9 @@ func (c *Comprehend) DetectKeyPhrasesRequest(input *DetectKeyPhrasesInput) (req 
 //   The size of the input text exceeds the limit. Use a smaller document.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * InternalServerException
 //   An internal server error occurred. Retry your request.
@@ -2290,6 +2547,97 @@ func (c *Comprehend) DetectKeyPhrases(input *DetectKeyPhrasesInput) (*DetectKeyP
 // for more information on using Contexts.
 func (c *Comprehend) DetectKeyPhrasesWithContext(ctx aws.Context, input *DetectKeyPhrasesInput, opts ...request.Option) (*DetectKeyPhrasesOutput, error) {
 	req, out := c.DetectKeyPhrasesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDetectPiiEntities = "DetectPiiEntities"
+
+// DetectPiiEntitiesRequest generates a "aws/request.Request" representing the
+// client's request for the DetectPiiEntities operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DetectPiiEntities for more information on using the DetectPiiEntities
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DetectPiiEntitiesRequest method.
+//    req, resp := client.DetectPiiEntitiesRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/DetectPiiEntities
+func (c *Comprehend) DetectPiiEntitiesRequest(input *DetectPiiEntitiesInput) (req *request.Request, output *DetectPiiEntitiesOutput) {
+	op := &request.Operation{
+		Name:       opDetectPiiEntities,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DetectPiiEntitiesInput{}
+	}
+
+	output = &DetectPiiEntitiesOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DetectPiiEntities API operation for Amazon Comprehend.
+//
+// Inspects the input text for entities that contain personally identifiable
+// information (PII) and returns information about them.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation DetectPiiEntities for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * TextSizeLimitExceededException
+//   The size of the input text exceeds the limit. Use a smaller document.
+//
+//   * UnsupportedLanguageException
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/DetectPiiEntities
+func (c *Comprehend) DetectPiiEntities(input *DetectPiiEntitiesInput) (*DetectPiiEntitiesOutput, error) {
+	req, out := c.DetectPiiEntitiesRequest(input)
+	return out, req.Send()
+}
+
+// DetectPiiEntitiesWithContext is the same as DetectPiiEntities with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DetectPiiEntities for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) DetectPiiEntitiesWithContext(ctx aws.Context, input *DetectPiiEntitiesInput, opts ...request.Option) (*DetectPiiEntitiesOutput, error) {
+	req, out := c.DetectPiiEntitiesRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2357,11 +2705,9 @@ func (c *Comprehend) DetectSentimentRequest(input *DetectSentimentInput) (req *r
 //   The size of the input text exceeds the limit. Use a smaller document.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * InternalServerException
 //   An internal server error occurred. Retry your request.
@@ -2450,11 +2796,9 @@ func (c *Comprehend) DetectSyntaxRequest(input *DetectSyntaxInput) (req *request
 //   The size of the input text exceeds the limit. Use a smaller document.
 //
 //   * UnsupportedLanguageException
-//   Amazon Comprehend can't process the language of the input text. For all custom
-//   entity recognition APIs (such as CreateEntityRecognizer), only English is
-//   accepted. For most other APIs, such as those for Custom Classification, Amazon
-//   Comprehend accepts text in all supported languages. For a list of supported
-//   languages, see supported-languages.
+//   Amazon Comprehend can't process the language of the input text. For custom
+//   entity recognition APIs, only English, Spanish, French, Italian, German,
+//   or Portuguese are accepted. For a list of supported languages, see supported-languages.
 //
 //   * InternalServerException
 //   An internal server error occurred. Retry your request.
@@ -3303,6 +3647,152 @@ func (c *Comprehend) ListEntityRecognizersPagesWithContext(ctx aws.Context, inpu
 	return p.Err()
 }
 
+const opListEventsDetectionJobs = "ListEventsDetectionJobs"
+
+// ListEventsDetectionJobsRequest generates a "aws/request.Request" representing the
+// client's request for the ListEventsDetectionJobs operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListEventsDetectionJobs for more information on using the ListEventsDetectionJobs
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListEventsDetectionJobsRequest method.
+//    req, resp := client.ListEventsDetectionJobsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/ListEventsDetectionJobs
+func (c *Comprehend) ListEventsDetectionJobsRequest(input *ListEventsDetectionJobsInput) (req *request.Request, output *ListEventsDetectionJobsOutput) {
+	op := &request.Operation{
+		Name:       opListEventsDetectionJobs,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxResults",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &ListEventsDetectionJobsInput{}
+	}
+
+	output = &ListEventsDetectionJobsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListEventsDetectionJobs API operation for Amazon Comprehend.
+//
+// Gets a list of the events detection jobs that you have submitted.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation ListEventsDetectionJobs for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * TooManyRequestsException
+//   The number of requests exceeds the limit. Resubmit your request later.
+//
+//   * InvalidFilterException
+//   The filter specified for the operation is invalid. Specify a different filter.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/ListEventsDetectionJobs
+func (c *Comprehend) ListEventsDetectionJobs(input *ListEventsDetectionJobsInput) (*ListEventsDetectionJobsOutput, error) {
+	req, out := c.ListEventsDetectionJobsRequest(input)
+	return out, req.Send()
+}
+
+// ListEventsDetectionJobsWithContext is the same as ListEventsDetectionJobs with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListEventsDetectionJobs for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) ListEventsDetectionJobsWithContext(ctx aws.Context, input *ListEventsDetectionJobsInput, opts ...request.Option) (*ListEventsDetectionJobsOutput, error) {
+	req, out := c.ListEventsDetectionJobsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// ListEventsDetectionJobsPages iterates over the pages of a ListEventsDetectionJobs operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListEventsDetectionJobs method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListEventsDetectionJobs operation.
+//    pageNum := 0
+//    err := client.ListEventsDetectionJobsPages(params,
+//        func(page *comprehend.ListEventsDetectionJobsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *Comprehend) ListEventsDetectionJobsPages(input *ListEventsDetectionJobsInput, fn func(*ListEventsDetectionJobsOutput, bool) bool) error {
+	return c.ListEventsDetectionJobsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListEventsDetectionJobsPagesWithContext same as ListEventsDetectionJobsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) ListEventsDetectionJobsPagesWithContext(ctx aws.Context, input *ListEventsDetectionJobsInput, fn func(*ListEventsDetectionJobsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListEventsDetectionJobsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListEventsDetectionJobsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListEventsDetectionJobsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opListKeyPhrasesDetectionJobs = "ListKeyPhrasesDetectionJobs"
 
 // ListKeyPhrasesDetectionJobsRequest generates a "aws/request.Request" representing the
@@ -3447,6 +3937,94 @@ func (c *Comprehend) ListKeyPhrasesDetectionJobsPagesWithContext(ctx aws.Context
 	}
 
 	return p.Err()
+}
+
+const opListPiiEntitiesDetectionJobs = "ListPiiEntitiesDetectionJobs"
+
+// ListPiiEntitiesDetectionJobsRequest generates a "aws/request.Request" representing the
+// client's request for the ListPiiEntitiesDetectionJobs operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListPiiEntitiesDetectionJobs for more information on using the ListPiiEntitiesDetectionJobs
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListPiiEntitiesDetectionJobsRequest method.
+//    req, resp := client.ListPiiEntitiesDetectionJobsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/ListPiiEntitiesDetectionJobs
+func (c *Comprehend) ListPiiEntitiesDetectionJobsRequest(input *ListPiiEntitiesDetectionJobsInput) (req *request.Request, output *ListPiiEntitiesDetectionJobsOutput) {
+	op := &request.Operation{
+		Name:       opListPiiEntitiesDetectionJobs,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ListPiiEntitiesDetectionJobsInput{}
+	}
+
+	output = &ListPiiEntitiesDetectionJobsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListPiiEntitiesDetectionJobs API operation for Amazon Comprehend.
+//
+// Gets a list of the PII entity detection jobs that you have submitted.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation ListPiiEntitiesDetectionJobs for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * TooManyRequestsException
+//   The number of requests exceeds the limit. Resubmit your request later.
+//
+//   * InvalidFilterException
+//   The filter specified for the operation is invalid. Specify a different filter.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/ListPiiEntitiesDetectionJobs
+func (c *Comprehend) ListPiiEntitiesDetectionJobs(input *ListPiiEntitiesDetectionJobsInput) (*ListPiiEntitiesDetectionJobsOutput, error) {
+	req, out := c.ListPiiEntitiesDetectionJobsRequest(input)
+	return out, req.Send()
+}
+
+// ListPiiEntitiesDetectionJobsWithContext is the same as ListPiiEntitiesDetectionJobs with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListPiiEntitiesDetectionJobs for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) ListPiiEntitiesDetectionJobsWithContext(ctx aws.Context, input *ListPiiEntitiesDetectionJobsInput, opts ...request.Option) (*ListPiiEntitiesDetectionJobsOutput, error) {
+	req, out := c.ListPiiEntitiesDetectionJobsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
 }
 
 const opListSentimentDetectionJobs = "ListSentimentDetectionJobs"
@@ -3893,8 +4471,8 @@ func (c *Comprehend) StartDocumentClassificationJobRequest(input *StartDocumentC
 //   again.
 //
 //   * ResourceUnavailableException
-//   The specified resource is not available. Check to see if the resource is
-//   in the TRAINED state and try your request again.
+//   The specified resource is not available. Check the resource and try your
+//   request again.
 //
 //   * KmsKeyValidationException
 //   The KMS customer managed key (CMK) entered cannot be validated. Verify the
@@ -4086,8 +4664,8 @@ func (c *Comprehend) StartEntitiesDetectionJobRequest(input *StartEntitiesDetect
 //   again.
 //
 //   * ResourceUnavailableException
-//   The specified resource is not available. Check to see if the resource is
-//   in the TRAINED state and try your request again.
+//   The specified resource is not available. Check the resource and try your
+//   request again.
 //
 //   * KmsKeyValidationException
 //   The KMS customer managed key (CMK) entered cannot be validated. Verify the
@@ -4113,6 +4691,95 @@ func (c *Comprehend) StartEntitiesDetectionJob(input *StartEntitiesDetectionJobI
 // for more information on using Contexts.
 func (c *Comprehend) StartEntitiesDetectionJobWithContext(ctx aws.Context, input *StartEntitiesDetectionJobInput, opts ...request.Option) (*StartEntitiesDetectionJobOutput, error) {
 	req, out := c.StartEntitiesDetectionJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStartEventsDetectionJob = "StartEventsDetectionJob"
+
+// StartEventsDetectionJobRequest generates a "aws/request.Request" representing the
+// client's request for the StartEventsDetectionJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StartEventsDetectionJob for more information on using the StartEventsDetectionJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StartEventsDetectionJobRequest method.
+//    req, resp := client.StartEventsDetectionJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/StartEventsDetectionJob
+func (c *Comprehend) StartEventsDetectionJobRequest(input *StartEventsDetectionJobInput) (req *request.Request, output *StartEventsDetectionJobOutput) {
+	op := &request.Operation{
+		Name:       opStartEventsDetectionJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StartEventsDetectionJobInput{}
+	}
+
+	output = &StartEventsDetectionJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StartEventsDetectionJob API operation for Amazon Comprehend.
+//
+// Starts an asynchronous event detection job for a collection of documents.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation StartEventsDetectionJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * TooManyRequestsException
+//   The number of requests exceeds the limit. Resubmit your request later.
+//
+//   * KmsKeyValidationException
+//   The KMS customer managed key (CMK) entered cannot be validated. Verify the
+//   key and re-enter it.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/StartEventsDetectionJob
+func (c *Comprehend) StartEventsDetectionJob(input *StartEventsDetectionJobInput) (*StartEventsDetectionJobOutput, error) {
+	req, out := c.StartEventsDetectionJobRequest(input)
+	return out, req.Send()
+}
+
+// StartEventsDetectionJobWithContext is the same as StartEventsDetectionJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StartEventsDetectionJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) StartEventsDetectionJobWithContext(ctx aws.Context, input *StartEventsDetectionJobInput, opts ...request.Option) (*StartEventsDetectionJobOutput, error) {
+	req, out := c.StartEventsDetectionJobRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -4203,6 +4870,95 @@ func (c *Comprehend) StartKeyPhrasesDetectionJob(input *StartKeyPhrasesDetection
 // for more information on using Contexts.
 func (c *Comprehend) StartKeyPhrasesDetectionJobWithContext(ctx aws.Context, input *StartKeyPhrasesDetectionJobInput, opts ...request.Option) (*StartKeyPhrasesDetectionJobOutput, error) {
 	req, out := c.StartKeyPhrasesDetectionJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStartPiiEntitiesDetectionJob = "StartPiiEntitiesDetectionJob"
+
+// StartPiiEntitiesDetectionJobRequest generates a "aws/request.Request" representing the
+// client's request for the StartPiiEntitiesDetectionJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StartPiiEntitiesDetectionJob for more information on using the StartPiiEntitiesDetectionJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StartPiiEntitiesDetectionJobRequest method.
+//    req, resp := client.StartPiiEntitiesDetectionJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/StartPiiEntitiesDetectionJob
+func (c *Comprehend) StartPiiEntitiesDetectionJobRequest(input *StartPiiEntitiesDetectionJobInput) (req *request.Request, output *StartPiiEntitiesDetectionJobOutput) {
+	op := &request.Operation{
+		Name:       opStartPiiEntitiesDetectionJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StartPiiEntitiesDetectionJobInput{}
+	}
+
+	output = &StartPiiEntitiesDetectionJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StartPiiEntitiesDetectionJob API operation for Amazon Comprehend.
+//
+// Starts an asynchronous PII entity detection job for a collection of documents.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation StartPiiEntitiesDetectionJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * TooManyRequestsException
+//   The number of requests exceeds the limit. Resubmit your request later.
+//
+//   * KmsKeyValidationException
+//   The KMS customer managed key (CMK) entered cannot be validated. Verify the
+//   key and re-enter it.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/StartPiiEntitiesDetectionJob
+func (c *Comprehend) StartPiiEntitiesDetectionJob(input *StartPiiEntitiesDetectionJobInput) (*StartPiiEntitiesDetectionJobOutput, error) {
+	req, out := c.StartPiiEntitiesDetectionJobRequest(input)
+	return out, req.Send()
+}
+
+// StartPiiEntitiesDetectionJobWithContext is the same as StartPiiEntitiesDetectionJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StartPiiEntitiesDetectionJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) StartPiiEntitiesDetectionJobWithContext(ctx aws.Context, input *StartPiiEntitiesDetectionJobInput, opts ...request.Option) (*StartPiiEntitiesDetectionJobOutput, error) {
+	req, out := c.StartPiiEntitiesDetectionJobRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -4580,6 +5336,91 @@ func (c *Comprehend) StopEntitiesDetectionJobWithContext(ctx aws.Context, input 
 	return out, req.Send()
 }
 
+const opStopEventsDetectionJob = "StopEventsDetectionJob"
+
+// StopEventsDetectionJobRequest generates a "aws/request.Request" representing the
+// client's request for the StopEventsDetectionJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StopEventsDetectionJob for more information on using the StopEventsDetectionJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StopEventsDetectionJobRequest method.
+//    req, resp := client.StopEventsDetectionJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/StopEventsDetectionJob
+func (c *Comprehend) StopEventsDetectionJobRequest(input *StopEventsDetectionJobInput) (req *request.Request, output *StopEventsDetectionJobOutput) {
+	op := &request.Operation{
+		Name:       opStopEventsDetectionJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StopEventsDetectionJobInput{}
+	}
+
+	output = &StopEventsDetectionJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StopEventsDetectionJob API operation for Amazon Comprehend.
+//
+// Stops an events detection job in progress.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation StopEventsDetectionJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * JobNotFoundException
+//   The specified job was not found. Check the job ID and try again.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/StopEventsDetectionJob
+func (c *Comprehend) StopEventsDetectionJob(input *StopEventsDetectionJobInput) (*StopEventsDetectionJobOutput, error) {
+	req, out := c.StopEventsDetectionJobRequest(input)
+	return out, req.Send()
+}
+
+// StopEventsDetectionJobWithContext is the same as StopEventsDetectionJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StopEventsDetectionJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) StopEventsDetectionJobWithContext(ctx aws.Context, input *StopEventsDetectionJobInput, opts ...request.Option) (*StopEventsDetectionJobOutput, error) {
+	req, out := c.StopEventsDetectionJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opStopKeyPhrasesDetectionJob = "StopKeyPhrasesDetectionJob"
 
 // StopKeyPhrasesDetectionJobRequest generates a "aws/request.Request" representing the
@@ -4671,6 +5512,91 @@ func (c *Comprehend) StopKeyPhrasesDetectionJob(input *StopKeyPhrasesDetectionJo
 // for more information on using Contexts.
 func (c *Comprehend) StopKeyPhrasesDetectionJobWithContext(ctx aws.Context, input *StopKeyPhrasesDetectionJobInput, opts ...request.Option) (*StopKeyPhrasesDetectionJobOutput, error) {
 	req, out := c.StopKeyPhrasesDetectionJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStopPiiEntitiesDetectionJob = "StopPiiEntitiesDetectionJob"
+
+// StopPiiEntitiesDetectionJobRequest generates a "aws/request.Request" representing the
+// client's request for the StopPiiEntitiesDetectionJob operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StopPiiEntitiesDetectionJob for more information on using the StopPiiEntitiesDetectionJob
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StopPiiEntitiesDetectionJobRequest method.
+//    req, resp := client.StopPiiEntitiesDetectionJobRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/StopPiiEntitiesDetectionJob
+func (c *Comprehend) StopPiiEntitiesDetectionJobRequest(input *StopPiiEntitiesDetectionJobInput) (req *request.Request, output *StopPiiEntitiesDetectionJobOutput) {
+	op := &request.Operation{
+		Name:       opStopPiiEntitiesDetectionJob,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StopPiiEntitiesDetectionJobInput{}
+	}
+
+	output = &StopPiiEntitiesDetectionJobOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// StopPiiEntitiesDetectionJob API operation for Amazon Comprehend.
+//
+// Stops a PII entities detection job in progress.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Comprehend's
+// API operation StopPiiEntitiesDetectionJob for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidRequestException
+//   The request is invalid.
+//
+//   * JobNotFoundException
+//   The specified job was not found. Check the job ID and try again.
+//
+//   * InternalServerException
+//   An internal server error occurred. Retry your request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/comprehend-2017-11-27/StopPiiEntitiesDetectionJob
+func (c *Comprehend) StopPiiEntitiesDetectionJob(input *StopPiiEntitiesDetectionJobInput) (*StopPiiEntitiesDetectionJobOutput, error) {
+	req, out := c.StopPiiEntitiesDetectionJobRequest(input)
+	return out, req.Send()
+}
+
+// StopPiiEntitiesDetectionJobWithContext is the same as StopPiiEntitiesDetectionJob with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StopPiiEntitiesDetectionJob for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Comprehend) StopPiiEntitiesDetectionJobWithContext(ctx aws.Context, input *StopPiiEntitiesDetectionJobInput, opts ...request.Option) (*StopPiiEntitiesDetectionJobOutput, error) {
+	req, out := c.StopPiiEntitiesDetectionJobRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -5220,20 +6146,20 @@ func (c *Comprehend) UpdateEndpointRequest(input *UpdateEndpointInput) (req *req
 //   The number of requests exceeds the limit. Resubmit your request later.
 //
 //   * ResourceInUseException
-//   The specified name is already in use. Use a different name and try your request
-//   again.
+//   The specified resource name is already in use. Use a different name and try
+//   your request again.
 //
 //   * ResourceLimitExceededException
-//   The maximum number of recognizers per account has been exceeded. Review the
-//   recognizers, perform cleanup, and then try your request again.
+//   The maximum number of resources per account has been exceeded. Review the
+//   resources, and then try your request again.
 //
 //   * ResourceNotFoundException
 //   The specified resource ARN was not found. Check the ARN and try your request
 //   again.
 //
 //   * ResourceUnavailableException
-//   The specified resource is not available. Check to see if the resource is
-//   in the TRAINED state and try your request again.
+//   The specified resource is not available. Check the resource and try your
+//   request again.
 //
 //   * InternalServerException
 //   An internal server error occurred. Retry your request.
@@ -5260,6 +6186,71 @@ func (c *Comprehend) UpdateEndpointWithContext(ctx aws.Context, input *UpdateEnd
 	return out, req.Send()
 }
 
+// An augmented manifest file that provides training data for your custom model.
+// An augmented manifest file is a labeled dataset that is produced by Amazon
+// SageMaker Ground Truth.
+type AugmentedManifestsListItem struct {
+	_ struct{} `type:"structure"`
+
+	// The JSON attribute that contains the annotations for your training documents.
+	// The number of attribute names that you specify depends on whether your augmented
+	// manifest file is the output of a single labeling job or a chained labeling
+	// job.
+	//
+	// If your file is the output of a single labeling job, specify the LabelAttributeName
+	// key that was used when the job was created in Ground Truth.
+	//
+	// If your file is the output of a chained labeling job, specify the LabelAttributeName
+	// key for one or more jobs in the chain. Each LabelAttributeName key provides
+	// the annotations from an individual job.
+	//
+	// AttributeNames is a required field
+	AttributeNames []*string `type:"list" required:"true"`
+
+	// The Amazon S3 location of the augmented manifest file.
+	//
+	// S3Uri is a required field
+	S3Uri *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s AugmentedManifestsListItem) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AugmentedManifestsListItem) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *AugmentedManifestsListItem) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "AugmentedManifestsListItem"}
+	if s.AttributeNames == nil {
+		invalidParams.Add(request.NewErrParamRequired("AttributeNames"))
+	}
+	if s.S3Uri == nil {
+		invalidParams.Add(request.NewErrParamRequired("S3Uri"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAttributeNames sets the AttributeNames field's value.
+func (s *AugmentedManifestsListItem) SetAttributeNames(v []*string) *AugmentedManifestsListItem {
+	s.AttributeNames = v
+	return s
+}
+
+// SetS3Uri sets the S3Uri field's value.
+func (s *AugmentedManifestsListItem) SetS3Uri(v string) *AugmentedManifestsListItem {
+	s.S3Uri = &v
+	return s
+}
+
 type BatchDetectDominantLanguageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -5268,7 +6259,7 @@ type BatchDetectDominantLanguageInput struct {
 	// and must contain fewer than 5,000 bytes of UTF-8 encoded characters.
 	//
 	// TextList is a required field
-	TextList []*string `type:"list" required:"true"`
+	TextList []*string `type:"list" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -5336,7 +6327,7 @@ func (s *BatchDetectDominantLanguageItemResult) SetLanguages(v []*DominantLangua
 }
 
 type BatchDetectDominantLanguageOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// A list containing one object for each document that contained an error. The
 	// results are sorted in ascending order by the Index field and match the order
@@ -5391,7 +6382,7 @@ type BatchDetectEntitiesInput struct {
 	// of UTF-8 encoded characters.
 	//
 	// TextList is a required field
-	TextList []*string `type:"list" required:"true"`
+	TextList []*string `type:"list" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -5467,7 +6458,7 @@ func (s *BatchDetectEntitiesItemResult) SetIndex(v int64) *BatchDetectEntitiesIt
 }
 
 type BatchDetectEntitiesOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// A list containing one object for each document that contained an error. The
 	// results are sorted in ascending order by the Index field and match the order
@@ -5522,7 +6513,7 @@ type BatchDetectKeyPhrasesInput struct {
 	// of UTF-8 encoded characters.
 	//
 	// TextList is a required field
-	TextList []*string `type:"list" required:"true"`
+	TextList []*string `type:"list" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -5598,7 +6589,7 @@ func (s *BatchDetectKeyPhrasesItemResult) SetKeyPhrases(v []*KeyPhrase) *BatchDe
 }
 
 type BatchDetectKeyPhrasesOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// A list containing one object for each document that contained an error. The
 	// results are sorted in ascending order by the Index field and match the order
@@ -5653,7 +6644,7 @@ type BatchDetectSentimentInput struct {
 	// of UTF-8 encoded characters.
 	//
 	// TextList is a required field
-	TextList []*string `type:"list" required:"true"`
+	TextList []*string `type:"list" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -5739,7 +6730,7 @@ func (s *BatchDetectSentimentItemResult) SetSentimentScore(v *SentimentScore) *B
 }
 
 type BatchDetectSentimentOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// A list containing one object for each document that contained an error. The
 	// results are sorted in ascending order by the Index field and match the order
@@ -5796,7 +6787,7 @@ type BatchDetectSyntaxInput struct {
 	// of UTF-8 encoded characters.
 	//
 	// TextList is a required field
-	TextList []*string `type:"list" required:"true"`
+	TextList []*string `type:"list" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -5872,7 +6863,7 @@ func (s *BatchDetectSyntaxItemResult) SetSyntaxTokens(v []*SyntaxToken) *BatchDe
 }
 
 type BatchDetectSyntaxOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// A list containing one object for each document that contained an error. The
 	// results are sorted in ascending order by the Index field and match the order
@@ -5960,8 +6951,8 @@ func (s *BatchItemError) SetIndex(v int64) *BatchItemError {
 // The number of documents in the request exceeds the limit of 25. Try your
 // request again with fewer documents.
 type BatchSizeLimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -5978,17 +6969,17 @@ func (s BatchSizeLimitExceededException) GoString() string {
 
 func newErrorBatchSizeLimitExceededException(v protocol.ResponseMetadata) error {
 	return &BatchSizeLimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BatchSizeLimitExceededException) Code() string {
+func (s *BatchSizeLimitExceededException) Code() string {
 	return "BatchSizeLimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s BatchSizeLimitExceededException) Message() string {
+func (s *BatchSizeLimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5996,22 +6987,22 @@ func (s BatchSizeLimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BatchSizeLimitExceededException) OrigErr() error {
+func (s *BatchSizeLimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s BatchSizeLimitExceededException) Error() string {
+func (s *BatchSizeLimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BatchSizeLimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BatchSizeLimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BatchSizeLimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BatchSizeLimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Describes the result metrics for the test data associated with an documentation
@@ -6126,7 +7117,7 @@ func (s *ClassifierEvaluationMetrics) SetRecall(v float64) *ClassifierEvaluation
 
 // Provides information about a document classifier.
 type ClassifierMetadata struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// Describes the result metrics for the test data associated with an documentation
 	// classifier.
@@ -6136,7 +7127,7 @@ type ClassifierMetadata struct {
 	NumberOfLabels *int64 `type:"integer"`
 
 	// The number of documents in the input data that were used to test the classifier.
-	// Typically this is 10 to 20 percent of the input documents.
+	// Typically this is 10 to 20 percent of the input documents, up to 10,000 documents.
 	NumberOfTestDocuments *int64 `type:"integer"`
 
 	// The number of documents in the input data that were used to train the classifier.
@@ -6189,7 +7180,7 @@ type ClassifyDocumentInput struct {
 	// The document text to be analyzed.
 	//
 	// Text is a required field
-	Text *string `min:"1" type:"string" required:"true"`
+	Text *string `min:"1" type:"string" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -6234,7 +7225,7 @@ func (s *ClassifyDocumentInput) SetText(v string) *ClassifyDocumentInput {
 }
 
 type ClassifyDocumentOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// The classes used by the document being analyzed. These are used for multi-class
 	// trained models. Individual classes are mutually exclusive and each document
@@ -6244,7 +7235,7 @@ type ClassifyDocumentOutput struct {
 
 	// The labels used the document being analyzed. These are used for multi-label
 	// trained models. Individual labels represent different categories that are
-	// related in some manner and are not multually exclusive. For example, a movie
+	// related in some manner and are not mutually exclusive. For example, a movie
 	// can be just an action movie, or it can be an action movie, a science fiction
 	// movie, and a comedy, all at the same time.
 	Labels []*DocumentLabel `type:"list"`
@@ -6275,8 +7266,8 @@ func (s *ClassifyDocumentOutput) SetLabels(v []*DocumentLabel) *ClassifyDocument
 // Concurrent modification of the tags associated with an Amazon Comprehend
 // resource is not supported.
 type ConcurrentModificationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -6293,17 +7284,17 @@ func (s ConcurrentModificationException) GoString() string {
 
 func newErrorConcurrentModificationException(v protocol.ResponseMetadata) error {
 	return &ConcurrentModificationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConcurrentModificationException) Code() string {
+func (s *ConcurrentModificationException) Code() string {
 	return "ConcurrentModificationException"
 }
 
 // Message returns the exception's message.
-func (s ConcurrentModificationException) Message() string {
+func (s *ConcurrentModificationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6311,22 +7302,103 @@ func (s ConcurrentModificationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConcurrentModificationException) OrigErr() error {
+func (s *ConcurrentModificationException) OrigErr() error {
 	return nil
 }
 
-func (s ConcurrentModificationException) Error() string {
+func (s *ConcurrentModificationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConcurrentModificationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConcurrentModificationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConcurrentModificationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConcurrentModificationException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+type ContainsPiiEntitiesInput struct {
+	_ struct{} `type:"structure"`
+
+	// The language of the input documents.
+	//
+	// LanguageCode is a required field
+	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
+
+	// Creates a new document classification request to analyze a single document
+	// in real-time, returning personally identifiable information (PII) entity
+	// labels.
+	//
+	// Text is a required field
+	Text *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ContainsPiiEntitiesInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ContainsPiiEntitiesInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ContainsPiiEntitiesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ContainsPiiEntitiesInput"}
+	if s.LanguageCode == nil {
+		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
+	}
+	if s.Text == nil {
+		invalidParams.Add(request.NewErrParamRequired("Text"))
+	}
+	if s.Text != nil && len(*s.Text) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Text", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetLanguageCode sets the LanguageCode field's value.
+func (s *ContainsPiiEntitiesInput) SetLanguageCode(v string) *ContainsPiiEntitiesInput {
+	s.LanguageCode = &v
+	return s
+}
+
+// SetText sets the Text field's value.
+func (s *ContainsPiiEntitiesInput) SetText(v string) *ContainsPiiEntitiesInput {
+	s.Text = &v
+	return s
+}
+
+type ContainsPiiEntitiesOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The labels used in the document being analyzed. Individual labels represent
+	// personally identifiable information (PII) entity types.
+	Labels []*EntityLabel `type:"list"`
+}
+
+// String returns the string representation
+func (s ContainsPiiEntitiesOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ContainsPiiEntitiesOutput) GoString() string {
+	return s.String()
+}
+
+// SetLabels sets the Labels field's value.
+func (s *ContainsPiiEntitiesOutput) SetLabels(v []*EntityLabel) *ContainsPiiEntitiesOutput {
+	s.Labels = v
+	return s
 }
 
 type CreateDocumentClassifierInput struct {
@@ -6367,6 +7439,15 @@ type CreateDocumentClassifierInput struct {
 	// document are separated by a delimiter. The default delimiter between labels
 	// is a pipe (|).
 	Mode *string `type:"string" enum:"DocumentClassifierMode"`
+
+	// ID for the AWS Key Management Service (KMS) key that Amazon Comprehend uses
+	// to encrypt trained custom models. The ModelKmsKeyId can be either of the
+	// following formats:
+	//
+	//    * KMS Key ID: "1234abcd-12ab-34cd-56ef-1234567890ab"
+	//
+	//    * Amazon Resource Name (ARN) of a KMS Key: "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+	ModelKmsKeyId *string `type:"string"`
 
 	// Enables the addition of output results configuration parameters for custom
 	// classifier jobs.
@@ -6488,6 +7569,12 @@ func (s *CreateDocumentClassifierInput) SetMode(v string) *CreateDocumentClassif
 	return s
 }
 
+// SetModelKmsKeyId sets the ModelKmsKeyId field's value.
+func (s *CreateDocumentClassifierInput) SetModelKmsKeyId(v string) *CreateDocumentClassifierInput {
+	s.ModelKmsKeyId = &v
+	return s
+}
+
 // SetOutputDataConfig sets the OutputDataConfig field's value.
 func (s *CreateDocumentClassifierInput) SetOutputDataConfig(v *DocumentClassifierOutputDataConfig) *CreateDocumentClassifierInput {
 	s.OutputDataConfig = v
@@ -6542,6 +7629,11 @@ type CreateEndpointInput struct {
 	// endpoint creation request, Amazon Comprehend will not return a ResourceInUseException.
 	ClientRequestToken *string `min:"1" type:"string" idempotencyToken:"true"`
 
+	// The Amazon Resource Name (ARN) of the AWS identity and Access Management
+	// (IAM) role that grants Amazon Comprehend read access to trained custom models
+	// encrypted with a customer managed key (ModelKmsKeyId).
+	DataAccessRoleArn *string `min:"20" type:"string"`
+
 	// The desired number of inference units to be used by the model using this
 	// endpoint. Each inference unit represents of a throughput of 100 characters
 	// per second.
@@ -6583,6 +7675,9 @@ func (s *CreateEndpointInput) Validate() error {
 	if s.ClientRequestToken != nil && len(*s.ClientRequestToken) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("ClientRequestToken", 1))
 	}
+	if s.DataAccessRoleArn != nil && len(*s.DataAccessRoleArn) < 20 {
+		invalidParams.Add(request.NewErrParamMinLen("DataAccessRoleArn", 20))
+	}
 	if s.DesiredInferenceUnits == nil {
 		invalidParams.Add(request.NewErrParamRequired("DesiredInferenceUnits"))
 	}
@@ -6615,6 +7710,12 @@ func (s *CreateEndpointInput) Validate() error {
 // SetClientRequestToken sets the ClientRequestToken field's value.
 func (s *CreateEndpointInput) SetClientRequestToken(v string) *CreateEndpointInput {
 	s.ClientRequestToken = &v
+	return s
+}
+
+// SetDataAccessRoleArn sets the DataAccessRoleArn field's value.
+func (s *CreateEndpointInput) SetDataAccessRoleArn(v string) *CreateEndpointInput {
+	s.DataAccessRoleArn = &v
 	return s
 }
 
@@ -6685,11 +7786,21 @@ type CreateEntityRecognizerInput struct {
 	// InputDataConfig is a required field
 	InputDataConfig *EntityRecognizerInputDataConfig `type:"structure" required:"true"`
 
-	// The language of the input documents. All documents must be in the same language.
-	// Only English ("en") is currently supported.
+	// You can specify any of the following languages supported by Amazon Comprehend:
+	// English ("en"), Spanish ("es"), French ("fr"), Italian ("it"), German ("de"),
+	// or Portuguese ("pt"). All documents must be in the same language.
 	//
 	// LanguageCode is a required field
 	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
+
+	// ID for the AWS Key Management Service (KMS) key that Amazon Comprehend uses
+	// to encrypt trained custom models. The ModelKmsKeyId can be either of the
+	// following formats
+	//
+	//    * KMS Key ID: "1234abcd-12ab-34cd-56ef-1234567890ab"
+	//
+	//    * Amazon Resource Name (ARN) of a KMS Key: "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+	ModelKmsKeyId *string `type:"string"`
 
 	// The name given to the newly created recognizer. Recognizer names can be a
 	// maximum of 256 characters. Alphanumeric characters, hyphens (-) and underscores
@@ -6799,6 +7910,12 @@ func (s *CreateEntityRecognizerInput) SetInputDataConfig(v *EntityRecognizerInpu
 // SetLanguageCode sets the LanguageCode field's value.
 func (s *CreateEntityRecognizerInput) SetLanguageCode(v string) *CreateEntityRecognizerInput {
 	s.LanguageCode = &v
+	return s
+}
+
+// SetModelKmsKeyId sets the ModelKmsKeyId field's value.
+func (s *CreateEntityRecognizerInput) SetModelKmsKeyId(v string) *CreateEntityRecognizerInput {
+	s.ModelKmsKeyId = &v
 	return s
 }
 
@@ -7387,6 +8504,71 @@ func (s *DescribeEntityRecognizerOutput) SetEntityRecognizerProperties(v *Entity
 	return s
 }
 
+type DescribeEventsDetectionJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the events detection job.
+	//
+	// JobId is a required field
+	JobId *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribeEventsDetectionJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeEventsDetectionJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeEventsDetectionJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeEventsDetectionJobInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *DescribeEventsDetectionJobInput) SetJobId(v string) *DescribeEventsDetectionJobInput {
+	s.JobId = &v
+	return s
+}
+
+type DescribeEventsDetectionJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// An object that contains the properties associated with an event detection
+	// job.
+	EventsDetectionJobProperties *EventsDetectionJobProperties `type:"structure"`
+}
+
+// String returns the string representation
+func (s DescribeEventsDetectionJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeEventsDetectionJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetEventsDetectionJobProperties sets the EventsDetectionJobProperties field's value.
+func (s *DescribeEventsDetectionJobOutput) SetEventsDetectionJobProperties(v *EventsDetectionJobProperties) *DescribeEventsDetectionJobOutput {
+	s.EventsDetectionJobProperties = v
+	return s
+}
+
 type DescribeKeyPhrasesDetectionJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7450,6 +8632,71 @@ func (s DescribeKeyPhrasesDetectionJobOutput) GoString() string {
 // SetKeyPhrasesDetectionJobProperties sets the KeyPhrasesDetectionJobProperties field's value.
 func (s *DescribeKeyPhrasesDetectionJobOutput) SetKeyPhrasesDetectionJobProperties(v *KeyPhrasesDetectionJobProperties) *DescribeKeyPhrasesDetectionJobOutput {
 	s.KeyPhrasesDetectionJobProperties = v
+	return s
+}
+
+type DescribePiiEntitiesDetectionJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier that Amazon Comprehend generated for the job. The operation
+	// returns this identifier in its response.
+	//
+	// JobId is a required field
+	JobId *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DescribePiiEntitiesDetectionJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribePiiEntitiesDetectionJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribePiiEntitiesDetectionJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribePiiEntitiesDetectionJobInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *DescribePiiEntitiesDetectionJobInput) SetJobId(v string) *DescribePiiEntitiesDetectionJobInput {
+	s.JobId = &v
+	return s
+}
+
+type DescribePiiEntitiesDetectionJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Provides information about a PII entities detection job.
+	PiiEntitiesDetectionJobProperties *PiiEntitiesDetectionJobProperties `type:"structure"`
+}
+
+// String returns the string representation
+func (s DescribePiiEntitiesDetectionJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribePiiEntitiesDetectionJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetPiiEntitiesDetectionJobProperties sets the PiiEntitiesDetectionJobProperties field's value.
+func (s *DescribePiiEntitiesDetectionJobOutput) SetPiiEntitiesDetectionJobProperties(v *PiiEntitiesDetectionJobProperties) *DescribePiiEntitiesDetectionJobOutput {
+	s.PiiEntitiesDetectionJobProperties = v
 	return s
 }
 
@@ -7590,7 +8837,7 @@ type DetectDominantLanguageInput struct {
 	// must contain fewer that 5,000 bytes of UTF-8 encoded characters.
 	//
 	// Text is a required field
-	Text *string `min:"1" type:"string" required:"true"`
+	Text *string `min:"1" type:"string" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -7626,7 +8873,7 @@ func (s *DetectDominantLanguageInput) SetText(v string) *DetectDominantLanguageI
 }
 
 type DetectDominantLanguageOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// The languages that Amazon Comprehend detected in the input text. For each
 	// language, the response returns the RFC 5646 language code and the level of
@@ -7655,17 +8902,28 @@ func (s *DetectDominantLanguageOutput) SetLanguages(v []*DominantLanguage) *Dete
 type DetectEntitiesInput struct {
 	_ struct{} `type:"structure"`
 
+	// The Amazon Resource Name of an endpoint that is associated with a custom
+	// entity recognition model. Provide an endpoint if you want to detect entities
+	// by using your own custom model instead of the default model that is used
+	// by Amazon Comprehend.
+	//
+	// If you specify an endpoint, Amazon Comprehend uses the language of your custom
+	// model, and it ignores any language code that you provide in your request.
+	EndpointArn *string `type:"string"`
+
 	// The language of the input documents. You can specify any of the primary languages
 	// supported by Amazon Comprehend. All documents must be in the same language.
 	//
-	// LanguageCode is a required field
-	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
+	// If your request includes the endpoint for a custom entity recognition model,
+	// Amazon Comprehend uses the language of your custom model, and it ignores
+	// any language code that you specify here.
+	LanguageCode *string `type:"string" enum:"LanguageCode"`
 
 	// A UTF-8 text string. Each string must contain fewer that 5,000 bytes of UTF-8
 	// encoded characters.
 	//
 	// Text is a required field
-	Text *string `min:"1" type:"string" required:"true"`
+	Text *string `min:"1" type:"string" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -7681,9 +8939,6 @@ func (s DetectEntitiesInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *DetectEntitiesInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "DetectEntitiesInput"}
-	if s.LanguageCode == nil {
-		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
-	}
 	if s.Text == nil {
 		invalidParams.Add(request.NewErrParamRequired("Text"))
 	}
@@ -7695,6 +8950,12 @@ func (s *DetectEntitiesInput) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetEndpointArn sets the EndpointArn field's value.
+func (s *DetectEntitiesInput) SetEndpointArn(v string) *DetectEntitiesInput {
+	s.EndpointArn = &v
+	return s
 }
 
 // SetLanguageCode sets the LanguageCode field's value.
@@ -7710,12 +8971,16 @@ func (s *DetectEntitiesInput) SetText(v string) *DetectEntitiesInput {
 }
 
 type DetectEntitiesOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// A collection of entities identified in the input text. For each entity, the
 	// response provides the entity text, entity type, where the entity text begins
 	// and ends, and the level of confidence that Amazon Comprehend has in the detection.
-	// For a list of entity types, see how-entities.
+	//
+	// If your request uses a custom entity recognition model, Amazon Comprehend
+	// detects the entities that the model is trained to recognize. Otherwise, it
+	// detects the default entity types. For a list of default entity types, see
+	// how-entities.
 	Entities []*Entity `type:"list"`
 }
 
@@ -7748,7 +9013,7 @@ type DetectKeyPhrasesInput struct {
 	// encoded characters.
 	//
 	// Text is a required field
-	Text *string `min:"1" type:"string" required:"true"`
+	Text *string `min:"1" type:"string" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -7793,7 +9058,7 @@ func (s *DetectKeyPhrasesInput) SetText(v string) *DetectKeyPhrasesInput {
 }
 
 type DetectKeyPhrasesOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// A collection of key phrases that Amazon Comprehend identified in the input
 	// text. For each key phrase, the response provides the text of the key phrase,
@@ -7818,6 +9083,87 @@ func (s *DetectKeyPhrasesOutput) SetKeyPhrases(v []*KeyPhrase) *DetectKeyPhrases
 	return s
 }
 
+type DetectPiiEntitiesInput struct {
+	_ struct{} `type:"structure"`
+
+	// The language of the input documents.
+	//
+	// LanguageCode is a required field
+	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
+
+	// A UTF-8 text string. Each string must contain fewer that 5,000 bytes of UTF-8
+	// encoded characters.
+	//
+	// Text is a required field
+	Text *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DetectPiiEntitiesInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DetectPiiEntitiesInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DetectPiiEntitiesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DetectPiiEntitiesInput"}
+	if s.LanguageCode == nil {
+		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
+	}
+	if s.Text == nil {
+		invalidParams.Add(request.NewErrParamRequired("Text"))
+	}
+	if s.Text != nil && len(*s.Text) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Text", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetLanguageCode sets the LanguageCode field's value.
+func (s *DetectPiiEntitiesInput) SetLanguageCode(v string) *DetectPiiEntitiesInput {
+	s.LanguageCode = &v
+	return s
+}
+
+// SetText sets the Text field's value.
+func (s *DetectPiiEntitiesInput) SetText(v string) *DetectPiiEntitiesInput {
+	s.Text = &v
+	return s
+}
+
+type DetectPiiEntitiesOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A collection of PII entities identified in the input text. For each entity,
+	// the response provides the entity type, where the entity text begins and ends,
+	// and the level of confidence that Amazon Comprehend has in the detection.
+	Entities []*PiiEntity `type:"list"`
+}
+
+// String returns the string representation
+func (s DetectPiiEntitiesOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DetectPiiEntitiesOutput) GoString() string {
+	return s.String()
+}
+
+// SetEntities sets the Entities field's value.
+func (s *DetectPiiEntitiesOutput) SetEntities(v []*PiiEntity) *DetectPiiEntitiesOutput {
+	s.Entities = v
+	return s
+}
+
 type DetectSentimentInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7831,7 +9177,7 @@ type DetectSentimentInput struct {
 	// encoded characters.
 	//
 	// Text is a required field
-	Text *string `min:"1" type:"string" required:"true"`
+	Text *string `min:"1" type:"string" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -7876,7 +9222,7 @@ func (s *DetectSentimentInput) SetText(v string) *DetectSentimentInput {
 }
 
 type DetectSentimentOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// The inferred sentiment that Amazon Comprehend has the highest level of confidence
 	// in.
@@ -7922,7 +9268,7 @@ type DetectSyntaxInput struct {
 	// characters.
 	//
 	// Text is a required field
-	Text *string `min:"1" type:"string" required:"true"`
+	Text *string `min:"1" type:"string" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -7967,7 +9313,7 @@ func (s *DetectSyntaxInput) SetText(v string) *DetectSyntaxInput {
 }
 
 type DetectSyntaxOutput struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// A collection of syntax tokens describing the text. For each token, the response
 	// provides the text, the token type, where the text begins and ends, and the
@@ -8039,12 +9385,12 @@ type DocumentClassificationJobFilter struct {
 	JobStatus *string `type:"string" enum:"JobStatus"`
 
 	// Filters the list of jobs based on the time that the job was submitted for
-	// processing. Returns only jobs submitted before the specified time. Jobs are
+	// processing. Returns only jobs submitted after the specified time. Jobs are
 	// returned in descending order, newest to oldest.
 	SubmitTimeAfter *time.Time `type:"timestamp"`
 
 	// Filters the list of jobs based on the time that the job was submitted for
-	// processing. Returns only jobs submitted after the specified time. Jobs are
+	// processing. Returns only jobs submitted before the specified time. Jobs are
 	// returned in ascending order, oldest to newest.
 	SubmitTimeBefore *time.Time `type:"timestamp"`
 }
@@ -8286,6 +9632,29 @@ func (s *DocumentClassifierFilter) SetSubmitTimeBefore(v time.Time) *DocumentCla
 type DocumentClassifierInputDataConfig struct {
 	_ struct{} `type:"structure"`
 
+	// A list of augmented manifest files that provide training data for your custom
+	// model. An augmented manifest file is a labeled dataset that is produced by
+	// Amazon SageMaker Ground Truth.
+	//
+	// This parameter is required if you set DataFormat to AUGMENTED_MANIFEST.
+	AugmentedManifests []*AugmentedManifestsListItem `type:"list"`
+
+	// The format of your training data:
+	//
+	//    * COMPREHEND_CSV: A two-column CSV file, where labels are provided in
+	//    the first column, and documents are provided in the second. If you use
+	//    this value, you must provide the S3Uri parameter in your request.
+	//
+	//    * AUGMENTED_MANIFEST: A labeled dataset that is produced by Amazon SageMaker
+	//    Ground Truth. This file is in JSON lines format. Each line is a complete
+	//    JSON object that contains a training document and its associated labels.
+	//    If you use this value, you must provide the AugmentedManifests parameter
+	//    in your request.
+	//
+	// If you don't specify a value, Amazon Comprehend uses COMPREHEND_CSV as the
+	// default.
+	DataFormat *string `type:"string" enum:"DocumentClassifierDataFormat"`
+
 	// Indicates the delimiter used to separate each label for training a multi-label
 	// classifier. The default delimiter between labels is a pipe (|). You can use
 	// a different character as a delimiter (if it's an allowed character) by specifying
@@ -8302,8 +9671,8 @@ type DocumentClassifierInputDataConfig struct {
 	// a single file, Amazon Comprehend uses that file as input. If more than one
 	// file begins with the prefix, Amazon Comprehend uses all of them as input.
 	//
-	// S3Uri is a required field
-	S3Uri *string `type:"string" required:"true"`
+	// This parameter is required if you set DataFormat to COMPREHEND_CSV.
+	S3Uri *string `type:"string"`
 }
 
 // String returns the string representation
@@ -8322,14 +9691,33 @@ func (s *DocumentClassifierInputDataConfig) Validate() error {
 	if s.LabelDelimiter != nil && len(*s.LabelDelimiter) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("LabelDelimiter", 1))
 	}
-	if s.S3Uri == nil {
-		invalidParams.Add(request.NewErrParamRequired("S3Uri"))
+	if s.AugmentedManifests != nil {
+		for i, v := range s.AugmentedManifests {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "AugmentedManifests", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetAugmentedManifests sets the AugmentedManifests field's value.
+func (s *DocumentClassifierInputDataConfig) SetAugmentedManifests(v []*AugmentedManifestsListItem) *DocumentClassifierInputDataConfig {
+	s.AugmentedManifests = v
+	return s
+}
+
+// SetDataFormat sets the DataFormat field's value.
+func (s *DocumentClassifierInputDataConfig) SetDataFormat(v string) *DocumentClassifierInputDataConfig {
+	s.DataFormat = &v
+	return s
 }
 
 // SetLabelDelimiter sets the LabelDelimiter field's value.
@@ -8403,7 +9791,7 @@ type DocumentClassifierProperties struct {
 	// Information about the document classifier, including the number of documents
 	// used for training the classifier, the number of documents used for test the
 	// classifier, and an accuracy rating.
-	ClassifierMetadata *ClassifierMetadata `type:"structure"`
+	ClassifierMetadata *ClassifierMetadata `type:"structure" sensitive:"true"`
 
 	// The Amazon Resource Name (ARN) of the AWS Identity and Management (IAM) role
 	// that grants Amazon Comprehend read access to your input data.
@@ -8431,6 +9819,15 @@ type DocumentClassifierProperties struct {
 	// Each classifier can only be trained in one mode and this cannot be changed
 	// once the classifier is trained.
 	Mode *string `type:"string" enum:"DocumentClassifierMode"`
+
+	// ID for the AWS Key Management Service (KMS) key that Amazon Comprehend uses
+	// to encrypt trained custom models. The ModelKmsKeyId can be either of the
+	// following formats:
+	//
+	//    * KMS Key ID: "1234abcd-12ab-34cd-56ef-1234567890ab"
+	//
+	//    * Amazon Resource Name (ARN) of a KMS Key: "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+	ModelKmsKeyId *string `type:"string"`
 
 	// Provides output results configuration parameters for custom classifier jobs.
 	OutputDataConfig *DocumentClassifierOutputDataConfig `type:"structure"`
@@ -8523,6 +9920,12 @@ func (s *DocumentClassifierProperties) SetMessage(v string) *DocumentClassifierP
 // SetMode sets the Mode field's value.
 func (s *DocumentClassifierProperties) SetMode(v string) *DocumentClassifierProperties {
 	s.Mode = &v
+	return s
+}
+
+// SetModelKmsKeyId sets the ModelKmsKeyId field's value.
+func (s *DocumentClassifierProperties) SetModelKmsKeyId(v string) *DocumentClassifierProperties {
+	s.ModelKmsKeyId = &v
 	return s
 }
 
@@ -8835,7 +10238,7 @@ func (s *DominantLanguageDetectionJobProperties) SetVpcConfig(v *VpcConfig) *Dom
 	return s
 }
 
-// The filter used to determine which endpoints are are returned. You can filter
+// The filter used to determine which endpoints are returned. You can filter
 // jobs on their name, model, status, or the date and time that they were created.
 // You can only set one filter at a time.
 type EndpointFilter struct {
@@ -8899,6 +10302,11 @@ type EndpointProperties struct {
 	// The number of inference units currently used by the model using this endpoint.
 	CurrentInferenceUnits *int64 `min:"1" type:"integer"`
 
+	// The Amazon Resource Name (ARN) of the AWS identity and Access Management
+	// (IAM) role that grants Amazon Comprehend read access to trained custom models
+	// encrypted with a customer managed key (ModelKmsKeyId).
+	DataAccessRoleArn *string `min:"20" type:"string"`
+
 	// The desired number of inference units to be used by the model using this
 	// endpoint. Each inference unit represents of a throughput of 100 characters
 	// per second.
@@ -8941,6 +10349,12 @@ func (s *EndpointProperties) SetCreationTime(v time.Time) *EndpointProperties {
 // SetCurrentInferenceUnits sets the CurrentInferenceUnits field's value.
 func (s *EndpointProperties) SetCurrentInferenceUnits(v int64) *EndpointProperties {
 	s.CurrentInferenceUnits = &v
+	return s
+}
+
+// SetDataAccessRoleArn sets the DataAccessRoleArn field's value.
+func (s *EndpointProperties) SetDataAccessRoleArn(v string) *EndpointProperties {
+	s.DataAccessRoleArn = &v
 	return s
 }
 
@@ -9263,6 +10677,41 @@ func (s *Entity) SetType(v string) *Entity {
 	return s
 }
 
+// Specifies one of the label or labels that categorize the personally identifiable
+// information (PII) entity being analyzed.
+type EntityLabel struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the label.
+	Name *string `type:"string" enum:"PiiEntityType"`
+
+	// The level of confidence that Amazon Comprehend has in the accuracy of the
+	// detection.
+	Score *float64 `type:"float"`
+}
+
+// String returns the string representation
+func (s EntityLabel) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EntityLabel) GoString() string {
+	return s.String()
+}
+
+// SetName sets the Name field's value.
+func (s *EntityLabel) SetName(v string) *EntityLabel {
+	s.Name = &v
+	return s
+}
+
+// SetScore sets the Score field's value.
+func (s *EntityLabel) SetScore(v float64) *EntityLabel {
+	s.Score = &v
+	return s
+}
+
 // Describes the annotations associated with a entity recognizer.
 type EntityRecognizerAnnotations struct {
 	_ struct{} `type:"structure"`
@@ -9485,19 +10934,54 @@ func (s *EntityRecognizerFilter) SetSubmitTimeBefore(v time.Time) *EntityRecogni
 type EntityRecognizerInputDataConfig struct {
 	_ struct{} `type:"structure"`
 
-	// S3 location of the annotations file for an entity recognizer.
+	// The S3 location of the CSV file that annotates your training documents.
 	Annotations *EntityRecognizerAnnotations `type:"structure"`
 
-	// S3 location of the documents folder for an entity recognizer
+	// A list of augmented manifest files that provide training data for your custom
+	// model. An augmented manifest file is a labeled dataset that is produced by
+	// Amazon SageMaker Ground Truth.
 	//
-	// Documents is a required field
-	Documents *EntityRecognizerDocuments `type:"structure" required:"true"`
+	// This parameter is required if you set DataFormat to AUGMENTED_MANIFEST.
+	AugmentedManifests []*AugmentedManifestsListItem `type:"list"`
 
-	// S3 location of the entity list for an entity recognizer.
+	// The format of your training data:
+	//
+	//    * COMPREHEND_CSV: A CSV file that supplements your training documents.
+	//    The CSV file contains information about the custom entities that your
+	//    trained model will detect. The required format of the file depends on
+	//    whether you are providing annotations or an entity list. If you use this
+	//    value, you must provide your CSV file by using either the Annotations
+	//    or EntityList parameters. You must provide your training documents by
+	//    using the Documents parameter.
+	//
+	//    * AUGMENTED_MANIFEST: A labeled dataset that is produced by Amazon SageMaker
+	//    Ground Truth. This file is in JSON lines format. Each line is a complete
+	//    JSON object that contains a training document and its labels. Each label
+	//    annotates a named entity in the training document. If you use this value,
+	//    you must provide the AugmentedManifests parameter in your request.
+	//
+	// If you don't specify a value, Amazon Comprehend uses COMPREHEND_CSV as the
+	// default.
+	DataFormat *string `type:"string" enum:"EntityRecognizerDataFormat"`
+
+	// The S3 location of the folder that contains the training documents for your
+	// custom entity recognizer.
+	//
+	// This parameter is required if you set DataFormat to COMPREHEND_CSV.
+	Documents *EntityRecognizerDocuments `type:"structure"`
+
+	// The S3 location of the CSV file that has the entity list for your custom
+	// entity recognizer.
 	EntityList *EntityRecognizerEntityList `type:"structure"`
 
-	// The entity types in the input data for an entity recognizer. A maximum of
-	// 12 entity types can be used at one time to train an entity recognizer.
+	// The entity types in the labeled training data that Amazon Comprehend uses
+	// to train the custom entity recognizer. Any entity types that you don't specify
+	// are ignored.
+	//
+	// A maximum of 25 entity types can be used at one time to train an entity recognizer.
+	// Entity types must not contain the following invalid characters: \n (line
+	// break), \\n (escaped line break), \r (carriage return), \\r (escaped carriage
+	// return), \t (tab), \\t (escaped tab), space, and , (comma).
 	//
 	// EntityTypes is a required field
 	EntityTypes []*EntityTypesListItem `type:"list" required:"true"`
@@ -9516,15 +11000,22 @@ func (s EntityRecognizerInputDataConfig) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *EntityRecognizerInputDataConfig) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "EntityRecognizerInputDataConfig"}
-	if s.Documents == nil {
-		invalidParams.Add(request.NewErrParamRequired("Documents"))
-	}
 	if s.EntityTypes == nil {
 		invalidParams.Add(request.NewErrParamRequired("EntityTypes"))
 	}
 	if s.Annotations != nil {
 		if err := s.Annotations.Validate(); err != nil {
 			invalidParams.AddNested("Annotations", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.AugmentedManifests != nil {
+		for i, v := range s.AugmentedManifests {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "AugmentedManifests", i), err.(request.ErrInvalidParams))
+			}
 		}
 	}
 	if s.Documents != nil {
@@ -9560,6 +11051,18 @@ func (s *EntityRecognizerInputDataConfig) SetAnnotations(v *EntityRecognizerAnno
 	return s
 }
 
+// SetAugmentedManifests sets the AugmentedManifests field's value.
+func (s *EntityRecognizerInputDataConfig) SetAugmentedManifests(v []*AugmentedManifestsListItem) *EntityRecognizerInputDataConfig {
+	s.AugmentedManifests = v
+	return s
+}
+
+// SetDataFormat sets the DataFormat field's value.
+func (s *EntityRecognizerInputDataConfig) SetDataFormat(v string) *EntityRecognizerInputDataConfig {
+	s.DataFormat = &v
+	return s
+}
+
 // SetDocuments sets the Documents field's value.
 func (s *EntityRecognizerInputDataConfig) SetDocuments(v *EntityRecognizerDocuments) *EntityRecognizerInputDataConfig {
 	s.Documents = v
@@ -9580,7 +11083,7 @@ func (s *EntityRecognizerInputDataConfig) SetEntityTypes(v []*EntityTypesListIte
 
 // Detailed information about an entity recognizer.
 type EntityRecognizerMetadata struct {
-	_ struct{} `type:"structure"`
+	_ struct{} `type:"structure" sensitive:"true"`
 
 	// Entity types from the metadata of an entity recognizer.
 	EntityTypes []*EntityRecognizerMetadataEntityTypesListItem `type:"list"`
@@ -9701,8 +11204,17 @@ type EntityRecognizerProperties struct {
 	// A description of the status of the recognizer.
 	Message *string `type:"string"`
 
+	// ID for the AWS Key Management Service (KMS) key that Amazon Comprehend uses
+	// to encrypt trained custom models. The ModelKmsKeyId can be either of the
+	// following formats:
+	//
+	//    * KMS Key ID: "1234abcd-12ab-34cd-56ef-1234567890ab"
+	//
+	//    * Amazon Resource Name (ARN) of a KMS Key: "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+	ModelKmsKeyId *string `type:"string"`
+
 	// Provides information about an entity recognizer.
-	RecognizerMetadata *EntityRecognizerMetadata `type:"structure"`
+	RecognizerMetadata *EntityRecognizerMetadata `type:"structure" sensitive:"true"`
 
 	// Provides the status of the entity recognizer.
 	Status *string `type:"string" enum:"ModelStatus"`
@@ -9778,6 +11290,12 @@ func (s *EntityRecognizerProperties) SetMessage(v string) *EntityRecognizerPrope
 	return s
 }
 
+// SetModelKmsKeyId sets the ModelKmsKeyId field's value.
+func (s *EntityRecognizerProperties) SetModelKmsKeyId(v string) *EntityRecognizerProperties {
+	s.ModelKmsKeyId = &v
+	return s
+}
+
 // SetRecognizerMetadata sets the RecognizerMetadata field's value.
 func (s *EntityRecognizerProperties) SetRecognizerMetadata(v *EntityRecognizerMetadata) *EntityRecognizerProperties {
 	s.RecognizerMetadata = v
@@ -9825,7 +11343,7 @@ func (s *EntityRecognizerProperties) SetVpcConfig(v *VpcConfig) *EntityRecognize
 type EntityTypesEvaluationMetrics struct {
 	_ struct{} `type:"structure"`
 
-	// A measure of how accurate the recognizer results are for for a specific entity
+	// A measure of how accurate the recognizer results are for a specific entity
 	// type in the test data. It is derived from the Precision and Recall values.
 	// The F1Score is the harmonic average of the two scores. The highest score
 	// is 1, and the worst score is 0.
@@ -9870,11 +11388,17 @@ func (s *EntityTypesEvaluationMetrics) SetRecall(v float64) *EntityTypesEvaluati
 	return s
 }
 
-// Information about an individual item on a list of entity types.
+// An entity type within a labeled training dataset that Amazon Comprehend uses
+// to train a custom entity recognizer.
 type EntityTypesListItem struct {
 	_ struct{} `type:"structure"`
 
-	// Entity type of an item on an entity type list.
+	// An entity type within a labeled training dataset that Amazon Comprehend uses
+	// to train a custom entity recognizer.
+	//
+	// Entity types must not contain the following invalid characters: \n (line
+	// break), \\n (escaped line break, \r (carriage return), \\r (escaped carriage
+	// return), \t (tab), \\t (escaped tab), space, and , (comma).
 	//
 	// Type is a required field
 	Type *string `type:"string" required:"true"`
@@ -9906,6 +11430,192 @@ func (s *EntityTypesListItem) Validate() error {
 // SetType sets the Type field's value.
 func (s *EntityTypesListItem) SetType(v string) *EntityTypesListItem {
 	s.Type = &v
+	return s
+}
+
+// Provides information for filtering a list of event detection jobs.
+type EventsDetectionJobFilter struct {
+	_ struct{} `type:"structure"`
+
+	// Filters on the name of the events detection job.
+	JobName *string `min:"1" type:"string"`
+
+	// Filters the list of jobs based on job status. Returns only jobs with the
+	// specified status.
+	JobStatus *string `type:"string" enum:"JobStatus"`
+
+	// Filters the list of jobs based on the time that the job was submitted for
+	// processing. Returns only jobs submitted after the specified time. Jobs are
+	// returned in descending order, newest to oldest.
+	SubmitTimeAfter *time.Time `type:"timestamp"`
+
+	// Filters the list of jobs based on the time that the job was submitted for
+	// processing. Returns only jobs submitted before the specified time. Jobs are
+	// returned in ascending order, oldest to newest.
+	SubmitTimeBefore *time.Time `type:"timestamp"`
+}
+
+// String returns the string representation
+func (s EventsDetectionJobFilter) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EventsDetectionJobFilter) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *EventsDetectionJobFilter) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "EventsDetectionJobFilter"}
+	if s.JobName != nil && len(*s.JobName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobName", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobName sets the JobName field's value.
+func (s *EventsDetectionJobFilter) SetJobName(v string) *EventsDetectionJobFilter {
+	s.JobName = &v
+	return s
+}
+
+// SetJobStatus sets the JobStatus field's value.
+func (s *EventsDetectionJobFilter) SetJobStatus(v string) *EventsDetectionJobFilter {
+	s.JobStatus = &v
+	return s
+}
+
+// SetSubmitTimeAfter sets the SubmitTimeAfter field's value.
+func (s *EventsDetectionJobFilter) SetSubmitTimeAfter(v time.Time) *EventsDetectionJobFilter {
+	s.SubmitTimeAfter = &v
+	return s
+}
+
+// SetSubmitTimeBefore sets the SubmitTimeBefore field's value.
+func (s *EventsDetectionJobFilter) SetSubmitTimeBefore(v time.Time) *EventsDetectionJobFilter {
+	s.SubmitTimeBefore = &v
+	return s
+}
+
+// Provides information about an events detection job.
+type EventsDetectionJobProperties struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the AWS Identify and Access Management
+	// (IAM) role that grants Amazon Comprehend read access to your input data.
+	DataAccessRoleArn *string `min:"20" type:"string"`
+
+	// The time that the events detection job completed.
+	EndTime *time.Time `type:"timestamp"`
+
+	// The input data configuration that you supplied when you created the events
+	// detection job.
+	InputDataConfig *InputDataConfig `type:"structure"`
+
+	// The identifier assigned to the events detection job.
+	JobId *string `min:"1" type:"string"`
+
+	// The name you assigned the events detection job.
+	JobName *string `min:"1" type:"string"`
+
+	// The current status of the events detection job.
+	JobStatus *string `type:"string" enum:"JobStatus"`
+
+	// The language code of the input documents.
+	LanguageCode *string `type:"string" enum:"LanguageCode"`
+
+	// A description of the status of the events detection job.
+	Message *string `type:"string"`
+
+	// The output data configuration that you supplied when you created the events
+	// detection job.
+	OutputDataConfig *OutputDataConfig `type:"structure"`
+
+	// The time that the events detection job was submitted for processing.
+	SubmitTime *time.Time `type:"timestamp"`
+
+	// The types of events that are detected by the job.
+	TargetEventTypes []*string `min:"1" type:"list"`
+}
+
+// String returns the string representation
+func (s EventsDetectionJobProperties) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EventsDetectionJobProperties) GoString() string {
+	return s.String()
+}
+
+// SetDataAccessRoleArn sets the DataAccessRoleArn field's value.
+func (s *EventsDetectionJobProperties) SetDataAccessRoleArn(v string) *EventsDetectionJobProperties {
+	s.DataAccessRoleArn = &v
+	return s
+}
+
+// SetEndTime sets the EndTime field's value.
+func (s *EventsDetectionJobProperties) SetEndTime(v time.Time) *EventsDetectionJobProperties {
+	s.EndTime = &v
+	return s
+}
+
+// SetInputDataConfig sets the InputDataConfig field's value.
+func (s *EventsDetectionJobProperties) SetInputDataConfig(v *InputDataConfig) *EventsDetectionJobProperties {
+	s.InputDataConfig = v
+	return s
+}
+
+// SetJobId sets the JobId field's value.
+func (s *EventsDetectionJobProperties) SetJobId(v string) *EventsDetectionJobProperties {
+	s.JobId = &v
+	return s
+}
+
+// SetJobName sets the JobName field's value.
+func (s *EventsDetectionJobProperties) SetJobName(v string) *EventsDetectionJobProperties {
+	s.JobName = &v
+	return s
+}
+
+// SetJobStatus sets the JobStatus field's value.
+func (s *EventsDetectionJobProperties) SetJobStatus(v string) *EventsDetectionJobProperties {
+	s.JobStatus = &v
+	return s
+}
+
+// SetLanguageCode sets the LanguageCode field's value.
+func (s *EventsDetectionJobProperties) SetLanguageCode(v string) *EventsDetectionJobProperties {
+	s.LanguageCode = &v
+	return s
+}
+
+// SetMessage sets the Message field's value.
+func (s *EventsDetectionJobProperties) SetMessage(v string) *EventsDetectionJobProperties {
+	s.Message = &v
+	return s
+}
+
+// SetOutputDataConfig sets the OutputDataConfig field's value.
+func (s *EventsDetectionJobProperties) SetOutputDataConfig(v *OutputDataConfig) *EventsDetectionJobProperties {
+	s.OutputDataConfig = v
+	return s
+}
+
+// SetSubmitTime sets the SubmitTime field's value.
+func (s *EventsDetectionJobProperties) SetSubmitTime(v time.Time) *EventsDetectionJobProperties {
+	s.SubmitTime = &v
+	return s
+}
+
+// SetTargetEventTypes sets the TargetEventTypes field's value.
+func (s *EventsDetectionJobProperties) SetTargetEventTypes(v []*string) *EventsDetectionJobProperties {
+	s.TargetEventTypes = v
 	return s
 }
 
@@ -9973,8 +11683,8 @@ func (s *InputDataConfig) SetS3Uri(v string) *InputDataConfig {
 
 // An internal server error occurred. Retry your request.
 type InternalServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -9991,17 +11701,17 @@ func (s InternalServerException) GoString() string {
 
 func newErrorInternalServerException(v protocol.ResponseMetadata) error {
 	return &InternalServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerException) Code() string {
+func (s *InternalServerException) Code() string {
 	return "InternalServerException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerException) Message() string {
+func (s *InternalServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10009,28 +11719,28 @@ func (s InternalServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerException) OrigErr() error {
+func (s *InternalServerException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerException) Error() string {
+func (s *InternalServerException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The filter specified for the operation is invalid. Specify a different filter.
 type InvalidFilterException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -10047,17 +11757,17 @@ func (s InvalidFilterException) GoString() string {
 
 func newErrorInvalidFilterException(v protocol.ResponseMetadata) error {
 	return &InvalidFilterException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidFilterException) Code() string {
+func (s *InvalidFilterException) Code() string {
 	return "InvalidFilterException"
 }
 
 // Message returns the exception's message.
-func (s InvalidFilterException) Message() string {
+func (s *InvalidFilterException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10065,28 +11775,28 @@ func (s InvalidFilterException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidFilterException) OrigErr() error {
+func (s *InvalidFilterException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidFilterException) Error() string {
+func (s *InvalidFilterException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidFilterException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidFilterException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidFilterException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidFilterException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The request is invalid.
 type InvalidRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -10103,17 +11813,17 @@ func (s InvalidRequestException) GoString() string {
 
 func newErrorInvalidRequestException(v protocol.ResponseMetadata) error {
 	return &InvalidRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidRequestException) Code() string {
+func (s *InvalidRequestException) Code() string {
 	return "InvalidRequestException"
 }
 
 // Message returns the exception's message.
-func (s InvalidRequestException) Message() string {
+func (s *InvalidRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10121,28 +11831,28 @@ func (s InvalidRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidRequestException) OrigErr() error {
+func (s *InvalidRequestException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidRequestException) Error() string {
+func (s *InvalidRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified job was not found. Check the job ID and try again.
 type JobNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -10159,17 +11869,17 @@ func (s JobNotFoundException) GoString() string {
 
 func newErrorJobNotFoundException(v protocol.ResponseMetadata) error {
 	return &JobNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s JobNotFoundException) Code() string {
+func (s *JobNotFoundException) Code() string {
 	return "JobNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s JobNotFoundException) Message() string {
+func (s *JobNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10177,22 +11887,22 @@ func (s JobNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s JobNotFoundException) OrigErr() error {
+func (s *JobNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s JobNotFoundException) Error() string {
+func (s *JobNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s JobNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *JobNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s JobNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *JobNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Describes a key noun phrase.
@@ -10463,8 +12173,8 @@ func (s *KeyPhrasesDetectionJobProperties) SetVpcConfig(v *VpcConfig) *KeyPhrase
 // The KMS customer managed key (CMK) entered cannot be validated. Verify the
 // key and re-enter it.
 type KmsKeyValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -10481,17 +12191,17 @@ func (s KmsKeyValidationException) GoString() string {
 
 func newErrorKmsKeyValidationException(v protocol.ResponseMetadata) error {
 	return &KmsKeyValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s KmsKeyValidationException) Code() string {
+func (s *KmsKeyValidationException) Code() string {
 	return "KmsKeyValidationException"
 }
 
 // Message returns the exception's message.
-func (s KmsKeyValidationException) Message() string {
+func (s *KmsKeyValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -10499,22 +12209,22 @@ func (s KmsKeyValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s KmsKeyValidationException) OrigErr() error {
+func (s *KmsKeyValidationException) OrigErr() error {
 	return nil
 }
 
-func (s KmsKeyValidationException) Error() string {
+func (s *KmsKeyValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s KmsKeyValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *KmsKeyValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s KmsKeyValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *KmsKeyValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListDocumentClassificationJobsInput struct {
@@ -11078,6 +12788,102 @@ func (s *ListEntityRecognizersOutput) SetNextToken(v string) *ListEntityRecogniz
 	return s
 }
 
+type ListEventsDetectionJobsInput struct {
+	_ struct{} `type:"structure"`
+
+	// Filters the jobs that are returned. You can filter jobs on their name, status,
+	// or the date and time that they were submitted. You can only set one filter
+	// at a time.
+	Filter *EventsDetectionJobFilter `type:"structure"`
+
+	// The maximum number of results to return in each page.
+	MaxResults *int64 `min:"1" type:"integer"`
+
+	// Identifies the next page of results to return.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListEventsDetectionJobsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListEventsDetectionJobsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListEventsDetectionJobsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListEventsDetectionJobsInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
+	}
+	if s.Filter != nil {
+		if err := s.Filter.Validate(); err != nil {
+			invalidParams.AddNested("Filter", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetFilter sets the Filter field's value.
+func (s *ListEventsDetectionJobsInput) SetFilter(v *EventsDetectionJobFilter) *ListEventsDetectionJobsInput {
+	s.Filter = v
+	return s
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListEventsDetectionJobsInput) SetMaxResults(v int64) *ListEventsDetectionJobsInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListEventsDetectionJobsInput) SetNextToken(v string) *ListEventsDetectionJobsInput {
+	s.NextToken = &v
+	return s
+}
+
+type ListEventsDetectionJobsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A list containing the properties of each job that is returned.
+	EventsDetectionJobPropertiesList []*EventsDetectionJobProperties `type:"list"`
+
+	// Identifies the next page of results to return.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListEventsDetectionJobsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListEventsDetectionJobsOutput) GoString() string {
+	return s.String()
+}
+
+// SetEventsDetectionJobPropertiesList sets the EventsDetectionJobPropertiesList field's value.
+func (s *ListEventsDetectionJobsOutput) SetEventsDetectionJobPropertiesList(v []*EventsDetectionJobProperties) *ListEventsDetectionJobsOutput {
+	s.EventsDetectionJobPropertiesList = v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListEventsDetectionJobsOutput) SetNextToken(v string) *ListEventsDetectionJobsOutput {
+	s.NextToken = &v
+	return s
+}
+
 type ListKeyPhrasesDetectionJobsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -11171,6 +12977,102 @@ func (s *ListKeyPhrasesDetectionJobsOutput) SetKeyPhrasesDetectionJobPropertiesL
 // SetNextToken sets the NextToken field's value.
 func (s *ListKeyPhrasesDetectionJobsOutput) SetNextToken(v string) *ListKeyPhrasesDetectionJobsOutput {
 	s.NextToken = &v
+	return s
+}
+
+type ListPiiEntitiesDetectionJobsInput struct {
+	_ struct{} `type:"structure"`
+
+	// Filters the jobs that are returned. You can filter jobs on their name, status,
+	// or the date and time that they were submitted. You can only set one filter
+	// at a time.
+	Filter *PiiEntitiesDetectionJobFilter `type:"structure"`
+
+	// The maximum number of results to return in each page.
+	MaxResults *int64 `min:"1" type:"integer"`
+
+	// Identifies the next page of results to return.
+	NextToken *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ListPiiEntitiesDetectionJobsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListPiiEntitiesDetectionJobsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListPiiEntitiesDetectionJobsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListPiiEntitiesDetectionJobsInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
+	}
+	if s.Filter != nil {
+		if err := s.Filter.Validate(); err != nil {
+			invalidParams.AddNested("Filter", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetFilter sets the Filter field's value.
+func (s *ListPiiEntitiesDetectionJobsInput) SetFilter(v *PiiEntitiesDetectionJobFilter) *ListPiiEntitiesDetectionJobsInput {
+	s.Filter = v
+	return s
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListPiiEntitiesDetectionJobsInput) SetMaxResults(v int64) *ListPiiEntitiesDetectionJobsInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListPiiEntitiesDetectionJobsInput) SetNextToken(v string) *ListPiiEntitiesDetectionJobsInput {
+	s.NextToken = &v
+	return s
+}
+
+type ListPiiEntitiesDetectionJobsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Identifies the next page of results to return.
+	NextToken *string `min:"1" type:"string"`
+
+	// A list containing the properties of each job that is returned.
+	PiiEntitiesDetectionJobPropertiesList []*PiiEntitiesDetectionJobProperties `type:"list"`
+}
+
+// String returns the string representation
+func (s ListPiiEntitiesDetectionJobsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListPiiEntitiesDetectionJobsOutput) GoString() string {
+	return s.String()
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListPiiEntitiesDetectionJobsOutput) SetNextToken(v string) *ListPiiEntitiesDetectionJobsOutput {
+	s.NextToken = &v
+	return s
+}
+
+// SetPiiEntitiesDetectionJobPropertiesList sets the PiiEntitiesDetectionJobPropertiesList field's value.
+func (s *ListPiiEntitiesDetectionJobsOutput) SetPiiEntitiesDetectionJobPropertiesList(v []*PiiEntitiesDetectionJobProperties) *ListPiiEntitiesDetectionJobsOutput {
+	s.PiiEntitiesDetectionJobPropertiesList = v
 	return s
 }
 
@@ -11545,11 +13447,365 @@ func (s *PartOfSpeechTag) SetTag(v string) *PartOfSpeechTag {
 	return s
 }
 
-// The specified name is already in use. Use a different name and try your request
-// again.
+// Provides information for filtering a list of PII entity detection jobs.
+type PiiEntitiesDetectionJobFilter struct {
+	_ struct{} `type:"structure"`
+
+	// Filters on the name of the job.
+	JobName *string `min:"1" type:"string"`
+
+	// Filters the list of jobs based on job status. Returns only jobs with the
+	// specified status.
+	JobStatus *string `type:"string" enum:"JobStatus"`
+
+	// Filters the list of jobs based on the time that the job was submitted for
+	// processing. Returns only jobs submitted after the specified time. Jobs are
+	// returned in descending order, newest to oldest.
+	SubmitTimeAfter *time.Time `type:"timestamp"`
+
+	// Filters the list of jobs based on the time that the job was submitted for
+	// processing. Returns only jobs submitted before the specified time. Jobs are
+	// returned in ascending order, oldest to newest.
+	SubmitTimeBefore *time.Time `type:"timestamp"`
+}
+
+// String returns the string representation
+func (s PiiEntitiesDetectionJobFilter) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PiiEntitiesDetectionJobFilter) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PiiEntitiesDetectionJobFilter) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PiiEntitiesDetectionJobFilter"}
+	if s.JobName != nil && len(*s.JobName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobName", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobName sets the JobName field's value.
+func (s *PiiEntitiesDetectionJobFilter) SetJobName(v string) *PiiEntitiesDetectionJobFilter {
+	s.JobName = &v
+	return s
+}
+
+// SetJobStatus sets the JobStatus field's value.
+func (s *PiiEntitiesDetectionJobFilter) SetJobStatus(v string) *PiiEntitiesDetectionJobFilter {
+	s.JobStatus = &v
+	return s
+}
+
+// SetSubmitTimeAfter sets the SubmitTimeAfter field's value.
+func (s *PiiEntitiesDetectionJobFilter) SetSubmitTimeAfter(v time.Time) *PiiEntitiesDetectionJobFilter {
+	s.SubmitTimeAfter = &v
+	return s
+}
+
+// SetSubmitTimeBefore sets the SubmitTimeBefore field's value.
+func (s *PiiEntitiesDetectionJobFilter) SetSubmitTimeBefore(v time.Time) *PiiEntitiesDetectionJobFilter {
+	s.SubmitTimeBefore = &v
+	return s
+}
+
+// Provides information about a PII entities detection job.
+type PiiEntitiesDetectionJobProperties struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) that gives Amazon Comprehend read access to
+	// your input data.
+	DataAccessRoleArn *string `min:"20" type:"string"`
+
+	// The time that the PII entities detection job completed.
+	EndTime *time.Time `type:"timestamp"`
+
+	// The input properties for a PII entities detection job.
+	InputDataConfig *InputDataConfig `type:"structure"`
+
+	// The identifier assigned to the PII entities detection job.
+	JobId *string `min:"1" type:"string"`
+
+	// The name that you assigned the PII entities detection job.
+	JobName *string `min:"1" type:"string"`
+
+	// The current status of the PII entities detection job. If the status is FAILED,
+	// the Message field shows the reason for the failure.
+	JobStatus *string `type:"string" enum:"JobStatus"`
+
+	// The language code of the input documents
+	LanguageCode *string `type:"string" enum:"LanguageCode"`
+
+	// A description of the status of a job.
+	Message *string `type:"string"`
+
+	// Specifies whether the output provides the locations (offsets) of PII entities
+	// or a file in which PII entities are redacted.
+	Mode *string `type:"string" enum:"PiiEntitiesDetectionMode"`
+
+	// The output data configuration that you supplied when you created the PII
+	// entities detection job.
+	OutputDataConfig *PiiOutputDataConfig `type:"structure"`
+
+	// Provides configuration parameters for PII entity redaction.
+	//
+	// This parameter is required if you set the Mode parameter to ONLY_REDACTION.
+	// In that case, you must provide a RedactionConfig definition that includes
+	// the PiiEntityTypes parameter.
+	RedactionConfig *RedactionConfig `type:"structure"`
+
+	// The time that the PII entities detection job was submitted for processing.
+	SubmitTime *time.Time `type:"timestamp"`
+}
+
+// String returns the string representation
+func (s PiiEntitiesDetectionJobProperties) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PiiEntitiesDetectionJobProperties) GoString() string {
+	return s.String()
+}
+
+// SetDataAccessRoleArn sets the DataAccessRoleArn field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetDataAccessRoleArn(v string) *PiiEntitiesDetectionJobProperties {
+	s.DataAccessRoleArn = &v
+	return s
+}
+
+// SetEndTime sets the EndTime field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetEndTime(v time.Time) *PiiEntitiesDetectionJobProperties {
+	s.EndTime = &v
+	return s
+}
+
+// SetInputDataConfig sets the InputDataConfig field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetInputDataConfig(v *InputDataConfig) *PiiEntitiesDetectionJobProperties {
+	s.InputDataConfig = v
+	return s
+}
+
+// SetJobId sets the JobId field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetJobId(v string) *PiiEntitiesDetectionJobProperties {
+	s.JobId = &v
+	return s
+}
+
+// SetJobName sets the JobName field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetJobName(v string) *PiiEntitiesDetectionJobProperties {
+	s.JobName = &v
+	return s
+}
+
+// SetJobStatus sets the JobStatus field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetJobStatus(v string) *PiiEntitiesDetectionJobProperties {
+	s.JobStatus = &v
+	return s
+}
+
+// SetLanguageCode sets the LanguageCode field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetLanguageCode(v string) *PiiEntitiesDetectionJobProperties {
+	s.LanguageCode = &v
+	return s
+}
+
+// SetMessage sets the Message field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetMessage(v string) *PiiEntitiesDetectionJobProperties {
+	s.Message = &v
+	return s
+}
+
+// SetMode sets the Mode field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetMode(v string) *PiiEntitiesDetectionJobProperties {
+	s.Mode = &v
+	return s
+}
+
+// SetOutputDataConfig sets the OutputDataConfig field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetOutputDataConfig(v *PiiOutputDataConfig) *PiiEntitiesDetectionJobProperties {
+	s.OutputDataConfig = v
+	return s
+}
+
+// SetRedactionConfig sets the RedactionConfig field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetRedactionConfig(v *RedactionConfig) *PiiEntitiesDetectionJobProperties {
+	s.RedactionConfig = v
+	return s
+}
+
+// SetSubmitTime sets the SubmitTime field's value.
+func (s *PiiEntitiesDetectionJobProperties) SetSubmitTime(v time.Time) *PiiEntitiesDetectionJobProperties {
+	s.SubmitTime = &v
+	return s
+}
+
+// Provides information about a PII entity.
+type PiiEntity struct {
+	_ struct{} `type:"structure"`
+
+	// A character offset in the input text that shows where the PII entity begins
+	// (the first character is at position 0). The offset returns the position of
+	// each UTF-8 code point in the string. A code point is the abstract character
+	// from a particular graphical representation. For example, a multi-byte UTF-8
+	// character maps to a single code point.
+	BeginOffset *int64 `type:"integer"`
+
+	// A character offset in the input text that shows where the PII entity ends.
+	// The offset returns the position of each UTF-8 code point in the string. A
+	// code point is the abstract character from a particular graphical representation.
+	// For example, a multi-byte UTF-8 character maps to a single code point.
+	EndOffset *int64 `type:"integer"`
+
+	// The level of confidence that Amazon Comprehend has in the accuracy of the
+	// detection.
+	Score *float64 `type:"float"`
+
+	// The entity's type.
+	Type *string `type:"string" enum:"PiiEntityType"`
+}
+
+// String returns the string representation
+func (s PiiEntity) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PiiEntity) GoString() string {
+	return s.String()
+}
+
+// SetBeginOffset sets the BeginOffset field's value.
+func (s *PiiEntity) SetBeginOffset(v int64) *PiiEntity {
+	s.BeginOffset = &v
+	return s
+}
+
+// SetEndOffset sets the EndOffset field's value.
+func (s *PiiEntity) SetEndOffset(v int64) *PiiEntity {
+	s.EndOffset = &v
+	return s
+}
+
+// SetScore sets the Score field's value.
+func (s *PiiEntity) SetScore(v float64) *PiiEntity {
+	s.Score = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *PiiEntity) SetType(v string) *PiiEntity {
+	s.Type = &v
+	return s
+}
+
+// Provides configuration parameters for the output of PII entity detection
+// jobs.
+type PiiOutputDataConfig struct {
+	_ struct{} `type:"structure"`
+
+	// ID for the AWS Key Management Service (KMS) key that Amazon Comprehend uses
+	// to encrypt the output results from an analysis job.
+	KmsKeyId *string `type:"string"`
+
+	// When you use the PiiOutputDataConfig object with asynchronous operations,
+	// you specify the Amazon S3 location where you want to write the output data.
+	//
+	// S3Uri is a required field
+	S3Uri *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s PiiOutputDataConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PiiOutputDataConfig) GoString() string {
+	return s.String()
+}
+
+// SetKmsKeyId sets the KmsKeyId field's value.
+func (s *PiiOutputDataConfig) SetKmsKeyId(v string) *PiiOutputDataConfig {
+	s.KmsKeyId = &v
+	return s
+}
+
+// SetS3Uri sets the S3Uri field's value.
+func (s *PiiOutputDataConfig) SetS3Uri(v string) *PiiOutputDataConfig {
+	s.S3Uri = &v
+	return s
+}
+
+// Provides configuration parameters for PII entity redaction.
+type RedactionConfig struct {
+	_ struct{} `type:"structure"`
+
+	// A character that replaces each character in the redacted PII entity.
+	MaskCharacter *string `min:"1" type:"string"`
+
+	// Specifies whether the PII entity is redacted with the mask character or the
+	// entity type.
+	MaskMode *string `type:"string" enum:"PiiEntitiesDetectionMaskMode"`
+
+	// An array of the types of PII entities that Amazon Comprehend detects in the
+	// input text for your request.
+	PiiEntityTypes []*string `type:"list"`
+}
+
+// String returns the string representation
+func (s RedactionConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RedactionConfig) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RedactionConfig) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RedactionConfig"}
+	if s.MaskCharacter != nil && len(*s.MaskCharacter) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("MaskCharacter", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetMaskCharacter sets the MaskCharacter field's value.
+func (s *RedactionConfig) SetMaskCharacter(v string) *RedactionConfig {
+	s.MaskCharacter = &v
+	return s
+}
+
+// SetMaskMode sets the MaskMode field's value.
+func (s *RedactionConfig) SetMaskMode(v string) *RedactionConfig {
+	s.MaskMode = &v
+	return s
+}
+
+// SetPiiEntityTypes sets the PiiEntityTypes field's value.
+func (s *RedactionConfig) SetPiiEntityTypes(v []*string) *RedactionConfig {
+	s.PiiEntityTypes = v
+	return s
+}
+
+// The specified resource name is already in use. Use a different name and try
+// your request again.
 type ResourceInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -11566,17 +13822,17 @@ func (s ResourceInUseException) GoString() string {
 
 func newErrorResourceInUseException(v protocol.ResponseMetadata) error {
 	return &ResourceInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceInUseException) Code() string {
+func (s *ResourceInUseException) Code() string {
 	return "ResourceInUseException"
 }
 
 // Message returns the exception's message.
-func (s ResourceInUseException) Message() string {
+func (s *ResourceInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -11584,29 +13840,29 @@ func (s ResourceInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceInUseException) OrigErr() error {
+func (s *ResourceInUseException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceInUseException) Error() string {
+func (s *ResourceInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// The maximum number of recognizers per account has been exceeded. Review the
-// recognizers, perform cleanup, and then try your request again.
+// The maximum number of resources per account has been exceeded. Review the
+// resources, and then try your request again.
 type ResourceLimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -11623,17 +13879,17 @@ func (s ResourceLimitExceededException) GoString() string {
 
 func newErrorResourceLimitExceededException(v protocol.ResponseMetadata) error {
 	return &ResourceLimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceLimitExceededException) Code() string {
+func (s *ResourceLimitExceededException) Code() string {
 	return "ResourceLimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s ResourceLimitExceededException) Message() string {
+func (s *ResourceLimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -11641,29 +13897,29 @@ func (s ResourceLimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceLimitExceededException) OrigErr() error {
+func (s *ResourceLimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceLimitExceededException) Error() string {
+func (s *ResourceLimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceLimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceLimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceLimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceLimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified resource ARN was not found. Check the ARN and try your request
 // again.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -11680,17 +13936,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -11698,29 +13954,29 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// The specified resource is not available. Check to see if the resource is
-// in the TRAINED state and try your request again.
+// The specified resource is not available. Check the resource and try your
+// request again.
 type ResourceUnavailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -11737,17 +13993,17 @@ func (s ResourceUnavailableException) GoString() string {
 
 func newErrorResourceUnavailableException(v protocol.ResponseMetadata) error {
 	return &ResourceUnavailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceUnavailableException) Code() string {
+func (s *ResourceUnavailableException) Code() string {
 	return "ResourceUnavailableException"
 }
 
 // Message returns the exception's message.
-func (s ResourceUnavailableException) Message() string {
+func (s *ResourceUnavailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -11755,22 +14011,22 @@ func (s ResourceUnavailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceUnavailableException) OrigErr() error {
+func (s *ResourceUnavailableException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceUnavailableException) Error() string {
+func (s *ResourceUnavailableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceUnavailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceUnavailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceUnavailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceUnavailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Provides information for filtering a list of dominant language detection
@@ -12626,6 +14882,175 @@ func (s *StartEntitiesDetectionJobOutput) SetJobStatus(v string) *StartEntitiesD
 	return s
 }
 
+type StartEventsDetectionJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// An unique identifier for the request. If you don't set the client request
+	// token, Amazon Comprehend generates one.
+	ClientRequestToken *string `min:"1" type:"string" idempotencyToken:"true"`
+
+	// The Amazon Resource Name (ARN) of the AWS Identity and Access Management
+	// (IAM) role that grants Amazon Comprehend read access to your input data.
+	//
+	// DataAccessRoleArn is a required field
+	DataAccessRoleArn *string `min:"20" type:"string" required:"true"`
+
+	// Specifies the format and location of the input data for the job.
+	//
+	// InputDataConfig is a required field
+	InputDataConfig *InputDataConfig `type:"structure" required:"true"`
+
+	// The identifier of the events detection job.
+	JobName *string `min:"1" type:"string"`
+
+	// The language code of the input documents.
+	//
+	// LanguageCode is a required field
+	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
+
+	// Specifies where to send the output files.
+	//
+	// OutputDataConfig is a required field
+	OutputDataConfig *OutputDataConfig `type:"structure" required:"true"`
+
+	// The types of events to detect in the input documents.
+	//
+	// TargetEventTypes is a required field
+	TargetEventTypes []*string `min:"1" type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s StartEventsDetectionJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartEventsDetectionJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StartEventsDetectionJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StartEventsDetectionJobInput"}
+	if s.ClientRequestToken != nil && len(*s.ClientRequestToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ClientRequestToken", 1))
+	}
+	if s.DataAccessRoleArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("DataAccessRoleArn"))
+	}
+	if s.DataAccessRoleArn != nil && len(*s.DataAccessRoleArn) < 20 {
+		invalidParams.Add(request.NewErrParamMinLen("DataAccessRoleArn", 20))
+	}
+	if s.InputDataConfig == nil {
+		invalidParams.Add(request.NewErrParamRequired("InputDataConfig"))
+	}
+	if s.JobName != nil && len(*s.JobName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobName", 1))
+	}
+	if s.LanguageCode == nil {
+		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
+	}
+	if s.OutputDataConfig == nil {
+		invalidParams.Add(request.NewErrParamRequired("OutputDataConfig"))
+	}
+	if s.TargetEventTypes == nil {
+		invalidParams.Add(request.NewErrParamRequired("TargetEventTypes"))
+	}
+	if s.TargetEventTypes != nil && len(s.TargetEventTypes) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("TargetEventTypes", 1))
+	}
+	if s.InputDataConfig != nil {
+		if err := s.InputDataConfig.Validate(); err != nil {
+			invalidParams.AddNested("InputDataConfig", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.OutputDataConfig != nil {
+		if err := s.OutputDataConfig.Validate(); err != nil {
+			invalidParams.AddNested("OutputDataConfig", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetClientRequestToken sets the ClientRequestToken field's value.
+func (s *StartEventsDetectionJobInput) SetClientRequestToken(v string) *StartEventsDetectionJobInput {
+	s.ClientRequestToken = &v
+	return s
+}
+
+// SetDataAccessRoleArn sets the DataAccessRoleArn field's value.
+func (s *StartEventsDetectionJobInput) SetDataAccessRoleArn(v string) *StartEventsDetectionJobInput {
+	s.DataAccessRoleArn = &v
+	return s
+}
+
+// SetInputDataConfig sets the InputDataConfig field's value.
+func (s *StartEventsDetectionJobInput) SetInputDataConfig(v *InputDataConfig) *StartEventsDetectionJobInput {
+	s.InputDataConfig = v
+	return s
+}
+
+// SetJobName sets the JobName field's value.
+func (s *StartEventsDetectionJobInput) SetJobName(v string) *StartEventsDetectionJobInput {
+	s.JobName = &v
+	return s
+}
+
+// SetLanguageCode sets the LanguageCode field's value.
+func (s *StartEventsDetectionJobInput) SetLanguageCode(v string) *StartEventsDetectionJobInput {
+	s.LanguageCode = &v
+	return s
+}
+
+// SetOutputDataConfig sets the OutputDataConfig field's value.
+func (s *StartEventsDetectionJobInput) SetOutputDataConfig(v *OutputDataConfig) *StartEventsDetectionJobInput {
+	s.OutputDataConfig = v
+	return s
+}
+
+// SetTargetEventTypes sets the TargetEventTypes field's value.
+func (s *StartEventsDetectionJobInput) SetTargetEventTypes(v []*string) *StartEventsDetectionJobInput {
+	s.TargetEventTypes = v
+	return s
+}
+
+type StartEventsDetectionJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// An unique identifier for the request. If you don't set the client request
+	// token, Amazon Comprehend generates one.
+	JobId *string `min:"1" type:"string"`
+
+	// The status of the events detection job.
+	JobStatus *string `type:"string" enum:"JobStatus"`
+}
+
+// String returns the string representation
+func (s StartEventsDetectionJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartEventsDetectionJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StartEventsDetectionJobOutput) SetJobId(v string) *StartEventsDetectionJobOutput {
+	s.JobId = &v
+	return s
+}
+
+// SetJobStatus sets the JobStatus field's value.
+func (s *StartEventsDetectionJobOutput) SetJobStatus(v string) *StartEventsDetectionJobOutput {
+	s.JobStatus = &v
+	return s
+}
+
 type StartKeyPhrasesDetectionJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -12817,6 +15242,191 @@ func (s *StartKeyPhrasesDetectionJobOutput) SetJobId(v string) *StartKeyPhrasesD
 
 // SetJobStatus sets the JobStatus field's value.
 func (s *StartKeyPhrasesDetectionJobOutput) SetJobStatus(v string) *StartKeyPhrasesDetectionJobOutput {
+	s.JobStatus = &v
+	return s
+}
+
+type StartPiiEntitiesDetectionJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// A unique identifier for the request. If you don't set the client request
+	// token, Amazon Comprehend generates one.
+	ClientRequestToken *string `min:"1" type:"string" idempotencyToken:"true"`
+
+	// The Amazon Resource Name (ARN) of the AWS Identity and Access Management
+	// (IAM) role that grants Amazon Comprehend read access to your input data.
+	//
+	// DataAccessRoleArn is a required field
+	DataAccessRoleArn *string `min:"20" type:"string" required:"true"`
+
+	// The input properties for a PII entities detection job.
+	//
+	// InputDataConfig is a required field
+	InputDataConfig *InputDataConfig `type:"structure" required:"true"`
+
+	// The identifier of the job.
+	JobName *string `min:"1" type:"string"`
+
+	// The language of the input documents.
+	//
+	// LanguageCode is a required field
+	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
+
+	// Specifies whether the output provides the locations (offsets) of PII entities
+	// or a file in which PII entities are redacted.
+	//
+	// Mode is a required field
+	Mode *string `type:"string" required:"true" enum:"PiiEntitiesDetectionMode"`
+
+	// Provides conﬁguration parameters for the output of PII entity detection
+	// jobs.
+	//
+	// OutputDataConfig is a required field
+	OutputDataConfig *OutputDataConfig `type:"structure" required:"true"`
+
+	// Provides configuration parameters for PII entity redaction.
+	//
+	// This parameter is required if you set the Mode parameter to ONLY_REDACTION.
+	// In that case, you must provide a RedactionConfig definition that includes
+	// the PiiEntityTypes parameter.
+	RedactionConfig *RedactionConfig `type:"structure"`
+}
+
+// String returns the string representation
+func (s StartPiiEntitiesDetectionJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartPiiEntitiesDetectionJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StartPiiEntitiesDetectionJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StartPiiEntitiesDetectionJobInput"}
+	if s.ClientRequestToken != nil && len(*s.ClientRequestToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ClientRequestToken", 1))
+	}
+	if s.DataAccessRoleArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("DataAccessRoleArn"))
+	}
+	if s.DataAccessRoleArn != nil && len(*s.DataAccessRoleArn) < 20 {
+		invalidParams.Add(request.NewErrParamMinLen("DataAccessRoleArn", 20))
+	}
+	if s.InputDataConfig == nil {
+		invalidParams.Add(request.NewErrParamRequired("InputDataConfig"))
+	}
+	if s.JobName != nil && len(*s.JobName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobName", 1))
+	}
+	if s.LanguageCode == nil {
+		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
+	}
+	if s.Mode == nil {
+		invalidParams.Add(request.NewErrParamRequired("Mode"))
+	}
+	if s.OutputDataConfig == nil {
+		invalidParams.Add(request.NewErrParamRequired("OutputDataConfig"))
+	}
+	if s.InputDataConfig != nil {
+		if err := s.InputDataConfig.Validate(); err != nil {
+			invalidParams.AddNested("InputDataConfig", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.OutputDataConfig != nil {
+		if err := s.OutputDataConfig.Validate(); err != nil {
+			invalidParams.AddNested("OutputDataConfig", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.RedactionConfig != nil {
+		if err := s.RedactionConfig.Validate(); err != nil {
+			invalidParams.AddNested("RedactionConfig", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetClientRequestToken sets the ClientRequestToken field's value.
+func (s *StartPiiEntitiesDetectionJobInput) SetClientRequestToken(v string) *StartPiiEntitiesDetectionJobInput {
+	s.ClientRequestToken = &v
+	return s
+}
+
+// SetDataAccessRoleArn sets the DataAccessRoleArn field's value.
+func (s *StartPiiEntitiesDetectionJobInput) SetDataAccessRoleArn(v string) *StartPiiEntitiesDetectionJobInput {
+	s.DataAccessRoleArn = &v
+	return s
+}
+
+// SetInputDataConfig sets the InputDataConfig field's value.
+func (s *StartPiiEntitiesDetectionJobInput) SetInputDataConfig(v *InputDataConfig) *StartPiiEntitiesDetectionJobInput {
+	s.InputDataConfig = v
+	return s
+}
+
+// SetJobName sets the JobName field's value.
+func (s *StartPiiEntitiesDetectionJobInput) SetJobName(v string) *StartPiiEntitiesDetectionJobInput {
+	s.JobName = &v
+	return s
+}
+
+// SetLanguageCode sets the LanguageCode field's value.
+func (s *StartPiiEntitiesDetectionJobInput) SetLanguageCode(v string) *StartPiiEntitiesDetectionJobInput {
+	s.LanguageCode = &v
+	return s
+}
+
+// SetMode sets the Mode field's value.
+func (s *StartPiiEntitiesDetectionJobInput) SetMode(v string) *StartPiiEntitiesDetectionJobInput {
+	s.Mode = &v
+	return s
+}
+
+// SetOutputDataConfig sets the OutputDataConfig field's value.
+func (s *StartPiiEntitiesDetectionJobInput) SetOutputDataConfig(v *OutputDataConfig) *StartPiiEntitiesDetectionJobInput {
+	s.OutputDataConfig = v
+	return s
+}
+
+// SetRedactionConfig sets the RedactionConfig field's value.
+func (s *StartPiiEntitiesDetectionJobInput) SetRedactionConfig(v *RedactionConfig) *StartPiiEntitiesDetectionJobInput {
+	s.RedactionConfig = v
+	return s
+}
+
+type StartPiiEntitiesDetectionJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier generated for the job.
+	JobId *string `min:"1" type:"string"`
+
+	// The status of the job.
+	JobStatus *string `type:"string" enum:"JobStatus"`
+}
+
+// String returns the string representation
+func (s StartPiiEntitiesDetectionJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartPiiEntitiesDetectionJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StartPiiEntitiesDetectionJobOutput) SetJobId(v string) *StartPiiEntitiesDetectionJobOutput {
+	s.JobId = &v
+	return s
+}
+
+// SetJobStatus sets the JobStatus field's value.
+func (s *StartPiiEntitiesDetectionJobOutput) SetJobStatus(v string) *StartPiiEntitiesDetectionJobOutput {
 	s.JobStatus = &v
 	return s
 }
@@ -13359,6 +15969,79 @@ func (s *StopEntitiesDetectionJobOutput) SetJobStatus(v string) *StopEntitiesDet
 	return s
 }
 
+type StopEventsDetectionJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the events detection job to stop.
+	//
+	// JobId is a required field
+	JobId *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StopEventsDetectionJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopEventsDetectionJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StopEventsDetectionJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StopEventsDetectionJobInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StopEventsDetectionJobInput) SetJobId(v string) *StopEventsDetectionJobInput {
+	s.JobId = &v
+	return s
+}
+
+type StopEventsDetectionJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the events detection job to stop.
+	JobId *string `min:"1" type:"string"`
+
+	// The status of the events detection job.
+	JobStatus *string `type:"string" enum:"JobStatus"`
+}
+
+// String returns the string representation
+func (s StopEventsDetectionJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopEventsDetectionJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StopEventsDetectionJobOutput) SetJobId(v string) *StopEventsDetectionJobOutput {
+	s.JobId = &v
+	return s
+}
+
+// SetJobStatus sets the JobStatus field's value.
+func (s *StopEventsDetectionJobOutput) SetJobStatus(v string) *StopEventsDetectionJobOutput {
+	s.JobStatus = &v
+	return s
+}
+
 type StopKeyPhrasesDetectionJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13429,6 +16112,79 @@ func (s *StopKeyPhrasesDetectionJobOutput) SetJobId(v string) *StopKeyPhrasesDet
 
 // SetJobStatus sets the JobStatus field's value.
 func (s *StopKeyPhrasesDetectionJobOutput) SetJobStatus(v string) *StopKeyPhrasesDetectionJobOutput {
+	s.JobStatus = &v
+	return s
+}
+
+type StopPiiEntitiesDetectionJobInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the PII entities detection job to stop.
+	//
+	// JobId is a required field
+	JobId *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StopPiiEntitiesDetectionJobInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopPiiEntitiesDetectionJobInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StopPiiEntitiesDetectionJobInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StopPiiEntitiesDetectionJobInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StopPiiEntitiesDetectionJobInput) SetJobId(v string) *StopPiiEntitiesDetectionJobInput {
+	s.JobId = &v
+	return s
+}
+
+type StopPiiEntitiesDetectionJobOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the PII entities detection job to stop.
+	JobId *string `min:"1" type:"string"`
+
+	// The status of the PII entities detection job.
+	JobStatus *string `type:"string" enum:"JobStatus"`
+}
+
+// String returns the string representation
+func (s StopPiiEntitiesDetectionJobOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopPiiEntitiesDetectionJobOutput) GoString() string {
+	return s.String()
+}
+
+// SetJobId sets the JobId field's value.
+func (s *StopPiiEntitiesDetectionJobOutput) SetJobId(v string) *StopPiiEntitiesDetectionJobOutput {
+	s.JobId = &v
+	return s
+}
+
+// SetJobStatus sets the JobStatus field's value.
+func (s *StopPiiEntitiesDetectionJobOutput) SetJobStatus(v string) *StopPiiEntitiesDetectionJobOutput {
 	s.JobStatus = &v
 	return s
 }
@@ -13818,8 +16574,8 @@ func (s TagResourceOutput) GoString() string {
 
 // The size of the input text exceeds the limit. Use a smaller document.
 type TextSizeLimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -13836,17 +16592,17 @@ func (s TextSizeLimitExceededException) GoString() string {
 
 func newErrorTextSizeLimitExceededException(v protocol.ResponseMetadata) error {
 	return &TextSizeLimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TextSizeLimitExceededException) Code() string {
+func (s *TextSizeLimitExceededException) Code() string {
 	return "TextSizeLimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s TextSizeLimitExceededException) Message() string {
+func (s *TextSizeLimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -13854,28 +16610,28 @@ func (s TextSizeLimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TextSizeLimitExceededException) OrigErr() error {
+func (s *TextSizeLimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s TextSizeLimitExceededException) Error() string {
+func (s *TextSizeLimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TextSizeLimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TextSizeLimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TextSizeLimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TextSizeLimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The number of requests exceeds the limit. Resubmit your request later.
 type TooManyRequestsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -13892,17 +16648,17 @@ func (s TooManyRequestsException) GoString() string {
 
 func newErrorTooManyRequestsException(v protocol.ResponseMetadata) error {
 	return &TooManyRequestsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyRequestsException) Code() string {
+func (s *TooManyRequestsException) Code() string {
 	return "TooManyRequestsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyRequestsException) Message() string {
+func (s *TooManyRequestsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -13910,29 +16666,29 @@ func (s TooManyRequestsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyRequestsException) OrigErr() error {
+func (s *TooManyRequestsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyRequestsException) Error() string {
+func (s *TooManyRequestsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyRequestsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyRequestsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyRequestsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyRequestsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The request contains more tag keys than can be associated with a resource
 // (50 tag keys per resource).
 type TooManyTagKeysException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -13949,17 +16705,17 @@ func (s TooManyTagKeysException) GoString() string {
 
 func newErrorTooManyTagKeysException(v protocol.ResponseMetadata) error {
 	return &TooManyTagKeysException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyTagKeysException) Code() string {
+func (s *TooManyTagKeysException) Code() string {
 	return "TooManyTagKeysException"
 }
 
 // Message returns the exception's message.
-func (s TooManyTagKeysException) Message() string {
+func (s *TooManyTagKeysException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -13967,30 +16723,30 @@ func (s TooManyTagKeysException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyTagKeysException) OrigErr() error {
+func (s *TooManyTagKeysException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyTagKeysException) Error() string {
+func (s *TooManyTagKeysException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyTagKeysException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyTagKeysException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyTagKeysException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyTagKeysException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The request contains more tags than can be associated with a resource (50
 // tags per resource). The maximum number of tags includes both existing tags
 // and those included in your current request.
 type TooManyTagsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -14007,17 +16763,17 @@ func (s TooManyTagsException) GoString() string {
 
 func newErrorTooManyTagsException(v protocol.ResponseMetadata) error {
 	return &TooManyTagsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyTagsException) Code() string {
+func (s *TooManyTagsException) Code() string {
 	return "TooManyTagsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyTagsException) Message() string {
+func (s *TooManyTagsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -14025,22 +16781,22 @@ func (s TooManyTagsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyTagsException) OrigErr() error {
+func (s *TooManyTagsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyTagsException) Error() string {
+func (s *TooManyTagsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyTagsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyTagsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyTagsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyTagsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Provides information for filtering topic detection jobs. For more information,
@@ -14249,14 +17005,12 @@ func (s *TopicsDetectionJobProperties) SetVpcConfig(v *VpcConfig) *TopicsDetecti
 	return s
 }
 
-// Amazon Comprehend can't process the language of the input text. For all custom
-// entity recognition APIs (such as CreateEntityRecognizer), only English is
-// accepted. For most other APIs, such as those for Custom Classification, Amazon
-// Comprehend accepts text in all supported languages. For a list of supported
-// languages, see supported-languages.
+// Amazon Comprehend can't process the language of the input text. For custom
+// entity recognition APIs, only English, Spanish, French, Italian, German,
+// or Portuguese are accepted. For a list of supported languages, see supported-languages.
 type UnsupportedLanguageException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" min:"1" type:"string"`
 }
@@ -14273,17 +17027,17 @@ func (s UnsupportedLanguageException) GoString() string {
 
 func newErrorUnsupportedLanguageException(v protocol.ResponseMetadata) error {
 	return &UnsupportedLanguageException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnsupportedLanguageException) Code() string {
+func (s *UnsupportedLanguageException) Code() string {
 	return "UnsupportedLanguageException"
 }
 
 // Message returns the exception's message.
-func (s UnsupportedLanguageException) Message() string {
+func (s *UnsupportedLanguageException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -14291,22 +17045,22 @@ func (s UnsupportedLanguageException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnsupportedLanguageException) OrigErr() error {
+func (s *UnsupportedLanguageException) OrigErr() error {
 	return nil
 }
 
-func (s UnsupportedLanguageException) Error() string {
+func (s *UnsupportedLanguageException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnsupportedLanguageException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnsupportedLanguageException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnsupportedLanguageException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnsupportedLanguageException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
@@ -14451,7 +17205,7 @@ func (s UpdateEndpointOutput) GoString() string {
 }
 
 // Configuration parameters for an optional private Virtual Private Cloud (VPC)
-// containing the resources you are using for the job. For For more information,
+// containing the resources you are using for the job. For more information,
 // see Amazon VPC (https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html).
 type VpcConfig struct {
 	_ struct{} `type:"structure"`
@@ -14521,12 +17275,36 @@ func (s *VpcConfig) SetSubnets(v []*string) *VpcConfig {
 }
 
 const (
+	// DocumentClassifierDataFormatComprehendCsv is a DocumentClassifierDataFormat enum value
+	DocumentClassifierDataFormatComprehendCsv = "COMPREHEND_CSV"
+
+	// DocumentClassifierDataFormatAugmentedManifest is a DocumentClassifierDataFormat enum value
+	DocumentClassifierDataFormatAugmentedManifest = "AUGMENTED_MANIFEST"
+)
+
+// DocumentClassifierDataFormat_Values returns all elements of the DocumentClassifierDataFormat enum
+func DocumentClassifierDataFormat_Values() []string {
+	return []string{
+		DocumentClassifierDataFormatComprehendCsv,
+		DocumentClassifierDataFormatAugmentedManifest,
+	}
+}
+
+const (
 	// DocumentClassifierModeMultiClass is a DocumentClassifierMode enum value
 	DocumentClassifierModeMultiClass = "MULTI_CLASS"
 
 	// DocumentClassifierModeMultiLabel is a DocumentClassifierMode enum value
 	DocumentClassifierModeMultiLabel = "MULTI_LABEL"
 )
+
+// DocumentClassifierMode_Values returns all elements of the DocumentClassifierMode enum
+func DocumentClassifierMode_Values() []string {
+	return []string{
+		DocumentClassifierModeMultiClass,
+		DocumentClassifierModeMultiLabel,
+	}
+}
 
 const (
 	// EndpointStatusCreating is a EndpointStatus enum value
@@ -14544,6 +17322,33 @@ const (
 	// EndpointStatusUpdating is a EndpointStatus enum value
 	EndpointStatusUpdating = "UPDATING"
 )
+
+// EndpointStatus_Values returns all elements of the EndpointStatus enum
+func EndpointStatus_Values() []string {
+	return []string{
+		EndpointStatusCreating,
+		EndpointStatusDeleting,
+		EndpointStatusFailed,
+		EndpointStatusInService,
+		EndpointStatusUpdating,
+	}
+}
+
+const (
+	// EntityRecognizerDataFormatComprehendCsv is a EntityRecognizerDataFormat enum value
+	EntityRecognizerDataFormatComprehendCsv = "COMPREHEND_CSV"
+
+	// EntityRecognizerDataFormatAugmentedManifest is a EntityRecognizerDataFormat enum value
+	EntityRecognizerDataFormatAugmentedManifest = "AUGMENTED_MANIFEST"
+)
+
+// EntityRecognizerDataFormat_Values returns all elements of the EntityRecognizerDataFormat enum
+func EntityRecognizerDataFormat_Values() []string {
+	return []string{
+		EntityRecognizerDataFormatComprehendCsv,
+		EntityRecognizerDataFormatAugmentedManifest,
+	}
+}
 
 const (
 	// EntityTypePerson is a EntityType enum value
@@ -14574,6 +17379,21 @@ const (
 	EntityTypeOther = "OTHER"
 )
 
+// EntityType_Values returns all elements of the EntityType enum
+func EntityType_Values() []string {
+	return []string{
+		EntityTypePerson,
+		EntityTypeLocation,
+		EntityTypeOrganization,
+		EntityTypeCommercialItem,
+		EntityTypeEvent,
+		EntityTypeDate,
+		EntityTypeQuantity,
+		EntityTypeTitle,
+		EntityTypeOther,
+	}
+}
+
 const (
 	// InputFormatOneDocPerFile is a InputFormat enum value
 	InputFormatOneDocPerFile = "ONE_DOC_PER_FILE"
@@ -14581,6 +17401,14 @@ const (
 	// InputFormatOneDocPerLine is a InputFormat enum value
 	InputFormatOneDocPerLine = "ONE_DOC_PER_LINE"
 )
+
+// InputFormat_Values returns all elements of the InputFormat enum
+func InputFormat_Values() []string {
+	return []string{
+		InputFormatOneDocPerFile,
+		InputFormatOneDocPerLine,
+	}
+}
 
 const (
 	// JobStatusSubmitted is a JobStatus enum value
@@ -14601,6 +17429,18 @@ const (
 	// JobStatusStopped is a JobStatus enum value
 	JobStatusStopped = "STOPPED"
 )
+
+// JobStatus_Values returns all elements of the JobStatus enum
+func JobStatus_Values() []string {
+	return []string{
+		JobStatusSubmitted,
+		JobStatusInProgress,
+		JobStatusCompleted,
+		JobStatusFailed,
+		JobStatusStopRequested,
+		JobStatusStopped,
+	}
+}
 
 const (
 	// LanguageCodeEn is a LanguageCode enum value
@@ -14640,6 +17480,24 @@ const (
 	LanguageCodeZhTw = "zh-TW"
 )
 
+// LanguageCode_Values returns all elements of the LanguageCode enum
+func LanguageCode_Values() []string {
+	return []string{
+		LanguageCodeEn,
+		LanguageCodeEs,
+		LanguageCodeFr,
+		LanguageCodeDe,
+		LanguageCodeIt,
+		LanguageCodePt,
+		LanguageCodeAr,
+		LanguageCodeHi,
+		LanguageCodeJa,
+		LanguageCodeKo,
+		LanguageCodeZh,
+		LanguageCodeZhTw,
+	}
+}
+
 const (
 	// ModelStatusSubmitted is a ModelStatus enum value
 	ModelStatusSubmitted = "SUBMITTED"
@@ -14662,6 +17520,19 @@ const (
 	// ModelStatusTrained is a ModelStatus enum value
 	ModelStatusTrained = "TRAINED"
 )
+
+// ModelStatus_Values returns all elements of the ModelStatus enum
+func ModelStatus_Values() []string {
+	return []string{
+		ModelStatusSubmitted,
+		ModelStatusTraining,
+		ModelStatusDeleting,
+		ModelStatusStopRequested,
+		ModelStatusStopped,
+		ModelStatusInError,
+		ModelStatusTrained,
+	}
+}
 
 const (
 	// PartOfSpeechTagTypeAdj is a PartOfSpeechTagType enum value
@@ -14719,6 +17590,162 @@ const (
 	PartOfSpeechTagTypeVerb = "VERB"
 )
 
+// PartOfSpeechTagType_Values returns all elements of the PartOfSpeechTagType enum
+func PartOfSpeechTagType_Values() []string {
+	return []string{
+		PartOfSpeechTagTypeAdj,
+		PartOfSpeechTagTypeAdp,
+		PartOfSpeechTagTypeAdv,
+		PartOfSpeechTagTypeAux,
+		PartOfSpeechTagTypeConj,
+		PartOfSpeechTagTypeCconj,
+		PartOfSpeechTagTypeDet,
+		PartOfSpeechTagTypeIntj,
+		PartOfSpeechTagTypeNoun,
+		PartOfSpeechTagTypeNum,
+		PartOfSpeechTagTypeO,
+		PartOfSpeechTagTypePart,
+		PartOfSpeechTagTypePron,
+		PartOfSpeechTagTypePropn,
+		PartOfSpeechTagTypePunct,
+		PartOfSpeechTagTypeSconj,
+		PartOfSpeechTagTypeSym,
+		PartOfSpeechTagTypeVerb,
+	}
+}
+
+const (
+	// PiiEntitiesDetectionMaskModeMask is a PiiEntitiesDetectionMaskMode enum value
+	PiiEntitiesDetectionMaskModeMask = "MASK"
+
+	// PiiEntitiesDetectionMaskModeReplaceWithPiiEntityType is a PiiEntitiesDetectionMaskMode enum value
+	PiiEntitiesDetectionMaskModeReplaceWithPiiEntityType = "REPLACE_WITH_PII_ENTITY_TYPE"
+)
+
+// PiiEntitiesDetectionMaskMode_Values returns all elements of the PiiEntitiesDetectionMaskMode enum
+func PiiEntitiesDetectionMaskMode_Values() []string {
+	return []string{
+		PiiEntitiesDetectionMaskModeMask,
+		PiiEntitiesDetectionMaskModeReplaceWithPiiEntityType,
+	}
+}
+
+const (
+	// PiiEntitiesDetectionModeOnlyRedaction is a PiiEntitiesDetectionMode enum value
+	PiiEntitiesDetectionModeOnlyRedaction = "ONLY_REDACTION"
+
+	// PiiEntitiesDetectionModeOnlyOffsets is a PiiEntitiesDetectionMode enum value
+	PiiEntitiesDetectionModeOnlyOffsets = "ONLY_OFFSETS"
+)
+
+// PiiEntitiesDetectionMode_Values returns all elements of the PiiEntitiesDetectionMode enum
+func PiiEntitiesDetectionMode_Values() []string {
+	return []string{
+		PiiEntitiesDetectionModeOnlyRedaction,
+		PiiEntitiesDetectionModeOnlyOffsets,
+	}
+}
+
+const (
+	// PiiEntityTypeBankAccountNumber is a PiiEntityType enum value
+	PiiEntityTypeBankAccountNumber = "BANK_ACCOUNT_NUMBER"
+
+	// PiiEntityTypeBankRouting is a PiiEntityType enum value
+	PiiEntityTypeBankRouting = "BANK_ROUTING"
+
+	// PiiEntityTypeCreditDebitNumber is a PiiEntityType enum value
+	PiiEntityTypeCreditDebitNumber = "CREDIT_DEBIT_NUMBER"
+
+	// PiiEntityTypeCreditDebitCvv is a PiiEntityType enum value
+	PiiEntityTypeCreditDebitCvv = "CREDIT_DEBIT_CVV"
+
+	// PiiEntityTypeCreditDebitExpiry is a PiiEntityType enum value
+	PiiEntityTypeCreditDebitExpiry = "CREDIT_DEBIT_EXPIRY"
+
+	// PiiEntityTypePin is a PiiEntityType enum value
+	PiiEntityTypePin = "PIN"
+
+	// PiiEntityTypeEmail is a PiiEntityType enum value
+	PiiEntityTypeEmail = "EMAIL"
+
+	// PiiEntityTypeAddress is a PiiEntityType enum value
+	PiiEntityTypeAddress = "ADDRESS"
+
+	// PiiEntityTypeName is a PiiEntityType enum value
+	PiiEntityTypeName = "NAME"
+
+	// PiiEntityTypePhone is a PiiEntityType enum value
+	PiiEntityTypePhone = "PHONE"
+
+	// PiiEntityTypeSsn is a PiiEntityType enum value
+	PiiEntityTypeSsn = "SSN"
+
+	// PiiEntityTypeDateTime is a PiiEntityType enum value
+	PiiEntityTypeDateTime = "DATE_TIME"
+
+	// PiiEntityTypePassportNumber is a PiiEntityType enum value
+	PiiEntityTypePassportNumber = "PASSPORT_NUMBER"
+
+	// PiiEntityTypeDriverId is a PiiEntityType enum value
+	PiiEntityTypeDriverId = "DRIVER_ID"
+
+	// PiiEntityTypeUrl is a PiiEntityType enum value
+	PiiEntityTypeUrl = "URL"
+
+	// PiiEntityTypeAge is a PiiEntityType enum value
+	PiiEntityTypeAge = "AGE"
+
+	// PiiEntityTypeUsername is a PiiEntityType enum value
+	PiiEntityTypeUsername = "USERNAME"
+
+	// PiiEntityTypePassword is a PiiEntityType enum value
+	PiiEntityTypePassword = "PASSWORD"
+
+	// PiiEntityTypeAwsAccessKey is a PiiEntityType enum value
+	PiiEntityTypeAwsAccessKey = "AWS_ACCESS_KEY"
+
+	// PiiEntityTypeAwsSecretKey is a PiiEntityType enum value
+	PiiEntityTypeAwsSecretKey = "AWS_SECRET_KEY"
+
+	// PiiEntityTypeIpAddress is a PiiEntityType enum value
+	PiiEntityTypeIpAddress = "IP_ADDRESS"
+
+	// PiiEntityTypeMacAddress is a PiiEntityType enum value
+	PiiEntityTypeMacAddress = "MAC_ADDRESS"
+
+	// PiiEntityTypeAll is a PiiEntityType enum value
+	PiiEntityTypeAll = "ALL"
+)
+
+// PiiEntityType_Values returns all elements of the PiiEntityType enum
+func PiiEntityType_Values() []string {
+	return []string{
+		PiiEntityTypeBankAccountNumber,
+		PiiEntityTypeBankRouting,
+		PiiEntityTypeCreditDebitNumber,
+		PiiEntityTypeCreditDebitCvv,
+		PiiEntityTypeCreditDebitExpiry,
+		PiiEntityTypePin,
+		PiiEntityTypeEmail,
+		PiiEntityTypeAddress,
+		PiiEntityTypeName,
+		PiiEntityTypePhone,
+		PiiEntityTypeSsn,
+		PiiEntityTypeDateTime,
+		PiiEntityTypePassportNumber,
+		PiiEntityTypeDriverId,
+		PiiEntityTypeUrl,
+		PiiEntityTypeAge,
+		PiiEntityTypeUsername,
+		PiiEntityTypePassword,
+		PiiEntityTypeAwsAccessKey,
+		PiiEntityTypeAwsSecretKey,
+		PiiEntityTypeIpAddress,
+		PiiEntityTypeMacAddress,
+		PiiEntityTypeAll,
+	}
+}
+
 const (
 	// SentimentTypePositive is a SentimentType enum value
 	SentimentTypePositive = "POSITIVE"
@@ -14732,6 +17759,16 @@ const (
 	// SentimentTypeMixed is a SentimentType enum value
 	SentimentTypeMixed = "MIXED"
 )
+
+// SentimentType_Values returns all elements of the SentimentType enum
+func SentimentType_Values() []string {
+	return []string{
+		SentimentTypePositive,
+		SentimentTypeNegative,
+		SentimentTypeNeutral,
+		SentimentTypeMixed,
+	}
+}
 
 const (
 	// SyntaxLanguageCodeEn is a SyntaxLanguageCode enum value
@@ -14752,3 +17789,15 @@ const (
 	// SyntaxLanguageCodePt is a SyntaxLanguageCode enum value
 	SyntaxLanguageCodePt = "pt"
 )
+
+// SyntaxLanguageCode_Values returns all elements of the SyntaxLanguageCode enum
+func SyntaxLanguageCode_Values() []string {
+	return []string{
+		SyntaxLanguageCodeEn,
+		SyntaxLanguageCodeEs,
+		SyntaxLanguageCodeFr,
+		SyntaxLanguageCodeDe,
+		SyntaxLanguageCodeIt,
+		SyntaxLanguageCodePt,
+	}
+}

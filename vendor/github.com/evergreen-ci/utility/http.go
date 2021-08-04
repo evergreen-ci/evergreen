@@ -12,7 +12,6 @@ import (
 
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -319,44 +318,48 @@ func RespErrorf(resp *http.Response, format string, args ...interface{}) error {
 
 // RetryRequest takes an http.Request and makes the request until it's successful,
 // hits a max number of retries, or times out
-func RetryRequest(ctx context.Context, r *http.Request, maxAttempts int, minBackoff, maxBackoff time.Duration) (*http.Response, error) {
-	var dur time.Duration
-	b := backoff.Backoff{
-		Min:    minBackoff,
-		Max:    maxBackoff,
-		Factor: 2,
-		Jitter: true,
-	}
+func RetryRequest(ctx context.Context, r *http.Request, opts RetryOptions) (*http.Response, error) {
 	r = r.WithContext(ctx)
-	timer := time.NewTimer(0)
-	defer timer.Stop()
+	b := getBackoff(opts)
+
 	client := GetDefaultHTTPRetryableClient()
 	defer PutHTTPClient(client)
-	for i := 1; i <= maxAttempts; i++ {
-		select {
-		case <-ctx.Done():
-			return nil, errors.New("request canceled")
-		case <-timer.C:
-			resp, err := client.Do(r)
-			if err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
-					"message":   "error response from server",
-					"attempt":   i,
-					"max":       maxAttempts,
-					"wait_secs": b.ForAttempt(float64(i)).Seconds(),
-				}))
-			} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-				return resp, nil
-			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				return resp, errors.Errorf("server returned status %d", resp.StatusCode)
-			}
 
-			// if we get here it should most likely be a 5xx status code
-			dur = b.Duration()
-			timer.Reset(dur)
+	attempt := 1
+	var resp *http.Response
+	var err error
+
+	if err := Retry(ctx, func() (bool, error) {
+		defer func() {
+			attempt++
+		}()
+
+		resp, err = client.Do(r)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":   "error response from server",
+				"attempt":   attempt,
+				"max":       opts.MaxAttempts,
+				"wait_secs": b.ForAttempt(float64(attempt)).Seconds(),
+			}))
+			return true, err
 		}
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return false, nil
+		}
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			return false, errors.Errorf("server returned status %d", resp.StatusCode)
+		}
+
+		// if we get here it should most likely be a 5xx status code
+
+		return true, errors.Errorf("server returned status %s", resp.StatusCode)
+	}, opts); err != nil {
+		return resp, err
 	}
-	return nil, errors.Errorf("Failed to make request after %d attempts", maxAttempts)
+
+	return resp, nil
 }
 
 // RetryHTTPDelay returns the function that generates the exponential backoff

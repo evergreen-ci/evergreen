@@ -58,8 +58,6 @@ func (c *Detective) AcceptInvitationRequest(input *AcceptInvitationInput) (req *
 
 // AcceptInvitation API operation for Amazon Detective.
 //
-// Amazon Detective is currently in preview.
-//
 // Accepts an invitation for the member account to contribute data to a behavior
 // graph. This operation can only be called by an invited member account.
 //
@@ -153,11 +151,16 @@ func (c *Detective) CreateGraphRequest(input *CreateGraphInput) (req *request.Re
 
 // CreateGraph API operation for Amazon Detective.
 //
-// Amazon Detective is currently in preview.
-//
 // Creates a new behavior graph for the calling account, and sets that account
-// as the master account. This operation is called by the account that is enabling
-// Detective.
+// as the administrator account. This operation is called by the account that
+// is enabling Detective.
+//
+// Before you try to enable Detective, make sure that your account has been
+// enrolled in Amazon GuardDuty for at least 48 hours. If you do not meet this
+// requirement, you cannot enable Detective. If you do meet the GuardDuty prerequisite,
+// then when you make the request to enable Detective, it checks whether your
+// data volume is within the Detective quota. If it exceeds the quota, then
+// you cannot enable Detective.
 //
 // The operation also enables Detective for the calling account in the currently
 // selected Region. It returns the ARN of the new behavior graph.
@@ -165,10 +168,10 @@ func (c *Detective) CreateGraphRequest(input *CreateGraphInput) (req *request.Re
 // CreateGraph triggers a process to create the corresponding data tables for
 // the new behavior graph.
 //
-// An account can only be the master account for one behavior graph within a
-// Region. If the same account calls CreateGraph with the same master account,
-// it always returns the same behavior graph ARN. It does not create a new behavior
-// graph.
+// An account can only be the administrator account for one behavior graph within
+// a Region. If the same account calls CreateGraph with the same administrator
+// account, it always returns the same behavior graph ARN. It does not create
+// a new behavior graph.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -183,6 +186,19 @@ func (c *Detective) CreateGraphRequest(input *CreateGraphInput) (req *request.Re
 //
 //   * InternalServerException
 //   The request was valid but failed because of a problem with the service.
+//
+//   * ServiceQuotaExceededException
+//   This request cannot be completed for one of the following reasons.
+//
+//      * The request would cause the number of member accounts in the behavior
+//      graph to exceed the maximum allowed. A behavior graph cannot have more
+//      than 1000 member accounts.
+//
+//      * The request would cause the data rate for the behavior graph to exceed
+//      the maximum allowed.
+//
+//      * Detective is unable to verify the data rate for the member account.
+//      This is usually because the member account is not enrolled in Amazon GuardDuty.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/CreateGraph
 func (c *Detective) CreateGraph(input *CreateGraphInput) (*CreateGraphOutput, error) {
@@ -250,14 +266,14 @@ func (c *Detective) CreateMembersRequest(input *CreateMembersInput) (req *reques
 
 // CreateMembers API operation for Amazon Detective.
 //
-// Amazon Detective is currently in preview.
-//
 // Sends a request to invite the specified AWS accounts to be member accounts
-// in the behavior graph. This operation can only be called by the master account
-// for a behavior graph.
+// in the behavior graph. This operation can only be called by the administrator
+// account for a behavior graph.
 //
-// CreateMembers verifies the accounts and then sends invitations to the verified
-// accounts.
+// CreateMembers verifies the accounts and then invites the verified accounts.
+// The administrator can optionally specify to not send invitation emails to
+// the member accounts. This would be used when the administrator manages their
+// member accounts centrally.
 //
 // The request provides the behavior graph ARN and the list of accounts to invite.
 //
@@ -265,8 +281,7 @@ func (c *Detective) CreateMembersRequest(input *CreateMembersInput) (req *reques
 //
 //    * The accounts that CreateMembers was able to start the verification for.
 //    This list includes member accounts that are being verified, that have
-//    passed verification and are being sent an invitation, and that have failed
-//    verification.
+//    passed verification and are to be invited, and that have failed verification.
 //
 //    * The accounts that CreateMembers was unable to process. This list includes
 //    accounts that were already invited to be member accounts in the behavior
@@ -290,9 +305,17 @@ func (c *Detective) CreateMembersRequest(input *CreateMembersInput) (req *reques
 //   The request parameters are invalid.
 //
 //   * ServiceQuotaExceededException
-//   This request would cause the number of member accounts in the behavior graph
-//   to exceed the maximum allowed. A behavior graph cannot have more than 1000
-//   member accounts.
+//   This request cannot be completed for one of the following reasons.
+//
+//      * The request would cause the number of member accounts in the behavior
+//      graph to exceed the maximum allowed. A behavior graph cannot have more
+//      than 1000 member accounts.
+//
+//      * The request would cause the data rate for the behavior graph to exceed
+//      the maximum allowed.
+//
+//      * Detective is unable to verify the data rate for the member account.
+//      This is usually because the member account is not enrolled in Amazon GuardDuty.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/CreateMembers
 func (c *Detective) CreateMembers(input *CreateMembersInput) (*CreateMembersOutput, error) {
@@ -361,12 +384,11 @@ func (c *Detective) DeleteGraphRequest(input *DeleteGraphInput) (req *request.Re
 
 // DeleteGraph API operation for Amazon Detective.
 //
-// Amazon Detective is currently in preview.
-//
 // Disables the specified behavior graph and queues it to be deleted. This operation
 // removes the graph from each member account's list of behavior graphs.
 //
-// DeleteGraph can only be called by the master account for a behavior graph.
+// DeleteGraph can only be called by the administrator account for a behavior
+// graph.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -451,13 +473,11 @@ func (c *Detective) DeleteMembersRequest(input *DeleteMembersInput) (req *reques
 
 // DeleteMembers API operation for Amazon Detective.
 //
-// Amazon Detective is currently in preview.
-//
-// Deletes one or more member accounts from the master account behavior graph.
-// This operation can only be called by a Detective master account. That account
-// cannot use DeleteMembers to delete their own account from the behavior graph.
-// To disable a behavior graph, the master account uses the DeleteGraph API
-// method.
+// Deletes one or more member accounts from the administrator account's behavior
+// graph. This operation can only be called by a Detective administrator account.
+// That account cannot use DeleteMembers to delete their own account from the
+// behavior graph. To disable a behavior graph, the administrator account uses
+// the DeleteGraph API method.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -545,8 +565,6 @@ func (c *Detective) DisassociateMembershipRequest(input *DisassociateMembershipI
 }
 
 // DisassociateMembership API operation for Amazon Detective.
-//
-// Amazon Detective is currently in preview.
 //
 // Removes the member account from the specified behavior graph. This operation
 // can only be called by a member account that has the ENABLED status.
@@ -636,8 +654,6 @@ func (c *Detective) GetMembersRequest(input *GetMembersInput) (req *request.Requ
 }
 
 // GetMembers API operation for Amazon Detective.
-//
-// Amazon Detective is currently in preview.
 //
 // Returns the membership details for specified member accounts for a behavior
 // graph.
@@ -731,13 +747,11 @@ func (c *Detective) ListGraphsRequest(input *ListGraphsInput) (req *request.Requ
 
 // ListGraphs API operation for Amazon Detective.
 //
-// Amazon Detective is currently in preview.
+// Returns the list of behavior graphs that the calling account is an administrator
+// account of. This operation can only be called by an administrator account.
 //
-// Returns the list of behavior graphs that the calling account is a master
-// of. This operation can only be called by a master account.
-//
-// Because an account can currently only be the master of one behavior graph
-// within a Region, the results always contain a single graph.
+// Because an account can currently only be the administrator of one behavior
+// graph within a Region, the results always contain a single behavior graph.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -876,8 +890,6 @@ func (c *Detective) ListInvitationsRequest(input *ListInvitationsInput) (req *re
 }
 
 // ListInvitations API operation for Amazon Detective.
-//
-// Amazon Detective is currently in preview.
 //
 // Retrieves the list of open and accepted behavior graph invitations for the
 // member account. This operation can only be called by a member account.
@@ -1027,8 +1039,6 @@ func (c *Detective) ListMembersRequest(input *ListMembersInput) (req *request.Re
 
 // ListMembers API operation for Amazon Detective.
 //
-// Amazon Detective is currently in preview.
-//
 // Retrieves the list of member accounts for a behavior graph. Does not return
 // member accounts that were removed from the behavior graph.
 //
@@ -1123,6 +1133,91 @@ func (c *Detective) ListMembersPagesWithContext(ctx aws.Context, input *ListMemb
 	return p.Err()
 }
 
+const opListTagsForResource = "ListTagsForResource"
+
+// ListTagsForResourceRequest generates a "aws/request.Request" representing the
+// client's request for the ListTagsForResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListTagsForResource for more information on using the ListTagsForResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListTagsForResourceRequest method.
+//    req, resp := client.ListTagsForResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/ListTagsForResource
+func (c *Detective) ListTagsForResourceRequest(input *ListTagsForResourceInput) (req *request.Request, output *ListTagsForResourceOutput) {
+	op := &request.Operation{
+		Name:       opListTagsForResource,
+		HTTPMethod: "GET",
+		HTTPPath:   "/tags/{ResourceArn}",
+	}
+
+	if input == nil {
+		input = &ListTagsForResourceInput{}
+	}
+
+	output = &ListTagsForResourceOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListTagsForResource API operation for Amazon Detective.
+//
+// Returns the tag values that are assigned to a behavior graph.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Detective's
+// API operation ListTagsForResource for usage and error information.
+//
+// Returned Error Types:
+//   * InternalServerException
+//   The request was valid but failed because of a problem with the service.
+//
+//   * ValidationException
+//   The request parameters are invalid.
+//
+//   * ResourceNotFoundException
+//   The request refers to a nonexistent resource.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/ListTagsForResource
+func (c *Detective) ListTagsForResource(input *ListTagsForResourceInput) (*ListTagsForResourceOutput, error) {
+	req, out := c.ListTagsForResourceRequest(input)
+	return out, req.Send()
+}
+
+// ListTagsForResourceWithContext is the same as ListTagsForResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListTagsForResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Detective) ListTagsForResourceWithContext(ctx aws.Context, input *ListTagsForResourceInput, opts ...request.Option) (*ListTagsForResourceOutput, error) {
+	req, out := c.ListTagsForResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opRejectInvitation = "RejectInvitation"
 
 // RejectInvitationRequest generates a "aws/request.Request" representing the
@@ -1168,8 +1263,6 @@ func (c *Detective) RejectInvitationRequest(input *RejectInvitationInput) (req *
 
 // RejectInvitation API operation for Amazon Detective.
 //
-// Amazon Detective is currently in preview.
-//
 // Rejects an invitation to contribute the account data to a behavior graph.
 // This operation must be called by a member account that has the INVITED status.
 //
@@ -1210,6 +1303,287 @@ func (c *Detective) RejectInvitation(input *RejectInvitationInput) (*RejectInvit
 // for more information on using Contexts.
 func (c *Detective) RejectInvitationWithContext(ctx aws.Context, input *RejectInvitationInput, opts ...request.Option) (*RejectInvitationOutput, error) {
 	req, out := c.RejectInvitationRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStartMonitoringMember = "StartMonitoringMember"
+
+// StartMonitoringMemberRequest generates a "aws/request.Request" representing the
+// client's request for the StartMonitoringMember operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StartMonitoringMember for more information on using the StartMonitoringMember
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StartMonitoringMemberRequest method.
+//    req, resp := client.StartMonitoringMemberRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/StartMonitoringMember
+func (c *Detective) StartMonitoringMemberRequest(input *StartMonitoringMemberInput) (req *request.Request, output *StartMonitoringMemberOutput) {
+	op := &request.Operation{
+		Name:       opStartMonitoringMember,
+		HTTPMethod: "POST",
+		HTTPPath:   "/graph/member/monitoringstate",
+	}
+
+	if input == nil {
+		input = &StartMonitoringMemberInput{}
+	}
+
+	output = &StartMonitoringMemberOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// StartMonitoringMember API operation for Amazon Detective.
+//
+// Sends a request to enable data ingest for a member account that has a status
+// of ACCEPTED_BUT_DISABLED.
+//
+// For valid member accounts, the status is updated as follows.
+//
+//    * If Detective enabled the member account, then the new status is ENABLED.
+//
+//    * If Detective cannot enable the member account, the status remains ACCEPTED_BUT_DISABLED.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Detective's
+// API operation StartMonitoringMember for usage and error information.
+//
+// Returned Error Types:
+//   * ConflictException
+//   The request attempted an invalid action.
+//
+//   * InternalServerException
+//   The request was valid but failed because of a problem with the service.
+//
+//   * ResourceNotFoundException
+//   The request refers to a nonexistent resource.
+//
+//   * ServiceQuotaExceededException
+//   This request cannot be completed for one of the following reasons.
+//
+//      * The request would cause the number of member accounts in the behavior
+//      graph to exceed the maximum allowed. A behavior graph cannot have more
+//      than 1000 member accounts.
+//
+//      * The request would cause the data rate for the behavior graph to exceed
+//      the maximum allowed.
+//
+//      * Detective is unable to verify the data rate for the member account.
+//      This is usually because the member account is not enrolled in Amazon GuardDuty.
+//
+//   * ValidationException
+//   The request parameters are invalid.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/StartMonitoringMember
+func (c *Detective) StartMonitoringMember(input *StartMonitoringMemberInput) (*StartMonitoringMemberOutput, error) {
+	req, out := c.StartMonitoringMemberRequest(input)
+	return out, req.Send()
+}
+
+// StartMonitoringMemberWithContext is the same as StartMonitoringMember with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StartMonitoringMember for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Detective) StartMonitoringMemberWithContext(ctx aws.Context, input *StartMonitoringMemberInput, opts ...request.Option) (*StartMonitoringMemberOutput, error) {
+	req, out := c.StartMonitoringMemberRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opTagResource = "TagResource"
+
+// TagResourceRequest generates a "aws/request.Request" representing the
+// client's request for the TagResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See TagResource for more information on using the TagResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the TagResourceRequest method.
+//    req, resp := client.TagResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/TagResource
+func (c *Detective) TagResourceRequest(input *TagResourceInput) (req *request.Request, output *TagResourceOutput) {
+	op := &request.Operation{
+		Name:       opTagResource,
+		HTTPMethod: "POST",
+		HTTPPath:   "/tags/{ResourceArn}",
+	}
+
+	if input == nil {
+		input = &TagResourceInput{}
+	}
+
+	output = &TagResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// TagResource API operation for Amazon Detective.
+//
+// Applies tag values to a behavior graph.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Detective's
+// API operation TagResource for usage and error information.
+//
+// Returned Error Types:
+//   * InternalServerException
+//   The request was valid but failed because of a problem with the service.
+//
+//   * ValidationException
+//   The request parameters are invalid.
+//
+//   * ResourceNotFoundException
+//   The request refers to a nonexistent resource.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/TagResource
+func (c *Detective) TagResource(input *TagResourceInput) (*TagResourceOutput, error) {
+	req, out := c.TagResourceRequest(input)
+	return out, req.Send()
+}
+
+// TagResourceWithContext is the same as TagResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See TagResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Detective) TagResourceWithContext(ctx aws.Context, input *TagResourceInput, opts ...request.Option) (*TagResourceOutput, error) {
+	req, out := c.TagResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opUntagResource = "UntagResource"
+
+// UntagResourceRequest generates a "aws/request.Request" representing the
+// client's request for the UntagResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UntagResource for more information on using the UntagResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UntagResourceRequest method.
+//    req, resp := client.UntagResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/UntagResource
+func (c *Detective) UntagResourceRequest(input *UntagResourceInput) (req *request.Request, output *UntagResourceOutput) {
+	op := &request.Operation{
+		Name:       opUntagResource,
+		HTTPMethod: "DELETE",
+		HTTPPath:   "/tags/{ResourceArn}",
+	}
+
+	if input == nil {
+		input = &UntagResourceInput{}
+	}
+
+	output = &UntagResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// UntagResource API operation for Amazon Detective.
+//
+// Removes tags from a behavior graph.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Detective's
+// API operation UntagResource for usage and error information.
+//
+// Returned Error Types:
+//   * InternalServerException
+//   The request was valid but failed because of a problem with the service.
+//
+//   * ValidationException
+//   The request parameters are invalid.
+//
+//   * ResourceNotFoundException
+//   The request refers to a nonexistent resource.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/detective-2018-10-26/UntagResource
+func (c *Detective) UntagResource(input *UntagResourceInput) (*UntagResourceOutput, error) {
+	req, out := c.UntagResourceRequest(input)
+	return out, req.Send()
+}
+
+// UntagResourceWithContext is the same as UntagResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UntagResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Detective) UntagResourceWithContext(ctx aws.Context, input *UntagResourceInput, opts ...request.Option) (*UntagResourceOutput, error) {
+	req, out := c.UntagResourceRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1270,9 +1644,8 @@ func (s AcceptInvitationOutput) GoString() string {
 	return s.String()
 }
 
-// Amazon Detective is currently in preview.
-//
-// An AWS account that is the master of or a member of a behavior graph.
+// An AWS account that is the administrator account of or a member of a behavior
+// graph.
 type Account struct {
 	_ struct{} `type:"structure"`
 
@@ -1333,8 +1706,8 @@ func (s *Account) SetEmailAddress(v string) *Account {
 
 // The request attempted an invalid action.
 type ConflictException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1351,17 +1724,17 @@ func (s ConflictException) GoString() string {
 
 func newErrorConflictException(v protocol.ResponseMetadata) error {
 	return &ConflictException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConflictException) Code() string {
+func (s *ConflictException) Code() string {
 	return "ConflictException"
 }
 
 // Message returns the exception's message.
-func (s ConflictException) Message() string {
+func (s *ConflictException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1369,26 +1742,31 @@ func (s ConflictException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConflictException) OrigErr() error {
+func (s *ConflictException) OrigErr() error {
 	return nil
 }
 
-func (s ConflictException) Error() string {
+func (s *ConflictException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConflictException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConflictException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type CreateGraphInput struct {
 	_ struct{} `type:"structure"`
+
+	// The tags to assign to the new behavior graph. You can add up to 50 tags.
+	// For each tag, you provide the tag key and the tag value. Each tag key can
+	// contain up to 128 characters. Each tag value can contain up to 256 characters.
+	Tags map[string]*string `min:"1" type:"map"`
 }
 
 // String returns the string representation
@@ -1399,6 +1777,25 @@ func (s CreateGraphInput) String() string {
 // GoString returns the string representation
 func (s CreateGraphInput) GoString() string {
 	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreateGraphInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreateGraphInput"}
+	if s.Tags != nil && len(s.Tags) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Tags", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateGraphInput) SetTags(v map[string]*string) *CreateGraphInput {
+	s.Tags = v
+	return s
 }
 
 type CreateGraphOutput struct {
@@ -1428,11 +1825,16 @@ type CreateMembersInput struct {
 	_ struct{} `type:"structure"`
 
 	// The list of AWS accounts to invite to become member accounts in the behavior
-	// graph. For each invited account, the account list contains the account identifier
-	// and the AWS account root user email address.
+	// graph. You can invite up to 50 accounts at a time. For each invited account,
+	// the account list contains the account identifier and the AWS account root
+	// user email address.
 	//
 	// Accounts is a required field
 	Accounts []*Account `min:"1" type:"list" required:"true"`
+
+	// if set to true, then the member accounts do not receive email notifications.
+	// By default, this is set to false, and the member accounts receive email notifications.
+	DisableEmailNotification *bool `type:"boolean"`
 
 	// The ARN of the behavior graph to invite the member accounts to contribute
 	// their data to.
@@ -1490,6 +1892,12 @@ func (s *CreateMembersInput) Validate() error {
 // SetAccounts sets the Accounts field's value.
 func (s *CreateMembersInput) SetAccounts(v []*Account) *CreateMembersInput {
 	s.Accounts = v
+	return s
+}
+
+// SetDisableEmailNotification sets the DisableEmailNotification field's value.
+func (s *CreateMembersInput) SetDisableEmailNotification(v bool) *CreateMembersInput {
+	s.DisableEmailNotification = &v
 	return s
 }
 
@@ -1598,7 +2006,7 @@ type DeleteMembersInput struct {
 	_ struct{} `type:"structure"`
 
 	// The list of AWS account identifiers for the member accounts to delete from
-	// the behavior graph.
+	// the behavior graph. You can delete up to 50 member accounts at a time.
 	//
 	// AccountIds is a required field
 	AccountIds []*string `min:"1" type:"list" required:"true"`
@@ -1743,7 +2151,8 @@ type GetMembersInput struct {
 	_ struct{} `type:"structure"`
 
 	// The list of AWS account identifiers for the member account for which to return
-	// member details.
+	// member details. You can request details for up to 50 member accounts at a
+	// time.
 	//
 	// You cannot use GetMembers to retrieve information about member accounts that
 	// were removed from the behavior graph.
@@ -1834,8 +2243,6 @@ func (s *GetMembersOutput) SetUnprocessedAccounts(v []*UnprocessedAccount) *GetM
 	return s
 }
 
-// Amazon Detective is currently in preview.
-//
 // A behavior graph in Detective.
 type Graph struct {
 	_ struct{} `type:"structure"`
@@ -1845,7 +2252,7 @@ type Graph struct {
 
 	// The date and time that the behavior graph was created. The value is in milliseconds
 	// since the epoch.
-	CreatedTime *time.Time `type:"timestamp"`
+	CreatedTime *time.Time `type:"timestamp" timestampFormat:"iso8601"`
 }
 
 // String returns the string representation
@@ -1872,8 +2279,8 @@ func (s *Graph) SetCreatedTime(v time.Time) *Graph {
 
 // The request was valid but failed because of a problem with the service.
 type InternalServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -1890,17 +2297,17 @@ func (s InternalServerException) GoString() string {
 
 func newErrorInternalServerException(v protocol.ResponseMetadata) error {
 	return &InternalServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerException) Code() string {
+func (s *InternalServerException) Code() string {
 	return "InternalServerException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerException) Message() string {
+func (s *InternalServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1908,22 +2315,22 @@ func (s InternalServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerException) OrigErr() error {
+func (s *InternalServerException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerException) Error() string {
+func (s *InternalServerException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListGraphsInput struct {
@@ -1981,7 +2388,7 @@ func (s *ListGraphsInput) SetNextToken(v string) *ListGraphsInput {
 type ListGraphsOutput struct {
 	_ struct{} `type:"structure"`
 
-	// A list of behavior graphs that the account is a master for.
+	// A list of behavior graphs that the account is an administrator account for.
 	GraphList []*Graph `type:"list"`
 
 	// If there are more behavior graphs remaining in the results, then this is
@@ -2201,8 +2608,71 @@ func (s *ListMembersOutput) SetNextToken(v string) *ListMembersOutput {
 	return s
 }
 
-// Amazon Detective is currently in preview.
-//
+type ListTagsForResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the behavior graph for which to retrieve the tag values.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"ResourceArn" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ListTagsForResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListTagsForResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListTagsForResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListTagsForResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *ListTagsForResourceInput) SetResourceArn(v string) *ListTagsForResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+type ListTagsForResourceOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The tag values that are assigned to the behavior graph. The request returns
+	// up to 50 tag values.
+	Tags map[string]*string `min:"1" type:"map"`
+}
+
+// String returns the string representation
+func (s ListTagsForResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListTagsForResourceOutput) GoString() string {
+	return s.String()
+}
+
+// SetTags sets the Tags field's value.
+func (s *ListTagsForResourceOutput) SetTags(v map[string]*string) *ListTagsForResourceOutput {
+	s.Tags = v
+	return s
+}
+
 // Details about a member account that was invited to contribute to a behavior
 // graph.
 type MemberDetail struct {
@@ -2210,6 +2680,23 @@ type MemberDetail struct {
 
 	// The AWS account identifier for the member account.
 	AccountId *string `min:"12" type:"string"`
+
+	// The AWS account identifier of the administrator account for the behavior
+	// graph.
+	AdministratorId *string `min:"12" type:"string"`
+
+	// For member accounts with a status of ACCEPTED_BUT_DISABLED, the reason that
+	// the member account is not enabled.
+	//
+	// The reason can have one of the following values:
+	//
+	//    * VOLUME_TOO_HIGH - Indicates that adding the member account would cause
+	//    the data volume for the behavior graph to be too high.
+	//
+	//    * VOLUME_UNKNOWN - Indicates that Detective is unable to verify the data
+	//    volume for the member account. This is usually because the member account
+	//    is not enrolled in Amazon GuardDuty.
+	DisabledReason *string `type:"string" enum:"MemberDisabledReason"`
 
 	// The AWS account root user email address for the member account.
 	EmailAddress *string `min:"1" type:"string"`
@@ -2219,10 +2706,31 @@ type MemberDetail struct {
 
 	// The date and time that Detective sent the invitation to the member account.
 	// The value is in milliseconds since the epoch.
-	InvitedTime *time.Time `type:"timestamp"`
+	InvitedTime *time.Time `type:"timestamp" timestampFormat:"iso8601"`
 
-	// The AWS account identifier of the master account for the behavior graph.
-	MasterId *string `min:"12" type:"string"`
+	// The AWS account identifier of the administrator account for the behavior
+	// graph.
+	//
+	// Deprecated: This property is deprecated. Use AdministratorId instead.
+	MasterId *string `min:"12" deprecated:"true" type:"string"`
+
+	// The member account data volume as a percentage of the maximum allowed data
+	// volume. 0 indicates 0 percent, and 100 indicates 100 percent.
+	//
+	// Note that this is not the percentage of the behavior graph data volume.
+	//
+	// For example, the data volume for the behavior graph is 80 GB per day. The
+	// maximum data volume is 160 GB per day. If the data volume for the member
+	// account is 40 GB per day, then PercentOfGraphUtilization is 25. It represents
+	// 25% of the maximum allowed data volume.
+	//
+	// Deprecated: This property is deprecated. Use VolumeUsageInBytes instead.
+	PercentOfGraphUtilization *float64 `deprecated:"true" type:"double"`
+
+	// The date and time when the graph utilization percentage was last updated.
+	//
+	// Deprecated: This property is deprecated. Use VolumeUsageUpdatedTime instead.
+	PercentOfGraphUtilizationUpdatedTime *time.Time `deprecated:"true" type:"timestamp" timestampFormat:"iso8601"`
 
 	// The current membership status of the member account. The status can have
 	// one of the following values:
@@ -2243,13 +2751,23 @@ type MemberDetail struct {
 	//    * ENABLED - Indicates that the member account accepted the invitation
 	//    to contribute to the behavior graph.
 	//
+	//    * ACCEPTED_BUT_DISABLED - Indicates that the member account accepted the
+	//    invitation but is prevented from contributing data to the behavior graph.
+	//    DisabledReason provides the reason why the member account is not enabled.
+	//
 	// Member accounts that declined an invitation or that were removed from the
 	// behavior graph are not included.
 	Status *string `type:"string" enum:"MemberStatus"`
 
 	// The date and time that the member account was last updated. The value is
 	// in milliseconds since the epoch.
-	UpdatedTime *time.Time `type:"timestamp"`
+	UpdatedTime *time.Time `type:"timestamp" timestampFormat:"iso8601"`
+
+	// The data volume in bytes per day for the member account.
+	VolumeUsageInBytes *int64 `type:"long"`
+
+	// The data and time when the member account data volume was last updated.
+	VolumeUsageUpdatedTime *time.Time `type:"timestamp" timestampFormat:"iso8601"`
 }
 
 // String returns the string representation
@@ -2265,6 +2783,18 @@ func (s MemberDetail) GoString() string {
 // SetAccountId sets the AccountId field's value.
 func (s *MemberDetail) SetAccountId(v string) *MemberDetail {
 	s.AccountId = &v
+	return s
+}
+
+// SetAdministratorId sets the AdministratorId field's value.
+func (s *MemberDetail) SetAdministratorId(v string) *MemberDetail {
+	s.AdministratorId = &v
+	return s
+}
+
+// SetDisabledReason sets the DisabledReason field's value.
+func (s *MemberDetail) SetDisabledReason(v string) *MemberDetail {
+	s.DisabledReason = &v
 	return s
 }
 
@@ -2292,6 +2822,18 @@ func (s *MemberDetail) SetMasterId(v string) *MemberDetail {
 	return s
 }
 
+// SetPercentOfGraphUtilization sets the PercentOfGraphUtilization field's value.
+func (s *MemberDetail) SetPercentOfGraphUtilization(v float64) *MemberDetail {
+	s.PercentOfGraphUtilization = &v
+	return s
+}
+
+// SetPercentOfGraphUtilizationUpdatedTime sets the PercentOfGraphUtilizationUpdatedTime field's value.
+func (s *MemberDetail) SetPercentOfGraphUtilizationUpdatedTime(v time.Time) *MemberDetail {
+	s.PercentOfGraphUtilizationUpdatedTime = &v
+	return s
+}
+
 // SetStatus sets the Status field's value.
 func (s *MemberDetail) SetStatus(v string) *MemberDetail {
 	s.Status = &v
@@ -2301,6 +2843,18 @@ func (s *MemberDetail) SetStatus(v string) *MemberDetail {
 // SetUpdatedTime sets the UpdatedTime field's value.
 func (s *MemberDetail) SetUpdatedTime(v time.Time) *MemberDetail {
 	s.UpdatedTime = &v
+	return s
+}
+
+// SetVolumeUsageInBytes sets the VolumeUsageInBytes field's value.
+func (s *MemberDetail) SetVolumeUsageInBytes(v int64) *MemberDetail {
+	s.VolumeUsageInBytes = &v
+	return s
+}
+
+// SetVolumeUsageUpdatedTime sets the VolumeUsageUpdatedTime field's value.
+func (s *MemberDetail) SetVolumeUsageUpdatedTime(v time.Time) *MemberDetail {
+	s.VolumeUsageUpdatedTime = &v
 	return s
 }
 
@@ -2361,8 +2915,8 @@ func (s RejectInvitationOutput) GoString() string {
 
 // The request refers to a nonexistent resource.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -2379,17 +2933,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2397,30 +2951,38 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// This request would cause the number of member accounts in the behavior graph
-// to exceed the maximum allowed. A behavior graph cannot have more than 1000
-// member accounts.
+// This request cannot be completed for one of the following reasons.
+//
+//    * The request would cause the number of member accounts in the behavior
+//    graph to exceed the maximum allowed. A behavior graph cannot have more
+//    than 1000 member accounts.
+//
+//    * The request would cause the data rate for the behavior graph to exceed
+//    the maximum allowed.
+//
+//    * Detective is unable to verify the data rate for the member account.
+//    This is usually because the member account is not enrolled in Amazon GuardDuty.
 type ServiceQuotaExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -2437,17 +2999,17 @@ func (s ServiceQuotaExceededException) GoString() string {
 
 func newErrorServiceQuotaExceededException(v protocol.ResponseMetadata) error {
 	return &ServiceQuotaExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceQuotaExceededException) Code() string {
+func (s *ServiceQuotaExceededException) Code() string {
 	return "ServiceQuotaExceededException"
 }
 
 // Message returns the exception's message.
-func (s ServiceQuotaExceededException) Message() string {
+func (s *ServiceQuotaExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2455,26 +3017,169 @@ func (s ServiceQuotaExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceQuotaExceededException) OrigErr() error {
+func (s *ServiceQuotaExceededException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceQuotaExceededException) Error() string {
+func (s *ServiceQuotaExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceQuotaExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceQuotaExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceQuotaExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceQuotaExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// Amazon Detective is currently in preview.
-//
+type StartMonitoringMemberInput struct {
+	_ struct{} `type:"structure"`
+
+	// The account ID of the member account to try to enable.
+	//
+	// The account must be an invited member account with a status of ACCEPTED_BUT_DISABLED.
+	//
+	// AccountId is a required field
+	AccountId *string `min:"12" type:"string" required:"true"`
+
+	// The ARN of the behavior graph.
+	//
+	// GraphArn is a required field
+	GraphArn *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s StartMonitoringMemberInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartMonitoringMemberInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StartMonitoringMemberInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StartMonitoringMemberInput"}
+	if s.AccountId == nil {
+		invalidParams.Add(request.NewErrParamRequired("AccountId"))
+	}
+	if s.AccountId != nil && len(*s.AccountId) < 12 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 12))
+	}
+	if s.GraphArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("GraphArn"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAccountId sets the AccountId field's value.
+func (s *StartMonitoringMemberInput) SetAccountId(v string) *StartMonitoringMemberInput {
+	s.AccountId = &v
+	return s
+}
+
+// SetGraphArn sets the GraphArn field's value.
+func (s *StartMonitoringMemberInput) SetGraphArn(v string) *StartMonitoringMemberInput {
+	s.GraphArn = &v
+	return s
+}
+
+type StartMonitoringMemberOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s StartMonitoringMemberOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartMonitoringMemberOutput) GoString() string {
+	return s.String()
+}
+
+type TagResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the behavior graph to assign the tags to.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"ResourceArn" type:"string" required:"true"`
+
+	// The tags to assign to the behavior graph. You can add up to 50 tags. For
+	// each tag, you provide the tag key and the tag value. Each tag key can contain
+	// up to 128 characters. Each tag value can contain up to 256 characters.
+	//
+	// Tags is a required field
+	Tags map[string]*string `min:"1" type:"map" required:"true"`
+}
+
+// String returns the string representation
+func (s TagResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TagResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *TagResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "TagResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+	if s.Tags == nil {
+		invalidParams.Add(request.NewErrParamRequired("Tags"))
+	}
+	if s.Tags != nil && len(s.Tags) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Tags", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *TagResourceInput) SetResourceArn(v string) *TagResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *TagResourceInput) SetTags(v map[string]*string) *TagResourceInput {
+	s.Tags = v
+	return s
+}
+
+type TagResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s TagResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TagResourceOutput) GoString() string {
+	return s.String()
+}
+
 // A member account that was included in a request but for which the request
 // could not be processed.
 type UnprocessedAccount struct {
@@ -2509,10 +3214,83 @@ func (s *UnprocessedAccount) SetReason(v string) *UnprocessedAccount {
 	return s
 }
 
+type UntagResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the behavior graph to remove the tags from.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"ResourceArn" type:"string" required:"true"`
+
+	// The tag keys of the tags to remove from the behavior graph. You can remove
+	// up to 50 tags at a time.
+	//
+	// TagKeys is a required field
+	TagKeys []*string `location:"querystring" locationName:"tagKeys" min:"1" type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s UntagResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UntagResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UntagResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UntagResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+	if s.TagKeys == nil {
+		invalidParams.Add(request.NewErrParamRequired("TagKeys"))
+	}
+	if s.TagKeys != nil && len(s.TagKeys) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("TagKeys", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *UntagResourceInput) SetResourceArn(v string) *UntagResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+// SetTagKeys sets the TagKeys field's value.
+func (s *UntagResourceInput) SetTagKeys(v []*string) *UntagResourceInput {
+	s.TagKeys = v
+	return s
+}
+
+type UntagResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s UntagResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UntagResourceOutput) GoString() string {
+	return s.String()
+}
+
 // The request parameters are invalid.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -2529,17 +3307,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2547,22 +3325,38 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+const (
+	// MemberDisabledReasonVolumeTooHigh is a MemberDisabledReason enum value
+	MemberDisabledReasonVolumeTooHigh = "VOLUME_TOO_HIGH"
+
+	// MemberDisabledReasonVolumeUnknown is a MemberDisabledReason enum value
+	MemberDisabledReasonVolumeUnknown = "VOLUME_UNKNOWN"
+)
+
+// MemberDisabledReason_Values returns all elements of the MemberDisabledReason enum
+func MemberDisabledReason_Values() []string {
+	return []string{
+		MemberDisabledReasonVolumeTooHigh,
+		MemberDisabledReasonVolumeUnknown,
+	}
 }
 
 const (
@@ -2577,4 +3371,18 @@ const (
 
 	// MemberStatusEnabled is a MemberStatus enum value
 	MemberStatusEnabled = "ENABLED"
+
+	// MemberStatusAcceptedButDisabled is a MemberStatus enum value
+	MemberStatusAcceptedButDisabled = "ACCEPTED_BUT_DISABLED"
 )
+
+// MemberStatus_Values returns all elements of the MemberStatus enum
+func MemberStatus_Values() []string {
+	return []string{
+		MemberStatusInvited,
+		MemberStatusVerificationInProgress,
+		MemberStatusVerificationFailed,
+		MemberStatusEnabled,
+		MemberStatusAcceptedButDisabled,
+	}
+}

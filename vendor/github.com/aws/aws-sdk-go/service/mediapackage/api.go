@@ -12,6 +12,94 @@ import (
 	"github.com/aws/aws-sdk-go/private/protocol/restjson"
 )
 
+const opConfigureLogs = "ConfigureLogs"
+
+// ConfigureLogsRequest generates a "aws/request.Request" representing the
+// client's request for the ConfigureLogs operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ConfigureLogs for more information on using the ConfigureLogs
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ConfigureLogsRequest method.
+//    req, resp := client.ConfigureLogsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-2017-10-12/ConfigureLogs
+func (c *MediaPackage) ConfigureLogsRequest(input *ConfigureLogsInput) (req *request.Request, output *ConfigureLogsOutput) {
+	op := &request.Operation{
+		Name:       opConfigureLogs,
+		HTTPMethod: "PUT",
+		HTTPPath:   "/channels/{id}/configure_logs",
+	}
+
+	if input == nil {
+		input = &ConfigureLogsInput{}
+	}
+
+	output = &ConfigureLogsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ConfigureLogs API operation for AWS Elemental MediaPackage.
+//
+// Changes the Channel's properities to configure log subscription
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Elemental MediaPackage's
+// API operation ConfigureLogs for usage and error information.
+//
+// Returned Error Types:
+//   * UnprocessableEntityException
+//
+//   * InternalServerErrorException
+//
+//   * ForbiddenException
+//
+//   * NotFoundException
+//
+//   * ServiceUnavailableException
+//
+//   * TooManyRequestsException
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/mediapackage-2017-10-12/ConfigureLogs
+func (c *MediaPackage) ConfigureLogs(input *ConfigureLogsInput) (*ConfigureLogsOutput, error) {
+	req, out := c.ConfigureLogsRequest(input)
+	return out, req.Send()
+}
+
+// ConfigureLogsWithContext is the same as ConfigureLogs with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ConfigureLogs for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *MediaPackage) ConfigureLogsWithContext(ctx aws.Context, input *ConfigureLogsInput, opts ...request.Option) (*ConfigureLogsOutput, error) {
+	req, out := c.ConfigureLogsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opCreateChannel = "CreateChannel"
 
 // CreateChannelRequest generates a "aws/request.Request" representing the
@@ -1803,11 +1891,17 @@ type Channel struct {
 	// A short text description of the Channel.
 	Description *string `locationName:"description" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	// An HTTP Live Streaming (HLS) ingest resource configuration.
 	HlsIngest *HlsIngest `locationName:"hlsIngest" type:"structure"`
 
 	// The ID of the Channel.
 	Id *string `locationName:"id" type:"string"`
+
+	// Configure ingress access logging.
+	IngressAccessLogs *IngressAccessLogs `locationName:"ingressAccessLogs" type:"structure"`
 
 	// A collection of tags associated with a resource
 	Tags map[string]*string `locationName:"tags" type:"map"`
@@ -1835,6 +1929,12 @@ func (s *Channel) SetDescription(v string) *Channel {
 	return s
 }
 
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *Channel) SetEgressAccessLogs(v *EgressAccessLogs) *Channel {
+	s.EgressAccessLogs = v
+	return s
+}
+
 // SetHlsIngest sets the HlsIngest field's value.
 func (s *Channel) SetHlsIngest(v *HlsIngest) *Channel {
 	s.HlsIngest = v
@@ -1847,6 +1947,12 @@ func (s *Channel) SetId(v string) *Channel {
 	return s
 }
 
+// SetIngressAccessLogs sets the IngressAccessLogs field's value.
+func (s *Channel) SetIngressAccessLogs(v *IngressAccessLogs) *Channel {
+	s.IngressAccessLogs = v
+	return s
+}
+
 // SetTags sets the Tags field's value.
 func (s *Channel) SetTags(v map[string]*string) *Channel {
 	s.Tags = v
@@ -1856,6 +1962,11 @@ func (s *Channel) SetTags(v map[string]*string) *Channel {
 // A Common Media Application Format (CMAF) encryption configuration.
 type CmafEncryption struct {
 	_ struct{} `type:"structure"`
+
+	// An optional 128-bit, 16-byte hex value represented by a 32-character string,
+	// used in conjunction with the key for encrypting blocks. If you don't specify
+	// a value, then MediaPackage creates the constant initialization vector (IV).
+	ConstantInitializationVector *string `locationName:"constantInitializationVector" type:"string"`
 
 	// Time (in seconds) between each encryption key rotation.
 	KeyRotationIntervalSeconds *int64 `locationName:"keyRotationIntervalSeconds" type:"integer"`
@@ -1893,6 +2004,12 @@ func (s *CmafEncryption) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetConstantInitializationVector sets the ConstantInitializationVector field's value.
+func (s *CmafEncryption) SetConstantInitializationVector(v string) *CmafEncryption {
+	s.ConstantInitializationVector = &v
+	return s
 }
 
 // SetKeyRotationIntervalSeconds sets the KeyRotationIntervalSeconds field's value.
@@ -2056,6 +2173,137 @@ func (s *CmafPackageCreateOrUpdateParameters) SetStreamSelection(v *StreamSelect
 	return s
 }
 
+type ConfigureLogsInput struct {
+	_ struct{} `type:"structure"`
+
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
+	// Id is a required field
+	Id *string `location:"uri" locationName:"id" type:"string" required:"true"`
+
+	// Configure ingress access logging.
+	IngressAccessLogs *IngressAccessLogs `locationName:"ingressAccessLogs" type:"structure"`
+}
+
+// String returns the string representation
+func (s ConfigureLogsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ConfigureLogsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ConfigureLogsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ConfigureLogsInput"}
+	if s.Id == nil {
+		invalidParams.Add(request.NewErrParamRequired("Id"))
+	}
+	if s.Id != nil && len(*s.Id) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Id", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *ConfigureLogsInput) SetEgressAccessLogs(v *EgressAccessLogs) *ConfigureLogsInput {
+	s.EgressAccessLogs = v
+	return s
+}
+
+// SetId sets the Id field's value.
+func (s *ConfigureLogsInput) SetId(v string) *ConfigureLogsInput {
+	s.Id = &v
+	return s
+}
+
+// SetIngressAccessLogs sets the IngressAccessLogs field's value.
+func (s *ConfigureLogsInput) SetIngressAccessLogs(v *IngressAccessLogs) *ConfigureLogsInput {
+	s.IngressAccessLogs = v
+	return s
+}
+
+type ConfigureLogsOutput struct {
+	_ struct{} `type:"structure"`
+
+	Arn *string `locationName:"arn" type:"string"`
+
+	Description *string `locationName:"description" type:"string"`
+
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
+	// An HTTP Live Streaming (HLS) ingest resource configuration.
+	HlsIngest *HlsIngest `locationName:"hlsIngest" type:"structure"`
+
+	Id *string `locationName:"id" type:"string"`
+
+	// Configure ingress access logging.
+	IngressAccessLogs *IngressAccessLogs `locationName:"ingressAccessLogs" type:"structure"`
+
+	// A collection of tags associated with a resource
+	Tags map[string]*string `locationName:"tags" type:"map"`
+}
+
+// String returns the string representation
+func (s ConfigureLogsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ConfigureLogsOutput) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *ConfigureLogsOutput) SetArn(v string) *ConfigureLogsOutput {
+	s.Arn = &v
+	return s
+}
+
+// SetDescription sets the Description field's value.
+func (s *ConfigureLogsOutput) SetDescription(v string) *ConfigureLogsOutput {
+	s.Description = &v
+	return s
+}
+
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *ConfigureLogsOutput) SetEgressAccessLogs(v *EgressAccessLogs) *ConfigureLogsOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
+// SetHlsIngest sets the HlsIngest field's value.
+func (s *ConfigureLogsOutput) SetHlsIngest(v *HlsIngest) *ConfigureLogsOutput {
+	s.HlsIngest = v
+	return s
+}
+
+// SetId sets the Id field's value.
+func (s *ConfigureLogsOutput) SetId(v string) *ConfigureLogsOutput {
+	s.Id = &v
+	return s
+}
+
+// SetIngressAccessLogs sets the IngressAccessLogs field's value.
+func (s *ConfigureLogsOutput) SetIngressAccessLogs(v *IngressAccessLogs) *ConfigureLogsOutput {
+	s.IngressAccessLogs = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *ConfigureLogsOutput) SetTags(v map[string]*string) *ConfigureLogsOutput {
+	s.Tags = v
+	return s
+}
+
 type CreateChannelInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2116,10 +2364,16 @@ type CreateChannelOutput struct {
 
 	Description *string `locationName:"description" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	// An HTTP Live Streaming (HLS) ingest resource configuration.
 	HlsIngest *HlsIngest `locationName:"hlsIngest" type:"structure"`
 
 	Id *string `locationName:"id" type:"string"`
+
+	// Configure ingress access logging.
+	IngressAccessLogs *IngressAccessLogs `locationName:"ingressAccessLogs" type:"structure"`
 
 	// A collection of tags associated with a resource
 	Tags map[string]*string `locationName:"tags" type:"map"`
@@ -2147,6 +2401,12 @@ func (s *CreateChannelOutput) SetDescription(v string) *CreateChannelOutput {
 	return s
 }
 
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *CreateChannelOutput) SetEgressAccessLogs(v *EgressAccessLogs) *CreateChannelOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
 // SetHlsIngest sets the HlsIngest field's value.
 func (s *CreateChannelOutput) SetHlsIngest(v *HlsIngest) *CreateChannelOutput {
 	s.HlsIngest = v
@@ -2156,6 +2416,12 @@ func (s *CreateChannelOutput) SetHlsIngest(v *HlsIngest) *CreateChannelOutput {
 // SetId sets the Id field's value.
 func (s *CreateChannelOutput) SetId(v string) *CreateChannelOutput {
 	s.Id = &v
+	return s
+}
+
+// SetIngressAccessLogs sets the IngressAccessLogs field's value.
+func (s *CreateChannelOutput) SetIngressAccessLogs(v *IngressAccessLogs) *CreateChannelOutput {
+	s.IngressAccessLogs = v
 	return s
 }
 
@@ -2791,6 +3057,14 @@ type DashPackage struct {
 
 	// Duration (in seconds) to delay live content before presentation.
 	SuggestedPresentationDelaySeconds *int64 `locationName:"suggestedPresentationDelaySeconds" type:"integer"`
+
+	// Determines the type of UTCTiming included in the Media Presentation Description
+	// (MPD)
+	UtcTiming *string `locationName:"utcTiming" type:"string" enum:"UtcTiming"`
+
+	// Specifies the value attribute of the UTCTiming field when utcTiming is set
+	// to HTTP-ISO or HTTP-HEAD
+	UtcTimingUri *string `locationName:"utcTimingUri" type:"string"`
 }
 
 // String returns the string representation
@@ -2893,6 +3167,18 @@ func (s *DashPackage) SetStreamSelection(v *StreamSelection) *DashPackage {
 // SetSuggestedPresentationDelaySeconds sets the SuggestedPresentationDelaySeconds field's value.
 func (s *DashPackage) SetSuggestedPresentationDelaySeconds(v int64) *DashPackage {
 	s.SuggestedPresentationDelaySeconds = &v
+	return s
+}
+
+// SetUtcTiming sets the UtcTiming field's value.
+func (s *DashPackage) SetUtcTiming(v string) *DashPackage {
+	s.UtcTiming = &v
+	return s
+}
+
+// SetUtcTimingUri sets the UtcTimingUri field's value.
+func (s *DashPackage) SetUtcTimingUri(v string) *DashPackage {
+	s.UtcTimingUri = &v
 	return s
 }
 
@@ -3048,10 +3334,16 @@ type DescribeChannelOutput struct {
 
 	Description *string `locationName:"description" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	// An HTTP Live Streaming (HLS) ingest resource configuration.
 	HlsIngest *HlsIngest `locationName:"hlsIngest" type:"structure"`
 
 	Id *string `locationName:"id" type:"string"`
+
+	// Configure ingress access logging.
+	IngressAccessLogs *IngressAccessLogs `locationName:"ingressAccessLogs" type:"structure"`
 
 	// A collection of tags associated with a resource
 	Tags map[string]*string `locationName:"tags" type:"map"`
@@ -3079,6 +3371,12 @@ func (s *DescribeChannelOutput) SetDescription(v string) *DescribeChannelOutput 
 	return s
 }
 
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *DescribeChannelOutput) SetEgressAccessLogs(v *EgressAccessLogs) *DescribeChannelOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
 // SetHlsIngest sets the HlsIngest field's value.
 func (s *DescribeChannelOutput) SetHlsIngest(v *HlsIngest) *DescribeChannelOutput {
 	s.HlsIngest = v
@@ -3088,6 +3386,12 @@ func (s *DescribeChannelOutput) SetHlsIngest(v *HlsIngest) *DescribeChannelOutpu
 // SetId sets the Id field's value.
 func (s *DescribeChannelOutput) SetId(v string) *DescribeChannelOutput {
 	s.Id = &v
+	return s
+}
+
+// SetIngressAccessLogs sets the IngressAccessLogs field's value.
+func (s *DescribeChannelOutput) SetIngressAccessLogs(v *IngressAccessLogs) *DescribeChannelOutput {
+	s.IngressAccessLogs = v
 	return s
 }
 
@@ -3411,9 +3715,93 @@ func (s *DescribeOriginEndpointOutput) SetWhitelist(v []*string) *DescribeOrigin
 	return s
 }
 
+// Configure egress access logging.
+type EgressAccessLogs struct {
+	_ struct{} `type:"structure"`
+
+	// Customize the log group name.
+	LogGroupName *string `locationName:"logGroupName" type:"string"`
+}
+
+// String returns the string representation
+func (s EgressAccessLogs) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EgressAccessLogs) GoString() string {
+	return s.String()
+}
+
+// SetLogGroupName sets the LogGroupName field's value.
+func (s *EgressAccessLogs) SetLogGroupName(v string) *EgressAccessLogs {
+	s.LogGroupName = &v
+	return s
+}
+
+// Use encryptionContractConfiguration to configure one or more content encryption
+// keys for your endpoints that use SPEKE 2.0. The encryption contract defines
+// which content keys are used to encrypt the audio and video tracks in your
+// stream. To configure the encryption contract, specify which audio and video
+// encryption presets to use.Note the following considerations when using encryptionContractConfiguration:encryptionContractConfiguration
+// can be used for DASH endpoints that use SPEKE 2.0. SPEKE 2.0 relies on the
+// CPIX 2.3 specification.You must disable key rotation for this endpoint by
+// setting keyRotationIntervalSeconds to 0.
+type EncryptionContractConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// A collection of audio encryption presets.
+	//
+	// PresetSpeke20Audio is a required field
+	PresetSpeke20Audio *string `locationName:"presetSpeke20Audio" type:"string" required:"true" enum:"PresetSpeke20Audio"`
+
+	// A collection of video encryption presets.
+	//
+	// PresetSpeke20Video is a required field
+	PresetSpeke20Video *string `locationName:"presetSpeke20Video" type:"string" required:"true" enum:"PresetSpeke20Video"`
+}
+
+// String returns the string representation
+func (s EncryptionContractConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EncryptionContractConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *EncryptionContractConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "EncryptionContractConfiguration"}
+	if s.PresetSpeke20Audio == nil {
+		invalidParams.Add(request.NewErrParamRequired("PresetSpeke20Audio"))
+	}
+	if s.PresetSpeke20Video == nil {
+		invalidParams.Add(request.NewErrParamRequired("PresetSpeke20Video"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetPresetSpeke20Audio sets the PresetSpeke20Audio field's value.
+func (s *EncryptionContractConfiguration) SetPresetSpeke20Audio(v string) *EncryptionContractConfiguration {
+	s.PresetSpeke20Audio = &v
+	return s
+}
+
+// SetPresetSpeke20Video sets the PresetSpeke20Video field's value.
+func (s *EncryptionContractConfiguration) SetPresetSpeke20Video(v string) *EncryptionContractConfiguration {
+	s.PresetSpeke20Video = &v
+	return s
+}
+
 type ForbiddenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3430,17 +3818,17 @@ func (s ForbiddenException) GoString() string {
 
 func newErrorForbiddenException(v protocol.ResponseMetadata) error {
 	return &ForbiddenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ForbiddenException) Code() string {
+func (s *ForbiddenException) Code() string {
 	return "ForbiddenException"
 }
 
 // Message returns the exception's message.
-func (s ForbiddenException) Message() string {
+func (s *ForbiddenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3448,22 +3836,22 @@ func (s ForbiddenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ForbiddenException) OrigErr() error {
+func (s *ForbiddenException) OrigErr() error {
 	return nil
 }
 
-func (s ForbiddenException) Error() string {
+func (s *ForbiddenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ForbiddenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ForbiddenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ForbiddenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ForbiddenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A HarvestJob resource configuration
@@ -3681,7 +4069,10 @@ type HlsManifest struct {
 	// will omit all SCTE-35 ad markers from the output."PASSTHROUGH" causes the
 	// manifest to contain a copy of the SCTE-35 admarkers (comments) taken directly
 	// from the input HTTP Live Streaming (HLS) manifest."SCTE35_ENHANCED" generates
-	// ad markers and blackout tags based on SCTE-35messages in the input source.
+	// ad markers and blackout tags based on SCTE-35messages in the input source."DATERANGE"
+	// inserts EXT-X-DATERANGE tags to signal ad and program transition events in
+	// HLS and CMAF manifests. For this option, you must set a programDateTimeIntervalSeconds
+	// value that is greater than 0.
 	AdMarkers *string `locationName:"adMarkers" type:"string" enum:"AdMarkers"`
 
 	// The ID of the manifest. The ID must be unique within the OriginEndpoint and
@@ -3785,7 +4176,10 @@ type HlsManifestCreateOrUpdateParameters struct {
 	// will omit all SCTE-35 ad markers from the output."PASSTHROUGH" causes the
 	// manifest to contain a copy of the SCTE-35 admarkers (comments) taken directly
 	// from the input HTTP Live Streaming (HLS) manifest."SCTE35_ENHANCED" generates
-	// ad markers and blackout tags based on SCTE-35messages in the input source.
+	// ad markers and blackout tags based on SCTE-35messages in the input source."DATERANGE"
+	// inserts EXT-X-DATERANGE tags to signal ad and program transition events in
+	// HLS and CMAF manifests. For this option, you must set a programDateTimeIntervalSeconds
+	// value that is greater than 0.
 	AdMarkers *string `locationName:"adMarkers" type:"string" enum:"AdMarkers"`
 
 	// A list of SCTE-35 message types that are treated as ad markers in the output.
@@ -3922,7 +4316,10 @@ type HlsPackage struct {
 	// will omit all SCTE-35 ad markers from the output."PASSTHROUGH" causes the
 	// manifest to contain a copy of the SCTE-35 admarkers (comments) taken directly
 	// from the input HTTP Live Streaming (HLS) manifest."SCTE35_ENHANCED" generates
-	// ad markers and blackout tags based on SCTE-35messages in the input source.
+	// ad markers and blackout tags based on SCTE-35messages in the input source."DATERANGE"
+	// inserts EXT-X-DATERANGE tags to signal ad and program transition events in
+	// HLS and CMAF manifests. For this option, you must set a programDateTimeIntervalSeconds
+	// value that is greater than 0.
 	AdMarkers *string `locationName:"adMarkers" type:"string" enum:"AdMarkers"`
 
 	// A list of SCTE-35 message types that are treated as ad markers in the output.
@@ -4119,9 +4516,33 @@ func (s *IngestEndpoint) SetUsername(v string) *IngestEndpoint {
 	return s
 }
 
+// Configure ingress access logging.
+type IngressAccessLogs struct {
+	_ struct{} `type:"structure"`
+
+	// Customize the log group name.
+	LogGroupName *string `locationName:"logGroupName" type:"string"`
+}
+
+// String returns the string representation
+func (s IngressAccessLogs) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s IngressAccessLogs) GoString() string {
+	return s.String()
+}
+
+// SetLogGroupName sets the LogGroupName field's value.
+func (s *IngressAccessLogs) SetLogGroupName(v string) *IngressAccessLogs {
+	s.LogGroupName = &v
+	return s
+}
+
 type InternalServerErrorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4138,17 +4559,17 @@ func (s InternalServerErrorException) GoString() string {
 
 func newErrorInternalServerErrorException(v protocol.ResponseMetadata) error {
 	return &InternalServerErrorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerErrorException) Code() string {
+func (s *InternalServerErrorException) Code() string {
 	return "InternalServerErrorException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerErrorException) Message() string {
+func (s *InternalServerErrorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4156,22 +4577,22 @@ func (s InternalServerErrorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerErrorException) OrigErr() error {
+func (s *InternalServerErrorException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerErrorException) Error() string {
+func (s *InternalServerErrorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerErrorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerErrorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerErrorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerErrorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListChannelsInput struct {
@@ -4590,8 +5011,8 @@ func (s *MssPackage) SetStreamSelection(v *StreamSelection) *MssPackage {
 }
 
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4608,17 +5029,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4626,22 +5047,22 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An OriginEndpoint resource configuration.
@@ -4857,10 +5278,16 @@ type RotateChannelCredentialsOutput struct {
 
 	Description *string `locationName:"description" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	// An HTTP Live Streaming (HLS) ingest resource configuration.
 	HlsIngest *HlsIngest `locationName:"hlsIngest" type:"structure"`
 
 	Id *string `locationName:"id" type:"string"`
+
+	// Configure ingress access logging.
+	IngressAccessLogs *IngressAccessLogs `locationName:"ingressAccessLogs" type:"structure"`
 
 	// A collection of tags associated with a resource
 	Tags map[string]*string `locationName:"tags" type:"map"`
@@ -4888,6 +5315,12 @@ func (s *RotateChannelCredentialsOutput) SetDescription(v string) *RotateChannel
 	return s
 }
 
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *RotateChannelCredentialsOutput) SetEgressAccessLogs(v *EgressAccessLogs) *RotateChannelCredentialsOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
 // SetHlsIngest sets the HlsIngest field's value.
 func (s *RotateChannelCredentialsOutput) SetHlsIngest(v *HlsIngest) *RotateChannelCredentialsOutput {
 	s.HlsIngest = v
@@ -4897,6 +5330,12 @@ func (s *RotateChannelCredentialsOutput) SetHlsIngest(v *HlsIngest) *RotateChann
 // SetId sets the Id field's value.
 func (s *RotateChannelCredentialsOutput) SetId(v string) *RotateChannelCredentialsOutput {
 	s.Id = &v
+	return s
+}
+
+// SetIngressAccessLogs sets the IngressAccessLogs field's value.
+func (s *RotateChannelCredentialsOutput) SetIngressAccessLogs(v *IngressAccessLogs) *RotateChannelCredentialsOutput {
+	s.IngressAccessLogs = v
 	return s
 }
 
@@ -4967,10 +5406,16 @@ type RotateIngestEndpointCredentialsOutput struct {
 
 	Description *string `locationName:"description" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	// An HTTP Live Streaming (HLS) ingest resource configuration.
 	HlsIngest *HlsIngest `locationName:"hlsIngest" type:"structure"`
 
 	Id *string `locationName:"id" type:"string"`
+
+	// Configure ingress access logging.
+	IngressAccessLogs *IngressAccessLogs `locationName:"ingressAccessLogs" type:"structure"`
 
 	// A collection of tags associated with a resource
 	Tags map[string]*string `locationName:"tags" type:"map"`
@@ -4998,6 +5443,12 @@ func (s *RotateIngestEndpointCredentialsOutput) SetDescription(v string) *Rotate
 	return s
 }
 
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *RotateIngestEndpointCredentialsOutput) SetEgressAccessLogs(v *EgressAccessLogs) *RotateIngestEndpointCredentialsOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
 // SetHlsIngest sets the HlsIngest field's value.
 func (s *RotateIngestEndpointCredentialsOutput) SetHlsIngest(v *HlsIngest) *RotateIngestEndpointCredentialsOutput {
 	s.HlsIngest = v
@@ -5007,6 +5458,12 @@ func (s *RotateIngestEndpointCredentialsOutput) SetHlsIngest(v *HlsIngest) *Rota
 // SetId sets the Id field's value.
 func (s *RotateIngestEndpointCredentialsOutput) SetId(v string) *RotateIngestEndpointCredentialsOutput {
 	s.Id = &v
+	return s
+}
+
+// SetIngressAccessLogs sets the IngressAccessLogs field's value.
+func (s *RotateIngestEndpointCredentialsOutput) SetIngressAccessLogs(v *IngressAccessLogs) *RotateIngestEndpointCredentialsOutput {
+	s.IngressAccessLogs = v
 	return s
 }
 
@@ -5086,8 +5543,8 @@ func (s *S3Destination) SetRoleArn(v string) *S3Destination {
 }
 
 type ServiceUnavailableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5104,17 +5561,17 @@ func (s ServiceUnavailableException) GoString() string {
 
 func newErrorServiceUnavailableException(v protocol.ResponseMetadata) error {
 	return &ServiceUnavailableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceUnavailableException) Code() string {
+func (s *ServiceUnavailableException) Code() string {
 	return "ServiceUnavailableException"
 }
 
 // Message returns the exception's message.
-func (s ServiceUnavailableException) Message() string {
+func (s *ServiceUnavailableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5122,22 +5579,22 @@ func (s ServiceUnavailableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceUnavailableException) OrigErr() error {
+func (s *ServiceUnavailableException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceUnavailableException) Error() string {
+func (s *ServiceUnavailableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceUnavailableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceUnavailableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceUnavailableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceUnavailableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // A configuration for accessing an external Secure Packager and Encoder Key
@@ -5149,6 +5606,16 @@ type SpekeKeyProvider struct {
 	// will use for enforcing secure end-to-end datatransfer with the key provider
 	// service.
 	CertificateArn *string `locationName:"certificateArn" type:"string"`
+
+	// Use encryptionContractConfiguration to configure one or more content encryption
+	// keys for your endpoints that use SPEKE 2.0. The encryption contract defines
+	// which content keys are used to encrypt the audio and video tracks in your
+	// stream. To configure the encryption contract, specify which audio and video
+	// encryption presets to use.Note the following considerations when using encryptionContractConfiguration:encryptionContractConfiguration
+	// can be used for DASH endpoints that use SPEKE 2.0. SPEKE 2.0 relies on the
+	// CPIX 2.3 specification.You must disable key rotation for this endpoint by
+	// setting keyRotationIntervalSeconds to 0.
+	EncryptionContractConfiguration *EncryptionContractConfiguration `locationName:"encryptionContractConfiguration" type:"structure"`
 
 	// The resource ID to include in key requests.
 	//
@@ -5197,6 +5664,11 @@ func (s *SpekeKeyProvider) Validate() error {
 	if s.Url == nil {
 		invalidParams.Add(request.NewErrParamRequired("Url"))
 	}
+	if s.EncryptionContractConfiguration != nil {
+		if err := s.EncryptionContractConfiguration.Validate(); err != nil {
+			invalidParams.AddNested("EncryptionContractConfiguration", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -5207,6 +5679,12 @@ func (s *SpekeKeyProvider) Validate() error {
 // SetCertificateArn sets the CertificateArn field's value.
 func (s *SpekeKeyProvider) SetCertificateArn(v string) *SpekeKeyProvider {
 	s.CertificateArn = &v
+	return s
+}
+
+// SetEncryptionContractConfiguration sets the EncryptionContractConfiguration field's value.
+func (s *SpekeKeyProvider) SetEncryptionContractConfiguration(v *EncryptionContractConfiguration) *SpekeKeyProvider {
+	s.EncryptionContractConfiguration = v
 	return s
 }
 
@@ -5342,8 +5820,8 @@ func (s TagResourceOutput) GoString() string {
 }
 
 type TooManyRequestsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5360,17 +5838,17 @@ func (s TooManyRequestsException) GoString() string {
 
 func newErrorTooManyRequestsException(v protocol.ResponseMetadata) error {
 	return &TooManyRequestsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyRequestsException) Code() string {
+func (s *TooManyRequestsException) Code() string {
 	return "TooManyRequestsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyRequestsException) Message() string {
+func (s *TooManyRequestsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5378,27 +5856,27 @@ func (s TooManyRequestsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyRequestsException) OrigErr() error {
+func (s *TooManyRequestsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyRequestsException) Error() string {
+func (s *TooManyRequestsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyRequestsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyRequestsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyRequestsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyRequestsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UnprocessableEntityException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5415,17 +5893,17 @@ func (s UnprocessableEntityException) GoString() string {
 
 func newErrorUnprocessableEntityException(v protocol.ResponseMetadata) error {
 	return &UnprocessableEntityException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnprocessableEntityException) Code() string {
+func (s *UnprocessableEntityException) Code() string {
 	return "UnprocessableEntityException"
 }
 
 // Message returns the exception's message.
-func (s UnprocessableEntityException) Message() string {
+func (s *UnprocessableEntityException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5433,22 +5911,22 @@ func (s UnprocessableEntityException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnprocessableEntityException) OrigErr() error {
+func (s *UnprocessableEntityException) OrigErr() error {
 	return nil
 }
 
-func (s UnprocessableEntityException) Error() string {
+func (s *UnprocessableEntityException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnprocessableEntityException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnprocessableEntityException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnprocessableEntityException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnprocessableEntityException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
@@ -5570,10 +6048,16 @@ type UpdateChannelOutput struct {
 
 	Description *string `locationName:"description" type:"string"`
 
+	// Configure egress access logging.
+	EgressAccessLogs *EgressAccessLogs `locationName:"egressAccessLogs" type:"structure"`
+
 	// An HTTP Live Streaming (HLS) ingest resource configuration.
 	HlsIngest *HlsIngest `locationName:"hlsIngest" type:"structure"`
 
 	Id *string `locationName:"id" type:"string"`
+
+	// Configure ingress access logging.
+	IngressAccessLogs *IngressAccessLogs `locationName:"ingressAccessLogs" type:"structure"`
 
 	// A collection of tags associated with a resource
 	Tags map[string]*string `locationName:"tags" type:"map"`
@@ -5601,6 +6085,12 @@ func (s *UpdateChannelOutput) SetDescription(v string) *UpdateChannelOutput {
 	return s
 }
 
+// SetEgressAccessLogs sets the EgressAccessLogs field's value.
+func (s *UpdateChannelOutput) SetEgressAccessLogs(v *EgressAccessLogs) *UpdateChannelOutput {
+	s.EgressAccessLogs = v
+	return s
+}
+
 // SetHlsIngest sets the HlsIngest field's value.
 func (s *UpdateChannelOutput) SetHlsIngest(v *HlsIngest) *UpdateChannelOutput {
 	s.HlsIngest = v
@@ -5610,6 +6100,12 @@ func (s *UpdateChannelOutput) SetHlsIngest(v *HlsIngest) *UpdateChannelOutput {
 // SetId sets the Id field's value.
 func (s *UpdateChannelOutput) SetId(v string) *UpdateChannelOutput {
 	s.Id = &v
+	return s
+}
+
+// SetIngressAccessLogs sets the IngressAccessLogs field's value.
+func (s *UpdateChannelOutput) SetIngressAccessLogs(v *IngressAccessLogs) *UpdateChannelOutput {
+	s.IngressAccessLogs = v
 	return s
 }
 
@@ -5933,7 +6429,20 @@ const (
 
 	// AdMarkersPassthrough is a AdMarkers enum value
 	AdMarkersPassthrough = "PASSTHROUGH"
+
+	// AdMarkersDaterange is a AdMarkers enum value
+	AdMarkersDaterange = "DATERANGE"
 )
+
+// AdMarkers_Values returns all elements of the AdMarkers enum
+func AdMarkers_Values() []string {
+	return []string{
+		AdMarkersNone,
+		AdMarkersScte35Enhanced,
+		AdMarkersPassthrough,
+		AdMarkersDaterange,
+	}
+}
 
 // This setting allows the delivery restriction flags on SCTE-35 segmentation
 // descriptors todetermine whether a message signals an ad. Choosing "NONE"
@@ -5959,6 +6468,16 @@ const (
 	AdsOnDeliveryRestrictionsBoth = "BOTH"
 )
 
+// AdsOnDeliveryRestrictions_Values returns all elements of the AdsOnDeliveryRestrictions enum
+func AdsOnDeliveryRestrictions_Values() []string {
+	return []string{
+		AdsOnDeliveryRestrictionsNone,
+		AdsOnDeliveryRestrictionsRestricted,
+		AdsOnDeliveryRestrictionsUnrestricted,
+		AdsOnDeliveryRestrictionsBoth,
+	}
+}
+
 const (
 	// EncryptionMethodAes128 is a EncryptionMethod enum value
 	EncryptionMethodAes128 = "AES_128"
@@ -5966,6 +6485,14 @@ const (
 	// EncryptionMethodSampleAes is a EncryptionMethod enum value
 	EncryptionMethodSampleAes = "SAMPLE_AES"
 )
+
+// EncryptionMethod_Values returns all elements of the EncryptionMethod enum
+func EncryptionMethod_Values() []string {
+	return []string{
+		EncryptionMethodAes128,
+		EncryptionMethodSampleAes,
+	}
+}
 
 const (
 	// ManifestLayoutFull is a ManifestLayout enum value
@@ -5975,6 +6502,14 @@ const (
 	ManifestLayoutCompact = "COMPACT"
 )
 
+// ManifestLayout_Values returns all elements of the ManifestLayout enum
+func ManifestLayout_Values() []string {
+	return []string{
+		ManifestLayoutFull,
+		ManifestLayoutCompact,
+	}
+}
+
 const (
 	// OriginationAllow is a Origination enum value
 	OriginationAllow = "ALLOW"
@@ -5982,6 +6517,14 @@ const (
 	// OriginationDeny is a Origination enum value
 	OriginationDeny = "DENY"
 )
+
+// Origination_Values returns all elements of the Origination enum
+func Origination_Values() []string {
+	return []string{
+		OriginationAllow,
+		OriginationDeny,
+	}
+}
 
 const (
 	// PlaylistTypeNone is a PlaylistType enum value
@@ -5994,6 +6537,39 @@ const (
 	PlaylistTypeVod = "VOD"
 )
 
+// PlaylistType_Values returns all elements of the PlaylistType enum
+func PlaylistType_Values() []string {
+	return []string{
+		PlaylistTypeNone,
+		PlaylistTypeEvent,
+		PlaylistTypeVod,
+	}
+}
+
+const (
+	// PresetSpeke20AudioPresetAudio1 is a PresetSpeke20Audio enum value
+	PresetSpeke20AudioPresetAudio1 = "PRESET-AUDIO-1"
+)
+
+// PresetSpeke20Audio_Values returns all elements of the PresetSpeke20Audio enum
+func PresetSpeke20Audio_Values() []string {
+	return []string{
+		PresetSpeke20AudioPresetAudio1,
+	}
+}
+
+const (
+	// PresetSpeke20VideoPresetVideo1 is a PresetSpeke20Video enum value
+	PresetSpeke20VideoPresetVideo1 = "PRESET-VIDEO-1"
+)
+
+// PresetSpeke20Video_Values returns all elements of the PresetSpeke20Video enum
+func PresetSpeke20Video_Values() []string {
+	return []string{
+		PresetSpeke20VideoPresetVideo1,
+	}
+}
+
 const (
 	// ProfileNone is a Profile enum value
 	ProfileNone = "NONE"
@@ -6001,6 +6577,14 @@ const (
 	// ProfileHbbtv15 is a Profile enum value
 	ProfileHbbtv15 = "HBBTV_1_5"
 )
+
+// Profile_Values returns all elements of the Profile enum
+func Profile_Values() []string {
+	return []string{
+		ProfileNone,
+		ProfileHbbtv15,
+	}
+}
 
 const (
 	// SegmentTemplateFormatNumberWithTimeline is a SegmentTemplateFormat enum value
@@ -6013,6 +6597,15 @@ const (
 	SegmentTemplateFormatNumberWithDuration = "NUMBER_WITH_DURATION"
 )
 
+// SegmentTemplateFormat_Values returns all elements of the SegmentTemplateFormat enum
+func SegmentTemplateFormat_Values() []string {
+	return []string{
+		SegmentTemplateFormatNumberWithTimeline,
+		SegmentTemplateFormatTimeWithTimeline,
+		SegmentTemplateFormatNumberWithDuration,
+	}
+}
+
 const (
 	// StatusInProgress is a Status enum value
 	StatusInProgress = "IN_PROGRESS"
@@ -6024,6 +6617,15 @@ const (
 	StatusFailed = "FAILED"
 )
 
+// Status_Values returns all elements of the Status enum
+func Status_Values() []string {
+	return []string{
+		StatusInProgress,
+		StatusSucceeded,
+		StatusFailed,
+	}
+}
+
 const (
 	// StreamOrderOriginal is a StreamOrder enum value
 	StreamOrderOriginal = "ORIGINAL"
@@ -6034,6 +6636,35 @@ const (
 	// StreamOrderVideoBitrateDescending is a StreamOrder enum value
 	StreamOrderVideoBitrateDescending = "VIDEO_BITRATE_DESCENDING"
 )
+
+// StreamOrder_Values returns all elements of the StreamOrder enum
+func StreamOrder_Values() []string {
+	return []string{
+		StreamOrderOriginal,
+		StreamOrderVideoBitrateAscending,
+		StreamOrderVideoBitrateDescending,
+	}
+}
+
+const (
+	// UtcTimingNone is a UtcTiming enum value
+	UtcTimingNone = "NONE"
+
+	// UtcTimingHttpHead is a UtcTiming enum value
+	UtcTimingHttpHead = "HTTP-HEAD"
+
+	// UtcTimingHttpIso is a UtcTiming enum value
+	UtcTimingHttpIso = "HTTP-ISO"
+)
+
+// UtcTiming_Values returns all elements of the UtcTiming enum
+func UtcTiming_Values() []string {
+	return []string{
+		UtcTimingNone,
+		UtcTimingHttpHead,
+		UtcTimingHttpIso,
+	}
+}
 
 const (
 	// __AdTriggersElementSpliceInsert is a __AdTriggersElement enum value
@@ -6061,7 +6692,28 @@ const (
 	__AdTriggersElementDistributorOverlayPlacementOpportunity = "DISTRIBUTOR_OVERLAY_PLACEMENT_OPPORTUNITY"
 )
 
+// __AdTriggersElement_Values returns all elements of the __AdTriggersElement enum
+func __AdTriggersElement_Values() []string {
+	return []string{
+		__AdTriggersElementSpliceInsert,
+		__AdTriggersElementBreak,
+		__AdTriggersElementProviderAdvertisement,
+		__AdTriggersElementDistributorAdvertisement,
+		__AdTriggersElementProviderPlacementOpportunity,
+		__AdTriggersElementDistributorPlacementOpportunity,
+		__AdTriggersElementProviderOverlayPlacementOpportunity,
+		__AdTriggersElementDistributorOverlayPlacementOpportunity,
+	}
+}
+
 const (
 	// __PeriodTriggersElementAds is a __PeriodTriggersElement enum value
 	__PeriodTriggersElementAds = "ADS"
 )
+
+// __PeriodTriggersElement_Values returns all elements of the __PeriodTriggersElement enum
+func __PeriodTriggersElement_Values() []string {
+	return []string{
+		__PeriodTriggersElementAds,
+	}
+}

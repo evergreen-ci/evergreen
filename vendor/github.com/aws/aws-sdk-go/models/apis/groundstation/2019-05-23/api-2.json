@@ -404,6 +404,12 @@
         "RADIAN"
       ]
     },
+    "AntennaDemodDecodeDetails":{
+      "type":"structure",
+      "members":{
+        "outputNode":{"shape":"String"}
+      }
+    },
     "AntennaDownlinkConfig":{
       "type":"structure",
       "required":["spectrumConfig"],
@@ -432,7 +438,8 @@
       ],
       "members":{
         "spectrumConfig":{"shape":"UplinkSpectrumConfig"},
-        "targetEirp":{"shape":"Eirp"}
+        "targetEirp":{"shape":"Eirp"},
+        "transmitDisabled":{"shape":"Boolean"}
       }
     },
     "BandwidthUnits":{
@@ -447,6 +454,7 @@
       "type":"boolean",
       "box":true
     },
+    "BucketArn":{"type":"string"},
     "CancelContactRequest":{
       "type":"structure",
       "required":["contactId"],
@@ -467,8 +475,18 @@
         "antenna-uplink",
         "dataflow-endpoint",
         "tracking",
-        "uplink-echo"
+        "uplink-echo",
+        "s3-recording"
       ]
+    },
+    "ConfigDetails":{
+      "type":"structure",
+      "members":{
+        "antennaDemodDecodeDetails":{"shape":"AntennaDemodDecodeDetails"},
+        "endpointDetails":{"shape":"EndpointDetails"},
+        "s3RecordingDetails":{"shape":"S3RecordingDetails"}
+      },
+      "union":true
     },
     "ConfigIdResponse":{
       "type":"structure",
@@ -498,9 +516,11 @@
         "antennaDownlinkDemodDecodeConfig":{"shape":"AntennaDownlinkDemodDecodeConfig"},
         "antennaUplinkConfig":{"shape":"AntennaUplinkConfig"},
         "dataflowEndpointConfig":{"shape":"DataflowEndpointConfig"},
+        "s3RecordingConfig":{"shape":"S3RecordingConfig"},
         "trackingConfig":{"shape":"TrackingConfig"},
         "uplinkEchoConfig":{"shape":"UplinkEchoConfig"}
-      }
+      },
+      "union":true
     },
     "ContactData":{
       "type":"structure",
@@ -535,6 +555,7 @@
       "enum":[
         "AVAILABLE",
         "AWS_CANCELLED",
+        "AWS_FAILED",
         "CANCELLED",
         "CANCELLING",
         "COMPLETED",
@@ -593,6 +614,14 @@
         "REQUIRED"
       ]
     },
+    "DataflowDetail":{
+      "type":"structure",
+      "members":{
+        "destination":{"shape":"Destination"},
+        "errorMessage":{"shape":"String"},
+        "source":{"shape":"Source"}
+      }
+    },
     "DataflowEdge":{
       "type":"list",
       "member":{"shape":"ConfigArn"},
@@ -607,6 +636,7 @@
       "type":"structure",
       "members":{
         "address":{"shape":"SocketAddress"},
+        "mtu":{"shape":"DataflowEndpointMtuInteger"},
         "name":{"shape":"SafeName"},
         "status":{"shape":"EndpointStatus"}
       }
@@ -636,6 +666,16 @@
         "dataflowEndpointGroupArn":{"shape":"DataflowEndpointGroupArn"},
         "dataflowEndpointGroupId":{"shape":"String"}
       }
+    },
+    "DataflowEndpointMtuInteger":{
+      "type":"integer",
+      "box":true,
+      "max":1500,
+      "min":1400
+    },
+    "DataflowList":{
+      "type":"list",
+      "member":{"shape":"DataflowDetail"}
     },
     "DecodeConfig":{
       "type":"structure",
@@ -718,6 +758,7 @@
       "members":{
         "contactId":{"shape":"String"},
         "contactStatus":{"shape":"ContactStatus"},
+        "dataflowList":{"shape":"DataflowList"},
         "endTime":{"shape":"Timestamp"},
         "errorMessage":{"shape":"String"},
         "groundStation":{"shape":"String"},
@@ -731,12 +772,22 @@
         "tags":{"shape":"TagsMap"}
       }
     },
+    "Destination":{
+      "type":"structure",
+      "members":{
+        "configDetails":{"shape":"ConfigDetails"},
+        "configId":{"shape":"String"},
+        "configType":{"shape":"ConfigCapabilityType"},
+        "dataflowDestinationRegion":{"shape":"String"}
+      }
+    },
     "Double":{
       "type":"double",
       "box":true
     },
     "DurationInSeconds":{
       "type":"integer",
+      "box":true,
       "max":21600,
       "min":1
     },
@@ -1205,6 +1256,31 @@
       "exception":true
     },
     "RoleArn":{"type":"string"},
+    "S3KeyPrefix":{
+      "type":"string",
+      "max":900,
+      "min":1,
+      "pattern":"^([a-zA-Z0-9_\\-=/]|\\{satellite_id\\}|\\{config\\-name}|\\{s3\\-config-id}|\\{year\\}|\\{month\\}|\\{day\\}){1,900}$"
+    },
+    "S3RecordingConfig":{
+      "type":"structure",
+      "required":[
+        "bucketArn",
+        "roleArn"
+      ],
+      "members":{
+        "bucketArn":{"shape":"BucketArn"},
+        "prefix":{"shape":"S3KeyPrefix"},
+        "roleArn":{"shape":"RoleArn"}
+      }
+    },
+    "S3RecordingDetails":{
+      "type":"structure",
+      "members":{
+        "bucketArn":{"shape":"BucketArn"},
+        "keyTemplate":{"shape":"String"}
+      }
+    },
     "SafeName":{
       "type":"string",
       "max":256,
@@ -1250,6 +1326,15 @@
       "members":{
         "name":{"shape":"String"},
         "port":{"shape":"Integer"}
+      }
+    },
+    "Source":{
+      "type":"structure",
+      "members":{
+        "configDetails":{"shape":"ConfigDetails"},
+        "configId":{"shape":"String"},
+        "configType":{"shape":"ConfigCapabilityType"},
+        "dataflowSourceRegion":{"shape":"String"}
       }
     },
     "SpectrumConfig":{

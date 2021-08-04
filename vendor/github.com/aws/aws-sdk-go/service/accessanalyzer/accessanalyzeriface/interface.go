@@ -26,7 +26,7 @@ import (
 //    // myFunc uses an SDK service client to make a request to
 //    // Access Analyzer.
 //    func myFunc(svc accessanalyzeriface.AccessAnalyzerAPI) bool {
-//        // Make svc.CreateAnalyzer request
+//        // Make svc.ApplyArchiveRule request
 //    }
 //
 //    func main() {
@@ -42,7 +42,7 @@ import (
 //    type mockAccessAnalyzerClient struct {
 //        accessanalyzeriface.AccessAnalyzerAPI
 //    }
-//    func (m *mockAccessAnalyzerClient) CreateAnalyzer(input *accessanalyzer.CreateAnalyzerInput) (*accessanalyzer.CreateAnalyzerOutput, error) {
+//    func (m *mockAccessAnalyzerClient) ApplyArchiveRule(input *accessanalyzer.ApplyArchiveRuleInput) (*accessanalyzer.ApplyArchiveRuleOutput, error) {
 //        // mock response/functionality
 //    }
 //
@@ -60,6 +60,18 @@ import (
 // and waiters. Its suggested to use the pattern above for testing, or using
 // tooling to generate mocks to satisfy the interfaces.
 type AccessAnalyzerAPI interface {
+	ApplyArchiveRule(*accessanalyzer.ApplyArchiveRuleInput) (*accessanalyzer.ApplyArchiveRuleOutput, error)
+	ApplyArchiveRuleWithContext(aws.Context, *accessanalyzer.ApplyArchiveRuleInput, ...request.Option) (*accessanalyzer.ApplyArchiveRuleOutput, error)
+	ApplyArchiveRuleRequest(*accessanalyzer.ApplyArchiveRuleInput) (*request.Request, *accessanalyzer.ApplyArchiveRuleOutput)
+
+	CancelPolicyGeneration(*accessanalyzer.CancelPolicyGenerationInput) (*accessanalyzer.CancelPolicyGenerationOutput, error)
+	CancelPolicyGenerationWithContext(aws.Context, *accessanalyzer.CancelPolicyGenerationInput, ...request.Option) (*accessanalyzer.CancelPolicyGenerationOutput, error)
+	CancelPolicyGenerationRequest(*accessanalyzer.CancelPolicyGenerationInput) (*request.Request, *accessanalyzer.CancelPolicyGenerationOutput)
+
+	CreateAccessPreview(*accessanalyzer.CreateAccessPreviewInput) (*accessanalyzer.CreateAccessPreviewOutput, error)
+	CreateAccessPreviewWithContext(aws.Context, *accessanalyzer.CreateAccessPreviewInput, ...request.Option) (*accessanalyzer.CreateAccessPreviewOutput, error)
+	CreateAccessPreviewRequest(*accessanalyzer.CreateAccessPreviewInput) (*request.Request, *accessanalyzer.CreateAccessPreviewOutput)
+
 	CreateAnalyzer(*accessanalyzer.CreateAnalyzerInput) (*accessanalyzer.CreateAnalyzerOutput, error)
 	CreateAnalyzerWithContext(aws.Context, *accessanalyzer.CreateAnalyzerInput, ...request.Option) (*accessanalyzer.CreateAnalyzerOutput, error)
 	CreateAnalyzerRequest(*accessanalyzer.CreateAnalyzerInput) (*request.Request, *accessanalyzer.CreateAnalyzerOutput)
@@ -76,6 +88,10 @@ type AccessAnalyzerAPI interface {
 	DeleteArchiveRuleWithContext(aws.Context, *accessanalyzer.DeleteArchiveRuleInput, ...request.Option) (*accessanalyzer.DeleteArchiveRuleOutput, error)
 	DeleteArchiveRuleRequest(*accessanalyzer.DeleteArchiveRuleInput) (*request.Request, *accessanalyzer.DeleteArchiveRuleOutput)
 
+	GetAccessPreview(*accessanalyzer.GetAccessPreviewInput) (*accessanalyzer.GetAccessPreviewOutput, error)
+	GetAccessPreviewWithContext(aws.Context, *accessanalyzer.GetAccessPreviewInput, ...request.Option) (*accessanalyzer.GetAccessPreviewOutput, error)
+	GetAccessPreviewRequest(*accessanalyzer.GetAccessPreviewInput) (*request.Request, *accessanalyzer.GetAccessPreviewOutput)
+
 	GetAnalyzedResource(*accessanalyzer.GetAnalyzedResourceInput) (*accessanalyzer.GetAnalyzedResourceOutput, error)
 	GetAnalyzedResourceWithContext(aws.Context, *accessanalyzer.GetAnalyzedResourceInput, ...request.Option) (*accessanalyzer.GetAnalyzedResourceOutput, error)
 	GetAnalyzedResourceRequest(*accessanalyzer.GetAnalyzedResourceInput) (*request.Request, *accessanalyzer.GetAnalyzedResourceOutput)
@@ -91,6 +107,24 @@ type AccessAnalyzerAPI interface {
 	GetFinding(*accessanalyzer.GetFindingInput) (*accessanalyzer.GetFindingOutput, error)
 	GetFindingWithContext(aws.Context, *accessanalyzer.GetFindingInput, ...request.Option) (*accessanalyzer.GetFindingOutput, error)
 	GetFindingRequest(*accessanalyzer.GetFindingInput) (*request.Request, *accessanalyzer.GetFindingOutput)
+
+	GetGeneratedPolicy(*accessanalyzer.GetGeneratedPolicyInput) (*accessanalyzer.GetGeneratedPolicyOutput, error)
+	GetGeneratedPolicyWithContext(aws.Context, *accessanalyzer.GetGeneratedPolicyInput, ...request.Option) (*accessanalyzer.GetGeneratedPolicyOutput, error)
+	GetGeneratedPolicyRequest(*accessanalyzer.GetGeneratedPolicyInput) (*request.Request, *accessanalyzer.GetGeneratedPolicyOutput)
+
+	ListAccessPreviewFindings(*accessanalyzer.ListAccessPreviewFindingsInput) (*accessanalyzer.ListAccessPreviewFindingsOutput, error)
+	ListAccessPreviewFindingsWithContext(aws.Context, *accessanalyzer.ListAccessPreviewFindingsInput, ...request.Option) (*accessanalyzer.ListAccessPreviewFindingsOutput, error)
+	ListAccessPreviewFindingsRequest(*accessanalyzer.ListAccessPreviewFindingsInput) (*request.Request, *accessanalyzer.ListAccessPreviewFindingsOutput)
+
+	ListAccessPreviewFindingsPages(*accessanalyzer.ListAccessPreviewFindingsInput, func(*accessanalyzer.ListAccessPreviewFindingsOutput, bool) bool) error
+	ListAccessPreviewFindingsPagesWithContext(aws.Context, *accessanalyzer.ListAccessPreviewFindingsInput, func(*accessanalyzer.ListAccessPreviewFindingsOutput, bool) bool, ...request.Option) error
+
+	ListAccessPreviews(*accessanalyzer.ListAccessPreviewsInput) (*accessanalyzer.ListAccessPreviewsOutput, error)
+	ListAccessPreviewsWithContext(aws.Context, *accessanalyzer.ListAccessPreviewsInput, ...request.Option) (*accessanalyzer.ListAccessPreviewsOutput, error)
+	ListAccessPreviewsRequest(*accessanalyzer.ListAccessPreviewsInput) (*request.Request, *accessanalyzer.ListAccessPreviewsOutput)
+
+	ListAccessPreviewsPages(*accessanalyzer.ListAccessPreviewsInput, func(*accessanalyzer.ListAccessPreviewsOutput, bool) bool) error
+	ListAccessPreviewsPagesWithContext(aws.Context, *accessanalyzer.ListAccessPreviewsInput, func(*accessanalyzer.ListAccessPreviewsOutput, bool) bool, ...request.Option) error
 
 	ListAnalyzedResources(*accessanalyzer.ListAnalyzedResourcesInput) (*accessanalyzer.ListAnalyzedResourcesOutput, error)
 	ListAnalyzedResourcesWithContext(aws.Context, *accessanalyzer.ListAnalyzedResourcesInput, ...request.Option) (*accessanalyzer.ListAnalyzedResourcesOutput, error)
@@ -120,9 +154,20 @@ type AccessAnalyzerAPI interface {
 	ListFindingsPages(*accessanalyzer.ListFindingsInput, func(*accessanalyzer.ListFindingsOutput, bool) bool) error
 	ListFindingsPagesWithContext(aws.Context, *accessanalyzer.ListFindingsInput, func(*accessanalyzer.ListFindingsOutput, bool) bool, ...request.Option) error
 
+	ListPolicyGenerations(*accessanalyzer.ListPolicyGenerationsInput) (*accessanalyzer.ListPolicyGenerationsOutput, error)
+	ListPolicyGenerationsWithContext(aws.Context, *accessanalyzer.ListPolicyGenerationsInput, ...request.Option) (*accessanalyzer.ListPolicyGenerationsOutput, error)
+	ListPolicyGenerationsRequest(*accessanalyzer.ListPolicyGenerationsInput) (*request.Request, *accessanalyzer.ListPolicyGenerationsOutput)
+
+	ListPolicyGenerationsPages(*accessanalyzer.ListPolicyGenerationsInput, func(*accessanalyzer.ListPolicyGenerationsOutput, bool) bool) error
+	ListPolicyGenerationsPagesWithContext(aws.Context, *accessanalyzer.ListPolicyGenerationsInput, func(*accessanalyzer.ListPolicyGenerationsOutput, bool) bool, ...request.Option) error
+
 	ListTagsForResource(*accessanalyzer.ListTagsForResourceInput) (*accessanalyzer.ListTagsForResourceOutput, error)
 	ListTagsForResourceWithContext(aws.Context, *accessanalyzer.ListTagsForResourceInput, ...request.Option) (*accessanalyzer.ListTagsForResourceOutput, error)
 	ListTagsForResourceRequest(*accessanalyzer.ListTagsForResourceInput) (*request.Request, *accessanalyzer.ListTagsForResourceOutput)
+
+	StartPolicyGeneration(*accessanalyzer.StartPolicyGenerationInput) (*accessanalyzer.StartPolicyGenerationOutput, error)
+	StartPolicyGenerationWithContext(aws.Context, *accessanalyzer.StartPolicyGenerationInput, ...request.Option) (*accessanalyzer.StartPolicyGenerationOutput, error)
+	StartPolicyGenerationRequest(*accessanalyzer.StartPolicyGenerationInput) (*request.Request, *accessanalyzer.StartPolicyGenerationOutput)
 
 	StartResourceScan(*accessanalyzer.StartResourceScanInput) (*accessanalyzer.StartResourceScanOutput, error)
 	StartResourceScanWithContext(aws.Context, *accessanalyzer.StartResourceScanInput, ...request.Option) (*accessanalyzer.StartResourceScanOutput, error)
@@ -143,6 +188,13 @@ type AccessAnalyzerAPI interface {
 	UpdateFindings(*accessanalyzer.UpdateFindingsInput) (*accessanalyzer.UpdateFindingsOutput, error)
 	UpdateFindingsWithContext(aws.Context, *accessanalyzer.UpdateFindingsInput, ...request.Option) (*accessanalyzer.UpdateFindingsOutput, error)
 	UpdateFindingsRequest(*accessanalyzer.UpdateFindingsInput) (*request.Request, *accessanalyzer.UpdateFindingsOutput)
+
+	ValidatePolicy(*accessanalyzer.ValidatePolicyInput) (*accessanalyzer.ValidatePolicyOutput, error)
+	ValidatePolicyWithContext(aws.Context, *accessanalyzer.ValidatePolicyInput, ...request.Option) (*accessanalyzer.ValidatePolicyOutput, error)
+	ValidatePolicyRequest(*accessanalyzer.ValidatePolicyInput) (*request.Request, *accessanalyzer.ValidatePolicyOutput)
+
+	ValidatePolicyPages(*accessanalyzer.ValidatePolicyInput, func(*accessanalyzer.ValidatePolicyOutput, bool) bool) error
+	ValidatePolicyPagesWithContext(aws.Context, *accessanalyzer.ValidatePolicyInput, func(*accessanalyzer.ValidatePolicyOutput, bool) bool, ...request.Option) error
 }
 
 var _ AccessAnalyzerAPI = (*accessanalyzer.AccessAnalyzer)(nil)

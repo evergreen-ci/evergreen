@@ -6,6 +6,12 @@
     "DescribeAddresses": {
       "result_key": "Addresses"
     },
+    "DescribeAddressesAttribute": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "Addresses"
+    },
     "DescribeAvailabilityZones": {
       "result_key": "AvailabilityZones"
     },
@@ -23,6 +29,12 @@
       "limit_key": "MaxResults",
       "output_token": "NextToken",
       "result_key": "CapacityReservations"
+    },
+    "DescribeCarrierGateways": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "CarrierGateways"
     },
     "DescribeClassicLinkInstances": {
       "input_token": "NextToken",
@@ -59,6 +71,12 @@
       "limit_key": "MaxResults",
       "output_token": "NextToken",
       "result_key": "ClientVpnTargetNetworks"
+    },
+    "DescribeCoipPools": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "CoipPools"
     },
     "DescribeConversionTasks": {
       "result_key": "ConversionTasks"
@@ -162,6 +180,18 @@
       "output_token": "NextToken",
       "result_key": "InstanceStatuses"
     },
+    "DescribeInstanceTypeOfferings": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "InstanceTypeOfferings"
+    },
+    "DescribeInstanceTypes": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "InstanceTypes"
+    },
     "DescribeInstances": {
       "input_token": "NextToken",
       "limit_key": "MaxResults",
@@ -195,6 +225,48 @@
       "output_token": "NextToken",
       "result_key": "LaunchTemplates"
     },
+    "DescribeLocalGatewayRouteTableVirtualInterfaceGroupAssociations": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "LocalGatewayRouteTableVirtualInterfaceGroupAssociations"
+    },
+    "DescribeLocalGatewayRouteTableVpcAssociations": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "LocalGatewayRouteTableVpcAssociations"
+    },
+    "DescribeLocalGatewayRouteTables": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "LocalGatewayRouteTables"
+    },
+    "DescribeLocalGatewayVirtualInterfaceGroups": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "LocalGatewayVirtualInterfaceGroups"
+    },
+    "DescribeLocalGatewayVirtualInterfaces": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "LocalGatewayVirtualInterfaces"
+    },
+    "DescribeLocalGateways": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "LocalGateways"
+    },
+    "DescribeManagedPrefixLists": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "PrefixLists"
+    },
     "DescribeMovingAddresses": {
       "input_token": "NextToken",
       "limit_key": "MaxResults",
@@ -212,6 +284,18 @@
       "limit_key": "MaxResults",
       "output_token": "NextToken",
       "result_key": "NetworkAcls"
+    },
+    "DescribeNetworkInsightsAnalyses": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "NetworkInsightsAnalyses"
+    },
+    "DescribeNetworkInsightsPaths": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "NetworkInsightsPaths"
     },
     "DescribeNetworkInterfacePermissions": {
       "input_token": "NextToken",
@@ -248,6 +332,12 @@
     },
     "DescribeRegions": {
       "result_key": "Regions"
+    },
+    "DescribeReplaceRootVolumeTasks": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "ReplaceRootVolumeTasks"
     },
     "DescribeReservedInstances": {
       "result_key": "ReservedInstances"
@@ -320,6 +410,12 @@
       "output_token": "NextToken",
       "result_key": "StaleSecurityGroupSet"
     },
+    "DescribeStoreImageTasks": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "StoreImageTaskResults"
+    },
     "DescribeSubnets": {
       "input_token": "NextToken",
       "limit_key": "MaxResults",
@@ -355,6 +451,30 @@
       "limit_key": "MaxResults",
       "output_token": "NextToken",
       "result_key": "TransitGatewayAttachments"
+    },
+    "DescribeTransitGatewayConnectPeers": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "TransitGatewayConnectPeers"
+    },
+    "DescribeTransitGatewayConnects": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "TransitGatewayConnects"
+    },
+    "DescribeTransitGatewayMulticastDomains": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "TransitGatewayMulticastDomains"
+    },
+    "DescribeTransitGatewayPeeringAttachments": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "TransitGatewayPeeringAttachments"
     },
     "DescribeTransitGatewayRouteTables": {
       "input_token": "NextToken",
@@ -452,11 +572,41 @@
       "output_token": "NextToken",
       "result_key": "Ipv6CidrAssociations"
     },
+    "GetGroupsForCapacityReservation": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "CapacityReservationGroups"
+    },
+    "GetManagedPrefixListAssociations": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "PrefixListAssociations"
+    },
+    "GetManagedPrefixListEntries": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "Entries"
+    },
     "GetTransitGatewayAttachmentPropagations": {
       "input_token": "NextToken",
       "limit_key": "MaxResults",
       "output_token": "NextToken",
       "result_key": "TransitGatewayAttachmentPropagations"
+    },
+    "GetTransitGatewayMulticastDomainAssociations": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "MulticastDomainAssociations"
+    },
+    "GetTransitGatewayPrefixListReferences": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "TransitGatewayPrefixListReferences"
     },
     "GetTransitGatewayRouteTableAssociations": {
       "input_token": "NextToken",
@@ -469,6 +619,18 @@
       "limit_key": "MaxResults",
       "output_token": "NextToken",
       "result_key": "TransitGatewayRouteTablePropagations"
+    },
+    "SearchLocalGatewayRoutes": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "Routes"
+    },
+    "SearchTransitGatewayMulticastGroups": {
+      "input_token": "NextToken",
+      "limit_key": "MaxResults",
+      "output_token": "NextToken",
+      "result_key": "MulticastGroups"
     }
   }
 }

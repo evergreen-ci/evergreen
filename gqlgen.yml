@@ -182,3 +182,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
   Version:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
+    fields:
+      status:
+        resolver: true

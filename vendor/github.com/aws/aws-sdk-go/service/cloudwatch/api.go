@@ -58,8 +58,26 @@ func (c *CloudWatch) DeleteAlarmsRequest(input *DeleteAlarmsInput) (req *request
 
 // DeleteAlarms API operation for Amazon CloudWatch.
 //
-// Deletes the specified alarms. You can delete up to 50 alarms in one operation.
+// Deletes the specified alarms. You can delete up to 100 alarms in one operation.
+// However, this total can include no more than one composite alarm. For example,
+// you could delete 99 metric alarms and one composite alarms with one operation,
+// but you can't delete two composite alarms with one operation.
+//
 // In the event of an error, no alarms are deleted.
+//
+// It is possible to create a loop or cycle of composite alarms, where composite
+// alarm A depends on composite alarm B, and composite alarm B also depends
+// on composite alarm A. In this scenario, you can't delete any composite alarm
+// that is part of the cycle because there is always still a composite alarm
+// that depends on that alarm that you want to delete.
+//
+// To get out of such a situation, you must break the cycle by changing the
+// rule of one of the composite alarms in the cycle to remove a dependency that
+// creates the cycle. The simplest change to make to break a cycle is to change
+// the AlarmRule of one of the alarms to False.
+//
+// Additionally, the evaluation of composite alarms stops if CloudWatch detects
+// a cycle in the evaluation path.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -228,7 +246,7 @@ func (c *CloudWatch) DeleteDashboardsRequest(input *DeleteDashboardsInput) (req 
 
 // DeleteDashboards API operation for Amazon CloudWatch.
 //
-// Deletes all dashboards that you specify. You may specify up to 100 dashboards
+// Deletes all dashboards that you specify. You can specify up to 100 dashboards
 // to delete. If there is an error during this call, no dashboards are deleted.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -317,8 +335,7 @@ func (c *CloudWatch) DeleteInsightRulesRequest(input *DeleteInsightRulesInput) (
 // Permanently deletes the specified Contributor Insights rules.
 //
 // If you create a rule, delete it, and then re-create it with the same name,
-// historical data from the first time the rule was created may or may not be
-// available.
+// historical data from the first time the rule was created might not be available.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -351,6 +368,92 @@ func (c *CloudWatch) DeleteInsightRules(input *DeleteInsightRulesInput) (*Delete
 // for more information on using Contexts.
 func (c *CloudWatch) DeleteInsightRulesWithContext(ctx aws.Context, input *DeleteInsightRulesInput, opts ...request.Option) (*DeleteInsightRulesOutput, error) {
 	req, out := c.DeleteInsightRulesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeleteMetricStream = "DeleteMetricStream"
+
+// DeleteMetricStreamRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteMetricStream operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteMetricStream for more information on using the DeleteMetricStream
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteMetricStreamRequest method.
+//    req, resp := client.DeleteMetricStreamRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/DeleteMetricStream
+func (c *CloudWatch) DeleteMetricStreamRequest(input *DeleteMetricStreamInput) (req *request.Request, output *DeleteMetricStreamOutput) {
+	op := &request.Operation{
+		Name:       opDeleteMetricStream,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteMetricStreamInput{}
+	}
+
+	output = &DeleteMetricStreamOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// DeleteMetricStream API operation for Amazon CloudWatch.
+//
+// Permanently deletes the metric stream that you specify.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon CloudWatch's
+// API operation DeleteMetricStream for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInternalServiceFault "InternalServiceError"
+//   Request processing has failed due to some unknown error, exception, or failure.
+//
+//   * ErrCodeInvalidParameterValueException "InvalidParameterValue"
+//   The value of an input parameter is bad or out-of-range.
+//
+//   * ErrCodeMissingRequiredParameterException "MissingParameter"
+//   An input parameter that is required is missing.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/DeleteMetricStream
+func (c *CloudWatch) DeleteMetricStream(input *DeleteMetricStreamInput) (*DeleteMetricStreamOutput, error) {
+	req, out := c.DeleteMetricStreamRequest(input)
+	return out, req.Send()
+}
+
+// DeleteMetricStreamWithContext is the same as DeleteMetricStream with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteMetricStream for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CloudWatch) DeleteMetricStreamWithContext(ctx aws.Context, input *DeleteMetricStreamInput, opts ...request.Option) (*DeleteMetricStreamOutput, error) {
+	req, out := c.DeleteMetricStreamRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -408,7 +511,7 @@ func (c *CloudWatch) DescribeAlarmHistoryRequest(input *DescribeAlarmHistoryInpu
 //
 // Retrieves the history for the specified alarm. You can filter the results
 // by date range or item type. If an alarm name is not specified, the histories
-// for all alarms are returned.
+// for either all metric alarms or all composite alarms are returned.
 //
 // CloudWatch retains the history of an alarm even if you delete the alarm.
 //
@@ -547,9 +650,8 @@ func (c *CloudWatch) DescribeAlarmsRequest(input *DescribeAlarmsInput) (req *req
 
 // DescribeAlarms API operation for Amazon CloudWatch.
 //
-// Retrieves the specified alarms. If no alarms are specified, all alarms are
-// returned. Alarms can be retrieved by using only a prefix for the alarm name,
-// the alarm state, or a prefix for any action.
+// Retrieves the specified alarms. You can filter the results by specifying
+// a prefix for the alarm name, the alarm state, or a prefix for any action.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -682,6 +784,10 @@ func (c *CloudWatch) DescribeAlarmsForMetricRequest(input *DescribeAlarmsForMetr
 //
 // Retrieves the alarms for the specified metric. To filter the results, specify
 // a statistic, period, or unit.
+//
+// This operation retrieves only standard alarms that are based on the specified
+// metric. It does not return alarms based on math expressions that use the
+// specified metric, or composite alarms that use the specified metric.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -848,8 +954,7 @@ func (c *CloudWatch) DescribeInsightRulesRequest(input *DescribeInsightRulesInpu
 
 // DescribeInsightRules API operation for Amazon CloudWatch.
 //
-// Returns a list of all the Contributor Insights rules in your account. All
-// rules in your account are returned with a single operation.
+// Returns a list of all the Contributor Insights rules in your account.
 //
 // For more information about Contributor Insights, see Using Contributor Insights
 // to Analyze High-Cardinality Data (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContributorInsights.html).
@@ -1403,7 +1508,7 @@ func (c *CloudWatch) GetInsightRuleReportRequest(input *GetInsightRuleReportInpu
 //    point.
 //
 //    * MaxContributorValue -- the value of the top contributor for each data
-//    point. The identity of the contributor may change for each data point
+//    point. The identity of the contributor might change for each data point
 //    in the graph. If this rule aggregates by COUNT, the top contributor for
 //    each data point is the contributor with the most occurrences in that period.
 //    If the rule aggregates by SUM, the top contributor is the contributor
@@ -1513,7 +1618,7 @@ func (c *CloudWatch) GetMetricDataRequest(input *GetMetricDataInput) (req *reque
 
 // GetMetricData API operation for Amazon CloudWatch.
 //
-// You can use the GetMetricData API to retrieve as many as 100 different metrics
+// You can use the GetMetricData API to retrieve as many as 500 different metrics
 // in a single request, with a total of as many as 100,800 data points. You
 // can also optionally perform math expressions on the values of the returned
 // statistics, to create new time series that represent new insights into your
@@ -1552,9 +1657,9 @@ func (c *CloudWatch) GetMetricDataRequest(input *GetMetricDataInput) (req *reque
 // If you omit Unit in your request, all data that was collected with any unit
 // is returned, along with the corresponding units that were specified when
 // the data was reported to CloudWatch. If you specify a unit, the operation
-// returns only data data that was collected with that unit specified. If you
-// specify a unit that does not match the data collected, the results of the
-// operation are null. CloudWatch does not perform unit conversions.
+// returns only data that was collected with that unit specified. If you specify
+// a unit that does not match the data collected, the results of the operation
+// are null. CloudWatch does not perform unit conversions.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1777,6 +1882,97 @@ func (c *CloudWatch) GetMetricStatistics(input *GetMetricStatisticsInput) (*GetM
 // for more information on using Contexts.
 func (c *CloudWatch) GetMetricStatisticsWithContext(ctx aws.Context, input *GetMetricStatisticsInput, opts ...request.Option) (*GetMetricStatisticsOutput, error) {
 	req, out := c.GetMetricStatisticsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opGetMetricStream = "GetMetricStream"
+
+// GetMetricStreamRequest generates a "aws/request.Request" representing the
+// client's request for the GetMetricStream operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetMetricStream for more information on using the GetMetricStream
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetMetricStreamRequest method.
+//    req, resp := client.GetMetricStreamRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/GetMetricStream
+func (c *CloudWatch) GetMetricStreamRequest(input *GetMetricStreamInput) (req *request.Request, output *GetMetricStreamOutput) {
+	op := &request.Operation{
+		Name:       opGetMetricStream,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &GetMetricStreamInput{}
+	}
+
+	output = &GetMetricStreamOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetMetricStream API operation for Amazon CloudWatch.
+//
+// Returns information about the metric stream that you specify.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon CloudWatch's
+// API operation GetMetricStream for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeResourceNotFoundException "ResourceNotFoundException"
+//   The named resource does not exist.
+//
+//   * ErrCodeInternalServiceFault "InternalServiceError"
+//   Request processing has failed due to some unknown error, exception, or failure.
+//
+//   * ErrCodeInvalidParameterValueException "InvalidParameterValue"
+//   The value of an input parameter is bad or out-of-range.
+//
+//   * ErrCodeMissingRequiredParameterException "MissingParameter"
+//   An input parameter that is required is missing.
+//
+//   * ErrCodeInvalidParameterCombinationException "InvalidParameterCombination"
+//   Parameters were used together that cannot be used together.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/GetMetricStream
+func (c *CloudWatch) GetMetricStream(input *GetMetricStreamInput) (*GetMetricStreamOutput, error) {
+	req, out := c.GetMetricStreamRequest(input)
+	return out, req.Send()
+}
+
+// GetMetricStreamWithContext is the same as GetMetricStream with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetMetricStream for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CloudWatch) GetMetricStreamWithContext(ctx aws.Context, input *GetMetricStreamInput, opts ...request.Option) (*GetMetricStreamOutput, error) {
+	req, out := c.GetMetricStreamRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2016,6 +2212,152 @@ func (c *CloudWatch) ListDashboardsPagesWithContext(ctx aws.Context, input *List
 	return p.Err()
 }
 
+const opListMetricStreams = "ListMetricStreams"
+
+// ListMetricStreamsRequest generates a "aws/request.Request" representing the
+// client's request for the ListMetricStreams operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListMetricStreams for more information on using the ListMetricStreams
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListMetricStreamsRequest method.
+//    req, resp := client.ListMetricStreamsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/ListMetricStreams
+func (c *CloudWatch) ListMetricStreamsRequest(input *ListMetricStreamsInput) (req *request.Request, output *ListMetricStreamsOutput) {
+	op := &request.Operation{
+		Name:       opListMetricStreams,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxResults",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &ListMetricStreamsInput{}
+	}
+
+	output = &ListMetricStreamsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListMetricStreams API operation for Amazon CloudWatch.
+//
+// Returns a list of metric streams in this account.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon CloudWatch's
+// API operation ListMetricStreams for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInvalidNextToken "InvalidNextToken"
+//   The next token specified is invalid.
+//
+//   * ErrCodeInternalServiceFault "InternalServiceError"
+//   Request processing has failed due to some unknown error, exception, or failure.
+//
+//   * ErrCodeInvalidParameterValueException "InvalidParameterValue"
+//   The value of an input parameter is bad or out-of-range.
+//
+//   * ErrCodeMissingRequiredParameterException "MissingParameter"
+//   An input parameter that is required is missing.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/ListMetricStreams
+func (c *CloudWatch) ListMetricStreams(input *ListMetricStreamsInput) (*ListMetricStreamsOutput, error) {
+	req, out := c.ListMetricStreamsRequest(input)
+	return out, req.Send()
+}
+
+// ListMetricStreamsWithContext is the same as ListMetricStreams with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListMetricStreams for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CloudWatch) ListMetricStreamsWithContext(ctx aws.Context, input *ListMetricStreamsInput, opts ...request.Option) (*ListMetricStreamsOutput, error) {
+	req, out := c.ListMetricStreamsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// ListMetricStreamsPages iterates over the pages of a ListMetricStreams operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListMetricStreams method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListMetricStreams operation.
+//    pageNum := 0
+//    err := client.ListMetricStreamsPages(params,
+//        func(page *cloudwatch.ListMetricStreamsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *CloudWatch) ListMetricStreamsPages(input *ListMetricStreamsInput, fn func(*ListMetricStreamsOutput, bool) bool) error {
+	return c.ListMetricStreamsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListMetricStreamsPagesWithContext same as ListMetricStreamsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CloudWatch) ListMetricStreamsPagesWithContext(ctx aws.Context, input *ListMetricStreamsInput, fn func(*ListMetricStreamsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListMetricStreamsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListMetricStreamsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*ListMetricStreamsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opListMetrics = "ListMetrics"
 
 // ListMetricsRequest generates a "aws/request.Request" representing the
@@ -2067,14 +2409,21 @@ func (c *CloudWatch) ListMetricsRequest(input *ListMetricsInput) (req *request.R
 // ListMetrics API operation for Amazon CloudWatch.
 //
 // List the specified metrics. You can use the returned metrics with GetMetricData
-// or GetMetricStatistics to obtain statistical data.
+// (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
+// or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html)
+// to obtain statistical data.
 //
 // Up to 500 results are returned for any one call. To retrieve additional results,
 // use the returned token with subsequent calls.
 //
-// After you create a metric, allow up to fifteen minutes before the metric
-// appears. Statistics about the metric, however, are available sooner using
-// GetMetricData or GetMetricStatistics.
+// After you create a metric, allow up to 15 minutes before the metric appears.
+// You can see statistics about the metric sooner by using GetMetricData (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
+// or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html).
+//
+// ListMetrics doesn't return information about metrics if those metrics haven't
+// reported data in the past two weeks. To retrieve those metrics, use GetMetricData
+// (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
+// or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2208,7 +2557,8 @@ func (c *CloudWatch) ListTagsForResourceRequest(input *ListTagsForResourceInput)
 
 // ListTagsForResource API operation for Amazon CloudWatch.
 //
-// Displays the tags associated with a CloudWatch resource. Alarms support tagging.
+// Displays the tags associated with a CloudWatch resource. Currently, alarms
+// and Contributor Insights rules support tagging.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2336,6 +2686,127 @@ func (c *CloudWatch) PutAnomalyDetector(input *PutAnomalyDetectorInput) (*PutAno
 // for more information on using Contexts.
 func (c *CloudWatch) PutAnomalyDetectorWithContext(ctx aws.Context, input *PutAnomalyDetectorInput, opts ...request.Option) (*PutAnomalyDetectorOutput, error) {
 	req, out := c.PutAnomalyDetectorRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opPutCompositeAlarm = "PutCompositeAlarm"
+
+// PutCompositeAlarmRequest generates a "aws/request.Request" representing the
+// client's request for the PutCompositeAlarm operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See PutCompositeAlarm for more information on using the PutCompositeAlarm
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the PutCompositeAlarmRequest method.
+//    req, resp := client.PutCompositeAlarmRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/PutCompositeAlarm
+func (c *CloudWatch) PutCompositeAlarmRequest(input *PutCompositeAlarmInput) (req *request.Request, output *PutCompositeAlarmOutput) {
+	op := &request.Operation{
+		Name:       opPutCompositeAlarm,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &PutCompositeAlarmInput{}
+	}
+
+	output = &PutCompositeAlarmOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// PutCompositeAlarm API operation for Amazon CloudWatch.
+//
+// Creates or updates a composite alarm. When you create a composite alarm,
+// you specify a rule expression for the alarm that takes into account the alarm
+// states of other alarms that you have created. The composite alarm goes into
+// ALARM state only if all conditions of the rule are met.
+//
+// The alarms specified in a composite alarm's rule expression can include metric
+// alarms and other composite alarms.
+//
+// Using composite alarms can reduce alarm noise. You can create multiple metric
+// alarms, and also create a composite alarm and set up alerts only for the
+// composite alarm. For example, you could create a composite alarm that goes
+// into ALARM state only when more than one of the underlying metric alarms
+// are in ALARM state.
+//
+// Currently, the only alarm actions that can be taken by composite alarms are
+// notifying SNS topics.
+//
+// It is possible to create a loop or cycle of composite alarms, where composite
+// alarm A depends on composite alarm B, and composite alarm B also depends
+// on composite alarm A. In this scenario, you can't delete any composite alarm
+// that is part of the cycle because there is always still a composite alarm
+// that depends on that alarm that you want to delete.
+//
+// To get out of such a situation, you must break the cycle by changing the
+// rule of one of the composite alarms in the cycle to remove a dependency that
+// creates the cycle. The simplest change to make to break a cycle is to change
+// the AlarmRule of one of the alarms to False.
+//
+// Additionally, the evaluation of composite alarms stops if CloudWatch detects
+// a cycle in the evaluation path.
+//
+// When this operation creates an alarm, the alarm state is immediately set
+// to INSUFFICIENT_DATA. The alarm is then evaluated and its state is set appropriately.
+// Any actions associated with the new state are then executed. For a composite
+// alarm, this initial time after creation is the only time that the alarm can
+// be in INSUFFICIENT_DATA state.
+//
+// When you update an existing alarm, its state is left unchanged, but the update
+// completely overwrites the previous configuration of the alarm.
+//
+// If you are an IAM user, you must have iam:CreateServiceLinkedRole to create
+// a composite alarm that has Systems Manager OpsItem actions.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon CloudWatch's
+// API operation PutCompositeAlarm for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeLimitExceededFault "LimitExceeded"
+//   The quota for alarms for this customer has already been reached.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/PutCompositeAlarm
+func (c *CloudWatch) PutCompositeAlarm(input *PutCompositeAlarmInput) (*PutCompositeAlarmOutput, error) {
+	req, out := c.PutCompositeAlarmRequest(input)
+	return out, req.Send()
+}
+
+// PutCompositeAlarmWithContext is the same as PutCompositeAlarm with the addition of
+// the ability to pass a context and additional request options.
+//
+// See PutCompositeAlarm for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CloudWatch) PutCompositeAlarmWithContext(ctx aws.Context, input *PutCompositeAlarmInput, opts ...request.Option) (*PutCompositeAlarmOutput, error) {
+	req, out := c.PutCompositeAlarmRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2491,8 +2962,7 @@ func (c *CloudWatch) PutInsightRuleRequest(input *PutInsightRuleInput) (req *req
 // Analyze High-Cardinality Data (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContributorInsights.html).
 //
 // If you create a rule, delete it, and then re-create it with the same name,
-// historical data from the first time the rule was created may or may not be
-// available.
+// historical data from the first time the rule was created might not be available.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2593,34 +3063,16 @@ func (c *CloudWatch) PutMetricAlarmRequest(input *PutMetricAlarmInput) (req *req
 // If you are an IAM user, you must have Amazon EC2 permissions for some alarm
 // operations:
 //
-//    * iam:CreateServiceLinkedRole for all alarms with EC2 actions
+//    * The iam:CreateServiceLinkedRole for all alarms with EC2 actions
 //
-//    * ec2:DescribeInstanceStatus and ec2:DescribeInstances for all alarms
-//    on EC2 instance status metrics
-//
-//    * ec2:StopInstances for alarms with stop actions
-//
-//    * ec2:TerminateInstances for alarms with terminate actions
-//
-//    * No specific permissions are needed for alarms with recover actions
-//
-// If you have read/write permissions for Amazon CloudWatch but not for Amazon
-// EC2, you can still create an alarm, but the stop or terminate actions are
-// not performed. However, if you are later granted the required permissions,
-// the alarm actions that you created earlier are performed.
-//
-// If you are using an IAM role (for example, an EC2 instance profile), you
-// cannot stop or terminate the instance using alarm actions. However, you can
-// still see the alarm state and perform any other actions such as Amazon SNS
-// notifications or Auto Scaling policies.
-//
-// If you are using temporary security credentials granted using AWS STS, you
-// cannot stop or terminate an EC2 instance using alarm actions.
+//    * The iam:CreateServiceLinkedRole to create an alarm with Systems Manager
+//    OpsItem actions.
 //
 // The first time you create an alarm in the AWS Management Console, the CLI,
 // or by using the PutMetricAlarm API, CloudWatch creates the necessary service-linked
-// role for you. The service-linked role is called AWSServiceRoleForCloudWatchEvents.
-// For more information, see AWS service-linked role (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html#iam-term-service-linked-role).
+// role for you. The service-linked roles are called AWSServiceRoleForCloudWatchEvents
+// and AWSServiceRoleForCloudWatchAlarms_ActionSSM. For more information, see
+// AWS service-linked role (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html#iam-term-service-linked-role).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2703,7 +3155,8 @@ func (c *CloudWatch) PutMetricDataRequest(input *PutMetricDataInput) (req *reque
 // Publishes metric data points to Amazon CloudWatch. CloudWatch associates
 // the data points with the specified metric. If the specified metric does not
 // exist, CloudWatch creates the metric. When CloudWatch creates a metric, it
-// can take up to fifteen minutes for the metric to appear in calls to ListMetrics.
+// can take up to fifteen minutes for the metric to appear in calls to ListMetrics
+// (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_ListMetrics.html).
 //
 // You can publish either individual data points in the Value field, or arrays
 // of values and the number of times each value occurred during the period by
@@ -2726,9 +3179,17 @@ func (c *CloudWatch) PutMetricDataRequest(input *PutMetricDataInput) (req *reque
 // information about specifying dimensions, see Publishing Metrics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/publishingMetrics.html)
 // in the Amazon CloudWatch User Guide.
 //
+// You specify the time stamp to be associated with each data point. You can
+// specify time stamps that are as much as two weeks before the current date,
+// and as much as 2 hours after the current day and time.
+//
 // Data points with time stamps from 24 hours ago or longer can take at least
-// 48 hours to become available for GetMetricData or GetMetricStatistics from
-// the time they are submitted.
+// 48 hours to become available for GetMetricData (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
+// or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html)
+// from the time they are submitted. Data points with time stamps between 3
+// and 24 hours ago can take as much as 2 hours to become available for for
+// GetMetricData (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricData.html)
+// or GetMetricStatistics (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetMetricStatistics.html).
 //
 // CloudWatch needs raw data points to calculate percentile statistics. If you
 // publish data using a statistic set instead, you can only retrieve percentile
@@ -2776,6 +3237,118 @@ func (c *CloudWatch) PutMetricData(input *PutMetricDataInput) (*PutMetricDataOut
 // for more information on using Contexts.
 func (c *CloudWatch) PutMetricDataWithContext(ctx aws.Context, input *PutMetricDataInput, opts ...request.Option) (*PutMetricDataOutput, error) {
 	req, out := c.PutMetricDataRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opPutMetricStream = "PutMetricStream"
+
+// PutMetricStreamRequest generates a "aws/request.Request" representing the
+// client's request for the PutMetricStream operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See PutMetricStream for more information on using the PutMetricStream
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the PutMetricStreamRequest method.
+//    req, resp := client.PutMetricStreamRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/PutMetricStream
+func (c *CloudWatch) PutMetricStreamRequest(input *PutMetricStreamInput) (req *request.Request, output *PutMetricStreamOutput) {
+	op := &request.Operation{
+		Name:       opPutMetricStream,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &PutMetricStreamInput{}
+	}
+
+	output = &PutMetricStreamOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// PutMetricStream API operation for Amazon CloudWatch.
+//
+// Creates or updates a metric stream. Metric streams can automatically stream
+// CloudWatch metrics to AWS destinations including Amazon S3 and to many third-party
+// solutions.
+//
+// For more information, see Using Metric Streams (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Metric-Streams.html).
+//
+// To create a metric stream, you must be logged on to an account that has the
+// iam:PassRole permission and either the CloudWatchFullAccess policy or the
+// cloudwatch:PutMetricStream permission.
+//
+// When you create or update a metric stream, you choose one of the following:
+//
+//    * Stream metrics from all metric namespaces in the account.
+//
+//    * Stream metrics from all metric namespaces in the account, except for
+//    the namespaces that you list in ExcludeFilters.
+//
+//    * Stream metrics from only the metric namespaces that you list in IncludeFilters.
+//
+// When you use PutMetricStream to create a new metric stream, the stream is
+// created in the running state. If you use it to update an existing stream,
+// the state of the stream is not changed.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon CloudWatch's
+// API operation PutMetricStream for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeConcurrentModificationException "ConcurrentModificationException"
+//   More than one process tried to modify a resource at the same time.
+//
+//   * ErrCodeInternalServiceFault "InternalServiceError"
+//   Request processing has failed due to some unknown error, exception, or failure.
+//
+//   * ErrCodeInvalidParameterValueException "InvalidParameterValue"
+//   The value of an input parameter is bad or out-of-range.
+//
+//   * ErrCodeMissingRequiredParameterException "MissingParameter"
+//   An input parameter that is required is missing.
+//
+//   * ErrCodeInvalidParameterCombinationException "InvalidParameterCombination"
+//   Parameters were used together that cannot be used together.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/PutMetricStream
+func (c *CloudWatch) PutMetricStream(input *PutMetricStreamInput) (*PutMetricStreamOutput, error) {
+	req, out := c.PutMetricStreamRequest(input)
+	return out, req.Send()
+}
+
+// PutMetricStreamWithContext is the same as PutMetricStream with the addition of
+// the ability to pass a context and additional request options.
+//
+// See PutMetricStream for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CloudWatch) PutMetricStreamWithContext(ctx aws.Context, input *PutMetricStreamInput, opts ...request.Option) (*PutMetricStreamOutput, error) {
+	req, out := c.PutMetricStreamRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2830,10 +3403,21 @@ func (c *CloudWatch) SetAlarmStateRequest(input *SetAlarmStateInput) (req *reque
 // state differs from the previous value, the action configured for the appropriate
 // state is invoked. For example, if your alarm is configured to send an Amazon
 // SNS message when an alarm is triggered, temporarily changing the alarm state
-// to ALARM sends an SNS message. The alarm returns to its actual state (often
-// within seconds). Because the alarm state change happens quickly, it is typically
-// only visible in the alarm's History tab in the Amazon CloudWatch console
-// or through DescribeAlarmHistory.
+// to ALARM sends an SNS message.
+//
+// Metric alarms returns to their actual state quickly, often within seconds.
+// Because the metric alarm state change happens quickly, it is typically only
+// visible in the alarm's History tab in the Amazon CloudWatch console or through
+// DescribeAlarmHistory (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeAlarmHistory.html).
+//
+// If you use SetAlarmState on a composite alarm, the composite alarm is not
+// guaranteed to return to its actual state. It returns to its actual state
+// only once any of its children alarms change state. It is also reevaluated
+// if you update its configuration.
+//
+// If an alarm triggers EC2 Auto Scaling policies or application Auto Scaling
+// policies, you must include information in the StateReasonData parameter to
+// enable the policy to take the correct action.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2866,6 +3450,178 @@ func (c *CloudWatch) SetAlarmState(input *SetAlarmStateInput) (*SetAlarmStateOut
 // for more information on using Contexts.
 func (c *CloudWatch) SetAlarmStateWithContext(ctx aws.Context, input *SetAlarmStateInput, opts ...request.Option) (*SetAlarmStateOutput, error) {
 	req, out := c.SetAlarmStateRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStartMetricStreams = "StartMetricStreams"
+
+// StartMetricStreamsRequest generates a "aws/request.Request" representing the
+// client's request for the StartMetricStreams operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StartMetricStreams for more information on using the StartMetricStreams
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StartMetricStreamsRequest method.
+//    req, resp := client.StartMetricStreamsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/StartMetricStreams
+func (c *CloudWatch) StartMetricStreamsRequest(input *StartMetricStreamsInput) (req *request.Request, output *StartMetricStreamsOutput) {
+	op := &request.Operation{
+		Name:       opStartMetricStreams,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StartMetricStreamsInput{}
+	}
+
+	output = &StartMetricStreamsOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// StartMetricStreams API operation for Amazon CloudWatch.
+//
+// Starts the streaming of metrics for one or more of your metric streams.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon CloudWatch's
+// API operation StartMetricStreams for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInternalServiceFault "InternalServiceError"
+//   Request processing has failed due to some unknown error, exception, or failure.
+//
+//   * ErrCodeInvalidParameterValueException "InvalidParameterValue"
+//   The value of an input parameter is bad or out-of-range.
+//
+//   * ErrCodeMissingRequiredParameterException "MissingParameter"
+//   An input parameter that is required is missing.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/StartMetricStreams
+func (c *CloudWatch) StartMetricStreams(input *StartMetricStreamsInput) (*StartMetricStreamsOutput, error) {
+	req, out := c.StartMetricStreamsRequest(input)
+	return out, req.Send()
+}
+
+// StartMetricStreamsWithContext is the same as StartMetricStreams with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StartMetricStreams for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CloudWatch) StartMetricStreamsWithContext(ctx aws.Context, input *StartMetricStreamsInput, opts ...request.Option) (*StartMetricStreamsOutput, error) {
+	req, out := c.StartMetricStreamsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opStopMetricStreams = "StopMetricStreams"
+
+// StopMetricStreamsRequest generates a "aws/request.Request" representing the
+// client's request for the StopMetricStreams operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StopMetricStreams for more information on using the StopMetricStreams
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StopMetricStreamsRequest method.
+//    req, resp := client.StopMetricStreamsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/StopMetricStreams
+func (c *CloudWatch) StopMetricStreamsRequest(input *StopMetricStreamsInput) (req *request.Request, output *StopMetricStreamsOutput) {
+	op := &request.Operation{
+		Name:       opStopMetricStreams,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StopMetricStreamsInput{}
+	}
+
+	output = &StopMetricStreamsOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// StopMetricStreams API operation for Amazon CloudWatch.
+//
+// Stops the streaming of metrics for one or more of your metric streams.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon CloudWatch's
+// API operation StopMetricStreams for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInternalServiceFault "InternalServiceError"
+//   Request processing has failed due to some unknown error, exception, or failure.
+//
+//   * ErrCodeInvalidParameterValueException "InvalidParameterValue"
+//   The value of an input parameter is bad or out-of-range.
+//
+//   * ErrCodeMissingRequiredParameterException "MissingParameter"
+//   An input parameter that is required is missing.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/monitoring-2010-08-01/StopMetricStreams
+func (c *CloudWatch) StopMetricStreams(input *StopMetricStreamsInput) (*StopMetricStreamsOutput, error) {
+	req, out := c.StopMetricStreamsRequest(input)
+	return out, req.Send()
+}
+
+// StopMetricStreamsWithContext is the same as StopMetricStreams with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StopMetricStreams for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CloudWatch) StopMetricStreamsWithContext(ctx aws.Context, input *StopMetricStreamsInput, opts ...request.Option) (*StopMetricStreamsOutput, error) {
+	req, out := c.StopMetricStreamsRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -2917,10 +3673,11 @@ func (c *CloudWatch) TagResourceRequest(input *TagResourceInput) (req *request.R
 // TagResource API operation for Amazon CloudWatch.
 //
 // Assigns one or more tags (key-value pairs) to the specified CloudWatch resource.
-// Currently, the only CloudWatch resources that can be tagged are alarms.
+// Currently, the only CloudWatch resources that can be tagged are alarms and
+// Contributor Insights rules.
 //
 // Tags can help you organize and categorize your resources. You can also use
-// them to scope user permissions, by granting a user permission to access or
+// them to scope user permissions by granting a user permission to access or
 // change only resources with certain tag values.
 //
 // Tags don't have any semantic meaning to AWS and are interpreted strictly
@@ -2932,7 +3689,7 @@ func (c *CloudWatch) TagResourceRequest(input *TagResourceInput) (req *request.R
 // associated with the alarm, the new tag value that you specify replaces the
 // previous value for that tag.
 //
-// You can associate as many as 50 tags with a resource.
+// You can associate as many as 50 tags with a CloudWatch resource.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -3072,6 +3829,9 @@ type AlarmHistoryItem struct {
 	// The descriptive name for the alarm.
 	AlarmName *string `min:"1" type:"string"`
 
+	// The type of alarm, either metric alarm or composite alarm.
+	AlarmType *string `type:"string" enum:"AlarmType"`
+
 	// Data about the alarm, in JSON format.
 	HistoryData *string `min:"1" type:"string"`
 
@@ -3098,6 +3858,12 @@ func (s AlarmHistoryItem) GoString() string {
 // SetAlarmName sets the AlarmName field's value.
 func (s *AlarmHistoryItem) SetAlarmName(v string) *AlarmHistoryItem {
 	s.AlarmName = &v
+	return s
+}
+
+// SetAlarmType sets the AlarmType field's value.
+func (s *AlarmHistoryItem) SetAlarmType(v string) *AlarmHistoryItem {
+	s.AlarmType = &v
 	return s
 }
 
@@ -3259,6 +4025,143 @@ func (s *AnomalyDetectorConfiguration) SetExcludedTimeRanges(v []*Range) *Anomal
 // SetMetricTimezone sets the MetricTimezone field's value.
 func (s *AnomalyDetectorConfiguration) SetMetricTimezone(v string) *AnomalyDetectorConfiguration {
 	s.MetricTimezone = &v
+	return s
+}
+
+// The details about a composite alarm.
+type CompositeAlarm struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether actions should be executed during any changes to the alarm
+	// state.
+	ActionsEnabled *bool `type:"boolean"`
+
+	// The actions to execute when this alarm transitions to the ALARM state from
+	// any other state. Each action is specified as an Amazon Resource Name (ARN).
+	AlarmActions []*string `type:"list"`
+
+	// The Amazon Resource Name (ARN) of the alarm.
+	AlarmArn *string `min:"1" type:"string"`
+
+	// The time stamp of the last update to the alarm configuration.
+	AlarmConfigurationUpdatedTimestamp *time.Time `type:"timestamp"`
+
+	// The description of the alarm.
+	AlarmDescription *string `type:"string"`
+
+	// The name of the alarm.
+	AlarmName *string `min:"1" type:"string"`
+
+	// The rule that this alarm uses to evaluate its alarm state.
+	AlarmRule *string `min:"1" type:"string"`
+
+	// The actions to execute when this alarm transitions to the INSUFFICIENT_DATA
+	// state from any other state. Each action is specified as an Amazon Resource
+	// Name (ARN).
+	InsufficientDataActions []*string `type:"list"`
+
+	// The actions to execute when this alarm transitions to the OK state from any
+	// other state. Each action is specified as an Amazon Resource Name (ARN).
+	OKActions []*string `type:"list"`
+
+	// An explanation for the alarm state, in text format.
+	StateReason *string `type:"string"`
+
+	// An explanation for the alarm state, in JSON format.
+	StateReasonData *string `type:"string"`
+
+	// The time stamp of the last update to the alarm state.
+	StateUpdatedTimestamp *time.Time `type:"timestamp"`
+
+	// The state value for the alarm.
+	StateValue *string `type:"string" enum:"StateValue"`
+}
+
+// String returns the string representation
+func (s CompositeAlarm) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CompositeAlarm) GoString() string {
+	return s.String()
+}
+
+// SetActionsEnabled sets the ActionsEnabled field's value.
+func (s *CompositeAlarm) SetActionsEnabled(v bool) *CompositeAlarm {
+	s.ActionsEnabled = &v
+	return s
+}
+
+// SetAlarmActions sets the AlarmActions field's value.
+func (s *CompositeAlarm) SetAlarmActions(v []*string) *CompositeAlarm {
+	s.AlarmActions = v
+	return s
+}
+
+// SetAlarmArn sets the AlarmArn field's value.
+func (s *CompositeAlarm) SetAlarmArn(v string) *CompositeAlarm {
+	s.AlarmArn = &v
+	return s
+}
+
+// SetAlarmConfigurationUpdatedTimestamp sets the AlarmConfigurationUpdatedTimestamp field's value.
+func (s *CompositeAlarm) SetAlarmConfigurationUpdatedTimestamp(v time.Time) *CompositeAlarm {
+	s.AlarmConfigurationUpdatedTimestamp = &v
+	return s
+}
+
+// SetAlarmDescription sets the AlarmDescription field's value.
+func (s *CompositeAlarm) SetAlarmDescription(v string) *CompositeAlarm {
+	s.AlarmDescription = &v
+	return s
+}
+
+// SetAlarmName sets the AlarmName field's value.
+func (s *CompositeAlarm) SetAlarmName(v string) *CompositeAlarm {
+	s.AlarmName = &v
+	return s
+}
+
+// SetAlarmRule sets the AlarmRule field's value.
+func (s *CompositeAlarm) SetAlarmRule(v string) *CompositeAlarm {
+	s.AlarmRule = &v
+	return s
+}
+
+// SetInsufficientDataActions sets the InsufficientDataActions field's value.
+func (s *CompositeAlarm) SetInsufficientDataActions(v []*string) *CompositeAlarm {
+	s.InsufficientDataActions = v
+	return s
+}
+
+// SetOKActions sets the OKActions field's value.
+func (s *CompositeAlarm) SetOKActions(v []*string) *CompositeAlarm {
+	s.OKActions = v
+	return s
+}
+
+// SetStateReason sets the StateReason field's value.
+func (s *CompositeAlarm) SetStateReason(v string) *CompositeAlarm {
+	s.StateReason = &v
+	return s
+}
+
+// SetStateReasonData sets the StateReasonData field's value.
+func (s *CompositeAlarm) SetStateReasonData(v string) *CompositeAlarm {
+	s.StateReasonData = &v
+	return s
+}
+
+// SetStateUpdatedTimestamp sets the StateUpdatedTimestamp field's value.
+func (s *CompositeAlarm) SetStateUpdatedTimestamp(v time.Time) *CompositeAlarm {
+	s.StateUpdatedTimestamp = &v
+	return s
+}
+
+// SetStateValue sets the StateValue field's value.
+func (s *CompositeAlarm) SetStateValue(v string) *CompositeAlarm {
+	s.StateValue = &v
 	return s
 }
 
@@ -3649,7 +4552,7 @@ type DeleteInsightRulesInput struct {
 	_ struct{} `type:"structure"`
 
 	// An array of the rule names to delete. If you need to find out the names of
-	// your rules, use DescribeInsightRules.
+	// your rules, use DescribeInsightRules (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeInsightRules.html).
 	//
 	// RuleNames is a required field
 	RuleNames []*string `type:"list" required:"true"`
@@ -3708,11 +4611,71 @@ func (s *DeleteInsightRulesOutput) SetFailures(v []*PartialFailure) *DeleteInsig
 	return s
 }
 
+type DeleteMetricStreamInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the metric stream to delete.
+	//
+	// Name is a required field
+	Name *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteMetricStreamInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteMetricStreamInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteMetricStreamInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteMetricStreamInput"}
+	if s.Name == nil {
+		invalidParams.Add(request.NewErrParamRequired("Name"))
+	}
+	if s.Name != nil && len(*s.Name) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetName sets the Name field's value.
+func (s *DeleteMetricStreamInput) SetName(v string) *DeleteMetricStreamInput {
+	s.Name = &v
+	return s
+}
+
+type DeleteMetricStreamOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteMetricStreamOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteMetricStreamOutput) GoString() string {
+	return s.String()
+}
+
 type DescribeAlarmHistoryInput struct {
 	_ struct{} `type:"structure"`
 
 	// The name of the alarm.
 	AlarmName *string `min:"1" type:"string"`
+
+	// Use this parameter to specify whether you want the operation to return metric
+	// alarms or composite alarms. If you omit this parameter, only metric alarms
+	// are returned.
+	AlarmTypes []*string `type:"list"`
 
 	// The ending date to retrieve alarm history.
 	EndDate *time.Time `type:"timestamp"`
@@ -3726,6 +4689,11 @@ type DescribeAlarmHistoryInput struct {
 	// The token returned by a previous call to indicate that there is more data
 	// available.
 	NextToken *string `type:"string"`
+
+	// Specified whether to return the newest or oldest alarm history first. Specify
+	// TimestampDescending to have the newest event history returned first, and
+	// specify TimestampAscending to have the oldest history returned first.
+	ScanBy *string `type:"string" enum:"ScanBy"`
 
 	// The starting date to retrieve alarm history.
 	StartDate *time.Time `type:"timestamp"`
@@ -3763,6 +4731,12 @@ func (s *DescribeAlarmHistoryInput) SetAlarmName(v string) *DescribeAlarmHistory
 	return s
 }
 
+// SetAlarmTypes sets the AlarmTypes field's value.
+func (s *DescribeAlarmHistoryInput) SetAlarmTypes(v []*string) *DescribeAlarmHistoryInput {
+	s.AlarmTypes = v
+	return s
+}
+
 // SetEndDate sets the EndDate field's value.
 func (s *DescribeAlarmHistoryInput) SetEndDate(v time.Time) *DescribeAlarmHistoryInput {
 	s.EndDate = &v
@@ -3784,6 +4758,12 @@ func (s *DescribeAlarmHistoryInput) SetMaxRecords(v int64) *DescribeAlarmHistory
 // SetNextToken sets the NextToken field's value.
 func (s *DescribeAlarmHistoryInput) SetNextToken(v string) *DescribeAlarmHistoryInput {
 	s.NextToken = &v
+	return s
+}
+
+// SetScanBy sets the ScanBy field's value.
+func (s *DescribeAlarmHistoryInput) SetScanBy(v string) *DescribeAlarmHistoryInput {
+	s.ScanBy = &v
 	return s
 }
 
@@ -3970,15 +4950,41 @@ func (s *DescribeAlarmsForMetricOutput) SetMetricAlarms(v []*MetricAlarm) *Descr
 type DescribeAlarmsInput struct {
 	_ struct{} `type:"structure"`
 
-	// The action name prefix.
+	// Use this parameter to filter the results of the operation to only those alarms
+	// that use a certain alarm action. For example, you could specify the ARN of
+	// an SNS topic to find all alarms that send notifications to that topic.
 	ActionPrefix *string `min:"1" type:"string"`
 
-	// The alarm name prefix. If this parameter is specified, you cannot specify
-	// AlarmNames.
+	// An alarm name prefix. If you specify this parameter, you receive information
+	// about all alarms that have names that start with this prefix.
+	//
+	// If this parameter is specified, you cannot specify AlarmNames.
 	AlarmNamePrefix *string `min:"1" type:"string"`
 
-	// The names of the alarms.
+	// The names of the alarms to retrieve information about.
 	AlarmNames []*string `type:"list"`
+
+	// Use this parameter to specify whether you want the operation to return metric
+	// alarms or composite alarms. If you omit this parameter, only metric alarms
+	// are returned.
+	AlarmTypes []*string `type:"list"`
+
+	// If you use this parameter and specify the name of a composite alarm, the
+	// operation returns information about the "children" alarms of the alarm you
+	// specify. These are the metric alarms and composite alarms referenced in the
+	// AlarmRule field of the composite alarm that you specify in ChildrenOfAlarmName.
+	// Information about the composite alarm that you name in ChildrenOfAlarmName
+	// is not returned.
+	//
+	// If you specify ChildrenOfAlarmName, you cannot specify any other parameters
+	// in the request except for MaxRecords and NextToken. If you do so, you receive
+	// a validation error.
+	//
+	// Only the Alarm Name, ARN, StateValue (OK/ALARM/INSUFFICIENT_DATA), and StateUpdatedTimestamp
+	// information are returned by this operation when you use this parameter. To
+	// get complete information about these alarms, perform another DescribeAlarms
+	// operation and specify the parent alarm names in the AlarmNames parameter.
+	ChildrenOfAlarmName *string `min:"1" type:"string"`
 
 	// The maximum number of alarm descriptions to retrieve.
 	MaxRecords *int64 `min:"1" type:"integer"`
@@ -3987,7 +4993,24 @@ type DescribeAlarmsInput struct {
 	// available.
 	NextToken *string `type:"string"`
 
-	// The state value to be used in matching alarms.
+	// If you use this parameter and specify the name of a metric or composite alarm,
+	// the operation returns information about the "parent" alarms of the alarm
+	// you specify. These are the composite alarms that have AlarmRule parameters
+	// that reference the alarm named in ParentsOfAlarmName. Information about the
+	// alarm that you specify in ParentsOfAlarmName is not returned.
+	//
+	// If you specify ParentsOfAlarmName, you cannot specify any other parameters
+	// in the request except for MaxRecords and NextToken. If you do so, you receive
+	// a validation error.
+	//
+	// Only the Alarm Name and ARN are returned by this operation when you use this
+	// parameter. To get complete information about these alarms, perform another
+	// DescribeAlarms operation and specify the parent alarm names in the AlarmNames
+	// parameter.
+	ParentsOfAlarmName *string `min:"1" type:"string"`
+
+	// Specify this parameter to receive information only about alarms that are
+	// currently in the state that you specify.
 	StateValue *string `type:"string" enum:"StateValue"`
 }
 
@@ -4010,8 +5033,14 @@ func (s *DescribeAlarmsInput) Validate() error {
 	if s.AlarmNamePrefix != nil && len(*s.AlarmNamePrefix) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("AlarmNamePrefix", 1))
 	}
+	if s.ChildrenOfAlarmName != nil && len(*s.ChildrenOfAlarmName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ChildrenOfAlarmName", 1))
+	}
 	if s.MaxRecords != nil && *s.MaxRecords < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxRecords", 1))
+	}
+	if s.ParentsOfAlarmName != nil && len(*s.ParentsOfAlarmName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ParentsOfAlarmName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4038,6 +5067,18 @@ func (s *DescribeAlarmsInput) SetAlarmNames(v []*string) *DescribeAlarmsInput {
 	return s
 }
 
+// SetAlarmTypes sets the AlarmTypes field's value.
+func (s *DescribeAlarmsInput) SetAlarmTypes(v []*string) *DescribeAlarmsInput {
+	s.AlarmTypes = v
+	return s
+}
+
+// SetChildrenOfAlarmName sets the ChildrenOfAlarmName field's value.
+func (s *DescribeAlarmsInput) SetChildrenOfAlarmName(v string) *DescribeAlarmsInput {
+	s.ChildrenOfAlarmName = &v
+	return s
+}
+
 // SetMaxRecords sets the MaxRecords field's value.
 func (s *DescribeAlarmsInput) SetMaxRecords(v int64) *DescribeAlarmsInput {
 	s.MaxRecords = &v
@@ -4050,6 +5091,12 @@ func (s *DescribeAlarmsInput) SetNextToken(v string) *DescribeAlarmsInput {
 	return s
 }
 
+// SetParentsOfAlarmName sets the ParentsOfAlarmName field's value.
+func (s *DescribeAlarmsInput) SetParentsOfAlarmName(v string) *DescribeAlarmsInput {
+	s.ParentsOfAlarmName = &v
+	return s
+}
+
 // SetStateValue sets the StateValue field's value.
 func (s *DescribeAlarmsInput) SetStateValue(v string) *DescribeAlarmsInput {
 	s.StateValue = &v
@@ -4059,7 +5106,10 @@ func (s *DescribeAlarmsInput) SetStateValue(v string) *DescribeAlarmsInput {
 type DescribeAlarmsOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The information for the specified alarms.
+	// The information about any composite alarms returned by the operation.
+	CompositeAlarms []*CompositeAlarm `type:"list"`
+
+	// The information about any metric alarms returned by the operation.
 	MetricAlarms []*MetricAlarm `type:"list"`
 
 	// The token that marks the start of the next batch of returned results.
@@ -4074,6 +5124,12 @@ func (s DescribeAlarmsOutput) String() string {
 // GoString returns the string representation
 func (s DescribeAlarmsOutput) GoString() string {
 	return s.String()
+}
+
+// SetCompositeAlarms sets the CompositeAlarms field's value.
+func (s *DescribeAlarmsOutput) SetCompositeAlarms(v []*CompositeAlarm) *DescribeAlarmsOutput {
+	s.CompositeAlarms = v
+	return s
 }
 
 // SetMetricAlarms sets the MetricAlarms field's value.
@@ -4098,7 +5154,7 @@ type DescribeAnomalyDetectorsInput struct {
 	Dimensions []*Dimension `type:"list"`
 
 	// The maximum number of results to return in one operation. The maximum value
-	// you can specify is 10.
+	// that you can specify is 100.
 	//
 	// To retrieve the remaining results, make another call with the returned NextToken
 	// value.
@@ -4223,11 +5279,12 @@ func (s *DescribeAnomalyDetectorsOutput) SetNextToken(v string) *DescribeAnomaly
 type DescribeInsightRulesInput struct {
 	_ struct{} `type:"structure"`
 
-	// This parameter is not currently used. Reserved for future use. If it is used
-	// in the future, the maximum value may be different.
+	// The maximum number of results to return in one operation. If you omit this
+	// parameter, the default of 500 is used.
 	MaxResults *int64 `min:"1" type:"integer"`
 
-	// Reserved for future use.
+	// Include this value, if it was returned by the previous operation, to get
+	// the next set of rules.
 	NextToken *string `type:"string"`
 }
 
@@ -4272,7 +5329,8 @@ type DescribeInsightRulesOutput struct {
 	// The rules returned by the operation.
 	InsightRules []*InsightRule `type:"list"`
 
-	// Reserved for future use.
+	// If this parameter is present, it is a token that marks the start of the next
+	// batch of returned results.
 	NextToken *string `type:"string"`
 }
 
@@ -4298,16 +5356,21 @@ func (s *DescribeInsightRulesOutput) SetNextToken(v string) *DescribeInsightRule
 	return s
 }
 
-// Expands the identity of a metric.
+// A dimension is a name/value pair that is part of the identity of a metric.
+// You can assign up to 10 dimensions to a metric. Because dimensions are part
+// of the unique identifier for a metric, whenever you add a unique name/value
+// pair to one of your metrics, you are creating a new variation of that metric.
 type Dimension struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the dimension.
+	// The name of the dimension. Dimension names cannot contain blank spaces or
+	// non-ASCII characters.
 	//
 	// Name is a required field
 	Name *string `min:"1" type:"string" required:"true"`
 
-	// The value representing the dimension measurement.
+	// The value of the dimension. Dimension values cannot contain blank spaces
+	// or non-ASCII characters.
 	//
 	// Value is a required field
 	Value *string `min:"1" type:"string" required:"true"`
@@ -4467,7 +5530,7 @@ type DisableInsightRulesInput struct {
 	_ struct{} `type:"structure"`
 
 	// An array of the rule names to disable. If you need to find out the names
-	// of your rules, use DescribeInsightRules.
+	// of your rules, use DescribeInsightRules (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeInsightRules.html).
 	//
 	// RuleNames is a required field
 	RuleNames []*string `type:"list" required:"true"`
@@ -4582,7 +5645,7 @@ type EnableInsightRulesInput struct {
 	_ struct{} `type:"structure"`
 
 	// An array of the rule names to enable. If you need to find out the names of
-	// your rules, use DescribeInsightRules.
+	// your rules, use DescribeInsightRules (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeInsightRules.html).
 	//
 	// RuleNames is a required field
 	RuleNames []*string `type:"list" required:"true"`
@@ -4687,7 +5750,7 @@ type GetDashboardOutput struct {
 
 	// The detailed information about the dashboard, including what widgets are
 	// included and their location on the dashboard. For more information about
-	// the DashboardBody syntax, see CloudWatch-Dashboard-Body-Structure.
+	// the DashboardBody syntax, see Dashboard Body Structure and Syntax (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/CloudWatch-Dashboard-Body-Structure.html).
 	DashboardBody *string `type:"string"`
 
 	// The name of the dashboard.
@@ -4742,7 +5805,7 @@ type GetInsightRuleReportInput struct {
 	//    point.
 	//
 	//    * MaxContributorValue -- the value of the top contributor for each data
-	//    point. The identity of the contributor may change for each data point
+	//    point. The identity of the contributor might change for each data point
 	//    in the graph. If this rule aggregates by COUNT, the top contributor for
 	//    each data point is the contributor with the most occurrences in that period.
 	//    If the rule aggregates by SUM, the top contributor is the contributor
@@ -4961,20 +6024,25 @@ type GetMetricDataInput struct {
 	// EndTime is a required field
 	EndTime *time.Time `type:"timestamp" required:"true"`
 
+	// This structure includes the Timezone parameter, which you can use to specify
+	// your time zone so that the labels of returned data display the correct time
+	// for your time zone.
+	LabelOptions *LabelOptions `type:"structure"`
+
 	// The maximum number of data points the request should return before paginating.
 	// If you omit this, the default of 100,800 is used.
 	MaxDatapoints *int64 `type:"integer"`
 
 	// The metric queries to be returned. A single GetMetricData call can include
-	// as many as 100 MetricDataQuery structures. Each of these structures can specify
+	// as many as 500 MetricDataQuery structures. Each of these structures can specify
 	// either a metric to retrieve, or a math expression to perform on retrieved
 	// data.
 	//
 	// MetricDataQueries is a required field
 	MetricDataQueries []*MetricDataQuery `type:"list" required:"true"`
 
-	// Include this value, if it was returned by the previous call, to get the next
-	// set of data points.
+	// Include this value, if it was returned by the previous GetMetricData operation,
+	// to get the next set of data points.
 	NextToken *string `type:"string"`
 
 	// The order in which data points should be returned. TimestampDescending returns
@@ -5062,6 +6130,12 @@ func (s *GetMetricDataInput) SetEndTime(v time.Time) *GetMetricDataInput {
 	return s
 }
 
+// SetLabelOptions sets the LabelOptions field's value.
+func (s *GetMetricDataInput) SetLabelOptions(v *LabelOptions) *GetMetricDataInput {
+	s.LabelOptions = v
+	return s
+}
+
 // SetMaxDatapoints sets the MaxDatapoints field's value.
 func (s *GetMetricDataInput) SetMaxDatapoints(v int64) *GetMetricDataInput {
 	s.MaxDatapoints = &v
@@ -5096,7 +6170,7 @@ type GetMetricDataOutput struct {
 	_ struct{} `type:"structure"`
 
 	// Contains a message about this GetMetricData operation, if the operation results
-	// in such a message. An example of a message that may be returned is Maximum
+	// in such a message. An example of a message that might be returned is Maximum
 	// number of allowed metrics exceeded. If there is a message, as much of the
 	// operation as possible is still executed.
 	//
@@ -5240,9 +6314,9 @@ type GetMetricStatisticsInput struct {
 	// The unit for a given metric. If you omit Unit, all data that was collected
 	// with any unit is returned, along with the corresponding units that were specified
 	// when the data was reported to CloudWatch. If you specify a unit, the operation
-	// returns only data data that was collected with that unit specified. If you
-	// specify a unit that does not match the data collected, the results of the
-	// operation are null. CloudWatch does not perform unit conversions.
+	// returns only data that was collected with that unit specified. If you specify
+	// a unit that does not match the data collected, the results of the operation
+	// are null. CloudWatch does not perform unit conversions.
 	Unit *string `type:"string" enum:"StandardUnit"`
 }
 
@@ -5392,6 +6466,155 @@ func (s *GetMetricStatisticsOutput) SetLabel(v string) *GetMetricStatisticsOutpu
 	return s
 }
 
+type GetMetricStreamInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the metric stream to retrieve information about.
+	//
+	// Name is a required field
+	Name *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s GetMetricStreamInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetMetricStreamInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GetMetricStreamInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GetMetricStreamInput"}
+	if s.Name == nil {
+		invalidParams.Add(request.NewErrParamRequired("Name"))
+	}
+	if s.Name != nil && len(*s.Name) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetName sets the Name field's value.
+func (s *GetMetricStreamInput) SetName(v string) *GetMetricStreamInput {
+	s.Name = &v
+	return s
+}
+
+type GetMetricStreamOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the metric stream.
+	Arn *string `min:"1" type:"string"`
+
+	// The date that the metric stream was created.
+	CreationDate *time.Time `type:"timestamp"`
+
+	// If this array of metric namespaces is present, then these namespaces are
+	// the only metric namespaces that are not streamed by this metric stream. In
+	// this case, all other metric namespaces in the account are streamed by this
+	// metric stream.
+	ExcludeFilters []*MetricStreamFilter `type:"list"`
+
+	// The ARN of the Amazon Kinesis Firehose delivery stream that is used by this
+	// metric stream.
+	FirehoseArn *string `min:"1" type:"string"`
+
+	// If this array of metric namespaces is present, then these namespaces are
+	// the only metric namespaces that are streamed by this metric stream.
+	IncludeFilters []*MetricStreamFilter `type:"list"`
+
+	// The date of the most recent update to the metric stream's configuration.
+	LastUpdateDate *time.Time `type:"timestamp"`
+
+	// The name of the metric stream.
+	Name *string `min:"1" type:"string"`
+
+	OutputFormat *string `min:"1" type:"string" enum:"MetricStreamOutputFormat"`
+
+	// The ARN of the IAM role that is used by this metric stream.
+	RoleArn *string `min:"1" type:"string"`
+
+	// The state of the metric stream. The possible values are running and stopped.
+	State *string `type:"string"`
+}
+
+// String returns the string representation
+func (s GetMetricStreamOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetMetricStreamOutput) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *GetMetricStreamOutput) SetArn(v string) *GetMetricStreamOutput {
+	s.Arn = &v
+	return s
+}
+
+// SetCreationDate sets the CreationDate field's value.
+func (s *GetMetricStreamOutput) SetCreationDate(v time.Time) *GetMetricStreamOutput {
+	s.CreationDate = &v
+	return s
+}
+
+// SetExcludeFilters sets the ExcludeFilters field's value.
+func (s *GetMetricStreamOutput) SetExcludeFilters(v []*MetricStreamFilter) *GetMetricStreamOutput {
+	s.ExcludeFilters = v
+	return s
+}
+
+// SetFirehoseArn sets the FirehoseArn field's value.
+func (s *GetMetricStreamOutput) SetFirehoseArn(v string) *GetMetricStreamOutput {
+	s.FirehoseArn = &v
+	return s
+}
+
+// SetIncludeFilters sets the IncludeFilters field's value.
+func (s *GetMetricStreamOutput) SetIncludeFilters(v []*MetricStreamFilter) *GetMetricStreamOutput {
+	s.IncludeFilters = v
+	return s
+}
+
+// SetLastUpdateDate sets the LastUpdateDate field's value.
+func (s *GetMetricStreamOutput) SetLastUpdateDate(v time.Time) *GetMetricStreamOutput {
+	s.LastUpdateDate = &v
+	return s
+}
+
+// SetName sets the Name field's value.
+func (s *GetMetricStreamOutput) SetName(v string) *GetMetricStreamOutput {
+	s.Name = &v
+	return s
+}
+
+// SetOutputFormat sets the OutputFormat field's value.
+func (s *GetMetricStreamOutput) SetOutputFormat(v string) *GetMetricStreamOutput {
+	s.OutputFormat = &v
+	return s
+}
+
+// SetRoleArn sets the RoleArn field's value.
+func (s *GetMetricStreamOutput) SetRoleArn(v string) *GetMetricStreamOutput {
+	s.RoleArn = &v
+	return s
+}
+
+// SetState sets the State field's value.
+func (s *GetMetricStreamOutput) SetState(v string) *GetMetricStreamOutput {
+	s.State = &v
+	return s
+}
+
 type GetMetricWidgetImageInput struct {
 	_ struct{} `type:"structure"`
 
@@ -5400,7 +6623,8 @@ type GetMetricWidgetImageInput struct {
 	// limits, and so on. You can include only one MetricWidget parameter in each
 	// GetMetricWidgetImage call.
 	//
-	// For more information about the syntax of MetricWidget see CloudWatch-Metric-Widget-Structure.
+	// For more information about the syntax of MetricWidget see GetMetricWidgetImage:
+	// Metric Widget Structure and Syntax (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/CloudWatch-Metric-Widget-Structure.html).
 	//
 	// If any metric on the graph could not load all the requested data points,
 	// an orange triangle with an exclamation point appears next to the graph legend.
@@ -5479,7 +6703,7 @@ func (s *GetMetricWidgetImageInput) SetOutputFormat(v string) *GetMetricWidgetIm
 type GetMetricWidgetImageOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The image of the graph, in the output format specified.
+	// The image of the graph, in the output format specified. The output is base64-encoded.
 	//
 	// MetricWidgetImage is automatically base64 encoded/decoded by the SDK.
 	MetricWidgetImage []byte `type:"blob"`
@@ -5571,7 +6795,7 @@ func (s *InsightRule) SetState(v string) *InsightRule {
 // If the rule contains a single key, then each unique contributor is each unique
 // value for this key.
 //
-// For more information, see GetInsightRuleReport.
+// For more information, see GetInsightRuleReport (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetInsightRuleReport.html).
 type InsightRuleContributor struct {
 	_ struct{} `type:"structure"`
 
@@ -5623,7 +6847,8 @@ func (s *InsightRuleContributor) SetKeys(v []*string) *InsightRuleContributor {
 
 // One data point related to one contributor.
 //
-// For more information, see GetInsightRuleReport and InsightRuleContributor.
+// For more information, see GetInsightRuleReport (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetInsightRuleReport.html)
+// and InsightRuleContributor (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_InsightRuleContributor.html).
 type InsightRuleContributorDatapoint struct {
 	_ struct{} `type:"structure"`
 
@@ -5663,7 +6888,7 @@ func (s *InsightRuleContributorDatapoint) SetTimestamp(v time.Time) *InsightRule
 // One data point from the metric time series returned in a Contributor Insights
 // rule report.
 //
-// For more information, see GetInsightRuleReport.
+// For more information, see GetInsightRuleReport (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_GetInsightRuleReport.html).
 type InsightRuleMetricDatapoint struct {
 	_ struct{} `type:"structure"`
 
@@ -5779,6 +7004,40 @@ func (s *InsightRuleMetricDatapoint) SetUniqueContributors(v float64) *InsightRu
 	return s
 }
 
+// This structure includes the Timezone parameter, which you can use to specify
+// your time zone so that the labels that are associated with returned metrics
+// display the correct time for your time zone.
+//
+// The Timezone value affects a label only if you have a time-based dynamic
+// expression in the label. For more information about dynamic expressions in
+// labels, see Using Dynamic Labels (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/graph-dynamic-labels.html).
+type LabelOptions struct {
+	_ struct{} `type:"structure"`
+
+	// The time zone to use for metric data return in this operation. The format
+	// is + or - followed by four digits. The first two digits indicate the number
+	// of hours ahead or behind of UTC, and the final two digits are the number
+	// of minutes. For example, +0130 indicates a time zone that is 1 hour and 30
+	// minutes ahead of UTC. The default is +0000.
+	Timezone *string `type:"string"`
+}
+
+// String returns the string representation
+func (s LabelOptions) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s LabelOptions) GoString() string {
+	return s.String()
+}
+
+// SetTimezone sets the Timezone field's value.
+func (s *LabelOptions) SetTimezone(v string) *LabelOptions {
+	s.Timezone = &v
+	return s
+}
+
 type ListDashboardsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -5846,21 +7105,112 @@ func (s *ListDashboardsOutput) SetNextToken(v string) *ListDashboardsOutput {
 	return s
 }
 
+type ListMetricStreamsInput struct {
+	_ struct{} `type:"structure"`
+
+	// The maximum number of results to return in one operation.
+	MaxResults *int64 `min:"1" type:"integer"`
+
+	// Include this value, if it was returned by the previous call, to get the next
+	// set of metric streams.
+	NextToken *string `type:"string"`
+}
+
+// String returns the string representation
+func (s ListMetricStreamsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListMetricStreamsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListMetricStreamsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListMetricStreamsInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListMetricStreamsInput) SetMaxResults(v int64) *ListMetricStreamsInput {
+	s.MaxResults = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListMetricStreamsInput) SetNextToken(v string) *ListMetricStreamsInput {
+	s.NextToken = &v
+	return s
+}
+
+type ListMetricStreamsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The array of metric stream information.
+	Entries []*MetricStreamEntry `type:"list"`
+
+	// The token that marks the start of the next batch of returned results. You
+	// can use this token in a subsequent operation to get the next batch of results.
+	NextToken *string `type:"string"`
+}
+
+// String returns the string representation
+func (s ListMetricStreamsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListMetricStreamsOutput) GoString() string {
+	return s.String()
+}
+
+// SetEntries sets the Entries field's value.
+func (s *ListMetricStreamsOutput) SetEntries(v []*MetricStreamEntry) *ListMetricStreamsOutput {
+	s.Entries = v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListMetricStreamsOutput) SetNextToken(v string) *ListMetricStreamsOutput {
+	s.NextToken = &v
+	return s
+}
+
 type ListMetricsInput struct {
 	_ struct{} `type:"structure"`
 
-	// The dimensions to filter against.
+	// The dimensions to filter against. Only the dimensions that match exactly
+	// will be returned.
 	Dimensions []*DimensionFilter `type:"list"`
 
-	// The name of the metric to filter against.
+	// The name of the metric to filter against. Only the metrics with names that
+	// match exactly will be returned.
 	MetricName *string `min:"1" type:"string"`
 
-	// The namespace to filter against.
+	// The metric namespace to filter against. Only the namespace that matches exactly
+	// will be returned.
 	Namespace *string `min:"1" type:"string"`
 
 	// The token returned by a previous call to indicate that there is more data
 	// available.
 	NextToken *string `type:"string"`
+
+	// To filter the results to show only metrics that have had data points published
+	// in the past three hours, specify this parameter with a value of PT3H. This
+	// is the only valid value for this parameter.
+	//
+	// The results that are returned are an approximation of the value you specify.
+	// There is a low probability that the returned results include metrics with
+	// last published data as much as 40 minutes more than the specified time interval.
+	RecentlyActive *string `type:"string" enum:"RecentlyActive"`
 }
 
 // String returns the string representation
@@ -5923,10 +7273,16 @@ func (s *ListMetricsInput) SetNextToken(v string) *ListMetricsInput {
 	return s
 }
 
+// SetRecentlyActive sets the RecentlyActive field's value.
+func (s *ListMetricsInput) SetRecentlyActive(v string) *ListMetricsInput {
+	s.RecentlyActive = &v
+	return s
+}
+
 type ListMetricsOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The metrics.
+	// The metrics that match your request.
 	Metrics []*Metric `type:"list"`
 
 	// The token that marks the start of the next batch of returned results.
@@ -5958,8 +7314,14 @@ func (s *ListMetricsOutput) SetNextToken(v string) *ListMetricsOutput {
 type ListTagsForResourceInput struct {
 	_ struct{} `type:"structure"`
 
-	// The ARN of the CloudWatch resource that you want to view tags for. For more
-	// information on ARN format, see Example ARNs (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-cloudwatch)
+	// The ARN of the CloudWatch resource that you want to view tags for.
+	//
+	// The ARN format of an alarm is arn:aws:cloudwatch:Region:account-id:alarm:alarm-name
+	//
+	// The ARN format of a Contributor Insights rule is arn:aws:cloudwatch:Region:account-id:insight-rule:insight-rule-name
+	//
+	// For more information about ARN format, see Resource Types Defined by Amazon
+	// CloudWatch (https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatch.html#amazoncloudwatch-resources-for-iam-policies)
 	// in the Amazon Web Services General Reference.
 	//
 	// ResourceARN is a required field
@@ -6122,7 +7484,7 @@ func (s *Metric) SetNamespace(v string) *Metric {
 	return s
 }
 
-// Represents an alarm.
+// The details about a metric alarm.
 type MetricAlarm struct {
 	_ struct{} `type:"structure"`
 
@@ -6181,7 +7543,7 @@ type MetricAlarm struct {
 	// An array of MetricDataQuery structures, used in an alarm based on a metric
 	// math expression. Each structure either retrieves a metric or performs a math
 	// expression. One item in the Metrics array is the math expression that the
-	// alarm watches. This expression by designated by having ReturnValue set to
+	// alarm watches. This expression by designated by having ReturnData set to
 	// true.
 	Metrics []*MetricDataQuery `type:"list"`
 
@@ -6404,7 +7766,7 @@ func (s *MetricAlarm) SetUnit(v string) *MetricAlarm {
 // When used in GetMetricData, it indicates the metric data to return, and whether
 // this call is just retrieving a batch set of data for one metric, or is performing
 // a math expression on metric data. A single GetMetricData call can include
-// up to 100 MetricDataQuery structures.
+// up to 500 MetricDataQuery structures.
 //
 // When used in PutMetricAlarm, it enables you to create an alarm based on a
 // metric math expression. Each MetricDataQuery in the array specifies either
@@ -6451,6 +7813,9 @@ type MetricDataQuery struct {
 	// useful if this is an expression, so that you know what the value represents.
 	// If the metric or expression is shown in a CloudWatch dashboard widget, the
 	// label is shown. If Label is omitted, CloudWatch generates a default.
+	//
+	// You can put dynamic expressions into a label, so that it is more descriptive.
+	// For more information, see Using Dynamic Labels (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/graph-dynamic-labels.html).
 	Label *string `type:"string"`
 
 	// The metric to be returned, along with statistics, period, and units. Use
@@ -6467,10 +7832,6 @@ type MetricDataQuery struct {
 	// at intervals of less than one minute, the period can be 1, 5, 10, 30, 60,
 	// or any multiple of 60. High-resolution metrics are those metrics stored by
 	// a PutMetricData operation that includes a StorageResolution of 1 second.
-	//
-	// If you are performing a GetMetricData operation, use this field only if you
-	// are specifying an Expression. Do not use this field when you are specifying
-	// a MetricStat in a GetMetricData operation.
 	Period *int64 `min:"1" type:"integer"`
 
 	// When used in GetMetricData, this option indicates whether to return the timestamps
@@ -6847,9 +8208,9 @@ type MetricStat struct {
 	// In a Get operation, if you omit Unit then all data that was collected with
 	// any unit is returned, along with the corresponding units that were specified
 	// when the data was reported to CloudWatch. If you specify a unit, the operation
-	// returns only data data that was collected with that unit specified. If you
-	// specify a unit that does not match the data collected, the results of the
-	// operation are null. CloudWatch does not perform unit conversions.
+	// returns only data that was collected with that unit specified. If you specify
+	// a unit that does not match the data collected, the results of the operation
+	// are null. CloudWatch does not perform unit conversions.
 	Unit *string `type:"string" enum:"StandardUnit"`
 }
 
@@ -6914,6 +8275,123 @@ func (s *MetricStat) SetUnit(v string) *MetricStat {
 	return s
 }
 
+// This structure contains the configuration information about one metric stream.
+type MetricStreamEntry struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the metric stream.
+	Arn *string `min:"1" type:"string"`
+
+	// The date that the metric stream was originally created.
+	CreationDate *time.Time `type:"timestamp"`
+
+	// The ARN of the Kinesis Firehose devlivery stream that is used for this metric
+	// stream.
+	FirehoseArn *string `min:"1" type:"string"`
+
+	// The date that the configuration of this metric stream was most recently updated.
+	LastUpdateDate *time.Time `type:"timestamp"`
+
+	// The name of the metric stream.
+	Name *string `min:"1" type:"string"`
+
+	// The output format of this metric stream. Valid values are json and opentelemetry0.7.
+	OutputFormat *string `min:"1" type:"string" enum:"MetricStreamOutputFormat"`
+
+	// The current state of this stream. Valid values are running and stopped.
+	State *string `type:"string"`
+}
+
+// String returns the string representation
+func (s MetricStreamEntry) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s MetricStreamEntry) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *MetricStreamEntry) SetArn(v string) *MetricStreamEntry {
+	s.Arn = &v
+	return s
+}
+
+// SetCreationDate sets the CreationDate field's value.
+func (s *MetricStreamEntry) SetCreationDate(v time.Time) *MetricStreamEntry {
+	s.CreationDate = &v
+	return s
+}
+
+// SetFirehoseArn sets the FirehoseArn field's value.
+func (s *MetricStreamEntry) SetFirehoseArn(v string) *MetricStreamEntry {
+	s.FirehoseArn = &v
+	return s
+}
+
+// SetLastUpdateDate sets the LastUpdateDate field's value.
+func (s *MetricStreamEntry) SetLastUpdateDate(v time.Time) *MetricStreamEntry {
+	s.LastUpdateDate = &v
+	return s
+}
+
+// SetName sets the Name field's value.
+func (s *MetricStreamEntry) SetName(v string) *MetricStreamEntry {
+	s.Name = &v
+	return s
+}
+
+// SetOutputFormat sets the OutputFormat field's value.
+func (s *MetricStreamEntry) SetOutputFormat(v string) *MetricStreamEntry {
+	s.OutputFormat = &v
+	return s
+}
+
+// SetState sets the State field's value.
+func (s *MetricStreamEntry) SetState(v string) *MetricStreamEntry {
+	s.State = &v
+	return s
+}
+
+// This structure contains the name of one of the metric namespaces that is
+// listed in a filter of a metric stream.
+type MetricStreamFilter struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the metric namespace in the filter.
+	Namespace *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s MetricStreamFilter) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s MetricStreamFilter) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *MetricStreamFilter) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "MetricStreamFilter"}
+	if s.Namespace != nil && len(*s.Namespace) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Namespace", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetNamespace sets the Namespace field's value.
+func (s *MetricStreamFilter) SetNamespace(v string) *MetricStreamFilter {
+	s.Namespace = &v
+	return s
+}
+
 // This array is empty if the API operation was successful for all the rules
 // specified in the request. If the operation could not process one of the rules,
 // the following data is returned for each of those rules.
@@ -6975,8 +8453,6 @@ type PutAnomalyDetectorInput struct {
 	// the model. You can specify as many as 10 time ranges.
 	//
 	// The configuration can also include the time zone to use for the metric.
-	//
-	// You can in
 	Configuration *AnomalyDetectorConfiguration `type:"structure"`
 
 	// The metric dimensions to create the anomaly detection model for.
@@ -7092,6 +8568,208 @@ func (s PutAnomalyDetectorOutput) GoString() string {
 	return s.String()
 }
 
+type PutCompositeAlarmInput struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether actions should be executed during any changes to the alarm
+	// state of the composite alarm. The default is TRUE.
+	ActionsEnabled *bool `type:"boolean"`
+
+	// The actions to execute when this alarm transitions to the ALARM state from
+	// any other state. Each action is specified as an Amazon Resource Name (ARN).
+	//
+	// Valid Values: arn:aws:sns:region:account-id:sns-topic-name | arn:aws:ssm:region:account-id:opsitem:severity
+	AlarmActions []*string `type:"list"`
+
+	// The description for the composite alarm.
+	AlarmDescription *string `type:"string"`
+
+	// The name for the composite alarm. This name must be unique within the Region.
+	//
+	// AlarmName is a required field
+	AlarmName *string `min:"1" type:"string" required:"true"`
+
+	// An expression that specifies which other alarms are to be evaluated to determine
+	// this composite alarm's state. For each alarm that you reference, you designate
+	// a function that specifies whether that alarm needs to be in ALARM state,
+	// OK state, or INSUFFICIENT_DATA state. You can use operators (AND, OR and
+	// NOT) to combine multiple functions in a single expression. You can use parenthesis
+	// to logically group the functions in your expression.
+	//
+	// You can use either alarm names or ARNs to reference the other alarms that
+	// are to be evaluated.
+	//
+	// Functions can include the following:
+	//
+	//    * ALARM("alarm-name or alarm-ARN") is TRUE if the named alarm is in ALARM
+	//    state.
+	//
+	//    * OK("alarm-name or alarm-ARN") is TRUE if the named alarm is in OK state.
+	//
+	//    * INSUFFICIENT_DATA("alarm-name or alarm-ARN") is TRUE if the named alarm
+	//    is in INSUFFICIENT_DATA state.
+	//
+	//    * TRUE always evaluates to TRUE.
+	//
+	//    * FALSE always evaluates to FALSE.
+	//
+	// TRUE and FALSE are useful for testing a complex AlarmRule structure, and
+	// for testing your alarm actions.
+	//
+	// Alarm names specified in AlarmRule can be surrounded with double-quotes ("),
+	// but do not have to be.
+	//
+	// The following are some examples of AlarmRule:
+	//
+	//    * ALARM(CPUUtilizationTooHigh) AND ALARM(DiskReadOpsTooHigh) specifies
+	//    that the composite alarm goes into ALARM state only if both CPUUtilizationTooHigh
+	//    and DiskReadOpsTooHigh alarms are in ALARM state.
+	//
+	//    * ALARM(CPUUtilizationTooHigh) AND NOT ALARM(DeploymentInProgress) specifies
+	//    that the alarm goes to ALARM state if CPUUtilizationTooHigh is in ALARM
+	//    state and DeploymentInProgress is not in ALARM state. This example reduces
+	//    alarm noise during a known deployment window.
+	//
+	//    * (ALARM(CPUUtilizationTooHigh) OR ALARM(DiskReadOpsTooHigh)) AND OK(NetworkOutTooHigh)
+	//    goes into ALARM state if CPUUtilizationTooHigh OR DiskReadOpsTooHigh is
+	//    in ALARM state, and if NetworkOutTooHigh is in OK state. This provides
+	//    another example of using a composite alarm to prevent noise. This rule
+	//    ensures that you are not notified with an alarm action on high CPU or
+	//    disk usage if a known network problem is also occurring.
+	//
+	// The AlarmRule can specify as many as 100 "children" alarms. The AlarmRule
+	// expression can have as many as 500 elements. Elements are child alarms, TRUE
+	// or FALSE statements, and parentheses.
+	//
+	// AlarmRule is a required field
+	AlarmRule *string `min:"1" type:"string" required:"true"`
+
+	// The actions to execute when this alarm transitions to the INSUFFICIENT_DATA
+	// state from any other state. Each action is specified as an Amazon Resource
+	// Name (ARN).
+	//
+	// Valid Values: arn:aws:sns:region:account-id:sns-topic-name
+	InsufficientDataActions []*string `type:"list"`
+
+	// The actions to execute when this alarm transitions to an OK state from any
+	// other state. Each action is specified as an Amazon Resource Name (ARN).
+	//
+	// Valid Values: arn:aws:sns:region:account-id:sns-topic-name
+	OKActions []*string `type:"list"`
+
+	// A list of key-value pairs to associate with the composite alarm. You can
+	// associate as many as 50 tags with an alarm.
+	//
+	// Tags can help you organize and categorize your resources. You can also use
+	// them to scope user permissions, by granting a user permission to access or
+	// change only resources with certain tag values.
+	Tags []*Tag `type:"list"`
+}
+
+// String returns the string representation
+func (s PutCompositeAlarmInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutCompositeAlarmInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PutCompositeAlarmInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PutCompositeAlarmInput"}
+	if s.AlarmName == nil {
+		invalidParams.Add(request.NewErrParamRequired("AlarmName"))
+	}
+	if s.AlarmName != nil && len(*s.AlarmName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AlarmName", 1))
+	}
+	if s.AlarmRule == nil {
+		invalidParams.Add(request.NewErrParamRequired("AlarmRule"))
+	}
+	if s.AlarmRule != nil && len(*s.AlarmRule) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AlarmRule", 1))
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetActionsEnabled sets the ActionsEnabled field's value.
+func (s *PutCompositeAlarmInput) SetActionsEnabled(v bool) *PutCompositeAlarmInput {
+	s.ActionsEnabled = &v
+	return s
+}
+
+// SetAlarmActions sets the AlarmActions field's value.
+func (s *PutCompositeAlarmInput) SetAlarmActions(v []*string) *PutCompositeAlarmInput {
+	s.AlarmActions = v
+	return s
+}
+
+// SetAlarmDescription sets the AlarmDescription field's value.
+func (s *PutCompositeAlarmInput) SetAlarmDescription(v string) *PutCompositeAlarmInput {
+	s.AlarmDescription = &v
+	return s
+}
+
+// SetAlarmName sets the AlarmName field's value.
+func (s *PutCompositeAlarmInput) SetAlarmName(v string) *PutCompositeAlarmInput {
+	s.AlarmName = &v
+	return s
+}
+
+// SetAlarmRule sets the AlarmRule field's value.
+func (s *PutCompositeAlarmInput) SetAlarmRule(v string) *PutCompositeAlarmInput {
+	s.AlarmRule = &v
+	return s
+}
+
+// SetInsufficientDataActions sets the InsufficientDataActions field's value.
+func (s *PutCompositeAlarmInput) SetInsufficientDataActions(v []*string) *PutCompositeAlarmInput {
+	s.InsufficientDataActions = v
+	return s
+}
+
+// SetOKActions sets the OKActions field's value.
+func (s *PutCompositeAlarmInput) SetOKActions(v []*string) *PutCompositeAlarmInput {
+	s.OKActions = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *PutCompositeAlarmInput) SetTags(v []*Tag) *PutCompositeAlarmInput {
+	s.Tags = v
+	return s
+}
+
+type PutCompositeAlarmOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s PutCompositeAlarmOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutCompositeAlarmOutput) GoString() string {
+	return s.String()
+}
+
 type PutDashboardInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7099,7 +8777,8 @@ type PutDashboardInput struct {
 	// widgets to include and their location on the dashboard. This parameter is
 	// required.
 	//
-	// For more information about the syntax, see CloudWatch-Dashboard-Body-Structure.
+	// For more information about the syntax, see Dashboard Body Structure and Syntax
+	// (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/CloudWatch-Dashboard-Body-Structure.html).
 	//
 	// DashboardBody is a required field
 	DashboardBody *string `type:"string" required:"true"`
@@ -7159,7 +8838,7 @@ type PutDashboardOutput struct {
 	//
 	// If this result includes only warning messages, then the input was valid enough
 	// for the dashboard to be created or modified, but some elements of the dashboard
-	// may not render.
+	// might not render.
 	//
 	// If this result includes error messages, the input was not valid and the operation
 	// failed.
@@ -7198,6 +8877,21 @@ type PutInsightRuleInput struct {
 
 	// The state of the rule. Valid values are ENABLED and DISABLED.
 	RuleState *string `min:"1" type:"string"`
+
+	// A list of key-value pairs to associate with the Contributor Insights rule.
+	// You can associate as many as 50 tags with a rule.
+	//
+	// Tags can help you organize and categorize your resources. You can also use
+	// them to scope user permissions, by granting a user permission to access or
+	// change only the resources that have certain tag values.
+	//
+	// To be able to associate tags with a rule, you must have the cloudwatch:TagResource
+	// permission in addition to the cloudwatch:PutInsightRule permission.
+	//
+	// If you are using this operation to update an existing Contributor Insights
+	// rule, any tags you specify in this parameter are ignored. To change the tags
+	// of an existing rule, use TagResource (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_TagResource.html).
+	Tags []*Tag `type:"list"`
 }
 
 // String returns the string representation
@@ -7228,6 +8922,16 @@ func (s *PutInsightRuleInput) Validate() error {
 	if s.RuleState != nil && len(*s.RuleState) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("RuleState", 1))
 	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -7250,6 +8954,12 @@ func (s *PutInsightRuleInput) SetRuleName(v string) *PutInsightRuleInput {
 // SetRuleState sets the RuleState field's value.
 func (s *PutInsightRuleInput) SetRuleState(v string) *PutInsightRuleInput {
 	s.RuleState = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *PutInsightRuleInput) SetTags(v []*Tag) *PutInsightRuleInput {
+	s.Tags = v
 	return s
 }
 
@@ -7279,7 +8989,8 @@ type PutMetricAlarmInput struct {
 	//
 	// Valid Values: arn:aws:automate:region:ec2:stop | arn:aws:automate:region:ec2:terminate
 	// | arn:aws:automate:region:ec2:recover | arn:aws:automate:region:ec2:reboot
-	// | arn:aws:sns:region:account-id:sns-topic-name | arn:aws:autoscaling:region:account-id:scalingPolicy:policy-idautoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
+	// | arn:aws:sns:region:account-id:sns-topic-name | arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
+	// | arn:aws:ssm:region:account-id:opsitem:severity
 	//
 	// Valid Values (for use with IAM roles): arn:aws:swf:region:account-id:action/actions/AWS_EC2.InstanceId.Stop/1.0
 	// | arn:aws:swf:region:account-id:action/actions/AWS_EC2.InstanceId.Terminate/1.0
@@ -7289,7 +9000,7 @@ type PutMetricAlarmInput struct {
 	// The description for the alarm.
 	AlarmDescription *string `type:"string"`
 
-	// The name for the alarm. This name must be unique within your AWS account.
+	// The name for the alarm. This name must be unique within the Region.
 	//
 	// AlarmName is a required field
 	AlarmName *string `min:"1" type:"string" required:"true"`
@@ -7346,7 +9057,7 @@ type PutMetricAlarmInput struct {
 	//
 	// Valid Values: arn:aws:automate:region:ec2:stop | arn:aws:automate:region:ec2:terminate
 	// | arn:aws:automate:region:ec2:recover | arn:aws:automate:region:ec2:reboot
-	// | arn:aws:sns:region:account-id:sns-topic-name | arn:aws:autoscaling:region:account-id:scalingPolicy:policy-idautoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
+	// | arn:aws:sns:region:account-id:sns-topic-name | arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
 	// Valid Values (for use with IAM roles): >arn:aws:swf:region:account-id:action/actions/AWS_EC2.InstanceId.Stop/1.0
 	// | arn:aws:swf:region:account-id:action/actions/AWS_EC2.InstanceId.Terminate/1.0
@@ -7370,8 +9081,8 @@ type PutMetricAlarmInput struct {
 	// expression.
 	//
 	// One item in the Metrics array is the expression that the alarm watches. You
-	// designate this expression by setting ReturnValue to true for this object
-	// in the array. For more information, see MetricDataQuery.
+	// designate this expression by setting ReturnData to true for this object in
+	// the array. For more information, see MetricDataQuery (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDataQuery.html).
 	//
 	// If you use the Metrics parameter, you cannot include the MetricName, Dimensions,
 	// Period, Namespace, Statistic, or ExtendedStatistic parameters of PutMetricAlarm
@@ -7387,11 +9098,12 @@ type PutMetricAlarmInput struct {
 	//
 	// Valid Values: arn:aws:automate:region:ec2:stop | arn:aws:automate:region:ec2:terminate
 	// | arn:aws:automate:region:ec2:recover | arn:aws:automate:region:ec2:reboot
-	// | arn:aws:sns:region:account-id:sns-topic-name | arn:aws:autoscaling:region:account-id:scalingPolicy:policy-idautoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
+	// | arn:aws:sns:region:account-id:sns-topic-name | arn:aws:autoscaling:region:account-id:scalingPolicy:policy-id:autoScalingGroupName/group-friendly-name:policyName/policy-friendly-name
 	//
 	// Valid Values (for use with IAM roles): arn:aws:swf:region:account-id:action/actions/AWS_EC2.InstanceId.Stop/1.0
 	// | arn:aws:swf:region:account-id:action/actions/AWS_EC2.InstanceId.Terminate/1.0
 	// | arn:aws:swf:region:account-id:action/actions/AWS_EC2.InstanceId.Reboot/1.0
+	// | arn:aws:swf:region:account-id:action/actions/AWS_EC2.InstanceId.Recover/1.0
 	OKActions []*string `type:"list"`
 
 	// The length, in seconds, used each time the metric specified in MetricName
@@ -7406,7 +9118,7 @@ type PutMetricAlarmInput struct {
 	// a metric that does not have sub-minute resolution, the alarm still attempts
 	// to gather data at the period rate that you specify. In this case, it does
 	// not receive data for the attempts that do not correspond to a one-minute
-	// data resolution, and the alarm may often lapse into INSUFFICENT_DATA status.
+	// data resolution, and the alarm might often lapse into INSUFFICENT_DATA status.
 	// Specifying 10 or 30 also sets this alarm as a high-resolution alarm, which
 	// has a higher charge than other alarms. For more information about pricing,
 	// see Amazon CloudWatch Pricing (https://aws.amazon.com/cloudwatch/pricing/).
@@ -7425,8 +9137,13 @@ type PutMetricAlarmInput struct {
 	// as many as 50 tags with an alarm.
 	//
 	// Tags can help you organize and categorize your resources. You can also use
-	// them to scope user permissions, by granting a user permission to access or
+	// them to scope user permissions by granting a user permission to access or
 	// change only resources with certain tag values.
+	//
+	// If you are using this operation to update an existing alarm, any tags you
+	// specify in this parameter are ignored. To change the tags of an existing
+	// alarm, use TagResource (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_TagResource.html)
+	// or UntagResource (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_UntagResource.html).
 	Tags []*Tag `type:"list"`
 
 	// The value against which the specified statistic is compared.
@@ -7459,12 +9176,12 @@ type PutMetricAlarmInput struct {
 	// Percent, are aggregated separately.
 	//
 	// If you don't specify Unit, CloudWatch retrieves all unit types that have
-	// been published for the metric and attempts to evaluate the alarm. Usually
-	// metrics are published with only one unit, so the alarm will work as intended.
+	// been published for the metric and attempts to evaluate the alarm. Usually,
+	// metrics are published with only one unit, so the alarm works as intended.
 	//
 	// However, if the metric is published with multiple types of units and you
-	// don't specify a unit, the alarm's behavior is not defined and will behave
-	// un-predictably.
+	// don't specify a unit, the alarm's behavior is not defined and it behaves
+	// predictably.
 	//
 	// We recommend omitting Unit so that you don't inadvertently specify an incorrect
 	// unit that is not published for this metric. Doing so causes the alarm to
@@ -7787,6 +9504,206 @@ func (s PutMetricDataOutput) GoString() string {
 	return s.String()
 }
 
+type PutMetricStreamInput struct {
+	_ struct{} `type:"structure"`
+
+	// If you specify this parameter, the stream sends metrics from all metric namespaces
+	// except for the namespaces that you specify here.
+	//
+	// You cannot include ExcludeFilters and IncludeFilters in the same operation.
+	ExcludeFilters []*MetricStreamFilter `type:"list"`
+
+	// The ARN of the Amazon Kinesis Firehose delivery stream to use for this metric
+	// stream. This Amazon Kinesis Firehose delivery stream must already exist and
+	// must be in the same account as the metric stream.
+	//
+	// FirehoseArn is a required field
+	FirehoseArn *string `min:"1" type:"string" required:"true"`
+
+	// If you specify this parameter, the stream sends only the metrics from the
+	// metric namespaces that you specify here.
+	//
+	// You cannot include IncludeFilters and ExcludeFilters in the same operation.
+	IncludeFilters []*MetricStreamFilter `type:"list"`
+
+	// If you are creating a new metric stream, this is the name for the new stream.
+	// The name must be different than the names of other metric streams in this
+	// account and Region.
+	//
+	// If you are updating a metric stream, specify the name of that stream here.
+	//
+	// Valid characters are A-Z, a-z, 0-9, "-" and "_".
+	//
+	// Name is a required field
+	Name *string `min:"1" type:"string" required:"true"`
+
+	// The output format for the stream. Valid values are json and opentelemetry0.7.
+	// For more information about metric stream output formats, see Metric streams
+	// output formats (https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-metric-streams-formats.html).
+	//
+	// OutputFormat is a required field
+	OutputFormat *string `min:"1" type:"string" required:"true" enum:"MetricStreamOutputFormat"`
+
+	// The ARN of an IAM role that this metric stream will use to access Amazon
+	// Kinesis Firehose resources. This IAM role must already exist and must be
+	// in the same account as the metric stream. This IAM role must include the
+	// following permissions:
+	//
+	//    * firehose:PutRecord
+	//
+	//    * firehose:PutRecordBatch
+	//
+	// RoleArn is a required field
+	RoleArn *string `min:"1" type:"string" required:"true"`
+
+	// A list of key-value pairs to associate with the metric stream. You can associate
+	// as many as 50 tags with a metric stream.
+	//
+	// Tags can help you organize and categorize your resources. You can also use
+	// them to scope user permissions by granting a user permission to access or
+	// change only resources with certain tag values.
+	Tags []*Tag `type:"list"`
+}
+
+// String returns the string representation
+func (s PutMetricStreamInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutMetricStreamInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PutMetricStreamInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PutMetricStreamInput"}
+	if s.FirehoseArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("FirehoseArn"))
+	}
+	if s.FirehoseArn != nil && len(*s.FirehoseArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("FirehoseArn", 1))
+	}
+	if s.Name == nil {
+		invalidParams.Add(request.NewErrParamRequired("Name"))
+	}
+	if s.Name != nil && len(*s.Name) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
+	}
+	if s.OutputFormat == nil {
+		invalidParams.Add(request.NewErrParamRequired("OutputFormat"))
+	}
+	if s.OutputFormat != nil && len(*s.OutputFormat) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("OutputFormat", 1))
+	}
+	if s.RoleArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("RoleArn"))
+	}
+	if s.RoleArn != nil && len(*s.RoleArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("RoleArn", 1))
+	}
+	if s.ExcludeFilters != nil {
+		for i, v := range s.ExcludeFilters {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "ExcludeFilters", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.IncludeFilters != nil {
+		for i, v := range s.IncludeFilters {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "IncludeFilters", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetExcludeFilters sets the ExcludeFilters field's value.
+func (s *PutMetricStreamInput) SetExcludeFilters(v []*MetricStreamFilter) *PutMetricStreamInput {
+	s.ExcludeFilters = v
+	return s
+}
+
+// SetFirehoseArn sets the FirehoseArn field's value.
+func (s *PutMetricStreamInput) SetFirehoseArn(v string) *PutMetricStreamInput {
+	s.FirehoseArn = &v
+	return s
+}
+
+// SetIncludeFilters sets the IncludeFilters field's value.
+func (s *PutMetricStreamInput) SetIncludeFilters(v []*MetricStreamFilter) *PutMetricStreamInput {
+	s.IncludeFilters = v
+	return s
+}
+
+// SetName sets the Name field's value.
+func (s *PutMetricStreamInput) SetName(v string) *PutMetricStreamInput {
+	s.Name = &v
+	return s
+}
+
+// SetOutputFormat sets the OutputFormat field's value.
+func (s *PutMetricStreamInput) SetOutputFormat(v string) *PutMetricStreamInput {
+	s.OutputFormat = &v
+	return s
+}
+
+// SetRoleArn sets the RoleArn field's value.
+func (s *PutMetricStreamInput) SetRoleArn(v string) *PutMetricStreamInput {
+	s.RoleArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *PutMetricStreamInput) SetTags(v []*Tag) *PutMetricStreamInput {
+	s.Tags = v
+	return s
+}
+
+type PutMetricStreamOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the metric stream.
+	Arn *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s PutMetricStreamOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutMetricStreamOutput) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *PutMetricStreamOutput) SetArn(v string) *PutMetricStreamOutput {
+	s.Arn = &v
+	return s
+}
+
 // Specifies one range of days or times to exclude from use for training an
 // anomaly detection model.
 type Range struct {
@@ -7846,8 +9763,7 @@ func (s *Range) SetStartTime(v time.Time) *Range {
 type SetAlarmStateInput struct {
 	_ struct{} `type:"structure"`
 
-	// The name for the alarm. This name must be unique within the AWS account.
-	// The maximum length is 255 characters.
+	// The name of the alarm.
 	//
 	// AlarmName is a required field
 	AlarmName *string `min:"1" type:"string" required:"true"`
@@ -7858,6 +9774,10 @@ type SetAlarmStateInput struct {
 	StateReason *string `type:"string" required:"true"`
 
 	// The reason that this alarm is set to this specific state, in JSON format.
+	//
+	// For SNS or EC2 alarm actions, this is just informational. But for EC2 Auto
+	// Scaling or application Auto Scaling alarm actions, the Auto Scaling policy
+	// uses the information in this field to take the correct action.
 	StateReasonData *string `type:"string"`
 
 	// The value of the state.
@@ -7933,6 +9853,62 @@ func (s SetAlarmStateOutput) String() string {
 
 // GoString returns the string representation
 func (s SetAlarmStateOutput) GoString() string {
+	return s.String()
+}
+
+type StartMetricStreamsInput struct {
+	_ struct{} `type:"structure"`
+
+	// The array of the names of metric streams to start streaming.
+	//
+	// This is an "all or nothing" operation. If you do not have permission to access
+	// all of the metric streams that you list here, then none of the streams that
+	// you list in the operation will start streaming.
+	//
+	// Names is a required field
+	Names []*string `type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s StartMetricStreamsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartMetricStreamsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StartMetricStreamsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StartMetricStreamsInput"}
+	if s.Names == nil {
+		invalidParams.Add(request.NewErrParamRequired("Names"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetNames sets the Names field's value.
+func (s *StartMetricStreamsInput) SetNames(v []*string) *StartMetricStreamsInput {
+	s.Names = v
+	return s
+}
+
+type StartMetricStreamsOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s StartMetricStreamsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartMetricStreamsOutput) GoString() string {
 	return s.String()
 }
 
@@ -8017,6 +9993,62 @@ func (s *StatisticSet) SetSum(v float64) *StatisticSet {
 	return s
 }
 
+type StopMetricStreamsInput struct {
+	_ struct{} `type:"structure"`
+
+	// The array of the names of metric streams to stop streaming.
+	//
+	// This is an "all or nothing" operation. If you do not have permission to access
+	// all of the metric streams that you list here, then none of the streams that
+	// you list in the operation will stop streaming.
+	//
+	// Names is a required field
+	Names []*string `type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s StopMetricStreamsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopMetricStreamsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StopMetricStreamsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StopMetricStreamsInput"}
+	if s.Names == nil {
+		invalidParams.Add(request.NewErrParamRequired("Names"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetNames sets the Names field's value.
+func (s *StopMetricStreamsInput) SetNames(v []*string) *StopMetricStreamsInput {
+	s.Names = v
+	return s
+}
+
+type StopMetricStreamsOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s StopMetricStreamsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StopMetricStreamsOutput) GoString() string {
+	return s.String()
+}
+
 // A key-value pair associated with a CloudWatch resource.
 type Tag struct {
 	_ struct{} `type:"structure"`
@@ -8077,8 +10109,15 @@ func (s *Tag) SetValue(v string) *Tag {
 type TagResourceInput struct {
 	_ struct{} `type:"structure"`
 
-	// The ARN of the CloudWatch alarm that you're adding tags to. The ARN format
-	// is arn:aws:cloudwatch:Region:account-id:alarm:alarm-name
+	// The ARN of the CloudWatch resource that you're adding tags to.
+	//
+	// The ARN format of an alarm is arn:aws:cloudwatch:Region:account-id:alarm:alarm-name
+	//
+	// The ARN format of a Contributor Insights rule is arn:aws:cloudwatch:Region:account-id:insight-rule:insight-rule-name
+	//
+	// For more information about ARN format, see Resource Types Defined by Amazon
+	// CloudWatch (https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatch.html#amazoncloudwatch-resources-for-iam-policies)
+	// in the Amazon Web Services General Reference.
 	//
 	// ResourceARN is a required field
 	ResourceARN *string `min:"1" type:"string" required:"true"`
@@ -8157,8 +10196,14 @@ func (s TagResourceOutput) GoString() string {
 type UntagResourceInput struct {
 	_ struct{} `type:"structure"`
 
-	// The ARN of the CloudWatch resource that you're removing tags from. For more
-	// information on ARN format, see Example ARNs (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-cloudwatch)
+	// The ARN of the CloudWatch resource that you're removing tags from.
+	//
+	// The ARN format of an alarm is arn:aws:cloudwatch:Region:account-id:alarm:alarm-name
+	//
+	// The ARN format of a Contributor Insights rule is arn:aws:cloudwatch:Region:account-id:insight-rule:insight-rule-name
+	//
+	// For more information about ARN format, see Resource Types Defined by Amazon
+	// CloudWatch (https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatch.html#amazoncloudwatch-resources-for-iam-policies)
 	// in the Amazon Web Services General Reference.
 	//
 	// ResourceARN is a required field
@@ -8226,6 +10271,22 @@ func (s UntagResourceOutput) GoString() string {
 }
 
 const (
+	// AlarmTypeCompositeAlarm is a AlarmType enum value
+	AlarmTypeCompositeAlarm = "CompositeAlarm"
+
+	// AlarmTypeMetricAlarm is a AlarmType enum value
+	AlarmTypeMetricAlarm = "MetricAlarm"
+)
+
+// AlarmType_Values returns all elements of the AlarmType enum
+func AlarmType_Values() []string {
+	return []string{
+		AlarmTypeCompositeAlarm,
+		AlarmTypeMetricAlarm,
+	}
+}
+
+const (
 	// AnomalyDetectorStateValuePendingTraining is a AnomalyDetectorStateValue enum value
 	AnomalyDetectorStateValuePendingTraining = "PENDING_TRAINING"
 
@@ -8235,6 +10296,15 @@ const (
 	// AnomalyDetectorStateValueTrained is a AnomalyDetectorStateValue enum value
 	AnomalyDetectorStateValueTrained = "TRAINED"
 )
+
+// AnomalyDetectorStateValue_Values returns all elements of the AnomalyDetectorStateValue enum
+func AnomalyDetectorStateValue_Values() []string {
+	return []string{
+		AnomalyDetectorStateValuePendingTraining,
+		AnomalyDetectorStateValueTrainedInsufficientData,
+		AnomalyDetectorStateValueTrained,
+	}
+}
 
 const (
 	// ComparisonOperatorGreaterThanOrEqualToThreshold is a ComparisonOperator enum value
@@ -8259,6 +10329,19 @@ const (
 	ComparisonOperatorGreaterThanUpperThreshold = "GreaterThanUpperThreshold"
 )
 
+// ComparisonOperator_Values returns all elements of the ComparisonOperator enum
+func ComparisonOperator_Values() []string {
+	return []string{
+		ComparisonOperatorGreaterThanOrEqualToThreshold,
+		ComparisonOperatorGreaterThanThreshold,
+		ComparisonOperatorLessThanThreshold,
+		ComparisonOperatorLessThanOrEqualToThreshold,
+		ComparisonOperatorLessThanLowerOrGreaterThanUpperThreshold,
+		ComparisonOperatorLessThanLowerThreshold,
+		ComparisonOperatorGreaterThanUpperThreshold,
+	}
+}
+
 const (
 	// HistoryItemTypeConfigurationUpdate is a HistoryItemType enum value
 	HistoryItemTypeConfigurationUpdate = "ConfigurationUpdate"
@@ -8270,6 +10353,43 @@ const (
 	HistoryItemTypeAction = "Action"
 )
 
+// HistoryItemType_Values returns all elements of the HistoryItemType enum
+func HistoryItemType_Values() []string {
+	return []string{
+		HistoryItemTypeConfigurationUpdate,
+		HistoryItemTypeStateUpdate,
+		HistoryItemTypeAction,
+	}
+}
+
+const (
+	// MetricStreamOutputFormatJson is a MetricStreamOutputFormat enum value
+	MetricStreamOutputFormatJson = "json"
+
+	// MetricStreamOutputFormatOpentelemetry07 is a MetricStreamOutputFormat enum value
+	MetricStreamOutputFormatOpentelemetry07 = "opentelemetry0.7"
+)
+
+// MetricStreamOutputFormat_Values returns all elements of the MetricStreamOutputFormat enum
+func MetricStreamOutputFormat_Values() []string {
+	return []string{
+		MetricStreamOutputFormatJson,
+		MetricStreamOutputFormatOpentelemetry07,
+	}
+}
+
+const (
+	// RecentlyActivePt3h is a RecentlyActive enum value
+	RecentlyActivePt3h = "PT3H"
+)
+
+// RecentlyActive_Values returns all elements of the RecentlyActive enum
+func RecentlyActive_Values() []string {
+	return []string{
+		RecentlyActivePt3h,
+	}
+}
+
 const (
 	// ScanByTimestampDescending is a ScanBy enum value
 	ScanByTimestampDescending = "TimestampDescending"
@@ -8277,6 +10397,14 @@ const (
 	// ScanByTimestampAscending is a ScanBy enum value
 	ScanByTimestampAscending = "TimestampAscending"
 )
+
+// ScanBy_Values returns all elements of the ScanBy enum
+func ScanBy_Values() []string {
+	return []string{
+		ScanByTimestampDescending,
+		ScanByTimestampAscending,
+	}
+}
 
 const (
 	// StandardUnitSeconds is a StandardUnit enum value
@@ -8361,6 +10489,39 @@ const (
 	StandardUnitNone = "None"
 )
 
+// StandardUnit_Values returns all elements of the StandardUnit enum
+func StandardUnit_Values() []string {
+	return []string{
+		StandardUnitSeconds,
+		StandardUnitMicroseconds,
+		StandardUnitMilliseconds,
+		StandardUnitBytes,
+		StandardUnitKilobytes,
+		StandardUnitMegabytes,
+		StandardUnitGigabytes,
+		StandardUnitTerabytes,
+		StandardUnitBits,
+		StandardUnitKilobits,
+		StandardUnitMegabits,
+		StandardUnitGigabits,
+		StandardUnitTerabits,
+		StandardUnitPercent,
+		StandardUnitCount,
+		StandardUnitBytesSecond,
+		StandardUnitKilobytesSecond,
+		StandardUnitMegabytesSecond,
+		StandardUnitGigabytesSecond,
+		StandardUnitTerabytesSecond,
+		StandardUnitBitsSecond,
+		StandardUnitKilobitsSecond,
+		StandardUnitMegabitsSecond,
+		StandardUnitGigabitsSecond,
+		StandardUnitTerabitsSecond,
+		StandardUnitCountSecond,
+		StandardUnitNone,
+	}
+}
+
 const (
 	// StateValueOk is a StateValue enum value
 	StateValueOk = "OK"
@@ -8371,6 +10532,15 @@ const (
 	// StateValueInsufficientData is a StateValue enum value
 	StateValueInsufficientData = "INSUFFICIENT_DATA"
 )
+
+// StateValue_Values returns all elements of the StateValue enum
+func StateValue_Values() []string {
+	return []string{
+		StateValueOk,
+		StateValueAlarm,
+		StateValueInsufficientData,
+	}
+}
 
 const (
 	// StatisticSampleCount is a Statistic enum value
@@ -8389,6 +10559,17 @@ const (
 	StatisticMaximum = "Maximum"
 )
 
+// Statistic_Values returns all elements of the Statistic enum
+func Statistic_Values() []string {
+	return []string{
+		StatisticSampleCount,
+		StatisticAverage,
+		StatisticSum,
+		StatisticMinimum,
+		StatisticMaximum,
+	}
+}
+
 const (
 	// StatusCodeComplete is a StatusCode enum value
 	StatusCodeComplete = "Complete"
@@ -8399,3 +10580,12 @@ const (
 	// StatusCodePartialData is a StatusCode enum value
 	StatusCodePartialData = "PartialData"
 )
+
+// StatusCode_Values returns all elements of the StatusCode enum
+func StatusCode_Values() []string {
+	return []string{
+		StatusCodeComplete,
+		StatusCodeInternalError,
+		StatusCodePartialData,
+	}
+}

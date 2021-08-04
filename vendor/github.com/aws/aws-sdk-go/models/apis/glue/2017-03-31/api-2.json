@@ -188,6 +188,22 @@
         {"shape":"OperationTimeoutException"}
       ]
     },
+    "BatchUpdatePartition":{
+      "name":"BatchUpdatePartition",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"BatchUpdatePartitionRequest"},
+      "output":{"shape":"BatchUpdatePartitionResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"GlueEncryptionException"}
+      ]
+    },
     "CancelMLTaskRun":{
       "name":"CancelMLTaskRun",
       "http":{
@@ -200,6 +216,20 @@
         {"shape":"EntityNotFoundException"},
         {"shape":"InvalidInputException"},
         {"shape":"OperationTimeoutException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "CheckSchemaVersionValidity":{
+      "name":"CheckSchemaVersionValidity",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CheckSchemaVersionValidityInput"},
+      "output":{"shape":"CheckSchemaVersionValidityResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
         {"shape":"InternalServiceException"}
       ]
     },
@@ -338,6 +368,57 @@
         {"shape":"GlueEncryptionException"}
       ]
     },
+    "CreatePartitionIndex":{
+      "name":"CreatePartitionIndex",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreatePartitionIndexRequest"},
+      "output":{"shape":"CreatePartitionIndexResponse"},
+      "errors":[
+        {"shape":"AlreadyExistsException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"ResourceNumberLimitExceededException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"GlueEncryptionException"}
+      ]
+    },
+    "CreateRegistry":{
+      "name":"CreateRegistry",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateRegistryInput"},
+      "output":{"shape":"CreateRegistryResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"AlreadyExistsException"},
+        {"shape":"ResourceNumberLimitExceededException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "CreateSchema":{
+      "name":"CreateSchema",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateSchemaInput"},
+      "output":{"shape":"CreateSchemaResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"AlreadyExistsException"},
+        {"shape":"ResourceNumberLimitExceededException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
     "CreateScript":{
       "name":"CreateScript",
       "http":{
@@ -453,6 +534,38 @@
         {"shape":"OperationTimeoutException"}
       ]
     },
+    "DeleteColumnStatisticsForPartition":{
+      "name":"DeleteColumnStatisticsForPartition",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteColumnStatisticsForPartitionRequest"},
+      "output":{"shape":"DeleteColumnStatisticsForPartitionResponse"},
+      "errors":[
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"GlueEncryptionException"}
+      ]
+    },
+    "DeleteColumnStatisticsForTable":{
+      "name":"DeleteColumnStatisticsForTable",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteColumnStatisticsForTableRequest"},
+      "output":{"shape":"DeleteColumnStatisticsForTableResponse"},
+      "errors":[
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"GlueEncryptionException"}
+      ]
+    },
     "DeleteConnection":{
       "name":"DeleteConnection",
       "http":{
@@ -555,6 +668,38 @@
         {"shape":"OperationTimeoutException"}
       ]
     },
+    "DeletePartitionIndex":{
+      "name":"DeletePartitionIndex",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeletePartitionIndexRequest"},
+      "output":{"shape":"DeletePartitionIndexResponse"},
+      "errors":[
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"ConflictException"},
+        {"shape":"GlueEncryptionException"}
+      ]
+    },
+    "DeleteRegistry":{
+      "name":"DeleteRegistry",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteRegistryInput"},
+      "output":{"shape":"DeleteRegistryResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"ConcurrentModificationException"}
+      ]
+    },
     "DeleteResourcePolicy":{
       "name":"DeleteResourcePolicy",
       "http":{
@@ -569,6 +714,36 @@
         {"shape":"OperationTimeoutException"},
         {"shape":"InvalidInputException"},
         {"shape":"ConditionCheckFailureException"}
+      ]
+    },
+    "DeleteSchema":{
+      "name":"DeleteSchema",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteSchemaInput"},
+      "output":{"shape":"DeleteSchemaResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"ConcurrentModificationException"}
+      ]
+    },
+    "DeleteSchemaVersions":{
+      "name":"DeleteSchemaVersions",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteSchemaVersionsInput"},
+      "output":{"shape":"DeleteSchemaVersionsResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"ConcurrentModificationException"}
       ]
     },
     "DeleteSecurityConfiguration":{
@@ -697,6 +872,38 @@
       "output":{"shape":"GetClassifiersResponse"},
       "errors":[
         {"shape":"OperationTimeoutException"}
+      ]
+    },
+    "GetColumnStatisticsForPartition":{
+      "name":"GetColumnStatisticsForPartition",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetColumnStatisticsForPartitionRequest"},
+      "output":{"shape":"GetColumnStatisticsForPartitionResponse"},
+      "errors":[
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"GlueEncryptionException"}
+      ]
+    },
+    "GetColumnStatisticsForTable":{
+      "name":"GetColumnStatisticsForTable",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetColumnStatisticsForTableRequest"},
+      "output":{"shape":"GetColumnStatisticsForTableResponse"},
+      "errors":[
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"GlueEncryptionException"}
       ]
     },
     "GetConnection":{
@@ -1022,6 +1229,22 @@
         {"shape":"GlueEncryptionException"}
       ]
     },
+    "GetPartitionIndexes":{
+      "name":"GetPartitionIndexes",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetPartitionIndexesRequest"},
+      "output":{"shape":"GetPartitionIndexesResponse"},
+      "errors":[
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"ConflictException"}
+      ]
+    },
     "GetPartitions":{
       "name":"GetPartitions",
       "http":{
@@ -1052,6 +1275,36 @@
         {"shape":"OperationTimeoutException"}
       ]
     },
+    "GetRegistry":{
+      "name":"GetRegistry",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetRegistryInput"},
+      "output":{"shape":"GetRegistryResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "GetResourcePolicies":{
+      "name":"GetResourcePolicies",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetResourcePoliciesRequest"},
+      "output":{"shape":"GetResourcePoliciesResponse"},
+      "errors":[
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"GlueEncryptionException"}
+      ]
+    },
     "GetResourcePolicy":{
       "name":"GetResourcePolicy",
       "http":{
@@ -1065,6 +1318,66 @@
         {"shape":"InternalServiceException"},
         {"shape":"OperationTimeoutException"},
         {"shape":"InvalidInputException"}
+      ]
+    },
+    "GetSchema":{
+      "name":"GetSchema",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetSchemaInput"},
+      "output":{"shape":"GetSchemaResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "GetSchemaByDefinition":{
+      "name":"GetSchemaByDefinition",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetSchemaByDefinitionInput"},
+      "output":{"shape":"GetSchemaByDefinitionResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "GetSchemaVersion":{
+      "name":"GetSchemaVersion",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetSchemaVersionInput"},
+      "output":{"shape":"GetSchemaVersionResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "GetSchemaVersionsDiff":{
+      "name":"GetSchemaVersionsDiff",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetSchemaVersionsDiffInput"},
+      "output":{"shape":"GetSchemaVersionsDiffResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"InternalServiceException"}
       ]
     },
     "GetSecurityConfiguration":{
@@ -1353,6 +1666,65 @@
         {"shape":"OperationTimeoutException"}
       ]
     },
+    "ListMLTransforms":{
+      "name":"ListMLTransforms",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListMLTransformsRequest"},
+      "output":{"shape":"ListMLTransformsResponse"},
+      "errors":[
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "ListRegistries":{
+      "name":"ListRegistries",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListRegistriesInput"},
+      "output":{"shape":"ListRegistriesResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "ListSchemaVersions":{
+      "name":"ListSchemaVersions",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListSchemaVersionsInput"},
+      "output":{"shape":"ListSchemaVersionsResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "ListSchemas":{
+      "name":"ListSchemas",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListSchemasInput"},
+      "output":{"shape":"ListSchemasResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
     "ListTriggers":{
       "name":"ListTriggers",
       "http":{
@@ -1412,6 +1784,22 @@
         {"shape":"ConditionCheckFailureException"}
       ]
     },
+    "PutSchemaVersionMetadata":{
+      "name":"PutSchemaVersionMetadata",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"PutSchemaVersionMetadataInput"},
+      "output":{"shape":"PutSchemaVersionMetadataResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"AlreadyExistsException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"ResourceNumberLimitExceededException"}
+      ]
+    },
     "PutWorkflowRunProperties":{
       "name":"PutWorkflowRunProperties",
       "http":{
@@ -1430,6 +1818,51 @@
         {"shape":"ConcurrentModificationException"}
       ]
     },
+    "QuerySchemaVersionMetadata":{
+      "name":"QuerySchemaVersionMetadata",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"QuerySchemaVersionMetadataInput"},
+      "output":{"shape":"QuerySchemaVersionMetadataResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"}
+      ]
+    },
+    "RegisterSchemaVersion":{
+      "name":"RegisterSchemaVersion",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"RegisterSchemaVersionInput"},
+      "output":{"shape":"RegisterSchemaVersionResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"ResourceNumberLimitExceededException"},
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "RemoveSchemaVersionMetadata":{
+      "name":"RemoveSchemaVersionMetadata",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"RemoveSchemaVersionMetadataInput"},
+      "output":{"shape":"RemoveSchemaVersionMetadataResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"}
+      ]
+    },
     "ResetJobBookmark":{
       "name":"ResetJobBookmark",
       "http":{
@@ -1443,6 +1876,23 @@
         {"shape":"InvalidInputException"},
         {"shape":"InternalServiceException"},
         {"shape":"OperationTimeoutException"}
+      ]
+    },
+    "ResumeWorkflowRun":{
+      "name":"ResumeWorkflowRun",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ResumeWorkflowRunRequest"},
+      "output":{"shape":"ResumeWorkflowRunResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"ConcurrentRunsExceededException"},
+        {"shape":"IllegalWorkflowStateException"}
       ]
     },
     "SearchTables":{
@@ -1650,6 +2100,22 @@
         {"shape":"ConcurrentModificationException"}
       ]
     },
+    "StopWorkflowRun":{
+      "name":"StopWorkflowRun",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"StopWorkflowRunRequest"},
+      "output":{"shape":"StopWorkflowRunResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"IllegalWorkflowStateException"}
+      ]
+    },
     "TagResource":{
       "name":"TagResource",
       "http":{
@@ -1693,6 +2159,38 @@
         {"shape":"VersionMismatchException"},
         {"shape":"EntityNotFoundException"},
         {"shape":"OperationTimeoutException"}
+      ]
+    },
+    "UpdateColumnStatisticsForPartition":{
+      "name":"UpdateColumnStatisticsForPartition",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateColumnStatisticsForPartitionRequest"},
+      "output":{"shape":"UpdateColumnStatisticsForPartitionResponse"},
+      "errors":[
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"GlueEncryptionException"}
+      ]
+    },
+    "UpdateColumnStatisticsForTable":{
+      "name":"UpdateColumnStatisticsForTable",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateColumnStatisticsForTableRequest"},
+      "output":{"shape":"UpdateColumnStatisticsForTableResponse"},
+      "errors":[
+        {"shape":"EntityNotFoundException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"InternalServiceException"},
+        {"shape":"OperationTimeoutException"},
+        {"shape":"GlueEncryptionException"}
       ]
     },
     "UpdateConnection":{
@@ -1823,6 +2321,38 @@
         {"shape":"GlueEncryptionException"}
       ]
     },
+    "UpdateRegistry":{
+      "name":"UpdateRegistry",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateRegistryInput"},
+      "output":{"shape":"UpdateRegistryResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
+    "UpdateSchema":{
+      "name":"UpdateSchema",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateSchemaInput"},
+      "output":{"shape":"UpdateSchemaResponse"},
+      "errors":[
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"EntityNotFoundException"},
+        {"shape":"ConcurrentModificationException"},
+        {"shape":"InternalServiceException"}
+      ]
+    },
     "UpdateTable":{
       "name":"UpdateTable",
       "http":{
@@ -1913,6 +2443,11 @@
       "type":"list",
       "member":{"shape":"Action"}
     },
+    "AdditionalPlanOptionsMap":{
+      "type":"map",
+      "key":{"shape":"GenericString"},
+      "value":{"shape":"GenericString"}
+    },
     "AlreadyExistsException":{
       "type":"structure",
       "members":{
@@ -1921,6 +2456,31 @@
       "exception":true
     },
     "AttemptCount":{"type":"integer"},
+    "BackfillError":{
+      "type":"structure",
+      "members":{
+        "Code":{"shape":"BackfillErrorCode"},
+        "Partitions":{"shape":"BackfillErroredPartitionsList"}
+      }
+    },
+    "BackfillErrorCode":{
+      "type":"string",
+      "enum":[
+        "ENCRYPTED_PARTITION_ERROR",
+        "INTERNAL_ERROR",
+        "INVALID_PARTITION_TYPE_DATA_ERROR",
+        "MISSING_PARTITION_VALUE_ERROR",
+        "UNSUPPORTED_PARTITION_CHARACTER_ERROR"
+      ]
+    },
+    "BackfillErroredPartitionsList":{
+      "type":"list",
+      "member":{"shape":"PartitionValueList"}
+    },
+    "BackfillErrors":{
+      "type":"list",
+      "member":{"shape":"BackfillError"}
+    },
     "BatchCreatePartitionRequest":{
       "type":"structure",
       "required":[
@@ -2177,7 +2737,82 @@
       "type":"list",
       "member":{"shape":"BatchStopJobRunSuccessfulSubmission"}
     },
+    "BatchUpdatePartitionFailureEntry":{
+      "type":"structure",
+      "members":{
+        "PartitionValueList":{"shape":"BoundedPartitionValueList"},
+        "ErrorDetail":{"shape":"ErrorDetail"}
+      }
+    },
+    "BatchUpdatePartitionFailureList":{
+      "type":"list",
+      "member":{"shape":"BatchUpdatePartitionFailureEntry"}
+    },
+    "BatchUpdatePartitionRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "Entries"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "Entries":{"shape":"BatchUpdatePartitionRequestEntryList"}
+      }
+    },
+    "BatchUpdatePartitionRequestEntry":{
+      "type":"structure",
+      "required":[
+        "PartitionValueList",
+        "PartitionInput"
+      ],
+      "members":{
+        "PartitionValueList":{"shape":"BoundedPartitionValueList"},
+        "PartitionInput":{"shape":"PartitionInput"}
+      }
+    },
+    "BatchUpdatePartitionRequestEntryList":{
+      "type":"list",
+      "member":{"shape":"BatchUpdatePartitionRequestEntry"},
+      "max":100,
+      "min":1
+    },
+    "BatchUpdatePartitionResponse":{
+      "type":"structure",
+      "members":{
+        "Errors":{"shape":"BatchUpdatePartitionFailureList"}
+      }
+    },
+    "BinaryColumnStatisticsData":{
+      "type":"structure",
+      "required":[
+        "MaximumLength",
+        "AverageLength",
+        "NumberOfNulls"
+      ],
+      "members":{
+        "MaximumLength":{"shape":"NonNegativeLong"},
+        "AverageLength":{"shape":"NonNegativeDouble"},
+        "NumberOfNulls":{"shape":"NonNegativeLong"}
+      }
+    },
+    "Blob":{"type":"blob"},
     "Boolean":{"type":"boolean"},
+    "BooleanColumnStatisticsData":{
+      "type":"structure",
+      "required":[
+        "NumberOfTrues",
+        "NumberOfFalses",
+        "NumberOfNulls"
+      ],
+      "members":{
+        "NumberOfTrues":{"shape":"NonNegativeLong"},
+        "NumberOfFalses":{"shape":"NonNegativeLong"},
+        "NumberOfNulls":{"shape":"NonNegativeLong"}
+      }
+    },
     "BooleanNullable":{"type":"boolean"},
     "BooleanValue":{"type":"boolean"},
     "BoundedPartitionValueList":{
@@ -2227,6 +2862,12 @@
         "TableName":{"shape":"NameString"}
       }
     },
+    "CatalogGetterPageSize":{
+      "type":"integer",
+      "box":true,
+      "max":100,
+      "min":1
+    },
     "CatalogIdString":{
       "type":"string",
       "max":255,
@@ -2260,6 +2901,24 @@
     "CatalogTargetList":{
       "type":"list",
       "member":{"shape":"CatalogTarget"}
+    },
+    "CheckSchemaVersionValidityInput":{
+      "type":"structure",
+      "required":[
+        "DataFormat",
+        "SchemaDefinition"
+      ],
+      "members":{
+        "DataFormat":{"shape":"DataFormat"},
+        "SchemaDefinition":{"shape":"SchemaDefinitionString"}
+      }
+    },
+    "CheckSchemaVersionValidityResponse":{
+      "type":"structure",
+      "members":{
+        "Valid":{"shape":"IsVersionValid"},
+        "Error":{"shape":"SchemaValidationError"}
+      }
     },
     "Classification":{"type":"string"},
     "Classifier":{
@@ -2356,6 +3015,30 @@
         "Parameters":{"shape":"ParametersMap"}
       }
     },
+    "ColumnError":{
+      "type":"structure",
+      "members":{
+        "ColumnName":{"shape":"NameString"},
+        "Error":{"shape":"ErrorDetail"}
+      }
+    },
+    "ColumnErrors":{
+      "type":"list",
+      "member":{"shape":"ColumnError"}
+    },
+    "ColumnImportance":{
+      "type":"structure",
+      "members":{
+        "ColumnName":{"shape":"NameString"},
+        "Importance":{"shape":"GenericBoundedDouble"}
+      }
+    },
+    "ColumnImportanceList":{
+      "type":"list",
+      "member":{"shape":"ColumnImportance"},
+      "max":100,
+      "min":0
+    },
     "ColumnList":{
       "type":"list",
       "member":{"shape":"Column"}
@@ -2365,6 +3048,62 @@
       "max":1024,
       "min":1,
       "pattern":"[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800\\uDC00-\\uDBFF\\uDFFF\\t]*"
+    },
+    "ColumnStatistics":{
+      "type":"structure",
+      "required":[
+        "ColumnName",
+        "ColumnType",
+        "AnalyzedTime",
+        "StatisticsData"
+      ],
+      "members":{
+        "ColumnName":{"shape":"NameString"},
+        "ColumnType":{"shape":"TypeString"},
+        "AnalyzedTime":{"shape":"Timestamp"},
+        "StatisticsData":{"shape":"ColumnStatisticsData"}
+      }
+    },
+    "ColumnStatisticsData":{
+      "type":"structure",
+      "required":["Type"],
+      "members":{
+        "Type":{"shape":"ColumnStatisticsType"},
+        "BooleanColumnStatisticsData":{"shape":"BooleanColumnStatisticsData"},
+        "DateColumnStatisticsData":{"shape":"DateColumnStatisticsData"},
+        "DecimalColumnStatisticsData":{"shape":"DecimalColumnStatisticsData"},
+        "DoubleColumnStatisticsData":{"shape":"DoubleColumnStatisticsData"},
+        "LongColumnStatisticsData":{"shape":"LongColumnStatisticsData"},
+        "StringColumnStatisticsData":{"shape":"StringColumnStatisticsData"},
+        "BinaryColumnStatisticsData":{"shape":"BinaryColumnStatisticsData"}
+      }
+    },
+    "ColumnStatisticsError":{
+      "type":"structure",
+      "members":{
+        "ColumnStatistics":{"shape":"ColumnStatistics"},
+        "Error":{"shape":"ErrorDetail"}
+      }
+    },
+    "ColumnStatisticsErrors":{
+      "type":"list",
+      "member":{"shape":"ColumnStatisticsError"}
+    },
+    "ColumnStatisticsList":{
+      "type":"list",
+      "member":{"shape":"ColumnStatistics"}
+    },
+    "ColumnStatisticsType":{
+      "type":"string",
+      "enum":[
+        "BOOLEAN",
+        "DATE",
+        "DECIMAL",
+        "DOUBLE",
+        "LONG",
+        "STRING",
+        "BINARY"
+      ]
     },
     "ColumnTypeString":{
       "type":"string",
@@ -2391,6 +3130,19 @@
         "LESS_THAN",
         "GREATER_THAN_EQUALS",
         "LESS_THAN_EQUALS"
+      ]
+    },
+    "Compatibility":{
+      "type":"string",
+      "enum":[
+        "NONE",
+        "DISABLED",
+        "BACKWARD",
+        "BACKWARD_ALL",
+        "FORWARD",
+        "FORWARD_ALL",
+        "FULL",
+        "FULL_ALL"
       ]
     },
     "ConcurrentModificationException":{
@@ -2427,6 +3179,13 @@
     "ConditionList":{
       "type":"list",
       "member":{"shape":"Condition"}
+    },
+    "ConflictException":{
+      "type":"structure",
+      "members":{
+        "Message":{"shape":"MessageString"}
+      },
+      "exception":true
     },
     "ConfusionMatrix":{
       "type":"structure",
@@ -2505,14 +3264,33 @@
         "JDBC_ENFORCE_SSL",
         "CUSTOM_JDBC_CERT",
         "SKIP_CUSTOM_JDBC_CERT_VALIDATION",
-        "CUSTOM_JDBC_CERT_STRING"
+        "CUSTOM_JDBC_CERT_STRING",
+        "CONNECTION_URL",
+        "KAFKA_BOOTSTRAP_SERVERS",
+        "KAFKA_SSL_ENABLED",
+        "KAFKA_CUSTOM_CERT",
+        "KAFKA_SKIP_CUSTOM_CERT_VALIDATION",
+        "KAFKA_CLIENT_KEYSTORE",
+        "KAFKA_CLIENT_KEYSTORE_PASSWORD",
+        "KAFKA_CLIENT_KEY_PASSWORD",
+        "ENCRYPTED_KAFKA_CLIENT_KEYSTORE_PASSWORD",
+        "ENCRYPTED_KAFKA_CLIENT_KEY_PASSWORD",
+        "SECRET_ID",
+        "CONNECTOR_URL",
+        "CONNECTOR_TYPE",
+        "CONNECTOR_CLASS_NAME"
       ]
     },
     "ConnectionType":{
       "type":"string",
       "enum":[
         "JDBC",
-        "SFTP"
+        "SFTP",
+        "MONGODB",
+        "KAFKA",
+        "NETWORK",
+        "MARKETPLACE",
+        "CUSTOM"
       ]
     },
     "ConnectionsList":{
@@ -2540,8 +3318,9 @@
       "type":"string",
       "enum":[
         "RUNNING",
-        "SUCCEEDED",
+        "CANCELLING",
         "CANCELLED",
+        "SUCCEEDED",
         "FAILED"
       ]
     },
@@ -2554,7 +3333,9 @@
         "DatabaseName":{"shape":"DatabaseName"},
         "Description":{"shape":"DescriptionString"},
         "Classifiers":{"shape":"ClassifierNameList"},
+        "RecrawlPolicy":{"shape":"RecrawlPolicy"},
         "SchemaChangePolicy":{"shape":"SchemaChangePolicy"},
+        "LineageConfiguration":{"shape":"LineageConfiguration"},
         "State":{"shape":"CrawlerState"},
         "TablePrefix":{"shape":"TablePrefix"},
         "Schedule":{"shape":"Schedule"},
@@ -2568,6 +3349,13 @@
       }
     },
     "CrawlerConfiguration":{"type":"string"},
+    "CrawlerLineageSettings":{
+      "type":"string",
+      "enum":[
+        "ENABLE",
+        "DISABLE"
+      ]
+    },
     "CrawlerList":{
       "type":"list",
       "member":{"shape":"Crawler"}
@@ -2640,6 +3428,7 @@
       "members":{
         "S3Targets":{"shape":"S3TargetList"},
         "JdbcTargets":{"shape":"JdbcTargetList"},
+        "MongoDBTargets":{"shape":"MongoDBTargetList"},
         "DynamoDBTargets":{"shape":"DynamoDBTargetList"},
         "CatalogTargets":{"shape":"CatalogTargetList"}
       }
@@ -2688,6 +3477,8 @@
         "Classifiers":{"shape":"ClassifierNameList"},
         "TablePrefix":{"shape":"TablePrefix"},
         "SchemaChangePolicy":{"shape":"SchemaChangePolicy"},
+        "RecrawlPolicy":{"shape":"RecrawlPolicy"},
+        "LineageConfiguration":{"shape":"LineageConfiguration"},
         "Configuration":{"shape":"CrawlerConfiguration"},
         "CrawlerSecurityConfiguration":{"shape":"CrawlerSecurityConfiguration"},
         "Tags":{"shape":"TagsMap"}
@@ -2855,13 +3646,34 @@
         "WorkerType":{"shape":"WorkerType"},
         "NumberOfWorkers":{"shape":"NullableInteger"},
         "Timeout":{"shape":"Timeout"},
-        "MaxRetries":{"shape":"NullableInteger"}
+        "MaxRetries":{"shape":"NullableInteger"},
+        "Tags":{"shape":"TagsMap"},
+        "TransformEncryption":{"shape":"TransformEncryption"}
       }
     },
     "CreateMLTransformResponse":{
       "type":"structure",
       "members":{
         "TransformId":{"shape":"HashString"}
+      }
+    },
+    "CreatePartitionIndexRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "PartitionIndex"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "PartitionIndex":{"shape":"PartitionIndex"}
+      }
+    },
+    "CreatePartitionIndexResponse":{
+      "type":"structure",
+      "members":{
       }
     },
     "CreatePartitionRequest":{
@@ -2881,6 +3693,59 @@
     "CreatePartitionResponse":{
       "type":"structure",
       "members":{
+      }
+    },
+    "CreateRegistryInput":{
+      "type":"structure",
+      "required":["RegistryName"],
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "Description":{"shape":"DescriptionString"},
+        "Tags":{"shape":"TagsMap"}
+      }
+    },
+    "CreateRegistryResponse":{
+      "type":"structure",
+      "members":{
+        "RegistryArn":{"shape":"GlueResourceArn"},
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "Description":{"shape":"DescriptionString"},
+        "Tags":{"shape":"TagsMap"}
+      }
+    },
+    "CreateSchemaInput":{
+      "type":"structure",
+      "required":[
+        "SchemaName",
+        "DataFormat"
+      ],
+      "members":{
+        "RegistryId":{"shape":"RegistryId"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "DataFormat":{"shape":"DataFormat"},
+        "Compatibility":{"shape":"Compatibility"},
+        "Description":{"shape":"DescriptionString"},
+        "Tags":{"shape":"TagsMap"},
+        "SchemaDefinition":{"shape":"SchemaDefinitionString"}
+      }
+    },
+    "CreateSchemaResponse":{
+      "type":"structure",
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "RegistryArn":{"shape":"GlueResourceArn"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "Description":{"shape":"DescriptionString"},
+        "DataFormat":{"shape":"DataFormat"},
+        "Compatibility":{"shape":"Compatibility"},
+        "SchemaCheckpoint":{"shape":"SchemaCheckpointNumber"},
+        "LatestSchemaVersion":{"shape":"VersionLongNumber"},
+        "NextSchemaVersion":{"shape":"VersionLongNumber"},
+        "SchemaStatus":{"shape":"SchemaStatus"},
+        "Tags":{"shape":"TagsMap"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "SchemaVersionStatus":{"shape":"SchemaVersionStatus"}
       }
     },
     "CreateScriptRequest":{
@@ -2925,7 +3790,8 @@
       "members":{
         "CatalogId":{"shape":"CatalogIdString"},
         "DatabaseName":{"shape":"NameString"},
-        "TableInput":{"shape":"TableInput"}
+        "TableInput":{"shape":"TableInput"},
+        "PartitionIndexes":{"shape":"PartitionIndexList"}
       }
     },
     "CreateTableResponse":{
@@ -2982,7 +3848,8 @@
         "Name":{"shape":"NameString"},
         "Description":{"shape":"GenericString"},
         "DefaultRunProperties":{"shape":"WorkflowRunProperties"},
-        "Tags":{"shape":"TagsMap"}
+        "Tags":{"shape":"TagsMap"},
+        "MaxConcurrentRuns":{"shape":"NullableInteger"}
       }
     },
     "CreateWorkflowResponse":{
@@ -3003,6 +3870,7 @@
         "RowTag":{"shape":"RowTag"}
       }
     },
+    "CreatedTimestamp":{"type":"string"},
     "CronExpression":{"type":"string"},
     "CsvClassifier":{
       "type":"structure",
@@ -3065,6 +3933,10 @@
         "ConnectionPasswordEncryption":{"shape":"ConnectionPasswordEncryption"}
       }
     },
+    "DataFormat":{
+      "type":"string",
+      "enum":["AVRO"]
+    },
     "DataLakePrincipal":{
       "type":"structure",
       "members":{
@@ -3085,7 +3957,16 @@
         "LocationUri":{"shape":"URI"},
         "Parameters":{"shape":"ParametersMap"},
         "CreateTime":{"shape":"Timestamp"},
-        "CreateTableDefaultPermissions":{"shape":"PrincipalPermissionsList"}
+        "CreateTableDefaultPermissions":{"shape":"PrincipalPermissionsList"},
+        "TargetDatabase":{"shape":"DatabaseIdentifier"},
+        "CatalogId":{"shape":"CatalogIdString"}
+      }
+    },
+    "DatabaseIdentifier":{
+      "type":"structure",
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"}
       }
     },
     "DatabaseInput":{
@@ -3096,7 +3977,8 @@
         "Description":{"shape":"DescriptionString"},
         "LocationUri":{"shape":"URI"},
         "Parameters":{"shape":"ParametersMap"},
-        "CreateTableDefaultPermissions":{"shape":"PrincipalPermissionsList"}
+        "CreateTableDefaultPermissions":{"shape":"PrincipalPermissionsList"},
+        "TargetDatabase":{"shape":"DatabaseIdentifier"}
       }
     },
     "DatabaseList":{
@@ -3104,6 +3986,43 @@
       "member":{"shape":"Database"}
     },
     "DatabaseName":{"type":"string"},
+    "DateColumnStatisticsData":{
+      "type":"structure",
+      "required":[
+        "NumberOfNulls",
+        "NumberOfDistinctValues"
+      ],
+      "members":{
+        "MinimumValue":{"shape":"Timestamp"},
+        "MaximumValue":{"shape":"Timestamp"},
+        "NumberOfNulls":{"shape":"NonNegativeLong"},
+        "NumberOfDistinctValues":{"shape":"NonNegativeLong"}
+      }
+    },
+    "DecimalColumnStatisticsData":{
+      "type":"structure",
+      "required":[
+        "NumberOfNulls",
+        "NumberOfDistinctValues"
+      ],
+      "members":{
+        "MinimumValue":{"shape":"DecimalNumber"},
+        "MaximumValue":{"shape":"DecimalNumber"},
+        "NumberOfNulls":{"shape":"NonNegativeLong"},
+        "NumberOfDistinctValues":{"shape":"NonNegativeLong"}
+      }
+    },
+    "DecimalNumber":{
+      "type":"structure",
+      "required":[
+        "UnscaledValue",
+        "Scale"
+      ],
+      "members":{
+        "UnscaledValue":{"shape":"Blob"},
+        "Scale":{"shape":"Integer"}
+      }
+    },
     "DeleteBehavior":{
       "type":"string",
       "enum":[
@@ -3120,6 +4039,46 @@
       }
     },
     "DeleteClassifierResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DeleteColumnStatisticsForPartitionRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "PartitionValues",
+        "ColumnName"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "PartitionValues":{"shape":"ValueStringList"},
+        "ColumnName":{"shape":"NameString"}
+      }
+    },
+    "DeleteColumnStatisticsForPartitionResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DeleteColumnStatisticsForTableRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "ColumnName"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "ColumnName":{"shape":"NameString"}
+      }
+    },
+    "DeleteColumnStatisticsForTableResponse":{
       "type":"structure",
       "members":{
       }
@@ -3206,6 +4165,25 @@
         "TransformId":{"shape":"HashString"}
       }
     },
+    "DeletePartitionIndexRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "IndexName"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "IndexName":{"shape":"NameString"}
+      }
+    },
+    "DeletePartitionIndexResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "DeletePartitionRequest":{
       "type":"structure",
       "required":[
@@ -3225,15 +4203,63 @@
       "members":{
       }
     },
+    "DeleteRegistryInput":{
+      "type":"structure",
+      "required":["RegistryId"],
+      "members":{
+        "RegistryId":{"shape":"RegistryId"}
+      }
+    },
+    "DeleteRegistryResponse":{
+      "type":"structure",
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "RegistryArn":{"shape":"GlueResourceArn"},
+        "Status":{"shape":"RegistryStatus"}
+      }
+    },
     "DeleteResourcePolicyRequest":{
       "type":"structure",
       "members":{
-        "PolicyHashCondition":{"shape":"HashString"}
+        "PolicyHashCondition":{"shape":"HashString"},
+        "ResourceArn":{"shape":"GlueResourceArn"}
       }
     },
     "DeleteResourcePolicyResponse":{
       "type":"structure",
       "members":{
+      }
+    },
+    "DeleteSchemaInput":{
+      "type":"structure",
+      "required":["SchemaId"],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"}
+      }
+    },
+    "DeleteSchemaResponse":{
+      "type":"structure",
+      "members":{
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "Status":{"shape":"SchemaStatus"}
+      }
+    },
+    "DeleteSchemaVersionsInput":{
+      "type":"structure",
+      "required":[
+        "SchemaId",
+        "Versions"
+      ],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "Versions":{"shape":"VersionsString"}
+      }
+    },
+    "DeleteSchemaVersionsResponse":{
+      "type":"structure",
+      "members":{
+        "SchemaVersionErrors":{"shape":"SchemaVersionErrorList"}
       }
     },
     "DeleteSecurityConfigurationRequest":{
@@ -3390,10 +4416,26 @@
       "max":25,
       "min":1
     },
+    "Double":{"type":"double"},
+    "DoubleColumnStatisticsData":{
+      "type":"structure",
+      "required":[
+        "NumberOfNulls",
+        "NumberOfDistinctValues"
+      ],
+      "members":{
+        "MinimumValue":{"shape":"Double"},
+        "MaximumValue":{"shape":"Double"},
+        "NumberOfNulls":{"shape":"NonNegativeLong"},
+        "NumberOfDistinctValues":{"shape":"NonNegativeLong"}
+      }
+    },
     "DynamoDBTarget":{
       "type":"structure",
       "members":{
-        "Path":{"shape":"Path"}
+        "Path":{"shape":"Path"},
+        "scanAll":{"shape":"NullableBoolean"},
+        "scanRate":{"shape":"NullableDouble"}
       }
     },
     "DynamoDBTargetList":{
@@ -3410,6 +4452,13 @@
     "EdgeList":{
       "type":"list",
       "member":{"shape":"Edge"}
+    },
+    "EnableHybridValues":{
+      "type":"string",
+      "enum":[
+        "TRUE",
+        "FALSE"
+      ]
     },
     "EncryptionAtRest":{
       "type":"structure",
@@ -3439,6 +4488,7 @@
       "key":{"shape":"NameString"},
       "value":{"shape":"ErrorDetail"}
     },
+    "ErrorCodeString":{"type":"string"},
     "ErrorDetail":{
       "type":"structure",
       "members":{
@@ -3446,6 +4496,14 @@
         "ErrorMessage":{"shape":"DescriptionString"}
       }
     },
+    "ErrorDetails":{
+      "type":"structure",
+      "members":{
+        "ErrorCode":{"shape":"ErrorCodeString"},
+        "ErrorMessage":{"shape":"ErrorMessageString"}
+      }
+    },
+    "ErrorMessageString":{"type":"string"},
     "ErrorString":{"type":"string"},
     "EvaluationMetrics":{
       "type":"structure",
@@ -3490,7 +4548,8 @@
         "Precision":{"shape":"GenericBoundedDouble"},
         "Recall":{"shape":"GenericBoundedDouble"},
         "F1":{"shape":"GenericBoundedDouble"},
-        "ConfusionMatrix":{"shape":"ConfusionMatrix"}
+        "ConfusionMatrix":{"shape":"ConfusionMatrix"},
+        "ColumnImportances":{"shape":"ColumnImportanceList"}
       }
     },
     "FindMatchesParameters":{
@@ -3564,6 +4623,56 @@
       "members":{
         "Classifiers":{"shape":"ClassifierList"},
         "NextToken":{"shape":"Token"}
+      }
+    },
+    "GetColumnNamesList":{
+      "type":"list",
+      "member":{"shape":"NameString"},
+      "max":100,
+      "min":0
+    },
+    "GetColumnStatisticsForPartitionRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "PartitionValues",
+        "ColumnNames"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "PartitionValues":{"shape":"ValueStringList"},
+        "ColumnNames":{"shape":"GetColumnNamesList"}
+      }
+    },
+    "GetColumnStatisticsForPartitionResponse":{
+      "type":"structure",
+      "members":{
+        "ColumnStatisticsList":{"shape":"ColumnStatisticsList"},
+        "Errors":{"shape":"ColumnErrors"}
+      }
+    },
+    "GetColumnStatisticsForTableRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "ColumnNames"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "ColumnNames":{"shape":"GetColumnNamesList"}
+      }
+    },
+    "GetColumnStatisticsForTableResponse":{
+      "type":"structure",
+      "members":{
+        "ColumnStatisticsList":{"shape":"ColumnStatisticsList"},
+        "Errors":{"shape":"ColumnErrors"}
       }
     },
     "GetConnectionRequest":{
@@ -3678,7 +4787,8 @@
       "members":{
         "CatalogId":{"shape":"CatalogIdString"},
         "NextToken":{"shape":"Token"},
-        "MaxResults":{"shape":"PageSize"}
+        "MaxResults":{"shape":"CatalogGetterPageSize"},
+        "ResourceShareType":{"shape":"ResourceShareType"}
       }
     },
     "GetDatabasesResponse":{
@@ -3875,7 +4985,8 @@
         "WorkerType":{"shape":"WorkerType"},
         "NumberOfWorkers":{"shape":"NullableInteger"},
         "Timeout":{"shape":"Timeout"},
-        "MaxRetries":{"shape":"NullableInteger"}
+        "MaxRetries":{"shape":"NullableInteger"},
+        "TransformEncryption":{"shape":"TransformEncryption"}
       }
     },
     "GetMLTransformsRequest":{
@@ -3911,6 +5022,26 @@
         "Mapping":{"shape":"MappingList"}
       }
     },
+    "GetPartitionIndexesRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "NextToken":{"shape":"Token"}
+      }
+    },
+    "GetPartitionIndexesResponse":{
+      "type":"structure",
+      "members":{
+        "PartitionIndexDescriptorList":{"shape":"PartitionIndexDescriptorList"},
+        "NextToken":{"shape":"Token"}
+      }
+    },
     "GetPartitionRequest":{
       "type":"structure",
       "required":[
@@ -3944,7 +5075,8 @@
         "Expression":{"shape":"PredicateString"},
         "NextToken":{"shape":"Token"},
         "Segment":{"shape":"Segment"},
-        "MaxResults":{"shape":"PageSize"}
+        "MaxResults":{"shape":"PageSize"},
+        "ExcludeColumnSchema":{"shape":"BooleanNullable"}
       }
     },
     "GetPartitionsResponse":{
@@ -3965,7 +5097,8 @@
         "Source":{"shape":"CatalogEntry"},
         "Sinks":{"shape":"CatalogEntries"},
         "Location":{"shape":"Location"},
-        "Language":{"shape":"Language"}
+        "Language":{"shape":"Language"},
+        "AdditionalPlanOptionsMap":{"shape":"AdditionalPlanOptionsMap"}
       }
     },
     "GetPlanResponse":{
@@ -3975,9 +5108,46 @@
         "ScalaCode":{"shape":"ScalaCode"}
       }
     },
+    "GetRegistryInput":{
+      "type":"structure",
+      "required":["RegistryId"],
+      "members":{
+        "RegistryId":{"shape":"RegistryId"}
+      }
+    },
+    "GetRegistryResponse":{
+      "type":"structure",
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "RegistryArn":{"shape":"GlueResourceArn"},
+        "Description":{"shape":"DescriptionString"},
+        "Status":{"shape":"RegistryStatus"},
+        "CreatedTime":{"shape":"CreatedTimestamp"},
+        "UpdatedTime":{"shape":"UpdatedTimestamp"}
+      }
+    },
+    "GetResourcePoliciesRequest":{
+      "type":"structure",
+      "members":{
+        "NextToken":{"shape":"Token"},
+        "MaxResults":{"shape":"PageSize"}
+      }
+    },
+    "GetResourcePoliciesResponse":{
+      "type":"structure",
+      "members":{
+        "GetResourcePoliciesResponseList":{"shape":"GetResourcePoliciesResponseList"},
+        "NextToken":{"shape":"Token"}
+      }
+    },
+    "GetResourcePoliciesResponseList":{
+      "type":"list",
+      "member":{"shape":"GluePolicy"}
+    },
     "GetResourcePolicyRequest":{
       "type":"structure",
       "members":{
+        "ResourceArn":{"shape":"GlueResourceArn"}
       }
     },
     "GetResourcePolicyResponse":{
@@ -3987,6 +5157,93 @@
         "PolicyHash":{"shape":"HashString"},
         "CreateTime":{"shape":"Timestamp"},
         "UpdateTime":{"shape":"Timestamp"}
+      }
+    },
+    "GetSchemaByDefinitionInput":{
+      "type":"structure",
+      "required":[
+        "SchemaId",
+        "SchemaDefinition"
+      ],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "SchemaDefinition":{"shape":"SchemaDefinitionString"}
+      }
+    },
+    "GetSchemaByDefinitionResponse":{
+      "type":"structure",
+      "members":{
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "DataFormat":{"shape":"DataFormat"},
+        "Status":{"shape":"SchemaVersionStatus"},
+        "CreatedTime":{"shape":"CreatedTimestamp"}
+      }
+    },
+    "GetSchemaInput":{
+      "type":"structure",
+      "required":["SchemaId"],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"}
+      }
+    },
+    "GetSchemaResponse":{
+      "type":"structure",
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "RegistryArn":{"shape":"GlueResourceArn"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "Description":{"shape":"DescriptionString"},
+        "DataFormat":{"shape":"DataFormat"},
+        "Compatibility":{"shape":"Compatibility"},
+        "SchemaCheckpoint":{"shape":"SchemaCheckpointNumber"},
+        "LatestSchemaVersion":{"shape":"VersionLongNumber"},
+        "NextSchemaVersion":{"shape":"VersionLongNumber"},
+        "SchemaStatus":{"shape":"SchemaStatus"},
+        "CreatedTime":{"shape":"CreatedTimestamp"},
+        "UpdatedTime":{"shape":"UpdatedTimestamp"}
+      }
+    },
+    "GetSchemaVersionInput":{
+      "type":"structure",
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "SchemaVersionNumber":{"shape":"SchemaVersionNumber"}
+      }
+    },
+    "GetSchemaVersionResponse":{
+      "type":"structure",
+      "members":{
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "SchemaDefinition":{"shape":"SchemaDefinitionString"},
+        "DataFormat":{"shape":"DataFormat"},
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "VersionNumber":{"shape":"VersionLongNumber"},
+        "Status":{"shape":"SchemaVersionStatus"},
+        "CreatedTime":{"shape":"CreatedTimestamp"}
+      }
+    },
+    "GetSchemaVersionsDiffInput":{
+      "type":"structure",
+      "required":[
+        "SchemaId",
+        "FirstSchemaVersionNumber",
+        "SecondSchemaVersionNumber",
+        "SchemaDiffType"
+      ],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "FirstSchemaVersionNumber":{"shape":"SchemaVersionNumber"},
+        "SecondSchemaVersionNumber":{"shape":"SchemaVersionNumber"},
+        "SchemaDiffType":{"shape":"SchemaDiffType"}
+      }
+    },
+    "GetSchemaVersionsDiffResponse":{
+      "type":"structure",
+      "members":{
+        "Diff":{"shape":"SchemaDefinitionDiff"}
       }
     },
     "GetSecurityConfigurationRequest":{
@@ -4068,7 +5325,7 @@
         "DatabaseName":{"shape":"NameString"},
         "TableName":{"shape":"NameString"},
         "NextToken":{"shape":"Token"},
-        "MaxResults":{"shape":"PageSize"}
+        "MaxResults":{"shape":"CatalogGetterPageSize"}
       }
     },
     "GetTableVersionsResponse":{
@@ -4086,7 +5343,7 @@
         "DatabaseName":{"shape":"NameString"},
         "Expression":{"shape":"FilterString"},
         "NextToken":{"shape":"Token"},
-        "MaxResults":{"shape":"PageSize"}
+        "MaxResults":{"shape":"CatalogGetterPageSize"}
       }
     },
     "GetTablesResponse":{
@@ -4157,16 +5414,13 @@
     },
     "GetUserDefinedFunctionsRequest":{
       "type":"structure",
-      "required":[
-        "DatabaseName",
-        "Pattern"
-      ],
+      "required":["Pattern"],
       "members":{
         "CatalogId":{"shape":"CatalogIdString"},
         "DatabaseName":{"shape":"NameString"},
         "Pattern":{"shape":"NameString"},
         "NextToken":{"shape":"Token"},
-        "MaxResults":{"shape":"PageSize"}
+        "MaxResults":{"shape":"CatalogGetterPageSize"}
       }
     },
     "GetUserDefinedFunctionsResponse":{
@@ -4249,6 +5503,15 @@
       },
       "exception":true
     },
+    "GluePolicy":{
+      "type":"structure",
+      "members":{
+        "PolicyInJson":{"shape":"PolicyJsonString"},
+        "PolicyHash":{"shape":"HashString"},
+        "CreateTime":{"shape":"Timestamp"},
+        "UpdateTime":{"shape":"Timestamp"}
+      }
+    },
     "GlueResourceArn":{
       "type":"string",
       "max":10240,
@@ -4322,6 +5585,13 @@
       },
       "exception":true
     },
+    "IllegalWorkflowStateException":{
+      "type":"structure",
+      "members":{
+        "Message":{"shape":"MessageString"}
+      },
+      "exception":true
+    },
     "ImportCatalogToGlueRequest":{
       "type":"structure",
       "members":{
@@ -4362,6 +5632,7 @@
       },
       "exception":true
     },
+    "IsVersionValid":{"type":"boolean"},
     "JdbcTarget":{
       "type":"structure",
       "members":{
@@ -4541,6 +5812,27 @@
     },
     "JsonPath":{"type":"string"},
     "JsonValue":{"type":"string"},
+    "KeyList":{
+      "type":"list",
+      "member":{"shape":"NameString"},
+      "min":1
+    },
+    "KeySchemaElement":{
+      "type":"structure",
+      "required":[
+        "Name",
+        "Type"
+      ],
+      "members":{
+        "Name":{"shape":"NameString"},
+        "Type":{"shape":"ColumnTypeString"}
+      }
+    },
+    "KeySchemaElementList":{
+      "type":"list",
+      "member":{"shape":"KeySchemaElement"},
+      "min":1
+    },
     "KeyString":{
       "type":"string",
       "max":255,
@@ -4583,6 +5875,13 @@
         "CANCELLED",
         "FAILED"
       ]
+    },
+    "LatestSchemaVersionBoolean":{"type":"boolean"},
+    "LineageConfiguration":{
+      "type":"structure",
+      "members":{
+        "CrawlerLineageSettings":{"shape":"CrawlerLineageSettings"}
+      }
     },
     "ListCrawlersRequest":{
       "type":"structure",
@@ -4627,6 +5926,69 @@
       "members":{
         "JobNames":{"shape":"JobNameList"},
         "NextToken":{"shape":"GenericString"}
+      }
+    },
+    "ListMLTransformsRequest":{
+      "type":"structure",
+      "members":{
+        "NextToken":{"shape":"PaginationToken"},
+        "MaxResults":{"shape":"PageSize"},
+        "Filter":{"shape":"TransformFilterCriteria"},
+        "Sort":{"shape":"TransformSortCriteria"},
+        "Tags":{"shape":"TagsMap"}
+      }
+    },
+    "ListMLTransformsResponse":{
+      "type":"structure",
+      "required":["TransformIds"],
+      "members":{
+        "TransformIds":{"shape":"TransformIdList"},
+        "NextToken":{"shape":"PaginationToken"}
+      }
+    },
+    "ListRegistriesInput":{
+      "type":"structure",
+      "members":{
+        "MaxResults":{"shape":"MaxResultsNumber"},
+        "NextToken":{"shape":"SchemaRegistryTokenString"}
+      }
+    },
+    "ListRegistriesResponse":{
+      "type":"structure",
+      "members":{
+        "Registries":{"shape":"RegistryListDefinition"},
+        "NextToken":{"shape":"SchemaRegistryTokenString"}
+      }
+    },
+    "ListSchemaVersionsInput":{
+      "type":"structure",
+      "required":["SchemaId"],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "MaxResults":{"shape":"MaxResultsNumber"},
+        "NextToken":{"shape":"SchemaRegistryTokenString"}
+      }
+    },
+    "ListSchemaVersionsResponse":{
+      "type":"structure",
+      "members":{
+        "Schemas":{"shape":"SchemaVersionList"},
+        "NextToken":{"shape":"SchemaRegistryTokenString"}
+      }
+    },
+    "ListSchemasInput":{
+      "type":"structure",
+      "members":{
+        "RegistryId":{"shape":"RegistryId"},
+        "MaxResults":{"shape":"MaxResultsNumber"},
+        "NextToken":{"shape":"SchemaRegistryTokenString"}
+      }
+    },
+    "ListSchemasResponse":{
+      "type":"structure",
+      "members":{
+        "Schemas":{"shape":"SchemaListDefinition"},
+        "NextToken":{"shape":"SchemaRegistryTokenString"}
       }
     },
     "ListTriggersRequest":{
@@ -4700,6 +6062,20 @@
       "type":"string",
       "enum":["EQUALS"]
     },
+    "Long":{"type":"long"},
+    "LongColumnStatisticsData":{
+      "type":"structure",
+      "required":[
+        "NumberOfNulls",
+        "NumberOfDistinctValues"
+      ],
+      "members":{
+        "MinimumValue":{"shape":"Long"},
+        "MaximumValue":{"shape":"Long"},
+        "NumberOfNulls":{"shape":"NonNegativeLong"},
+        "NumberOfDistinctValues":{"shape":"NonNegativeLong"}
+      }
+    },
     "MLTransform":{
       "type":"structure",
       "members":{
@@ -4720,7 +6096,8 @@
         "WorkerType":{"shape":"WorkerType"},
         "NumberOfWorkers":{"shape":"NullableInteger"},
         "Timeout":{"shape":"Timeout"},
-        "MaxRetries":{"shape":"NullableInteger"}
+        "MaxRetries":{"shape":"NullableInteger"},
+        "TransformEncryption":{"shape":"TransformEncryption"}
       }
     },
     "MLTransformNotReadyException":{
@@ -4729,6 +6106,21 @@
         "Message":{"shape":"MessageString"}
       },
       "exception":true
+    },
+    "MLUserDataEncryption":{
+      "type":"structure",
+      "required":["MlUserDataEncryptionMode"],
+      "members":{
+        "MlUserDataEncryptionMode":{"shape":"MLUserDataEncryptionModeString"},
+        "KmsKeyId":{"shape":"NameString"}
+      }
+    },
+    "MLUserDataEncryptionModeString":{
+      "type":"string",
+      "enum":[
+        "DISABLED",
+        "SSE-KMS"
+      ]
     },
     "MapValue":{
       "type":"map",
@@ -4759,6 +6151,12 @@
       "min":0
     },
     "MaxConcurrentRuns":{"type":"integer"},
+    "MaxResultsNumber":{
+      "type":"integer",
+      "box":true,
+      "max":100,
+      "min":1
+    },
     "MaxRetries":{"type":"integer"},
     "MessagePrefix":{
       "type":"string",
@@ -4767,7 +6165,55 @@
       "pattern":"[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800\\uDC00-\\uDBFF\\uDFFF\\t]*"
     },
     "MessageString":{"type":"string"},
+    "MetadataInfo":{
+      "type":"structure",
+      "members":{
+        "MetadataValue":{"shape":"MetadataValueString"},
+        "CreatedTime":{"shape":"CreatedTimestamp"},
+        "OtherMetadataValueList":{"shape":"OtherMetadataValueList"}
+      }
+    },
+    "MetadataInfoMap":{
+      "type":"map",
+      "key":{"shape":"MetadataKeyString"},
+      "value":{"shape":"MetadataInfo"}
+    },
+    "MetadataKeyString":{
+      "type":"string",
+      "max":128,
+      "min":1,
+      "pattern":"[a-zA-Z0-9+-=._./@]+"
+    },
+    "MetadataKeyValuePair":{
+      "type":"structure",
+      "members":{
+        "MetadataKey":{"shape":"MetadataKeyString"},
+        "MetadataValue":{"shape":"MetadataValueString"}
+      }
+    },
+    "MetadataList":{
+      "type":"list",
+      "member":{"shape":"MetadataKeyValuePair"}
+    },
+    "MetadataValueString":{
+      "type":"string",
+      "max":256,
+      "min":1,
+      "pattern":"[a-zA-Z0-9+-=._./@]+"
+    },
     "MillisecondsCount":{"type":"long"},
+    "MongoDBTarget":{
+      "type":"structure",
+      "members":{
+        "ConnectionName":{"shape":"ConnectionName"},
+        "Path":{"shape":"Path"},
+        "ScanAll":{"shape":"NullableBoolean"}
+      }
+    },
+    "MongoDBTargetList":{
+      "type":"list",
+      "member":{"shape":"MongoDBTarget"}
+    },
     "NameString":{
       "type":"string",
       "max":255,
@@ -4796,6 +6242,10 @@
         "CrawlerDetails":{"shape":"CrawlerNodeDetails"}
       }
     },
+    "NodeIdList":{
+      "type":"list",
+      "member":{"shape":"NameString"}
+    },
     "NodeList":{
       "type":"list",
       "member":{"shape":"Node"}
@@ -4814,6 +6264,10 @@
     },
     "NonNegativeInteger":{
       "type":"integer",
+      "min":0
+    },
+    "NonNegativeLong":{
+      "type":"long",
       "min":0
     },
     "NotificationProperty":{
@@ -4865,6 +6319,17 @@
       "type":"list",
       "member":{"shape":"Order"}
     },
+    "OtherMetadataValueList":{
+      "type":"list",
+      "member":{"shape":"OtherMetadataValueListItem"}
+    },
+    "OtherMetadataValueListItem":{
+      "type":"structure",
+      "members":{
+        "MetadataValue":{"shape":"MetadataValueString"},
+        "CreatedTime":{"shape":"CreatedTimestamp"}
+      }
+    },
     "PageSize":{
       "type":"integer",
       "box":true,
@@ -4891,7 +6356,8 @@
         "LastAccessTime":{"shape":"Timestamp"},
         "StorageDescriptor":{"shape":"StorageDescriptor"},
         "Parameters":{"shape":"ParametersMap"},
-        "LastAnalyzedTime":{"shape":"Timestamp"}
+        "LastAnalyzedTime":{"shape":"Timestamp"},
+        "CatalogId":{"shape":"CatalogIdString"}
       }
     },
     "PartitionError":{
@@ -4904,6 +6370,49 @@
     "PartitionErrors":{
       "type":"list",
       "member":{"shape":"PartitionError"}
+    },
+    "PartitionIndex":{
+      "type":"structure",
+      "required":[
+        "Keys",
+        "IndexName"
+      ],
+      "members":{
+        "Keys":{"shape":"KeyList"},
+        "IndexName":{"shape":"NameString"}
+      }
+    },
+    "PartitionIndexDescriptor":{
+      "type":"structure",
+      "required":[
+        "IndexName",
+        "Keys",
+        "IndexStatus"
+      ],
+      "members":{
+        "IndexName":{"shape":"NameString"},
+        "Keys":{"shape":"KeySchemaElementList"},
+        "IndexStatus":{"shape":"PartitionIndexStatus"},
+        "BackfillErrors":{"shape":"BackfillErrors"}
+      }
+    },
+    "PartitionIndexDescriptorList":{
+      "type":"list",
+      "member":{"shape":"PartitionIndexDescriptor"}
+    },
+    "PartitionIndexList":{
+      "type":"list",
+      "member":{"shape":"PartitionIndex"},
+      "max":3
+    },
+    "PartitionIndexStatus":{
+      "type":"string",
+      "enum":[
+        "CREATING",
+        "ACTIVE",
+        "DELETING",
+        "FAILED"
+      ]
     },
     "PartitionInput":{
       "type":"structure",
@@ -5042,14 +6551,39 @@
       "required":["PolicyInJson"],
       "members":{
         "PolicyInJson":{"shape":"PolicyJsonString"},
+        "ResourceArn":{"shape":"GlueResourceArn"},
         "PolicyHashCondition":{"shape":"HashString"},
-        "PolicyExistsCondition":{"shape":"ExistCondition"}
+        "PolicyExistsCondition":{"shape":"ExistCondition"},
+        "EnableHybrid":{"shape":"EnableHybridValues"}
       }
     },
     "PutResourcePolicyResponse":{
       "type":"structure",
       "members":{
         "PolicyHash":{"shape":"HashString"}
+      }
+    },
+    "PutSchemaVersionMetadataInput":{
+      "type":"structure",
+      "required":["MetadataKeyValue"],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "SchemaVersionNumber":{"shape":"SchemaVersionNumber"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "MetadataKeyValue":{"shape":"MetadataKeyValuePair"}
+      }
+    },
+    "PutSchemaVersionMetadataResponse":{
+      "type":"structure",
+      "members":{
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "LatestVersion":{"shape":"LatestSchemaVersionBoolean"},
+        "VersionNumber":{"shape":"VersionLongNumber"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "MetadataKey":{"shape":"MetadataKeyString"},
+        "MetadataValue":{"shape":"MetadataValueString"}
       }
     },
     "PutWorkflowRunPropertiesRequest":{
@@ -5075,9 +6609,117 @@
       "type":"string",
       "pattern":"^[2-3]$"
     },
+    "QuerySchemaVersionMetadataInput":{
+      "type":"structure",
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "SchemaVersionNumber":{"shape":"SchemaVersionNumber"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "MetadataList":{"shape":"MetadataList"},
+        "MaxResults":{"shape":"QuerySchemaVersionMetadataMaxResults"},
+        "NextToken":{"shape":"SchemaRegistryTokenString"}
+      }
+    },
+    "QuerySchemaVersionMetadataMaxResults":{
+      "type":"integer",
+      "max":50,
+      "min":1
+    },
+    "QuerySchemaVersionMetadataResponse":{
+      "type":"structure",
+      "members":{
+        "MetadataInfoMap":{"shape":"MetadataInfoMap"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "NextToken":{"shape":"SchemaRegistryTokenString"}
+      }
+    },
     "RecordsCount":{
       "type":"long",
       "box":true
+    },
+    "RecrawlBehavior":{
+      "type":"string",
+      "enum":[
+        "CRAWL_EVERYTHING",
+        "CRAWL_NEW_FOLDERS_ONLY"
+      ]
+    },
+    "RecrawlPolicy":{
+      "type":"structure",
+      "members":{
+        "RecrawlBehavior":{"shape":"RecrawlBehavior"}
+      }
+    },
+    "RegisterSchemaVersionInput":{
+      "type":"structure",
+      "required":[
+        "SchemaId",
+        "SchemaDefinition"
+      ],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "SchemaDefinition":{"shape":"SchemaDefinitionString"}
+      }
+    },
+    "RegisterSchemaVersionResponse":{
+      "type":"structure",
+      "members":{
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "VersionNumber":{"shape":"VersionLongNumber"},
+        "Status":{"shape":"SchemaVersionStatus"}
+      }
+    },
+    "RegistryId":{
+      "type":"structure",
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "RegistryArn":{"shape":"GlueResourceArn"}
+      }
+    },
+    "RegistryListDefinition":{
+      "type":"list",
+      "member":{"shape":"RegistryListItem"}
+    },
+    "RegistryListItem":{
+      "type":"structure",
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "RegistryArn":{"shape":"GlueResourceArn"},
+        "Description":{"shape":"DescriptionString"},
+        "Status":{"shape":"RegistryStatus"},
+        "CreatedTime":{"shape":"CreatedTimestamp"},
+        "UpdatedTime":{"shape":"UpdatedTimestamp"}
+      }
+    },
+    "RegistryStatus":{
+      "type":"string",
+      "enum":[
+        "AVAILABLE",
+        "DELETING"
+      ]
+    },
+    "RemoveSchemaVersionMetadataInput":{
+      "type":"structure",
+      "required":["MetadataKeyValue"],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "SchemaVersionNumber":{"shape":"SchemaVersionNumber"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "MetadataKeyValue":{"shape":"MetadataKeyValuePair"}
+      }
+    },
+    "RemoveSchemaVersionMetadataResponse":{
+      "type":"structure",
+      "members":{
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "LatestVersion":{"shape":"LatestSchemaVersionBoolean"},
+        "VersionNumber":{"shape":"VersionLongNumber"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "MetadataKey":{"shape":"MetadataKeyString"},
+        "MetadataValue":{"shape":"MetadataValueString"}
+      }
     },
     "ReplaceBoolean":{"type":"boolean"},
     "ResetJobBookmarkRequest":{
@@ -5101,6 +6743,13 @@
       },
       "exception":true
     },
+    "ResourceShareType":{
+      "type":"string",
+      "enum":[
+        "FOREIGN",
+        "ALL"
+      ]
+    },
     "ResourceType":{
       "type":"string",
       "enum":[
@@ -5121,6 +6770,26 @@
       "member":{"shape":"ResourceUri"},
       "max":1000,
       "min":0
+    },
+    "ResumeWorkflowRunRequest":{
+      "type":"structure",
+      "required":[
+        "Name",
+        "RunId",
+        "NodeIds"
+      ],
+      "members":{
+        "Name":{"shape":"NameString"},
+        "RunId":{"shape":"IdString"},
+        "NodeIds":{"shape":"NodeIdList"}
+      }
+    },
+    "ResumeWorkflowRunResponse":{
+      "type":"structure",
+      "members":{
+        "RunId":{"shape":"IdString"},
+        "NodeIds":{"shape":"NodeIdList"}
+      }
     },
     "Role":{"type":"string"},
     "RoleArn":{
@@ -5153,7 +6822,8 @@
       "type":"structure",
       "members":{
         "Path":{"shape":"Path"},
-        "Exclusions":{"shape":"PathList"}
+        "Exclusions":{"shape":"PathList"},
+        "ConnectionName":{"shape":"ConnectionName"}
       }
     },
     "S3TargetList":{
@@ -5204,6 +6874,11 @@
         "DeleteBehavior":{"shape":"DeleteBehavior"}
       }
     },
+    "SchemaCheckpointNumber":{
+      "type":"long",
+      "max":100000,
+      "min":1
+    },
     "SchemaColumn":{
       "type":"structure",
       "members":{
@@ -5211,7 +6886,125 @@
         "DataType":{"shape":"ColumnTypeString"}
       }
     },
+    "SchemaDefinitionDiff":{
+      "type":"string",
+      "max":340000,
+      "min":1,
+      "pattern":".*\\S.*"
+    },
+    "SchemaDefinitionString":{
+      "type":"string",
+      "max":170000,
+      "min":1,
+      "pattern":".*\\S.*"
+    },
+    "SchemaDiffType":{
+      "type":"string",
+      "enum":["SYNTAX_DIFF"]
+    },
+    "SchemaId":{
+      "type":"structure",
+      "members":{
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "RegistryName":{"shape":"SchemaRegistryNameString"}
+      }
+    },
+    "SchemaListDefinition":{
+      "type":"list",
+      "member":{"shape":"SchemaListItem"}
+    },
+    "SchemaListItem":{
+      "type":"structure",
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "Description":{"shape":"DescriptionString"},
+        "SchemaStatus":{"shape":"SchemaStatus"},
+        "CreatedTime":{"shape":"CreatedTimestamp"},
+        "UpdatedTime":{"shape":"UpdatedTimestamp"}
+      }
+    },
     "SchemaPathString":{"type":"string"},
+    "SchemaReference":{
+      "type":"structure",
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "SchemaVersionNumber":{
+          "shape":"VersionLongNumber",
+          "box":true
+        }
+      }
+    },
+    "SchemaRegistryNameString":{
+      "type":"string",
+      "max":255,
+      "min":1,
+      "pattern":"[a-zA-Z0-9-_$#.]+"
+    },
+    "SchemaRegistryTokenString":{"type":"string"},
+    "SchemaStatus":{
+      "type":"string",
+      "enum":[
+        "AVAILABLE",
+        "PENDING",
+        "DELETING"
+      ]
+    },
+    "SchemaValidationError":{
+      "type":"string",
+      "max":5000,
+      "min":1
+    },
+    "SchemaVersionErrorItem":{
+      "type":"structure",
+      "members":{
+        "VersionNumber":{"shape":"VersionLongNumber"},
+        "ErrorDetails":{"shape":"ErrorDetails"}
+      }
+    },
+    "SchemaVersionErrorList":{
+      "type":"list",
+      "member":{"shape":"SchemaVersionErrorItem"}
+    },
+    "SchemaVersionIdString":{
+      "type":"string",
+      "max":36,
+      "min":36,
+      "pattern":"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+    },
+    "SchemaVersionList":{
+      "type":"list",
+      "member":{"shape":"SchemaVersionListItem"}
+    },
+    "SchemaVersionListItem":{
+      "type":"structure",
+      "members":{
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "SchemaVersionId":{"shape":"SchemaVersionIdString"},
+        "VersionNumber":{"shape":"VersionLongNumber"},
+        "Status":{"shape":"SchemaVersionStatus"},
+        "CreatedTime":{"shape":"CreatedTimestamp"}
+      }
+    },
+    "SchemaVersionNumber":{
+      "type":"structure",
+      "members":{
+        "LatestVersion":{"shape":"LatestSchemaVersionBoolean"},
+        "VersionNumber":{"shape":"VersionLongNumber"}
+      }
+    },
+    "SchemaVersionStatus":{
+      "type":"string",
+      "enum":[
+        "AVAILABLE",
+        "PENDING",
+        "FAILURE",
+        "DELETING"
+      ]
+    },
     "ScriptLocationString":{"type":"string"},
     "SearchPropertyPredicates":{
       "type":"list",
@@ -5225,7 +7018,8 @@
         "Filters":{"shape":"SearchPropertyPredicates"},
         "SearchText":{"shape":"ValueString"},
         "SortCriteria":{"shape":"SortCriteria"},
-        "MaxResults":{"shape":"PageSize"}
+        "MaxResults":{"shape":"PageSize"},
+        "ResourceShareType":{"shape":"ResourceShareType"}
       }
     },
     "SearchTablesResponse":{
@@ -5485,6 +7279,22 @@
         "Name":{"shape":"NameString"}
       }
     },
+    "StopWorkflowRunRequest":{
+      "type":"structure",
+      "required":[
+        "Name",
+        "RunId"
+      ],
+      "members":{
+        "Name":{"shape":"NameString"},
+        "RunId":{"shape":"IdString"}
+      }
+    },
+    "StopWorkflowRunResponse":{
+      "type":"structure",
+      "members":{
+      }
+    },
     "StorageDescriptor":{
       "type":"structure",
       "members":{
@@ -5499,7 +7309,23 @@
         "SortColumns":{"shape":"OrderList"},
         "Parameters":{"shape":"ParametersMap"},
         "SkewedInfo":{"shape":"SkewedInfo"},
-        "StoredAsSubDirectories":{"shape":"Boolean"}
+        "StoredAsSubDirectories":{"shape":"Boolean"},
+        "SchemaReference":{"shape":"SchemaReference"}
+      }
+    },
+    "StringColumnStatisticsData":{
+      "type":"structure",
+      "required":[
+        "MaximumLength",
+        "AverageLength",
+        "NumberOfNulls",
+        "NumberOfDistinctValues"
+      ],
+      "members":{
+        "MaximumLength":{"shape":"NonNegativeLong"},
+        "AverageLength":{"shape":"NonNegativeDouble"},
+        "NumberOfNulls":{"shape":"NonNegativeLong"},
+        "NumberOfDistinctValues":{"shape":"NonNegativeLong"}
       }
     },
     "StringList":{
@@ -5526,7 +7352,9 @@
         "TableType":{"shape":"TableTypeString"},
         "Parameters":{"shape":"ParametersMap"},
         "CreatedBy":{"shape":"NameString"},
-        "IsRegisteredWithLakeFormation":{"shape":"Boolean"}
+        "IsRegisteredWithLakeFormation":{"shape":"Boolean"},
+        "TargetTable":{"shape":"TableIdentifier"},
+        "CatalogId":{"shape":"CatalogIdString"}
       }
     },
     "TableError":{
@@ -5539,6 +7367,14 @@
     "TableErrors":{
       "type":"list",
       "member":{"shape":"TableError"}
+    },
+    "TableIdentifier":{
+      "type":"structure",
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "Name":{"shape":"NameString"}
+      }
     },
     "TableInput":{
       "type":"structure",
@@ -5555,7 +7391,8 @@
         "ViewOriginalText":{"shape":"ViewTextString"},
         "ViewExpandedText":{"shape":"ViewTextString"},
         "TableType":{"shape":"TableTypeString"},
-        "Parameters":{"shape":"ParametersMap"}
+        "Parameters":{"shape":"ParametersMap"},
+        "TargetTable":{"shape":"TableIdentifier"}
       }
     },
     "TableList":{
@@ -5722,6 +7559,13 @@
       "max":10,
       "min":1
     },
+    "TransformEncryption":{
+      "type":"structure",
+      "members":{
+        "MlUserDataEncryption":{"shape":"MLUserDataEncryption"},
+        "TaskRunSecurityConfigurationName":{"shape":"NameString"}
+      }
+    },
     "TransformFilterCriteria":{
       "type":"structure",
       "members":{
@@ -5735,6 +7579,10 @@
         "LastModifiedAfter":{"shape":"Timestamp"},
         "Schema":{"shape":"TransformSchema"}
       }
+    },
+    "TransformIdList":{
+      "type":"list",
+      "member":{"shape":"HashString"}
     },
     "TransformList":{
       "type":"list",
@@ -5845,6 +7693,12 @@
         "Predicate":{"shape":"Predicate"}
       }
     },
+    "TypeString":{
+      "type":"string",
+      "max":20000,
+      "min":0,
+      "pattern":"[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800\\uDC00-\\uDBFF\\uDFFF\\t]*"
+    },
     "URI":{
       "type":"string",
       "max":1024,
@@ -5888,6 +7742,54 @@
       "members":{
       }
     },
+    "UpdateColumnStatisticsForPartitionRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "PartitionValues",
+        "ColumnStatisticsList"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "PartitionValues":{"shape":"ValueStringList"},
+        "ColumnStatisticsList":{"shape":"UpdateColumnStatisticsList"}
+      }
+    },
+    "UpdateColumnStatisticsForPartitionResponse":{
+      "type":"structure",
+      "members":{
+        "Errors":{"shape":"ColumnStatisticsErrors"}
+      }
+    },
+    "UpdateColumnStatisticsForTableRequest":{
+      "type":"structure",
+      "required":[
+        "DatabaseName",
+        "TableName",
+        "ColumnStatisticsList"
+      ],
+      "members":{
+        "CatalogId":{"shape":"CatalogIdString"},
+        "DatabaseName":{"shape":"NameString"},
+        "TableName":{"shape":"NameString"},
+        "ColumnStatisticsList":{"shape":"UpdateColumnStatisticsList"}
+      }
+    },
+    "UpdateColumnStatisticsForTableResponse":{
+      "type":"structure",
+      "members":{
+        "Errors":{"shape":"ColumnStatisticsErrors"}
+      }
+    },
+    "UpdateColumnStatisticsList":{
+      "type":"list",
+      "member":{"shape":"ColumnStatistics"},
+      "max":25,
+      "min":0
+    },
     "UpdateConnectionRequest":{
       "type":"structure",
       "required":[
@@ -5918,6 +7820,8 @@
         "Classifiers":{"shape":"ClassifierNameList"},
         "TablePrefix":{"shape":"TablePrefix"},
         "SchemaChangePolicy":{"shape":"SchemaChangePolicy"},
+        "RecrawlPolicy":{"shape":"RecrawlPolicy"},
+        "LineageConfiguration":{"shape":"LineageConfiguration"},
         "Configuration":{"shape":"CrawlerConfiguration"},
         "CrawlerSecurityConfiguration":{"shape":"CrawlerSecurityConfiguration"}
       }
@@ -6068,6 +7972,42 @@
       "members":{
       }
     },
+    "UpdateRegistryInput":{
+      "type":"structure",
+      "required":[
+        "RegistryId",
+        "Description"
+      ],
+      "members":{
+        "RegistryId":{"shape":"RegistryId"},
+        "Description":{"shape":"DescriptionString"}
+      }
+    },
+    "UpdateRegistryResponse":{
+      "type":"structure",
+      "members":{
+        "RegistryName":{"shape":"SchemaRegistryNameString"},
+        "RegistryArn":{"shape":"GlueResourceArn"}
+      }
+    },
+    "UpdateSchemaInput":{
+      "type":"structure",
+      "required":["SchemaId"],
+      "members":{
+        "SchemaId":{"shape":"SchemaId"},
+        "SchemaVersionNumber":{"shape":"SchemaVersionNumber"},
+        "Compatibility":{"shape":"Compatibility"},
+        "Description":{"shape":"DescriptionString"}
+      }
+    },
+    "UpdateSchemaResponse":{
+      "type":"structure",
+      "members":{
+        "SchemaArn":{"shape":"GlueResourceArn"},
+        "SchemaName":{"shape":"SchemaRegistryNameString"},
+        "RegistryName":{"shape":"SchemaRegistryNameString"}
+      }
+    },
     "UpdateTableRequest":{
       "type":"structure",
       "required":[
@@ -6128,7 +8068,8 @@
       "members":{
         "Name":{"shape":"NameString"},
         "Description":{"shape":"GenericString"},
-        "DefaultRunProperties":{"shape":"WorkflowRunProperties"}
+        "DefaultRunProperties":{"shape":"WorkflowRunProperties"},
+        "MaxConcurrentRuns":{"shape":"NullableInteger"}
       }
     },
     "UpdateWorkflowResponse":{
@@ -6146,16 +8087,19 @@
         "RowTag":{"shape":"RowTag"}
       }
     },
+    "UpdatedTimestamp":{"type":"string"},
     "UriString":{"type":"string"},
     "UserDefinedFunction":{
       "type":"structure",
       "members":{
         "FunctionName":{"shape":"NameString"},
+        "DatabaseName":{"shape":"NameString"},
         "ClassName":{"shape":"NameString"},
         "OwnerName":{"shape":"NameString"},
         "OwnerType":{"shape":"PrincipalType"},
         "CreateTime":{"shape":"Timestamp"},
-        "ResourceUris":{"shape":"ResourceUriList"}
+        "ResourceUris":{"shape":"ResourceUriList"},
+        "CatalogId":{"shape":"CatalogIdString"}
       }
     },
     "UserDefinedFunctionInput":{
@@ -6188,6 +8132,11 @@
       "member":{"shape":"ValueString"}
     },
     "VersionId":{"type":"long"},
+    "VersionLongNumber":{
+      "type":"long",
+      "max":100000,
+      "min":1
+    },
     "VersionMismatchException":{
       "type":"structure",
       "members":{
@@ -6200,6 +8149,12 @@
       "max":255,
       "min":1,
       "pattern":"[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800\\uDC00-\\uDBFF\\uDFFF\\t]*"
+    },
+    "VersionsString":{
+      "type":"string",
+      "max":100000,
+      "min":1,
+      "pattern":"[1-9][0-9]*|[1-9][0-9]*-[1-9][0-9]*"
     },
     "ViewTextString":{
       "type":"string",
@@ -6222,7 +8177,8 @@
         "CreatedOn":{"shape":"TimestampValue"},
         "LastModifiedOn":{"shape":"TimestampValue"},
         "LastRun":{"shape":"WorkflowRun"},
-        "Graph":{"shape":"WorkflowGraph"}
+        "Graph":{"shape":"WorkflowGraph"},
+        "MaxConcurrentRuns":{"shape":"NullableInteger"}
       }
     },
     "WorkflowGraph":{
@@ -6243,10 +8199,12 @@
       "members":{
         "Name":{"shape":"NameString"},
         "WorkflowRunId":{"shape":"IdString"},
+        "PreviousRunId":{"shape":"IdString"},
         "WorkflowRunProperties":{"shape":"WorkflowRunProperties"},
         "StartedOn":{"shape":"TimestampValue"},
         "CompletedOn":{"shape":"TimestampValue"},
         "Status":{"shape":"WorkflowRunStatus"},
+        "ErrorMessage":{"shape":"ErrorString"},
         "Statistics":{"shape":"WorkflowRunStatistics"},
         "Graph":{"shape":"WorkflowGraph"}
       }
@@ -6271,7 +8229,10 @@
       "type":"string",
       "enum":[
         "RUNNING",
-        "COMPLETED"
+        "COMPLETED",
+        "STOPPING",
+        "STOPPED",
+        "ERROR"
       ]
     },
     "WorkflowRuns":{

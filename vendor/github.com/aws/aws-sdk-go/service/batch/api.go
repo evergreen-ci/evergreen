@@ -58,10 +58,9 @@ func (c *Batch) CancelJobRequest(input *CancelJobInput) (req *request.Request, o
 // CancelJob API operation for AWS Batch.
 //
 // Cancels a job in an AWS Batch job queue. Jobs that are in the SUBMITTED,
-// PENDING, or RUNNABLE state are cancelled. Jobs that have progressed to STARTING
-// or RUNNING are not cancelled (but the API operation still succeeds, even
-// if no job is cancelled); these jobs must be terminated with the TerminateJob
-// operation.
+// PENDING, or RUNNABLE state are canceled. Jobs that have progressed to STARTING
+// or RUNNING aren't canceled, but the API operation still succeeds, even if
+// no job is canceled. These jobs must be terminated with the TerminateJob operation.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -74,7 +73,7 @@ func (c *Batch) CancelJobRequest(input *CancelJobInput) (req *request.Request, o
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -146,45 +145,48 @@ func (c *Batch) CreateComputeEnvironmentRequest(input *CreateComputeEnvironmentI
 // CreateComputeEnvironment API operation for AWS Batch.
 //
 // Creates an AWS Batch compute environment. You can create MANAGED or UNMANAGED
-// compute environments.
+// compute environments. MANAGED compute environments can use Amazon EC2 or
+// AWS Fargate resources. UNMANAGED compute environments can only use EC2 resources.
 //
 // In a managed compute environment, AWS Batch manages the capacity and instance
 // types of the compute resources within the environment. This is based on the
 // compute resource specification that you define or the launch template (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-launch-templates.html)
-// that you specify when you create the compute environment. You can choose
-// to use Amazon EC2 On-Demand Instances or Spot Instances in your managed compute
-// environment. You can optionally set a maximum price so that Spot Instances
-// only launch when the Spot Instance price is below a specified percentage
-// of the On-Demand price.
+// that you specify when you create the compute environment. Either, you can
+// choose to use EC2 On-Demand Instances and EC2 Spot Instances. Or, you can
+// use Fargate and Fargate Spot capacity in your managed compute environment.
+// You can optionally set a maximum price so that Spot Instances only launch
+// when the Spot Instance price is less than a specified percentage of the On-Demand
+// price.
 //
-// Multi-node parallel jobs are not supported on Spot Instances.
+// Multi-node parallel jobs aren't supported on Spot Instances.
 //
-// In an unmanaged compute environment, you can manage your own compute resources.
-// This provides more compute resource configuration options, such as using
-// a custom AMI, but you must ensure that your AMI meets the Amazon ECS container
-// instance AMI specification. For more information, see Container Instance
-// AMIs (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/container_instance_AMIs.html)
-// in the Amazon Elastic Container Service Developer Guide. After you have created
+// In an unmanaged compute environment, you can manage your own EC2 compute
+// resources and have a lot of flexibility with how you configure your compute
+// resources. For example, you can use custom AMIs. However, you must verify
+// that each of your AMIs meet the Amazon ECS container instance AMI specification.
+// For more information, see container instance AMIs (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/container_instance_AMIs.html)
+// in the Amazon Elastic Container Service Developer Guide. After you created
 // your unmanaged compute environment, you can use the DescribeComputeEnvironments
-// operation to find the Amazon ECS cluster that is associated with it. Then,
-// manually launch your container instances into that Amazon ECS cluster. For
-// more information, see Launching an Amazon ECS Container Instance (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_container_instance.html)
+// operation to find the Amazon ECS cluster that's associated with it. Then,
+// launch your container instances into that Amazon ECS cluster. For more information,
+// see Launching an Amazon ECS container instance (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_container_instance.html)
 // in the Amazon Elastic Container Service Developer Guide.
 //
-// AWS Batch does not upgrade the AMIs in a compute environment after it is
-// created (for example, when a newer version of the Amazon ECS-optimized AMI
-// is available). You are responsible for the management of the guest operating
-// system (including updates and security patches) and any additional application
-// software or utilities that you install on the compute resources. To use a
-// new AMI for your AWS Batch jobs:
+// AWS Batch doesn't upgrade the AMIs in a compute environment after the environment
+// is created. For example, it doesn't update the AMIs when a newer version
+// of the Amazon ECS optimized AMI is available. Therefore, you're responsible
+// for managing the guest operating system (including its updates and security
+// patches) and any additional application software or utilities that you install
+// on the compute resources. To use a new AMI for your AWS Batch jobs, complete
+// these steps:
 //
 // Create a new compute environment with the new AMI.
 //
 // Add the compute environment to an existing job queue.
 //
-// Remove the old compute environment from your job queue.
+// Remove the earlier compute environment from your job queue.
 //
-// Delete the old compute environment.
+// Delete the earlier compute environment.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -197,7 +199,7 @@ func (c *Batch) CreateComputeEnvironmentRequest(input *CreateComputeEnvironmentI
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -272,8 +274,8 @@ func (c *Batch) CreateJobQueueRequest(input *CreateJobQueueInput) (req *request.
 // one or more compute environments to the queue and assign an order of preference
 // for the compute environments.
 //
-// You also set a priority to the job queue that determines the order in which
-// the AWS Batch scheduler places jobs onto its associated compute environments.
+// You also set a priority to the job queue that determines the order that the
+// AWS Batch scheduler places jobs onto its associated compute environments.
 // For example, if a compute environment is associated with more than one job
 // queue, the job queue with a higher priority is given preference for scheduling
 // jobs to that compute environment.
@@ -289,7 +291,7 @@ func (c *Batch) CreateJobQueueRequest(input *CreateJobQueueInput) (req *request.
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -365,7 +367,10 @@ func (c *Batch) DeleteComputeEnvironmentRequest(input *DeleteComputeEnvironmentI
 //
 // Before you can delete a compute environment, you must set its state to DISABLED
 // with the UpdateComputeEnvironment API operation and disassociate it from
-// any job queues with the UpdateJobQueue API operation.
+// any job queues with the UpdateJobQueue API operation. Compute environments
+// that use AWS Fargate resources must terminate all active jobs on that compute
+// environment before deleting the compute environment. If this isn't done,
+// the compute environment enters an invalid state.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -378,7 +383,7 @@ func (c *Batch) DeleteComputeEnvironmentRequest(input *DeleteComputeEnvironmentI
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -451,10 +456,11 @@ func (c *Batch) DeleteJobQueueRequest(input *DeleteJobQueueInput) (req *request.
 // DeleteJobQueue API operation for AWS Batch.
 //
 // Deletes the specified job queue. You must first disable submissions for a
-// queue with the UpdateJobQueue operation. All jobs in the queue are terminated
-// when you delete a job queue.
+// queue with the UpdateJobQueue operation. All jobs in the queue are eventually
+// terminated when you delete a job queue. The jobs are terminated at a rate
+// of about 16 jobs each second.
 //
-// It is not necessary to disassociate compute environments from a queue before
+// It's not necessary to disassociate compute environments from a queue before
 // submitting a DeleteJobQueue request.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -468,7 +474,7 @@ func (c *Batch) DeleteJobQueueRequest(input *DeleteJobQueueInput) (req *request.
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -540,7 +546,7 @@ func (c *Batch) DeregisterJobDefinitionRequest(input *DeregisterJobDefinitionInp
 
 // DeregisterJobDefinition API operation for AWS Batch.
 //
-// Deregisters an AWS Batch job definition. Job definitions will be permanently
+// Deregisters an AWS Batch job definition. Job definitions are permanently
 // deleted after 180 days.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -554,7 +560,7 @@ func (c *Batch) DeregisterJobDefinitionRequest(input *DeregisterJobDefinitionInp
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -633,7 +639,7 @@ func (c *Batch) DescribeComputeEnvironmentsRequest(input *DescribeComputeEnviron
 //
 // Describes one or more of your compute environments.
 //
-// If you are using an unmanaged compute environment, you can use the DescribeComputeEnvironment
+// If you're using an unmanaged compute environment, you can use the DescribeComputeEnvironment
 // operation to determine the ecsClusterArn that you should launch your Amazon
 // ECS container instances into.
 //
@@ -648,7 +654,7 @@ func (c *Batch) DescribeComputeEnvironmentsRequest(input *DescribeComputeEnviron
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -791,7 +797,7 @@ func (c *Batch) DescribeJobDefinitionsRequest(input *DescribeJobDefinitionsInput
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -933,7 +939,7 @@ func (c *Batch) DescribeJobQueuesRequest(input *DescribeJobQueuesInput) (req *re
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -1069,7 +1075,7 @@ func (c *Batch) DescribeJobsRequest(input *DescribeJobsInput) (req *request.Requ
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -1148,16 +1154,16 @@ func (c *Batch) ListJobsRequest(input *ListJobsInput) (req *request.Request, out
 //
 // Returns a list of AWS Batch jobs.
 //
-// You must specify only one of the following:
+// You must specify only one of the following items:
 //
-//    * a job queue ID to return a list of jobs in that job queue
+//    * A job queue ID to return a list of jobs in that job queue
 //
-//    * a multi-node parallel job ID to return a list of that job's nodes
+//    * A multi-node parallel job ID to return a list of nodes for that job
 //
-//    * an array job ID to return a list of that job's children
+//    * An array job ID to return a list of the children for that job
 //
 // You can filter the results by job status with the jobStatus parameter. If
-// you do not specify a status, only RUNNING jobs are returned.
+// you don't specify a status, only RUNNING jobs are returned.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1170,7 +1176,7 @@ func (c *Batch) ListJobsRequest(input *ListJobsInput) (req *request.Request, out
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -1249,6 +1255,92 @@ func (c *Batch) ListJobsPagesWithContext(ctx aws.Context, input *ListJobsInput, 
 	return p.Err()
 }
 
+const opListTagsForResource = "ListTagsForResource"
+
+// ListTagsForResourceRequest generates a "aws/request.Request" representing the
+// client's request for the ListTagsForResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListTagsForResource for more information on using the ListTagsForResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListTagsForResourceRequest method.
+//    req, resp := client.ListTagsForResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ListTagsForResource
+func (c *Batch) ListTagsForResourceRequest(input *ListTagsForResourceInput) (req *request.Request, output *ListTagsForResourceOutput) {
+	op := &request.Operation{
+		Name:       opListTagsForResource,
+		HTTPMethod: "GET",
+		HTTPPath:   "/v1/tags/{resourceArn}",
+	}
+
+	if input == nil {
+		input = &ListTagsForResourceInput{}
+	}
+
+	output = &ListTagsForResourceOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListTagsForResource API operation for AWS Batch.
+//
+// Lists the tags for an AWS Batch resource. AWS Batch resources that support
+// tags are compute environments, jobs, job definitions, and job queues. ARNs
+// for child jobs of array and multi-node parallel (MNP) jobs are not supported.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Batch's
+// API operation ListTagsForResource for usage and error information.
+//
+// Returned Error Types:
+//   * ClientException
+//   These errors are usually caused by a client action, such as using an action
+//   or resource on behalf of a user that doesn't have permissions to use the
+//   action or resource, or specifying an identifier that's not valid.
+//
+//   * ServerException
+//   These errors are usually caused by a server issue.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ListTagsForResource
+func (c *Batch) ListTagsForResource(input *ListTagsForResourceInput) (*ListTagsForResourceOutput, error) {
+	req, out := c.ListTagsForResourceRequest(input)
+	return out, req.Send()
+}
+
+// ListTagsForResourceWithContext is the same as ListTagsForResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListTagsForResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Batch) ListTagsForResourceWithContext(ctx aws.Context, input *ListTagsForResourceInput, opts ...request.Option) (*ListTagsForResourceOutput, error) {
+	req, out := c.ListTagsForResourceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opRegisterJobDefinition = "RegisterJobDefinition"
 
 // RegisterJobDefinitionRequest generates a "aws/request.Request" representing the
@@ -1306,7 +1398,7 @@ func (c *Batch) RegisterJobDefinitionRequest(input *RegisterJobDefinitionInput) 
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -1377,8 +1469,17 @@ func (c *Batch) SubmitJobRequest(input *SubmitJobInput) (req *request.Request, o
 
 // SubmitJob API operation for AWS Batch.
 //
-// Submits an AWS Batch job from a job definition. Parameters specified during
-// SubmitJob override parameters defined in the job definition.
+// Submits an AWS Batch job from a job definition. Parameters that are specified
+// during SubmitJob override parameters defined in the job definition. vCPU
+// and memory requirements that are specified in the ResourceRequirements objects
+// in the job definition are the exception. They can't be overridden this way
+// using the memory and vcpus parameters. Rather, you must specify updates to
+// job definition parameters in a ResourceRequirements object that's included
+// in the containerOverrides parameter.
+//
+// Jobs that run on Fargate resources can't be guaranteed to run for more than
+// 14 days. This is because, after 14 days, Fargate resources might become unavailable
+// and job might be terminated.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1391,7 +1492,7 @@ func (c *Batch) SubmitJobRequest(input *SubmitJobInput) (req *request.Request, o
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -1413,6 +1514,96 @@ func (c *Batch) SubmitJob(input *SubmitJobInput) (*SubmitJobOutput, error) {
 // for more information on using Contexts.
 func (c *Batch) SubmitJobWithContext(ctx aws.Context, input *SubmitJobInput, opts ...request.Option) (*SubmitJobOutput, error) {
 	req, out := c.SubmitJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opTagResource = "TagResource"
+
+// TagResourceRequest generates a "aws/request.Request" representing the
+// client's request for the TagResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See TagResource for more information on using the TagResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the TagResourceRequest method.
+//    req, resp := client.TagResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/TagResource
+func (c *Batch) TagResourceRequest(input *TagResourceInput) (req *request.Request, output *TagResourceOutput) {
+	op := &request.Operation{
+		Name:       opTagResource,
+		HTTPMethod: "POST",
+		HTTPPath:   "/v1/tags/{resourceArn}",
+	}
+
+	if input == nil {
+		input = &TagResourceInput{}
+	}
+
+	output = &TagResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// TagResource API operation for AWS Batch.
+//
+// Associates the specified tags to a resource with the specified resourceArn.
+// If existing tags on a resource aren't specified in the request parameters,
+// they aren't changed. When a resource is deleted, the tags associated with
+// that resource are deleted as well. AWS Batch resources that support tags
+// are compute environments, jobs, job definitions, and job queues. ARNs for
+// child jobs of array and multi-node parallel (MNP) jobs are not supported.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Batch's
+// API operation TagResource for usage and error information.
+//
+// Returned Error Types:
+//   * ClientException
+//   These errors are usually caused by a client action, such as using an action
+//   or resource on behalf of a user that doesn't have permissions to use the
+//   action or resource, or specifying an identifier that's not valid.
+//
+//   * ServerException
+//   These errors are usually caused by a server issue.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/TagResource
+func (c *Batch) TagResource(input *TagResourceInput) (*TagResourceOutput, error) {
+	req, out := c.TagResourceRequest(input)
+	return out, req.Send()
+}
+
+// TagResourceWithContext is the same as TagResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See TagResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Batch) TagResourceWithContext(ctx aws.Context, input *TagResourceInput, opts ...request.Option) (*TagResourceOutput, error) {
+	req, out := c.TagResourceRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1478,7 +1669,7 @@ func (c *Batch) TerminateJobRequest(input *TerminateJobInput) (req *request.Requ
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -1500,6 +1691,91 @@ func (c *Batch) TerminateJob(input *TerminateJobInput) (*TerminateJobOutput, err
 // for more information on using Contexts.
 func (c *Batch) TerminateJobWithContext(ctx aws.Context, input *TerminateJobInput, opts ...request.Option) (*TerminateJobOutput, error) {
 	req, out := c.TerminateJobRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opUntagResource = "UntagResource"
+
+// UntagResourceRequest generates a "aws/request.Request" representing the
+// client's request for the UntagResource operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UntagResource for more information on using the UntagResource
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UntagResourceRequest method.
+//    req, resp := client.UntagResourceRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/UntagResource
+func (c *Batch) UntagResourceRequest(input *UntagResourceInput) (req *request.Request, output *UntagResourceOutput) {
+	op := &request.Operation{
+		Name:       opUntagResource,
+		HTTPMethod: "DELETE",
+		HTTPPath:   "/v1/tags/{resourceArn}",
+	}
+
+	if input == nil {
+		input = &UntagResourceInput{}
+	}
+
+	output = &UntagResourceOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// UntagResource API operation for AWS Batch.
+//
+// Deletes specified tags from an AWS Batch resource.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Batch's
+// API operation UntagResource for usage and error information.
+//
+// Returned Error Types:
+//   * ClientException
+//   These errors are usually caused by a client action, such as using an action
+//   or resource on behalf of a user that doesn't have permissions to use the
+//   action or resource, or specifying an identifier that's not valid.
+//
+//   * ServerException
+//   These errors are usually caused by a server issue.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/UntagResource
+func (c *Batch) UntagResource(input *UntagResourceInput) (*UntagResourceOutput, error) {
+	req, out := c.UntagResourceRequest(input)
+	return out, req.Send()
+}
+
+// UntagResourceWithContext is the same as UntagResource with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UntagResource for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Batch) UntagResourceWithContext(ctx aws.Context, input *UntagResourceInput, opts ...request.Option) (*UntagResourceOutput, error) {
+	req, out := c.UntagResourceRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1562,7 +1838,7 @@ func (c *Batch) UpdateComputeEnvironmentRequest(input *UpdateComputeEnvironmentI
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -1646,7 +1922,7 @@ func (c *Batch) UpdateJobQueueRequest(input *UpdateJobQueueInput) (req *request.
 //   * ClientException
 //   These errors are usually caused by a client action, such as using an action
 //   or resource on behalf of a user that doesn't have permissions to use the
-//   action or resource, or specifying an identifier that is not valid.
+//   action or resource, or specifying an identifier that's not valid.
 //
 //   * ServerException
 //   These errors are usually caused by a server issue.
@@ -1701,7 +1977,7 @@ func (s *ArrayProperties) SetSize(v int64) *ArrayProperties {
 type ArrayPropertiesDetail struct {
 	_ struct{} `type:"structure"`
 
-	// The job index within the array that is associated with this job. This parameter
+	// The job index within the array that's associated with this job. This parameter
 	// is returned for array job children.
 	Index *int64 `locationName:"index" type:"integer"`
 
@@ -1745,7 +2021,7 @@ func (s *ArrayPropertiesDetail) SetStatusSummary(v map[string]*int64) *ArrayProp
 type ArrayPropertiesSummary struct {
 	_ struct{} `type:"structure"`
 
-	// The job index within the array that is associated with this job. This parameter
+	// The job index within the array that's associated with this job. This parameter
 	// is returned for children of array jobs.
 	Index *int64 `locationName:"index" type:"integer"`
 
@@ -1775,7 +2051,7 @@ func (s *ArrayPropertiesSummary) SetSize(v int64) *ArrayPropertiesSummary {
 	return s
 }
 
-// An object representing the details of a container that is part of a job attempt.
+// An object representing the details of a container that's part of a job attempt.
 type AttemptContainerDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -1798,9 +2074,9 @@ type AttemptContainerDetail struct {
 	// details about a running or stopped container.
 	Reason *string `locationName:"reason" type:"string"`
 
-	// The Amazon Resource Name (ARN) of the Amazon ECS task that is associated
-	// with the job attempt. Each container attempt receives a task ARN when they
-	// reach the STARTING status.
+	// The Amazon Resource Name (ARN) of the Amazon ECS task that's associated with
+	// the job attempt. Each container attempt receives a task ARN when they reach
+	// the STARTING status.
 	TaskArn *string `locationName:"taskArn" type:"string"`
 }
 
@@ -1857,18 +2133,17 @@ type AttemptDetail struct {
 	// Details about the container in this job attempt.
 	Container *AttemptContainerDetail `locationName:"container" type:"structure"`
 
-	// The Unix timestamp (in seconds and milliseconds) for when the attempt was
-	// started (when the attempt transitioned from the STARTING state to the RUNNING
-	// state).
+	// The Unix timestamp (in milliseconds) for when the attempt was started (when
+	// the attempt transitioned from the STARTING state to the RUNNING state).
 	StartedAt *int64 `locationName:"startedAt" type:"long"`
 
 	// A short, human-readable string to provide additional details about the current
 	// status of the job attempt.
 	StatusReason *string `locationName:"statusReason" type:"string"`
 
-	// The Unix timestamp (in seconds and milliseconds) for when the attempt was
-	// stopped (when the attempt transitioned from the RUNNING state to a terminal
-	// state, such as SUCCEEDED or FAILED).
+	// The Unix timestamp (in milliseconds) for when the attempt was stopped (when
+	// the attempt transitioned from the RUNNING state to a terminal state, such
+	// as SUCCEEDED or FAILED).
 	StoppedAt *int64 `locationName:"stoppedAt" type:"long"`
 }
 
@@ -1906,6 +2181,7 @@ func (s *AttemptDetail) SetStoppedAt(v int64) *AttemptDetail {
 	return s
 }
 
+// Contains the parameters for CancelJob.
 type CancelJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1976,10 +2252,10 @@ func (s CancelJobOutput) GoString() string {
 
 // These errors are usually caused by a client action, such as using an action
 // or resource on behalf of a user that doesn't have permissions to use the
-// action or resource, or specifying an identifier that is not valid.
+// action or resource, or specifying an identifier that's not valid.
 type ClientException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1996,17 +2272,17 @@ func (s ClientException) GoString() string {
 
 func newErrorClientException(v protocol.ResponseMetadata) error {
 	return &ClientException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ClientException) Code() string {
+func (s *ClientException) Code() string {
 	return "ClientException"
 }
 
 // Message returns the exception's message.
-func (s ClientException) Message() string {
+func (s *ClientException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2014,22 +2290,22 @@ func (s ClientException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ClientException) OrigErr() error {
+func (s *ClientException) OrigErr() error {
 	return nil
 }
 
-func (s ClientException) Error() string {
+func (s *ClientException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ClientException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ClientException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ClientException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ClientException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object representing an AWS Batch compute environment.
@@ -2041,12 +2317,15 @@ type ComputeEnvironmentDetail struct {
 	// ComputeEnvironmentArn is a required field
 	ComputeEnvironmentArn *string `locationName:"computeEnvironmentArn" type:"string" required:"true"`
 
-	// The name of the compute environment.
+	// The name of the compute environment. Up to 128 letters (uppercase and lowercase),
+	// numbers, hyphens, and underscores are allowed.
 	//
 	// ComputeEnvironmentName is a required field
 	ComputeEnvironmentName *string `locationName:"computeEnvironmentName" type:"string" required:"true"`
 
-	// The compute resources defined for the compute environment.
+	// The compute resources defined for the compute environment. For more information,
+	// see Compute Environments (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+	// in the AWS Batch User Guide.
 	ComputeResources *ComputeResource `locationName:"computeResources" type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the underlying Amazon ECS cluster used
@@ -2056,7 +2335,9 @@ type ComputeEnvironmentDetail struct {
 	EcsClusterArn *string `locationName:"ecsClusterArn" type:"string" required:"true"`
 
 	// The service role associated with the compute environment that allows AWS
-	// Batch to make calls to AWS API operations on your behalf.
+	// Batch to make calls to AWS API operations on your behalf. For more information,
+	// see AWS Batch service IAM role (https://docs.aws.amazon.com/batch/latest/userguide/service_IAM_role.html)
+	// in the AWS Batch User Guide.
 	ServiceRole *string `locationName:"serviceRole" type:"string"`
 
 	// The state of the compute environment. The valid values are ENABLED or DISABLED.
@@ -2066,10 +2347,10 @@ type ComputeEnvironmentDetail struct {
 	// If the compute environment is managed, then it can scale its instances out
 	// or in automatically, based on the job queue demand.
 	//
-	// If the state is DISABLED, then the AWS Batch scheduler does not attempt to
+	// If the state is DISABLED, then the AWS Batch scheduler doesn't attempt to
 	// place jobs within the environment. Jobs in a STARTING or RUNNING state continue
 	// to progress normally. Managed compute environments in the DISABLED state
-	// do not scale out. However, they scale in to minvCpus value after instances
+	// don't scale out. However, they scale in to minvCpus value after instances
 	// become idle.
 	State *string `locationName:"state" type:"string" enum:"CEState"`
 
@@ -2080,7 +2361,12 @@ type ComputeEnvironmentDetail struct {
 	// status of the compute environment.
 	StatusReason *string `locationName:"statusReason" type:"string"`
 
-	// The type of the compute environment.
+	// The tags applied to the compute environment.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
+
+	// The type of the compute environment: MANAGED or UNMANAGED. For more information,
+	// see Compute Environments (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+	// in the AWS Batch User Guide.
 	Type *string `locationName:"type" type:"string" enum:"CEType"`
 }
 
@@ -2142,6 +2428,12 @@ func (s *ComputeEnvironmentDetail) SetStatusReason(v string) *ComputeEnvironment
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *ComputeEnvironmentDetail) SetTags(v map[string]*string) *ComputeEnvironmentDetail {
+	s.Tags = v
+	return s
+}
+
 // SetType sets the Type field's value.
 func (s *ComputeEnvironmentDetail) SetType(v string) *ComputeEnvironmentDetail {
 	s.Type = &v
@@ -2152,6 +2444,14 @@ func (s *ComputeEnvironmentDetail) SetType(v string) *ComputeEnvironmentDetail {
 // a queue. Compute environments are tried in ascending order. For example,
 // if two compute environments are associated with a job queue, the compute
 // environment with a lower order integer value is tried for job placement first.
+// Compute environments must be in the VALID state before you can associate
+// them with a job queue. All of the compute environments must be either EC2
+// (EC2 or SPOT) or Fargate (FARGATE or FARGATE_SPOT); EC2 and Fargate compute
+// environments can't be mixed.
+//
+// All compute environments that are associated with a job queue must share
+// the same architecture. AWS Batch doesn't support mixing compute environment
+// architecture types in a single job queue.
 type ComputeEnvironmentOrder struct {
 	_ struct{} `type:"structure"`
 
@@ -2160,7 +2460,10 @@ type ComputeEnvironmentOrder struct {
 	// ComputeEnvironment is a required field
 	ComputeEnvironment *string `locationName:"computeEnvironment" type:"string" required:"true"`
 
-	// The order of the compute environment.
+	// The order of the compute environment. Compute environments are tried in ascending
+	// order. For example, if two compute environments are associated with a job
+	// queue, the compute environment with a lower order integer value is tried
+	// for job placement first.
 	//
 	// Order is a required field
 	Order *int64 `locationName:"order" type:"integer" required:"true"`
@@ -2204,47 +2507,106 @@ func (s *ComputeEnvironmentOrder) SetOrder(v int64) *ComputeEnvironmentOrder {
 	return s
 }
 
-// An object representing an AWS Batch compute resource.
+// An object representing an AWS Batch compute resource. For more information,
+// see Compute Environments (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+// in the AWS Batch User Guide.
 type ComputeResource struct {
 	_ struct{} `type:"structure"`
 
-	// The allocation strategy to use for the compute resource in case not enough
-	// instances of the best fitting instance type can be allocated. This could
-	// be due to availability of the instance type in the region or Amazon EC2 service
+	// The allocation strategy to use for the compute resource if not enough instances
+	// of the best fitting instance type can be allocated. This might be because
+	// of availability of the instance type in the Region or Amazon EC2 service
 	// limits (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-resource-limits.html).
-	// If this is not specified, the default is BEST_FIT, which will use only the
-	// best fitting instance type, waiting for additional capacity if it's not available.
+	// For more information, see Allocation Strategies (https://docs.aws.amazon.com/batch/latest/userguide/allocation-strategies.html)
+	// in the AWS Batch User Guide.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
+	//
+	// BEST_FIT (default)
+	//
+	// AWS Batch selects an instance type that best fits the needs of the jobs with
+	// a preference for the lowest-cost instance type. If additional instances of
+	// the selected instance type aren't available, AWS Batch waits for the additional
+	// instances to be available. If there aren't enough instances available, or
+	// if the user is hitting Amazon EC2 service limits (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-resource-limits.html)
+	// then additional jobs aren't run until the currently running jobs have completed.
 	// This allocation strategy keeps costs lower but can limit scaling. If you
 	// are using Spot Fleets with BEST_FIT then the Spot Fleet IAM Role must be
-	// specified. BEST_FIT_PROGRESSIVE will select additional instance types that
-	// are large enough to meet the requirements of the jobs in the queue, with
-	// a preference for instance types with a lower cost per vCPU. SPOT_CAPACITY_OPTIMIZED
-	// is only available for Spot Instance compute resources and will select additional
-	// instance types that are large enough to meet the requirements of the jobs
-	// in the queue, with a preference for instance types that are less likely to
-	// be interrupted. For more information, see Allocation Strategies (https://docs.aws.amazon.com/batch/latest/userguide/allocation-strategies.html)
-	// in the AWS Batch User Guide.
+	// specified.
+	//
+	// BEST_FIT_PROGRESSIVE
+	//
+	// AWS Batch will select additional instance types that are large enough to
+	// meet the requirements of the jobs in the queue, with a preference for instance
+	// types with a lower cost per unit vCPU. If additional instances of the previously
+	// selected instance types aren't available, AWS Batch will select new instance
+	// types.
+	//
+	// SPOT_CAPACITY_OPTIMIZED
+	//
+	// AWS Batch will select one or more instance types that are large enough to
+	// meet the requirements of the jobs in the queue, with a preference for instance
+	// types that are less likely to be interrupted. This allocation strategy is
+	// only available for Spot Instance compute resources.
+	//
+	// With both BEST_FIT_PROGRESSIVE and SPOT_CAPACITY_OPTIMIZED strategies, AWS
+	// Batch might need to go above maxvCpus to meet your capacity requirements.
+	// In this event, AWS Batch never exceeds maxvCpus by more than a single instance.
 	AllocationStrategy *string `locationName:"allocationStrategy" type:"string" enum:"CRAllocationStrategy"`
 
 	// The maximum percentage that a Spot Instance price can be when compared with
 	// the On-Demand price for that instance type before instances are launched.
 	// For example, if your maximum percentage is 20%, then the Spot price must
-	// be below 20% of the current On-Demand price for that Amazon EC2 instance.
+	// be less than 20% of the current On-Demand price for that Amazon EC2 instance.
 	// You always pay the lowest (market) price and never more than your maximum
 	// percentage. If you leave this field empty, the default value is 100% of the
 	// On-Demand price.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
 	BidPercentage *int64 `locationName:"bidPercentage" type:"integer"`
 
-	// The desired number of Amazon EC2 vCPUS in the compute environment.
+	// The desired number of Amazon EC2 vCPUS in the compute environment. AWS Batch
+	// modifies this value between the minimum and maximum values, based on job
+	// queue demand.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
 	DesiredvCpus *int64 `locationName:"desiredvCpus" type:"integer"`
 
-	// The Amazon EC2 key pair that is used for instances launched in the compute
-	// environment.
+	// Provides information used to select Amazon Machine Images (AMIs) for EC2
+	// instances in the compute environment. If Ec2Configuration isn't specified,
+	// the default is ECS_AL1.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
+	Ec2Configuration []*Ec2Configuration `locationName:"ec2Configuration" type:"list"`
+
+	// The Amazon EC2 key pair that's used for instances launched in the compute
+	// environment. You can use this key pair to log in to your instances with SSH.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
 	Ec2KeyPair *string `locationName:"ec2KeyPair" type:"string"`
 
 	// The Amazon Machine Image (AMI) ID used for instances launched in the compute
-	// environment.
-	ImageId *string `locationName:"imageId" type:"string"`
+	// environment. This parameter is overridden by the imageIdOverride member of
+	// the Ec2Configuration structure.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
+	//
+	// The AMI that you choose for a compute environment must match the architecture
+	// of the instance types that you intend to use for that compute environment.
+	// For example, if your compute environment uses A1 instance types, the compute
+	// resource AMI that you choose must support ARM instances. Amazon ECS vends
+	// both x86 and ARM versions of the Amazon ECS-optimized Amazon Linux 2 AMI.
+	// For more information, see Amazon ECS-optimized Amazon Linux 2 AMI (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux-variants.html)
+	// in the Amazon Elastic Container Service Developer Guide.
+	//
+	// Deprecated: This field is deprecated, use ec2Configuration[].imageIdOverride instead.
+	ImageId *string `locationName:"imageId" deprecated:"true" type:"string"`
 
 	// The Amazon ECS instance profile applied to Amazon EC2 instances in a compute
 	// environment. You can specify the short name or full Amazon Resource Name
@@ -2252,17 +2614,27 @@ type ComputeResource struct {
 	// . For more information, see Amazon ECS Instance Role (https://docs.aws.amazon.com/batch/latest/userguide/instance_IAM_role.html)
 	// in the AWS Batch User Guide.
 	//
-	// InstanceRole is a required field
-	InstanceRole *string `locationName:"instanceRole" type:"string" required:"true"`
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
+	InstanceRole *string `locationName:"instanceRole" type:"string"`
 
-	// The instances types that may be launched. You can specify instance families
+	// The instances types that can be launched. You can specify instance families
 	// to launch any instance type within those families (for example, c5 or p3),
 	// or you can specify specific sizes within a family (such as c5.8xlarge). You
-	// can also choose optimal to pick instance types (from the C, M, and R instance
-	// families) on the fly that match the demand of your job queues.
+	// can also choose optimal to select instance types (from the C4, M4, and R4
+	// instance families) that match the demand of your job queues.
 	//
-	// InstanceTypes is a required field
-	InstanceTypes []*string `locationName:"instanceTypes" type:"list" required:"true"`
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
+	//
+	// When you create a compute environment, the instance types that you select
+	// for the compute environment must share the same architecture. For example,
+	// you can't mix x86 and ARM instances in the same compute environment.
+	//
+	// Currently, optimal uses instance types from the C4, M4, and R4 instance families.
+	// In Regions that don't have instance types from those instance families, instance
+	// types from the C5, M5. and R5 instance families are used.
+	InstanceTypes []*string `locationName:"instanceTypes" type:"list"`
 
 	// The launch template to use for your compute resources. Any other compute
 	// resource parameters that you specify in a CreateComputeEnvironment API operation
@@ -2270,9 +2642,18 @@ type ComputeResource struct {
 	// the launch template ID or launch template name in the request, but not both.
 	// For more information, see Launch Template Support (https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html)
 	// in the AWS Batch User Guide.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
 	LaunchTemplate *LaunchTemplateSpecification `locationName:"launchTemplate" type:"structure"`
 
-	// The maximum number of Amazon EC2 vCPUs that an environment can reach.
+	// The maximum number of Amazon EC2 vCPUs that a compute environment can reach.
+	//
+	// With both BEST_FIT_PROGRESSIVE and SPOT_CAPACITY_OPTIMIZED allocation strategies,
+	// AWS Batch might need to exceed maxvCpus to meet your capacity requirements.
+	// In this event, AWS Batch never exceeds maxvCpus by more than a single instance.
+	// For example, no more than a single instance from among those specified in
+	// your compute environment is allocated.
 	//
 	// MaxvCpus is a required field
 	MaxvCpus *int64 `locationName:"maxvCpus" type:"integer" required:"true"`
@@ -2280,8 +2661,9 @@ type ComputeResource struct {
 	// The minimum number of Amazon EC2 vCPUs that an environment should maintain
 	// (even if the compute environment is DISABLED).
 	//
-	// MinvCpus is a required field
-	MinvCpus *int64 `locationName:"minvCpus" type:"integer" required:"true"`
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
+	MinvCpus *int64 `locationName:"minvCpus" type:"integer"`
 
 	// The Amazon EC2 placement group to associate with your compute resources.
 	// If you intend to submit multi-node parallel jobs to your compute environment,
@@ -2290,36 +2672,66 @@ type ComputeResource struct {
 	// grouping of instances within a single Availability Zone with high network
 	// flow potential. For more information, see Placement Groups (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html)
 	// in the Amazon EC2 User Guide for Linux Instances.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
 	PlacementGroup *string `locationName:"placementGroup" type:"string"`
 
 	// The Amazon EC2 security groups associated with instances launched in the
 	// compute environment. One or more security groups must be specified, either
 	// in securityGroupIds or using a launch template referenced in launchTemplate.
+	// This parameter is required for jobs running on Fargate resources and must
+	// contain at least one security group. Fargate doesn't support launch templates.
 	// If security groups are specified using both securityGroupIds and launchTemplate,
-	// the values in securityGroupIds will be used.
+	// the values in securityGroupIds is used.
 	SecurityGroupIds []*string `locationName:"securityGroupIds" type:"list"`
 
 	// The Amazon Resource Name (ARN) of the Amazon EC2 Spot Fleet IAM role applied
 	// to a SPOT compute environment. This role is required if the allocation strategy
-	// set to BEST_FIT or if the allocation strategy is not specified. For more
-	// information, see Amazon EC2 Spot Fleet Role (https://docs.aws.amazon.com/batch/latest/userguide/spot_fleet_IAM_role.html)
+	// set to BEST_FIT or if the allocation strategy isn't specified. For more information,
+	// see Amazon EC2 Spot Fleet Role (https://docs.aws.amazon.com/batch/latest/userguide/spot_fleet_IAM_role.html)
+	// in the AWS Batch User Guide.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
+	//
+	// To tag your Spot Instances on creation, the Spot Fleet IAM role specified
+	// here must use the newer AmazonEC2SpotFleetTaggingRole managed policy. The
+	// previously recommended AmazonEC2SpotFleetRole managed policy doesn't have
+	// the required permissions to tag Spot Instances. For more information, see
+	// Spot Instances not tagged on creation (https://docs.aws.amazon.com/batch/latest/userguide/troubleshooting.html#spot-instance-no-tag)
 	// in the AWS Batch User Guide.
 	SpotIamFleetRole *string `locationName:"spotIamFleetRole" type:"string"`
 
-	// The VPC subnets into which the compute resources are launched. For more information,
-	// see VPCs and Subnets (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html)
+	// The VPC subnets into which the compute resources are launched. These subnets
+	// must be within the same VPC. Fargate compute resources can contain up to
+	// 16 subnets. For more information, see VPCs and Subnets (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html)
 	// in the Amazon VPC User Guide.
 	//
 	// Subnets is a required field
 	Subnets []*string `locationName:"subnets" type:"list" required:"true"`
 
-	// Key-value pair tags to be applied to resources that are launched in the compute
-	// environment. For AWS Batch, these take the form of "String1": "String2",
-	// where String1 is the tag key and String2 is the tag value—for example,
-	// { "Name": "AWS Batch Instance - C4OnDemand" }.
+	// Key-value pair tags to be applied to EC2 resources that are launched in the
+	// compute environment. For AWS Batch, these take the form of "String1": "String2",
+	// where String1 is the tag key and String2 is the tag value−for example,
+	// { "Name": "AWS Batch Instance - C4OnDemand" }. This is helpful for recognizing
+	// your AWS Batch instances in the Amazon EC2 console. These tags can't be updated
+	// or removed after the compute environment has been created; any changes require
+	// creating a new compute environment and removing the old compute environment.
+	// These tags aren't seen when using the AWS Batch ListTagsForResource API operation.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
 	Tags map[string]*string `locationName:"tags" type:"map"`
 
-	// The type of compute environment: EC2 or SPOT.
+	// The type of compute environment: EC2, SPOT, FARGATE, or FARGATE_SPOT. For
+	// more information, see Compute Environments (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+	// in the AWS Batch User Guide.
+	//
+	// If you choose SPOT, you must also specify an Amazon EC2 Spot Fleet role with
+	// the spotIamFleetRole parameter. For more information, see Amazon EC2 Spot
+	// Fleet role (https://docs.aws.amazon.com/batch/latest/userguide/spot_fleet_IAM_role.html)
+	// in the AWS Batch User Guide.
 	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true" enum:"CRType"`
@@ -2338,23 +2750,24 @@ func (s ComputeResource) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *ComputeResource) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ComputeResource"}
-	if s.InstanceRole == nil {
-		invalidParams.Add(request.NewErrParamRequired("InstanceRole"))
-	}
-	if s.InstanceTypes == nil {
-		invalidParams.Add(request.NewErrParamRequired("InstanceTypes"))
-	}
 	if s.MaxvCpus == nil {
 		invalidParams.Add(request.NewErrParamRequired("MaxvCpus"))
-	}
-	if s.MinvCpus == nil {
-		invalidParams.Add(request.NewErrParamRequired("MinvCpus"))
 	}
 	if s.Subnets == nil {
 		invalidParams.Add(request.NewErrParamRequired("Subnets"))
 	}
 	if s.Type == nil {
 		invalidParams.Add(request.NewErrParamRequired("Type"))
+	}
+	if s.Ec2Configuration != nil {
+		for i, v := range s.Ec2Configuration {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Ec2Configuration", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 
 	if invalidParams.Len() > 0 {
@@ -2378,6 +2791,12 @@ func (s *ComputeResource) SetBidPercentage(v int64) *ComputeResource {
 // SetDesiredvCpus sets the DesiredvCpus field's value.
 func (s *ComputeResource) SetDesiredvCpus(v int64) *ComputeResource {
 	s.DesiredvCpus = &v
+	return s
+}
+
+// SetEc2Configuration sets the Ec2Configuration field's value.
+func (s *ComputeResource) SetEc2Configuration(v []*Ec2Configuration) *ComputeResource {
+	s.Ec2Configuration = v
 	return s
 }
 
@@ -2460,18 +2879,46 @@ func (s *ComputeResource) SetType(v string) *ComputeResource {
 }
 
 // An object representing the attributes of a compute environment that can be
-// updated.
+// updated. For more information, see Compute Environments (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+// in the AWS Batch User Guide.
 type ComputeResourceUpdate struct {
 	_ struct{} `type:"structure"`
 
 	// The desired number of Amazon EC2 vCPUS in the compute environment.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
 	DesiredvCpus *int64 `locationName:"desiredvCpus" type:"integer"`
 
 	// The maximum number of Amazon EC2 vCPUs that an environment can reach.
+	//
+	// With both BEST_FIT_PROGRESSIVE and SPOT_CAPACITY_OPTIMIZED allocation strategies,
+	// AWS Batch might need to exceed maxvCpus to meet your capacity requirements.
+	// In this event, AWS Batch never exceeds maxvCpus by more than a single instance.
+	// That is, no more than a single instance from among those specified in your
+	// compute environment.
 	MaxvCpus *int64 `locationName:"maxvCpus" type:"integer"`
 
 	// The minimum number of Amazon EC2 vCPUs that an environment should maintain.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources, and
+	// shouldn't be specified.
 	MinvCpus *int64 `locationName:"minvCpus" type:"integer"`
+
+	// The Amazon EC2 security groups associated with instances launched in the
+	// compute environment. This parameter is required for Fargate compute resources,
+	// where it can contain up to 5 security groups. This can't be specified for
+	// EC2 compute resources. Providing an empty list is handled as if this parameter
+	// wasn't specified and no change is made.
+	SecurityGroupIds []*string `locationName:"securityGroupIds" type:"list"`
+
+	// The VPC subnets that the compute resources are launched into. Fargate compute
+	// resources can contain up to 16 subnets. Providing an empty list will be handled
+	// as if this parameter wasn't specified and no change is made. This can't be
+	// specified for EC2 compute resources. For more information, see VPCs and Subnets
+	// (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html) in the
+	// Amazon VPC User Guide.
+	Subnets []*string `locationName:"subnets" type:"list"`
 }
 
 // String returns the string representation
@@ -2502,15 +2949,27 @@ func (s *ComputeResourceUpdate) SetMinvCpus(v int64) *ComputeResourceUpdate {
 	return s
 }
 
-// An object representing the details of a container that is part of a job.
+// SetSecurityGroupIds sets the SecurityGroupIds field's value.
+func (s *ComputeResourceUpdate) SetSecurityGroupIds(v []*string) *ComputeResourceUpdate {
+	s.SecurityGroupIds = v
+	return s
+}
+
+// SetSubnets sets the Subnets field's value.
+func (s *ComputeResourceUpdate) SetSubnets(v []*string) *ComputeResourceUpdate {
+	s.Subnets = v
+	return s
+}
+
+// An object representing the details of a container that's part of a job.
 type ContainerDetail struct {
 	_ struct{} `type:"structure"`
 
-	// The command that is passed to the container.
+	// The command that's passed to the container.
 	Command []*string `locationName:"command" type:"list"`
 
-	// The Amazon Resource Name (ARN) of the container instance on which the container
-	// is running.
+	// The Amazon Resource Name (ARN) of the container instance that the container
+	// is running on.
 	ContainerInstanceArn *string `locationName:"containerInstanceArn" type:"string"`
 
 	// The environment variables to pass to a container.
@@ -2519,14 +2978,25 @@ type ContainerDetail struct {
 	// is reserved for variables that are set by the AWS Batch service.
 	Environment []*KeyValuePair `locationName:"environment" type:"list"`
 
+	// The Amazon Resource Name (ARN) of the execution role that AWS Batch can assume.
+	// For more information, see AWS Batch execution IAM role (https://docs.aws.amazon.com/batch/latest/userguide/execution-IAM-role.html)
+	// in the AWS Batch User Guide.
+	ExecutionRoleArn *string `locationName:"executionRoleArn" type:"string"`
+
 	// The exit code to return upon completion.
 	ExitCode *int64 `locationName:"exitCode" type:"integer"`
+
+	// The platform configuration for jobs running on Fargate resources. Jobs running
+	// on EC2 resources must not specify this parameter.
+	FargatePlatformConfiguration *FargatePlatformConfiguration `locationName:"fargatePlatformConfiguration" type:"structure"`
 
 	// The image used to start the container.
 	Image *string `locationName:"image" type:"string"`
 
 	// The instance type of the underlying host infrastructure of a multi-node parallel
 	// job.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources.
 	InstanceType *string `locationName:"instanceType" type:"string"`
 
 	// The Amazon Resource Name (ARN) associated with the job upon execution.
@@ -2536,48 +3006,119 @@ type ContainerDetail struct {
 	// for device mappings.
 	LinuxParameters *LinuxParameters `locationName:"linuxParameters" type:"structure"`
 
+	// The log configuration specification for the container.
+	//
+	// This parameter maps to LogConfig in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --log-driver option to docker run (https://docs.docker.com/engine/reference/run/).
+	// By default, containers use the same logging driver that the Docker daemon
+	// uses. However, the container might use a different logging driver than the
+	// Docker daemon by specifying a log driver with this parameter in the container
+	// definition. To use a different logging driver for a container, the log system
+	// must be configured properly on the container instance. Or, alternatively,
+	// it must be configured on a different log server for remote logging options.
+	// For more information on the options for different supported log drivers,
+	// see Configure logging drivers (https://docs.docker.com/engine/admin/logging/overview/)
+	// in the Docker documentation.
+	//
+	// AWS Batch currently supports a subset of the logging drivers available to
+	// the Docker daemon (shown in the LogConfiguration data type). Additional log
+	// drivers might be available in future releases of the Amazon ECS container
+	// agent.
+	//
+	// This parameter requires version 1.18 of the Docker Remote API or greater
+	// on your container instance. To check the Docker Remote API version on your
+	// container instance, log into your container instance and run the following
+	// command: sudo docker version | grep "Server API version"
+	//
+	// The Amazon ECS container agent running on a container instance must register
+	// the logging drivers available on that instance with the ECS_AVAILABLE_LOGGING_DRIVERS
+	// environment variable before containers placed on that instance can use these
+	// log configuration options. For more information, see Amazon ECS Container
+	// Agent Configuration (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-config.html)
+	// in the Amazon Elastic Container Service Developer Guide.
+	LogConfiguration *LogConfiguration `locationName:"logConfiguration" type:"structure"`
+
 	// The name of the CloudWatch Logs log stream associated with the container.
 	// The log group for AWS Batch jobs is /aws/batch/job. Each container attempt
 	// receives a log stream name when they reach the RUNNING status.
 	LogStreamName *string `locationName:"logStreamName" type:"string"`
 
-	// The number of MiB of memory reserved for the job.
+	// For jobs run on EC2 resources that didn't specify memory requirements using
+	// ResourceRequirement, the number of MiB of memory reserved for the job. For
+	// other jobs, including all run on Fargate resources, see resourceRequirements.
 	Memory *int64 `locationName:"memory" type:"integer"`
 
 	// The mount points for data volumes in your container.
 	MountPoints []*MountPoint `locationName:"mountPoints" type:"list"`
 
+	// The network configuration for jobs running on Fargate resources. Jobs running
+	// on EC2 resources must not specify this parameter.
+	NetworkConfiguration *NetworkConfiguration `locationName:"networkConfiguration" type:"structure"`
+
 	// The network interfaces associated with the job.
 	NetworkInterfaces []*NetworkInterface `locationName:"networkInterfaces" type:"list"`
 
-	// When this parameter is true, the container is given elevated privileges on
-	// the host container instance (similar to the root user).
+	// When this parameter is true, the container is given elevated permissions
+	// on the host container instance (similar to the root user). The default value
+	// is false.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided, or specified as false.
 	Privileged *bool `locationName:"privileged" type:"boolean"`
 
 	// When this parameter is true, the container is given read-only access to its
-	// root file system.
+	// root file system. This parameter maps to ReadonlyRootfs in the Create a container
+	// (https://docs.docker.com/engine/api/v1.23/#create-a-container) section of
+	// the Docker Remote API (https://docs.docker.com/engine/api/v1.23/) and the
+	// --read-only option to docker run (https://docs.docker.com/engine/reference/commandline/run/).
 	ReadonlyRootFilesystem *bool `locationName:"readonlyRootFilesystem" type:"boolean"`
 
 	// A short (255 max characters) human-readable string to provide additional
 	// details about a running or stopped container.
 	Reason *string `locationName:"reason" type:"string"`
 
-	// The type and amount of a resource to assign to a container. Currently, the
-	// only supported resource is GPU.
+	// The type and amount of resources to assign to a container. The supported
+	// resources include GPU, MEMORY, and VCPU.
 	ResourceRequirements []*ResourceRequirement `locationName:"resourceRequirements" type:"list"`
 
-	// The Amazon Resource Name (ARN) of the Amazon ECS task that is associated
-	// with the container job. Each container attempt receives a task ARN when they
-	// reach the STARTING status.
+	// The secrets to pass to the container. For more information, see Specifying
+	// sensitive data (https://docs.aws.amazon.com/batch/latest/userguide/specifying-sensitive-data.html)
+	// in the AWS Batch User Guide.
+	Secrets []*Secret `locationName:"secrets" type:"list"`
+
+	// The Amazon Resource Name (ARN) of the Amazon ECS task that's associated with
+	// the container job. Each container attempt receives a task ARN when they reach
+	// the STARTING status.
 	TaskArn *string `locationName:"taskArn" type:"string"`
 
-	// A list of ulimit values to set in the container.
+	// A list of ulimit values to set in the container. This parameter maps to Ulimits
+	// in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --ulimit option to docker run (https://docs.docker.com/engine/reference/run/).
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources.
 	Ulimits []*Ulimit `locationName:"ulimits" type:"list"`
 
-	// The user name to use inside the container.
+	// The user name to use inside the container. This parameter maps to User in
+	// the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --user option to docker run (https://docs.docker.com/engine/reference/run/).
 	User *string `locationName:"user" type:"string"`
 
-	// The number of VCPUs allocated for the job.
+	// The number of vCPUs reserved for the container. For jobs that run on EC2
+	// resources, you can specify the vCPU requirement for the job using resourceRequirements,
+	// but you can't specify the vCPU requirements in both the vcpus and resourceRequirement
+	// object. This parameter maps to CpuShares in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --cpu-shares option to docker run (https://docs.docker.com/engine/reference/run/).
+	// Each vCPU is equivalent to 1,024 CPU shares. You must specify at least one
+	// vCPU. This is required but can be specified in several places. It must be
+	// specified for each node at least once.
+	//
+	// This parameter isn't applicable to jobs that run on Fargate resources. For
+	// jobs that run on Fargate resources, you must specify the vCPU requirement
+	// for the job using resourceRequirements.
 	Vcpus *int64 `locationName:"vcpus" type:"integer"`
 
 	// A list of volumes associated with the job.
@@ -2612,9 +3153,21 @@ func (s *ContainerDetail) SetEnvironment(v []*KeyValuePair) *ContainerDetail {
 	return s
 }
 
+// SetExecutionRoleArn sets the ExecutionRoleArn field's value.
+func (s *ContainerDetail) SetExecutionRoleArn(v string) *ContainerDetail {
+	s.ExecutionRoleArn = &v
+	return s
+}
+
 // SetExitCode sets the ExitCode field's value.
 func (s *ContainerDetail) SetExitCode(v int64) *ContainerDetail {
 	s.ExitCode = &v
+	return s
+}
+
+// SetFargatePlatformConfiguration sets the FargatePlatformConfiguration field's value.
+func (s *ContainerDetail) SetFargatePlatformConfiguration(v *FargatePlatformConfiguration) *ContainerDetail {
+	s.FargatePlatformConfiguration = v
 	return s
 }
 
@@ -2642,6 +3195,12 @@ func (s *ContainerDetail) SetLinuxParameters(v *LinuxParameters) *ContainerDetai
 	return s
 }
 
+// SetLogConfiguration sets the LogConfiguration field's value.
+func (s *ContainerDetail) SetLogConfiguration(v *LogConfiguration) *ContainerDetail {
+	s.LogConfiguration = v
+	return s
+}
+
 // SetLogStreamName sets the LogStreamName field's value.
 func (s *ContainerDetail) SetLogStreamName(v string) *ContainerDetail {
 	s.LogStreamName = &v
@@ -2657,6 +3216,12 @@ func (s *ContainerDetail) SetMemory(v int64) *ContainerDetail {
 // SetMountPoints sets the MountPoints field's value.
 func (s *ContainerDetail) SetMountPoints(v []*MountPoint) *ContainerDetail {
 	s.MountPoints = v
+	return s
+}
+
+// SetNetworkConfiguration sets the NetworkConfiguration field's value.
+func (s *ContainerDetail) SetNetworkConfiguration(v *NetworkConfiguration) *ContainerDetail {
+	s.NetworkConfiguration = v
 	return s
 }
 
@@ -2687,6 +3252,12 @@ func (s *ContainerDetail) SetReason(v string) *ContainerDetail {
 // SetResourceRequirements sets the ResourceRequirements field's value.
 func (s *ContainerDetail) SetResourceRequirements(v []*ResourceRequirement) *ContainerDetail {
 	s.ResourceRequirements = v
+	return s
+}
+
+// SetSecrets sets the Secrets field's value.
+func (s *ContainerDetail) SetSecrets(v []*Secret) *ContainerDetail {
+	s.Secrets = v
 	return s
 }
 
@@ -2736,22 +3307,51 @@ type ContainerOverrides struct {
 	// is reserved for variables that are set by the AWS Batch service.
 	Environment []*KeyValuePair `locationName:"environment" type:"list"`
 
-	// The instance type to use for a multi-node parallel job. This parameter is
-	// not valid for single-node container jobs.
+	// The instance type to use for a multi-node parallel job.
+	//
+	// This parameter isn't applicable to single-node container jobs or for jobs
+	// running on Fargate resources and shouldn't be provided.
 	InstanceType *string `locationName:"instanceType" type:"string"`
 
-	// The number of MiB of memory reserved for the job. This value overrides the
-	// value set in the job definition.
-	Memory *int64 `locationName:"memory" type:"integer"`
+	// This parameter indicates the amount of memory (in MiB) that's reserved for
+	// the job. It overrides the memory parameter set in the job definition, but
+	// doesn't override any memory requirement specified in the ResourceRequirement
+	// structure in the job definition.
+	//
+	// This parameter is supported for jobs that run on EC2 resources, but isn't
+	// supported for jobs that run on Fargate resources. For these resources, use
+	// resourceRequirement instead.
+	//
+	// Deprecated: This field is deprecated, use resourceRequirements instead.
+	Memory *int64 `locationName:"memory" deprecated:"true" type:"integer"`
 
-	// The type and amount of a resource to assign to a container. This value overrides
-	// the value set in the job definition. Currently, the only supported resource
-	// is GPU.
+	// The type and amount of resources to assign to a container. This overrides
+	// the settings in the job definition. The supported resources include GPU,
+	// MEMORY, and VCPU.
 	ResourceRequirements []*ResourceRequirement `locationName:"resourceRequirements" type:"list"`
 
-	// The number of vCPUs to reserve for the container. This value overrides the
-	// value set in the job definition.
-	Vcpus *int64 `locationName:"vcpus" type:"integer"`
+	// This parameter indicates the number of vCPUs reserved for the container.It
+	// overrides the vcpus parameter that's set in the job definition, but doesn't
+	// override any vCPU requirement specified in the resourceRequirement structure
+	// in the job definition.
+	//
+	// This parameter is supported for jobs that run on EC2 resources, but isn't
+	// supported for jobs that run on Fargate resources. For Fargate resources,
+	// you can only use resourceRequirement. For EC2 resources, you can use either
+	// this parameter or resourceRequirement but not both.
+	//
+	// This parameter maps to CpuShares in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --cpu-shares option to docker run (https://docs.docker.com/engine/reference/run/).
+	// Each vCPU is equivalent to 1,024 CPU shares. You must specify at least one
+	// vCPU.
+	//
+	// This parameter isn't applicable to jobs that run on Fargate resources and
+	// shouldn't be provided. For jobs that run on Fargate resources, you must specify
+	// the vCPU requirement for the job using resourceRequirements.
+	//
+	// Deprecated: This field is deprecated, use resourceRequirements instead.
+	Vcpus *int64 `locationName:"vcpus" deprecated:"true" type:"integer"`
 }
 
 // String returns the string representation
@@ -2821,11 +3421,11 @@ func (s *ContainerOverrides) SetVcpus(v int64) *ContainerOverrides {
 }
 
 // Container properties are used in job definitions to describe the container
-// that is launched as part of a job.
+// that's launched as part of a job.
 type ContainerProperties struct {
 	_ struct{} `type:"structure"`
 
-	// The command that is passed to the container. This parameter maps to Cmd in
+	// The command that's passed to the container. This parameter maps to Cmd in
 	// the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
 	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the COMMAND parameter to docker run (https://docs.docker.com/engine/reference/run/).
@@ -2838,12 +3438,22 @@ type ContainerProperties struct {
 	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --env option to docker run (https://docs.docker.com/engine/reference/run/).
 	//
-	// We do not recommend using plaintext environment variables for sensitive information,
+	// We don't recommend using plaintext environment variables for sensitive information,
 	// such as credential data.
 	//
 	// Environment variables must not start with AWS_BATCH; this naming convention
 	// is reserved for variables that are set by the AWS Batch service.
 	Environment []*KeyValuePair `locationName:"environment" type:"list"`
+
+	// The Amazon Resource Name (ARN) of the execution role that AWS Batch can assume.
+	// For jobs that run on Fargate resources, you must provide an execution role.
+	// For more information, see AWS Batch execution IAM role (https://docs.aws.amazon.com/batch/latest/userguide/execution-IAM-role.html)
+	// in the AWS Batch User Guide.
+	ExecutionRoleArn *string `locationName:"executionRoleArn" type:"string"`
+
+	// The platform configuration for jobs running on Fargate resources. Jobs running
+	// on EC2 resources must not specify this parameter.
+	FargatePlatformConfiguration *FargatePlatformConfiguration `locationName:"fargatePlatformConfiguration" type:"structure"`
 
 	// The image used to start a container. This string is passed directly to the
 	// Docker daemon. Images in the Docker Hub registry are available by default.
@@ -2853,6 +3463,10 @@ type ContainerProperties struct {
 	// to Image in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
 	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the IMAGE parameter of docker run (https://docs.docker.com/engine/reference/run/).
+	//
+	// Docker image architecture must match the processor architecture of the compute
+	// resources that they're scheduled on. For example, ARM-based Docker images
+	// can only run on ARM-based compute resources.
 	//
 	//    * Images in Amazon ECR repositories use the full registry and repository
 	//    URI (for example, 012345678910.dkr.ecr.<region-name>.amazonaws.com/<repository-name>).
@@ -2867,31 +3481,73 @@ type ContainerProperties struct {
 	//    name (for example, quay.io/assemblyline/ubuntu).
 	Image *string `locationName:"image" type:"string"`
 
-	// The instance type to use for a multi-node parallel job. Currently all node
-	// groups in a multi-node parallel job must use the same instance type. This
-	// parameter is not valid for single-node container jobs.
+	// The instance type to use for a multi-node parallel job. All node groups in
+	// a multi-node parallel job must use the same instance type.
+	//
+	// This parameter isn't applicable to single-node container jobs or for jobs
+	// that run on Fargate resources and shouldn't be provided.
 	InstanceType *string `locationName:"instanceType" type:"string"`
 
 	// The Amazon Resource Name (ARN) of the IAM role that the container can assume
-	// for AWS permissions.
+	// for AWS permissions. For more information, see IAM Roles for Tasks (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
+	// in the Amazon Elastic Container Service Developer Guide.
 	JobRoleArn *string `locationName:"jobRoleArn" type:"string"`
 
 	// Linux-specific modifications that are applied to the container, such as details
 	// for device mappings.
 	LinuxParameters *LinuxParameters `locationName:"linuxParameters" type:"structure"`
 
-	// The hard limit (in MiB) of memory to present to the container. If your container
-	// attempts to exceed the memory specified here, the container is killed. This
-	// parameter maps to Memory in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// The log configuration specification for the container.
+	//
+	// This parameter maps to LogConfig in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --log-driver option to docker run (https://docs.docker.com/engine/reference/run/).
+	// By default, containers use the same logging driver that the Docker daemon
+	// uses. However the container might use a different logging driver than the
+	// Docker daemon by specifying a log driver with this parameter in the container
+	// definition. To use a different logging driver for a container, the log system
+	// must be configured properly on the container instance (or on a different
+	// log server for remote logging options). For more information on the options
+	// for different supported log drivers, see Configure logging drivers (https://docs.docker.com/engine/admin/logging/overview/)
+	// in the Docker documentation.
+	//
+	// AWS Batch currently supports a subset of the logging drivers available to
+	// the Docker daemon (shown in the LogConfiguration data type).
+	//
+	// This parameter requires version 1.18 of the Docker Remote API or greater
+	// on your container instance. To check the Docker Remote API version on your
+	// container instance, log into your container instance and run the following
+	// command: sudo docker version | grep "Server API version"
+	//
+	// The Amazon ECS container agent running on a container instance must register
+	// the logging drivers available on that instance with the ECS_AVAILABLE_LOGGING_DRIVERS
+	// environment variable before containers placed on that instance can use these
+	// log configuration options. For more information, see Amazon ECS Container
+	// Agent Configuration (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-config.html)
+	// in the Amazon Elastic Container Service Developer Guide.
+	LogConfiguration *LogConfiguration `locationName:"logConfiguration" type:"structure"`
+
+	// This parameter indicates the memory hard limit (in MiB) for a container.
+	// If your container attempts to exceed the specified number, it is terminated.
+	// You must specify at least 4 MiB of memory for a job using this parameter.
+	// The memory hard limit can be specified in several places. It must be specified
+	// for each node at least once.
+	//
+	// This parameter maps to Memory in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
 	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --memory option to docker run (https://docs.docker.com/engine/reference/run/).
-	// You must specify at least 4 MiB of memory for a job.
 	//
-	// If you are trying to maximize your resource utilization by providing your
+	// This parameter is supported on EC2 resources but isn't supported on Fargate
+	// resources. For Fargate resources, you should specify the memory requirement
+	// using resourceRequirement. You can do this for EC2 resources.
+	//
+	// If you're trying to maximize your resource utilization by providing your
 	// jobs as much memory as possible for a particular instance type, see Memory
 	// Management (https://docs.aws.amazon.com/batch/latest/userguide/memory-management.html)
 	// in the AWS Batch User Guide.
-	Memory *int64 `locationName:"memory" type:"integer"`
+	//
+	// Deprecated: This field is deprecated, use resourceRequirements instead.
+	Memory *int64 `locationName:"memory" deprecated:"true" type:"integer"`
 
 	// The mount points for data volumes in your container. This parameter maps
 	// to Volumes in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
@@ -2899,11 +3555,19 @@ type ContainerProperties struct {
 	// and the --volume option to docker run (https://docs.docker.com/engine/reference/run/).
 	MountPoints []*MountPoint `locationName:"mountPoints" type:"list"`
 
-	// When this parameter is true, the container is given elevated privileges on
-	// the host container instance (similar to the root user). This parameter maps
-	// to Privileged in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// The network configuration for jobs running on Fargate resources. Jobs running
+	// on EC2 resources must not specify this parameter.
+	NetworkConfiguration *NetworkConfiguration `locationName:"networkConfiguration" type:"structure"`
+
+	// When this parameter is true, the container is given elevated permissions
+	// on the host container instance (similar to the root user). This parameter
+	// maps to Privileged in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
 	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --privileged option to docker run (https://docs.docker.com/engine/reference/run/).
+	// The default value is false.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided, or specified as false.
 	Privileged *bool `locationName:"privileged" type:"boolean"`
 
 	// When this parameter is true, the container is given read-only access to its
@@ -2913,14 +3577,22 @@ type ContainerProperties struct {
 	// --read-only option to docker run.
 	ReadonlyRootFilesystem *bool `locationName:"readonlyRootFilesystem" type:"boolean"`
 
-	// The type and amount of a resource to assign to a container. Currently, the
-	// only supported resource is GPU.
+	// The type and amount of resources to assign to a container. The supported
+	// resources include GPU, MEMORY, and VCPU.
 	ResourceRequirements []*ResourceRequirement `locationName:"resourceRequirements" type:"list"`
+
+	// The secrets for the container. For more information, see Specifying sensitive
+	// data (https://docs.aws.amazon.com/batch/latest/userguide/specifying-sensitive-data.html)
+	// in the AWS Batch User Guide.
+	Secrets []*Secret `locationName:"secrets" type:"list"`
 
 	// A list of ulimits to set in the container. This parameter maps to Ulimits
 	// in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
 	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --ulimit option to docker run (https://docs.docker.com/engine/reference/run/).
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided.
 	Ulimits []*Ulimit `locationName:"ulimits" type:"list"`
 
 	// The user name to use inside the container. This parameter maps to User in
@@ -2929,13 +3601,24 @@ type ContainerProperties struct {
 	// and the --user option to docker run (https://docs.docker.com/engine/reference/run/).
 	User *string `locationName:"user" type:"string"`
 
-	// The number of vCPUs reserved for the container. This parameter maps to CpuShares
-	// in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// The number of vCPUs reserved for the job. Each vCPU is equivalent to 1,024
+	// CPU shares. This parameter maps to CpuShares in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
 	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --cpu-shares option to docker run (https://docs.docker.com/engine/reference/run/).
-	// Each vCPU is equivalent to 1,024 CPU shares. You must specify at least one
-	// vCPU.
-	Vcpus *int64 `locationName:"vcpus" type:"integer"`
+	// The number of vCPUs must be specified but can be be specified in several
+	// places. You must specify it at least once for each node.
+	//
+	// This parameter is supported on EC2 resources but isn't supported for jobs
+	// that run on Fargate resources. For these resources, use resourceRequirement
+	// instead. You can use this parameter or resourceRequirements structure but
+	// not both.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided. For jobs that run on Fargate resources, you must specify
+	// the vCPU requirement for the job using resourceRequirements.
+	//
+	// Deprecated: This field is deprecated, use resourceRequirements instead.
+	Vcpus *int64 `locationName:"vcpus" deprecated:"true" type:"integer"`
 
 	// A list of data volumes used in a job.
 	Volumes []*Volume `locationName:"volumes" type:"list"`
@@ -2959,6 +3642,11 @@ func (s *ContainerProperties) Validate() error {
 			invalidParams.AddNested("LinuxParameters", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.LogConfiguration != nil {
+		if err := s.LogConfiguration.Validate(); err != nil {
+			invalidParams.AddNested("LogConfiguration", err.(request.ErrInvalidParams))
+		}
+	}
 	if s.ResourceRequirements != nil {
 		for i, v := range s.ResourceRequirements {
 			if v == nil {
@@ -2969,6 +3657,16 @@ func (s *ContainerProperties) Validate() error {
 			}
 		}
 	}
+	if s.Secrets != nil {
+		for i, v := range s.Secrets {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Secrets", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 	if s.Ulimits != nil {
 		for i, v := range s.Ulimits {
 			if v == nil {
@@ -2976,6 +3674,16 @@ func (s *ContainerProperties) Validate() error {
 			}
 			if err := v.Validate(); err != nil {
 				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Ulimits", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.Volumes != nil {
+		for i, v := range s.Volumes {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Volumes", i), err.(request.ErrInvalidParams))
 			}
 		}
 	}
@@ -2995,6 +3703,18 @@ func (s *ContainerProperties) SetCommand(v []*string) *ContainerProperties {
 // SetEnvironment sets the Environment field's value.
 func (s *ContainerProperties) SetEnvironment(v []*KeyValuePair) *ContainerProperties {
 	s.Environment = v
+	return s
+}
+
+// SetExecutionRoleArn sets the ExecutionRoleArn field's value.
+func (s *ContainerProperties) SetExecutionRoleArn(v string) *ContainerProperties {
+	s.ExecutionRoleArn = &v
+	return s
+}
+
+// SetFargatePlatformConfiguration sets the FargatePlatformConfiguration field's value.
+func (s *ContainerProperties) SetFargatePlatformConfiguration(v *FargatePlatformConfiguration) *ContainerProperties {
+	s.FargatePlatformConfiguration = v
 	return s
 }
 
@@ -3022,6 +3742,12 @@ func (s *ContainerProperties) SetLinuxParameters(v *LinuxParameters) *ContainerP
 	return s
 }
 
+// SetLogConfiguration sets the LogConfiguration field's value.
+func (s *ContainerProperties) SetLogConfiguration(v *LogConfiguration) *ContainerProperties {
+	s.LogConfiguration = v
+	return s
+}
+
 // SetMemory sets the Memory field's value.
 func (s *ContainerProperties) SetMemory(v int64) *ContainerProperties {
 	s.Memory = &v
@@ -3031,6 +3757,12 @@ func (s *ContainerProperties) SetMemory(v int64) *ContainerProperties {
 // SetMountPoints sets the MountPoints field's value.
 func (s *ContainerProperties) SetMountPoints(v []*MountPoint) *ContainerProperties {
 	s.MountPoints = v
+	return s
+}
+
+// SetNetworkConfiguration sets the NetworkConfiguration field's value.
+func (s *ContainerProperties) SetNetworkConfiguration(v *NetworkConfiguration) *ContainerProperties {
+	s.NetworkConfiguration = v
 	return s
 }
 
@@ -3049,6 +3781,12 @@ func (s *ContainerProperties) SetReadonlyRootFilesystem(v bool) *ContainerProper
 // SetResourceRequirements sets the ResourceRequirements field's value.
 func (s *ContainerProperties) SetResourceRequirements(v []*ResourceRequirement) *ContainerProperties {
 	s.ResourceRequirements = v
+	return s
+}
+
+// SetSecrets sets the Secrets field's value.
+func (s *ContainerProperties) SetSecrets(v []*Secret) *ContainerProperties {
+	s.Secrets = v
 	return s
 }
 
@@ -3110,6 +3848,7 @@ func (s *ContainerSummary) SetReason(v string) *ContainerSummary {
 	return s
 }
 
+// Contains the parameters for CreateComputeEnvironment.
 type CreateComputeEnvironmentInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3119,35 +3858,65 @@ type CreateComputeEnvironmentInput struct {
 	// ComputeEnvironmentName is a required field
 	ComputeEnvironmentName *string `locationName:"computeEnvironmentName" type:"string" required:"true"`
 
-	// Details of the compute resources managed by the compute environment. This
+	// Details about the compute resources managed by the compute environment. This
 	// parameter is required for managed compute environments. For more information,
 	// see Compute Environments (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
 	// in the AWS Batch User Guide.
 	ComputeResources *ComputeResource `locationName:"computeResources" type:"structure"`
 
 	// The full Amazon Resource Name (ARN) of the IAM role that allows AWS Batch
-	// to make calls to other AWS services on your behalf.
+	// to make calls to other AWS services on your behalf. For more information,
+	// see AWS Batch service IAM role (https://docs.aws.amazon.com/batch/latest/userguide/service_IAM_role.html)
+	// in the AWS Batch User Guide.
 	//
-	// If your specified role has a path other than /, then you must either specify
-	// the full role ARN (this is recommended) or prefix the role name with the
-	// path.
+	// If your account has already created the AWS Batch service-linked role, that
+	// role is used by default for your compute environment unless you specify a
+	// role here. If the AWS Batch service-linked role does not exist in your account,
+	// and no role is specified here, the service will try to create the AWS Batch
+	// service-linked role in your account.
 	//
-	// Depending on how you created your AWS Batch service role, its ARN may contain
+	// If your specified role has a path other than /, then you must specify either
+	// the full role ARN (recommended) or prefix the role name with the path. For
+	// example, if a role with the name bar has a path of /foo/ then you would specify
+	// /foo/bar as the role name. For more information, see Friendly names and paths
+	// (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-friendly-names)
+	// in the IAM User Guide.
+	//
+	// Depending on how you created your AWS Batch service role, its ARN might contain
 	// the service-role path prefix. When you only specify the name of the service
-	// role, AWS Batch assumes that your ARN does not use the service-role path
-	// prefix. Because of this, we recommend that you specify the full ARN of your
-	// service role when you create compute environments.
-	//
-	// ServiceRole is a required field
-	ServiceRole *string `locationName:"serviceRole" type:"string" required:"true"`
+	// role, AWS Batch assumes that your ARN doesn't use the service-role path prefix.
+	// Because of this, we recommend that you specify the full ARN of your service
+	// role when you create compute environments.
+	ServiceRole *string `locationName:"serviceRole" type:"string"`
 
 	// The state of the compute environment. If the state is ENABLED, then the compute
 	// environment accepts jobs from a queue and can scale out automatically based
 	// on queues.
+	//
+	// If the state is ENABLED, then the AWS Batch scheduler can attempt to place
+	// jobs from an associated job queue on the compute resources within the environment.
+	// If the compute environment is managed, then it can scale its instances out
+	// or in automatically, based on the job queue demand.
+	//
+	// If the state is DISABLED, then the AWS Batch scheduler doesn't attempt to
+	// place jobs within the environment. Jobs in a STARTING or RUNNING state continue
+	// to progress normally. Managed compute environments in the DISABLED state
+	// don't scale out. However, they scale in to minvCpus value after instances
+	// become idle.
 	State *string `locationName:"state" type:"string" enum:"CEState"`
 
-	// The type of the compute environment. For more information, see Compute Environments
-	// (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+	// The tags that you apply to the compute environment to help you categorize
+	// and organize your resources. Each tag consists of a key and an optional value.
+	// For more information, see Tagging AWS Resources (https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html)
+	// in AWS General Reference.
+	//
+	// These tags can be updated or removed using the TagResource (https://docs.aws.amazon.com/batch/latest/APIReference/API_TagResource.html)
+	// and UntagResource (https://docs.aws.amazon.com/batch/latest/APIReference/API_UntagResource.html)
+	// API operations. These tags don't propagate to the underlying compute resources.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
+
+	// The type of the compute environment: MANAGED or UNMANAGED. For more information,
+	// see Compute Environments (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
 	// in the AWS Batch User Guide.
 	//
 	// Type is a required field
@@ -3170,8 +3939,8 @@ func (s *CreateComputeEnvironmentInput) Validate() error {
 	if s.ComputeEnvironmentName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ComputeEnvironmentName"))
 	}
-	if s.ServiceRole == nil {
-		invalidParams.Add(request.NewErrParamRequired("ServiceRole"))
+	if s.Tags != nil && len(s.Tags) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Tags", 1))
 	}
 	if s.Type == nil {
 		invalidParams.Add(request.NewErrParamRequired("Type"))
@@ -3212,6 +3981,12 @@ func (s *CreateComputeEnvironmentInput) SetState(v string) *CreateComputeEnviron
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreateComputeEnvironmentInput) SetTags(v map[string]*string) *CreateComputeEnvironmentInput {
+	s.Tags = v
+	return s
+}
+
 // SetType sets the Type field's value.
 func (s *CreateComputeEnvironmentInput) SetType(v string) *CreateComputeEnvironmentInput {
 	s.Type = &v
@@ -3224,7 +3999,8 @@ type CreateComputeEnvironmentOutput struct {
 	// The Amazon Resource Name (ARN) of the compute environment.
 	ComputeEnvironmentArn *string `locationName:"computeEnvironmentArn" type:"string"`
 
-	// The name of the compute environment.
+	// The name of the compute environment. Up to 128 letters (uppercase and lowercase),
+	// numbers, hyphens, and underscores are allowed.
 	ComputeEnvironmentName *string `locationName:"computeEnvironmentName" type:"string"`
 }
 
@@ -3250,35 +4026,52 @@ func (s *CreateComputeEnvironmentOutput) SetComputeEnvironmentName(v string) *Cr
 	return s
 }
 
+// Contains the parameters for CreateJobQueue.
 type CreateJobQueueInput struct {
 	_ struct{} `type:"structure"`
 
 	// The set of compute environments mapped to a job queue and their order relative
 	// to each other. The job scheduler uses this parameter to determine which compute
-	// environment should execute a given job. Compute environments must be in the
+	// environment should run a specific job. Compute environments must be in the
 	// VALID state before you can associate them with a job queue. You can associate
-	// up to three compute environments with a job queue.
+	// up to three compute environments with a job queue. All of the compute environments
+	// must be either EC2 (EC2 or SPOT) or Fargate (FARGATE or FARGATE_SPOT); EC2
+	// and Fargate compute environments can't be mixed.
+	//
+	// All compute environments that are associated with a job queue must share
+	// the same architecture. AWS Batch doesn't support mixing compute environment
+	// architecture types in a single job queue.
 	//
 	// ComputeEnvironmentOrder is a required field
 	ComputeEnvironmentOrder []*ComputeEnvironmentOrder `locationName:"computeEnvironmentOrder" type:"list" required:"true"`
 
-	// The name of the job queue.
+	// The name of the job queue. Up to 128 letters (uppercase and lowercase), numbers,
+	// and underscores are allowed.
 	//
 	// JobQueueName is a required field
 	JobQueueName *string `locationName:"jobQueueName" type:"string" required:"true"`
 
 	// The priority of the job queue. Job queues with a higher priority (or a higher
 	// integer value for the priority parameter) are evaluated first when associated
-	// with the same compute environment. Priority is determined in descending order,
-	// for example, a job queue with a priority value of 10 is given scheduling
-	// preference over a job queue with a priority value of 1.
+	// with the same compute environment. Priority is determined in descending order.
+	// For example, a job queue with a priority value of 10 is given scheduling
+	// preference over a job queue with a priority value of 1. All of the compute
+	// environments must be either EC2 (EC2 or SPOT) or Fargate (FARGATE or FARGATE_SPOT);
+	// EC2 and Fargate compute environments cannot be mixed.
 	//
 	// Priority is a required field
 	Priority *int64 `locationName:"priority" type:"integer" required:"true"`
 
 	// The state of the job queue. If the job queue state is ENABLED, it is able
-	// to accept jobs.
+	// to accept jobs. If the job queue state is DISABLED, new jobs can't be added
+	// to the queue, but jobs already in the queue can finish.
 	State *string `locationName:"state" type:"string" enum:"JQState"`
+
+	// The tags that you apply to the job queue to help you categorize and organize
+	// your resources. Each tag consists of a key and an optional value. For more
+	// information, see Tagging your AWS Batch resources (https://docs.aws.amazon.com/batch/latest/userguide/using-tags.html)
+	// in AWS Batch User Guide.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
 }
 
 // String returns the string representation
@@ -3302,6 +4095,9 @@ func (s *CreateJobQueueInput) Validate() error {
 	}
 	if s.Priority == nil {
 		invalidParams.Add(request.NewErrParamRequired("Priority"))
+	}
+	if s.Tags != nil && len(s.Tags) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Tags", 1))
 	}
 	if s.ComputeEnvironmentOrder != nil {
 		for i, v := range s.ComputeEnvironmentOrder {
@@ -3344,6 +4140,12 @@ func (s *CreateJobQueueInput) SetState(v string) *CreateJobQueueInput {
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *CreateJobQueueInput) SetTags(v map[string]*string) *CreateJobQueueInput {
+	s.Tags = v
+	return s
+}
+
 type CreateJobQueueOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -3380,6 +4182,7 @@ func (s *CreateJobQueueOutput) SetJobQueueName(v string) *CreateJobQueueOutput {
 	return s
 }
 
+// Contains the parameters for DeleteComputeEnvironment.
 type DeleteComputeEnvironmentInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3432,6 +4235,7 @@ func (s DeleteComputeEnvironmentOutput) GoString() string {
 	return s.String()
 }
 
+// Contains the parameters for DeleteJobQueue.
 type DeleteJobQueueInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3537,6 +4341,7 @@ func (s DeregisterJobDefinitionOutput) GoString() string {
 	return s.String()
 }
 
+// Contains the parameters for DescribeComputeEnvironments.
 type DescribeComputeEnvironmentsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3549,9 +4354,8 @@ type DescribeComputeEnvironmentsInput struct {
 	// only returns maxResults results in a single page along with a nextToken response
 	// element. The remaining results of the initial request can be seen by sending
 	// another DescribeComputeEnvironments request with the returned nextToken value.
-	// This value can be between 1 and 100. If this parameter is not used, then
-	// DescribeComputeEnvironments returns up to 100 results and a nextToken value
-	// if applicable.
+	// This value can be between 1 and 100. If this parameter isn't used, then DescribeComputeEnvironments
+	// returns up to 100 results and a nextToken value if applicable.
 	MaxResults *int64 `locationName:"maxResults" type:"integer"`
 
 	// The nextToken value returned from a previous paginated DescribeComputeEnvironments
@@ -3560,7 +4364,7 @@ type DescribeComputeEnvironmentsInput struct {
 	// returned the nextToken value. This value is null when there are no more results
 	// to return.
 	//
-	// This token should be treated as an opaque identifier that is only used to
+	// This token should be treated as an opaque identifier that's only used to
 	// retrieve the next items in a list and not for other programmatic purposes.
 	NextToken *string `locationName:"nextToken" type:"string"`
 }
@@ -3628,6 +4432,7 @@ func (s *DescribeComputeEnvironmentsOutput) SetNextToken(v string) *DescribeComp
 	return s
 }
 
+// Contains the parameters for DescribeJobDefinitions.
 type DescribeJobDefinitionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3640,11 +4445,11 @@ type DescribeJobDefinitionsInput struct {
 
 	// The maximum number of results returned by DescribeJobDefinitions in paginated
 	// output. When this parameter is used, DescribeJobDefinitions only returns
-	// maxResults results in a single page along with a nextToken response element.
-	// The remaining results of the initial request can be seen by sending another
-	// DescribeJobDefinitions request with the returned nextToken value. This value
-	// can be between 1 and 100. If this parameter is not used, then DescribeJobDefinitions
-	// returns up to 100 results and a nextToken value if applicable.
+	// maxResults results in a single page and a nextToken response element. The
+	// remaining results of the initial request can be seen by sending another DescribeJobDefinitions
+	// request with the returned nextToken value. This value can be between 1 and
+	// 100. If this parameter isn't used, then DescribeJobDefinitions returns up
+	// to 100 results and a nextToken value if applicable.
 	MaxResults *int64 `locationName:"maxResults" type:"integer"`
 
 	// The nextToken value returned from a previous paginated DescribeJobDefinitions
@@ -3653,11 +4458,11 @@ type DescribeJobDefinitionsInput struct {
 	// returned the nextToken value. This value is null when there are no more results
 	// to return.
 	//
-	// This token should be treated as an opaque identifier that is only used to
+	// This token should be treated as an opaque identifier that's only used to
 	// retrieve the next items in a list and not for other programmatic purposes.
 	NextToken *string `locationName:"nextToken" type:"string"`
 
-	// The status with which to filter job definitions.
+	// The status used to filter job definitions.
 	Status *string `locationName:"status" type:"string"`
 }
 
@@ -3736,6 +4541,7 @@ func (s *DescribeJobDefinitionsOutput) SetNextToken(v string) *DescribeJobDefini
 	return s
 }
 
+// Contains the parameters for DescribeJobQueues.
 type DescribeJobQueuesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3745,11 +4551,11 @@ type DescribeJobQueuesInput struct {
 
 	// The maximum number of results returned by DescribeJobQueues in paginated
 	// output. When this parameter is used, DescribeJobQueues only returns maxResults
-	// results in a single page along with a nextToken response element. The remaining
+	// results in a single page and a nextToken response element. The remaining
 	// results of the initial request can be seen by sending another DescribeJobQueues
 	// request with the returned nextToken value. This value can be between 1 and
-	// 100. If this parameter is not used, then DescribeJobQueues returns up to
-	// 100 results and a nextToken value if applicable.
+	// 100. If this parameter isn't used, then DescribeJobQueues returns up to 100
+	// results and a nextToken value if applicable.
 	MaxResults *int64 `locationName:"maxResults" type:"integer"`
 
 	// The nextToken value returned from a previous paginated DescribeJobQueues
@@ -3758,7 +4564,7 @@ type DescribeJobQueuesInput struct {
 	// returned the nextToken value. This value is null when there are no more results
 	// to return.
 	//
-	// This token should be treated as an opaque identifier that is only used to
+	// This token should be treated as an opaque identifier that's only used to
 	// retrieve the next items in a list and not for other programmatic purposes.
 	NextToken *string `locationName:"nextToken" type:"string"`
 }
@@ -3826,6 +4632,7 @@ func (s *DescribeJobQueuesOutput) SetNextToken(v string) *DescribeJobQueuesOutpu
 	return s
 }
 
+// Contains the parameters for DescribeJobs.
 type DescribeJobsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3888,10 +4695,13 @@ func (s *DescribeJobsOutput) SetJobs(v []*JobDetail) *DescribeJobsOutput {
 }
 
 // An object representing a container instance host device.
+//
+// This object isn't applicable to jobs running on Fargate resources and shouldn't
+// be provided.
 type Device struct {
 	_ struct{} `type:"structure"`
 
-	// The path inside the container at which to expose the host device. By default
+	// The path inside the container used to expose the host device. By default,
 	// the hostPath value is used.
 	ContainerPath *string `locationName:"containerPath" type:"string"`
 
@@ -3946,20 +4756,355 @@ func (s *Device) SetPermissions(v []*string) *Device {
 	return s
 }
 
+// The authorization configuration details for the Amazon EFS file system.
+type EFSAuthorizationConfig struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon EFS access point ID to use. If an access point is specified, the
+	// root directory value specified in the EFSVolumeConfiguration must either
+	// be omitted or set to / which will enforce the path set on the EFS access
+	// point. If an access point is used, transit encryption must be enabled in
+	// the EFSVolumeConfiguration. For more information, see Working with Amazon
+	// EFS Access Points (https://docs.aws.amazon.com/efs/latest/ug/efs-access-points.html)
+	// in the Amazon Elastic File System User Guide.
+	AccessPointId *string `locationName:"accessPointId" type:"string"`
+
+	// Whether or not to use the AWS Batch execution IAM role defined in a job definition
+	// when mounting the Amazon EFS file system. If enabled, transit encryption
+	// must be enabled in the EFSVolumeConfiguration. If this parameter is omitted,
+	// the default value of DISABLED is used. For more information, see Using Amazon
+	// EFS Access Points (https://docs.aws.amazon.com/batch/latest/ug/efs-volumes.html#efs-volume-accesspoints)
+	// in the AWS Batch User Guide. EFS IAM authorization requires that TransitEncryption
+	// be ENABLED and that a JobRoleArn is specified.
+	Iam *string `locationName:"iam" type:"string" enum:"EFSAuthorizationConfigIAM"`
+}
+
+// String returns the string representation
+func (s EFSAuthorizationConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EFSAuthorizationConfig) GoString() string {
+	return s.String()
+}
+
+// SetAccessPointId sets the AccessPointId field's value.
+func (s *EFSAuthorizationConfig) SetAccessPointId(v string) *EFSAuthorizationConfig {
+	s.AccessPointId = &v
+	return s
+}
+
+// SetIam sets the Iam field's value.
+func (s *EFSAuthorizationConfig) SetIam(v string) *EFSAuthorizationConfig {
+	s.Iam = &v
+	return s
+}
+
+// This parameter is specified when you are using an Amazon Elastic File System
+// file system for task storage. For more information, see Amazon EFS Volumes
+// (https://docs.aws.amazon.com/batch/latest/ug/efs-volumes.html) in the AWS
+// Batch User Guide.
+type EFSVolumeConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// The authorization configuration details for the Amazon EFS file system.
+	AuthorizationConfig *EFSAuthorizationConfig `locationName:"authorizationConfig" type:"structure"`
+
+	// The Amazon EFS file system ID to use.
+	//
+	// FileSystemId is a required field
+	FileSystemId *string `locationName:"fileSystemId" type:"string" required:"true"`
+
+	// The directory within the Amazon EFS file system to mount as the root directory
+	// inside the host. If this parameter is omitted, the root of the Amazon EFS
+	// volume will be used. Specifying / will have the same effect as omitting this
+	// parameter.
+	//
+	// If an EFS access point is specified in the authorizationConfig, the root
+	// directory parameter must either be omitted or set to / which will enforce
+	// the path set on the Amazon EFS access point.
+	RootDirectory *string `locationName:"rootDirectory" type:"string"`
+
+	// Whether or not to enable encryption for Amazon EFS data in transit between
+	// the Amazon ECS host and the Amazon EFS server. Transit encryption must be
+	// enabled if Amazon EFS IAM authorization is used. If this parameter is omitted,
+	// the default value of DISABLED is used. For more information, see Encrypting
+	// data in transit (https://docs.aws.amazon.com/efs/latest/ug/encryption-in-transit.html)
+	// in the Amazon Elastic File System User Guide.
+	TransitEncryption *string `locationName:"transitEncryption" type:"string" enum:"EFSTransitEncryption"`
+
+	// The port to use when sending encrypted data between the Amazon ECS host and
+	// the Amazon EFS server. If you do not specify a transit encryption port, it
+	// will use the port selection strategy that the Amazon EFS mount helper uses.
+	// For more information, see EFS Mount Helper (https://docs.aws.amazon.com/efs/latest/ug/efs-mount-helper.html)
+	// in the Amazon Elastic File System User Guide.
+	TransitEncryptionPort *int64 `locationName:"transitEncryptionPort" type:"integer"`
+}
+
+// String returns the string representation
+func (s EFSVolumeConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EFSVolumeConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *EFSVolumeConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "EFSVolumeConfiguration"}
+	if s.FileSystemId == nil {
+		invalidParams.Add(request.NewErrParamRequired("FileSystemId"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAuthorizationConfig sets the AuthorizationConfig field's value.
+func (s *EFSVolumeConfiguration) SetAuthorizationConfig(v *EFSAuthorizationConfig) *EFSVolumeConfiguration {
+	s.AuthorizationConfig = v
+	return s
+}
+
+// SetFileSystemId sets the FileSystemId field's value.
+func (s *EFSVolumeConfiguration) SetFileSystemId(v string) *EFSVolumeConfiguration {
+	s.FileSystemId = &v
+	return s
+}
+
+// SetRootDirectory sets the RootDirectory field's value.
+func (s *EFSVolumeConfiguration) SetRootDirectory(v string) *EFSVolumeConfiguration {
+	s.RootDirectory = &v
+	return s
+}
+
+// SetTransitEncryption sets the TransitEncryption field's value.
+func (s *EFSVolumeConfiguration) SetTransitEncryption(v string) *EFSVolumeConfiguration {
+	s.TransitEncryption = &v
+	return s
+}
+
+// SetTransitEncryptionPort sets the TransitEncryptionPort field's value.
+func (s *EFSVolumeConfiguration) SetTransitEncryptionPort(v int64) *EFSVolumeConfiguration {
+	s.TransitEncryptionPort = &v
+	return s
+}
+
+// Provides information used to select Amazon Machine Images (AMIs) for instances
+// in the compute environment. If Ec2Configuration isn't specified, the default
+// is currently ECS_AL1 (Amazon Linux (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#alami))
+// for non-GPU, non-Graviton instances. Starting on March 31, 2021, this default
+// will be changing to ECS_AL2 (Amazon Linux 2 (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#al2ami)).
+//
+// This object isn't applicable to jobs running on Fargate resources.
+type Ec2Configuration struct {
+	_ struct{} `type:"structure"`
+
+	// The AMI ID used for instances launched in the compute environment that match
+	// the image type. This setting overrides the imageId set in the computeResource
+	// object.
+	ImageIdOverride *string `locationName:"imageIdOverride" min:"1" type:"string"`
+
+	// The image type to match with the instance type to select an AMI. If the imageIdOverride
+	// parameter isn't specified, then a recent Amazon ECS-optimized AMI (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html)
+	// (ECS_AL1) is used. Starting on March 31, 2021, this default will be changing
+	// to ECS_AL2 (Amazon Linux 2 (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#al2ami)).
+	//
+	// ECS_AL2
+	//
+	// Amazon Linux 2 (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#al2ami)−
+	// Default for all AWS Graviton-based instance families (for example, C6g, M6g,
+	// R6g, and T4g) and can be used for all non-GPU instance types.
+	//
+	// ECS_AL2_NVIDIA
+	//
+	// Amazon Linux 2 (GPU) (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#gpuami)−Default
+	// for all GPU instance families (for example P4 and G4) and can be used for
+	// all non-AWS Graviton-based instance types.
+	//
+	// ECS_AL1
+	//
+	// Amazon Linux (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#alami)−Default
+	// for all non-GPU, non-AWS Graviton instance families. Amazon Linux is reaching
+	// the end-of-life of standard support. For more information, see Amazon Linux
+	// AMI (http://aws.amazon.com/amazon-linux-ami/).
+	//
+	// ImageType is a required field
+	ImageType *string `locationName:"imageType" min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s Ec2Configuration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s Ec2Configuration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *Ec2Configuration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "Ec2Configuration"}
+	if s.ImageIdOverride != nil && len(*s.ImageIdOverride) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ImageIdOverride", 1))
+	}
+	if s.ImageType == nil {
+		invalidParams.Add(request.NewErrParamRequired("ImageType"))
+	}
+	if s.ImageType != nil && len(*s.ImageType) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ImageType", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetImageIdOverride sets the ImageIdOverride field's value.
+func (s *Ec2Configuration) SetImageIdOverride(v string) *Ec2Configuration {
+	s.ImageIdOverride = &v
+	return s
+}
+
+// SetImageType sets the ImageType field's value.
+func (s *Ec2Configuration) SetImageType(v string) *Ec2Configuration {
+	s.ImageType = &v
+	return s
+}
+
+// Specifies a set of conditions to be met, and an action to take (RETRY or
+// EXIT) if all conditions are met.
+type EvaluateOnExit struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies the action to take if all of the specified conditions (onStatusReason,
+	// onReason, and onExitCode) are met. The values aren't case sensitive.
+	//
+	// Action is a required field
+	Action *string `locationName:"action" type:"string" required:"true" enum:"RetryAction"`
+
+	// Contains a glob pattern to match against the decimal representation of the
+	// ExitCode returned for a job. The pattern can be up to 512 characters long,
+	// can contain only numbers, and can optionally end with an asterisk (*) so
+	// that only the start of the string needs to be an exact match.
+	OnExitCode *string `locationName:"onExitCode" type:"string"`
+
+	// Contains a glob pattern to match against the Reason returned for a job. The
+	// pattern can be up to 512 characters long, and can contain letters, numbers,
+	// periods (.), colons (:), and white space (including spaces and tabs). It
+	// can optionally end with an asterisk (*) so that only the start of the string
+	// needs to be an exact match.
+	OnReason *string `locationName:"onReason" type:"string"`
+
+	// Contains a glob pattern to match against the StatusReason returned for a
+	// job. The pattern can be up to 512 characters long, and can contain letters,
+	// numbers, periods (.), colons (:), and white space (including spaces or tabs).
+	// It can optionally end with an asterisk (*) so that only the start of the
+	// string needs to be an exact match.
+	OnStatusReason *string `locationName:"onStatusReason" type:"string"`
+}
+
+// String returns the string representation
+func (s EvaluateOnExit) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EvaluateOnExit) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *EvaluateOnExit) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "EvaluateOnExit"}
+	if s.Action == nil {
+		invalidParams.Add(request.NewErrParamRequired("Action"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAction sets the Action field's value.
+func (s *EvaluateOnExit) SetAction(v string) *EvaluateOnExit {
+	s.Action = &v
+	return s
+}
+
+// SetOnExitCode sets the OnExitCode field's value.
+func (s *EvaluateOnExit) SetOnExitCode(v string) *EvaluateOnExit {
+	s.OnExitCode = &v
+	return s
+}
+
+// SetOnReason sets the OnReason field's value.
+func (s *EvaluateOnExit) SetOnReason(v string) *EvaluateOnExit {
+	s.OnReason = &v
+	return s
+}
+
+// SetOnStatusReason sets the OnStatusReason field's value.
+func (s *EvaluateOnExit) SetOnStatusReason(v string) *EvaluateOnExit {
+	s.OnStatusReason = &v
+	return s
+}
+
+// The platform configuration for jobs running on Fargate resources. For jobs
+// that run on EC2 resources, you shouldn't specify this parameter.
+type FargatePlatformConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// The AWS Fargate platform version where the jobs are running. A platform version
+	// is specified only for jobs running on Fargate resources. If one isn't specified,
+	// the LATEST platform version is used by default. This uses a recent, approved
+	// version of the AWS Fargate platform for compute resources. For more information,
+	// see AWS Fargate platform versions (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/platform_versions.html)
+	// in the Amazon Elastic Container Service Developer Guide.
+	PlatformVersion *string `locationName:"platformVersion" type:"string"`
+}
+
+// String returns the string representation
+func (s FargatePlatformConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s FargatePlatformConfiguration) GoString() string {
+	return s.String()
+}
+
+// SetPlatformVersion sets the PlatformVersion field's value.
+func (s *FargatePlatformConfiguration) SetPlatformVersion(v string) *FargatePlatformConfiguration {
+	s.PlatformVersion = &v
+	return s
+}
+
 // Determine whether your data volume persists on the host container instance
 // and where it is stored. If this parameter is empty, then the Docker daemon
-// assigns a host path for your data volume, but the data is not guaranteed
-// to persist after the containers associated with it stop running.
+// assigns a host path for your data volume, but the data isn't guaranteed to
+// persist after the containers associated with it stop running.
 type Host struct {
 	_ struct{} `type:"structure"`
 
-	// The path on the host container instance that is presented to the container.
+	// The path on the host container instance that's presented to the container.
 	// If this parameter is empty, then the Docker daemon has assigned a host path
 	// for you. If this parameter contains a file location, then the data volume
 	// persists at the specified location on the host container instance until you
-	// delete it manually. If the source path location does not exist on the host
+	// delete it manually. If the source path location doesn't exist on the host
 	// container instance, the Docker daemon creates it. If the location does exist,
 	// the contents of the source path folder are exported.
+	//
+	// This parameter isn't applicable to jobs that run on Fargate resources and
+	// shouldn't be provided.
 	SourcePath *string `locationName:"sourcePath" type:"string"`
 }
 
@@ -3997,6 +5142,9 @@ type JobDefinition struct {
 	JobDefinitionName *string `locationName:"jobDefinitionName" type:"string" required:"true"`
 
 	// An object with various properties specific to multi-node parallel jobs.
+	//
+	// If the job runs on Fargate resources, then you must not specify nodeProperties;
+	// use containerProperties instead.
 	NodeProperties *NodeProperties `locationName:"nodeProperties" type:"structure"`
 
 	// Default parameters or parameter substitution placeholders that are set in
@@ -4006,6 +5154,18 @@ type JobDefinition struct {
 	// see Job Definition Parameters (https://docs.aws.amazon.com/batch/latest/userguide/job_definition_parameters.html)
 	// in the AWS Batch User Guide.
 	Parameters map[string]*string `locationName:"parameters" type:"map"`
+
+	// The platform capabilities required by the job definition. If no value is
+	// specified, it defaults to EC2. Jobs run on Fargate resources specify FARGATE.
+	PlatformCapabilities []*string `locationName:"platformCapabilities" type:"list"`
+
+	// Specifies whether to propagate the tags from the job or job definition to
+	// the corresponding Amazon ECS task. If no value is specified, the tags aren't
+	// propagated. Tags can only be propagated to the tasks during task creation.
+	// For tags with the same name, job tags are given priority over job definitions
+	// tags. If the total number of combined tags from the job and job definition
+	// is over 50, the job is moved to the FAILED state.
+	PropagateTags *bool `locationName:"propagateTags" type:"boolean"`
 
 	// The retry strategy to use for failed jobs that are submitted with this job
 	// definition.
@@ -4019,12 +5179,18 @@ type JobDefinition struct {
 	// The status of the job definition.
 	Status *string `locationName:"status" type:"string"`
 
+	// The tags applied to the job definition.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
+
 	// The timeout configuration for jobs that are submitted with this job definition.
 	// You can specify a timeout duration after which AWS Batch terminates your
-	// jobs if they have not finished.
+	// jobs if they haven't finished.
 	Timeout *JobTimeout `locationName:"timeout" type:"structure"`
 
-	// The type of job definition.
+	// The type of job definition. If the job is run on Fargate resources, then
+	// multinode isn't supported. For more information about multi-node parallel
+	// jobs, see Creating a multi-node parallel job definition (https://docs.aws.amazon.com/batch/latest/userguide/multi-node-job-def.html)
+	// in the AWS Batch User Guide.
 	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true"`
@@ -4070,6 +5236,18 @@ func (s *JobDefinition) SetParameters(v map[string]*string) *JobDefinition {
 	return s
 }
 
+// SetPlatformCapabilities sets the PlatformCapabilities field's value.
+func (s *JobDefinition) SetPlatformCapabilities(v []*string) *JobDefinition {
+	s.PlatformCapabilities = v
+	return s
+}
+
+// SetPropagateTags sets the PropagateTags field's value.
+func (s *JobDefinition) SetPropagateTags(v bool) *JobDefinition {
+	s.PropagateTags = &v
+	return s
+}
+
 // SetRetryStrategy sets the RetryStrategy field's value.
 func (s *JobDefinition) SetRetryStrategy(v *RetryStrategy) *JobDefinition {
 	s.RetryStrategy = v
@@ -4085,6 +5263,12 @@ func (s *JobDefinition) SetRevision(v int64) *JobDefinition {
 // SetStatus sets the Status field's value.
 func (s *JobDefinition) SetStatus(v string) *JobDefinition {
 	s.Status = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *JobDefinition) SetTags(v map[string]*string) *JobDefinition {
+	s.Tags = v
 	return s
 }
 
@@ -4143,21 +5327,23 @@ type JobDetail struct {
 	// A list of job attempts associated with this job.
 	Attempts []*AttemptDetail `locationName:"attempts" type:"list"`
 
-	// An object representing the details of the container that is associated with
+	// An object representing the details of the container that's associated with
 	// the job.
 	Container *ContainerDetail `locationName:"container" type:"structure"`
 
-	// The Unix timestamp (in seconds and milliseconds) for when the job was created.
-	// For non-array jobs and parent array jobs, this is when the job entered the
-	// SUBMITTED state (at the time SubmitJob was called). For array child jobs,
-	// this is when the child job was spawned by its parent and entered the PENDING
-	// state.
+	// The Unix timestamp (in milliseconds) for when the job was created. For non-array
+	// jobs and parent array jobs, this is when the job entered the SUBMITTED state
+	// (at the time SubmitJob was called). For array child jobs, this is when the
+	// child job was spawned by its parent and entered the PENDING state.
 	CreatedAt *int64 `locationName:"createdAt" type:"long"`
 
-	// A list of job IDs on which this job depends.
+	// A list of job IDs that this job depends on.
 	DependsOn []*JobDependency `locationName:"dependsOn" type:"list"`
 
-	// The job definition that is used by this job.
+	// The Amazon Resource Name (ARN) of the job.
+	JobArn *string `locationName:"jobArn" type:"string"`
+
+	// The job definition that's used by this job.
 	//
 	// JobDefinition is a required field
 	JobDefinition *string `locationName:"jobDefinition" type:"string" required:"true"`
@@ -4172,16 +5358,19 @@ type JobDetail struct {
 	// JobName is a required field
 	JobName *string `locationName:"jobName" type:"string" required:"true"`
 
-	// The Amazon Resource Name (ARN) of the job queue with which the job is associated.
+	// The Amazon Resource Name (ARN) of the job queue that the job is associated
+	// with.
 	//
 	// JobQueue is a required field
 	JobQueue *string `locationName:"jobQueue" type:"string" required:"true"`
 
-	// An object representing the details of a node that is associated with a multi-node
+	// An object representing the details of a node that's associated with a multi-node
 	// parallel job.
 	NodeDetails *NodeDetails `locationName:"nodeDetails" type:"structure"`
 
 	// An object representing the node properties of a multi-node parallel job.
+	//
+	// This isn't applicable to jobs running on Fargate resources.
 	NodeProperties *NodeProperties `locationName:"nodeProperties" type:"structure"`
 
 	// Additional parameters passed to the job that replace parameter substitution
@@ -4189,18 +5378,31 @@ type JobDetail struct {
 	// definition.
 	Parameters map[string]*string `locationName:"parameters" type:"map"`
 
+	// The platform capabilities required by the job definition. If no value is
+	// specified, it defaults to EC2. Jobs run on Fargate resources specify FARGATE.
+	PlatformCapabilities []*string `locationName:"platformCapabilities" type:"list"`
+
+	// Specifies whether to propagate the tags from the job or job definition to
+	// the corresponding Amazon ECS task. If no value is specified, the tags aren't
+	// propagated. Tags can only be propagated to the tasks during task creation.
+	// For tags with the same name, job tags are given priority over job definitions
+	// tags. If the total number of combined tags from the job and job definition
+	// is over 50, the job is moved to the FAILED state.
+	PropagateTags *bool `locationName:"propagateTags" type:"boolean"`
+
 	// The retry strategy to use for this job if an attempt fails.
 	RetryStrategy *RetryStrategy `locationName:"retryStrategy" type:"structure"`
 
-	// The Unix timestamp (in seconds and milliseconds) for when the job was started
-	// (when the job transitioned from the STARTING state to the RUNNING state).
+	// The Unix timestamp (in milliseconds) for when the job was started (when the
+	// job transitioned from the STARTING state to the RUNNING state). This parameter
+	// isn't provided for child jobs of array jobs or multi-node parallel jobs.
 	//
 	// StartedAt is a required field
 	StartedAt *int64 `locationName:"startedAt" type:"long" required:"true"`
 
 	// The current status for the job.
 	//
-	// If your jobs do not progress to STARTING, see Jobs Stuck in RUNNABLE Status
+	// If your jobs don't progress to STARTING, see Jobs Stuck in RUNNABLE Status
 	// (https://docs.aws.amazon.com/batch/latest/userguide/troubleshooting.html#job_stuck_in_runnable)
 	// in the troubleshooting section of the AWS Batch User Guide.
 	//
@@ -4211,10 +5413,13 @@ type JobDetail struct {
 	// status of the job.
 	StatusReason *string `locationName:"statusReason" type:"string"`
 
-	// The Unix timestamp (in seconds and milliseconds) for when the job was stopped
-	// (when the job transitioned from the RUNNING state to a terminal state, such
-	// as SUCCEEDED or FAILED).
+	// The Unix timestamp (in milliseconds) for when the job was stopped (when the
+	// job transitioned from the RUNNING state to a terminal state, such as SUCCEEDED
+	// or FAILED).
 	StoppedAt *int64 `locationName:"stoppedAt" type:"long"`
+
+	// The tags applied to the job.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
 
 	// The timeout configuration for the job.
 	Timeout *JobTimeout `locationName:"timeout" type:"structure"`
@@ -4260,6 +5465,12 @@ func (s *JobDetail) SetDependsOn(v []*JobDependency) *JobDetail {
 	return s
 }
 
+// SetJobArn sets the JobArn field's value.
+func (s *JobDetail) SetJobArn(v string) *JobDetail {
+	s.JobArn = &v
+	return s
+}
+
 // SetJobDefinition sets the JobDefinition field's value.
 func (s *JobDetail) SetJobDefinition(v string) *JobDetail {
 	s.JobDefinition = &v
@@ -4302,6 +5513,18 @@ func (s *JobDetail) SetParameters(v map[string]*string) *JobDetail {
 	return s
 }
 
+// SetPlatformCapabilities sets the PlatformCapabilities field's value.
+func (s *JobDetail) SetPlatformCapabilities(v []*string) *JobDetail {
+	s.PlatformCapabilities = v
+	return s
+}
+
+// SetPropagateTags sets the PropagateTags field's value.
+func (s *JobDetail) SetPropagateTags(v bool) *JobDetail {
+	s.PropagateTags = &v
+	return s
+}
+
 // SetRetryStrategy sets the RetryStrategy field's value.
 func (s *JobDetail) SetRetryStrategy(v *RetryStrategy) *JobDetail {
 	s.RetryStrategy = v
@@ -4332,6 +5555,12 @@ func (s *JobDetail) SetStoppedAt(v int64) *JobDetail {
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *JobDetail) SetTags(v map[string]*string) *JobDetail {
+	s.Tags = v
+	return s
+}
+
 // SetTimeout sets the Timeout field's value.
 func (s *JobDetail) SetTimeout(v *JobTimeout) *JobDetail {
 	s.Timeout = v
@@ -4343,8 +5572,8 @@ type JobQueueDetail struct {
 	_ struct{} `type:"structure"`
 
 	// The compute environments that are attached to the job queue and the order
-	// in which job placement is preferred. Compute environments are selected for
-	// job placement in ascending order.
+	// that job placement is preferred. Compute environments are selected for job
+	// placement in ascending order.
 	//
 	// ComputeEnvironmentOrder is a required field
 	ComputeEnvironmentOrder []*ComputeEnvironmentOrder `locationName:"computeEnvironmentOrder" type:"list" required:"true"`
@@ -4359,12 +5588,20 @@ type JobQueueDetail struct {
 	// JobQueueName is a required field
 	JobQueueName *string `locationName:"jobQueueName" type:"string" required:"true"`
 
-	// The priority of the job queue.
+	// The priority of the job queue. Job queues with a higher priority (or a higher
+	// integer value for the priority parameter) are evaluated first when associated
+	// with the same compute environment. Priority is determined in descending order,
+	// for example, a job queue with a priority value of 10 is given scheduling
+	// preference over a job queue with a priority value of 1. All of the compute
+	// environments must be either EC2 (EC2 or SPOT) or Fargate (FARGATE or FARGATE_SPOT);
+	// EC2 and Fargate compute environments can't be mixed.
 	//
 	// Priority is a required field
 	Priority *int64 `locationName:"priority" type:"integer" required:"true"`
 
-	// Describes the ability of the queue to accept new jobs.
+	// Describes the ability of the queue to accept new jobs. If the job queue state
+	// is ENABLED, it's able to accept jobs. If the job queue state is DISABLED,
+	// new jobs can't be added to the queue, but jobs already in the queue can finish.
 	//
 	// State is a required field
 	State *string `locationName:"state" type:"string" required:"true" enum:"JQState"`
@@ -4375,6 +5612,11 @@ type JobQueueDetail struct {
 	// A short, human-readable string to provide additional details about the current
 	// status of the job queue.
 	StatusReason *string `locationName:"statusReason" type:"string"`
+
+	// The tags applied to the job queue. For more information, see Tagging your
+	// AWS Batch resources (https://docs.aws.amazon.com/batch/latest/userguide/using-tags.html)
+	// in AWS Batch User Guide.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
 }
 
 // String returns the string representation
@@ -4429,6 +5671,12 @@ func (s *JobQueueDetail) SetStatusReason(v string) *JobQueueDetail {
 	return s
 }
 
+// SetTags sets the Tags field's value.
+func (s *JobQueueDetail) SetTags(v map[string]*string) *JobQueueDetail {
+	s.Tags = v
+	return s
+}
+
 // An object representing summary details of a job.
 type JobSummary struct {
 	_ struct{} `type:"structure"`
@@ -4436,7 +5684,7 @@ type JobSummary struct {
 	// The array properties of the job, if it is an array job.
 	ArrayProperties *ArrayPropertiesSummary `locationName:"arrayProperties" type:"structure"`
 
-	// An object representing the details of the container that is associated with
+	// An object representing the details of the container that's associated with
 	// the job.
 	Container *ContainerSummary `locationName:"container" type:"structure"`
 
@@ -4445,6 +5693,9 @@ type JobSummary struct {
 	// SubmitJob was called). For array child jobs, this is when the child job was
 	// spawned by its parent and entered the PENDING state.
 	CreatedAt *int64 `locationName:"createdAt" type:"long"`
+
+	// The Amazon Resource Name (ARN) of the job.
+	JobArn *string `locationName:"jobArn" type:"string"`
 
 	// The ID of the job.
 	//
@@ -4457,6 +5708,8 @@ type JobSummary struct {
 	JobName *string `locationName:"jobName" type:"string" required:"true"`
 
 	// The node properties for a single node in a job summary list.
+	//
+	// This isn't applicable to jobs running on Fargate resources.
 	NodeProperties *NodePropertiesSummary `locationName:"nodeProperties" type:"structure"`
 
 	// The Unix timestamp for when the job was started (when the job transitioned
@@ -4500,6 +5753,12 @@ func (s *JobSummary) SetContainer(v *ContainerSummary) *JobSummary {
 // SetCreatedAt sets the CreatedAt field's value.
 func (s *JobSummary) SetCreatedAt(v int64) *JobSummary {
 	s.CreatedAt = &v
+	return s
+}
+
+// SetJobArn sets the JobArn field's value.
+func (s *JobSummary) SetJobArn(v string) *JobSummary {
+	s.JobArn = &v
 	return s
 }
 
@@ -4550,7 +5809,8 @@ type JobTimeout struct {
 	_ struct{} `type:"structure"`
 
 	// The time duration in seconds (measured from the job attempt's startedAt timestamp)
-	// after which AWS Batch terminates your jobs if they have not finished.
+	// after which AWS Batch terminates your jobs if they have not finished. The
+	// minimum value for the timeout is 60 seconds.
 	AttemptDurationSeconds *int64 `locationName:"attemptDurationSeconds" type:"integer"`
 }
 
@@ -4608,6 +5868,12 @@ func (s *KeyValuePair) SetValue(v string) *KeyValuePair {
 // An object representing a launch template associated with a compute resource.
 // You must specify either the launch template ID or launch template name in
 // the request, but not both.
+//
+// If security groups are specified using both the securityGroupIds parameter
+// of CreateComputeEnvironment and the launch template, the values in the securityGroupIds
+// parameter of CreateComputeEnvironment will be used.
+//
+// This object isn't applicable to jobs running on Fargate resources.
 type LaunchTemplateSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -4617,9 +5883,19 @@ type LaunchTemplateSpecification struct {
 	// The name of the launch template.
 	LaunchTemplateName *string `locationName:"launchTemplateName" type:"string"`
 
-	// The version number of the launch template.
+	// The version number of the launch template, $Latest, or $Default.
 	//
-	// Default: The default version of the launch template.
+	// If the value is $Latest, the latest version of the launch template is used.
+	// If the value is $Default, the default version of the launch template is used.
+	//
+	// After the compute environment is created, the launch template version used
+	// will not be changed, even if the $Default or $Latest version for the launch
+	// template is updated. To use a new launch template version, create a new compute
+	// environment, add the new compute environment to the existing job queue, remove
+	// the old compute environment from the job queue, and delete the old compute
+	// environment.
+	//
+	// Default: $Default.
 	Version *string `locationName:"version" type:"string"`
 }
 
@@ -4660,7 +5936,79 @@ type LinuxParameters struct {
 	// in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
 	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --device option to docker run (https://docs.docker.com/engine/reference/run/).
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided.
 	Devices []*Device `locationName:"devices" type:"list"`
+
+	// If true, run an init process inside the container that forwards signals and
+	// reaps processes. This parameter maps to the --init option to docker run (https://docs.docker.com/engine/reference/run/).
+	// This parameter requires version 1.25 of the Docker Remote API or greater
+	// on your container instance. To check the Docker Remote API version on your
+	// container instance, log into your container instance and run the following
+	// command: sudo docker version | grep "Server API version"
+	InitProcessEnabled *bool `locationName:"initProcessEnabled" type:"boolean"`
+
+	// The total amount of swap memory (in MiB) a container can use. This parameter
+	// is translated to the --memory-swap option to docker run (https://docs.docker.com/engine/reference/run/)
+	// where the value is the sum of the container memory plus the maxSwap value.
+	// For more information, see --memory-swap details (https://docs.docker.com/config/containers/resource_constraints/#--memory-swap-details)
+	// in the Docker documentation.
+	//
+	// If a maxSwap value of 0 is specified, the container doesn't use swap. Accepted
+	// values are 0 or any positive integer. If the maxSwap parameter is omitted,
+	// the container doesn't use the swap configuration for the container instance
+	// it is running on. A maxSwap value must be set for the swappiness parameter
+	// to be used.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided.
+	MaxSwap *int64 `locationName:"maxSwap" type:"integer"`
+
+	// The value for the size (in MiB) of the /dev/shm volume. This parameter maps
+	// to the --shm-size option to docker run (https://docs.docker.com/engine/reference/run/).
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided.
+	SharedMemorySize *int64 `locationName:"sharedMemorySize" type:"integer"`
+
+	// This allows you to tune a container's memory swappiness behavior. A swappiness
+	// value of 0 causes swapping not to happen unless absolutely necessary. A swappiness
+	// value of 100 causes pages to be swapped very aggressively. Accepted values
+	// are whole numbers between 0 and 100. If the swappiness parameter isn't specified,
+	// a default value of 60 is used. If a value isn't specified for maxSwap then
+	// this parameter is ignored. If maxSwap is set to 0, the container doesn't
+	// use swap. This parameter maps to the --memory-swappiness option to docker
+	// run (https://docs.docker.com/engine/reference/run/).
+	//
+	// Consider the following when you use a per-container swap configuration.
+	//
+	//    * Swap space must be enabled and allocated on the container instance for
+	//    the containers to use. The Amazon ECS optimized AMIs don't have swap enabled
+	//    by default. You must enable swap on the instance to use this feature.
+	//    For more information, see Instance Store Swap Volumes (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-store-swap-volumes.html)
+	//    in the Amazon EC2 User Guide for Linux Instances or How do I allocate
+	//    memory to work as swap space in an Amazon EC2 instance by using a swap
+	//    file? (http://aws.amazon.com/premiumsupport/knowledge-center/ec2-memory-swap-file/)
+	//
+	//    * The swap space parameters are only supported for job definitions using
+	//    EC2 resources.
+	//
+	//    * If the maxSwap and swappiness parameters are omitted from a job definition,
+	//    each container will have a default swappiness value of 60, and the total
+	//    swap usage will be limited to two times the memory reservation of the
+	//    container.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided.
+	Swappiness *int64 `locationName:"swappiness" type:"integer"`
+
+	// The container path, mount options, and size (in MiB) of the tmpfs mount.
+	// This parameter maps to the --tmpfs option to docker run (https://docs.docker.com/engine/reference/run/).
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided.
+	Tmpfs []*Tmpfs `locationName:"tmpfs" type:"list"`
 }
 
 // String returns the string representation
@@ -4686,6 +6034,16 @@ func (s *LinuxParameters) Validate() error {
 			}
 		}
 	}
+	if s.Tmpfs != nil {
+		for i, v := range s.Tmpfs {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tmpfs", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -4699,6 +6057,37 @@ func (s *LinuxParameters) SetDevices(v []*Device) *LinuxParameters {
 	return s
 }
 
+// SetInitProcessEnabled sets the InitProcessEnabled field's value.
+func (s *LinuxParameters) SetInitProcessEnabled(v bool) *LinuxParameters {
+	s.InitProcessEnabled = &v
+	return s
+}
+
+// SetMaxSwap sets the MaxSwap field's value.
+func (s *LinuxParameters) SetMaxSwap(v int64) *LinuxParameters {
+	s.MaxSwap = &v
+	return s
+}
+
+// SetSharedMemorySize sets the SharedMemorySize field's value.
+func (s *LinuxParameters) SetSharedMemorySize(v int64) *LinuxParameters {
+	s.SharedMemorySize = &v
+	return s
+}
+
+// SetSwappiness sets the Swappiness field's value.
+func (s *LinuxParameters) SetSwappiness(v int64) *LinuxParameters {
+	s.Swappiness = &v
+	return s
+}
+
+// SetTmpfs sets the Tmpfs field's value.
+func (s *LinuxParameters) SetTmpfs(v []*Tmpfs) *LinuxParameters {
+	s.Tmpfs = v
+	return s
+}
+
+// Contains the parameters for ListJobs.
 type ListJobsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -4706,21 +6095,20 @@ type ListJobsInput struct {
 	// lists all child jobs from within the specified array.
 	ArrayJobId *string `locationName:"arrayJobId" type:"string"`
 
-	// The name or full Amazon Resource Name (ARN) of the job queue with which to
-	// list jobs.
+	// The name or full Amazon Resource Name (ARN) of the job queue used to list
+	// jobs.
 	JobQueue *string `locationName:"jobQueue" type:"string"`
 
-	// The job status with which to filter jobs in the specified queue. If you do
-	// not specify a status, only RUNNING jobs are returned.
+	// The job status used to filter jobs in the specified queue. If you don't specify
+	// a status, only RUNNING jobs are returned.
 	JobStatus *string `locationName:"jobStatus" type:"string" enum:"JobStatus"`
 
 	// The maximum number of results returned by ListJobs in paginated output. When
 	// this parameter is used, ListJobs only returns maxResults results in a single
-	// page along with a nextToken response element. The remaining results of the
-	// initial request can be seen by sending another ListJobs request with the
-	// returned nextToken value. This value can be between 1 and 100. If this parameter
-	// is not used, then ListJobs returns up to 100 results and a nextToken value
-	// if applicable.
+	// page and a nextToken response element. The remaining results of the initial
+	// request can be seen by sending another ListJobs request with the returned
+	// nextToken value. This value can be between 1 and 100. If this parameter isn't
+	// used, then ListJobs returns up to 100 results and a nextToken value if applicable.
 	MaxResults *int64 `locationName:"maxResults" type:"integer"`
 
 	// The job ID for a multi-node parallel job. Specifying a multi-node parallel
@@ -4733,7 +6121,7 @@ type ListJobsInput struct {
 	// Pagination continues from the end of the previous results that returned the
 	// nextToken value. This value is null when there are no more results to return.
 	//
-	// This token should be treated as an opaque identifier that is only used to
+	// This token should be treated as an opaque identifier that's only used to
 	// retrieve the next items in a list and not for other programmatic purposes.
 	NextToken *string `locationName:"nextToken" type:"string"`
 }
@@ -4821,17 +6209,220 @@ func (s *ListJobsOutput) SetNextToken(v string) *ListJobsOutput {
 	return s
 }
 
-// Details on a Docker volume mount point that is used in a job's container
-// properties. This parameter maps to Volumes in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.19/#create-a-container)
+type ListTagsForResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) that identifies the resource that tags are
+	// listed for. AWS Batch resources that support tags are compute environments,
+	// jobs, job definitions, and job queues. ARNs for child jobs of array and multi-node
+	// parallel (MNP) jobs are not supported.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"resourceArn" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ListTagsForResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListTagsForResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListTagsForResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListTagsForResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *ListTagsForResourceInput) SetResourceArn(v string) *ListTagsForResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+type ListTagsForResourceOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The tags for the resource.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
+}
+
+// String returns the string representation
+func (s ListTagsForResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListTagsForResourceOutput) GoString() string {
+	return s.String()
+}
+
+// SetTags sets the Tags field's value.
+func (s *ListTagsForResourceOutput) SetTags(v map[string]*string) *ListTagsForResourceOutput {
+	s.Tags = v
+	return s
+}
+
+// Log configuration options to send to a custom log driver for the container.
+type LogConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// The log driver to use for the container. The valid values listed for this
+	// parameter are log drivers that the Amazon ECS container agent can communicate
+	// with by default.
+	//
+	// The supported log drivers are awslogs, fluentd, gelf, json-file, journald,
+	// logentries, syslog, and splunk.
+	//
+	// Jobs running on Fargate resources are restricted to the awslogs and splunk
+	// log drivers.
+	//
+	// awslogs
+	//
+	// Specifies the Amazon CloudWatch Logs logging driver. For more information,
+	// see Using the awslogs Log Driver (https://docs.aws.amazon.com/batch/latest/userguide/using_awslogs.html)
+	// in the AWS Batch User Guide and Amazon CloudWatch Logs logging driver (https://docs.docker.com/config/containers/logging/awslogs/)
+	// in the Docker documentation.
+	//
+	// fluentd
+	//
+	// Specifies the Fluentd logging driver. For more information, including usage
+	// and options, see Fluentd logging driver (https://docs.docker.com/config/containers/logging/fluentd/)
+	// in the Docker documentation.
+	//
+	// gelf
+	//
+	// Specifies the Graylog Extended Format (GELF) logging driver. For more information,
+	// including usage and options, see Graylog Extended Format logging driver (https://docs.docker.com/config/containers/logging/gelf/)
+	// in the Docker documentation.
+	//
+	// journald
+	//
+	// Specifies the journald logging driver. For more information, including usage
+	// and options, see Journald logging driver (https://docs.docker.com/config/containers/logging/journald/)
+	// in the Docker documentation.
+	//
+	// json-file
+	//
+	// Specifies the JSON file logging driver. For more information, including usage
+	// and options, see JSON File logging driver (https://docs.docker.com/config/containers/logging/json-file/)
+	// in the Docker documentation.
+	//
+	// splunk
+	//
+	// Specifies the Splunk logging driver. For more information, including usage
+	// and options, see Splunk logging driver (https://docs.docker.com/config/containers/logging/splunk/)
+	// in the Docker documentation.
+	//
+	// syslog
+	//
+	// Specifies the syslog logging driver. For more information, including usage
+	// and options, see Syslog logging driver (https://docs.docker.com/config/containers/logging/syslog/)
+	// in the Docker documentation.
+	//
+	// If you have a custom driver that's not listed earlier that you want to work
+	// with the Amazon ECS container agent, you can fork the Amazon ECS container
+	// agent project that's available on GitHub (https://github.com/aws/amazon-ecs-agent)
+	// and customize it to work with that driver. We encourage you to submit pull
+	// requests for changes that you want to have included. However, Amazon Web
+	// Services doesn't currently support running modified copies of this software.
+	//
+	// This parameter requires version 1.18 of the Docker Remote API or greater
+	// on your container instance. To check the Docker Remote API version on your
+	// container instance, log into your container instance and run the following
+	// command: sudo docker version | grep "Server API version"
+	//
+	// LogDriver is a required field
+	LogDriver *string `locationName:"logDriver" type:"string" required:"true" enum:"LogDriver"`
+
+	// The configuration options to send to the log driver. This parameter requires
+	// version 1.19 of the Docker Remote API or greater on your container instance.
+	// To check the Docker Remote API version on your container instance, log into
+	// your container instance and run the following command: sudo docker version
+	// | grep "Server API version"
+	Options map[string]*string `locationName:"options" type:"map"`
+
+	// The secrets to pass to the log configuration. For more information, see Specifying
+	// Sensitive Data (https://docs.aws.amazon.com/batch/latest/userguide/specifying-sensitive-data.html)
+	// in the AWS Batch User Guide.
+	SecretOptions []*Secret `locationName:"secretOptions" type:"list"`
+}
+
+// String returns the string representation
+func (s LogConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s LogConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *LogConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "LogConfiguration"}
+	if s.LogDriver == nil {
+		invalidParams.Add(request.NewErrParamRequired("LogDriver"))
+	}
+	if s.SecretOptions != nil {
+		for i, v := range s.SecretOptions {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecretOptions", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetLogDriver sets the LogDriver field's value.
+func (s *LogConfiguration) SetLogDriver(v string) *LogConfiguration {
+	s.LogDriver = &v
+	return s
+}
+
+// SetOptions sets the Options field's value.
+func (s *LogConfiguration) SetOptions(v map[string]*string) *LogConfiguration {
+	s.Options = v
+	return s
+}
+
+// SetSecretOptions sets the SecretOptions field's value.
+func (s *LogConfiguration) SetSecretOptions(v []*Secret) *LogConfiguration {
+	s.SecretOptions = v
+	return s
+}
+
+// Details on a Docker volume mount point that's used in a job's container properties.
+// This parameter maps to Volumes in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.19/#create-a-container)
 // section of the Docker Remote API and the --volume option to docker run.
 type MountPoint struct {
 	_ struct{} `type:"structure"`
 
-	// The path on the container at which to mount the host volume.
+	// The path on the container where the host volume is mounted.
 	ContainerPath *string `locationName:"containerPath" type:"string"`
 
-	// If this value is true, the container has read-only access to the volume;
-	// otherwise, the container can write to the volume. The default value is false.
+	// If this value is true, the container has read-only access to the volume.
+	// Otherwise, the container can write to the volume. The default value is false.
 	ReadOnly *bool `locationName:"readOnly" type:"boolean"`
 
 	// The name of the volume to mount.
@@ -4863,6 +6454,36 @@ func (s *MountPoint) SetReadOnly(v bool) *MountPoint {
 // SetSourceVolume sets the SourceVolume field's value.
 func (s *MountPoint) SetSourceVolume(v string) *MountPoint {
 	s.SourceVolume = &v
+	return s
+}
+
+// The network configuration for jobs running on Fargate resources. Jobs running
+// on EC2 resources must not specify this parameter.
+type NetworkConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether the job should have a public IP address. For a job running
+	// on Fargate resources in a private subnet to send outbound traffic to the
+	// internet (for example, in order to pull container images), the private subnet
+	// requires a NAT gateway be attached to route requests to the internet. For
+	// more information, see Amazon ECS task networking (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-networking.html).
+	// The default value is "DISABLED".
+	AssignPublicIp *string `locationName:"assignPublicIp" type:"string" enum:"AssignPublicIp"`
+}
+
+// String returns the string representation
+func (s NetworkConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NetworkConfiguration) GoString() string {
+	return s.String()
+}
+
+// SetAssignPublicIp sets the AssignPublicIp field's value.
+func (s *NetworkConfiguration) SetAssignPublicIp(v string) *NetworkConfiguration {
+	s.AssignPublicIp = &v
 	return s
 }
 
@@ -4945,8 +6566,11 @@ func (s *NodeDetails) SetNodeIndex(v int64) *NodeDetails {
 	return s
 }
 
-// Object representing any node overrides to a job definition that is used in
+// Object representing any node overrides to a job definition that's used in
 // a SubmitJob API operation.
+//
+// This isn't applicable to jobs running on Fargate resources and shouldn't
+// be provided; use containerOverrides instead.
 type NodeOverrides struct {
 	_ struct{} `type:"structure"`
 
@@ -5089,7 +6713,7 @@ func (s *NodeProperties) SetNumNodes(v int64) *NodeProperties {
 	return s
 }
 
-// An object representing the properties of a node that is associated with a
+// An object representing the properties of a node that's associated with a
 // multi-node parallel job.
 type NodePropertiesSummary struct {
 	_ struct{} `type:"structure"`
@@ -5135,7 +6759,7 @@ func (s *NodePropertiesSummary) SetNumNodes(v int64) *NodePropertiesSummary {
 	return s
 }
 
-// Object representing any node overrides to a job definition that is used in
+// Object representing any node overrides to a job definition that's used in
 // a SubmitJob API operation.
 type NodePropertyOverride struct {
 	_ struct{} `type:"structure"`
@@ -5143,7 +6767,7 @@ type NodePropertyOverride struct {
 	// The overrides that should be sent to a node range.
 	ContainerOverrides *ContainerOverrides `locationName:"containerOverrides" type:"structure"`
 
-	// The range of nodes, using node index values, with which to override. A range
+	// The range of nodes, using node index values, that's used to override. A range
 	// of 0:3 indicates nodes with index values of 0 through 3. If the starting
 	// range value is omitted (:n), then 0 is used to start the range. If the ending
 	// range value is omitted (n:), then the highest possible node index is used
@@ -5205,7 +6829,7 @@ type NodeRangeProperty struct {
 	// with index values of 0 through 3. If the starting range value is omitted
 	// (:n), then 0 is used to start the range. If the ending range value is omitted
 	// (n:), then the highest possible node index is used to end the range. Your
-	// accumulative node ranges must account for all nodes (0:n). You may nest node
+	// accumulative node ranges must account for all nodes (0:n). You can nest node
 	// ranges, for example 0:10 and 4:5, in which case the 4:5 range properties
 	// override the 0:10 properties.
 	//
@@ -5253,12 +6877,16 @@ func (s *NodeRangeProperty) SetTargetNodes(v string) *NodeRangeProperty {
 	return s
 }
 
+// Contains the parameters for RegisterJobDefinition.
 type RegisterJobDefinitionInput struct {
 	_ struct{} `type:"structure"`
 
 	// An object with various properties specific to single-node container-based
 	// jobs. If the job definition's type parameter is container, then you must
 	// specify either containerProperties or nodeProperties.
+	//
+	// If the job runs on Fargate resources, then you must not specify nodeProperties;
+	// use only containerProperties.
 	ContainerProperties *ContainerProperties `locationName:"containerProperties" type:"structure"`
 
 	// The name of the job definition to register. Up to 128 letters (uppercase
@@ -5272,6 +6900,9 @@ type RegisterJobDefinitionInput struct {
 	// For more information, see Multi-node Parallel Jobs (https://docs.aws.amazon.com/batch/latest/userguide/multi-node-parallel-jobs.html)
 	// in the AWS Batch User Guide. If the job definition's type parameter is container,
 	// then you must specify either containerProperties or nodeProperties.
+	//
+	// If the job runs on Fargate resources, then you must not specify nodeProperties;
+	// use containerProperties instead.
 	NodeProperties *NodeProperties `locationName:"nodeProperties" type:"structure"`
 
 	// Default parameter substitution placeholders to set in the job definition.
@@ -5279,22 +6910,45 @@ type RegisterJobDefinitionInput struct {
 	// request override any corresponding parameter defaults from the job definition.
 	Parameters map[string]*string `locationName:"parameters" type:"map"`
 
+	// The platform capabilities required by the job definition. If no value is
+	// specified, it defaults to EC2. To run the job on Fargate resources, specify
+	// FARGATE.
+	PlatformCapabilities []*string `locationName:"platformCapabilities" type:"list"`
+
+	// Specifies whether to propagate the tags from the job or job definition to
+	// the corresponding Amazon ECS task. If no value is specified, the tags are
+	// not propagated. Tags can only be propagated to the tasks during task creation.
+	// For tags with the same name, job tags are given priority over job definitions
+	// tags. If the total number of combined tags from the job and job definition
+	// is over 50, the job is moved to the FAILED state.
+	PropagateTags *bool `locationName:"propagateTags" type:"boolean"`
+
 	// The retry strategy to use for failed jobs that are submitted with this job
-	// definition. Any retry strategy that is specified during a SubmitJob operation
+	// definition. Any retry strategy that's specified during a SubmitJob operation
 	// overrides the retry strategy defined here. If a job is terminated due to
-	// a timeout, it is not retried.
+	// a timeout, it isn't retried.
 	RetryStrategy *RetryStrategy `locationName:"retryStrategy" type:"structure"`
+
+	// The tags that you apply to the job definition to help you categorize and
+	// organize your resources. Each tag consists of a key and an optional value.
+	// For more information, see Tagging AWS Resources (https://docs.aws.amazon.com/batch/latest/userguide/using-tags.html)
+	// in AWS Batch User Guide.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
 
 	// The timeout configuration for jobs that are submitted with this job definition,
 	// after which AWS Batch terminates your jobs if they have not finished. If
-	// a job is terminated due to a timeout, it is not retried. The minimum value
-	// for the timeout is 60 seconds. Any timeout configuration that is specified
+	// a job is terminated due to a timeout, it isn't retried. The minimum value
+	// for the timeout is 60 seconds. Any timeout configuration that's specified
 	// during a SubmitJob operation overrides the timeout configuration defined
-	// here. For more information, see Job Timeouts (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/job_timeouts.html)
-	// in the Amazon Elastic Container Service Developer Guide.
+	// here. For more information, see Job Timeouts (https://docs.aws.amazon.com/batch/latest/userguide/job_timeouts.html)
+	// in the AWS Batch User Guide.
 	Timeout *JobTimeout `locationName:"timeout" type:"structure"`
 
-	// The type of job definition.
+	// The type of job definition. For more information about multi-node parallel
+	// jobs, see Creating a multi-node parallel job definition (https://docs.aws.amazon.com/batch/latest/userguide/multi-node-job-def.html)
+	// in the AWS Batch User Guide.
+	//
+	// If the job is run on Fargate resources, then multinode isn't supported.
 	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true" enum:"JobDefinitionType"`
@@ -5316,6 +6970,9 @@ func (s *RegisterJobDefinitionInput) Validate() error {
 	if s.JobDefinitionName == nil {
 		invalidParams.Add(request.NewErrParamRequired("JobDefinitionName"))
 	}
+	if s.Tags != nil && len(s.Tags) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Tags", 1))
+	}
 	if s.Type == nil {
 		invalidParams.Add(request.NewErrParamRequired("Type"))
 	}
@@ -5327,6 +6984,11 @@ func (s *RegisterJobDefinitionInput) Validate() error {
 	if s.NodeProperties != nil {
 		if err := s.NodeProperties.Validate(); err != nil {
 			invalidParams.AddNested("NodeProperties", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.RetryStrategy != nil {
+		if err := s.RetryStrategy.Validate(); err != nil {
+			invalidParams.AddNested("RetryStrategy", err.(request.ErrInvalidParams))
 		}
 	}
 
@@ -5360,9 +7022,27 @@ func (s *RegisterJobDefinitionInput) SetParameters(v map[string]*string) *Regist
 	return s
 }
 
+// SetPlatformCapabilities sets the PlatformCapabilities field's value.
+func (s *RegisterJobDefinitionInput) SetPlatformCapabilities(v []*string) *RegisterJobDefinitionInput {
+	s.PlatformCapabilities = v
+	return s
+}
+
+// SetPropagateTags sets the PropagateTags field's value.
+func (s *RegisterJobDefinitionInput) SetPropagateTags(v bool) *RegisterJobDefinitionInput {
+	s.PropagateTags = &v
+	return s
+}
+
 // SetRetryStrategy sets the RetryStrategy field's value.
 func (s *RegisterJobDefinitionInput) SetRetryStrategy(v *RetryStrategy) *RegisterJobDefinitionInput {
 	s.RetryStrategy = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *RegisterJobDefinitionInput) SetTags(v map[string]*string) *RegisterJobDefinitionInput {
+	s.Tags = v
 	return s
 }
 
@@ -5425,20 +7105,125 @@ func (s *RegisterJobDefinitionOutput) SetRevision(v int64) *RegisterJobDefinitio
 	return s
 }
 
-// The type and amount of a resource to assign to a container. Currently, the
-// only supported resource type is GPU.
+// The type and amount of a resource to assign to a container. The supported
+// resources include GPU, MEMORY, and VCPU.
 type ResourceRequirement struct {
 	_ struct{} `type:"structure"`
 
-	// The type of resource to assign to a container. Currently, the only supported
-	// resource type is GPU.
+	// The type of resource to assign to a container. The supported resources include
+	// GPU, MEMORY, and VCPU.
 	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true" enum:"ResourceType"`
 
+	// The quantity of the specified resource to reserve for the container. The
+	// values vary based on the type specified.
+	//
+	// type="GPU"
+	//
 	// The number of physical GPUs to reserve for the container. The number of GPUs
-	// reserved for all containers in a job should not exceed the number of available
+	// reserved for all containers in a job shouldn't exceed the number of available
 	// GPUs on the compute resource that the job is launched on.
+	//
+	// GPUs are not available for jobs running on Fargate resources.
+	//
+	// type="MEMORY"
+	//
+	// The memory hard limit (in MiB) present to the container. This parameter is
+	// supported for jobs running on EC2 resources. If your container attempts to
+	// exceed the memory specified, the container is terminated. This parameter
+	// maps to Memory in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --memory option to docker run (https://docs.docker.com/engine/reference/run/).
+	// You must specify at least 4 MiB of memory for a job. This is required but
+	// can be specified in several places for multi-node parallel (MNP) jobs. It
+	// must be specified for each node at least once. This parameter maps to Memory
+	// in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --memory option to docker run (https://docs.docker.com/engine/reference/run/).
+	//
+	// If you're trying to maximize your resource utilization by providing your
+	// jobs as much memory as possible for a particular instance type, see Memory
+	// Management (https://docs.aws.amazon.com/batch/latest/userguide/memory-management.html)
+	// in the AWS Batch User Guide.
+	//
+	// For jobs running on Fargate resources, then value is the hard limit (in MiB),
+	// and must match one of the supported values and the VCPU values must be one
+	// of the values supported for that memory value.
+	//
+	// value = 512
+	//
+	// VCPU = 0.25
+	//
+	// value = 1024
+	//
+	// VCPU = 0.25 or 0.5
+	//
+	// value = 2048
+	//
+	// VCPU = 0.25, 0.5, or 1
+	//
+	// value = 3072
+	//
+	// VCPU = 0.5, or 1
+	//
+	// value = 4096
+	//
+	// VCPU = 0.5, 1, or 2
+	//
+	// value = 5120, 6144, or 7168
+	//
+	// VCPU = 1 or 2
+	//
+	// value = 8192
+	//
+	// VCPU = 1, 2, or 4
+	//
+	// value = 9216, 10240, 11264, 12288, 13312, 14336, 15360, or 16384
+	//
+	// VCPU = 2 or 4
+	//
+	// value = 17408, 18432, 19456, 20480, 21504, 22528, 23552, 24576, 25600, 26624,
+	// 27648, 28672, 29696, or 30720
+	//
+	// VCPU = 4
+	//
+	// type="VCPU"
+	//
+	// The number of vCPUs reserved for the container. This parameter maps to CpuShares
+	// in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
+	// and the --cpu-shares option to docker run (https://docs.docker.com/engine/reference/run/).
+	// Each vCPU is equivalent to 1,024 CPU shares. For EC2 resources, you must
+	// specify at least one vCPU. This is required but can be specified in several
+	// places; it must be specified for each node at least once.
+	//
+	// For jobs running on Fargate resources, then value must match one of the supported
+	// values and the MEMORY values must be one of the values supported for that
+	// VCPU value. The supported values are 0.25, 0.5, 1, 2, and 4
+	//
+	// value = 0.25
+	//
+	// MEMORY = 512, 1024, or 2048
+	//
+	// value = 0.5
+	//
+	// MEMORY = 1024, 2048, 3072, or 4096
+	//
+	// value = 1
+	//
+	// MEMORY = 2048, 3072, 4096, 5120, 6144, 7168, or 8192
+	//
+	// value = 2
+	//
+	// MEMORY = 4096, 5120, 6144, 7168, 8192, 9216, 10240, 11264, 12288, 13312,
+	// 14336, 15360, or 16384
+	//
+	// value = 4
+	//
+	// MEMORY = 8192, 9216, 10240, 11264, 12288, 13312, 14336, 15360, 16384, 17408,
+	// 18432, 19456, 20480, 21504, 22528, 23552, 24576, 25600, 26624, 27648, 28672,
+	// 29696, or 30720
 	//
 	// Value is a required field
 	Value *string `locationName:"value" type:"string" required:"true"`
@@ -5482,14 +7267,21 @@ func (s *ResourceRequirement) SetValue(v string) *ResourceRequirement {
 	return s
 }
 
-// The retry strategy associated with a job.
+// The retry strategy associated with a job. For more information, see Automated
+// job retries (https://docs.aws.amazon.com/batch/latest/userguide/job_retries.html)
+// in the AWS Batch User Guide.
 type RetryStrategy struct {
 	_ struct{} `type:"structure"`
 
-	// The number of times to move a job to the RUNNABLE status. You may specify
+	// The number of times to move a job to the RUNNABLE status. You can specify
 	// between 1 and 10 attempts. If the value of attempts is greater than one,
 	// the job is retried on failure the same number of attempts as the value.
 	Attempts *int64 `locationName:"attempts" type:"integer"`
+
+	// Array of up to 5 objects that specify conditions under which the job should
+	// be retried or failed. If this parameter is specified, then the attempts parameter
+	// must also be specified.
+	EvaluateOnExit []*EvaluateOnExit `locationName:"evaluateOnExit" type:"list"`
 }
 
 // String returns the string representation
@@ -5502,16 +7294,112 @@ func (s RetryStrategy) GoString() string {
 	return s.String()
 }
 
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RetryStrategy) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RetryStrategy"}
+	if s.EvaluateOnExit != nil {
+		for i, v := range s.EvaluateOnExit {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "EvaluateOnExit", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
 // SetAttempts sets the Attempts field's value.
 func (s *RetryStrategy) SetAttempts(v int64) *RetryStrategy {
 	s.Attempts = &v
 	return s
 }
 
+// SetEvaluateOnExit sets the EvaluateOnExit field's value.
+func (s *RetryStrategy) SetEvaluateOnExit(v []*EvaluateOnExit) *RetryStrategy {
+	s.EvaluateOnExit = v
+	return s
+}
+
+// An object representing the secret to expose to your container. Secrets can
+// be exposed to a container in the following ways:
+//
+//    * To inject sensitive data into your containers as environment variables,
+//    use the secrets container definition parameter.
+//
+//    * To reference sensitive information in the log configuration of a container,
+//    use the secretOptions container definition parameter.
+//
+// For more information, see Specifying sensitive data (https://docs.aws.amazon.com/batch/latest/userguide/specifying-sensitive-data.html)
+// in the AWS Batch User Guide.
+type Secret struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the secret.
+	//
+	// Name is a required field
+	Name *string `locationName:"name" type:"string" required:"true"`
+
+	// The secret to expose to the container. The supported values are either the
+	// full ARN of the AWS Secrets Manager secret or the full ARN of the parameter
+	// in the AWS Systems Manager Parameter Store.
+	//
+	// If the AWS Systems Manager Parameter Store parameter exists in the same Region
+	// as the job you're launching, then you can use either the full ARN or name
+	// of the parameter. If the parameter exists in a different Region, then the
+	// full ARN must be specified.
+	//
+	// ValueFrom is a required field
+	ValueFrom *string `locationName:"valueFrom" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s Secret) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s Secret) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *Secret) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "Secret"}
+	if s.Name == nil {
+		invalidParams.Add(request.NewErrParamRequired("Name"))
+	}
+	if s.ValueFrom == nil {
+		invalidParams.Add(request.NewErrParamRequired("ValueFrom"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetName sets the Name field's value.
+func (s *Secret) SetName(v string) *Secret {
+	s.Name = &v
+	return s
+}
+
+// SetValueFrom sets the ValueFrom field's value.
+func (s *Secret) SetValueFrom(v string) *Secret {
+	s.ValueFrom = &v
+	return s
+}
+
 // These errors are usually caused by a server issue.
 type ServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5528,17 +7416,17 @@ func (s ServerException) GoString() string {
 
 func newErrorServerException(v protocol.ResponseMetadata) error {
 	return &ServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServerException) Code() string {
+func (s *ServerException) Code() string {
 	return "ServerException"
 }
 
 // Message returns the exception's message.
-func (s ServerException) Message() string {
+func (s *ServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5546,24 +7434,25 @@ func (s ServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServerException) OrigErr() error {
+func (s *ServerException) OrigErr() error {
 	return nil
 }
 
-func (s ServerException) Error() string {
+func (s *ServerException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServerException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
+// Contains the parameters for SubmitJob.
 type SubmitJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -5574,13 +7463,12 @@ type SubmitJobInput struct {
 	// AWS Batch User Guide.
 	ArrayProperties *ArrayProperties `locationName:"arrayProperties" type:"structure"`
 
-	// A list of container overrides in JSON format that specify the name of a container
-	// in the specified job definition and the overrides it should receive. You
-	// can override the default command for a container (that is specified in the
-	// job definition or the Docker image) with a command override. You can also
-	// override existing environment variables (that are specified in the job definition
-	// or Docker image) on a container or add new environment variables to it with
-	// an environment override.
+	// A list of container overrides in the JSON format that specify the name of
+	// a container in the specified job definition and the overrides it should receive.
+	// You can override the default command for a container, which is specified
+	// in the job definition or the Docker image, with a command override. You can
+	// also override existing environment variables on a container or add new environment
+	// variables to it with an environment override.
 	ContainerOverrides *ContainerOverrides `locationName:"containerOverrides" type:"structure"`
 
 	// A list of dependencies for the job. A job can depend upon a maximum of 20
@@ -5606,14 +7494,17 @@ type SubmitJobInput struct {
 	// JobName is a required field
 	JobName *string `locationName:"jobName" type:"string" required:"true"`
 
-	// The job queue into which the job is submitted. You can specify either the
-	// name or the Amazon Resource Name (ARN) of the queue.
+	// The job queue where the job is submitted. You can specify either the name
+	// or the Amazon Resource Name (ARN) of the queue.
 	//
 	// JobQueue is a required field
 	JobQueue *string `locationName:"jobQueue" type:"string" required:"true"`
 
 	// A list of node overrides in JSON format that specify the node range to target
 	// and the container overrides for that node range.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources; use
+	// containerOverrides instead.
 	NodeOverrides *NodeOverrides `locationName:"nodeOverrides" type:"structure"`
 
 	// Additional parameters passed to the job that replace parameter substitution
@@ -5622,15 +7513,30 @@ type SubmitJobInput struct {
 	// any corresponding parameter defaults from the job definition.
 	Parameters map[string]*string `locationName:"parameters" type:"map"`
 
+	// Specifies whether to propagate the tags from the job or job definition to
+	// the corresponding Amazon ECS task. If no value is specified, the tags aren't
+	// propagated. Tags can only be propagated to the tasks during task creation.
+	// For tags with the same name, job tags are given priority over job definitions
+	// tags. If the total number of combined tags from the job and job definition
+	// is over 50, the job is moved to the FAILED state. When specified, this overrides
+	// the tag propagation setting in the job definition.
+	PropagateTags *bool `locationName:"propagateTags" type:"boolean"`
+
 	// The retry strategy to use for failed jobs from this SubmitJob operation.
 	// When a retry strategy is specified here, it overrides the retry strategy
 	// defined in the job definition.
 	RetryStrategy *RetryStrategy `locationName:"retryStrategy" type:"structure"`
 
+	// The tags that you apply to the job request to help you categorize and organize
+	// your resources. Each tag consists of a key and an optional value. For more
+	// information, see Tagging AWS Resources (https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html)
+	// in AWS General Reference.
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map"`
+
 	// The timeout configuration for this SubmitJob operation. You can specify a
-	// timeout duration after which AWS Batch terminates your jobs if they have
-	// not finished. If a job is terminated due to a timeout, it is not retried.
-	// The minimum value for the timeout is 60 seconds. This configuration overrides
+	// timeout duration after which AWS Batch terminates your jobs if they haven't
+	// finished. If a job is terminated due to a timeout, it isn't retried. The
+	// minimum value for the timeout is 60 seconds. This configuration overrides
 	// any timeout configuration specified in the job definition. For array jobs,
 	// child jobs have the same timeout configuration as the parent job. For more
 	// information, see Job Timeouts (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/job_timeouts.html)
@@ -5660,6 +7566,9 @@ func (s *SubmitJobInput) Validate() error {
 	if s.JobQueue == nil {
 		invalidParams.Add(request.NewErrParamRequired("JobQueue"))
 	}
+	if s.Tags != nil && len(s.Tags) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Tags", 1))
+	}
 	if s.ContainerOverrides != nil {
 		if err := s.ContainerOverrides.Validate(); err != nil {
 			invalidParams.AddNested("ContainerOverrides", err.(request.ErrInvalidParams))
@@ -5668,6 +7577,11 @@ func (s *SubmitJobInput) Validate() error {
 	if s.NodeOverrides != nil {
 		if err := s.NodeOverrides.Validate(); err != nil {
 			invalidParams.AddNested("NodeOverrides", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.RetryStrategy != nil {
+		if err := s.RetryStrategy.Validate(); err != nil {
+			invalidParams.AddNested("RetryStrategy", err.(request.ErrInvalidParams))
 		}
 	}
 
@@ -5725,9 +7639,21 @@ func (s *SubmitJobInput) SetParameters(v map[string]*string) *SubmitJobInput {
 	return s
 }
 
+// SetPropagateTags sets the PropagateTags field's value.
+func (s *SubmitJobInput) SetPropagateTags(v bool) *SubmitJobInput {
+	s.PropagateTags = &v
+	return s
+}
+
 // SetRetryStrategy sets the RetryStrategy field's value.
 func (s *SubmitJobInput) SetRetryStrategy(v *RetryStrategy) *SubmitJobInput {
 	s.RetryStrategy = v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *SubmitJobInput) SetTags(v map[string]*string) *SubmitJobInput {
+	s.Tags = v
 	return s
 }
 
@@ -5739,6 +7665,9 @@ func (s *SubmitJobInput) SetTimeout(v *JobTimeout) *SubmitJobInput {
 
 type SubmitJobOutput struct {
 	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) for the job.
+	JobArn *string `locationName:"jobArn" type:"string"`
 
 	// The unique identifier for the job.
 	//
@@ -5761,6 +7690,12 @@ func (s SubmitJobOutput) GoString() string {
 	return s.String()
 }
 
+// SetJobArn sets the JobArn field's value.
+func (s *SubmitJobOutput) SetJobArn(v string) *SubmitJobOutput {
+	s.JobArn = &v
+	return s
+}
+
 // SetJobId sets the JobId field's value.
 func (s *SubmitJobOutput) SetJobId(v string) *SubmitJobOutput {
 	s.JobId = &v
@@ -5773,6 +7708,85 @@ func (s *SubmitJobOutput) SetJobName(v string) *SubmitJobOutput {
 	return s
 }
 
+type TagResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the resource that tags are added to. AWS
+	// Batch resources that support tags are compute environments, jobs, job definitions,
+	// and job queues. ARNs for child jobs of array and multi-node parallel (MNP)
+	// jobs are not supported.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"resourceArn" type:"string" required:"true"`
+
+	// The tags that you apply to the resource to help you categorize and organize
+	// your resources. Each tag consists of a key and an optional value. For more
+	// information, see Tagging AWS Resources (https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html)
+	// in AWS General Reference.
+	//
+	// Tags is a required field
+	Tags map[string]*string `locationName:"tags" min:"1" type:"map" required:"true"`
+}
+
+// String returns the string representation
+func (s TagResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TagResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *TagResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "TagResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+	if s.Tags == nil {
+		invalidParams.Add(request.NewErrParamRequired("Tags"))
+	}
+	if s.Tags != nil && len(s.Tags) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Tags", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *TagResourceInput) SetResourceArn(v string) *TagResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *TagResourceInput) SetTags(v map[string]*string) *TagResourceInput {
+	s.Tags = v
+	return s
+}
+
+type TagResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s TagResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TagResourceOutput) GoString() string {
+	return s.String()
+}
+
+// Contains the parameters for TerminateJob.
 type TerminateJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -5841,7 +7855,80 @@ func (s TerminateJobOutput) GoString() string {
 	return s.String()
 }
 
+// The container path, mount options, and size of the tmpfs mount.
+//
+// This object isn't applicable to jobs running on Fargate resources.
+type Tmpfs struct {
+	_ struct{} `type:"structure"`
+
+	// The absolute file path in the container where the tmpfs volume is mounted.
+	//
+	// ContainerPath is a required field
+	ContainerPath *string `locationName:"containerPath" type:"string" required:"true"`
+
+	// The list of tmpfs volume mount options.
+	//
+	// Valid values: "defaults" | "ro" | "rw" | "suid" | "nosuid" | "dev" | "nodev"
+	// | "exec" | "noexec" | "sync" | "async" | "dirsync" | "remount" | "mand" |
+	// "nomand" | "atime" | "noatime" | "diratime" | "nodiratime" | "bind" | "rbind"
+	// | "unbindable" | "runbindable" | "private" | "rprivate" | "shared" | "rshared"
+	// | "slave" | "rslave" | "relatime" | "norelatime" | "strictatime" | "nostrictatime"
+	// | "mode" | "uid" | "gid" | "nr_inodes" | "nr_blocks" | "mpol"
+	MountOptions []*string `locationName:"mountOptions" type:"list"`
+
+	// The size (in MiB) of the tmpfs volume.
+	//
+	// Size is a required field
+	Size *int64 `locationName:"size" type:"integer" required:"true"`
+}
+
+// String returns the string representation
+func (s Tmpfs) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s Tmpfs) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *Tmpfs) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "Tmpfs"}
+	if s.ContainerPath == nil {
+		invalidParams.Add(request.NewErrParamRequired("ContainerPath"))
+	}
+	if s.Size == nil {
+		invalidParams.Add(request.NewErrParamRequired("Size"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetContainerPath sets the ContainerPath field's value.
+func (s *Tmpfs) SetContainerPath(v string) *Tmpfs {
+	s.ContainerPath = &v
+	return s
+}
+
+// SetMountOptions sets the MountOptions field's value.
+func (s *Tmpfs) SetMountOptions(v []*string) *Tmpfs {
+	s.MountOptions = v
+	return s
+}
+
+// SetSize sets the Size field's value.
+func (s *Tmpfs) SetSize(v int64) *Tmpfs {
+	s.Size = &v
+	return s
+}
+
 // The ulimit settings to pass to the container.
+//
+// This object isn't applicable to jobs running on Fargate resources.
 type Ulimit struct {
 	_ struct{} `type:"structure"`
 
@@ -5908,6 +7995,82 @@ func (s *Ulimit) SetSoftLimit(v int64) *Ulimit {
 	return s
 }
 
+type UntagResourceInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the resource from which to delete tags.
+	// AWS Batch resources that support tags are compute environments, jobs, job
+	// definitions, and job queues. ARNs for child jobs of array and multi-node
+	// parallel (MNP) jobs are not supported.
+	//
+	// ResourceArn is a required field
+	ResourceArn *string `location:"uri" locationName:"resourceArn" type:"string" required:"true"`
+
+	// The keys of the tags to be removed.
+	//
+	// TagKeys is a required field
+	TagKeys []*string `location:"querystring" locationName:"tagKeys" min:"1" type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s UntagResourceInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UntagResourceInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UntagResourceInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UntagResourceInput"}
+	if s.ResourceArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("ResourceArn"))
+	}
+	if s.ResourceArn != nil && len(*s.ResourceArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ResourceArn", 1))
+	}
+	if s.TagKeys == nil {
+		invalidParams.Add(request.NewErrParamRequired("TagKeys"))
+	}
+	if s.TagKeys != nil && len(s.TagKeys) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("TagKeys", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetResourceArn sets the ResourceArn field's value.
+func (s *UntagResourceInput) SetResourceArn(v string) *UntagResourceInput {
+	s.ResourceArn = &v
+	return s
+}
+
+// SetTagKeys sets the TagKeys field's value.
+func (s *UntagResourceInput) SetTagKeys(v []*string) *UntagResourceInput {
+	s.TagKeys = v
+	return s
+}
+
+type UntagResourceOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s UntagResourceOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UntagResourceOutput) GoString() string {
+	return s.String()
+}
+
+// Contains the parameters for UpdateComputeEnvironment.
 type UpdateComputeEnvironmentInput struct {
 	_ struct{} `type:"structure"`
 
@@ -5918,26 +8081,45 @@ type UpdateComputeEnvironmentInput struct {
 	ComputeEnvironment *string `locationName:"computeEnvironment" type:"string" required:"true"`
 
 	// Details of the compute resources managed by the compute environment. Required
-	// for a managed compute environment.
+	// for a managed compute environment. For more information, see Compute Environments
+	// (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+	// in the AWS Batch User Guide.
 	ComputeResources *ComputeResourceUpdate `locationName:"computeResources" type:"structure"`
 
 	// The full Amazon Resource Name (ARN) of the IAM role that allows AWS Batch
-	// to make calls to other AWS services on your behalf.
+	// to make calls to other AWS services on your behalf. For more information,
+	// see AWS Batch service IAM role (https://docs.aws.amazon.com/batch/latest/userguide/service_IAM_role.html)
+	// in the AWS Batch User Guide.
+	//
+	// If the compute environment has a service-linked role, it cannot be changed
+	// to use a regular IAM role. If the compute environment has a regular IAM role,
+	// it cannot be changed to use a service-linked role.
 	//
 	// If your specified role has a path other than /, then you must either specify
 	// the full role ARN (this is recommended) or prefix the role name with the
 	// path.
 	//
-	// Depending on how you created your AWS Batch service role, its ARN may contain
+	// Depending on how you created your AWS Batch service role, its ARN might contain
 	// the service-role path prefix. When you only specify the name of the service
-	// role, AWS Batch assumes that your ARN does not use the service-role path
-	// prefix. Because of this, we recommend that you specify the full ARN of your
-	// service role when you create compute environments.
+	// role, AWS Batch assumes that your ARN doesn't use the service-role path prefix.
+	// Because of this, we recommend that you specify the full ARN of your service
+	// role when you create compute environments.
 	ServiceRole *string `locationName:"serviceRole" type:"string"`
 
 	// The state of the compute environment. Compute environments in the ENABLED
 	// state can accept jobs from a queue and scale in or out automatically based
 	// on the workload demand of its associated queues.
+	//
+	// If the state is ENABLED, then the AWS Batch scheduler can attempt to place
+	// jobs from an associated job queue on the compute resources within the environment.
+	// If the compute environment is managed, then it can scale its instances out
+	// or in automatically, based on the job queue demand.
+	//
+	// If the state is DISABLED, then the AWS Batch scheduler doesn't attempt to
+	// place jobs within the environment. Jobs in a STARTING or RUNNING state continue
+	// to progress normally. Managed compute environments in the DISABLED state
+	// don't scale out. However, they scale in to minvCpus value after instances
+	// become idle.
 	State *string `locationName:"state" type:"string" enum:"CEState"`
 }
 
@@ -5994,7 +8176,8 @@ type UpdateComputeEnvironmentOutput struct {
 	// The Amazon Resource Name (ARN) of the compute environment.
 	ComputeEnvironmentArn *string `locationName:"computeEnvironmentArn" type:"string"`
 
-	// The name of the compute environment.
+	// The name of the compute environment. Up to 128 letters (uppercase and lowercase),
+	// numbers, hyphens, and underscores are allowed.
 	ComputeEnvironmentName *string `locationName:"computeEnvironmentName" type:"string"`
 }
 
@@ -6020,12 +8203,21 @@ func (s *UpdateComputeEnvironmentOutput) SetComputeEnvironmentName(v string) *Up
 	return s
 }
 
+// Contains the parameters for UpdateJobQueue.
 type UpdateJobQueueInput struct {
 	_ struct{} `type:"structure"`
 
 	// Details the set of compute environments mapped to a job queue and their order
 	// relative to each other. This is one of the parameters used by the job scheduler
-	// to determine which compute environment should execute a given job.
+	// to determine which compute environment should run a given job. Compute environments
+	// must be in the VALID state before you can associate them with a job queue.
+	// All of the compute environments must be either EC2 (EC2 or SPOT) or Fargate
+	// (FARGATE or FARGATE_SPOT). EC2 and Fargate compute environments can't be
+	// mixed.
+	//
+	// All compute environments that are associated with a job queue must share
+	// the same architecture. AWS Batch doesn't support mixing compute environment
+	// architecture types in a single job queue.
 	ComputeEnvironmentOrder []*ComputeEnvironmentOrder `locationName:"computeEnvironmentOrder" type:"list"`
 
 	// The name or the Amazon Resource Name (ARN) of the job queue.
@@ -6037,10 +8229,14 @@ type UpdateJobQueueInput struct {
 	// integer value for the priority parameter) are evaluated first when associated
 	// with the same compute environment. Priority is determined in descending order,
 	// for example, a job queue with a priority value of 10 is given scheduling
-	// preference over a job queue with a priority value of 1.
+	// preference over a job queue with a priority value of 1. All of the compute
+	// environments must be either EC2 (EC2 or SPOT) or Fargate (FARGATE or FARGATE_SPOT).
+	// EC2 and Fargate compute environments can't be mixed.
 	Priority *int64 `locationName:"priority" type:"integer"`
 
-	// Describes the queue's ability to accept new jobs.
+	// Describes the queue's ability to accept new jobs. If the job queue state
+	// is ENABLED, it can accept jobs. If the job queue state is DISABLED, new jobs
+	// can't be added to the queue, but jobs already in the queue can finish.
 	State *string `locationName:"state" type:"string" enum:"JQState"`
 }
 
@@ -6137,11 +8333,19 @@ func (s *UpdateJobQueueOutput) SetJobQueueName(v string) *UpdateJobQueueOutput {
 type Volume struct {
 	_ struct{} `type:"structure"`
 
+	// This parameter is specified when you are using an Amazon Elastic File System
+	// file system for job storage. Jobs running on Fargate resources must specify
+	// a platformVersion of at least 1.4.0.
+	EfsVolumeConfiguration *EFSVolumeConfiguration `locationName:"efsVolumeConfiguration" type:"structure"`
+
 	// The contents of the host parameter determine whether your data volume persists
 	// on the host container instance and where it is stored. If the host parameter
 	// is empty, then the Docker daemon assigns a host path for your data volume.
-	// However, the data is not guaranteed to persist after the containers associated
+	// However, the data isn't guaranteed to persist after the containers associated
 	// with it stop running.
+	//
+	// This parameter isn't applicable to jobs running on Fargate resources and
+	// shouldn't be provided.
 	Host *Host `locationName:"host" type:"structure"`
 
 	// The name of the volume. Up to 255 letters (uppercase and lowercase), numbers,
@@ -6158,6 +8362,27 @@ func (s Volume) String() string {
 // GoString returns the string representation
 func (s Volume) GoString() string {
 	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *Volume) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "Volume"}
+	if s.EfsVolumeConfiguration != nil {
+		if err := s.EfsVolumeConfiguration.Validate(); err != nil {
+			invalidParams.AddNested("EfsVolumeConfiguration", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetEfsVolumeConfiguration sets the EfsVolumeConfiguration field's value.
+func (s *Volume) SetEfsVolumeConfiguration(v *EFSVolumeConfiguration) *Volume {
+	s.EfsVolumeConfiguration = v
+	return s
 }
 
 // SetHost sets the Host field's value.
@@ -6180,6 +8405,30 @@ const (
 	ArrayJobDependencySequential = "SEQUENTIAL"
 )
 
+// ArrayJobDependency_Values returns all elements of the ArrayJobDependency enum
+func ArrayJobDependency_Values() []string {
+	return []string{
+		ArrayJobDependencyNToN,
+		ArrayJobDependencySequential,
+	}
+}
+
+const (
+	// AssignPublicIpEnabled is a AssignPublicIp enum value
+	AssignPublicIpEnabled = "ENABLED"
+
+	// AssignPublicIpDisabled is a AssignPublicIp enum value
+	AssignPublicIpDisabled = "DISABLED"
+)
+
+// AssignPublicIp_Values returns all elements of the AssignPublicIp enum
+func AssignPublicIp_Values() []string {
+	return []string{
+		AssignPublicIpEnabled,
+		AssignPublicIpDisabled,
+	}
+}
+
 const (
 	// CEStateEnabled is a CEState enum value
 	CEStateEnabled = "ENABLED"
@@ -6187,6 +8436,14 @@ const (
 	// CEStateDisabled is a CEState enum value
 	CEStateDisabled = "DISABLED"
 )
+
+// CEState_Values returns all elements of the CEState enum
+func CEState_Values() []string {
+	return []string{
+		CEStateEnabled,
+		CEStateDisabled,
+	}
+}
 
 const (
 	// CEStatusCreating is a CEStatus enum value
@@ -6208,6 +8465,18 @@ const (
 	CEStatusInvalid = "INVALID"
 )
 
+// CEStatus_Values returns all elements of the CEStatus enum
+func CEStatus_Values() []string {
+	return []string{
+		CEStatusCreating,
+		CEStatusUpdating,
+		CEStatusDeleting,
+		CEStatusDeleted,
+		CEStatusValid,
+		CEStatusInvalid,
+	}
+}
+
 const (
 	// CETypeManaged is a CEType enum value
 	CETypeManaged = "MANAGED"
@@ -6215,6 +8484,14 @@ const (
 	// CETypeUnmanaged is a CEType enum value
 	CETypeUnmanaged = "UNMANAGED"
 )
+
+// CEType_Values returns all elements of the CEType enum
+func CEType_Values() []string {
+	return []string{
+		CETypeManaged,
+		CETypeUnmanaged,
+	}
+}
 
 const (
 	// CRAllocationStrategyBestFit is a CRAllocationStrategy enum value
@@ -6227,13 +8504,38 @@ const (
 	CRAllocationStrategySpotCapacityOptimized = "SPOT_CAPACITY_OPTIMIZED"
 )
 
+// CRAllocationStrategy_Values returns all elements of the CRAllocationStrategy enum
+func CRAllocationStrategy_Values() []string {
+	return []string{
+		CRAllocationStrategyBestFit,
+		CRAllocationStrategyBestFitProgressive,
+		CRAllocationStrategySpotCapacityOptimized,
+	}
+}
+
 const (
 	// CRTypeEc2 is a CRType enum value
 	CRTypeEc2 = "EC2"
 
 	// CRTypeSpot is a CRType enum value
 	CRTypeSpot = "SPOT"
+
+	// CRTypeFargate is a CRType enum value
+	CRTypeFargate = "FARGATE"
+
+	// CRTypeFargateSpot is a CRType enum value
+	CRTypeFargateSpot = "FARGATE_SPOT"
 )
+
+// CRType_Values returns all elements of the CRType enum
+func CRType_Values() []string {
+	return []string{
+		CRTypeEc2,
+		CRTypeSpot,
+		CRTypeFargate,
+		CRTypeFargateSpot,
+	}
+}
 
 const (
 	// DeviceCgroupPermissionRead is a DeviceCgroupPermission enum value
@@ -6246,6 +8548,47 @@ const (
 	DeviceCgroupPermissionMknod = "MKNOD"
 )
 
+// DeviceCgroupPermission_Values returns all elements of the DeviceCgroupPermission enum
+func DeviceCgroupPermission_Values() []string {
+	return []string{
+		DeviceCgroupPermissionRead,
+		DeviceCgroupPermissionWrite,
+		DeviceCgroupPermissionMknod,
+	}
+}
+
+const (
+	// EFSAuthorizationConfigIAMEnabled is a EFSAuthorizationConfigIAM enum value
+	EFSAuthorizationConfigIAMEnabled = "ENABLED"
+
+	// EFSAuthorizationConfigIAMDisabled is a EFSAuthorizationConfigIAM enum value
+	EFSAuthorizationConfigIAMDisabled = "DISABLED"
+)
+
+// EFSAuthorizationConfigIAM_Values returns all elements of the EFSAuthorizationConfigIAM enum
+func EFSAuthorizationConfigIAM_Values() []string {
+	return []string{
+		EFSAuthorizationConfigIAMEnabled,
+		EFSAuthorizationConfigIAMDisabled,
+	}
+}
+
+const (
+	// EFSTransitEncryptionEnabled is a EFSTransitEncryption enum value
+	EFSTransitEncryptionEnabled = "ENABLED"
+
+	// EFSTransitEncryptionDisabled is a EFSTransitEncryption enum value
+	EFSTransitEncryptionDisabled = "DISABLED"
+)
+
+// EFSTransitEncryption_Values returns all elements of the EFSTransitEncryption enum
+func EFSTransitEncryption_Values() []string {
+	return []string{
+		EFSTransitEncryptionEnabled,
+		EFSTransitEncryptionDisabled,
+	}
+}
+
 const (
 	// JQStateEnabled is a JQState enum value
 	JQStateEnabled = "ENABLED"
@@ -6253,6 +8596,14 @@ const (
 	// JQStateDisabled is a JQState enum value
 	JQStateDisabled = "DISABLED"
 )
+
+// JQState_Values returns all elements of the JQState enum
+func JQState_Values() []string {
+	return []string{
+		JQStateEnabled,
+		JQStateDisabled,
+	}
+}
 
 const (
 	// JQStatusCreating is a JQStatus enum value
@@ -6274,6 +8625,18 @@ const (
 	JQStatusInvalid = "INVALID"
 )
 
+// JQStatus_Values returns all elements of the JQStatus enum
+func JQStatus_Values() []string {
+	return []string{
+		JQStatusCreating,
+		JQStatusUpdating,
+		JQStatusDeleting,
+		JQStatusDeleted,
+		JQStatusValid,
+		JQStatusInvalid,
+	}
+}
+
 const (
 	// JobDefinitionTypeContainer is a JobDefinitionType enum value
 	JobDefinitionTypeContainer = "container"
@@ -6281,6 +8644,14 @@ const (
 	// JobDefinitionTypeMultinode is a JobDefinitionType enum value
 	JobDefinitionTypeMultinode = "multinode"
 )
+
+// JobDefinitionType_Values returns all elements of the JobDefinitionType enum
+func JobDefinitionType_Values() []string {
+	return []string{
+		JobDefinitionTypeContainer,
+		JobDefinitionTypeMultinode,
+	}
+}
 
 const (
 	// JobStatusSubmitted is a JobStatus enum value
@@ -6305,7 +8676,103 @@ const (
 	JobStatusFailed = "FAILED"
 )
 
+// JobStatus_Values returns all elements of the JobStatus enum
+func JobStatus_Values() []string {
+	return []string{
+		JobStatusSubmitted,
+		JobStatusPending,
+		JobStatusRunnable,
+		JobStatusStarting,
+		JobStatusRunning,
+		JobStatusSucceeded,
+		JobStatusFailed,
+	}
+}
+
+const (
+	// LogDriverJsonFile is a LogDriver enum value
+	LogDriverJsonFile = "json-file"
+
+	// LogDriverSyslog is a LogDriver enum value
+	LogDriverSyslog = "syslog"
+
+	// LogDriverJournald is a LogDriver enum value
+	LogDriverJournald = "journald"
+
+	// LogDriverGelf is a LogDriver enum value
+	LogDriverGelf = "gelf"
+
+	// LogDriverFluentd is a LogDriver enum value
+	LogDriverFluentd = "fluentd"
+
+	// LogDriverAwslogs is a LogDriver enum value
+	LogDriverAwslogs = "awslogs"
+
+	// LogDriverSplunk is a LogDriver enum value
+	LogDriverSplunk = "splunk"
+)
+
+// LogDriver_Values returns all elements of the LogDriver enum
+func LogDriver_Values() []string {
+	return []string{
+		LogDriverJsonFile,
+		LogDriverSyslog,
+		LogDriverJournald,
+		LogDriverGelf,
+		LogDriverFluentd,
+		LogDriverAwslogs,
+		LogDriverSplunk,
+	}
+}
+
+const (
+	// PlatformCapabilityEc2 is a PlatformCapability enum value
+	PlatformCapabilityEc2 = "EC2"
+
+	// PlatformCapabilityFargate is a PlatformCapability enum value
+	PlatformCapabilityFargate = "FARGATE"
+)
+
+// PlatformCapability_Values returns all elements of the PlatformCapability enum
+func PlatformCapability_Values() []string {
+	return []string{
+		PlatformCapabilityEc2,
+		PlatformCapabilityFargate,
+	}
+}
+
 const (
 	// ResourceTypeGpu is a ResourceType enum value
 	ResourceTypeGpu = "GPU"
+
+	// ResourceTypeVcpu is a ResourceType enum value
+	ResourceTypeVcpu = "VCPU"
+
+	// ResourceTypeMemory is a ResourceType enum value
+	ResourceTypeMemory = "MEMORY"
 )
+
+// ResourceType_Values returns all elements of the ResourceType enum
+func ResourceType_Values() []string {
+	return []string{
+		ResourceTypeGpu,
+		ResourceTypeVcpu,
+		ResourceTypeMemory,
+	}
+}
+
+const (
+	// RetryActionRetry is a RetryAction enum value
+	RetryActionRetry = "RETRY"
+
+	// RetryActionExit is a RetryAction enum value
+	RetryActionExit = "EXIT"
+)
+
+// RetryAction_Values returns all elements of the RetryAction enum
+func RetryAction_Values() []string {
+	return []string{
+		RetryActionRetry,
+		RetryActionExit,
+	}
+}

@@ -180,7 +180,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 // Hosts found in an unrecoverable state are terminated.
 func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, cloudStatus cloud.CloudStatus) error {
 	switch cloudStatus {
-	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped:
+	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped, cloud.StatusStopping:
 		j.logHostStatusMessage(&h, cloudStatus)
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
@@ -284,7 +284,7 @@ func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manag
 // provisioning.
 func (j *cloudHostReadyJob) logHostStatusMessage(h *host.Host, cloudStatus cloud.CloudStatus) {
 	switch cloudStatus {
-	case cloud.StatusStopped:
+	case cloud.StatusStopped, cloud.StatusStopping:
 		grip.Warning(message.Fields{
 			"message":      "host was found in stopped state before it could transition to ready, which should not occur",
 			"hypothesis":   "stopped by the AWS reaper",

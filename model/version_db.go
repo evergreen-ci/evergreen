@@ -156,8 +156,7 @@ func VersionByLastTaskActivation(projectId, variant, taskName string) db.Q {
 			},
 			VersionBuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
-					VersionBuildStatusActivatedKey: true,
-					VersionBuildStatusVariantKey:   variant,
+					VersionBuildStatusVariantKey: variant,
 					VersionBuildStatusBatchTimeTasksKey: bson.M{
 						"$elemMatch": bson.M{
 							BatchTimeTaskStatusActivatedKey: true,

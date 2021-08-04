@@ -80,6 +80,10 @@ type DataSyncAPI interface {
 	CreateLocationNfsWithContext(aws.Context, *datasync.CreateLocationNfsInput, ...request.Option) (*datasync.CreateLocationNfsOutput, error)
 	CreateLocationNfsRequest(*datasync.CreateLocationNfsInput) (*request.Request, *datasync.CreateLocationNfsOutput)
 
+	CreateLocationObjectStorage(*datasync.CreateLocationObjectStorageInput) (*datasync.CreateLocationObjectStorageOutput, error)
+	CreateLocationObjectStorageWithContext(aws.Context, *datasync.CreateLocationObjectStorageInput, ...request.Option) (*datasync.CreateLocationObjectStorageOutput, error)
+	CreateLocationObjectStorageRequest(*datasync.CreateLocationObjectStorageInput) (*request.Request, *datasync.CreateLocationObjectStorageOutput)
+
 	CreateLocationS3(*datasync.CreateLocationS3Input) (*datasync.CreateLocationS3Output, error)
 	CreateLocationS3WithContext(aws.Context, *datasync.CreateLocationS3Input, ...request.Option) (*datasync.CreateLocationS3Output, error)
 	CreateLocationS3Request(*datasync.CreateLocationS3Input) (*request.Request, *datasync.CreateLocationS3Output)
@@ -119,6 +123,10 @@ type DataSyncAPI interface {
 	DescribeLocationNfs(*datasync.DescribeLocationNfsInput) (*datasync.DescribeLocationNfsOutput, error)
 	DescribeLocationNfsWithContext(aws.Context, *datasync.DescribeLocationNfsInput, ...request.Option) (*datasync.DescribeLocationNfsOutput, error)
 	DescribeLocationNfsRequest(*datasync.DescribeLocationNfsInput) (*request.Request, *datasync.DescribeLocationNfsOutput)
+
+	DescribeLocationObjectStorage(*datasync.DescribeLocationObjectStorageInput) (*datasync.DescribeLocationObjectStorageOutput, error)
+	DescribeLocationObjectStorageWithContext(aws.Context, *datasync.DescribeLocationObjectStorageInput, ...request.Option) (*datasync.DescribeLocationObjectStorageOutput, error)
+	DescribeLocationObjectStorageRequest(*datasync.DescribeLocationObjectStorageInput) (*request.Request, *datasync.DescribeLocationObjectStorageOutput)
 
 	DescribeLocationS3(*datasync.DescribeLocationS3Input) (*datasync.DescribeLocationS3Output, error)
 	DescribeLocationS3WithContext(aws.Context, *datasync.DescribeLocationS3Input, ...request.Option) (*datasync.DescribeLocationS3Output, error)
@@ -187,9 +195,25 @@ type DataSyncAPI interface {
 	UpdateAgentWithContext(aws.Context, *datasync.UpdateAgentInput, ...request.Option) (*datasync.UpdateAgentOutput, error)
 	UpdateAgentRequest(*datasync.UpdateAgentInput) (*request.Request, *datasync.UpdateAgentOutput)
 
+	UpdateLocationNfs(*datasync.UpdateLocationNfsInput) (*datasync.UpdateLocationNfsOutput, error)
+	UpdateLocationNfsWithContext(aws.Context, *datasync.UpdateLocationNfsInput, ...request.Option) (*datasync.UpdateLocationNfsOutput, error)
+	UpdateLocationNfsRequest(*datasync.UpdateLocationNfsInput) (*request.Request, *datasync.UpdateLocationNfsOutput)
+
+	UpdateLocationObjectStorage(*datasync.UpdateLocationObjectStorageInput) (*datasync.UpdateLocationObjectStorageOutput, error)
+	UpdateLocationObjectStorageWithContext(aws.Context, *datasync.UpdateLocationObjectStorageInput, ...request.Option) (*datasync.UpdateLocationObjectStorageOutput, error)
+	UpdateLocationObjectStorageRequest(*datasync.UpdateLocationObjectStorageInput) (*request.Request, *datasync.UpdateLocationObjectStorageOutput)
+
+	UpdateLocationSmb(*datasync.UpdateLocationSmbInput) (*datasync.UpdateLocationSmbOutput, error)
+	UpdateLocationSmbWithContext(aws.Context, *datasync.UpdateLocationSmbInput, ...request.Option) (*datasync.UpdateLocationSmbOutput, error)
+	UpdateLocationSmbRequest(*datasync.UpdateLocationSmbInput) (*request.Request, *datasync.UpdateLocationSmbOutput)
+
 	UpdateTask(*datasync.UpdateTaskInput) (*datasync.UpdateTaskOutput, error)
 	UpdateTaskWithContext(aws.Context, *datasync.UpdateTaskInput, ...request.Option) (*datasync.UpdateTaskOutput, error)
 	UpdateTaskRequest(*datasync.UpdateTaskInput) (*request.Request, *datasync.UpdateTaskOutput)
+
+	UpdateTaskExecution(*datasync.UpdateTaskExecutionInput) (*datasync.UpdateTaskExecutionOutput, error)
+	UpdateTaskExecutionWithContext(aws.Context, *datasync.UpdateTaskExecutionInput, ...request.Option) (*datasync.UpdateTaskExecutionOutput, error)
+	UpdateTaskExecutionRequest(*datasync.UpdateTaskExecutionInput) (*request.Request, *datasync.UpdateTaskExecutionOutput)
 }
 
 var _ DataSyncAPI = (*datasync.DataSync)(nil)

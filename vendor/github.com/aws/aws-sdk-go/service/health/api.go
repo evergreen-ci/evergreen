@@ -64,11 +64,16 @@ func (c *Health) DescribeAffectedAccountsForOrganizationRequest(input *DescribeA
 // DescribeAffectedAccountsForOrganization API operation for AWS Health APIs and Notifications.
 //
 // Returns a list of accounts in the organization from AWS Organizations that
-// are affected by the provided event.
+// are affected by the provided event. For more information about the different
+// types of AWS Health events, see Event (https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html).
 //
 // Before you can call this operation, you must first enable AWS Health to work
 // with AWS Organizations. To do this, call the EnableHealthServiceAccessForOrganization
-// operation from your organization's master account.
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_EnableHealthServiceAccessForOrganization.html)
+// operation from your organization's management account.
+//
+// This API operation uses pagination. Specify the nextToken parameter in the
+// next request to return more results.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -215,6 +220,14 @@ func (c *Health) DescribeAffectedEntitiesRequest(input *DescribeAffectedEntities
 // At least one event ARN is required. Results are sorted by the lastUpdatedTime
 // of the entity, starting with the most recent.
 //
+//    * This API operation uses pagination. Specify the nextToken parameter
+//    in the next request to return more results.
+//
+//    * This operation supports resource-level permissions. You can use this
+//    operation to allow or deny access to specific AWS Health events. For more
+//    information, see Resource- and action-based conditions (https://docs.aws.amazon.com/health/latest/ug/security_iam_id-based-policy-examples.html#resource-action-based-conditions)
+//    in the AWS Health User Guide.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -359,12 +372,22 @@ func (c *Health) DescribeAffectedEntitiesForOrganizationRequest(input *DescribeA
 // groups of customer resources, or any other construct, depending on the AWS
 // service.
 //
-// At least one event ARN and account ID are required. Results are sorted by
-// the lastUpdatedTime of the entity, starting with the most recent.
+// At least one event Amazon Resource Name (ARN) and account ID are required.
+// Results are sorted by the lastUpdatedTime of the entity, starting with the
+// most recent.
 //
 // Before you can call this operation, you must first enable AWS Health to work
 // with AWS Organizations. To do this, call the EnableHealthServiceAccessForOrganization
-// operation from your organization's master account.
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_EnableHealthServiceAccessForOrganization.html)
+// operation from your organization's management account.
+//
+//    * This API operation uses pagination. Specify the nextToken parameter
+//    in the next request to return more results.
+//
+//    * This operation doesn't support resource-level permissions. You can't
+//    use this operation to allow or deny access to specific AWS Health events.
+//    For more information, see Resource- and action-based conditions (https://docs.aws.amazon.com/health/latest/ug/security_iam_id-based-policy-examples.html#resource-action-based-conditions)
+//    in the AWS Health User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -584,6 +607,9 @@ func (c *Health) DescribeEventAggregatesRequest(input *DescribeEventAggregatesIn
 // and account notification). If no filter is specified, the counts of all events
 // in each category are returned.
 //
+// This API operation uses pagination. Specify the nextToken parameter in the
+// next request to return more results.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -714,13 +740,20 @@ func (c *Health) DescribeEventDetailsRequest(input *DescribeEventDetailsInput) (
 // DescribeEventDetails API operation for AWS Health APIs and Notifications.
 //
 // Returns detailed information about one or more specified events. Information
-// includes standard event data (region, service, and so on, as returned by
-// DescribeEvents), a detailed event description, and possible additional metadata
-// that depends upon the nature of the event. Affected entities are not included;
-// to retrieve those, use the DescribeAffectedEntities operation.
+// includes standard event data (AWS Region, service, and so on, as returned
+// by DescribeEvents (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEvents.html)),
+// a detailed event description, and possible additional metadata that depends
+// upon the nature of the event. Affected entities are not included. To retrieve
+// the entities, use the DescribeAffectedEntities (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeAffectedEntities.html)
+// operation.
 //
-// If a specified event cannot be retrieved, an error message is returned for
+// If a specified event can't be retrieved, an error message is returned for
 // that event.
+//
+// This operation supports resource-level permissions. You can use this operation
+// to allow or deny access to specific AWS Health events. For more information,
+// see Resource- and action-based conditions (https://docs.aws.amazon.com/health/latest/ug/security_iam_id-based-policy-examples.html#resource-action-based-conditions)
+// in the AWS Health User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -800,15 +833,38 @@ func (c *Health) DescribeEventDetailsForOrganizationRequest(input *DescribeEvent
 // DescribeEventDetailsForOrganization API operation for AWS Health APIs and Notifications.
 //
 // Returns detailed information about one or more specified events for one or
-// more accounts in your organization. Information includes standard event data
-// (Region, service, and so on, as returned by DescribeEventsForOrganization,
-// a detailed event description, and possible additional metadata that depends
-// upon the nature of the event. Affected entities are not included; to retrieve
-// those, use the DescribeAffectedEntitiesForOrganization operation.
+// more AWS accounts in your organization. This information includes standard
+// event data (such as the AWS Region and service), an event description, and
+// (depending on the event) possible metadata. This operation doesn't return
+// affected entities, such as the resources related to the event. To return
+// affected entities, use the DescribeAffectedEntitiesForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeAffectedEntitiesForOrganization.html)
+// operation.
 //
 // Before you can call this operation, you must first enable AWS Health to work
 // with AWS Organizations. To do this, call the EnableHealthServiceAccessForOrganization
-// operation from your organization's master account.
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_EnableHealthServiceAccessForOrganization.html)
+// operation from your organization's management account.
+//
+// When you call the DescribeEventDetailsForOrganization operation, specify
+// the organizationEventDetailFilters object in the request. Depending on the
+// AWS Health event type, note the following differences:
+//
+//    * To return event details for a public event, you must specify a null
+//    value for the awsAccountId parameter. If you specify an account ID for
+//    a public event, AWS Health returns an error message because public events
+//    aren't specific to an account.
+//
+//    * To return event details for an event that is specific to an account
+//    in your organization, you must specify the awsAccountId parameter in the
+//    request. If you don't specify an account ID, AWS Health returns an error
+//    message because the event is specific to an account in your organization.
+//
+// For more information, see Event (https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html).
+//
+// This operation doesn't support resource-level permissions. You can't use
+// this operation to allow or deny access to specific AWS Health events. For
+// more information, see Resource- and action-based conditions (https://docs.aws.amazon.com/health/latest/ug/security_iam_id-based-policy-examples.html#resource-action-based-conditions)
+// in the AWS Health User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -893,8 +949,17 @@ func (c *Health) DescribeEventTypesRequest(input *DescribeEventTypesInput) (req 
 
 // DescribeEventTypes API operation for AWS Health APIs and Notifications.
 //
-// Returns the event types that meet the specified filter criteria. If no filter
-// criteria are specified, all event types are returned, in no particular order.
+// Returns the event types that meet the specified filter criteria. You can
+// use this API operation to find information about the AWS Health event, such
+// as the category, AWS service, and event code. The metadata for each event
+// appears in the EventType (https://docs.aws.amazon.com/health/latest/APIReference/API_EventType.html)
+// object.
+//
+// If you don't specify a filter criteria, the API operation returns all event
+// types, in no particular order.
+//
+// This API operation uses pagination. Specify the nextToken parameter in the
+// next request to return more results.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1037,11 +1102,23 @@ func (c *Health) DescribeEventsRequest(input *DescribeEventsInput) (req *request
 // Returns information about events that meet the specified filter criteria.
 // Events are returned in a summary form and do not include the detailed description,
 // any additional metadata that depends on the event type, or any affected resources.
-// To retrieve that information, use the DescribeEventDetails and DescribeAffectedEntities
+// To retrieve that information, use the DescribeEventDetails (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetails.html)
+// and DescribeAffectedEntities (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeAffectedEntities.html)
 // operations.
 //
 // If no filter criteria are specified, all events are returned. Results are
-// sorted by lastModifiedTime, starting with the most recent.
+// sorted by lastModifiedTime, starting with the most recent event.
+//
+//    * When you call the DescribeEvents operation and specify an entity for
+//    the entityValues parameter, AWS Health might return public events that
+//    aren't specific to that resource. For example, if you call DescribeEvents
+//    and specify an ID for an Amazon Elastic Compute Cloud (Amazon EC2) instance,
+//    AWS Health might return events that aren't specific to that resource or
+//    service. To get events that are specific to a service, use the services
+//    parameter in the filter object. For more information, see Event (https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html).
+//
+//    * This API operation uses pagination. Specify the nextToken parameter
+//    in the next request to return more results.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1181,20 +1258,33 @@ func (c *Health) DescribeEventsForOrganizationRequest(input *DescribeEventsForOr
 
 // DescribeEventsForOrganization API operation for AWS Health APIs and Notifications.
 //
-// Returns information about events across your organization in AWS Organizations,
-// meeting the specified filter criteria. Events are returned in a summary form
-// and do not include the accounts impacted, detailed description, any additional
-// metadata that depends on the event type, or any affected resources. To retrieve
-// that information, use the DescribeAffectedAccountsForOrganization, DescribeEventDetailsForOrganization,
-// and DescribeAffectedEntitiesForOrganization operations.
+// Returns information about events across your organization in AWS Organizations.
+// You can use thefilters parameter to specify the events that you want to return.
+// Events are returned in a summary form and don't include the affected accounts,
+// detailed description, any additional metadata that depends on the event type,
+// or any affected resources. To retrieve that information, use the following
+// operations:
 //
-// If no filter criteria are specified, all events across your organization
-// are returned. Results are sorted by lastModifiedTime, starting with the most
-// recent.
+//    * DescribeAffectedAccountsForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeAffectedAccountsForOrganization.html)
 //
-// Before you can call this operation, you must first enable Health to work
+//    * DescribeEventDetailsForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetailsForOrganization.html)
+//
+//    * DescribeAffectedEntitiesForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeAffectedEntitiesForOrganization.html)
+//
+// If you don't specify a filter, the DescribeEventsForOrganizations returns
+// all events across your organization. Results are sorted by lastModifiedTime,
+// starting with the most recent event.
+//
+// For more information about the different types of AWS Health events, see
+// Event (https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html).
+//
+// Before you can call this operation, you must first enable AWS Health to work
 // with AWS Organizations. To do this, call the EnableHealthServiceAccessForOrganization
-// operation from your organization's master account.
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_EnableHealthServiceAccessForOrganization.html)
+// operation from your organization's management account.
+//
+// This API operation uses pagination. Specify the nextToken parameter in the
+// next request to return more results.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1331,7 +1421,7 @@ func (c *Health) DescribeHealthServiceStatusForOrganizationRequest(input *Descri
 // This operation provides status information on enabling or disabling AWS Health
 // to work with your organization. To call this operation, you must sign in
 // as an IAM user, assume an IAM role, or sign in as the root user (not recommended)
-// in the organization's master account.
+// in the organization's management account.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1406,12 +1496,25 @@ func (c *Health) DisableHealthServiceAccessForOrganizationRequest(input *Disable
 
 // DisableHealthServiceAccessForOrganization API operation for AWS Health APIs and Notifications.
 //
-// Calling this operation disables Health from working with AWS Organizations.
-// This does not remove the Service Linked Role (SLR) from the the master account
-// in your organization. Use the IAM console, API, or AWS CLI to remove the
-// SLR if desired. To call this operation, you must sign in as an IAM user,
-// assume an IAM role, or sign in as the root user (not recommended) in the
-// organization's master account.
+// Disables AWS Health from working with AWS Organizations. To call this operation,
+// you must sign in as an AWS Identity and Access Management (IAM) user, assume
+// an IAM role, or sign in as the root user (not recommended) in the organization's
+// management account. For more information, see Aggregating AWS Health events
+// (https://docs.aws.amazon.com/health/latest/ug/aggregate-events.html) in the
+// AWS Health User Guide.
+//
+// This operation doesn't remove the service-linked role from the management
+// account in your organization. You must use the IAM console, API, or AWS Command
+// Line Interface (AWS CLI) to remove the service-linked role. For more information,
+// see Deleting a Service-Linked Role (https://docs.aws.amazon.com/IAM/latest/UserGuide/using-service-linked-roles.html#delete-service-linked-role)
+// in the IAM User Guide.
+//
+// You can also disable the organizational feature by using the Organizations
+// DisableAWSServiceAccess (https://docs.aws.amazon.com/organizations/latest/APIReference/API_DisableAWSServiceAccess.html)
+// API operation. After you call this operation, AWS Health stops aggregating
+// events for all other AWS accounts in your organization. If you call the AWS
+// Health API operations for organizational view, AWS Health returns an error.
+// AWS Health continues to aggregate health events for your AWS account.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1422,9 +1525,11 @@ func (c *Health) DisableHealthServiceAccessForOrganizationRequest(input *Disable
 //
 // Returned Error Types:
 //   * ConcurrentModificationException
-//   EnableHealthServiceAccessForOrganization is already in progress. Wait for
-//   the action to complete before trying again. To get the current status, use
-//   the DescribeHealthServiceStatusForOrganization operation.
+//   EnableHealthServiceAccessForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_EnableHealthServiceAccessForOrganization.html)
+//   is already in progress. Wait for the action to complete before trying again.
+//   To get the current status, use the DescribeHealthServiceStatusForOrganization
+//   (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeHealthServiceStatusForOrganization.html)
+//   operation.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/health-2016-08-04/DisableHealthServiceAccessForOrganization
 func (c *Health) DisableHealthServiceAccessForOrganization(input *DisableHealthServiceAccessForOrganizationInput) (*DisableHealthServiceAccessForOrganizationOutput, error) {
@@ -1493,12 +1598,29 @@ func (c *Health) EnableHealthServiceAccessForOrganizationRequest(input *EnableHe
 
 // EnableHealthServiceAccessForOrganization API operation for AWS Health APIs and Notifications.
 //
-// Calling this operation enables AWS Health to work with AWS Organizations.
-// This applies a Service Linked Role (SLR) to the master account in the organization.
-// To learn more about the steps in this process, visit enabling service access
-// for AWS Health in AWS Organizations. To call this operation, you must sign
-// in as an IAM user, assume an IAM role, or sign in as the root user (not recommended)
-// in the organization's master account.
+// Enables AWS Health to work with AWS Organizations. You can use the organizational
+// view feature to aggregate events from all AWS accounts in your organization
+// in a centralized location.
+//
+// This operation also creates a service-linked role for the management account
+// in the organization.
+//
+// To call this operation, you must meet the following requirements:
+//
+//    * You must have a Business or Enterprise Support plan from AWS Support
+//    (http://aws.amazon.com/premiumsupport/) to use the AWS Health API. If
+//    you call the AWS Health API from an AWS account that doesn't have a Business
+//    or Enterprise Support plan, you receive a SubscriptionRequiredException
+//    error.
+//
+//    * You must have permission to call this operation from the organization's
+//    management account. For example IAM policies, see AWS Health identity-based
+//    policy examples (https://docs.aws.amazon.com/health/latest/ug/security_iam_id-based-policy-examples.html).
+//
+// If you don't have the required support plan, you can instead use the AWS
+// Health console to enable the organizational view feature. For more information,
+// see Aggregating AWS Health events (https://docs.aws.amazon.com/health/latest/ug/aggregate-events.html)
+// in the AWS Health User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1509,9 +1631,11 @@ func (c *Health) EnableHealthServiceAccessForOrganizationRequest(input *EnableHe
 //
 // Returned Error Types:
 //   * ConcurrentModificationException
-//   EnableHealthServiceAccessForOrganization is already in progress. Wait for
-//   the action to complete before trying again. To get the current status, use
-//   the DescribeHealthServiceStatusForOrganization operation.
+//   EnableHealthServiceAccessForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_EnableHealthServiceAccessForOrganization.html)
+//   is already in progress. Wait for the action to complete before trying again.
+//   To get the current status, use the DescribeHealthServiceStatusForOrganization
+//   (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeHealthServiceStatusForOrganization.html)
+//   operation.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/health-2016-08-04/EnableHealthServiceAccessForOrganization
 func (c *Health) EnableHealthServiceAccessForOrganization(input *EnableHealthServiceAccessForOrganizationInput) (*EnableHealthServiceAccessForOrganizationOutput, error) {
@@ -1552,8 +1676,12 @@ type AffectedEntity struct {
 	// The ID of the affected entity.
 	EntityValue *string `locationName:"entityValue" type:"string"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	EventArn *string `locationName:"eventArn" type:"string"`
 
 	// The most recent time that the entity was updated.
@@ -1564,6 +1692,8 @@ type AffectedEntity struct {
 	StatusCode *string `locationName:"statusCode" type:"string" enum:"EntityStatusCode"`
 
 	// A map of entity tags attached to the affected entity.
+	//
+	// Currently, the tags property isn't supported.
 	Tags map[string]*string `locationName:"tags" type:"map"`
 }
 
@@ -1625,12 +1755,14 @@ func (s *AffectedEntity) SetTags(v map[string]*string) *AffectedEntity {
 	return s
 }
 
-// EnableHealthServiceAccessForOrganization is already in progress. Wait for
-// the action to complete before trying again. To get the current status, use
-// the DescribeHealthServiceStatusForOrganization operation.
+// EnableHealthServiceAccessForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_EnableHealthServiceAccessForOrganization.html)
+// is already in progress. Wait for the action to complete before trying again.
+// To get the current status, use the DescribeHealthServiceStatusForOrganization
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeHealthServiceStatusForOrganization.html)
+// operation.
 type ConcurrentModificationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1647,17 +1779,17 @@ func (s ConcurrentModificationException) GoString() string {
 
 func newErrorConcurrentModificationException(v protocol.ResponseMetadata) error {
 	return &ConcurrentModificationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConcurrentModificationException) Code() string {
+func (s *ConcurrentModificationException) Code() string {
 	return "ConcurrentModificationException"
 }
 
 // Message returns the exception's message.
-func (s ConcurrentModificationException) Message() string {
+func (s *ConcurrentModificationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1665,25 +1797,26 @@ func (s ConcurrentModificationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConcurrentModificationException) OrigErr() error {
+func (s *ConcurrentModificationException) OrigErr() error {
 	return nil
 }
 
-func (s ConcurrentModificationException) Error() string {
+func (s *ConcurrentModificationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConcurrentModificationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConcurrentModificationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConcurrentModificationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConcurrentModificationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// A range of dates and times that is used by the EventFilter and EntityFilter
+// A range of dates and times that is used by the EventFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EventFilter.html)
+// and EntityFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EntityFilter.html)
 // objects. If from is set and to is set: match items where the timestamp (startTime,
 // endTime, or lastUpdatedTime) is between from and to inclusive. If from is
 // set and to is not set: match items where the timestamp value is equal to
@@ -1724,8 +1857,12 @@ func (s *DateTimeRange) SetTo(v time.Time) *DateTimeRange {
 type DescribeAffectedAccountsForOrganizationInput struct {
 	_ struct{} `type:"structure"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	//
 	// EventArn is a required field
 	EventArn *string `locationName:"eventArn" type:"string" required:"true"`
@@ -1794,6 +1931,22 @@ type DescribeAffectedAccountsForOrganizationOutput struct {
 	// A JSON set of elements of the affected accounts.
 	AffectedAccounts []*string `locationName:"affectedAccounts" type:"list"`
 
+	// This parameter specifies if the AWS Health event is a public AWS service
+	// event or an account-specific event.
+	//
+	//    * If the eventScopeCode value is PUBLIC, then the affectedAccounts value
+	//    is always empty.
+	//
+	//    * If the eventScopeCode value is ACCOUNT_SPECIFIC, then the affectedAccounts
+	//    value lists the affected AWS accounts in your organization. For example,
+	//    if an event affects a service such as Amazon Elastic Compute Cloud and
+	//    you have AWS accounts that use that service, those account IDs appear
+	//    in the response.
+	//
+	//    * If the eventScopeCode value is NONE, then the eventArn that you specified
+	//    in the request is invalid or doesn't exist.
+	EventScopeCode *string `locationName:"eventScopeCode" type:"string" enum:"EventScopeCode"`
+
 	// If the results of a search are large, only a portion of the results are returned,
 	// and a nextToken pagination token is returned in the response. To retrieve
 	// the next batch of results, reissue the search request and include the returned
@@ -1815,6 +1968,12 @@ func (s DescribeAffectedAccountsForOrganizationOutput) GoString() string {
 // SetAffectedAccounts sets the AffectedAccounts field's value.
 func (s *DescribeAffectedAccountsForOrganizationOutput) SetAffectedAccounts(v []*string) *DescribeAffectedAccountsForOrganizationOutput {
 	s.AffectedAccounts = v
+	return s
+}
+
+// SetEventScopeCode sets the EventScopeCode field's value.
+func (s *DescribeAffectedAccountsForOrganizationOutput) SetEventScopeCode(v string) *DescribeAffectedAccountsForOrganizationOutput {
+	s.EventScopeCode = &v
 	return s
 }
 
@@ -1920,7 +2079,7 @@ type DescribeAffectedEntitiesForOrganizationOutput struct {
 	_ struct{} `type:"structure"`
 
 	// A JSON set of elements including the awsAccountId and its entityArn, entityValue
-	// and its entityArn, lastUpdatedTime, statusCode, and tags.
+	// and its entityArn, lastUpdatedTime, and statusCode.
 	Entities []*AffectedEntity `locationName:"entities" type:"list"`
 
 	// A JSON set of elements of the failed response, including the awsAccountId,
@@ -2887,15 +3046,20 @@ func (s EnableHealthServiceAccessForOrganizationOutput) GoString() string {
 }
 
 // The number of entities that are affected by one or more events. Returned
-// by the DescribeEntityAggregates operation.
+// by the DescribeEntityAggregates (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEntityAggregates.html)
+// operation.
 type EntityAggregate struct {
 	_ struct{} `type:"structure"`
 
-	// The number entities that match the criteria for the specified events.
+	// The number of entities that match the criteria for the specified events.
 	Count *int64 `locationName:"count" type:"integer"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	EventArn *string `locationName:"eventArn" type:"string"`
 }
 
@@ -2921,7 +3085,8 @@ func (s *EntityAggregate) SetEventArn(v string) *EntityAggregate {
 	return s
 }
 
-// The values to use to filter results from the DescribeAffectedEntities operation.
+// The values to use to filter results from the EntityFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EntityFilter.html)
+// operation.
 type EntityFilter struct {
 	_ struct{} `type:"structure"`
 
@@ -2944,6 +3109,8 @@ type EntityFilter struct {
 	StatusCodes []*string `locationName:"statusCodes" min:"1" type:"list"`
 
 	// A map of entity tags attached to the affected entity.
+	//
+	// Currently, the tags property isn't supported.
 	Tags []map[string]*string `locationName:"tags" type:"list"`
 }
 
@@ -3022,11 +3189,30 @@ func (s *EntityFilter) SetTags(v []map[string]*string) *EntityFilter {
 }
 
 // Summary information about an AWS Health event.
+//
+// AWS Health events can be public or account-specific:
+//
+//    * Public events might be service events that are not specific to an AWS
+//    account. For example, if there is an issue with an AWS Region, AWS Health
+//    provides information about the event, even if you don't use services or
+//    resources in that Region.
+//
+//    * Account-specific events are specific to either your AWS account or an
+//    account in your organization. For example, if there's an issue with Amazon
+//    Elastic Compute Cloud in a Region that you use, AWS Health provides information
+//    about the event and the affected resources in the account.
+//
+// You can determine if an event is public or account-specific by using the
+// eventScopeCode parameter. For more information, see eventScopeCode (https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html#AWSHealth-Type-Event-eventScopeCode).
 type Event struct {
 	_ struct{} `type:"structure"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	Arn *string `locationName:"arn" type:"string"`
 
 	// The AWS Availability Zone of the event. For example, us-east-1a.
@@ -3034,6 +3220,22 @@ type Event struct {
 
 	// The date and time that the event ended.
 	EndTime *time.Time `locationName:"endTime" type:"timestamp"`
+
+	// This parameter specifies if the AWS Health event is a public AWS service
+	// event or an account-specific event.
+	//
+	//    * If the eventScopeCode value is PUBLIC, then the affectedAccounts value
+	//    is always empty.
+	//
+	//    * If the eventScopeCode value is ACCOUNT_SPECIFIC, then the affectedAccounts
+	//    value lists the affected AWS accounts in your organization. For example,
+	//    if an event affects a service such as Amazon Elastic Compute Cloud and
+	//    you have AWS accounts that use that service, those account IDs appear
+	//    in the response.
+	//
+	//    * If the eventScopeCode value is NONE, then the eventArn that you specified
+	//    in the request is invalid or doesn't exist.
+	EventScopeCode *string `locationName:"eventScopeCode" type:"string" enum:"EventScopeCode"`
 
 	// The category of the event. Possible values are issue, scheduledChange, and
 	// accountNotification.
@@ -3046,7 +3248,7 @@ type Event struct {
 	// The most recent date and time that the event was updated.
 	LastUpdatedTime *time.Time `locationName:"lastUpdatedTime" type:"timestamp"`
 
-	// The AWS region name of the event.
+	// The AWS Region name of the event.
 	Region *string `locationName:"region" min:"2" type:"string"`
 
 	// The AWS service that is affected by the event. For example, EC2, RDS.
@@ -3085,6 +3287,12 @@ func (s *Event) SetAvailabilityZone(v string) *Event {
 // SetEndTime sets the EndTime field's value.
 func (s *Event) SetEndTime(v time.Time) *Event {
 	s.EndTime = &v
+	return s
+}
+
+// SetEventScopeCode sets the EventScopeCode field's value.
+func (s *Event) SetEventScopeCode(v string) *Event {
+	s.EventScopeCode = &v
 	return s
 }
 
@@ -3131,17 +3339,21 @@ func (s *Event) SetStatusCode(v string) *Event {
 }
 
 // The values used to filter results from the DescribeEventDetailsForOrganization
-// and DescribeAffectedEntitiesForOrganization operations.
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetailsForOrganization.html)
+// and DescribeAffectedEntitiesForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeAffectedEntitiesForOrganization.html)
+// operations.
 type EventAccountFilter struct {
 	_ struct{} `type:"structure"`
 
 	// The 12-digit AWS account numbers that contains the affected entities.
-	//
-	// AwsAccountId is a required field
-	AwsAccountId *string `locationName:"awsAccountId" type:"string" required:"true"`
+	AwsAccountId *string `locationName:"awsAccountId" type:"string"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	//
 	// EventArn is a required field
 	EventArn *string `locationName:"eventArn" type:"string" required:"true"`
@@ -3160,9 +3372,6 @@ func (s EventAccountFilter) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *EventAccountFilter) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "EventAccountFilter"}
-	if s.AwsAccountId == nil {
-		invalidParams.Add(request.NewErrParamRequired("AwsAccountId"))
-	}
 	if s.EventArn == nil {
 		invalidParams.Add(request.NewErrParamRequired("EventArn"))
 	}
@@ -3186,6 +3395,7 @@ func (s *EventAccountFilter) SetEventArn(v string) *EventAccountFilter {
 }
 
 // The number of events of each issue type. Returned by the DescribeEventAggregates
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventAggregates.html)
 // operation.
 type EventAggregate struct {
 	_ struct{} `type:"structure"`
@@ -3220,7 +3430,8 @@ func (s *EventAggregate) SetCount(v int64) *EventAggregate {
 }
 
 // The detailed description of the event. Included in the information returned
-// by the DescribeEventDetails operation.
+// by the DescribeEventDetails (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetails.html)
+// operation.
 type EventDescription struct {
 	_ struct{} `type:"structure"`
 
@@ -3244,9 +3455,11 @@ func (s *EventDescription) SetLatestDescription(v string) *EventDescription {
 	return s
 }
 
-// Detailed information about an event. A combination of an Event object, an
-// EventDescription object, and additional metadata about the event. Returned
-// by the DescribeEventDetails operation.
+// Detailed information about an event. A combination of an Event (https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html)
+// object, an EventDescription (https://docs.aws.amazon.com/health/latest/APIReference/API_EventDescription.html)
+// object, and additional metadata about the event. Returned by the DescribeEventDetails
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetails.html)
+// operation.
 type EventDetails struct {
 	_ struct{} `type:"structure"`
 
@@ -3288,8 +3501,8 @@ func (s *EventDetails) SetEventMetadata(v map[string]*string) *EventDetails {
 	return s
 }
 
-// Error information returned when a DescribeEventDetails operation cannot find
-// a specified event.
+// Error information returned when a DescribeEventDetails (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetails.html)
+// operation can't find a specified event.
 type EventDetailsErrorItem struct {
 	_ struct{} `type:"structure"`
 
@@ -3299,8 +3512,12 @@ type EventDetailsErrorItem struct {
 	// The name of the error.
 	ErrorName *string `locationName:"errorName" type:"string"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	EventArn *string `locationName:"eventArn" type:"string"`
 }
 
@@ -3332,12 +3549,13 @@ func (s *EventDetailsErrorItem) SetEventArn(v string) *EventDetailsErrorItem {
 	return s
 }
 
-// The values to use to filter results from the DescribeEvents and DescribeEventAggregates
+// The values to use to filter results from the DescribeEvents (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEvents.html)
+// and DescribeEventAggregates (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventAggregates.html)
 // operations.
 type EventFilter struct {
 	_ struct{} `type:"structure"`
 
-	// A list of AWS availability zones.
+	// A list of AWS Availability Zones.
 	AvailabilityZones []*string `locationName:"availabilityZones" type:"list"`
 
 	// A list of dates and times that the event ended.
@@ -3366,7 +3584,7 @@ type EventFilter struct {
 	// A list of dates and times that the event was last updated.
 	LastUpdatedTimes []*DateTimeRange `locationName:"lastUpdatedTimes" min:"1" type:"list"`
 
-	// A list of AWS regions.
+	// A list of AWS Regions.
 	Regions []*string `locationName:"regions" min:"1" type:"list"`
 
 	// The AWS services associated with the event. For example, EC2, RDS.
@@ -3376,6 +3594,8 @@ type EventFilter struct {
 	StartTimes []*DateTimeRange `locationName:"startTimes" min:"1" type:"list"`
 
 	// A map of entity tags attached to the affected entity.
+	//
+	// Currently, the tags property isn't supported.
 	Tags []map[string]*string `locationName:"tags" type:"list"`
 }
 
@@ -3510,9 +3730,19 @@ func (s *EventFilter) SetTags(v []map[string]*string) *EventFilter {
 	return s
 }
 
-// Metadata about a type of event that is reported by AWS Health. Data consists
-// of the category (for example, issue), the service (for example, EC2), and
-// the event type code (for example, AWS_EC2_SYSTEM_MAINTENANCE_EVENT).
+// Contains the metadata about a type of event that is reported by AWS Health.
+// The EventType shows the category, service, and the event type code of the
+// event. For example, an issue might be the category, EC2 the service, and
+// AWS_EC2_SYSTEM_MAINTENANCE_EVENT the event type code.
+//
+// You can use the DescribeEventTypes (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventTypes.html)
+// API operation to return this information about an event.
+//
+// You can also use the Amazon CloudWatch Events console to create a rule so
+// that you can get notified or take action when AWS Health delivers a specific
+// event to your AWS account. For more information, see Monitor for AWS Health
+// events with Amazon CloudWatch Events (https://docs.aws.amazon.com/health/latest/ug/cloudwatch-events-health.html)
+// in the AWS Health User Guide.
 type EventType struct {
 	_ struct{} `type:"structure"`
 
@@ -3555,7 +3785,8 @@ func (s *EventType) SetService(v string) *EventType {
 	return s
 }
 
-// The values to use to filter results from the DescribeEventTypes operation.
+// The values to use to filter results from the DescribeEventTypes (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventTypes.html)
+// operation.
 type EventTypeFilter struct {
 	_ struct{} `type:"structure"`
 
@@ -3618,8 +3849,8 @@ func (s *EventTypeFilter) SetServices(v []*string) *EventTypeFilter {
 
 // The specified pagination token (nextToken) is not valid.
 type InvalidPaginationToken struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3636,17 +3867,17 @@ func (s InvalidPaginationToken) GoString() string {
 
 func newErrorInvalidPaginationToken(v protocol.ResponseMetadata) error {
 	return &InvalidPaginationToken{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidPaginationToken) Code() string {
+func (s *InvalidPaginationToken) Code() string {
 	return "InvalidPaginationToken"
 }
 
 // Message returns the exception's message.
-func (s InvalidPaginationToken) Message() string {
+func (s *InvalidPaginationToken) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3654,26 +3885,27 @@ func (s InvalidPaginationToken) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidPaginationToken) OrigErr() error {
+func (s *InvalidPaginationToken) OrigErr() error {
 	return nil
 }
 
-func (s InvalidPaginationToken) Error() string {
+func (s *InvalidPaginationToken) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidPaginationToken) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidPaginationToken) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidPaginationToken) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidPaginationToken) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Error information returned when a DescribeAffectedEntitiesForOrganization
-// operation cannot find or process a specific entity.
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeAffectedEntitiesForOrganization.html)
+// operation can't find or process a specific entity.
 type OrganizationAffectedEntitiesErrorItem struct {
 	_ struct{} `type:"structure"`
 
@@ -3687,8 +3919,12 @@ type OrganizationAffectedEntitiesErrorItem struct {
 	// The name of the error.
 	ErrorName *string `locationName:"errorName" type:"string"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	EventArn *string `locationName:"eventArn" type:"string"`
 }
 
@@ -3727,16 +3963,37 @@ func (s *OrganizationAffectedEntitiesErrorItem) SetEventArn(v string) *Organizat
 }
 
 // Summary information about an event, returned by the DescribeEventsForOrganization
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventsForOrganization.html)
 // operation.
 type OrganizationEvent struct {
 	_ struct{} `type:"structure"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	Arn *string `locationName:"arn" type:"string"`
 
 	// The date and time that the event ended.
 	EndTime *time.Time `locationName:"endTime" type:"timestamp"`
+
+	// This parameter specifies if the AWS Health event is a public AWS service
+	// event or an account-specific event.
+	//
+	//    * If the eventScopeCode value is PUBLIC, then the affectedAccounts value
+	//    is always empty.
+	//
+	//    * If the eventScopeCode value is ACCOUNT_SPECIFIC, then the affectedAccounts
+	//    value lists the affected AWS accounts in your organization. For example,
+	//    if an event affects a service such as Amazon Elastic Compute Cloud and
+	//    you have AWS accounts that use that service, those account IDs appear
+	//    in the response.
+	//
+	//    * If the eventScopeCode value is NONE, then the eventArn that you specified
+	//    in the request is invalid or doesn't exist.
+	EventScopeCode *string `locationName:"eventScopeCode" type:"string" enum:"EventScopeCode"`
 
 	// The category of the event type.
 	EventTypeCategory *string `locationName:"eventTypeCategory" min:"3" type:"string" enum:"EventTypeCategory"`
@@ -3751,7 +4008,7 @@ type OrganizationEvent struct {
 	// The AWS Region name of the event.
 	Region *string `locationName:"region" min:"2" type:"string"`
 
-	// The AWS service that is affected by the event. For example, EC2, RDS.
+	// The AWS service that is affected by the event, such as EC2 and RDS.
 	Service *string `locationName:"service" min:"2" type:"string"`
 
 	// The date and time that the event began.
@@ -3781,6 +4038,12 @@ func (s *OrganizationEvent) SetArn(v string) *OrganizationEvent {
 // SetEndTime sets the EndTime field's value.
 func (s *OrganizationEvent) SetEndTime(v time.Time) *OrganizationEvent {
 	s.EndTime = &v
+	return s
+}
+
+// SetEventScopeCode sets the EventScopeCode field's value.
+func (s *OrganizationEvent) SetEventScopeCode(v string) *OrganizationEvent {
+	s.EventScopeCode = &v
 	return s
 }
 
@@ -3826,9 +4089,11 @@ func (s *OrganizationEvent) SetStatusCode(v string) *OrganizationEvent {
 	return s
 }
 
-// Detailed information about an event. A combination of an Event object, an
-// EventDescription object, and additional metadata about the event. Returned
-// by the DescribeEventDetailsForOrganization operation.
+// Detailed information about an event. A combination of an Event (https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html)
+// object, an EventDescription (https://docs.aws.amazon.com/health/latest/APIReference/API_EventDescription.html)
+// object, and additional metadata about the event. Returned by the DescribeEventDetailsForOrganization
+// (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetailsForOrganization.html)
+// operation.
 type OrganizationEventDetails struct {
 	_ struct{} `type:"structure"`
 
@@ -3836,10 +4101,26 @@ type OrganizationEventDetails struct {
 	AwsAccountId *string `locationName:"awsAccountId" type:"string"`
 
 	// Summary information about an AWS Health event.
+	//
+	// AWS Health events can be public or account-specific:
+	//
+	//    * Public events might be service events that are not specific to an AWS
+	//    account. For example, if there is an issue with an AWS Region, AWS Health
+	//    provides information about the event, even if you don't use services or
+	//    resources in that Region.
+	//
+	//    * Account-specific events are specific to either your AWS account or an
+	//    account in your organization. For example, if there's an issue with Amazon
+	//    Elastic Compute Cloud in a Region that you use, AWS Health provides information
+	//    about the event and the affected resources in the account.
+	//
+	// You can determine if an event is public or account-specific by using the
+	// eventScopeCode parameter. For more information, see eventScopeCode (https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html#AWSHealth-Type-Event-eventScopeCode).
 	Event *Event `locationName:"event" type:"structure"`
 
 	// The detailed description of the event. Included in the information returned
-	// by the DescribeEventDetails operation.
+	// by the DescribeEventDetails (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetails.html)
+	// operation.
 	EventDescription *EventDescription `locationName:"eventDescription" type:"structure"`
 
 	// Additional metadata about the event.
@@ -3880,23 +4161,42 @@ func (s *OrganizationEventDetails) SetEventMetadata(v map[string]*string) *Organ
 	return s
 }
 
-// Error information returned when a DescribeEventDetailsForOrganization operation
-// cannot find a specified event.
+// Error information returned when a DescribeEventDetailsForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetailsForOrganization.html)
+// operation can't find a specified event.
 type OrganizationEventDetailsErrorItem struct {
 	_ struct{} `type:"structure"`
 
-	// Error information returned when a DescribeEventDetailsForOrganization operation
-	// cannot find a specified event.
+	// Error information returned when a DescribeEventDetailsForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventDetailsForOrganization.html)
+	// operation can't find a specified event.
 	AwsAccountId *string `locationName:"awsAccountId" type:"string"`
 
 	// A message that describes the error.
+	//
+	// If you call the DescribeEventDetailsForOrganization operation and receive
+	// one of the following errors, follow the recommendations in the message:
+	//
+	//    * We couldn't find a public event that matches your request. To find an
+	//    event that is account specific, you must enter an AWS account ID in the
+	//    request.
+	//
+	//    * We couldn't find an account specific event for the specified AWS account.
+	//    To find an event that is public, you must enter a null value for the AWS
+	//    account ID in the request.
+	//
+	//    * Your AWS account doesn't include the AWS Support plan required to use
+	//    the AWS Health API. You must have either a Business or Enterprise Support
+	//    plan.
 	ErrorMessage *string `locationName:"errorMessage" type:"string"`
 
 	// The name of the error.
 	ErrorName *string `locationName:"errorName" type:"string"`
 
-	// The unique identifier for the event. Format: arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
-	// . Example: Example: arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
+	// The unique identifier for the event. The event ARN has the arn:aws:health:event-region::event/SERVICE/EVENT_TYPE_CODE/EVENT_TYPE_PLUS_ID
+	// format.
+	//
+	// For example, an event ARN might look like the following:
+	//
+	// arn:aws:health:us-east-1::event/EC2/EC2_INSTANCE_RETIREMENT_SCHEDULED/EC2_INSTANCE_RETIREMENT_SCHEDULED_ABC123-DEF456
 	EventArn *string `locationName:"eventArn" type:"string"`
 }
 
@@ -3934,14 +4234,16 @@ func (s *OrganizationEventDetailsErrorItem) SetEventArn(v string) *OrganizationE
 	return s
 }
 
-// The values to filter results from the DescribeEventsForOrganization operation.
+// The values to filter results from the DescribeEventsForOrganization (https://docs.aws.amazon.com/health/latest/APIReference/API_DescribeEventsForOrganization.html)
+// operation.
 type OrganizationEventFilter struct {
 	_ struct{} `type:"structure"`
 
 	// A list of 12-digit AWS account numbers that contains the affected entities.
 	AwsAccountIds []*string `locationName:"awsAccountIds" min:"1" type:"list"`
 
-	// A range of dates and times that is used by the EventFilter and EntityFilter
+	// A range of dates and times that is used by the EventFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EventFilter.html)
+	// and EntityFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EntityFilter.html)
 	// objects. If from is set and to is set: match items where the timestamp (startTime,
 	// endTime, or lastUpdatedTime) is between from and to inclusive. If from is
 	// set and to is not set: match items where the timestamp value is equal to
@@ -3949,7 +4251,7 @@ type OrganizationEventFilter struct {
 	// value is equal to or before to.
 	EndTime *DateTimeRange `locationName:"endTime" type:"structure"`
 
-	// REPLACEME
+	// A list of entity ARNs (unique identifiers).
 	EntityArns []*string `locationName:"entityArns" min:"1" type:"list"`
 
 	// A list of entity identifiers, such as EC2 instance IDs (i-34ab692e) or EBS
@@ -3959,13 +4261,14 @@ type OrganizationEventFilter struct {
 	// A list of event status codes.
 	EventStatusCodes []*string `locationName:"eventStatusCodes" min:"1" type:"list"`
 
-	// REPLACEME
+	// A list of event type category codes (issue, scheduledChange, or accountNotification).
 	EventTypeCategories []*string `locationName:"eventTypeCategories" min:"1" type:"list"`
 
 	// A list of unique identifiers for event types. For example, "AWS_EC2_SYSTEM_MAINTENANCE_EVENT","AWS_RDS_MAINTENANCE_SCHEDULED".
 	EventTypeCodes []*string `locationName:"eventTypeCodes" min:"1" type:"list"`
 
-	// A range of dates and times that is used by the EventFilter and EntityFilter
+	// A range of dates and times that is used by the EventFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EventFilter.html)
+	// and EntityFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EntityFilter.html)
 	// objects. If from is set and to is set: match items where the timestamp (startTime,
 	// endTime, or lastUpdatedTime) is between from and to inclusive. If from is
 	// set and to is not set: match items where the timestamp value is equal to
@@ -3979,7 +4282,8 @@ type OrganizationEventFilter struct {
 	// The AWS services associated with the event. For example, EC2, RDS.
 	Services []*string `locationName:"services" min:"1" type:"list"`
 
-	// A range of dates and times that is used by the EventFilter and EntityFilter
+	// A range of dates and times that is used by the EventFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EventFilter.html)
+	// and EntityFilter (https://docs.aws.amazon.com/health/latest/APIReference/API_EntityFilter.html)
 	// objects. If from is set and to is set: match items where the timestamp (startTime,
 	// endTime, or lastUpdatedTime) is between from and to inclusive. If from is
 	// set and to is not set: match items where the timestamp value is equal to
@@ -4100,8 +4404,8 @@ func (s *OrganizationEventFilter) SetStartTime(v *DateTimeRange) *OrganizationEv
 
 // The specified locale is not supported.
 type UnsupportedLocale struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4118,17 +4422,17 @@ func (s UnsupportedLocale) GoString() string {
 
 func newErrorUnsupportedLocale(v protocol.ResponseMetadata) error {
 	return &UnsupportedLocale{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnsupportedLocale) Code() string {
+func (s *UnsupportedLocale) Code() string {
 	return "UnsupportedLocale"
 }
 
 // Message returns the exception's message.
-func (s UnsupportedLocale) Message() string {
+func (s *UnsupportedLocale) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4136,22 +4440,22 @@ func (s UnsupportedLocale) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnsupportedLocale) OrigErr() error {
+func (s *UnsupportedLocale) OrigErr() error {
 	return nil
 }
 
-func (s UnsupportedLocale) Error() string {
+func (s *UnsupportedLocale) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnsupportedLocale) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnsupportedLocale) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnsupportedLocale) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnsupportedLocale) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -4165,10 +4469,46 @@ const (
 	EntityStatusCodeUnknown = "UNKNOWN"
 )
 
+// EntityStatusCode_Values returns all elements of the EntityStatusCode enum
+func EntityStatusCode_Values() []string {
+	return []string{
+		EntityStatusCodeImpaired,
+		EntityStatusCodeUnimpaired,
+		EntityStatusCodeUnknown,
+	}
+}
+
 const (
 	// EventAggregateFieldEventTypeCategory is a EventAggregateField enum value
 	EventAggregateFieldEventTypeCategory = "eventTypeCategory"
 )
+
+// EventAggregateField_Values returns all elements of the EventAggregateField enum
+func EventAggregateField_Values() []string {
+	return []string{
+		EventAggregateFieldEventTypeCategory,
+	}
+}
+
+const (
+	// EventScopeCodePublic is a EventScopeCode enum value
+	EventScopeCodePublic = "PUBLIC"
+
+	// EventScopeCodeAccountSpecific is a EventScopeCode enum value
+	EventScopeCodeAccountSpecific = "ACCOUNT_SPECIFIC"
+
+	// EventScopeCodeNone is a EventScopeCode enum value
+	EventScopeCodeNone = "NONE"
+)
+
+// EventScopeCode_Values returns all elements of the EventScopeCode enum
+func EventScopeCode_Values() []string {
+	return []string{
+		EventScopeCodePublic,
+		EventScopeCodeAccountSpecific,
+		EventScopeCodeNone,
+	}
+}
 
 const (
 	// EventStatusCodeOpen is a EventStatusCode enum value
@@ -4180,6 +4520,15 @@ const (
 	// EventStatusCodeUpcoming is a EventStatusCode enum value
 	EventStatusCodeUpcoming = "upcoming"
 )
+
+// EventStatusCode_Values returns all elements of the EventStatusCode enum
+func EventStatusCode_Values() []string {
+	return []string{
+		EventStatusCodeOpen,
+		EventStatusCodeClosed,
+		EventStatusCodeUpcoming,
+	}
+}
 
 const (
 	// EventTypeCategoryIssue is a EventTypeCategory enum value
@@ -4194,3 +4543,13 @@ const (
 	// EventTypeCategoryInvestigation is a EventTypeCategory enum value
 	EventTypeCategoryInvestigation = "investigation"
 )
+
+// EventTypeCategory_Values returns all elements of the EventTypeCategory enum
+func EventTypeCategory_Values() []string {
+	return []string{
+		EventTypeCategoryIssue,
+		EventTypeCategoryAccountNotification,
+		EventTypeCategoryScheduledChange,
+		EventTypeCategoryInvestigation,
+	}
+}

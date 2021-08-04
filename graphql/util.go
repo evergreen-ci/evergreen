@@ -36,14 +36,15 @@ import (
 )
 
 type FilterSortAndPaginateCedarTestResultsOpts struct {
-	GroupID     string
-	Limit       int
-	Page        int
-	SortBy      string
-	SortDir     int
-	Statuses    []string
-	TestName    string
-	TestResults []apimodels.CedarTestResult
+	GroupID          string
+	Limit            int
+	Page             int
+	SortBy           string
+	SortDir          int
+	Statuses         []string
+	TestName         string
+	TestResults      []apimodels.CedarTestResult
+	BaseTestStatuses map[string]string
 }
 
 // FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array.
@@ -98,10 +99,17 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if opts.SortDir == 1 {
-					return testResultI.TestName < testResultJ.TestName
+				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
+					if opts.SortDir == 1 {
+						return testResultI.DisplayTestName < testResultJ.DisplayTestName
+					}
+					return testResultI.DisplayTestName > testResultJ.DisplayTestName
+				} else {
+					if opts.SortDir == 1 {
+						return testResultI.TestName < testResultJ.TestName
+					}
+					return testResultI.TestName > testResultJ.TestName
 				}
-				return testResultI.TestName > testResultJ.TestName
 			})
 			break
 		case testresult.StatusKey:
@@ -112,6 +120,24 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 					return testResultI.Status < testResultJ.Status
 				}
 				return testResultI.Status > testResultJ.Status
+			})
+			break
+		case "base_status":
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+
+				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
+					if opts.SortDir == 1 {
+						return opts.BaseTestStatuses[testResultI.DisplayTestName] < opts.BaseTestStatuses[testResultJ.DisplayTestName]
+					}
+					return opts.BaseTestStatuses[testResultI.DisplayTestName] > opts.BaseTestStatuses[testResultJ.DisplayTestName]
+				} else {
+					if opts.SortDir == 1 {
+						return opts.BaseTestStatuses[testResultI.TestName] < opts.BaseTestStatuses[testResultJ.TestName]
+					}
+					return opts.BaseTestStatuses[testResultI.TestName] > opts.BaseTestStatuses[testResultJ.TestName]
+				}
 			})
 			break
 		}
@@ -708,6 +734,18 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		}
 		if err := model.SetVersionPriority(version.Id, modifications.Priority, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
+		}
+		// update priority for child patches
+		p, err := patch.FindOneId(version.Id)
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrapf(err, "error getting patch '%s'", version.Id)
+		}
+		if p != nil {
+			for _, childPatchId := range p.Triggers.ChildPatches {
+				if err := model.SetVersionPriority(childPatchId, modifications.Priority, user.Id); err != nil {
+					return http.StatusInternalServerError, errors.Wrapf(err, "error setting priority for child patch '%s'", childPatchId)
+				}
+			}
 		}
 	default:
 		return http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", modifications.Action)

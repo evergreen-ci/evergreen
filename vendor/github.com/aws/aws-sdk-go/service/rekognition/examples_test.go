@@ -106,6 +106,8 @@ func ExampleRekognition_CreateCollection_shared00() {
 				fmt.Println(rekognition.ErrCodeProvisionedThroughputExceededException, aerr.Error())
 			case rekognition.ErrCodeResourceAlreadyExistsException:
 				fmt.Println(rekognition.ErrCodeResourceAlreadyExistsException, aerr.Error())
+			case rekognition.ErrCodeServiceQuotaExceededException:
+				fmt.Println(rekognition.ErrCodeServiceQuotaExceededException, aerr.Error())
 			default:
 				fmt.Println(aerr.Error())
 			}
@@ -338,6 +340,8 @@ func ExampleRekognition_IndexFaces_shared00() {
 				fmt.Println(rekognition.ErrCodeResourceNotFoundException, aerr.Error())
 			case rekognition.ErrCodeInvalidImageFormatException:
 				fmt.Println(rekognition.ErrCodeInvalidImageFormatException, aerr.Error())
+			case rekognition.ErrCodeServiceQuotaExceededException:
+				fmt.Println(rekognition.ErrCodeServiceQuotaExceededException, aerr.Error())
 			default:
 				fmt.Println(aerr.Error())
 			}
