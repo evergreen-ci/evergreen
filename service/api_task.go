@@ -319,7 +319,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		"should_exit": endTaskResp.ShouldExit,
 	}
 
-	if t.IsPartOfDisplay() {
+	if t.DisplayOnly {
 		msg["display_task_id"] = t.DisplayTask.Id
 	}
 

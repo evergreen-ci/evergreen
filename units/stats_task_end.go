@@ -132,7 +132,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"version":              j.task.Version,
 	}
 
-	if j.task.IsPartOfDisplay() {
+	if j.task.DisplayOnly {
 		msg["display_task_id"] = j.task.DisplayTask.Id
 	}
 
