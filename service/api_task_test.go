@@ -1344,7 +1344,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			testTask, err := task.FindOne(task.ById(task1.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
-			resp := getEndTaskEndpoint(t, as, hostId, executionTask.Id, details)
+			resp := getEndTaskEndpoint(t, as, sampleHost.Id, executionTask.Id, details)
 			So(resp, ShouldNotBeNil)
 			Convey("should return http status ok", func() {
 				So(resp.Code, ShouldEqual, http.StatusOK)
