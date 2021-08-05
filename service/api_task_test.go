@@ -1355,7 +1355,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				})
 			})
 			Convey("the host should no longer have the task set as its running task", func() {
-				h, err := host.FindOne(host.ById(hostId))
+				h, err := host.FindOne(host.ById("h2"))
 				So(err, ShouldBeNil)
 				So(h.RunningTask, ShouldEqual, "")
 				Convey("the task should be marked as succeeded and the task end details"+
