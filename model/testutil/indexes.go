@@ -4,13 +4,15 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// AddTestIndexes drops and adds indexes for a given collection
+// AddTestIndexes drops all existing indexes and adds indexes for a given
+// collection
 func AddTestIndexes(collection string, unique, sparse bool, key ...string) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(db.DropAllIndexes(collection))
@@ -27,5 +29,10 @@ func AddTestIndexes(collection string, unique, sparse bool, key ...string) error
 		Keys:    spec,
 		Options: options.Index().SetUnique(unique).SetSparse(sparse),
 	}))
+
+	catcher.Add(db.EnsureIndex(host.Collection, mongo.IndexModel{
+		Keys: host.StatusIndex,
+	}))
+
 	return catcher.Resolve()
 }

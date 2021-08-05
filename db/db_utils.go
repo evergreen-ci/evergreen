@@ -102,8 +102,8 @@ func Clear(collection string) error {
 	return err
 }
 
-// ClearCollections clears all documents from all the specified collections, returning an error
-// immediately if clearing any one of them fails.
+// ClearCollections clears all documents from all the specified collections,
+// returning an error immediately if clearing any one of them fails.
 func ClearCollections(collections ...string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -120,7 +120,8 @@ func ClearCollections(collections ...string) error {
 	return nil
 }
 
-// EnsureIndex takes in a collection and ensures that the
+// EnsureIndex takes in a collection and ensures that the index is created if it
+// does not already exist.
 func EnsureIndex(collection string, index mongo.IndexModel) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
