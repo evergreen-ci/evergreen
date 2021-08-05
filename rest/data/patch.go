@@ -338,15 +338,6 @@ type MockPatchConnector struct {
 	CachedRawPatches  map[string]string
 }
 
-func (hp *MockPatchConnector) GetIdForProject(identifier string) (string, error) {
-	for _, p := range hp.CachedProjectRefs {
-		if *p.Id == identifier || *p.Identifier == identifier {
-			return *p.Id, nil
-		}
-	}
-	return "", errors.Errorf("project with identifier %s not found", identifier)
-}
-
 // FindPatchesByProject queries the cached patches splice for the matching patches.
 // Assumes CachedPatches is sorted by increasing creation time.
 func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
@@ -354,9 +345,14 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 	if limit <= 0 {
 		return patchesToReturn, nil
 	}
-	id, err := hp.GetIdForProject(projectId)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching project with id %s", projectId)
+	var id string
+	for _, p := range hp.CachedProjectRefs {
+		if *p.Id == projectId || *p.Identifier == projectId {
+			id = *p.Id
+		}
+	}
+	if id == "" {
+		return nil, errors.Errorf("project with identifier %s not found", projectId)
 	}
 	for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
 		p := hp.CachedPatches[i]
