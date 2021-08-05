@@ -39,7 +39,11 @@ type DBPatchConnector struct{}
 // FindPatchesByProject uses the service layer's patches type to query the backing database for
 // the patches.
 func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
+	apiPatches := []restModel.APIPatch{}
 	id, err := model.GetIdForProject(projectId)
+	if id == "" {
+		return apiPatches, nil
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching project with id %s", projectId)
 	}
@@ -47,7 +51,6 @@ func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time,
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching patches for project %s", id)
 	}
-	apiPatches := []restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)

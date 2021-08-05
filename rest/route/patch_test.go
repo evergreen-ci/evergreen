@@ -101,7 +101,9 @@ func TestPatchesByProjectSuite(t *testing.T) {
 func (s *PatchesByProjectSuite) SetupSuite() {
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
 	proj1 := "project1"
+	proj1Identifier := "project_one"
 	proj2 := "project2"
+	proj2Identifier := "project_two"
 	nowPlus2 := s.now.Add(time.Second * 2)
 	nowPlus4 := s.now.Add(time.Second * 4)
 	nowPlus6 := s.now.Add(time.Second * 6)
@@ -115,6 +117,10 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 			{ProjectId: &proj1, CreateTime: &nowPlus6},
 			{ProjectId: &proj2, CreateTime: &nowPlus8},
 			{ProjectId: &proj1, CreateTime: &nowPlus10},
+		},
+		CachedProjectRefs: []model.APIProjectRef{
+			{Id: &proj1, Identifier: &proj1Identifier},
+			{Id: &proj2, Identifier: &proj2Identifier},
 		},
 	}
 	s.sc = &data.MockConnector{
