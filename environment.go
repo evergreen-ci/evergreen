@@ -632,15 +632,15 @@ func (e *envState) initSenders(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 	for name, s := range e.senders {
 		catcher.Add(s.SetLevel(levelInfo))
+		tempName := name
 		catcher.Add(s.SetErrorHandler(func(err error, m message.Composer) {
 			if err == nil {
 				return
 			}
-
 			grip.Error(message.WrapError(err, message.Fields{
 				"notification":        m.String(),
 				"message_type":        fmt.Sprintf("%T", m),
-				"notification_target": name.String(),
+				"notification_target": tempName.String(),
 				"event":               m,
 			}))
 		}))
