@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	NoProjection = bson.M{}
-	NoSort       = []string{}
-	NoSkip       = 0
-	NoLimit      = 0
+	NoProjection             = bson.M{}
+	NoSort                   = []string{}
+	NoSkip                   = 0
+	NoLimit                  = 0
+	NoHint       interface{} = nil
 )
 
 type SessionFactory interface {
@@ -173,7 +174,7 @@ func FindOne(collection string, query interface{},
 	}
 	defer session.Close()
 
-	q := db.C(collection).Find(query).Select(projection).Limit(1)
+	q := db.C(collection).Find(query).Select(projection).Limit(1).Hint(hint)
 	if len(sort) != 0 {
 		q = q.Sort(sort...)
 	}
@@ -193,7 +194,7 @@ func FindAll(collection string, query interface{},
 	}
 	defer session.Close()
 
-	q := db.C(collection).Find(query)
+	q := db.C(collection).Find(query).Hint(hint)
 	if projection != nil {
 		q = q.Select(projection)
 	}

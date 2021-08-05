@@ -345,8 +345,11 @@ const (
 )
 
 const (
+	// CredentialsCollection is the collection containing TLS credentials to
+	// connect to a Jasper service running on a host.
 	CredentialsCollection = "credentials"
-	CAName                = "evergreen"
+	// CAName is the name of the root CA for the TLS credentials.
+	CAName = "evergreen"
 )
 
 // cloud provider related constants
