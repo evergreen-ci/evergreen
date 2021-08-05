@@ -251,6 +251,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// GetDisplayTask will set the DisplayTask on t if applicable
+	// we set this before the collect task end job is run to prevent data race
+	dt, err := t.GetDisplayTask()
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+	}
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
@@ -319,7 +325,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		"should_exit": endTaskResp.ShouldExit,
 	}
 
-	if t.IsPartOfDisplay() {
+	if dt != nil {
 		msg["display_task_id"] = t.DisplayTask.Id
 	}
 

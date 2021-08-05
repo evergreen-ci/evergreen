@@ -1319,32 +1319,13 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			})
 		})
 		Convey("with a set of task end details indicating that task has failed", func() {
-			executionTask := task.Task{
-				Id:        "executionTask",
-				Status:    evergreen.TaskStarted,
-				Activated: true,
-				HostId:    "h2",
-				Secret:    taskSecret,
-				Project:   projectId,
-				BuildId:   buildID,
-				Version:   versionId,
-			}
-			So(executionTask.Insert(), ShouldBeNil)
-			sampleHost := host.Host{
-				Id:            "h2",
-				Secret:        hostSecret,
-				RunningTask:   executionTask.Id,
-				Status:        evergreen.HostRunning,
-				AgentRevision: evergreen.AgentVersion,
-			}
-			So(sampleHost.Insert(), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
 			testTask, err := task.FindOne(task.ById(task1.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
-			resp := getEndTaskEndpoint(t, as, sampleHost.Id, executionTask.Id, details)
+			resp := getEndTaskEndpoint(t, as, hostId, task1.Id, details)
 			So(resp, ShouldNotBeNil)
 			Convey("should return http status ok", func() {
 				So(resp.Code, ShouldEqual, http.StatusOK)
@@ -1355,12 +1336,12 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				})
 			})
 			Convey("the host should no longer have the task set as its running task", func() {
-				h, err := host.FindOne(host.ById("h2"))
+				h, err := host.FindOne(host.ById(hostId))
 				So(err, ShouldBeNil)
 				So(h.RunningTask, ShouldEqual, "")
 				Convey("the task should be marked as succeeded and the task end details"+
 					"should be added to the task document", func() {
-					t, err := task.FindOne(task.ById(executionTask.Id))
+					t, err := task.FindOne(task.ById(task1.Id))
 					So(err, ShouldBeNil)
 					So(t.Status, ShouldEqual, evergreen.TaskFailed)
 					So(t.Details.Status, ShouldEqual, evergreen.TaskFailed)
