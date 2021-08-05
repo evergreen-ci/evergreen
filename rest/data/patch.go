@@ -352,7 +352,7 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 		}
 	}
 	if id == "" {
-		return nil, errors.Errorf("project with identifier %s not found", projectId)
+		return patchesToReturn, nil
 	}
 	for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
 		p := hp.CachedPatches[i]
