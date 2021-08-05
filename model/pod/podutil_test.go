@@ -1,124 +1,111 @@
 package pod
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const workingDir = "/data/mci"
 
-// (curl -LO <some retry options> <evergreen S3 URL> || curl -LO <some retry options> <evergreen app URL>) && ./evergreen agent <agent args>
-
 func TestCurlCommandWithRetry(t *testing.T) {
-	for tName, tCase := range map[string]func(t *testing.T, p *Pod, settings *evergreen.Settings){
-		"WithoutS3Linux": func(t *testing.T, p *Pod, settings *evergreen.Settings) {
-			settings = &evergreen.Settings{
-				ApiUrl:            "www.test.com",
-				ClientBinariesDir: "clients",
-			}
-			p = &Pod{
-				ID: utility.RandomString(),
+	t.Run("WithoutS3", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			ApiUrl:            "www.test.com",
+			ClientBinariesDir: "clients",
+		}
+		t.Run("Linux", func(t *testing.T) {
+			p := &Pod{
+				ID: "id",
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
-					Image:      "image",
-					MemoryMB:   128,
-					CPU:        128,
 					OS:         OSLinux,
-					Arch:       ArchARM64,
+					Arch:       ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Resources: ResourceInfo{
-					Cluster: "cluster",
-				},
+				Secret: "secret",
 			}
 			cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
-			expected := "cd /data/mci && CMD-SHELL && curl -LO --retry 5 --retry-max-time 10 'www.test.com/clients/windows_amd64/evergreen.exe' && ./evergreen agent <agent args>"
-			// TODO: continue with this mysteriously long command
+			expected := "CMD-SHELL curl -LO 'www.test.com/clients/amd64/evergreen' --retry 5 --retry-max-time 10 && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen"
 			assert.Equal(t, expected, cmd)
-		},
-		"WithoutS3Windows": func(t *testing.T, p *Pod, settings *evergreen.Settings) {
-			settings = &evergreen.Settings{
-				ApiUrl:            "www.test.com",
-				ClientBinariesDir: "clients",
-			}
-		},
-		"WithS3Linux": func(t *testing.T, p *Pod, settings *evergreen.Settings) {
-			settings = &evergreen.Settings{
-				ApiUrl:            "www.test.com",
-				ClientBinariesDir: "clients",
-			}
-			p = &Pod{
-				ID: utility.RandomString(),
+		})
+		t.Run("Windows", func(t *testing.T) {
+			p := &Pod{
+				ID: "id",
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
-					Image:      "image",
-					MemoryMB:   128,
-					CPU:        128,
-					OS:         OSLinux,
-					Arch:       ArchARM64,
+					OS:         OSWindows,
+					Arch:       evergreen.ArchWindowsAmd64,
 					WorkingDir: workingDir,
 				},
-				Resources: ResourceInfo{
-					Cluster: "cluster",
-				},
+				Secret: "secret",
 			}
 			cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
-			// TODO: are retry options before or after URL?
-			expected := "cd /data/mci && CMD-SHELL && curl -LO --retry 5 --retry-max-time 10 'www.test.com/clients/windows_amd64/evergreen.exe' && ./evergreen agent <agent args>"
-			// TODO: continue with this mysteriously long command
+			expected := "CMD-SHELL curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen.exe"
 			assert.Equal(t, expected, cmd)
-		},
-		"WithS3Windows": func(t *testing.T, p *Pod, settings *evergreen.Settings) {
-			settings = &evergreen.Settings{
-				ApiUrl:            "www.test.com",
-				ClientBinariesDir: "clients",
-			}
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			p := Pod{}
-
-			tCase(t, &p, &evergreen.Settings{}) // TODO: check evergreen settings
 		})
-	}
-}
+	})
 
-func TestCurlCommandWithDefaulRetry(t *testing.T) {
-	for tName, tCase := range map[string]func(t *testing.T, p *Pod, settings *evergreen.Settings){
-		"WithoutS3Linux": func(t *testing.T, p *Pod, settings *evergreen.Settings) {
-			settings = &evergreen.Settings{
-				ApiUrl:            "www.test.com",
-				ClientBinariesDir: "clients",
-			}
-			p = &Pod{
-				ID: utility.RandomString(),
+	t.Run("WithS3", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			ApiUrl:            "www.test.com",
+			PodInit:           evergreen.PodInitConfig{S3BaseURL: "https://foo.com"},
+			ClientBinariesDir: "clients",
+		}
+		t.Run("Linux", func(t *testing.T) {
+			p := &Pod{
+				ID: "id",
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
-					Image:      "image",
-					MemoryMB:   128,
-					CPU:        128,
 					OS:         OSLinux,
-					Arch:       ArchARM64,
+					Arch:       ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Resources: ResourceInfo{
-					Cluster: "cluster",
-				},
+				Secret: "secret",
 			}
-			cmd, err := p.CurlCommandWithDefaultRetry(settings)
-			require.NoError(t, err)
-			require.NotZero(t, cmd)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			p := Pod{}
-
-			tCase(t, &p, &evergreen.Settings{})
+			t.Run("CustomRetry", func(t *testing.T) {
+				cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
+				require.NoError(t, err)
+				require.NotZero(t, cmd)
+				expected := fmt.Sprintf("CMD-SHELL (curl -LO 'https://foo.com/%s/amd64/evergreen' --retry 5 --retry-max-time 10 || curl -LO 'www.test.com/clients/amd64/evergreen' --retry 5 --retry-max-time 10) && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen", evergreen.BuildRevision)
+				assert.Equal(t, expected, cmd)
+			})
+			t.Run("DefaultRetry", func(t *testing.T) {
+				cmd, err := p.CurlCommandWithDefaultRetry(settings)
+				require.NoError(t, err)
+				require.NotZero(t, cmd)
+				expected := fmt.Sprintf("CMD-SHELL (curl -LO 'https://foo.com/%s/amd64/evergreen' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/amd64/evergreen' --retry 10 --retry-max-time 100) && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen", evergreen.BuildRevision)
+				assert.Equal(t, expected, cmd)
+			})
 		})
-	}
+		t.Run("Windows", func(t *testing.T) {
+			p := &Pod{
+				ID: "id",
+				TaskContainerCreationOpts: TaskContainerCreationOptions{
+					OS:         OSWindows,
+					Arch:       evergreen.ArchWindowsAmd64,
+					WorkingDir: workingDir,
+				},
+				Secret: "secret",
+			}
+			t.Run("CustomRetry", func(t *testing.T) {
+				cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
+				require.NoError(t, err)
+				require.NotZero(t, cmd)
+				expected := fmt.Sprintf("CMD-SHELL (curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10) && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen.exe", evergreen.BuildRevision)
+				assert.Equal(t, expected, cmd)
+			})
+			t.Run("DefaultRetry", func(t *testing.T) {
+				cmd, err := p.CurlCommandWithDefaultRetry(settings)
+				require.NoError(t, err)
+				require.NotZero(t, cmd)
+				expected := fmt.Sprintf("CMD-SHELL (curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100) && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen.exe", evergreen.BuildRevision)
+				assert.Equal(t, expected, cmd)
+			})
+		})
+	})
 }

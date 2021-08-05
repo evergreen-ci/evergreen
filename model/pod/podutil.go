@@ -11,7 +11,7 @@ import (
 
 const (
 	executable = "./evergreen"
-	shell      = "CMD-SHELL"
+	shell      = "CMD-SHELL "
 )
 
 // Constants representing default curl retry arguments.
@@ -47,7 +47,7 @@ func (p *Pod) AgentCommand(settings *evergreen.Settings) []string {
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
 		fmt.Sprintf("--mode=pod"),
 		fmt.Sprintf("--pod_id=%s", p.ID),
-		fmt.Sprintf("pod_secret=%s", p.Secret),
+		fmt.Sprintf("--pod_secret=%s", p.Secret),
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(p.TaskContainerCreationOpts.WorkingDir, "agent")),
 		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
 		"--cleanup",
@@ -94,11 +94,11 @@ func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]str
 		return nil, errors.Wrap(err, "getting service flags")
 	}
 
-	var curlCmd string
+	curlCmd := shell
 	if !flags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
-		curlCmd = fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s)", curlArgs, p.S3ClientURL(settings), curlArgs, p.ClientURL(settings))
+		curlCmd += fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s)", p.S3ClientURL(settings), curlArgs, p.ClientURL(settings), curlArgs)
 	} else {
 		curlCmd += fmt.Sprintf("curl -LO '%s'%s", p.ClientURL(settings), curlArgs)
 	}
@@ -106,7 +106,6 @@ func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]str
 	agentCmd := strings.Join(p.AgentCommand(settings), " ")
 
 	return []string{
-		shell,
 		curlCmd,
 		agentCmd,
 		fmt.Sprintf("chmod +x %s", p.BinaryName()),
