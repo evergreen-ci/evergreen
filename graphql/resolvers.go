@@ -2913,13 +2913,7 @@ func (r *versionResolver) Manifest(ctx context.Context, v *restModel.APIVersion)
 	}
 	modules := map[string]interface{}{}
 	for key, module := range m.Modules {
-		modules[key] = &manifest.Module{
-			Branch:   module.Branch,
-			Repo:     module.Repo,
-			Revision: module.Revision,
-			Owner:    module.Owner,
-			URL:      module.URL,
-		}
+		modules[key] = module
 	}
 	versionManifest.Modules = modules
 
