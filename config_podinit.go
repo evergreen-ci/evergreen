@@ -48,3 +48,7 @@ func (c *PodInitConfig) Set() error {
 
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
+
+func (c *PodInitConfig) ValidateAndDefault() error {
+	return nil
+}
