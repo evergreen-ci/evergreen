@@ -253,8 +253,9 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	// rough value that should correspond to situations where a queue will be empty very soon
 	const lowRatioThresh = float32(.25)
-	terminateExcess := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
-	if terminateExcess && hostQueueRatio < lowRatioThresh && len(upHosts) > 0 {
+	terminationOn := distro.HostAllocatorSettings.HostsOverallocatedRule == evergreen.HostsOverallocatedTerminate
+	terminatableDistro := utility.StringSliceContains(evergreen.ProviderSpawnable, distro.Provider)
+	if terminationOn && terminatableDistro && hostQueueRatio < lowRatioThresh && len(upHosts) > 0 {
 		distroIsByHour := cloud.UsesHourlyBilling(&upHosts[0].Distro)
 		if !distroIsByHour {
 			j.setTargetAndTerminate(ctx, len(upHosts), hostQueueRatio, distro)
@@ -305,7 +306,7 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 			DistroID:     distro.Id,
 			NewCapTarget: newCapTarget,
 		}
-		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
+		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)+distro.Id))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "Error drawing down hosts",

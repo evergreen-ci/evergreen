@@ -108,6 +108,8 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		"id":                   j.ID(),
 		"job_type":             hostDrawdownJobName,
 		"distro_id":            j.DrawdownInfo.DistroID,
+		"new_cap_target":       j.DrawdownInfo.NewCapTarget,
+		"existing_host_count":  existingHostCount,
 		"num_idle_hosts":       len(idleHosts),
 		"num_terminated_hosts": j.Terminated,
 		"terminated_hosts":     j.TerminatedHosts,
