@@ -804,6 +804,9 @@ func MarkGeneratedTasks(taskID string) error {
 		"$set": bson.M{
 			GeneratedTasksKey: true,
 		},
+		"$unset": bson.M{
+			GenerateTasksErrorKey: 1,
+		},
 	}
 	err := UpdateOne(query, update)
 	if adb.ResultsNotFound(err) {
