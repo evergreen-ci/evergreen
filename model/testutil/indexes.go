@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -28,10 +27,6 @@ func AddTestIndexes(collection string, unique, sparse bool, key ...string) error
 	catcher.Add(db.EnsureIndex(collection, mongo.IndexModel{
 		Keys:    spec,
 		Options: options.Index().SetUnique(unique).SetSparse(sparse),
-	}))
-
-	catcher.Add(db.EnsureIndex(host.Collection, mongo.IndexModel{
-		Keys: host.StatusIndex,
 	}))
 
 	return catcher.Resolve()
