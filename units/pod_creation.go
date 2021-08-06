@@ -104,21 +104,46 @@ func (j *createPodJob) Run(ctx context.Context) {
 
 		j.ecsPod = p
 
-		info, err := p.Info(ctx)
-		if err != nil {
-			j.AddError(errors.Wrap(err, "getting pod info"))
+		// kim: TODO: write ImportECSPodResource in cloud package to encapsulate
+		// this logic.
+		resources := p.Resources()
+		stat := p.StatusInfo()
+
+		containerResourcesByName := map[string]pod.ContainerResourceInfo{}
+		for _, container := range resources.Containers {
+			var secretIDs []string
+			for _, secret := range container.Secrets {
+				secretIDs = append(secretIDs, utility.FromStringPtr(secret.Name))
+			}
+			name := utility.FromStringPtr(container.Name)
+			containerResourcesByName[name] = pod.ContainerResourceInfo{
+				Name:       name,
+				ExternalID: utility.FromStringPtr(container.ContainerID),
+				SecretIDs:  secretIDs,
+			}
+		}
+		for _, container := range stat.Containers {
+			name := utility.FromStringPtr(container.Name)
+			status, err := cloud.ImportECSContainerStatus(container.Status)
+			if err != nil {
+				j.AddError(errors.Wrap(err, "importing ECS container status"))
+				continue
+			}
+			containerResources := containerResourcesByName[name]
+			containerResources.Status = status
+			containerResourcesByName[name] = containerResources
 		}
 
-		var ids []string
-		for _, secret := range info.Resources.Secrets {
-			ids = append(ids, utility.FromStringPtr(secret.NamedSecret.Name))
+		var containerResources []pod.ContainerResourceInfo
+		for name := range containerResourcesByName {
+			containerResources = append(containerResources, containerResourcesByName[name])
 		}
 
 		resourceInfo := pod.ResourceInfo{
-			ExternalID:   utility.FromStringPtr(info.Resources.TaskID),
-			DefinitionID: utility.FromStringPtr(info.Resources.TaskDefinition.ID),
-			Cluster:      utility.FromStringPtr(info.Resources.Cluster),
-			SecretIDs:    ids,
+			ExternalID:   utility.FromStringPtr(resources.TaskID),
+			DefinitionID: utility.FromStringPtr(resources.TaskDefinition.ID),
+			Cluster:      utility.FromStringPtr(resources.Cluster),
+			Containers:   containerResources,
 		}
 
 		if err := j.pod.UpdateResources(resourceInfo); err != nil {

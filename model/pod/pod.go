@@ -30,7 +30,7 @@ type Pod struct {
 	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
 }
 
-// Status represents a possible state that a pod can be in.
+// Status represents a possible state for a pod.
 type Status string
 
 const (
@@ -40,9 +40,22 @@ const (
 	StatusStarting Status = "starting"
 	// StatusRunning indicates that the pod's containers are running.
 	StatusRunning Status = "running"
-	// StatusTerminated indicates that the pod's containers have been
-	// deleted.
+	// kim: TODO: add StatusStopped
+	// StatusTerminated indicates that all of the pod's containers and
+	// associated resources have been deleted.
 	StatusTerminated Status = "terminated"
+)
+
+// ContainerStatus represents a possible state for a container.
+type ContainerStatus string
+
+const (
+	// StatusStarting indicates that the container is starting.
+	ContainerStatusStarting ContainerStatus = "starting"
+	// ContainerStatusRunning indicates that the container is running.
+	ContainerStatusRunning ContainerStatus = "running"
+	// StatusStopped indicates that the container has finished executing.
+	ContainerStatusStopped ContainerStatus = "stopped"
 )
 
 // Validate checks that the pod status is recognized.
@@ -87,14 +100,35 @@ type ResourceInfo struct {
 	DefinitionID string `bson:"definition_id,omitempty" json:"definition_id,omitempty"`
 	// Cluster is the namespace where the containers are running.
 	Cluster string `bson:"cluster,omitempty" json:"cluster,omitempty"`
-	// SecretIDs are the resource identifiers for the secrets owned by this pod.
-	SecretIDs []string `bson:"secret_ids,omitempty" json:"secret_ids,omitempty"`
+	// kim: TODO: populate with task container creation info
+	// Containers include resource information about containers running in the
+	// pod.
+	Containers []ContainerResourceInfo
 }
+
+// ContainerResourceInfo represents information about external resources
+// associated with a container.
+type ContainerResourceInfo struct {
+	// ExternalID is the unique resource identifier for the container running in
+	// the container service.
+	ExternalID string
+	// Name is the friendly name of the container.
+	Name string
+	// SecretIDs are the resource identifiers for the secrets owned by this
+	// container.
+	SecretIDs []string
+	// Status is the current state of the container.
+	Status ContainerStatus
+}
+
+// kim: TODO: make a separate struct for the container name + current
+// status. We might be able to just add some pod statuses and map them as
+// appropriate.
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o ResourceInfo) IsZero() bool {
-	return o.ExternalID == "" && o.DefinitionID == "" && o.Cluster == "" && len(o.SecretIDs) == 0
+	return o.ExternalID == "" && o.DefinitionID == "" && o.Cluster == ""
 }
 
 // TaskContainerCreationOptions are options to apply to the task's container

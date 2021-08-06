@@ -124,14 +124,17 @@ func (p *APIPod) ToService() (*pod.Pod, error) {
 		return nil, errors.Wrap(err, "converting task container creation options to service")
 	}
 	timing := p.TimeInfo.ToService()
-	resources := p.Resources.ToService()
+	resources, err := p.Resources.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting resource info to service")
+	}
 	return &pod.Pod{
 		ID:                        utility.FromStringPtr(p.ID),
 		Status:                    *s,
 		Secret:                    utility.FromStringPtr(p.Secret),
 		TaskContainerCreationOpts: *taskCreationOpts,
 		TimeInfo:                  timing,
-		Resources:                 resources,
+		Resources:                 *resources,
 	}, nil
 }
 
@@ -173,7 +176,7 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 	var converted pod.Status
 	switch *s {
 	case PodStatusInitializing:
-		converted = pod.StatusTerminated
+		converted = pod.StatusInitializing
 	case PodStatusStarting:
 		converted = pod.StatusStarting
 	case PodStatusRunning:
@@ -182,6 +185,53 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 		converted = pod.StatusTerminated
 	default:
 		return nil, errors.Errorf("unrecognized pod status '%s'", *s)
+	}
+	return &converted, nil
+}
+
+// APIContainerStatus represents a container's status.
+type APIContainerStatus string
+
+const (
+	ContainerStatusStarting APIContainerStatus = "starting"
+	ContainerStatusRunning  APIContainerStatus = "running"
+	ContainerStatusStopped  APIContainerStatus = "stopped"
+)
+
+// BuildFromService converts a service-layer container status into a REST API
+// container status.
+func (s *APIContainerStatus) BuildFromService(cs pod.ContainerStatus) error {
+	var converted APIContainerStatus
+	switch cs {
+	case pod.ContainerStatusStarting:
+		converted = ContainerStatusStarting
+	case pod.ContainerStatusRunning:
+		converted = ContainerStatusRunning
+	case pod.ContainerStatusStopped:
+		converted = ContainerStatusStopped
+	default:
+		return errors.Errorf("unrecognized container status '%s'", cs)
+	}
+	*s = converted
+	return nil
+}
+
+// ToService converts a REST API container status into a service-layer container
+// status.
+func (s *APIContainerStatus) ToService() (*pod.ContainerStatus, error) {
+	if s == nil {
+		return nil, errors.New("nonexistent container status")
+	}
+	var converted pod.ContainerStatus
+	switch *s {
+	case ContainerStatusStarting:
+		converted = pod.ContainerStatusStarting
+	case ContainerStatusRunning:
+		converted = pod.ContainerStatusRunning
+	case ContainerStatusStopped:
+		converted = pod.ContainerStatusStopped
+	default:
+		return nil, errors.Errorf("unrecognized container status '%s'", *s)
 	}
 	return &converted, nil
 }
@@ -263,28 +313,75 @@ func (i *APIPodTimeInfo) ToService() pod.TimeInfo {
 // APIPodResourceInfo represents information about external resources associated
 // with a pod.
 type APIPodResourceInfo struct {
-	ExternalID   *string  `json:"external_id,omitempty"`
-	DefinitionID *string  `json:"definition_id,omitempty"`
-	Cluster      *string  `json:"cluster,omitempty"`
-	SecretIDs    []string `json:"secret_ids,omitempty"`
+	ExternalID   *string                    `json:"external_id,omitempty"`
+	DefinitionID *string                    `json:"definition_id,omitempty"`
+	Cluster      *string                    `json:"cluster,omitempty"`
+	Containers   []APIContainerResourceInfo `json:"containers,omitempty"`
 }
 
-// BuildFromService converts service-layer resource information into REST API
-// resource information.
+// BuildFromService converts service-layer pod resource information into REST
+// API pod resource information.
 func (i *APIPodResourceInfo) BuildFromService(info pod.ResourceInfo) {
 	i.ExternalID = utility.ToStringPtr(info.ExternalID)
 	i.DefinitionID = utility.ToStringPtr(info.DefinitionID)
 	i.Cluster = utility.ToStringPtr(info.Cluster)
-	i.SecretIDs = info.SecretIDs
+	for _, container := range info.Containers {
+		var containerInfo APIContainerResourceInfo
+		containerInfo.BuildFromService(container)
+		i.Containers = append(i.Containers, containerInfo)
+	}
 }
 
-// ToService converts REST API resource information into service-layer resource
-// information.
-func (i *APIPodResourceInfo) ToService() pod.ResourceInfo {
-	return pod.ResourceInfo{
+// ToService converts REST API pod resource information into service-layer
+// pod resource information.
+func (i *APIPodResourceInfo) ToService() (*pod.ResourceInfo, error) {
+	var containers []pod.ContainerResourceInfo
+	for _, container := range i.Containers {
+		containerInfo, err := container.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting container resource info to service")
+		}
+		containers = append(containers, *containerInfo)
+	}
+	return &pod.ResourceInfo{
 		ExternalID:   utility.FromStringPtr(i.ExternalID),
 		DefinitionID: utility.FromStringPtr(i.DefinitionID),
 		Cluster:      utility.FromStringPtr(i.Cluster),
-		SecretIDs:    i.SecretIDs,
+		Containers:   containers,
+	}, nil
+}
+
+// APIPodResourceInfo represents information about external resources associated
+// with a container.
+type APIContainerResourceInfo struct {
+	ExternalID *string
+	Name       *string
+	Status     *APIContainerStatus
+}
+
+// BuildFromService converts service-layer container resource information into
+// REST API container resource information.
+func (i *APIContainerResourceInfo) BuildFromService(info pod.ContainerResourceInfo) error {
+	i.ExternalID = utility.ToStringPtr(info.ExternalID)
+	i.Name = utility.ToStringPtr(info.Name)
+	var status APIContainerStatus
+	if err := status.BuildFromService(info.Status); err != nil {
+		return errors.Wrap(err, "building status from service")
 	}
+	i.Status = &status
+	return nil
+}
+
+// ToService converts REST API container resource information into service-layer
+// container resource information.
+func (i *APIContainerResourceInfo) ToService() (*pod.ContainerResourceInfo, error) {
+	status, err := i.Status.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting status to service")
+	}
+	return &pod.ContainerResourceInfo{
+		ExternalID: utility.FromStringPtr(i.ExternalID),
+		Name:       utility.FromStringPtr(i.Name),
+		Status:     *status,
+	}, nil
 }
