@@ -327,12 +327,12 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
 		},
-		ProjectRefAliasSection: func(t *testing.T, id string) {
+		ProjectRefPatchAliasSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefAliasSection, "me"))
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefPatchAliasSection, "me"))
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)

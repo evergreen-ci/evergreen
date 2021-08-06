@@ -329,7 +329,7 @@ const (
 	ProjectRefVariablesSection      = "variables"
 	ProjectRefGithubAndCQSection    = "github_and_commit_queue"
 	ProjectRefNotificationsSection  = "notifications"
-	ProjectRefAliasSection          = "alias"
+	ProjectRefPatchAliasSection     = "patch_alias"
 	ProjectRefWorkstationsSection   = "workstations"
 	ProjectRefTriggersSection       = "triggers"
 	ProjectRefPeriodicBuildsSection = "periodic-builds"
@@ -1386,7 +1386,7 @@ func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-	case ProjectRefAliasSection:
+	case ProjectRefPatchAliasSection:
 		err = db.Update(ProjectRefCollection,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
@@ -1408,7 +1408,7 @@ func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 	}
 
 	if err != nil {
-		return false, errors.Wrapf(err, "error defaulting to repo for section '%s'", ProjectRefGithubAndCQSection)
+		return false, errors.Wrap(err, "error saving section")
 	}
 	return true, nil
 }
@@ -1442,36 +1442,45 @@ func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId st
 					restrictedVarsMapKey: 1,
 				},
 			})
-
+		if err == nil {
+			modified = true
+		}
 		catcher.Wrapf(err, "error defaulting to repo for section '%s'", section)
 	case ProjectRefGithubAndCQSection:
 		for _, a := range before.Aliases {
-			// remove only internal aliases
+			// remove only internal aliases; any alias without these labels is a patch alias
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
-				catcher.Add(RemoveProjectAlias(a.ID.Hex()))
+				err = RemoveProjectAlias(a.ID.Hex())
+				if err == nil {
+					modified = true // track if any aliases here were correctly modified so we can log the changes
+				}
+				catcher.Add(err)
 			}
-		}
-		if catcher.HasErrors() {
-			// log the changes before returning whatever errors were caught
-			_ = getAndLogProjectModified(projectId, userId, before)
-			return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
 		}
 	case ProjectRefNotificationsSection:
 		// handle subscriptions
 		for _, sub := range before.Subscriptions {
-			catcher.Add(event.RemoveSubscription(sub.ID))
+			err = event.RemoveSubscription(sub.ID)
+			if err == nil {
+				modified = true // track if any subscriptions were correctly modified so we can log the changes
+			}
+			catcher.Add(err)
 		}
-	case ProjectRefAliasSection:
+	case ProjectRefPatchAliasSection:
 		catcher := grip.NewBasicCatcher()
-		// remove only non-internal aliases
+		// remove only patch aliases, i.e. aliases without an Evergreen-internal label
 		for _, a := range before.Aliases {
 			if !utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
-				catcher.Add(RemoveProjectAlias(a.ID.Hex()))
+				err = RemoveProjectAlias(a.ID.Hex())
+				if err == nil {
+					modified = true // track if any aliases were correctly modified so we can log the changes
+				}
+				catcher.Add(err)
 			}
 		}
 	}
 	if modified {
-		_ = getAndLogProjectModified(projectId, userId, before)
+		catcher.Add(getAndLogProjectModified(projectId, userId, before))
 	}
 
 	return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
