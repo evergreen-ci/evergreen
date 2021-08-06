@@ -2829,7 +2829,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 
 	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
-	assert.Len(e, 3)
+	assert.Len(e, 4)
 }
 
 func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
@@ -2901,7 +2901,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 
 	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
 	assert.NoError(err)
-	assert.Len(e, 3)
+	assert.Len(e, 4)
 }
 
 func TestClearAndResetStrandedTask(t *testing.T) {
