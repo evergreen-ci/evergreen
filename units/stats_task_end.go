@@ -132,6 +132,10 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"version":              j.task.Version,
 	}
 
+	if j.task.DisplayTask != nil {
+		msg["display_task_id"] = j.task.DisplayTask.Id
+	}
+
 	pRef, err := model.FindOneProjectRef(j.task.Project)
 	if pRef != nil {
 		msg["project_identifier"] = pRef.Identifier
