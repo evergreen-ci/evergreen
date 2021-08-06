@@ -5,21 +5,11 @@ import (
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const AllLogCollection = "event_log"
-
-func TTLFilter(ts time.Time) map[string]interface{} {
-	rTypes := []string{
-		"TASK",
-		"SCHEDULER",
-		"PATCH",
-	}
-	return bson.M{"r_type": bson.M{"$in": rTypes}, "ts": bson.M{"$lt": ts}}
-}
 
 type EventLogEntry struct {
 	ID           string    `bson:"_id" json:"-"`
