@@ -366,10 +366,10 @@ func (s *AdminSuite) TestPodinitConfig() {
 	}
 
 	err := config.Set()
-	s.NoError(err)
+	s.Require().NoError(err)
 	settings, err := GetConfig()
-	s.NoError(err)
-	s.NotNil(settings)
+	s.Require().NoError(err)
+	s.Require().NotNil(settings)
 	s.Equal(config, settings.PodInit)
 }
 

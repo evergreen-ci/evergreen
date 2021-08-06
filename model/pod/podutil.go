@@ -15,23 +15,27 @@ const (
 	curlDefaultMaxSecs    = 100
 )
 
-// CurlCommand returns the command to curl the evergreen client and retries the request with the default retry parameters.
-func (p *Pod) CurlCommand(settings *evergreen.Settings) ([]string, error) {
-	var retryArgs string
-	if curlDefaultNumRetries != 0 && curlDefaultMaxSecs != 0 {
-		retryArgs = " " + curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
-	}
-	cmds, err := p.curlCommands(settings, retryArgs)
+// AgentScript returns the script to provision and run the agent in the pod's container.
+func (p *Pod) AgentScript(settings *evergreen.Settings) ([]string, error) {
+	retryArgs := " " + curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
+
+	curlCmd, err := p.curlCommands(settings, retryArgs)
 	if err != nil {
-		return []string{}, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	return []string{"CMD-SHELL", strings.Join(cmds, " && ")}, nil
+
+	agentCmd := strings.Join(p.agentCommand(settings), " ")
+
+	return []string{
+		"CMD-SHELL",
+		strings.Join([]string{curlCmd, fmt.Sprintf("chmod +x %s", p.binaryName()), agentCmd}, " && "),
+	}, nil
 }
 
-// AgentCommand returns the arguments to start the agent.
-func (p *Pod) AgentCommand(settings *evergreen.Settings) []string {
+// agentCommand returns the arguments to start the agent.
+func (p *Pod) agentCommand(settings *evergreen.Settings) []string {
 	return []string{
-		fmt.Sprintf("./%s", p.BinaryName()),
+		fmt.Sprintf("./%s", p.binaryName()),
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
 		fmt.Sprintf("--mode=pod"),
@@ -39,32 +43,31 @@ func (p *Pod) AgentCommand(settings *evergreen.Settings) []string {
 		fmt.Sprintf("--pod_secret=%s", p.Secret),
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(p.TaskContainerCreationOpts.WorkingDir, "agent")),
 		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
-		"--cleanup",
 	}
 }
 
-// ClientURL returns the URL used to get the latest Evergreen client version
+// clientURL returns the URL used to get the latest Evergreen client version
 // directly from the Evergreen server.
-func (p *Pod) ClientURL(settings *evergreen.Settings) string {
+func (p *Pod) clientURL(settings *evergreen.Settings) string {
 	return strings.Join([]string{
 		strings.TrimSuffix(settings.ApiUrl, "/"),
 		strings.TrimSuffix(settings.ClientBinariesDir, "/"),
-		p.ExecutableSubPath(),
+		p.clientURLSubpath(),
 	}, "/")
 }
 
-// S3ClientURL returns the URL in S3 where the Evergreen client version can be
+// s3ClientURL returns the URL in S3 where the Evergreen client version can be
 // retrieved for this server's particular Evergreen build version.
-func (p *Pod) S3ClientURL(settings *evergreen.Settings) string {
+func (p *Pod) s3ClientURL(settings *evergreen.Settings) string {
 	return strings.Join([]string{
 		strings.TrimSuffix(settings.PodInit.S3BaseURL, "/"),
 		evergreen.BuildRevision,
-		p.ExecutableSubPath(),
+		p.clientURLSubpath(),
 	}, "/")
 }
 
-// BinaryName returns the file name of the binary.
-func (p *Pod) BinaryName() string {
+// binaryName returns the file name of the binary.
+func (p *Pod) binaryName() string {
 	name := "evergreen"
 	if p.TaskContainerCreationOpts.OS == OSWindows {
 		return name + ".exe"
@@ -72,32 +75,29 @@ func (p *Pod) BinaryName() string {
 	return name
 }
 
-// ExecutableSubPath returns the directory containing the compiled agents.
-func (p *Pod) ExecutableSubPath() string {
-	return filepath.Join(string(p.TaskContainerCreationOpts.Arch), p.BinaryName())
+// clientURLSubpath returns the URL path to the compiled agent.
+func (p *Pod) clientURLSubpath() string {
+	return filepath.Join(
+		string(p.TaskContainerCreationOpts.OS)+"_"+string(p.TaskContainerCreationOpts.Arch),
+		p.binaryName(),
+	)
 }
 
-func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
+func (p *Pod) curlCommands(settings *evergreen.Settings, curlArgs string) (string, error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return nil, errors.Wrap(err, "getting service flags")
+		return "", errors.Wrap(err, "getting service flags")
 	}
 	var curlCmd string
 	if !flags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
-		curlCmd = fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s)", p.S3ClientURL(settings), curlArgs, p.ClientURL(settings), curlArgs)
+		curlCmd = fmt.Sprintf("(curl -LO '%s'%s || curl -LO '%s'%s)", p.s3ClientURL(settings), curlArgs, p.clientURL(settings), curlArgs)
 	} else {
-		curlCmd = fmt.Sprintf("curl -LO '%s'%s", p.ClientURL(settings), curlArgs)
+		curlCmd = fmt.Sprintf("curl -LO '%s'%s", p.clientURL(settings), curlArgs)
 	}
 
-	agentCmd := strings.Join(p.AgentCommand(settings), " ")
-
-	return []string{
-		curlCmd,
-		fmt.Sprintf("chmod +x %s", p.TaskContainerCreationOpts.WorkingDir),
-		agentCmd,
-	}, nil
+	return curlCmd, nil
 }
 
 func curlRetryArgs(numRetries, maxSecs int) string {

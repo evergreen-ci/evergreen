@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCurlCommand(t *testing.T) {
+func TestAgentScript(t *testing.T) {
 	const workingDir = "/data/mci"
 
 	t.Run("WithoutS3", func(t *testing.T) {
@@ -27,13 +27,13 @@ func TestCurlCommand(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			cmd, err := p.CurlCommand(settings)
+			cmd, err := p.AgentScript(settings)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
 
 			expected := []string{
 				"CMD-SHELL",
-				"curl -LO 'www.test.com/clients/amd64/evergreen' --retry 10 --retry-max-time 100 && chmod +x /data/mci && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup",
+				"curl -LO 'www.test.com/clients/linux_amd64/evergreen' --retry 10 --retry-max-time 100 && chmod +x evergreen && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci",
 			}
 			assert.Equal(t, expected, cmd)
 		})
@@ -42,18 +42,18 @@ func TestCurlCommand(t *testing.T) {
 				ID: "id",
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
 					OS:         OSWindows,
-					Arch:       evergreen.ArchWindowsAmd64,
+					Arch:       ArchAMD64,
 					WorkingDir: workingDir,
 				},
 				Secret: "secret",
 			}
-			cmd, err := p.CurlCommand(settings)
+			cmd, err := p.AgentScript(settings)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
 
 			expected := []string{
 				"CMD-SHELL",
-				"curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 && chmod +x /data/mci && ./evergreen.exe agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup",
+				"curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 && chmod +x evergreen.exe && ./evergreen.exe agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci",
 			}
 			assert.Equal(t, expected, cmd)
 		})
@@ -75,13 +75,13 @@ func TestCurlCommand(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			cmd, err := p.CurlCommand(settings)
+			cmd, err := p.AgentScript(settings)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
 
 			expected := []string{
 				"CMD-SHELL",
-				fmt.Sprintf("(curl -LO 'https://foo.com/%s/amd64/evergreen' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/amd64/evergreen' --retry 10 --retry-max-time 100) && chmod +x /data/mci && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup", evergreen.BuildRevision),
+				fmt.Sprintf("(curl -LO 'https://foo.com/%s/linux_amd64/evergreen' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/linux_amd64/evergreen' --retry 10 --retry-max-time 100) && chmod +x evergreen && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
 			}
 			assert.Equal(t, expected, cmd)
 		})
@@ -90,17 +90,17 @@ func TestCurlCommand(t *testing.T) {
 				ID: "id",
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
 					OS:         OSWindows,
-					Arch:       evergreen.ArchWindowsAmd64,
+					Arch:       ArchAMD64,
 					WorkingDir: workingDir,
 				},
 				Secret: "secret",
 			}
-			cmd, err := p.CurlCommand(settings)
+			cmd, err := p.AgentScript(settings)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
 			expected := []string{
 				"CMD-SHELL",
-				fmt.Sprintf("(curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100) && chmod +x /data/mci && ./evergreen.exe agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup", evergreen.BuildRevision),
+				fmt.Sprintf("(curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100) && chmod +x evergreen.exe && ./evergreen.exe agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
 			}
 			assert.Equal(t, expected, cmd)
 		})
