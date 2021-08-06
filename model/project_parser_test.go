@@ -11,8 +11,10 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1571,6 +1573,552 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 	}
 }
 
+func TestMergeUnorderedUnique(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+	main := &ParserProject{
+		Tasks: []parserTask{
+			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
+			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
+			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
+		},
+		TaskGroups: []parserTaskGroup{
+			{
+				Name:  "my_tg",
+				Tasks: []string{"tg_task"},
+			},
+		},
+		Parameters: []ParameterInfo{
+			{
+				Parameter: patch.Parameter{
+					Key:   "key",
+					Value: "val",
+				},
+			},
+		},
+		Modules: []Module{
+			{
+				Name: "my_module",
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"func1": &YAMLCommandSet{
+				SingleCommand: &PluginCommandConf{
+					Command: "single_command",
+				},
+			},
+			"func2": &YAMLCommandSet{
+				MultiCommand: []PluginCommandConf{
+					{
+						Command: "multi_command1",
+					}, {
+						Command: "multi_command2",
+					},
+				},
+			},
+		},
+	}
+
+	toMerge := &ParserProject{
+		Tasks: []parserTask{
+			{Name: "add_task"},
+		},
+		TaskGroups: []parserTaskGroup{
+			{
+				Name:  "add_group",
+				Tasks: []string{"add_tg_task"},
+			},
+		},
+		Parameters: []ParameterInfo{
+			{
+				Parameter: patch.Parameter{
+					Key:   "add_key",
+					Value: "add_val",
+				},
+			},
+		},
+		Modules: []Module{
+			{
+				Name: "add_my_module",
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"add_func1": &YAMLCommandSet{
+				SingleCommand: &PluginCommandConf{
+					Command: "add_single_command",
+				},
+			},
+			"add_func2": &YAMLCommandSet{
+				MultiCommand: []PluginCommandConf{
+					{
+						Command: "add_multi_command1",
+					}, {
+						Command: "add_multi_command2",
+					},
+				},
+			},
+		},
+	}
+
+	main.mergeUnorderedUnique(toMerge, catcher)
+	err := catcher.Resolve()
+	assert.NoError(t, err)
+	assert.Equal(t, len(main.Tasks), 4)
+	assert.Equal(t, len(main.TaskGroups), 2)
+	assert.Equal(t, len(main.Parameters), 2)
+	assert.Equal(t, len(main.Modules), 2)
+	assert.Equal(t, len(main.Functions), 4)
+}
+
+func TestMergeUnorderedUniqueFail(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		Tasks: []parserTask{
+			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
+		},
+		TaskGroups: []parserTaskGroup{
+			{
+				Name:  "my_tg",
+				Tasks: []string{"tg_task"},
+			},
+		},
+		Parameters: []ParameterInfo{
+			{
+				Parameter: patch.Parameter{
+					Key:   "key",
+					Value: "val",
+				},
+			},
+		},
+		Modules: []Module{
+			{
+				Name: "my_module",
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"func1": &YAMLCommandSet{
+				SingleCommand: &PluginCommandConf{
+					Command: "single_command",
+				},
+			},
+			"func2": &YAMLCommandSet{
+				MultiCommand: []PluginCommandConf{
+					{
+						Command: "multi_command1",
+					}, {
+						Command: "multi_command2",
+					},
+				},
+			},
+		},
+	}
+
+	fail := &ParserProject{
+		Tasks: []parserTask{
+			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
+		},
+		TaskGroups: []parserTaskGroup{
+			{
+				Name:  "my_tg",
+				Tasks: []string{"tg_task"},
+			},
+		},
+		Parameters: []ParameterInfo{
+			{
+				Parameter: patch.Parameter{
+					Key:   "key",
+					Value: "val",
+				},
+			},
+		},
+		Modules: []Module{
+			{
+				Name: "my_module",
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"func1": &YAMLCommandSet{
+				SingleCommand: &PluginCommandConf{
+					Command: "single_command",
+				},
+			},
+			"func2": &YAMLCommandSet{
+				MultiCommand: []PluginCommandConf{
+					{
+						Command: "multi_command1",
+					}, {
+						Command: "multi_command2",
+					},
+				},
+			},
+		},
+	}
+
+	main.mergeUnorderedUnique(fail, catcher)
+	err := catcher.Resolve()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "task 'my_task' has been declared already")
+	assert.Contains(t, err.Error(), "task group 'my_tg' has been declared already")
+	assert.Contains(t, err.Error(), "parameter key 'key' has been declared already")
+	assert.Contains(t, err.Error(), "module 'my_module' has been declared already")
+	assert.Contains(t, err.Error(), "function 'func1' has been declared already")
+	assert.Contains(t, err.Error(), "function 'func2' has been declared already")
+}
+
+func TestMergeUnordered(t *testing.T) {
+	main := &ParserProject{
+		Ignore: parserStringSlice{
+			"a",
+		},
+		Loggers: &LoggerConfig{
+			Agent:  []LogOpts{{Type: LogkeeperLogSender}},
+			System: []LogOpts{{Type: LogkeeperLogSender}},
+			Task:   []LogOpts{{Type: LogkeeperLogSender}},
+		},
+	}
+
+	add := &ParserProject{
+		Ignore: parserStringSlice{
+			"b",
+		},
+		Loggers: &LoggerConfig{
+			Agent:  []LogOpts{{LogDirectory: "a"}},
+			System: []LogOpts{{LogDirectory: "a"}},
+			Task:   []LogOpts{{LogDirectory: "a"}},
+		},
+	}
+	main.mergeUnordered(add)
+	assert.Equal(t, len(main.Ignore), 2)
+	assert.Equal(t, len(main.Loggers.Agent), 2)
+	assert.Equal(t, len(main.Loggers.System), 2)
+	assert.Equal(t, len(main.Loggers.Task), 2)
+}
+
+func TestMergeOrderedUnique(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		Pre: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "pre",
+			},
+		},
+		Post: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "post",
+			},
+		},
+	}
+
+	add := &ParserProject{
+		Timeout: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "timeout",
+			},
+		},
+		EarlyTermination: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "early termination",
+			},
+		},
+	}
+
+	main.mergeOrderedUnique(add, catcher)
+	err := catcher.Resolve()
+	assert.NoError(t, err)
+	assert.NotNil(t, main.Pre)
+	assert.NotNil(t, main.Post)
+	assert.NotNil(t, main.Timeout)
+	assert.NotNil(t, main.EarlyTermination)
+}
+
+func TestMergeOrderedUniqueFail(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		Pre: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "pre",
+			},
+		},
+		Post: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "post",
+			},
+		},
+		Timeout: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "timeout",
+			},
+		},
+		EarlyTermination: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "early termination",
+			},
+		},
+	}
+
+	add := &ParserProject{
+		Pre: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "add pre",
+			},
+		},
+		Post: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "add post",
+			},
+		},
+		Timeout: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "add timeout",
+			},
+		},
+		EarlyTermination: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command: "add early termination",
+			},
+		},
+	}
+
+	main.mergeOrderedUnique(add, catcher)
+	err := catcher.Resolve()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "pre can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "post can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "timeout can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "early termination can only be defined in one yaml")
+}
+
+func TestMergeUnique(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		Stepback:    utility.ToBoolPtr(true),
+		BatchTime:   utility.ToIntPtr(1),
+		OomTracker:  utility.ToBoolPtr(true),
+		DisplayName: utility.ToStringPtr("name"),
+	}
+
+	add := &ParserProject{
+		CommandType:     utility.ToStringPtr("type"),
+		CallbackTimeout: utility.ToIntPtr(1),
+		ExecTimeoutSecs: utility.ToIntPtr(1),
+	}
+
+	main.mergeUnique(add, catcher)
+	err := catcher.Resolve()
+	assert.NoError(t, err)
+	assert.NotNil(t, main.Stepback)
+	assert.NotNil(t, main.BatchTime)
+	assert.NotNil(t, main.OomTracker)
+	assert.NotNil(t, main.DisplayName)
+	assert.NotNil(t, main.CommandType)
+	assert.NotNil(t, main.CallbackTimeout)
+	assert.NotNil(t, main.ExecTimeoutSecs)
+}
+
+func TestMergeUniqueFail(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		Stepback:        utility.ToBoolPtr(true),
+		BatchTime:       utility.ToIntPtr(1),
+		OomTracker:      utility.ToBoolPtr(true),
+		DisplayName:     utility.ToStringPtr("name"),
+		CommandType:     utility.ToStringPtr("type"),
+		CallbackTimeout: utility.ToIntPtr(1),
+		ExecTimeoutSecs: utility.ToIntPtr(1),
+	}
+
+	add := &ParserProject{
+		Stepback:        utility.ToBoolPtr(true),
+		BatchTime:       utility.ToIntPtr(1),
+		OomTracker:      utility.ToBoolPtr(true),
+		DisplayName:     utility.ToStringPtr("name"),
+		CommandType:     utility.ToStringPtr("type"),
+		CallbackTimeout: utility.ToIntPtr(1),
+		ExecTimeoutSecs: utility.ToIntPtr(1),
+	}
+
+	main.mergeUnique(add, catcher)
+	err := catcher.Resolve()
+	assert.Contains(t, err.Error(), "stepback can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "batch time can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "oom tracker can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "display name can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "command type can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "callback timeout can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "exec timeout secs can only be defined in one yaml")
+}
+
+func TestMergeBuildVariant(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name: "a_variant",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name:      "say-bye",
+						BatchTime: &taskBatchTime,
+					},
+				},
+				DisplayTasks: []displayTask{
+					displayTask{
+						Name:           "my_display_task_old_variant",
+						ExecutionTasks: []string{"say-bye"},
+					},
+				},
+			},
+		},
+	}
+
+	add := &ParserProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name: "a_variant",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "add this task",
+					},
+				},
+			},
+			parserBV{
+				Name:      "another_variant",
+				BatchTime: &bvBatchTime,
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "example_task_group",
+					},
+					parserBVTaskUnit{
+						Name:      "say-bye",
+						BatchTime: &taskBatchTime,
+					},
+				},
+				DisplayTasks: []displayTask{
+					displayTask{
+						Name:           "my_display_task_new_variant",
+						ExecutionTasks: []string{"another_task"},
+					},
+				},
+			},
+		},
+	}
+
+	main.mergeBuildVariant(add, catcher)
+	err := catcher.Resolve()
+	assert.NoError(t, err)
+	assert.Equal(t, len(main.BuildVariants), 2)
+	assert.Equal(t, len(main.BuildVariants[0].Tasks), 2)
+}
+
+func TestMergeBuildVariantFail(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name: "a_variant",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name:      "say-bye",
+						BatchTime: &taskBatchTime,
+					},
+				},
+				DisplayTasks: []displayTask{
+					displayTask{
+						Name:           "my_display_task_old_variant",
+						ExecutionTasks: []string{"say-bye"},
+					},
+				},
+			},
+		},
+	}
+
+	add := &ParserProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name:        "a_variant",
+				DisplayName: "break test",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "add this task",
+					},
+				},
+			},
+		},
+	}
+
+	main.mergeBuildVariant(add, catcher)
+	err := catcher.Resolve()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "build variant 'a_variant' has been declared already")
+}
+
+func TestMergeMatrix(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		Axes: []matrixAxis{
+			{
+				Id: "a",
+				Values: []axisValue{
+					{Id: "0", Tags: []string{"zero"}},
+					{Id: "1", Tags: []string{"odd"}},
+					{Id: "2", Tags: []string{"even", "prime"}},
+					{Id: "3", Tags: []string{"odd", "prime"}},
+				},
+			},
+		},
+	}
+
+	add := &ParserProject{}
+
+	main.mergeMatrix(add, catcher)
+	err := catcher.Resolve()
+	assert.NoError(t, err)
+	assert.Equal(t, len(main.Axes), 1)
+}
+
+func TestMergeMatrixFail(t *testing.T) {
+	catcher := grip.NewBasicCatcher()
+
+	main := &ParserProject{
+		Axes: []matrixAxis{
+			{
+				Id: "a",
+				Values: []axisValue{
+					{Id: "0", Tags: []string{"zero"}},
+					{Id: "1", Tags: []string{"odd"}},
+					{Id: "2", Tags: []string{"even", "prime"}},
+					{Id: "3", Tags: []string{"odd", "prime"}},
+				},
+			},
+		},
+	}
+
+	add := &ParserProject{
+		Axes: []matrixAxis{
+			{
+				Id: "b",
+				Values: []axisValue{
+					{Id: "0", Tags: []string{"zero"}},
+					{Id: "1", Tags: []string{"odd"}},
+					{Id: "2", Tags: []string{"even", "prime"}},
+					{Id: "3", Tags: []string{"odd", "prime"}},
+				},
+			},
+		},
+	}
+
+	main.mergeMatrix(add, catcher)
+	err := catcher.Resolve()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "matrixes can only be defined in one yaml")
+}
+
 func TestMergeMultipleProjectConfigs(t *testing.T) {
 	mainYaml := `
 include: 
@@ -1613,14 +2161,14 @@ ignore:
 	p2, err := createIntermediateProject([]byte(smallYaml))
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	mergedProject, err := mergeMultipleProjectConfigs(p1, p2)
+	err = p1.mergeMultipleProjectConfigs(p2)
 	assert.NoError(t, err)
-	assert.NotNil(t, mergedProject)
-	assert.Equal(t, len(mergedProject.Functions), 2)
-	assert.Equal(t, len(mergedProject.Tasks), 2)
-	assert.Equal(t, len(mergedProject.Ignore), 3)
-	assert.Equal(t, mergedProject.Stepback, boolPtr(true))
-	assert.NotEqual(t, mergedProject.Post, nil)
+	assert.NotNil(t, p1)
+	assert.Equal(t, len(p1.Functions), 2)
+	assert.Equal(t, len(p1.Tasks), 2)
+	assert.Equal(t, len(p1.Ignore), 3)
+	assert.Equal(t, p1.Stepback, boolPtr(true))
+	assert.NotEqual(t, p1.Post, nil)
 }
 
 func TestMergeMultipleProjectConfigsBuildVariant(t *testing.T) {
@@ -1665,11 +2213,11 @@ buildvariants:
 	p3, err := createIntermediateProject([]byte(fail))
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
-	mergedProject, err := mergeMultipleProjectConfigs(p1, p2)
+	err = p1.mergeMultipleProjectConfigs(p2)
 	assert.NoError(t, err)
-	assert.NotNil(t, mergedProject)
-	assert.Equal(t, len(mergedProject.BuildVariants), 2)
-	assert.Equal(t, len(mergedProject.BuildVariants[0].Tasks), 2)
-	_, err = mergeMultipleProjectConfigs(p1, p3)
+	assert.NotNil(t, p1)
+	assert.Equal(t, len(p1.BuildVariants), 2)
+	assert.Equal(t, len(p1.BuildVariants[0].Tasks), 2)
+	err = p1.mergeMultipleProjectConfigs(p3)
 	assert.Error(t, err)
 }
