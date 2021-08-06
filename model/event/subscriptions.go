@@ -66,6 +66,7 @@ const (
 	TriggerGithubCheckOutcome        = "github-check-outcome"
 	TriggerFailure                   = "failure"
 	TriggerSuccess                   = "success"
+	TriggerBlocked                   = "blocked"
 	TriggerRegression                = "regression"
 	TriggerExceedsDuration           = "exceeds-duration"
 	TriggerRuntimeChangeByPercent    = "runtime-change"
@@ -298,7 +299,7 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 	return true, ""
 }
 
-func ValidateSelectors(subscriber Subscriber, selectors []Selector) (bool, string) {
+func ValidateSelectors(selectors []Selector) (bool, string) {
 	for i := range selectors {
 		if len(selectors[i].Type) == 0 || len(selectors[i].Data) == 0 {
 			return false, "Selector had empty type or data"

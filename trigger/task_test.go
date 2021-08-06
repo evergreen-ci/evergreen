@@ -278,6 +278,7 @@ func (s *taskSuite) SetupTest() {
 			Type:   event.JIRACommentSubscriberType,
 			Target: "A-3",
 		}),
+		event.NewSubscriptionByID(event.ResourceTypeTask, event.TriggerBlocked, s.event.ResourceId, apiSub),
 	}
 
 	for i := range s.subs {
@@ -289,7 +290,7 @@ func (s *taskSuite) SetupTest() {
 	}
 	s.NoError(ui.Set())
 
-	s.t = makeTaskTriggers().(*taskTriggers)
+	s.t = makeTaskFinishedTriggers().(*taskTriggers)
 	s.t.event = &s.event
 	s.t.data = s.data
 	s.t.task = &s.task
@@ -467,6 +468,27 @@ func (s *taskSuite) TestOutcome() {
 
 	s.data.Status = evergreen.TaskFailed
 	n, err = s.t.taskOutcome(&s.subs[0])
+	s.NoError(err)
+	s.NotNil(n)
+}
+
+func (s *taskSuite) TestBlocked() {
+	s.data.Status = evergreen.TaskUndispatched
+	s.t.task.DependsOn = []task.Dependency{
+		{
+			TaskId:       "blocking",
+			Unattainable: false,
+		},
+		{TaskId: "not blocking",
+			Unattainable: false,
+		},
+	}
+	n, err := s.t.taskBlocked(&s.subs[7])
+	s.NoError(err)
+	s.Nil(n)
+
+	s.t.task.DependsOn[0].Unattainable = true
+	n, err = s.t.taskBlocked(&s.subs[7])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -1047,7 +1069,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 }
 
 func (s *taskSuite) makeTaskTriggers(id string, execution int) *taskTriggers {
-	t := makeTaskTriggers()
+	t := makeTaskFinishedTriggers()
 	e := event.EventLogEntry{
 		ResourceId: id,
 		Data: &event.TaskEventData{

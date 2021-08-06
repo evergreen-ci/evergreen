@@ -278,6 +278,11 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
       label: "this task succeeds",
     },
     {
+      trigger: "blocked",
+      resource_type: "TASK",
+      label: "this task is blocked",
+    },
+    {
       trigger: "exceeds-duration",
       resource_type: "TASK",
       label: "the runtime for this task exceeds some duration",

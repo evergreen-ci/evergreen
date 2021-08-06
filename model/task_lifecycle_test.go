@@ -3616,7 +3616,7 @@ tasks:
 
 func TestUpdateBlockedDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection))
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, event.AllLogCollection))
 
 	b := build.Build{Id: "build0"}
 	tasks := []task.Task{
@@ -3732,6 +3732,11 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	dbExecTask, err := task.FindOneId(execTask.Id)
 	assert.NoError(err)
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
+
+	events, err := event.Find(event.AllLogCollection, db.Q{})
+	assert.NoError(err)
+	assert.Len(events, 4)
+
 }
 
 func TestUpdateUnblockedDependencies(t *testing.T) {

@@ -436,7 +436,7 @@ func (t *Task) AddDependency(d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return errors.Wrapf(UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable),
+			return errors.Wrapf(t.MarkUnattainableDependency(existingDependency.TaskId, d.Unattainable),
 				"error updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
 		}
 	}
@@ -1767,15 +1767,26 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
+// MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
+// and logs if the task is newly blocked.
+func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
+	wasBlocked := t.Blocked()
 	// check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
-		if t.DependsOn[i].TaskId == dependency.Id {
+		if t.DependsOn[i].TaskId == dependencyId {
 			t.DependsOn[i].Unattainable = unattainable
 		}
 	}
 
-	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
+	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
+		return err
+	}
+
+	// only want to log the task as blocked if it wasn't already blocked
+	if !wasBlocked && unattainable {
+		event.LogTaskBlocked(t.Id, t.Execution)
+	}
+	return nil
 }
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
