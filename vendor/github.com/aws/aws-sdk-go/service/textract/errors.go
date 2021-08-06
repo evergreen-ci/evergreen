@@ -11,20 +11,22 @@ const (
 	// ErrCodeAccessDeniedException for service response error code
 	// "AccessDeniedException".
 	//
-	// You aren't authorized to perform the action.
+	// You aren't authorized to perform the action. Use the Amazon Resource Name
+	// (ARN) of an authorized user or IAM role to perform the operation.
 	ErrCodeAccessDeniedException = "AccessDeniedException"
 
 	// ErrCodeBadDocumentException for service response error code
 	// "BadDocumentException".
 	//
-	// Amazon Textract isn't able to read the document.
+	// Amazon Textract isn't able to read the document. For more information on
+	// the document limits in Amazon Textract, see limits.
 	ErrCodeBadDocumentException = "BadDocumentException"
 
 	// ErrCodeDocumentTooLargeException for service response error code
 	// "DocumentTooLargeException".
 	//
 	// The document can't be processed because it's too large. The maximum document
-	// size for synchronous operations 5 MB. The maximum document size for asynchronous
+	// size for synchronous operations 10 MB. The maximum document size for asynchronous
 	// operations is 500 MB for PDF files.
 	ErrCodeDocumentTooLargeException = "DocumentTooLargeException"
 
@@ -55,6 +57,13 @@ const (
 	// An invalid job identifier was passed to GetDocumentAnalysis or to GetDocumentAnalysis.
 	ErrCodeInvalidJobIdException = "InvalidJobIdException"
 
+	// ErrCodeInvalidKMSKeyException for service response error code
+	// "InvalidKMSKeyException".
+	//
+	// Indicates you do not have decrypt permissions with the KMS key entered, or
+	// the KMS key was entered incorrectly.
+	ErrCodeInvalidKMSKeyException = "InvalidKMSKeyException"
+
 	// ErrCodeInvalidParameterException for service response error code
 	// "InvalidParameterException".
 	//
@@ -68,7 +77,8 @@ const (
 	// "InvalidS3ObjectException".
 	//
 	// Amazon Textract is unable to access the S3 object that's specified in the
-	// request.
+	// request. for more information, Configure Access to Amazon S3 (https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-access-control.html)
+	// For troubleshooting information, see Troubleshooting Amazon S3 (https://docs.aws.amazon.com/AmazonS3/latest/dev/troubleshooting.html)
 	ErrCodeInvalidS3ObjectException = "InvalidS3ObjectException"
 
 	// ErrCodeLimitExceededException for service response error code
@@ -112,6 +122,7 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"IdempotentParameterMismatchException":   newErrorIdempotentParameterMismatchException,
 	"InternalServerError":                    newErrorInternalServerError,
 	"InvalidJobIdException":                  newErrorInvalidJobIdException,
+	"InvalidKMSKeyException":                 newErrorInvalidKMSKeyException,
 	"InvalidParameterException":              newErrorInvalidParameterException,
 	"InvalidS3ObjectException":               newErrorInvalidS3ObjectException,
 	"LimitExceededException":                 newErrorLimitExceededException,

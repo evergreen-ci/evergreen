@@ -57,6 +57,21 @@ func (c *QLDBSession) SendCommandRequest(input *SendCommandInput) (req *request.
 //
 // Sends a command to an Amazon QLDB ledger.
 //
+// Instead of interacting directly with this API, we recommend using the QLDB
+// driver or the QLDB shell to execute data transactions on a ledger.
+//
+//    * If you are working with an AWS SDK, use the QLDB driver. The driver
+//    provides a high-level abstraction layer above this QLDB Session data plane
+//    and manages SendCommand API calls for you. For information and a list
+//    of supported programming languages, see Getting started with the driver
+//    (https://docs.aws.amazon.com/qldb/latest/developerguide/getting-started-driver.html)
+//    in the Amazon QLDB Developer Guide.
+//
+//    * If you are working with the AWS Command Line Interface (AWS CLI), use
+//    the QLDB shell. The shell is a command line interface that uses the QLDB
+//    driver to interact with a ledger. For information, see Accessing Amazon
+//    QLDB using the QLDB shell (https://docs.aws.amazon.com/qldb/latest/developerguide/data-shell.html).
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -70,17 +85,20 @@ func (c *QLDBSession) SendCommandRequest(input *SendCommandInput) (req *request.
 //   parameter value or a missing required parameter.
 //
 //   * InvalidSessionException
-//   Returned if the session doesn't exist anymore because it timed-out or expired.
+//   Returned if the session doesn't exist anymore because it timed out or expired.
 //
 //   * OccConflictException
 //   Returned when a transaction cannot be written to the journal due to a failure
-//   in the verification phase of Optimistic Concurrency Control.
+//   in the verification phase of optimistic concurrency control (OCC).
 //
 //   * RateExceededException
 //   Returned when the rate of requests exceeds the allowed throughput.
 //
 //   * LimitExceededException
 //   Returned if a resource limit such as number of active sessions is exceeded.
+//
+//   * CapacityExceededException
+//   Returned when the request exceeds the processing capacity of the ledger.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/qldb-session-2019-07-11/SendCommand
 func (c *QLDBSession) SendCommand(input *SendCommandInput) (*SendCommandOutput, error) {
@@ -122,6 +140,9 @@ func (s AbortTransactionRequest) GoString() string {
 // Contains the details of the aborted transaction.
 type AbortTransactionResult struct {
 	_ struct{} `type:"structure"`
+
+	// Contains server-side performance information for the command.
+	TimingInformation *TimingInformation `type:"structure"`
 }
 
 // String returns the string representation
@@ -134,11 +155,17 @@ func (s AbortTransactionResult) GoString() string {
 	return s.String()
 }
 
+// SetTimingInformation sets the TimingInformation field's value.
+func (s *AbortTransactionResult) SetTimingInformation(v *TimingInformation) *AbortTransactionResult {
+	s.TimingInformation = v
+	return s
+}
+
 // Returned if the request is malformed or contains an error such as an invalid
 // parameter value or a missing required parameter.
 type BadRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -157,17 +184,17 @@ func (s BadRequestException) GoString() string {
 
 func newErrorBadRequestException(v protocol.ResponseMetadata) error {
 	return &BadRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BadRequestException) Code() string {
+func (s *BadRequestException) Code() string {
 	return "BadRequestException"
 }
 
 // Message returns the exception's message.
-func (s BadRequestException) Message() string {
+func (s *BadRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -175,22 +202,78 @@ func (s BadRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BadRequestException) OrigErr() error {
+func (s *BadRequestException) OrigErr() error {
 	return nil
 }
 
-func (s BadRequestException) Error() string {
+func (s *BadRequestException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BadRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BadRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BadRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BadRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// Returned when the request exceeds the processing capacity of the ledger.
+type CapacityExceededException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"Message" type:"string"`
+}
+
+// String returns the string representation
+func (s CapacityExceededException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CapacityExceededException) GoString() string {
+	return s.String()
+}
+
+func newErrorCapacityExceededException(v protocol.ResponseMetadata) error {
+	return &CapacityExceededException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *CapacityExceededException) Code() string {
+	return "CapacityExceededException"
+}
+
+// Message returns the exception's message.
+func (s *CapacityExceededException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *CapacityExceededException) OrigErr() error {
+	return nil
+}
+
+func (s *CapacityExceededException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *CapacityExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *CapacityExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains the details of the transaction to commit.
@@ -202,12 +285,17 @@ type CommitTransactionRequest struct {
 	// and rejects the commit with an error if the digest computed on the client
 	// does not match the digest computed by QLDB.
 	//
+	// The purpose of the CommitDigest parameter is to ensure that QLDB commits
+	// a transaction if and only if the server has processed the exact set of statements
+	// sent by the client, in the same order that client sent them, and with no
+	// duplicates.
+	//
 	// CommitDigest is automatically base64 encoded/decoded by the SDK.
 	//
 	// CommitDigest is a required field
 	CommitDigest []byte `type:"blob" required:"true"`
 
-	// Specifies the transaction id of the transaction to commit.
+	// Specifies the transaction ID of the transaction to commit.
 	//
 	// TransactionId is a required field
 	TransactionId *string `min:"22" type:"string" required:"true"`
@@ -263,7 +351,13 @@ type CommitTransactionResult struct {
 	// CommitDigest is automatically base64 encoded/decoded by the SDK.
 	CommitDigest []byte `type:"blob"`
 
-	// The transaction id of the committed transaction.
+	// Contains metrics about the number of I/O requests that were consumed.
+	ConsumedIOs *IOUsage `type:"structure"`
+
+	// Contains server-side performance information for the command.
+	TimingInformation *TimingInformation `type:"structure"`
+
+	// The transaction ID of the committed transaction.
 	TransactionId *string `min:"22" type:"string"`
 }
 
@@ -280,6 +374,18 @@ func (s CommitTransactionResult) GoString() string {
 // SetCommitDigest sets the CommitDigest field's value.
 func (s *CommitTransactionResult) SetCommitDigest(v []byte) *CommitTransactionResult {
 	s.CommitDigest = v
+	return s
+}
+
+// SetConsumedIOs sets the ConsumedIOs field's value.
+func (s *CommitTransactionResult) SetConsumedIOs(v *IOUsage) *CommitTransactionResult {
+	s.ConsumedIOs = v
+	return s
+}
+
+// SetTimingInformation sets the TimingInformation field's value.
+func (s *CommitTransactionResult) SetTimingInformation(v *TimingInformation) *CommitTransactionResult {
+	s.TimingInformation = v
 	return s
 }
 
@@ -307,6 +413,9 @@ func (s EndSessionRequest) GoString() string {
 // Contains the details of the ended session.
 type EndSessionResult struct {
 	_ struct{} `type:"structure"`
+
+	// Contains server-side performance information for the command.
+	TimingInformation *TimingInformation `type:"structure"`
 }
 
 // String returns the string representation
@@ -317,6 +426,12 @@ func (s EndSessionResult) String() string {
 // GoString returns the string representation
 func (s EndSessionResult) GoString() string {
 	return s.String()
+}
+
+// SetTimingInformation sets the TimingInformation field's value.
+func (s *EndSessionResult) SetTimingInformation(v *TimingInformation) *EndSessionResult {
+	s.TimingInformation = v
+	return s
 }
 
 // Specifies a request to execute a statement.
@@ -331,7 +446,7 @@ type ExecuteStatementRequest struct {
 	// Statement is a required field
 	Statement *string `min:"1" type:"string" required:"true"`
 
-	// Specifies the transaction id of the request.
+	// Specifies the transaction ID of the request.
 	//
 	// TransactionId is a required field
 	TransactionId *string `min:"22" type:"string" required:"true"`
@@ -401,8 +516,14 @@ func (s *ExecuteStatementRequest) SetTransactionId(v string) *ExecuteStatementRe
 type ExecuteStatementResult struct {
 	_ struct{} `type:"structure"`
 
+	// Contains metrics about the number of I/O requests that were consumed.
+	ConsumedIOs *IOUsage `type:"structure"`
+
 	// Contains the details of the first fetched page.
 	FirstPage *Page `type:"structure"`
+
+	// Contains server-side performance information for the command.
+	TimingInformation *TimingInformation `type:"structure"`
 }
 
 // String returns the string representation
@@ -415,9 +536,21 @@ func (s ExecuteStatementResult) GoString() string {
 	return s.String()
 }
 
+// SetConsumedIOs sets the ConsumedIOs field's value.
+func (s *ExecuteStatementResult) SetConsumedIOs(v *IOUsage) *ExecuteStatementResult {
+	s.ConsumedIOs = v
+	return s
+}
+
 // SetFirstPage sets the FirstPage field's value.
 func (s *ExecuteStatementResult) SetFirstPage(v *Page) *ExecuteStatementResult {
 	s.FirstPage = v
+	return s
+}
+
+// SetTimingInformation sets the TimingInformation field's value.
+func (s *ExecuteStatementResult) SetTimingInformation(v *TimingInformation) *ExecuteStatementResult {
+	s.TimingInformation = v
 	return s
 }
 
@@ -430,7 +563,7 @@ type FetchPageRequest struct {
 	// NextPageToken is a required field
 	NextPageToken *string `min:"4" type:"string" required:"true"`
 
-	// Specifies the transaction id of the page to be fetched.
+	// Specifies the transaction ID of the page to be fetched.
 	//
 	// TransactionId is a required field
 	TransactionId *string `min:"22" type:"string" required:"true"`
@@ -484,8 +617,14 @@ func (s *FetchPageRequest) SetTransactionId(v string) *FetchPageRequest {
 type FetchPageResult struct {
 	_ struct{} `type:"structure"`
 
+	// Contains metrics about the number of I/O requests that were consumed.
+	ConsumedIOs *IOUsage `type:"structure"`
+
 	// Contains details of the fetched page.
 	Page *Page `type:"structure"`
+
+	// Contains server-side performance information for the command.
+	TimingInformation *TimingInformation `type:"structure"`
 }
 
 // String returns the string representation
@@ -498,16 +637,61 @@ func (s FetchPageResult) GoString() string {
 	return s.String()
 }
 
+// SetConsumedIOs sets the ConsumedIOs field's value.
+func (s *FetchPageResult) SetConsumedIOs(v *IOUsage) *FetchPageResult {
+	s.ConsumedIOs = v
+	return s
+}
+
 // SetPage sets the Page field's value.
 func (s *FetchPageResult) SetPage(v *Page) *FetchPageResult {
 	s.Page = v
 	return s
 }
 
-// Returned if the session doesn't exist anymore because it timed-out or expired.
+// SetTimingInformation sets the TimingInformation field's value.
+func (s *FetchPageResult) SetTimingInformation(v *TimingInformation) *FetchPageResult {
+	s.TimingInformation = v
+	return s
+}
+
+// Contains I/O usage metrics for a command that was invoked.
+type IOUsage struct {
+	_ struct{} `type:"structure"`
+
+	// The number of read I/O requests that the command made.
+	ReadIOs *int64 `type:"long"`
+
+	// The number of write I/O requests that the command made.
+	WriteIOs *int64 `type:"long"`
+}
+
+// String returns the string representation
+func (s IOUsage) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s IOUsage) GoString() string {
+	return s.String()
+}
+
+// SetReadIOs sets the ReadIOs field's value.
+func (s *IOUsage) SetReadIOs(v int64) *IOUsage {
+	s.ReadIOs = &v
+	return s
+}
+
+// SetWriteIOs sets the WriteIOs field's value.
+func (s *IOUsage) SetWriteIOs(v int64) *IOUsage {
+	s.WriteIOs = &v
+	return s
+}
+
+// Returned if the session doesn't exist anymore because it timed out or expired.
 type InvalidSessionException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Code_ *string `locationName:"Code" type:"string"`
 
@@ -526,17 +710,17 @@ func (s InvalidSessionException) GoString() string {
 
 func newErrorInvalidSessionException(v protocol.ResponseMetadata) error {
 	return &InvalidSessionException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidSessionException) Code() string {
+func (s *InvalidSessionException) Code() string {
 	return "InvalidSessionException"
 }
 
 // Message returns the exception's message.
-func (s InvalidSessionException) Message() string {
+func (s *InvalidSessionException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -544,28 +728,28 @@ func (s InvalidSessionException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidSessionException) OrigErr() error {
+func (s *InvalidSessionException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidSessionException) Error() string {
+func (s *InvalidSessionException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidSessionException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidSessionException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidSessionException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidSessionException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Returned if a resource limit such as number of active sessions is exceeded.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -582,17 +766,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -600,29 +784,29 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Returned when a transaction cannot be written to the journal due to a failure
-// in the verification phase of Optimistic Concurrency Control.
+// in the verification phase of optimistic concurrency control (OCC).
 type OccConflictException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -639,17 +823,17 @@ func (s OccConflictException) GoString() string {
 
 func newErrorOccConflictException(v protocol.ResponseMetadata) error {
 	return &OccConflictException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s OccConflictException) Code() string {
+func (s *OccConflictException) Code() string {
 	return "OccConflictException"
 }
 
 // Message returns the exception's message.
-func (s OccConflictException) Message() string {
+func (s *OccConflictException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -657,22 +841,22 @@ func (s OccConflictException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s OccConflictException) OrigErr() error {
+func (s *OccConflictException) OrigErr() error {
 	return nil
 }
 
-func (s OccConflictException) Error() string {
+func (s *OccConflictException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s OccConflictException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *OccConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s OccConflictException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *OccConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details of the fetched page.
@@ -710,8 +894,8 @@ func (s *Page) SetValues(v []*ValueHolder) *Page {
 
 // Returned when the rate of requests exceeds the allowed throughput.
 type RateExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -728,17 +912,17 @@ func (s RateExceededException) GoString() string {
 
 func newErrorRateExceededException(v protocol.ResponseMetadata) error {
 	return &RateExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s RateExceededException) Code() string {
+func (s *RateExceededException) Code() string {
 	return "RateExceededException"
 }
 
 // Message returns the exception's message.
-func (s RateExceededException) Message() string {
+func (s *RateExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -746,22 +930,22 @@ func (s RateExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s RateExceededException) OrigErr() error {
+func (s *RateExceededException) OrigErr() error {
 	return nil
 }
 
-func (s RateExceededException) Error() string {
+func (s *RateExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s RateExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *RateExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s RateExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *RateExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type SendCommandInput struct {
@@ -968,7 +1152,7 @@ func (s *SendCommandOutput) SetStartTransaction(v *StartTransactionResult) *Send
 	return s
 }
 
-// Specifies a request to start a a new session.
+// Specifies a request to start a new session.
 type StartSessionRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -1017,6 +1201,9 @@ type StartSessionResult struct {
 	// Session token of the started session. This SessionToken is required for every
 	// subsequent command that is issued during the current session.
 	SessionToken *string `min:"4" type:"string"`
+
+	// Contains server-side performance information for the command.
+	TimingInformation *TimingInformation `type:"structure"`
 }
 
 // String returns the string representation
@@ -1032,6 +1219,12 @@ func (s StartSessionResult) GoString() string {
 // SetSessionToken sets the SessionToken field's value.
 func (s *StartSessionResult) SetSessionToken(v string) *StartSessionResult {
 	s.SessionToken = &v
+	return s
+}
+
+// SetTimingInformation sets the TimingInformation field's value.
+func (s *StartSessionResult) SetTimingInformation(v *TimingInformation) *StartSessionResult {
+	s.TimingInformation = v
 	return s
 }
 
@@ -1054,7 +1247,10 @@ func (s StartTransactionRequest) GoString() string {
 type StartTransactionResult struct {
 	_ struct{} `type:"structure"`
 
-	// The transaction id of the started transaction.
+	// Contains server-side performance information for the command.
+	TimingInformation *TimingInformation `type:"structure"`
+
+	// The transaction ID of the started transaction.
 	TransactionId *string `min:"22" type:"string"`
 }
 
@@ -1068,13 +1264,46 @@ func (s StartTransactionResult) GoString() string {
 	return s.String()
 }
 
+// SetTimingInformation sets the TimingInformation field's value.
+func (s *StartTransactionResult) SetTimingInformation(v *TimingInformation) *StartTransactionResult {
+	s.TimingInformation = v
+	return s
+}
+
 // SetTransactionId sets the TransactionId field's value.
 func (s *StartTransactionResult) SetTransactionId(v string) *StartTransactionResult {
 	s.TransactionId = &v
 	return s
 }
 
-// A structure that can contains values in multiple encoding formats.
+// Contains server-side performance information for a command. Amazon QLDB captures
+// timing information between the times when it receives the request and when
+// it sends the corresponding response.
+type TimingInformation struct {
+	_ struct{} `type:"structure"`
+
+	// The amount of time that QLDB spent on processing the command, measured in
+	// milliseconds.
+	ProcessingTimeMilliseconds *int64 `type:"long"`
+}
+
+// String returns the string representation
+func (s TimingInformation) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TimingInformation) GoString() string {
+	return s.String()
+}
+
+// SetProcessingTimeMilliseconds sets the ProcessingTimeMilliseconds field's value.
+func (s *TimingInformation) SetProcessingTimeMilliseconds(v int64) *TimingInformation {
+	s.ProcessingTimeMilliseconds = &v
+	return s
+}
+
+// A structure that can contain a value in multiple encoding formats.
 type ValueHolder struct {
 	_ struct{} `type:"structure"`
 

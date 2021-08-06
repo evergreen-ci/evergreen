@@ -2177,39 +2177,39 @@ func TestSetHasLegacyResults(t *testing.T) {
 	assert.True(t, utility.FromBoolPtr(taskFromDb.HasLegacyResults))
 }
 
-func TestSetGeneratedTasksToStepback(t *testing.T) {
+func TestSetGeneratedTasksToActivate(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 
 	// add stepback task to variant
-	assert.NoError(t, task.SetGeneratedTasksToStepback("bv2", "t2"))
+	assert.NoError(t, task.SetGeneratedTasksToActivate("bv2", "t2"))
 	taskFromDb, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv2"], []string{"t2"})
+	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2"})
 
 	// add different stepback task to variant
-	assert.NoError(t, task.SetGeneratedTasksToStepback("bv2", "t2.0"))
+	assert.NoError(t, task.SetGeneratedTasksToActivate("bv2", "t2.0"))
 	taskFromDb, err = FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv2"], []string{"t2", "t2.0"})
+	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2", "t2.0"})
 
 	// verify duplicate doesn't overwrite
-	assert.NoError(t, task.SetGeneratedTasksToStepback("bv2", "t2.0"))
+	assert.NoError(t, task.SetGeneratedTasksToActivate("bv2", "t2.0"))
 	taskFromDb, err = FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv2"], []string{"t2", "t2.0"})
+	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2", "t2.0"})
 
 	// adding second variant doesn't affect previous
-	assert.NoError(t, task.SetGeneratedTasksToStepback("bv3", "t3"))
+	assert.NoError(t, task.SetGeneratedTasksToActivate("bv3", "t3"))
 	taskFromDb, err = FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv2"], []string{"t2", "t2.0"})
-	assert.Equal(t, taskFromDb.GeneratedTasksToStepback["bv3"], []string{"t3"})
+	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2", "t2.0"})
+	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv3"], []string{"t3"})
 }
 
 func TestDisplayStatus(t *testing.T) {
@@ -2438,12 +2438,13 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	dt1 := Task{
 		Id:             "dt1",
 		DisplayOnly:    true,
+		Activated:      false,
 		ExecutionTasks: []string{"et1", "et2"},
 	}
 	assert.NoError(t, dt1.Insert())
 
 	// no tasks to add
-	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{}))
+	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{}, false))
 	dtFromDB, err := FindOneId(dt1.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dtFromDB)
@@ -2452,7 +2453,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et2")
 
 	// new and existing tasks to add (existing tasks not duplicated)
-	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{"et2", "et3", "et4"}))
+	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{"et2", "et3", "et4"}, true))
 	dtFromDB, err = FindOneId(dt1.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dtFromDB)
@@ -2461,4 +2462,6 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et2")
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et3")
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et4")
+	assert.True(t, dtFromDB.Activated)
+	assert.False(t, utility.IsZeroTime(dtFromDB.ActivatedTime))
 }

@@ -190,9 +190,9 @@ type Task struct {
 	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
 	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
-	// GeneratedTasksToStepback is only populated if we want to override activation for these generated tasks, because of stepback.
+	// GeneratedTasksToActivate is only populated if we want to override activation for these generated tasks, because of stepback.
 	// Maps the build variant to a list of task names.
-	GeneratedTasksToStepback map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
+	GeneratedTasksToActivate map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -873,15 +873,15 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 	)
 }
 
-// SetGeneratedTasksToStepback adds a task to stepback after activation
-func (t *Task) SetGeneratedTasksToStepback(buildVariantName, taskName string) error {
+// SetGeneratedTasksToActivate adds a task to stepback after activation
+func (t *Task) SetGeneratedTasksToActivate(buildVariantName, taskName string) error {
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$addToSet": bson.M{
-				bsonutil.GetDottedKeyName(GeneratedTasksToStepbackKey, buildVariantName): taskName,
+				bsonutil.GetDottedKeyName(GeneratedTasksToActivateKey, buildVariantName): taskName,
 			},
 		},
 	)
@@ -1020,9 +1020,8 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 
 // SetHasCedarResults sets the HasCedarResults field of the task to
 // hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
-// true. If the task is part of a display task, the display tasks's fields are
-// also set. An error is returned if hasCedarResults is false and failedResults
-// is true as this is an invalid state. Note that if failedResults is false,
+// true. An error is returned if hasCedarResults is false and failedResults is
+// true as this is an invalid state. Note that if failedResults is false,
 // CedarResultsFailed is not set. This is because in cases where separate calls
 // to attach test results are made, only one call needs to have a test failure
 // for the CedarResultsFailed to be set to true.
@@ -1040,22 +1039,14 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 		set[CedarResultsFailedKey] = true
 	}
 
-	if err := UpdateOne(
+	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": set,
 		},
-	); err != nil {
-		return err
-	}
-
-	if !t.DisplayOnly && t.IsPartOfDisplay() {
-		return t.DisplayTask.SetHasCedarResults(hasCedarResults, failedResults)
-	}
-
-	return nil
+	)
 }
 
 func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
@@ -1920,7 +1911,7 @@ func (t *Task) Archive() error {
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
-			"$unset": bson.M{AbortedKey: "", AbortInfoKey: ""},
+			"$unset": bson.M{AbortedKey: "", AbortInfoKey: "", OverrideDependenciesKey: ""},
 			"$inc":   inc,
 		})
 	if err != nil {
@@ -2043,9 +2034,9 @@ func (t *Task) makeArchivedTask() *Task {
 
 // Aggregation
 
-// MergeNewTestResults returns the task with both old (embedded in the tasks
-// collection) and new (from the testresults collection) test results merged in
-// the Task's LocalTestResults field.
+// MergeNewTestResults returns the task with both old (embedded in
+// the tasks collection) and new (from the testresults collection) test results
+// merged in the Task's LocalTestResults field.
 func (t *Task) MergeNewTestResults() error {
 	id := t.Id
 	if t.Archived {
@@ -2082,41 +2073,17 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
-// MergeTestResults returns the task with both old (embedded in the tasks
-// collection) and new (from the testresults collection) OR Cedar test results
-// merged in the Task's LocalTestResults field.
-func (t *Task) MergeTestResults() error {
-	if !t.hasCedarResults() {
-		return t.MergeNewTestResults()
-	}
-
-	results, err := t.GetCedarTestResults()
-	if err != nil {
-		return errors.Wrap(err, "getting test results from cedar")
-	}
-	t.LocalTestResults = append(t.LocalTestResults, results...)
-
-	return nil
-}
-
-// GetTestResultsForDisplayTask returns the test results for the execution
-// tasks for a display task.
+// GetTestResultsForDisplayTask returns the test results for the execution tasks
+// for a display task.
 func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	if !t.DisplayOnly {
 		return nil, errors.Errorf("%s is not a display task", t.Id)
 	}
-
-	if !t.hasCedarResults() {
-		tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
-		return tasks[0].LocalTestResults, errors.Wrap(err, "error merging test results for display task")
+	tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error merging test results for display task")
 	}
-
-	var err error
-	if len(t.LocalTestResults) == 0 {
-		t.LocalTestResults, err = t.GetCedarTestResults()
-	}
-
-	return t.LocalTestResults, err
+	return tasks[0].LocalTestResults, nil
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group
@@ -2790,14 +2757,26 @@ type TasksSortOrder struct {
 	Order int
 }
 
+type GetTasksByVersionOptions struct {
+	Statuses              []string
+	BaseStatuses          []string
+	Variants              []string
+	TaskNames             []string
+	Page                  int
+	Limit                 int
+	FieldsToProject       []string
+	Sorts                 []TasksSortOrder
+	IncludeExecutionTasks bool
+}
+
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []string, baseStatuses []string, variants []string, taskNames []string, page, limit int, fieldsToProject []string) ([]Task, int, error) {
+func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
 	var match bson.M = bson.M{}
 
 	// Allow searching by either variant name or variant display
-	if len(variants) > 0 {
-		variantsAsRegex := strings.Join(variants, "|")
+	if len(opts.Variants) > 0 {
+		variantsAsRegex := strings.Join(opts.Variants, "|")
 
 		match = bson.M{
 			"$or": []bson.M{
@@ -2806,21 +2785,26 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 			},
 		}
 	}
-	if len(taskNames) > 0 {
-		taskNamesAsRegex := strings.Join(taskNames, "|")
+	if len(opts.TaskNames) > 0 {
+		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
+	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
+	match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	match[VersionKey] = versionID
 	const tempParentKey = "_parent"
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
-	if len(variants) > 0 {
+	if len(opts.Variants) > 0 {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	pipeline = append(pipeline,
-		[]bson.M{
-			{"$match": match},
+		bson.M{"$match": match},
+	)
+
+	if !opts.IncludeExecutionTasks {
+		pipeline = append(pipeline, []bson.M{
 			// do a self join to filter off execution tasks
 			{"$lookup": bson.M{
 				"from":         Collection,
@@ -2833,88 +2817,91 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 					tempParentKey: []interface{}{},
 				},
 			},
-			// get any annotation that has at least one issue
-			{
-				"$lookup": bson.M{
-					"from": annotations.Collection,
-					"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
-					"pipeline": []bson.M{
-						{
-							"$match": bson.M{
-								"$expr": bson.M{
-									"$and": []bson.M{
-										{
-											"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
-										},
-										{
-											"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
-										},
-										{
-											"$ne": []interface{}{
-												bson.M{
-													"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
-												}, 0,
-											},
+		}...)
+	}
+	pipeline = append(pipeline, []bson.M{
+		// get any annotation that has at least one issue
+		{
+			"$lookup": bson.M{
+				"from": annotations.Collection,
+				"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
+				"pipeline": []bson.M{
+					{
+						"$match": bson.M{
+							"$expr": bson.M{
+								"$and": []bson.M{
+									{
+										"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
+									},
+									{
+										"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
+									},
+									{
+										"$ne": []interface{}{
+											bson.M{
+												"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+											}, 0,
 										},
 									},
 								},
-							}}},
-					"as": "annotation_docs",
-				},
-			},
-
-			// add a field for the display status of each task
-			addDisplayStatus,
-			// add data about the base task
-			{"$lookup": bson.M{
-				"from": Collection,
-				"let": bson.M{
-					RevisionKey:     "$" + RevisionKey,
-					BuildVariantKey: "$" + BuildVariantKey,
-					DisplayNameKey:  "$" + DisplayNameKey,
-				},
-				"as": BaseTaskKey,
-				"pipeline": []bson.M{
-					{"$match": bson.M{
-						RequesterKey: evergreen.RepotrackerVersionRequester,
-						"$expr": bson.M{
-							"$and": []bson.M{
-								{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
-								{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-								{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
 							},
-						},
-					}},
-					{"$project": bson.M{
-						IdKey:     1,
-						StatusKey: displayStatusExpression,
-					}},
-					{"$limit": 1},
-				},
-			}},
-			{
-				"$unwind": bson.M{
-					"path":                       "$" + BaseTaskKey,
-					"preserveNullAndEmptyArrays": true,
-				},
+						}}},
+				"as": "annotation_docs",
 			},
-		}...,
+		},
+
+		// add a field for the display status of each task
+		addDisplayStatus,
+		// add data about the base task
+		{"$lookup": bson.M{
+			"from": Collection,
+			"let": bson.M{
+				RevisionKey:     "$" + RevisionKey,
+				BuildVariantKey: "$" + BuildVariantKey,
+				DisplayNameKey:  "$" + DisplayNameKey,
+			},
+			"as": BaseTaskKey,
+			"pipeline": []bson.M{
+				{"$match": bson.M{
+					RequesterKey: evergreen.RepotrackerVersionRequester,
+					"$expr": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
+							{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+							{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+						},
+					},
+				}},
+				{"$project": bson.M{
+					IdKey:     1,
+					StatusKey: displayStatusExpression,
+				}},
+				{"$limit": 1},
+			},
+		}},
+		{
+			"$unwind": bson.M{
+				"path":                       "$" + BaseTaskKey,
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+	}...,
 	)
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if len(variants) == 0 {
+	if len(opts.Variants) == 0 {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
-	if len(statuses) > 0 {
+	if len(opts.Statuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": statuses},
+				DisplayStatusKey: bson.M{"$in": opts.Statuses},
 			},
 		})
 	}
-	if len(baseStatuses) > 0 {
+	if len(opts.BaseStatuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": baseStatuses},
+				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
 			},
 		})
 	}
@@ -2923,8 +2910,8 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	sortFields := bson.D{}
-	if len(sortBy) > 0 {
-		for _, singleSort := range sortBy {
+	if len(opts.Sorts) > 0 {
+		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
 				pipeline = append(pipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
@@ -2938,17 +2925,17 @@ func GetTasksByVersion(versionID string, sortBy []TasksSortOrder, statuses []str
 		"$sort": sortFields,
 	})
 
-	if limit > 0 {
+	if opts.Limit > 0 {
 		pipeline = append(pipeline, bson.M{
-			"$skip": page * limit,
+			"$skip": opts.Page * opts.Limit,
 		})
 		pipeline = append(pipeline, bson.M{
-			"$limit": limit,
+			"$limit": opts.Limit,
 		})
 	}
-	if len(fieldsToProject) > 0 {
+	if len(opts.FieldsToProject) > 0 {
 		fieldKeys := bson.M{}
-		for _, field := range fieldsToProject {
+		for _, field := range opts.FieldsToProject {
 			fieldKeys[field] = 1
 		}
 		pipeline = append(pipeline, bson.M{
@@ -3116,110 +3103,6 @@ func (t *Task) SetNumDependents() error {
 	}, update)
 }
 
-func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string) error {
-	if len(execTasks) == 0 {
-		return nil
-	}
-
-	return UpdateOne(
-		bson.M{IdKey: displayTaskId},
-		bson.M{"$addToSet": bson.M{
-			ExecutionTasksKey: bson.M{"$each": execTasks},
-		}},
-	)
-}
-
-////////////////
-// Cedar Helpers
-////////////////
-
-// Get CedarTestResults fetches the task's test results from the Cedar service.
-// If the task does not have test results in Cedar, (nil, nil) is returned. If
-// the task is a display task, all of its execution tasks' test results are
-// returned.
-func (t *Task) GetCedarTestResults() ([]TestResult, error) {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
-
-	if !t.hasCedarResults() {
-		return nil, nil
-	}
-
-	taskID := t.Id
-	if t.Archived {
-		taskID = t.OldTaskId
-	}
-
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: t.Execution,
-	}
-	if t.DisplayOnly {
-		opts.DisplayTaskID = taskID
-	} else {
-		opts.TaskID = taskID
-	}
-
-	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting test results from cedar")
-	}
-
-	results := make([]TestResult, len(cedarResults))
-	for i, result := range cedarResults {
-		results[i] = ConvertCedarTestResult(result)
-	}
-
-	return results, nil
-}
-
-func (t *Task) hasCedarResults() bool {
-	if !t.DisplayOnly || t.HasCedarResults {
-		return t.HasCedarResults
-	}
-
-	// Older display tasks may incorrectly indicate that they do not have
-	// test results in Cedar. In the case that the execution tasks have
-	// results in Cedar, this will attempt to update the display task
-	// accordingly.
-	if len(t.ExecutionTasks) > 0 {
-		var (
-			execTasks []Task
-			err       error
-		)
-		if t.Archived {
-			// This is a display task from the old task collection,
-			// we need to look there for its execution tasks.
-			execTasks, err = FindAllOld(db.Query(bson.M{
-				OldTaskIdKey: bson.M{"$in": t.ExecutionTasks},
-				ExecutionKey: t.Execution,
-			}))
-		} else {
-			execTasks, err = FindAll(ByIds(t.ExecutionTasks))
-		}
-		if err != nil {
-			return false
-		}
-
-		for _, execTask := range execTasks {
-			if execTask.HasCedarResults {
-				// Attempt to update the display task's
-				// HasCedarResults field. We will not update
-				// the CedarResultsFailed field since we do
-				// want to iterate through all of the execution
-				// tasks and it isn't really needed for display
-				// tasks. Since we do not want to fail here, we
-				// can ignore the error.
-				_ = t.SetHasCedarResults(true, false)
-
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 // ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
 // struct.
 func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
@@ -3237,4 +3120,35 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		EndTime:         float64(result.End.Unix()),
 		Status:          result.Status,
 	}
+}
+
+func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, displayTaskActivated bool) error {
+	if len(execTasks) == 0 {
+		return nil
+	}
+	update := bson.M{"$addToSet": bson.M{
+		ExecutionTasksKey: bson.M{"$each": execTasks},
+	}}
+
+	if displayTaskActivated {
+		// verify that the display task isn't already activated
+		dt, err := FindOneId(displayTaskId)
+		if err != nil {
+			return errors.Wrap(err, "error getting display task")
+		}
+		if dt == nil {
+			return errors.Errorf("display task not found")
+		}
+		if !dt.Activated {
+			update["$set"] = bson.M{
+				ActivatedKey:     true,
+				ActivatedTimeKey: time.Now(),
+			}
+		}
+	}
+
+	return UpdateOne(
+		bson.M{IdKey: displayTaskId},
+		update,
+	)
 }

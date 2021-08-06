@@ -283,6 +283,7 @@ type Connector interface {
 
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
+	GetPublicKey(*user.DBUser, string) (string, error)
 	UpdateSettings(*user.DBUser, user.UserSettings) error
 	SubmitFeedback(restModel.APIFeedbackSubmission) error
 
@@ -296,6 +297,10 @@ type Connector interface {
 
 	CheckHostSecret(string, *http.Request) (int, error)
 
+	// CreatePod creates a new pod and returns the result of creating the pod.
+	CreatePod(restModel.APICreatePod) (*restModel.APICreatePodResponse, error)
+	// FindPodByID finds a pod by the given ID.
+	FindPodByID(id string) (*restModel.APIPod, error)
 	// CheckPodSecret checks that the ID and secret match the server's
 	// stored credentials for the pod.
 	CheckPodSecret(id, secret string) error

@@ -14,6 +14,12 @@ const (
 	// Provides information about an API request or response.
 	ErrCodeBadRequestException = "BadRequestException"
 
+	// ErrCodeConflictException for service response error code
+	// "ConflictException".
+	//
+	// Provides information about an API request or response.
+	ErrCodeConflictException = "ConflictException"
+
 	// ErrCodeForbiddenException for service response error code
 	// "ForbiddenException".
 	//
@@ -38,6 +44,12 @@ const (
 	// Provides information about an API request or response.
 	ErrCodeNotFoundException = "NotFoundException"
 
+	// ErrCodePayloadTooLargeException for service response error code
+	// "PayloadTooLargeException".
+	//
+	// Provides information about an API request or response.
+	ErrCodePayloadTooLargeException = "PayloadTooLargeException"
+
 	// ErrCodeTooManyRequestsException for service response error code
 	// "TooManyRequestsException".
 	//
@@ -47,9 +59,11 @@ const (
 
 var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"BadRequestException":          newErrorBadRequestException,
+	"ConflictException":            newErrorConflictException,
 	"ForbiddenException":           newErrorForbiddenException,
 	"InternalServerErrorException": newErrorInternalServerErrorException,
 	"MethodNotAllowedException":    newErrorMethodNotAllowedException,
 	"NotFoundException":            newErrorNotFoundException,
+	"PayloadTooLargeException":     newErrorPayloadTooLargeException,
 	"TooManyRequestsException":     newErrorTooManyRequestsException,
 }

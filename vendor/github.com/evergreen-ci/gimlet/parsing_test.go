@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type jsonishParser func(io.ReadCloser, interface{}) error
@@ -78,4 +79,14 @@ func TestSetURLVars(t *testing.T) {
 	vars := map[string]string{"foo": "bar"}
 	r = SetURLVars(r, vars)
 	assert.Equal(t, vars, GetVars(r))
+}
+
+func TestDecodeVars(t *testing.T) {
+	r, err := http.NewRequest(http.MethodGet, "/url", nil)
+	require.NoError(t, err)
+	vars := map[string]string{"task_id": "should%21decode", "project_id": "shouldnt_decode", "patch_id": "shouldnt/decode"}
+	r = SetURLVars(r, vars)
+	assert.Equal(t, "should!decode", GetVars(r)["task_id"])
+	assert.Equal(t, "shouldnt_decode", GetVars(r)["project_id"])
+	assert.Equal(t, "shouldnt/decode", GetVars(r)["patch_id"])
 }

@@ -163,17 +163,20 @@ func (c *SFN) CreateStateMachineRequest(input *CreateStateMachineInput) (req *re
 // Creates a state machine. A state machine consists of a collection of states
 // that can do work (Task states), determine to which states to transition next
 // (Choice states), stop an execution with an error (Fail states), and so on.
-// State machines are specified using a JSON-based, structured language.
+// State machines are specified using a JSON-based, structured language. For
+// more information, see Amazon States Language (https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html)
+// in the AWS Step Functions User Guide.
 //
 // This operation is eventually consistent. The results are best effort and
 // may not reflect very recent updates and changes.
 //
 // CreateStateMachine is an idempotent API. Subsequent requests won’t create
 // a duplicate resource if it was already created. CreateStateMachine's idempotency
-// check is based on the state machine name and definition. If a following request
-// has a different roleArn or tags, Step Functions will ignore these differences
-// and treat it as an idempotent request of the previous. In this case, roleArn
-// and tags will not be updated, even if they are different.
+// check is based on the state machine name, definition, type, LoggingConfiguration
+// and TracingConfiguration. If a following request has a different roleArn
+// or tags, Step Functions will ignore these differences and treat it as an
+// idempotent request of the previous. In this case, roleArn and tags will not
+// be updated, even if they are different.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -193,6 +196,10 @@ func (c *SFN) CreateStateMachineRequest(input *CreateStateMachineInput) (req *re
 //   The provided name is invalid.
 //
 //   * InvalidLoggingConfiguration
+//
+//   * InvalidTracingConfiguration
+//   Your tracingConfiguration key does not match, or enabled has not been set
+//   to true or false.
 //
 //   * StateMachineAlreadyExists
 //   A state machine with the same name but a different definition or role ARN
@@ -360,11 +367,11 @@ func (c *SFN) DeleteStateMachineRequest(input *DeleteStateMachineInput) (req *re
 // DeleteStateMachine API operation for AWS Step Functions.
 //
 // Deletes a state machine. This is an asynchronous operation: It sets the state
-// machine's status to DELETING and begins the deletion process. Each state
-// machine execution is deleted the next time it makes a state transition.
+// machine's status to DELETING and begins the deletion process.
 //
-// The state machine itself is deleted after all executions are completed or
-// deleted.
+// For EXPRESSstate machines, the deletion will happen eventually (usually less
+// than a minute). Running executions may emit logs after DeleteStateMachine
+// API is called.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -532,6 +539,8 @@ func (c *SFN) DescribeExecutionRequest(input *DescribeExecutionInput) (req *requ
 //
 // This operation is eventually consistent. The results are best effort and
 // may not reflect very recent updates and changes.
+//
+// This API action is not supported by EXPRESS state machines.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -702,6 +711,8 @@ func (c *SFN) DescribeStateMachineForExecutionRequest(input *DescribeStateMachin
 //
 // This operation is eventually consistent. The results are best effort and
 // may not reflect very recent updates and changes.
+//
+// This API action is not supported by EXPRESS state machines.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -897,6 +908,8 @@ func (c *SFN) GetExecutionHistoryRequest(input *GetExecutionHistoryInput) (req *
 // using the returned token to retrieve the next page. Keep all other arguments
 // unchanged. Each pagination token expires after 24 hours. Using an expired
 // pagination token will return an HTTP 400 InvalidToken error.
+//
+// This API action is not supported by EXPRESS state machines.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1196,6 +1209,8 @@ func (c *SFN) ListExecutionsRequest(input *ListExecutionsInput) (req *request.Re
 //
 // This operation is eventually consistent. The results are best effort and
 // may not reflect very recent updates and changes.
+//
+// This API action is not supported by EXPRESS state machines.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1899,6 +1914,101 @@ func (c *SFN) StartExecutionWithContext(ctx aws.Context, input *StartExecutionIn
 	return out, req.Send()
 }
 
+const opStartSyncExecution = "StartSyncExecution"
+
+// StartSyncExecutionRequest generates a "aws/request.Request" representing the
+// client's request for the StartSyncExecution operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See StartSyncExecution for more information on using the StartSyncExecution
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the StartSyncExecutionRequest method.
+//    req, resp := client.StartSyncExecutionRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/states-2016-11-23/StartSyncExecution
+func (c *SFN) StartSyncExecutionRequest(input *StartSyncExecutionInput) (req *request.Request, output *StartSyncExecutionOutput) {
+	op := &request.Operation{
+		Name:       opStartSyncExecution,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &StartSyncExecutionInput{}
+	}
+
+	output = &StartSyncExecutionOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Build.PushBackNamed(protocol.NewHostPrefixHandler("sync-", nil))
+	req.Handlers.Build.PushBackNamed(protocol.ValidateEndpointHostHandler)
+	return
+}
+
+// StartSyncExecution API operation for AWS Step Functions.
+//
+// Starts a Synchronous Express state machine execution.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS Step Functions's
+// API operation StartSyncExecution for usage and error information.
+//
+// Returned Error Types:
+//   * InvalidArn
+//   The provided Amazon Resource Name (ARN) is invalid.
+//
+//   * InvalidExecutionInput
+//   The provided JSON input data is invalid.
+//
+//   * InvalidName
+//   The provided name is invalid.
+//
+//   * StateMachineDoesNotExist
+//   The specified state machine does not exist.
+//
+//   * StateMachineDeleting
+//   The specified state machine is being deleted.
+//
+//   * StateMachineTypeNotSupported
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/states-2016-11-23/StartSyncExecution
+func (c *SFN) StartSyncExecution(input *StartSyncExecutionInput) (*StartSyncExecutionOutput, error) {
+	req, out := c.StartSyncExecutionRequest(input)
+	return out, req.Send()
+}
+
+// StartSyncExecutionWithContext is the same as StartSyncExecution with the addition of
+// the ability to pass a context and additional request options.
+//
+// See StartSyncExecution for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *SFN) StartSyncExecutionWithContext(ctx aws.Context, input *StartSyncExecutionInput, opts ...request.Option) (*StartSyncExecutionOutput, error) {
+	req, out := c.StartSyncExecutionRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opStopExecution = "StopExecution"
 
 // StopExecutionRequest generates a "aws/request.Request" representing the
@@ -1944,6 +2054,8 @@ func (c *SFN) StopExecutionRequest(input *StopExecutionInput) (req *request.Requ
 // StopExecution API operation for AWS Step Functions.
 //
 // Stops an execution.
+//
+// This API action is not supported by EXPRESS state machines.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2206,10 +2318,10 @@ func (c *SFN) UpdateStateMachineRequest(input *UpdateStateMachineInput) (req *re
 
 // UpdateStateMachine API operation for AWS Step Functions.
 //
-// Updates an existing state machine by modifying its definition and/or roleArn.
-// Running executions will continue to use the previous definition and roleArn.
-// You must include at least one of definition or roleArn or you will receive
-// a MissingRequiredParameter error.
+// Updates an existing state machine by modifying its definition, roleArn, or
+// loggingConfiguration. Running executions will continue to use the previous
+// definition and roleArn. You must include at least one of definition or roleArn
+// or you will receive a MissingRequiredParameter error.
 //
 // All StartExecution calls within a few seconds will use the updated definition
 // and roleArn. Executions started immediately after calling UpdateStateMachine
@@ -2230,6 +2342,10 @@ func (c *SFN) UpdateStateMachineRequest(input *UpdateStateMachineInput) (req *re
 //   The provided Amazon States Language definition is invalid.
 //
 //   * InvalidLoggingConfiguration
+//
+//   * InvalidTracingConfiguration
+//   Your tracingConfiguration key does not match, or enabled has not been set
+//   to true or false.
 //
 //   * MissingRequiredParameter
 //   Request is missing a required parameter. This error occurs if both definition
@@ -2265,8 +2381,8 @@ func (c *SFN) UpdateStateMachineWithContext(ctx aws.Context, input *UpdateStateM
 
 // The specified activity does not exist.
 type ActivityDoesNotExist struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2283,17 +2399,17 @@ func (s ActivityDoesNotExist) GoString() string {
 
 func newErrorActivityDoesNotExist(v protocol.ResponseMetadata) error {
 	return &ActivityDoesNotExist{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ActivityDoesNotExist) Code() string {
+func (s *ActivityDoesNotExist) Code() string {
 	return "ActivityDoesNotExist"
 }
 
 // Message returns the exception's message.
-func (s ActivityDoesNotExist) Message() string {
+func (s *ActivityDoesNotExist) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2301,22 +2417,22 @@ func (s ActivityDoesNotExist) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ActivityDoesNotExist) OrigErr() error {
+func (s *ActivityDoesNotExist) OrigErr() error {
 	return nil
 }
 
-func (s ActivityDoesNotExist) Error() string {
+func (s *ActivityDoesNotExist) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ActivityDoesNotExist) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ActivityDoesNotExist) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ActivityDoesNotExist) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ActivityDoesNotExist) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details about an activity that failed during an execution.
@@ -2355,8 +2471,8 @@ func (s *ActivityFailedEventDetails) SetError(v string) *ActivityFailedEventDeta
 // The maximum number of activities has been reached. Existing activities must
 // be deleted before a new activity can be created.
 type ActivityLimitExceeded struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2373,17 +2489,17 @@ func (s ActivityLimitExceeded) GoString() string {
 
 func newErrorActivityLimitExceeded(v protocol.ResponseMetadata) error {
 	return &ActivityLimitExceeded{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ActivityLimitExceeded) Code() string {
+func (s *ActivityLimitExceeded) Code() string {
 	return "ActivityLimitExceeded"
 }
 
 // Message returns the exception's message.
-func (s ActivityLimitExceeded) Message() string {
+func (s *ActivityLimitExceeded) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2391,22 +2507,22 @@ func (s ActivityLimitExceeded) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ActivityLimitExceeded) OrigErr() error {
+func (s *ActivityLimitExceeded) OrigErr() error {
 	return nil
 }
 
-func (s ActivityLimitExceeded) Error() string {
+func (s *ActivityLimitExceeded) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ActivityLimitExceeded) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ActivityLimitExceeded) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ActivityLimitExceeded) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ActivityLimitExceeded) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details about an activity.
@@ -2436,6 +2552,9 @@ type ActivityListItem struct {
 	//    * special characters " # % \ ^ | ~ ` $ & , ; : /
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
+	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
@@ -2510,8 +2629,12 @@ type ActivityScheduledEventDetails struct {
 	// The maximum allowed duration between two heartbeats for the activity task.
 	HeartbeatInSeconds *int64 `locationName:"heartbeatInSeconds" type:"long"`
 
-	// The JSON data input to the activity task.
+	// The JSON data input to the activity task. Length constraints apply to the
+	// payload size, and are expressed as bytes in UTF-8 encoding.
 	Input *string `locationName:"input" type:"string" sensitive:"true"`
+
+	// Contains details about the input for an execution history event.
+	InputDetails *HistoryEventExecutionDataDetails `locationName:"inputDetails" type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the scheduled activity.
 	//
@@ -2541,6 +2664,12 @@ func (s *ActivityScheduledEventDetails) SetHeartbeatInSeconds(v int64) *Activity
 // SetInput sets the Input field's value.
 func (s *ActivityScheduledEventDetails) SetInput(v string) *ActivityScheduledEventDetails {
 	s.Input = &v
+	return s
+}
+
+// SetInputDetails sets the InputDetails field's value.
+func (s *ActivityScheduledEventDetails) SetInputDetails(v *HistoryEventExecutionDataDetails) *ActivityScheduledEventDetails {
+	s.InputDetails = v
 	return s
 }
 
@@ -2586,8 +2715,12 @@ func (s *ActivityStartedEventDetails) SetWorkerName(v string) *ActivityStartedEv
 type ActivitySucceededEventDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The JSON data output by the activity task.
+	// The JSON data output by the activity task. Length constraints apply to the
+	// payload size, and are expressed as bytes in UTF-8 encoding.
 	Output *string `locationName:"output" type:"string" sensitive:"true"`
+
+	// Contains details about the output of an execution history event.
+	OutputDetails *HistoryEventExecutionDataDetails `locationName:"outputDetails" type:"structure"`
 }
 
 // String returns the string representation
@@ -2603,6 +2736,12 @@ func (s ActivitySucceededEventDetails) GoString() string {
 // SetOutput sets the Output field's value.
 func (s *ActivitySucceededEventDetails) SetOutput(v string) *ActivitySucceededEventDetails {
 	s.Output = &v
+	return s
+}
+
+// SetOutputDetails sets the OutputDetails field's value.
+func (s *ActivitySucceededEventDetails) SetOutputDetails(v *HistoryEventExecutionDataDetails) *ActivitySucceededEventDetails {
+	s.OutputDetails = v
 	return s
 }
 
@@ -2642,8 +2781,8 @@ func (s *ActivityTimedOutEventDetails) SetError(v string) *ActivityTimedOutEvent
 // The maximum number of workers concurrently polling for activity tasks has
 // been reached.
 type ActivityWorkerLimitExceeded struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2660,17 +2799,17 @@ func (s ActivityWorkerLimitExceeded) GoString() string {
 
 func newErrorActivityWorkerLimitExceeded(v protocol.ResponseMetadata) error {
 	return &ActivityWorkerLimitExceeded{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ActivityWorkerLimitExceeded) Code() string {
+func (s *ActivityWorkerLimitExceeded) Code() string {
 	return "ActivityWorkerLimitExceeded"
 }
 
 // Message returns the exception's message.
-func (s ActivityWorkerLimitExceeded) Message() string {
+func (s *ActivityWorkerLimitExceeded) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2678,22 +2817,80 @@ func (s ActivityWorkerLimitExceeded) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ActivityWorkerLimitExceeded) OrigErr() error {
+func (s *ActivityWorkerLimitExceeded) OrigErr() error {
 	return nil
 }
 
-func (s ActivityWorkerLimitExceeded) Error() string {
+func (s *ActivityWorkerLimitExceeded) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ActivityWorkerLimitExceeded) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ActivityWorkerLimitExceeded) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ActivityWorkerLimitExceeded) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ActivityWorkerLimitExceeded) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// An object that describes workflow billing details.
+type BillingDetails struct {
+	_ struct{} `type:"structure"`
+
+	// Billed duration of your workflow, in milliseconds.
+	BilledDurationInMilliseconds *int64 `locationName:"billedDurationInMilliseconds" type:"long"`
+
+	// Billed memory consumption of your workflow, in MB.
+	BilledMemoryUsedInMB *int64 `locationName:"billedMemoryUsedInMB" type:"long"`
+}
+
+// String returns the string representation
+func (s BillingDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s BillingDetails) GoString() string {
+	return s.String()
+}
+
+// SetBilledDurationInMilliseconds sets the BilledDurationInMilliseconds field's value.
+func (s *BillingDetails) SetBilledDurationInMilliseconds(v int64) *BillingDetails {
+	s.BilledDurationInMilliseconds = &v
+	return s
+}
+
+// SetBilledMemoryUsedInMB sets the BilledMemoryUsedInMB field's value.
+func (s *BillingDetails) SetBilledMemoryUsedInMB(v int64) *BillingDetails {
+	s.BilledMemoryUsedInMB = &v
+	return s
+}
+
+// Provides details about execution input or output.
+type CloudWatchEventsExecutionDataDetails struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether input or output was included in the response. Always true
+	// for API calls.
+	Included *bool `locationName:"included" type:"boolean"`
+}
+
+// String returns the string representation
+func (s CloudWatchEventsExecutionDataDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CloudWatchEventsExecutionDataDetails) GoString() string {
+	return s.String()
+}
+
+// SetIncluded sets the Included field's value.
+func (s *CloudWatchEventsExecutionDataDetails) SetIncluded(v bool) *CloudWatchEventsExecutionDataDetails {
+	s.Included = &v
+	return s
 }
 
 type CloudWatchLogsLogGroup struct {
@@ -2752,6 +2949,9 @@ type CreateActivityInput struct {
 	//    * special characters " # % \ ^ | ~ ` $ & , ; : /
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
+	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
@@ -2862,6 +3062,10 @@ type CreateStateMachineInput struct {
 	Definition *string `locationName:"definition" min:"1" type:"string" required:"true" sensitive:"true"`
 
 	// Defines what execution history events are logged and where they are logged.
+	//
+	// By default, the level is set to OFF. For more information see Log Levels
+	// (https://docs.aws.amazon.com/step-functions/latest/dg/cloudwatch-log-level.html)
+	// in the AWS Step Functions User Guide.
 	LoggingConfiguration *LoggingConfiguration `locationName:"loggingConfiguration" type:"structure"`
 
 	// The name of the state machine.
@@ -2877,6 +3081,9 @@ type CreateStateMachineInput struct {
 	//    * special characters " # % \ ^ | ~ ` $ & , ; : /
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
+	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
@@ -2897,8 +3104,12 @@ type CreateStateMachineInput struct {
 	// _ . : / = + - @.
 	Tags []*Tag `locationName:"tags" type:"list"`
 
-	// Determines whether a Standard or Express state machine is created. If not
-	// set, Standard is created.
+	// Selects whether AWS X-Ray tracing is enabled.
+	TracingConfiguration *TracingConfiguration `locationName:"tracingConfiguration" type:"structure"`
+
+	// Determines whether a Standard or Express state machine is created. The default
+	// is STANDARD. You cannot update the type of a state machine once it has been
+	// created.
 	Type *string `locationName:"type" type:"string" enum:"StateMachineType"`
 }
 
@@ -2982,6 +3193,12 @@ func (s *CreateStateMachineInput) SetRoleArn(v string) *CreateStateMachineInput 
 // SetTags sets the Tags field's value.
 func (s *CreateStateMachineInput) SetTags(v []*Tag) *CreateStateMachineInput {
 	s.Tags = v
+	return s
+}
+
+// SetTracingConfiguration sets the TracingConfiguration field's value.
+func (s *CreateStateMachineInput) SetTracingConfiguration(v *TracingConfiguration) *CreateStateMachineInput {
+	s.TracingConfiguration = v
 	return s
 }
 
@@ -3205,6 +3422,9 @@ type DescribeActivityOutput struct {
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
 	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
+	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
 }
@@ -3286,10 +3506,12 @@ type DescribeExecutionOutput struct {
 	// ExecutionArn is a required field
 	ExecutionArn *string `locationName:"executionArn" min:"1" type:"string" required:"true"`
 
-	// The string that contains the JSON input data of the execution.
-	//
-	// Input is a required field
-	Input *string `locationName:"input" type:"string" required:"true" sensitive:"true"`
+	// The string that contains the JSON input data of the execution. Length constraints
+	// apply to the payload size, and are expressed as bytes in UTF-8 encoding.
+	Input *string `locationName:"input" type:"string" sensitive:"true"`
+
+	// Provides details about execution input or output.
+	InputDetails *CloudWatchEventsExecutionDataDetails `locationName:"inputDetails" type:"structure"`
 
 	// The name of the execution.
 	//
@@ -3304,13 +3526,20 @@ type DescribeExecutionOutput struct {
 	//    * special characters " # % \ ^ | ~ ` $ & , ; : /
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
+	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
 	Name *string `locationName:"name" min:"1" type:"string"`
 
-	// The JSON output data of the execution.
+	// The JSON output data of the execution. Length constraints apply to the payload
+	// size, and are expressed as bytes in UTF-8 encoding.
 	//
 	// This field is set only if the execution succeeds. If the execution fails,
 	// this field is null.
 	Output *string `locationName:"output" type:"string" sensitive:"true"`
+
+	// Provides details about execution input or output.
+	OutputDetails *CloudWatchEventsExecutionDataDetails `locationName:"outputDetails" type:"structure"`
 
 	// The date the execution is started.
 	//
@@ -3329,6 +3558,9 @@ type DescribeExecutionOutput struct {
 
 	// If the execution has already ended, the date the execution stopped.
 	StopDate *time.Time `locationName:"stopDate" type:"timestamp"`
+
+	// The AWS X-Ray trace header that was passed to the execution.
+	TraceHeader *string `locationName:"traceHeader" type:"string"`
 }
 
 // String returns the string representation
@@ -3353,6 +3585,12 @@ func (s *DescribeExecutionOutput) SetInput(v string) *DescribeExecutionOutput {
 	return s
 }
 
+// SetInputDetails sets the InputDetails field's value.
+func (s *DescribeExecutionOutput) SetInputDetails(v *CloudWatchEventsExecutionDataDetails) *DescribeExecutionOutput {
+	s.InputDetails = v
+	return s
+}
+
 // SetName sets the Name field's value.
 func (s *DescribeExecutionOutput) SetName(v string) *DescribeExecutionOutput {
 	s.Name = &v
@@ -3362,6 +3600,12 @@ func (s *DescribeExecutionOutput) SetName(v string) *DescribeExecutionOutput {
 // SetOutput sets the Output field's value.
 func (s *DescribeExecutionOutput) SetOutput(v string) *DescribeExecutionOutput {
 	s.Output = &v
+	return s
+}
+
+// SetOutputDetails sets the OutputDetails field's value.
+func (s *DescribeExecutionOutput) SetOutputDetails(v *CloudWatchEventsExecutionDataDetails) *DescribeExecutionOutput {
+	s.OutputDetails = v
 	return s
 }
 
@@ -3386,6 +3630,12 @@ func (s *DescribeExecutionOutput) SetStatus(v string) *DescribeExecutionOutput {
 // SetStopDate sets the StopDate field's value.
 func (s *DescribeExecutionOutput) SetStopDate(v time.Time) *DescribeExecutionOutput {
 	s.StopDate = &v
+	return s
+}
+
+// SetTraceHeader sets the TraceHeader field's value.
+func (s *DescribeExecutionOutput) SetTraceHeader(v string) *DescribeExecutionOutput {
+	s.TraceHeader = &v
 	return s
 }
 
@@ -3440,6 +3690,9 @@ type DescribeStateMachineForExecutionOutput struct {
 	// Definition is a required field
 	Definition *string `locationName:"definition" min:"1" type:"string" required:"true" sensitive:"true"`
 
+	// The LoggingConfiguration data type is used to set CloudWatch Logs options.
+	LoggingConfiguration *LoggingConfiguration `locationName:"loggingConfiguration" type:"structure"`
+
 	// The name of the state machine associated with the execution.
 	//
 	// Name is a required field
@@ -3455,6 +3708,9 @@ type DescribeStateMachineForExecutionOutput struct {
 	//
 	// StateMachineArn is a required field
 	StateMachineArn *string `locationName:"stateMachineArn" min:"1" type:"string" required:"true"`
+
+	// Selects whether AWS X-Ray tracing is enabled.
+	TracingConfiguration *TracingConfiguration `locationName:"tracingConfiguration" type:"structure"`
 
 	// The date and time the state machine associated with an execution was updated.
 	// For a newly created state machine, this is the creation date.
@@ -3479,6 +3735,12 @@ func (s *DescribeStateMachineForExecutionOutput) SetDefinition(v string) *Descri
 	return s
 }
 
+// SetLoggingConfiguration sets the LoggingConfiguration field's value.
+func (s *DescribeStateMachineForExecutionOutput) SetLoggingConfiguration(v *LoggingConfiguration) *DescribeStateMachineForExecutionOutput {
+	s.LoggingConfiguration = v
+	return s
+}
+
 // SetName sets the Name field's value.
 func (s *DescribeStateMachineForExecutionOutput) SetName(v string) *DescribeStateMachineForExecutionOutput {
 	s.Name = &v
@@ -3494,6 +3756,12 @@ func (s *DescribeStateMachineForExecutionOutput) SetRoleArn(v string) *DescribeS
 // SetStateMachineArn sets the StateMachineArn field's value.
 func (s *DescribeStateMachineForExecutionOutput) SetStateMachineArn(v string) *DescribeStateMachineForExecutionOutput {
 	s.StateMachineArn = &v
+	return s
+}
+
+// SetTracingConfiguration sets the TracingConfiguration field's value.
+func (s *DescribeStateMachineForExecutionOutput) SetTracingConfiguration(v *TracingConfiguration) *DescribeStateMachineForExecutionOutput {
+	s.TracingConfiguration = v
 	return s
 }
 
@@ -3558,6 +3826,7 @@ type DescribeStateMachineOutput struct {
 	// Definition is a required field
 	Definition *string `locationName:"definition" min:"1" type:"string" required:"true" sensitive:"true"`
 
+	// The LoggingConfiguration data type is used to set CloudWatch Logs options.
 	LoggingConfiguration *LoggingConfiguration `locationName:"loggingConfiguration" type:"structure"`
 
 	// The name of the state machine.
@@ -3573,6 +3842,9 @@ type DescribeStateMachineOutput struct {
 	//    * special characters " # % \ ^ | ~ ` $ & , ; : /
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
+	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
@@ -3592,6 +3864,11 @@ type DescribeStateMachineOutput struct {
 	// The current status of the state machine.
 	Status *string `locationName:"status" type:"string" enum:"StateMachineStatus"`
 
+	// Selects whether AWS X-Ray tracing is enabled.
+	TracingConfiguration *TracingConfiguration `locationName:"tracingConfiguration" type:"structure"`
+
+	// The type of the state machine (STANDARD or EXPRESS).
+	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true" enum:"StateMachineType"`
 }
@@ -3648,6 +3925,12 @@ func (s *DescribeStateMachineOutput) SetStatus(v string) *DescribeStateMachineOu
 	return s
 }
 
+// SetTracingConfiguration sets the TracingConfiguration field's value.
+func (s *DescribeStateMachineOutput) SetTracingConfiguration(v *TracingConfiguration) *DescribeStateMachineOutput {
+	s.TracingConfiguration = v
+	return s
+}
+
 // SetType sets the Type field's value.
 func (s *DescribeStateMachineOutput) SetType(v string) *DescribeStateMachineOutput {
 	s.Type = &v
@@ -3691,8 +3974,8 @@ func (s *ExecutionAbortedEventDetails) SetError(v string) *ExecutionAbortedEvent
 //
 // Executions with the same name and input are considered idempotent.
 type ExecutionAlreadyExists struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3709,17 +3992,17 @@ func (s ExecutionAlreadyExists) GoString() string {
 
 func newErrorExecutionAlreadyExists(v protocol.ResponseMetadata) error {
 	return &ExecutionAlreadyExists{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ExecutionAlreadyExists) Code() string {
+func (s *ExecutionAlreadyExists) Code() string {
 	return "ExecutionAlreadyExists"
 }
 
 // Message returns the exception's message.
-func (s ExecutionAlreadyExists) Message() string {
+func (s *ExecutionAlreadyExists) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3727,28 +4010,28 @@ func (s ExecutionAlreadyExists) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ExecutionAlreadyExists) OrigErr() error {
+func (s *ExecutionAlreadyExists) OrigErr() error {
 	return nil
 }
 
-func (s ExecutionAlreadyExists) Error() string {
+func (s *ExecutionAlreadyExists) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ExecutionAlreadyExists) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ExecutionAlreadyExists) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ExecutionAlreadyExists) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ExecutionAlreadyExists) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified execution does not exist.
 type ExecutionDoesNotExist struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3765,17 +4048,17 @@ func (s ExecutionDoesNotExist) GoString() string {
 
 func newErrorExecutionDoesNotExist(v protocol.ResponseMetadata) error {
 	return &ExecutionDoesNotExist{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ExecutionDoesNotExist) Code() string {
+func (s *ExecutionDoesNotExist) Code() string {
 	return "ExecutionDoesNotExist"
 }
 
 // Message returns the exception's message.
-func (s ExecutionDoesNotExist) Message() string {
+func (s *ExecutionDoesNotExist) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3783,22 +4066,22 @@ func (s ExecutionDoesNotExist) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ExecutionDoesNotExist) OrigErr() error {
+func (s *ExecutionDoesNotExist) OrigErr() error {
 	return nil
 }
 
-func (s ExecutionDoesNotExist) Error() string {
+func (s *ExecutionDoesNotExist) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ExecutionDoesNotExist) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ExecutionDoesNotExist) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ExecutionDoesNotExist) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ExecutionDoesNotExist) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details about an execution failure event.
@@ -3837,8 +4120,8 @@ func (s *ExecutionFailedEventDetails) SetError(v string) *ExecutionFailedEventDe
 // The maximum number of running executions has been reached. Running executions
 // must end or be stopped before a new execution can be started.
 type ExecutionLimitExceeded struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3855,17 +4138,17 @@ func (s ExecutionLimitExceeded) GoString() string {
 
 func newErrorExecutionLimitExceeded(v protocol.ResponseMetadata) error {
 	return &ExecutionLimitExceeded{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ExecutionLimitExceeded) Code() string {
+func (s *ExecutionLimitExceeded) Code() string {
 	return "ExecutionLimitExceeded"
 }
 
 // Message returns the exception's message.
-func (s ExecutionLimitExceeded) Message() string {
+func (s *ExecutionLimitExceeded) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3873,22 +4156,22 @@ func (s ExecutionLimitExceeded) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ExecutionLimitExceeded) OrigErr() error {
+func (s *ExecutionLimitExceeded) OrigErr() error {
 	return nil
 }
 
-func (s ExecutionLimitExceeded) Error() string {
+func (s *ExecutionLimitExceeded) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ExecutionLimitExceeded) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ExecutionLimitExceeded) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ExecutionLimitExceeded) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ExecutionLimitExceeded) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details about an execution.
@@ -3913,6 +4196,9 @@ type ExecutionListItem struct {
 	//    * special characters " # % \ ^ | ~ ` $ & , ; : /
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
+	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
@@ -3986,8 +4272,12 @@ func (s *ExecutionListItem) SetStopDate(v time.Time) *ExecutionListItem {
 type ExecutionStartedEventDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The JSON data input to the execution.
+	// The JSON data input to the execution. Length constraints apply to the payload
+	// size, and are expressed as bytes in UTF-8 encoding.
 	Input *string `locationName:"input" type:"string" sensitive:"true"`
+
+	// Contains details about the input for an execution history event.
+	InputDetails *HistoryEventExecutionDataDetails `locationName:"inputDetails" type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the IAM role used for executing AWS Lambda
 	// tasks.
@@ -4010,6 +4300,12 @@ func (s *ExecutionStartedEventDetails) SetInput(v string) *ExecutionStartedEvent
 	return s
 }
 
+// SetInputDetails sets the InputDetails field's value.
+func (s *ExecutionStartedEventDetails) SetInputDetails(v *HistoryEventExecutionDataDetails) *ExecutionStartedEventDetails {
+	s.InputDetails = v
+	return s
+}
+
 // SetRoleArn sets the RoleArn field's value.
 func (s *ExecutionStartedEventDetails) SetRoleArn(v string) *ExecutionStartedEventDetails {
 	s.RoleArn = &v
@@ -4020,8 +4316,12 @@ func (s *ExecutionStartedEventDetails) SetRoleArn(v string) *ExecutionStartedEve
 type ExecutionSucceededEventDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The JSON data output by the execution.
+	// The JSON data output by the execution. Length constraints apply to the payload
+	// size, and are expressed as bytes in UTF-8 encoding.
 	Output *string `locationName:"output" type:"string" sensitive:"true"`
+
+	// Contains details about the output of an execution history event.
+	OutputDetails *HistoryEventExecutionDataDetails `locationName:"outputDetails" type:"structure"`
 }
 
 // String returns the string representation
@@ -4037,6 +4337,12 @@ func (s ExecutionSucceededEventDetails) GoString() string {
 // SetOutput sets the Output field's value.
 func (s *ExecutionSucceededEventDetails) SetOutput(v string) *ExecutionSucceededEventDetails {
 	s.Output = &v
+	return s
+}
+
+// SetOutputDetails sets the OutputDetails field's value.
+func (s *ExecutionSucceededEventDetails) SetOutputDetails(v *HistoryEventExecutionDataDetails) *ExecutionSucceededEventDetails {
+	s.OutputDetails = v
 	return s
 }
 
@@ -4132,7 +4438,8 @@ func (s *GetActivityTaskInput) SetWorkerName(v string) *GetActivityTaskInput {
 type GetActivityTaskOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The string that contains the JSON input data for the task.
+	// The string that contains the JSON input data for the task. Length constraints
+	// apply to the payload size, and are expressed as bytes in UTF-8 encoding.
 	Input *string `locationName:"input" type:"string" sensitive:"true"`
 
 	// A token that identifies the scheduled task. This token must be copied and
@@ -4170,6 +4477,10 @@ type GetExecutionHistoryInput struct {
 	//
 	// ExecutionArn is a required field
 	ExecutionArn *string `locationName:"executionArn" min:"1" type:"string" required:"true"`
+
+	// You can select whether execution data (input or output of a history event)
+	// is returned. The default is true.
+	IncludeExecutionData *bool `locationName:"includeExecutionData" type:"boolean"`
 
 	// The maximum number of results that are returned per call. You can use nextToken
 	// to obtain further pages of results. The default is 100 and the maximum allowed
@@ -4222,6 +4533,12 @@ func (s *GetExecutionHistoryInput) Validate() error {
 // SetExecutionArn sets the ExecutionArn field's value.
 func (s *GetExecutionHistoryInput) SetExecutionArn(v string) *GetExecutionHistoryInput {
 	s.ExecutionArn = &v
+	return s
+}
+
+// SetIncludeExecutionData sets the IncludeExecutionData field's value.
+func (s *GetExecutionHistoryInput) SetIncludeExecutionData(v bool) *GetExecutionHistoryInput {
+	s.IncludeExecutionData = &v
 	return s
 }
 
@@ -4630,10 +4947,35 @@ func (s *HistoryEvent) SetType(v string) *HistoryEvent {
 	return s
 }
 
+// Provides details about input or output in an execution history event.
+type HistoryEventExecutionDataDetails struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether input or output was truncated in the response. Always false
+	// for API calls.
+	Truncated *bool `locationName:"truncated" type:"boolean"`
+}
+
+// String returns the string representation
+func (s HistoryEventExecutionDataDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s HistoryEventExecutionDataDetails) GoString() string {
+	return s.String()
+}
+
+// SetTruncated sets the Truncated field's value.
+func (s *HistoryEventExecutionDataDetails) SetTruncated(v bool) *HistoryEventExecutionDataDetails {
+	s.Truncated = &v
+	return s
+}
+
 // The provided Amazon Resource Name (ARN) is invalid.
 type InvalidArn struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4650,17 +4992,17 @@ func (s InvalidArn) GoString() string {
 
 func newErrorInvalidArn(v protocol.ResponseMetadata) error {
 	return &InvalidArn{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidArn) Code() string {
+func (s *InvalidArn) Code() string {
 	return "InvalidArn"
 }
 
 // Message returns the exception's message.
-func (s InvalidArn) Message() string {
+func (s *InvalidArn) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4668,28 +5010,28 @@ func (s InvalidArn) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidArn) OrigErr() error {
+func (s *InvalidArn) OrigErr() error {
 	return nil
 }
 
-func (s InvalidArn) Error() string {
+func (s *InvalidArn) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidArn) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidArn) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidArn) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidArn) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided Amazon States Language definition is invalid.
 type InvalidDefinition struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4706,17 +5048,17 @@ func (s InvalidDefinition) GoString() string {
 
 func newErrorInvalidDefinition(v protocol.ResponseMetadata) error {
 	return &InvalidDefinition{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidDefinition) Code() string {
+func (s *InvalidDefinition) Code() string {
 	return "InvalidDefinition"
 }
 
 // Message returns the exception's message.
-func (s InvalidDefinition) Message() string {
+func (s *InvalidDefinition) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4724,28 +5066,28 @@ func (s InvalidDefinition) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidDefinition) OrigErr() error {
+func (s *InvalidDefinition) OrigErr() error {
 	return nil
 }
 
-func (s InvalidDefinition) Error() string {
+func (s *InvalidDefinition) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidDefinition) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidDefinition) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidDefinition) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidDefinition) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided JSON input data is invalid.
 type InvalidExecutionInput struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4762,17 +5104,17 @@ func (s InvalidExecutionInput) GoString() string {
 
 func newErrorInvalidExecutionInput(v protocol.ResponseMetadata) error {
 	return &InvalidExecutionInput{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidExecutionInput) Code() string {
+func (s *InvalidExecutionInput) Code() string {
 	return "InvalidExecutionInput"
 }
 
 // Message returns the exception's message.
-func (s InvalidExecutionInput) Message() string {
+func (s *InvalidExecutionInput) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4780,27 +5122,27 @@ func (s InvalidExecutionInput) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidExecutionInput) OrigErr() error {
+func (s *InvalidExecutionInput) OrigErr() error {
 	return nil
 }
 
-func (s InvalidExecutionInput) Error() string {
+func (s *InvalidExecutionInput) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidExecutionInput) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidExecutionInput) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidExecutionInput) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidExecutionInput) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type InvalidLoggingConfiguration struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4817,17 +5159,17 @@ func (s InvalidLoggingConfiguration) GoString() string {
 
 func newErrorInvalidLoggingConfiguration(v protocol.ResponseMetadata) error {
 	return &InvalidLoggingConfiguration{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidLoggingConfiguration) Code() string {
+func (s *InvalidLoggingConfiguration) Code() string {
 	return "InvalidLoggingConfiguration"
 }
 
 // Message returns the exception's message.
-func (s InvalidLoggingConfiguration) Message() string {
+func (s *InvalidLoggingConfiguration) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4835,28 +5177,28 @@ func (s InvalidLoggingConfiguration) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidLoggingConfiguration) OrigErr() error {
+func (s *InvalidLoggingConfiguration) OrigErr() error {
 	return nil
 }
 
-func (s InvalidLoggingConfiguration) Error() string {
+func (s *InvalidLoggingConfiguration) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidLoggingConfiguration) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidLoggingConfiguration) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidLoggingConfiguration) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidLoggingConfiguration) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided name is invalid.
 type InvalidName struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4873,17 +5215,17 @@ func (s InvalidName) GoString() string {
 
 func newErrorInvalidName(v protocol.ResponseMetadata) error {
 	return &InvalidName{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidName) Code() string {
+func (s *InvalidName) Code() string {
 	return "InvalidName"
 }
 
 // Message returns the exception's message.
-func (s InvalidName) Message() string {
+func (s *InvalidName) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4891,28 +5233,28 @@ func (s InvalidName) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidName) OrigErr() error {
+func (s *InvalidName) OrigErr() error {
 	return nil
 }
 
-func (s InvalidName) Error() string {
+func (s *InvalidName) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidName) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidName) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidName) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidName) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided JSON output data is invalid.
 type InvalidOutput struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4929,17 +5271,17 @@ func (s InvalidOutput) GoString() string {
 
 func newErrorInvalidOutput(v protocol.ResponseMetadata) error {
 	return &InvalidOutput{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidOutput) Code() string {
+func (s *InvalidOutput) Code() string {
 	return "InvalidOutput"
 }
 
 // Message returns the exception's message.
-func (s InvalidOutput) Message() string {
+func (s *InvalidOutput) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4947,28 +5289,28 @@ func (s InvalidOutput) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidOutput) OrigErr() error {
+func (s *InvalidOutput) OrigErr() error {
 	return nil
 }
 
-func (s InvalidOutput) Error() string {
+func (s *InvalidOutput) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidOutput) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidOutput) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidOutput) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidOutput) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided token is invalid.
 type InvalidToken struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4985,17 +5327,17 @@ func (s InvalidToken) GoString() string {
 
 func newErrorInvalidToken(v protocol.ResponseMetadata) error {
 	return &InvalidToken{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidToken) Code() string {
+func (s *InvalidToken) Code() string {
 	return "InvalidToken"
 }
 
 // Message returns the exception's message.
-func (s InvalidToken) Message() string {
+func (s *InvalidToken) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5003,22 +5345,79 @@ func (s InvalidToken) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidToken) OrigErr() error {
+func (s *InvalidToken) OrigErr() error {
 	return nil
 }
 
-func (s InvalidToken) Error() string {
+func (s *InvalidToken) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidToken) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidToken) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidToken) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidToken) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// Your tracingConfiguration key does not match, or enabled has not been set
+// to true or false.
+type InvalidTracingConfiguration struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s InvalidTracingConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s InvalidTracingConfiguration) GoString() string {
+	return s.String()
+}
+
+func newErrorInvalidTracingConfiguration(v protocol.ResponseMetadata) error {
+	return &InvalidTracingConfiguration{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *InvalidTracingConfiguration) Code() string {
+	return "InvalidTracingConfiguration"
+}
+
+// Message returns the exception's message.
+func (s *InvalidTracingConfiguration) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *InvalidTracingConfiguration) OrigErr() error {
+	return nil
+}
+
+func (s *InvalidTracingConfiguration) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *InvalidTracingConfiguration) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *InvalidTracingConfiguration) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details about a lambda function that failed during an execution.
@@ -5092,8 +5491,12 @@ func (s *LambdaFunctionScheduleFailedEventDetails) SetError(v string) *LambdaFun
 type LambdaFunctionScheduledEventDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The JSON data input to the lambda function.
+	// The JSON data input to the lambda function. Length constraints apply to the
+	// payload size, and are expressed as bytes in UTF-8 encoding.
 	Input *string `locationName:"input" type:"string" sensitive:"true"`
+
+	// Contains details about input for an execution history event.
+	InputDetails *HistoryEventExecutionDataDetails `locationName:"inputDetails" type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the scheduled lambda function.
 	//
@@ -5117,6 +5520,12 @@ func (s LambdaFunctionScheduledEventDetails) GoString() string {
 // SetInput sets the Input field's value.
 func (s *LambdaFunctionScheduledEventDetails) SetInput(v string) *LambdaFunctionScheduledEventDetails {
 	s.Input = &v
+	return s
+}
+
+// SetInputDetails sets the InputDetails field's value.
+func (s *LambdaFunctionScheduledEventDetails) SetInputDetails(v *HistoryEventExecutionDataDetails) *LambdaFunctionScheduledEventDetails {
+	s.InputDetails = v
 	return s
 }
 
@@ -5170,8 +5579,12 @@ func (s *LambdaFunctionStartFailedEventDetails) SetError(v string) *LambdaFuncti
 type LambdaFunctionSucceededEventDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The JSON data output by the lambda function.
+	// The JSON data output by the lambda function. Length constraints apply to
+	// the payload size, and are expressed as bytes in UTF-8 encoding.
 	Output *string `locationName:"output" type:"string" sensitive:"true"`
+
+	// Contains details about the output of an execution history event.
+	OutputDetails *HistoryEventExecutionDataDetails `locationName:"outputDetails" type:"structure"`
 }
 
 // String returns the string representation
@@ -5187,6 +5600,12 @@ func (s LambdaFunctionSucceededEventDetails) GoString() string {
 // SetOutput sets the Output field's value.
 func (s *LambdaFunctionSucceededEventDetails) SetOutput(v string) *LambdaFunctionSucceededEventDetails {
 	s.Output = &v
+	return s
+}
+
+// SetOutputDetails sets the OutputDetails field's value.
+func (s *LambdaFunctionSucceededEventDetails) SetOutputDetails(v *HistoryEventExecutionDataDetails) *LambdaFunctionSucceededEventDetails {
+	s.OutputDetails = v
 	return s
 }
 
@@ -5629,15 +6048,16 @@ func (s *LogDestination) SetCloudWatchLogsLogGroup(v *CloudWatchLogsLogGroup) *L
 	return s
 }
 
+// The LoggingConfiguration data type is used to set CloudWatch Logs options.
 type LoggingConfiguration struct {
 	_ struct{} `type:"structure"`
 
-	// An object that describes where your execution history events will be logged.
-	// Limited to size 1. Required, if your log level is not set to OFF.
+	// An array of objects that describes where your execution history events will
+	// be logged. Limited to size 1. Required, if your log level is not set to OFF.
 	Destinations []*LogDestination `locationName:"destinations" type:"list"`
 
-	// Determines whether execution history data is included in your log. When set
-	// to FALSE, data is excluded.
+	// Determines whether execution data is included in your log. When set to false,
+	// data is excluded.
 	IncludeExecutionData *bool `locationName:"includeExecutionData" type:"boolean"`
 
 	// Defines which category of execution history events are logged.
@@ -5752,8 +6172,8 @@ func (s *MapStateStartedEventDetails) SetLength(v int64) *MapStateStartedEventDe
 // Request is missing a required parameter. This error occurs if both definition
 // and roleArn are not specified.
 type MissingRequiredParameter struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5770,17 +6190,17 @@ func (s MissingRequiredParameter) GoString() string {
 
 func newErrorMissingRequiredParameter(v protocol.ResponseMetadata) error {
 	return &MissingRequiredParameter{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MissingRequiredParameter) Code() string {
+func (s *MissingRequiredParameter) Code() string {
 	return "MissingRequiredParameter"
 }
 
 // Message returns the exception's message.
-func (s MissingRequiredParameter) Message() string {
+func (s *MissingRequiredParameter) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5788,29 +6208,29 @@ func (s MissingRequiredParameter) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MissingRequiredParameter) OrigErr() error {
+func (s *MissingRequiredParameter) OrigErr() error {
 	return nil
 }
 
-func (s MissingRequiredParameter) Error() string {
+func (s *MissingRequiredParameter) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MissingRequiredParameter) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MissingRequiredParameter) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MissingRequiredParameter) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MissingRequiredParameter) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Could not find the referenced resource. Only state machine and activity ARNs
 // are supported.
 type ResourceNotFound struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -5829,17 +6249,17 @@ func (s ResourceNotFound) GoString() string {
 
 func newErrorResourceNotFound(v protocol.ResponseMetadata) error {
 	return &ResourceNotFound{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFound) Code() string {
+func (s *ResourceNotFound) Code() string {
 	return "ResourceNotFound"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFound) Message() string {
+func (s *ResourceNotFound) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5847,22 +6267,22 @@ func (s ResourceNotFound) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFound) OrigErr() error {
+func (s *ResourceNotFound) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFound) Error() string {
+func (s *ResourceNotFound) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFound) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFound) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFound) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFound) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type SendTaskFailureInput struct {
@@ -6000,7 +6420,8 @@ func (s SendTaskHeartbeatOutput) GoString() string {
 type SendTaskSuccessInput struct {
 	_ struct{} `type:"structure"`
 
-	// The JSON output of the task.
+	// The JSON output of the task. Length constraints apply to the payload size,
+	// and are expressed as bytes in UTF-8 encoding.
 	//
 	// Output is a required field
 	Output *string `locationName:"output" type:"string" required:"true" sensitive:"true"`
@@ -6077,6 +6498,9 @@ type StartExecutionInput struct {
 	//
 	// If you don't include any JSON input data, you still must include the two
 	// braces, for example: "input": "{}"
+	//
+	// Length constraints apply to the payload size, and are expressed as bytes
+	// in UTF-8 encoding.
 	Input *string `locationName:"input" type:"string" sensitive:"true"`
 
 	// The name of the execution. This name must be unique for your AWS account,
@@ -6095,12 +6519,19 @@ type StartExecutionInput struct {
 	//    * special characters " # % \ ^ | ~ ` $ & , ; : /
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
+	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
 	Name *string `locationName:"name" min:"1" type:"string"`
 
 	// The Amazon Resource Name (ARN) of the state machine to execute.
 	//
 	// StateMachineArn is a required field
 	StateMachineArn *string `locationName:"stateMachineArn" min:"1" type:"string" required:"true"`
+
+	// Passes the AWS X-Ray trace header. The trace header can also be passed in
+	// the request payload.
+	TraceHeader *string `locationName:"traceHeader" type:"string"`
 }
 
 // String returns the string representation
@@ -6150,6 +6581,12 @@ func (s *StartExecutionInput) SetStateMachineArn(v string) *StartExecutionInput 
 	return s
 }
 
+// SetTraceHeader sets the TraceHeader field's value.
+func (s *StartExecutionInput) SetTraceHeader(v string) *StartExecutionInput {
+	s.TraceHeader = &v
+	return s
+}
+
 type StartExecutionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -6186,12 +6623,250 @@ func (s *StartExecutionOutput) SetStartDate(v time.Time) *StartExecutionOutput {
 	return s
 }
 
+type StartSyncExecutionInput struct {
+	_ struct{} `type:"structure"`
+
+	// The string that contains the JSON input data for the execution, for example:
+	//
+	// "input": "{\"first_name\" : \"test\"}"
+	//
+	// If you don't include any JSON input data, you still must include the two
+	// braces, for example: "input": "{}"
+	//
+	// Length constraints apply to the payload size, and are expressed as bytes
+	// in UTF-8 encoding.
+	Input *string `locationName:"input" type:"string" sensitive:"true"`
+
+	// The name of the execution.
+	Name *string `locationName:"name" min:"1" type:"string"`
+
+	// The Amazon Resource Name (ARN) of the state machine to execute.
+	//
+	// StateMachineArn is a required field
+	StateMachineArn *string `locationName:"stateMachineArn" min:"1" type:"string" required:"true"`
+
+	// Passes the AWS X-Ray trace header. The trace header can also be passed in
+	// the request payload.
+	TraceHeader *string `locationName:"traceHeader" type:"string"`
+}
+
+// String returns the string representation
+func (s StartSyncExecutionInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartSyncExecutionInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *StartSyncExecutionInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "StartSyncExecutionInput"}
+	if s.Name != nil && len(*s.Name) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
+	}
+	if s.StateMachineArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("StateMachineArn"))
+	}
+	if s.StateMachineArn != nil && len(*s.StateMachineArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("StateMachineArn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetInput sets the Input field's value.
+func (s *StartSyncExecutionInput) SetInput(v string) *StartSyncExecutionInput {
+	s.Input = &v
+	return s
+}
+
+// SetName sets the Name field's value.
+func (s *StartSyncExecutionInput) SetName(v string) *StartSyncExecutionInput {
+	s.Name = &v
+	return s
+}
+
+// SetStateMachineArn sets the StateMachineArn field's value.
+func (s *StartSyncExecutionInput) SetStateMachineArn(v string) *StartSyncExecutionInput {
+	s.StateMachineArn = &v
+	return s
+}
+
+// SetTraceHeader sets the TraceHeader field's value.
+func (s *StartSyncExecutionInput) SetTraceHeader(v string) *StartSyncExecutionInput {
+	s.TraceHeader = &v
+	return s
+}
+
+type StartSyncExecutionOutput struct {
+	_ struct{} `type:"structure"`
+
+	// An object that describes workflow billing details, including billed duration
+	// and memory use.
+	BillingDetails *BillingDetails `locationName:"billingDetails" type:"structure"`
+
+	// A more detailed explanation of the cause of the failure.
+	Cause *string `locationName:"cause" type:"string" sensitive:"true"`
+
+	// The error code of the failure.
+	Error *string `locationName:"error" type:"string" sensitive:"true"`
+
+	// The Amazon Resource Name (ARN) that identifies the execution.
+	//
+	// ExecutionArn is a required field
+	ExecutionArn *string `locationName:"executionArn" min:"1" type:"string" required:"true"`
+
+	// The string that contains the JSON input data of the execution. Length constraints
+	// apply to the payload size, and are expressed as bytes in UTF-8 encoding.
+	Input *string `locationName:"input" type:"string" sensitive:"true"`
+
+	// Provides details about execution input or output.
+	InputDetails *CloudWatchEventsExecutionDataDetails `locationName:"inputDetails" type:"structure"`
+
+	// The name of the execution.
+	Name *string `locationName:"name" min:"1" type:"string"`
+
+	// The JSON output data of the execution. Length constraints apply to the payload
+	// size, and are expressed as bytes in UTF-8 encoding.
+	//
+	// This field is set only if the execution succeeds. If the execution fails,
+	// this field is null.
+	Output *string `locationName:"output" type:"string" sensitive:"true"`
+
+	// Provides details about execution input or output.
+	OutputDetails *CloudWatchEventsExecutionDataDetails `locationName:"outputDetails" type:"structure"`
+
+	// The date the execution is started.
+	//
+	// StartDate is a required field
+	StartDate *time.Time `locationName:"startDate" type:"timestamp" required:"true"`
+
+	// The Amazon Resource Name (ARN) that identifies the state machine.
+	StateMachineArn *string `locationName:"stateMachineArn" min:"1" type:"string"`
+
+	// The current status of the execution.
+	//
+	// Status is a required field
+	Status *string `locationName:"status" type:"string" required:"true" enum:"SyncExecutionStatus"`
+
+	// If the execution has already ended, the date the execution stopped.
+	//
+	// StopDate is a required field
+	StopDate *time.Time `locationName:"stopDate" type:"timestamp" required:"true"`
+
+	// The AWS X-Ray trace header that was passed to the execution.
+	TraceHeader *string `locationName:"traceHeader" type:"string"`
+}
+
+// String returns the string representation
+func (s StartSyncExecutionOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s StartSyncExecutionOutput) GoString() string {
+	return s.String()
+}
+
+// SetBillingDetails sets the BillingDetails field's value.
+func (s *StartSyncExecutionOutput) SetBillingDetails(v *BillingDetails) *StartSyncExecutionOutput {
+	s.BillingDetails = v
+	return s
+}
+
+// SetCause sets the Cause field's value.
+func (s *StartSyncExecutionOutput) SetCause(v string) *StartSyncExecutionOutput {
+	s.Cause = &v
+	return s
+}
+
+// SetError sets the Error field's value.
+func (s *StartSyncExecutionOutput) SetError(v string) *StartSyncExecutionOutput {
+	s.Error = &v
+	return s
+}
+
+// SetExecutionArn sets the ExecutionArn field's value.
+func (s *StartSyncExecutionOutput) SetExecutionArn(v string) *StartSyncExecutionOutput {
+	s.ExecutionArn = &v
+	return s
+}
+
+// SetInput sets the Input field's value.
+func (s *StartSyncExecutionOutput) SetInput(v string) *StartSyncExecutionOutput {
+	s.Input = &v
+	return s
+}
+
+// SetInputDetails sets the InputDetails field's value.
+func (s *StartSyncExecutionOutput) SetInputDetails(v *CloudWatchEventsExecutionDataDetails) *StartSyncExecutionOutput {
+	s.InputDetails = v
+	return s
+}
+
+// SetName sets the Name field's value.
+func (s *StartSyncExecutionOutput) SetName(v string) *StartSyncExecutionOutput {
+	s.Name = &v
+	return s
+}
+
+// SetOutput sets the Output field's value.
+func (s *StartSyncExecutionOutput) SetOutput(v string) *StartSyncExecutionOutput {
+	s.Output = &v
+	return s
+}
+
+// SetOutputDetails sets the OutputDetails field's value.
+func (s *StartSyncExecutionOutput) SetOutputDetails(v *CloudWatchEventsExecutionDataDetails) *StartSyncExecutionOutput {
+	s.OutputDetails = v
+	return s
+}
+
+// SetStartDate sets the StartDate field's value.
+func (s *StartSyncExecutionOutput) SetStartDate(v time.Time) *StartSyncExecutionOutput {
+	s.StartDate = &v
+	return s
+}
+
+// SetStateMachineArn sets the StateMachineArn field's value.
+func (s *StartSyncExecutionOutput) SetStateMachineArn(v string) *StartSyncExecutionOutput {
+	s.StateMachineArn = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *StartSyncExecutionOutput) SetStatus(v string) *StartSyncExecutionOutput {
+	s.Status = &v
+	return s
+}
+
+// SetStopDate sets the StopDate field's value.
+func (s *StartSyncExecutionOutput) SetStopDate(v time.Time) *StartSyncExecutionOutput {
+	s.StopDate = &v
+	return s
+}
+
+// SetTraceHeader sets the TraceHeader field's value.
+func (s *StartSyncExecutionOutput) SetTraceHeader(v string) *StartSyncExecutionOutput {
+	s.TraceHeader = &v
+	return s
+}
+
 // Contains details about a state entered during an execution.
 type StateEnteredEventDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The string that contains the JSON input data for the state.
+	// The string that contains the JSON input data for the state. Length constraints
+	// apply to the payload size, and are expressed as bytes in UTF-8 encoding.
 	Input *string `locationName:"input" type:"string" sensitive:"true"`
+
+	// Contains details about the input for an execution history event.
+	InputDetails *HistoryEventExecutionDataDetails `locationName:"inputDetails" type:"structure"`
 
 	// The name of the state.
 	//
@@ -6212,6 +6887,12 @@ func (s StateEnteredEventDetails) GoString() string {
 // SetInput sets the Input field's value.
 func (s *StateEnteredEventDetails) SetInput(v string) *StateEnteredEventDetails {
 	s.Input = &v
+	return s
+}
+
+// SetInputDetails sets the InputDetails field's value.
+func (s *StateEnteredEventDetails) SetInputDetails(v *HistoryEventExecutionDataDetails) *StateEnteredEventDetails {
+	s.InputDetails = v
 	return s
 }
 
@@ -6239,11 +6920,18 @@ type StateExitedEventDetails struct {
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
 	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
+	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
 
-	// The JSON output data of the state.
+	// The JSON output data of the state. Length constraints apply to the payload
+	// size, and are expressed as bytes in UTF-8 encoding.
 	Output *string `locationName:"output" type:"string" sensitive:"true"`
+
+	// Contains details about the output of an execution history event.
+	OutputDetails *HistoryEventExecutionDataDetails `locationName:"outputDetails" type:"structure"`
 }
 
 // String returns the string representation
@@ -6268,11 +6956,17 @@ func (s *StateExitedEventDetails) SetOutput(v string) *StateExitedEventDetails {
 	return s
 }
 
+// SetOutputDetails sets the OutputDetails field's value.
+func (s *StateExitedEventDetails) SetOutputDetails(v *HistoryEventExecutionDataDetails) *StateExitedEventDetails {
+	s.OutputDetails = v
+	return s
+}
+
 // A state machine with the same name but a different definition or role ARN
 // already exists.
 type StateMachineAlreadyExists struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -6289,17 +6983,17 @@ func (s StateMachineAlreadyExists) GoString() string {
 
 func newErrorStateMachineAlreadyExists(v protocol.ResponseMetadata) error {
 	return &StateMachineAlreadyExists{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s StateMachineAlreadyExists) Code() string {
+func (s *StateMachineAlreadyExists) Code() string {
 	return "StateMachineAlreadyExists"
 }
 
 // Message returns the exception's message.
-func (s StateMachineAlreadyExists) Message() string {
+func (s *StateMachineAlreadyExists) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6307,28 +7001,28 @@ func (s StateMachineAlreadyExists) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s StateMachineAlreadyExists) OrigErr() error {
+func (s *StateMachineAlreadyExists) OrigErr() error {
 	return nil
 }
 
-func (s StateMachineAlreadyExists) Error() string {
+func (s *StateMachineAlreadyExists) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s StateMachineAlreadyExists) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *StateMachineAlreadyExists) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s StateMachineAlreadyExists) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *StateMachineAlreadyExists) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified state machine is being deleted.
 type StateMachineDeleting struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -6345,17 +7039,17 @@ func (s StateMachineDeleting) GoString() string {
 
 func newErrorStateMachineDeleting(v protocol.ResponseMetadata) error {
 	return &StateMachineDeleting{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s StateMachineDeleting) Code() string {
+func (s *StateMachineDeleting) Code() string {
 	return "StateMachineDeleting"
 }
 
 // Message returns the exception's message.
-func (s StateMachineDeleting) Message() string {
+func (s *StateMachineDeleting) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6363,28 +7057,28 @@ func (s StateMachineDeleting) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s StateMachineDeleting) OrigErr() error {
+func (s *StateMachineDeleting) OrigErr() error {
 	return nil
 }
 
-func (s StateMachineDeleting) Error() string {
+func (s *StateMachineDeleting) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s StateMachineDeleting) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *StateMachineDeleting) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s StateMachineDeleting) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *StateMachineDeleting) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified state machine does not exist.
 type StateMachineDoesNotExist struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -6401,17 +7095,17 @@ func (s StateMachineDoesNotExist) GoString() string {
 
 func newErrorStateMachineDoesNotExist(v protocol.ResponseMetadata) error {
 	return &StateMachineDoesNotExist{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s StateMachineDoesNotExist) Code() string {
+func (s *StateMachineDoesNotExist) Code() string {
 	return "StateMachineDoesNotExist"
 }
 
 // Message returns the exception's message.
-func (s StateMachineDoesNotExist) Message() string {
+func (s *StateMachineDoesNotExist) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6419,29 +7113,29 @@ func (s StateMachineDoesNotExist) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s StateMachineDoesNotExist) OrigErr() error {
+func (s *StateMachineDoesNotExist) OrigErr() error {
 	return nil
 }
 
-func (s StateMachineDoesNotExist) Error() string {
+func (s *StateMachineDoesNotExist) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s StateMachineDoesNotExist) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *StateMachineDoesNotExist) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s StateMachineDoesNotExist) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *StateMachineDoesNotExist) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The maximum number of state machines has been reached. Existing state machines
 // must be deleted before a new state machine can be created.
 type StateMachineLimitExceeded struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -6458,17 +7152,17 @@ func (s StateMachineLimitExceeded) GoString() string {
 
 func newErrorStateMachineLimitExceeded(v protocol.ResponseMetadata) error {
 	return &StateMachineLimitExceeded{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s StateMachineLimitExceeded) Code() string {
+func (s *StateMachineLimitExceeded) Code() string {
 	return "StateMachineLimitExceeded"
 }
 
 // Message returns the exception's message.
-func (s StateMachineLimitExceeded) Message() string {
+func (s *StateMachineLimitExceeded) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6476,22 +7170,22 @@ func (s StateMachineLimitExceeded) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s StateMachineLimitExceeded) OrigErr() error {
+func (s *StateMachineLimitExceeded) OrigErr() error {
 	return nil
 }
 
-func (s StateMachineLimitExceeded) Error() string {
+func (s *StateMachineLimitExceeded) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s StateMachineLimitExceeded) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *StateMachineLimitExceeded) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s StateMachineLimitExceeded) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *StateMachineLimitExceeded) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details about the state machine.
@@ -6516,6 +7210,9 @@ type StateMachineListItem struct {
 	//    * special characters " # % \ ^ | ~ ` $ & , ; : /
 	//
 	//    * control characters (U+0000-001F, U+007F-009F)
+	//
+	// To enable logging with CloudWatch Logs, the name should only contain 0-9,
+	// A-Z, a-z, - and _.
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
@@ -6564,8 +7261,8 @@ func (s *StateMachineListItem) SetType(v string) *StateMachineListItem {
 }
 
 type StateMachineTypeNotSupported struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -6582,17 +7279,17 @@ func (s StateMachineTypeNotSupported) GoString() string {
 
 func newErrorStateMachineTypeNotSupported(v protocol.ResponseMetadata) error {
 	return &StateMachineTypeNotSupported{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s StateMachineTypeNotSupported) Code() string {
+func (s *StateMachineTypeNotSupported) Code() string {
 	return "StateMachineTypeNotSupported"
 }
 
 // Message returns the exception's message.
-func (s StateMachineTypeNotSupported) Message() string {
+func (s *StateMachineTypeNotSupported) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6600,22 +7297,22 @@ func (s StateMachineTypeNotSupported) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s StateMachineTypeNotSupported) OrigErr() error {
+func (s *StateMachineTypeNotSupported) OrigErr() error {
 	return nil
 }
 
-func (s StateMachineTypeNotSupported) Error() string {
+func (s *StateMachineTypeNotSupported) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s StateMachineTypeNotSupported) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *StateMachineTypeNotSupported) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s StateMachineTypeNotSupported) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *StateMachineTypeNotSupported) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type StopExecutionInput struct {
@@ -6840,8 +7537,8 @@ func (s TagResourceOutput) GoString() string {
 }
 
 type TaskDoesNotExist struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -6858,17 +7555,17 @@ func (s TaskDoesNotExist) GoString() string {
 
 func newErrorTaskDoesNotExist(v protocol.ResponseMetadata) error {
 	return &TaskDoesNotExist{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TaskDoesNotExist) Code() string {
+func (s *TaskDoesNotExist) Code() string {
 	return "TaskDoesNotExist"
 }
 
 // Message returns the exception's message.
-func (s TaskDoesNotExist) Message() string {
+func (s *TaskDoesNotExist) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6876,22 +7573,22 @@ func (s TaskDoesNotExist) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TaskDoesNotExist) OrigErr() error {
+func (s *TaskDoesNotExist) OrigErr() error {
 	return nil
 }
 
-func (s TaskDoesNotExist) Error() string {
+func (s *TaskDoesNotExist) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TaskDoesNotExist) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TaskDoesNotExist) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TaskDoesNotExist) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TaskDoesNotExist) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details about a task failure event.
@@ -6953,7 +7650,11 @@ func (s *TaskFailedEventDetails) SetResourceType(v string) *TaskFailedEventDetai
 type TaskScheduledEventDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The JSON data passed to the resource referenced in a task state.
+	// The maximum allowed duration between two heartbeats for the task.
+	HeartbeatInSeconds *int64 `locationName:"heartbeatInSeconds" type:"long"`
+
+	// The JSON data passed to the resource referenced in a task state. Length constraints
+	// apply to the payload size, and are expressed as bytes in UTF-8 encoding.
 	//
 	// Parameters is a required field
 	Parameters *string `locationName:"parameters" type:"string" required:"true" sensitive:"true"`
@@ -6985,6 +7686,12 @@ func (s TaskScheduledEventDetails) String() string {
 // GoString returns the string representation
 func (s TaskScheduledEventDetails) GoString() string {
 	return s.String()
+}
+
+// SetHeartbeatInSeconds sets the HeartbeatInSeconds field's value.
+func (s *TaskScheduledEventDetails) SetHeartbeatInSeconds(v int64) *TaskScheduledEventDetails {
+	s.HeartbeatInSeconds = &v
+	return s
 }
 
 // SetParameters sets the Parameters field's value.
@@ -7168,8 +7875,12 @@ func (s *TaskSubmitFailedEventDetails) SetResourceType(v string) *TaskSubmitFail
 type TaskSubmittedEventDetails struct {
 	_ struct{} `type:"structure"`
 
-	// The response from a resource when a task has started.
+	// The response from a resource when a task has started. Length constraints
+	// apply to the payload size, and are expressed as bytes in UTF-8 encoding.
 	Output *string `locationName:"output" type:"string" sensitive:"true"`
+
+	// Contains details about the output of an execution history event.
+	OutputDetails *HistoryEventExecutionDataDetails `locationName:"outputDetails" type:"structure"`
 
 	// The service name of the resource in a task state.
 	//
@@ -7198,6 +7909,12 @@ func (s *TaskSubmittedEventDetails) SetOutput(v string) *TaskSubmittedEventDetai
 	return s
 }
 
+// SetOutputDetails sets the OutputDetails field's value.
+func (s *TaskSubmittedEventDetails) SetOutputDetails(v *HistoryEventExecutionDataDetails) *TaskSubmittedEventDetails {
+	s.OutputDetails = v
+	return s
+}
+
 // SetResource sets the Resource field's value.
 func (s *TaskSubmittedEventDetails) SetResource(v string) *TaskSubmittedEventDetails {
 	s.Resource = &v
@@ -7215,8 +7932,12 @@ type TaskSucceededEventDetails struct {
 	_ struct{} `type:"structure"`
 
 	// The full JSON response from a resource when a task has succeeded. This response
-	// becomes the output of the related task.
+	// becomes the output of the related task. Length constraints apply to the payload
+	// size, and are expressed as bytes in UTF-8 encoding.
 	Output *string `locationName:"output" type:"string" sensitive:"true"`
+
+	// Contains details about the output of an execution history event.
+	OutputDetails *HistoryEventExecutionDataDetails `locationName:"outputDetails" type:"structure"`
 
 	// The service name of the resource in a task state.
 	//
@@ -7245,6 +7966,12 @@ func (s *TaskSucceededEventDetails) SetOutput(v string) *TaskSucceededEventDetai
 	return s
 }
 
+// SetOutputDetails sets the OutputDetails field's value.
+func (s *TaskSucceededEventDetails) SetOutputDetails(v *HistoryEventExecutionDataDetails) *TaskSucceededEventDetails {
+	s.OutputDetails = v
+	return s
+}
+
 // SetResource sets the Resource field's value.
 func (s *TaskSucceededEventDetails) SetResource(v string) *TaskSucceededEventDetails {
 	s.Resource = &v
@@ -7258,8 +7985,8 @@ func (s *TaskSucceededEventDetails) SetResourceType(v string) *TaskSucceededEven
 }
 
 type TaskTimedOut struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7276,17 +8003,17 @@ func (s TaskTimedOut) GoString() string {
 
 func newErrorTaskTimedOut(v protocol.ResponseMetadata) error {
 	return &TaskTimedOut{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TaskTimedOut) Code() string {
+func (s *TaskTimedOut) Code() string {
 	return "TaskTimedOut"
 }
 
 // Message returns the exception's message.
-func (s TaskTimedOut) Message() string {
+func (s *TaskTimedOut) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7294,22 +8021,22 @@ func (s TaskTimedOut) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TaskTimedOut) OrigErr() error {
+func (s *TaskTimedOut) OrigErr() error {
 	return nil
 }
 
-func (s TaskTimedOut) Error() string {
+func (s *TaskTimedOut) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TaskTimedOut) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TaskTimedOut) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TaskTimedOut) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TaskTimedOut) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Contains details about a resource timeout that occurred during an execution.
@@ -7371,8 +8098,8 @@ func (s *TaskTimedOutEventDetails) SetResourceType(v string) *TaskTimedOutEventD
 // Topic (https://docs.aws.amazon.com/step-functions/latest/dg/limits.html)
 // in the AWS Step Functions Developer Guide.
 type TooManyTags struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -7391,17 +8118,17 @@ func (s TooManyTags) GoString() string {
 
 func newErrorTooManyTags(v protocol.ResponseMetadata) error {
 	return &TooManyTags{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyTags) Code() string {
+func (s *TooManyTags) Code() string {
 	return "TooManyTags"
 }
 
 // Message returns the exception's message.
-func (s TooManyTags) Message() string {
+func (s *TooManyTags) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7409,22 +8136,47 @@ func (s TooManyTags) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyTags) OrigErr() error {
+func (s *TooManyTags) OrigErr() error {
 	return nil
 }
 
-func (s TooManyTags) Error() string {
+func (s *TooManyTags) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyTags) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyTags) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyTags) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyTags) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// Selects whether or not the state machine's AWS X-Ray tracing is enabled.
+// Default is false
+type TracingConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// When set to true, AWS X-Ray tracing is enabled.
+	Enabled *bool `locationName:"enabled" type:"boolean"`
+}
+
+// String returns the string representation
+func (s TracingConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TracingConfiguration) GoString() string {
+	return s.String()
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *TracingConfiguration) SetEnabled(v bool) *TracingConfiguration {
+	s.Enabled = &v
+	return s
 }
 
 type UntagResourceInput struct {
@@ -7503,6 +8255,7 @@ type UpdateStateMachineInput struct {
 	// Language (https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html).
 	Definition *string `locationName:"definition" min:"1" type:"string" sensitive:"true"`
 
+	// The LoggingConfiguration data type is used to set CloudWatch Logs options.
 	LoggingConfiguration *LoggingConfiguration `locationName:"loggingConfiguration" type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the IAM role of the state machine.
@@ -7512,6 +8265,9 @@ type UpdateStateMachineInput struct {
 	//
 	// StateMachineArn is a required field
 	StateMachineArn *string `locationName:"stateMachineArn" min:"1" type:"string" required:"true"`
+
+	// Selects whether AWS X-Ray tracing is enabled.
+	TracingConfiguration *TracingConfiguration `locationName:"tracingConfiguration" type:"structure"`
 }
 
 // String returns the string representation
@@ -7575,6 +8331,12 @@ func (s *UpdateStateMachineInput) SetStateMachineArn(v string) *UpdateStateMachi
 	return s
 }
 
+// SetTracingConfiguration sets the TracingConfiguration field's value.
+func (s *UpdateStateMachineInput) SetTracingConfiguration(v *TracingConfiguration) *UpdateStateMachineInput {
+	s.TracingConfiguration = v
+	return s
+}
+
 type UpdateStateMachineOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -7616,6 +8378,17 @@ const (
 	// ExecutionStatusAborted is a ExecutionStatus enum value
 	ExecutionStatusAborted = "ABORTED"
 )
+
+// ExecutionStatus_Values returns all elements of the ExecutionStatus enum
+func ExecutionStatus_Values() []string {
+	return []string{
+		ExecutionStatusRunning,
+		ExecutionStatusSucceeded,
+		ExecutionStatusFailed,
+		ExecutionStatusTimedOut,
+		ExecutionStatusAborted,
+	}
+}
 
 const (
 	// HistoryEventTypeActivityFailed is a HistoryEventType enum value
@@ -7784,6 +8557,67 @@ const (
 	HistoryEventTypeWaitStateExited = "WaitStateExited"
 )
 
+// HistoryEventType_Values returns all elements of the HistoryEventType enum
+func HistoryEventType_Values() []string {
+	return []string{
+		HistoryEventTypeActivityFailed,
+		HistoryEventTypeActivityScheduled,
+		HistoryEventTypeActivityScheduleFailed,
+		HistoryEventTypeActivityStarted,
+		HistoryEventTypeActivitySucceeded,
+		HistoryEventTypeActivityTimedOut,
+		HistoryEventTypeChoiceStateEntered,
+		HistoryEventTypeChoiceStateExited,
+		HistoryEventTypeExecutionAborted,
+		HistoryEventTypeExecutionFailed,
+		HistoryEventTypeExecutionStarted,
+		HistoryEventTypeExecutionSucceeded,
+		HistoryEventTypeExecutionTimedOut,
+		HistoryEventTypeFailStateEntered,
+		HistoryEventTypeLambdaFunctionFailed,
+		HistoryEventTypeLambdaFunctionScheduled,
+		HistoryEventTypeLambdaFunctionScheduleFailed,
+		HistoryEventTypeLambdaFunctionStarted,
+		HistoryEventTypeLambdaFunctionStartFailed,
+		HistoryEventTypeLambdaFunctionSucceeded,
+		HistoryEventTypeLambdaFunctionTimedOut,
+		HistoryEventTypeMapIterationAborted,
+		HistoryEventTypeMapIterationFailed,
+		HistoryEventTypeMapIterationStarted,
+		HistoryEventTypeMapIterationSucceeded,
+		HistoryEventTypeMapStateAborted,
+		HistoryEventTypeMapStateEntered,
+		HistoryEventTypeMapStateExited,
+		HistoryEventTypeMapStateFailed,
+		HistoryEventTypeMapStateStarted,
+		HistoryEventTypeMapStateSucceeded,
+		HistoryEventTypeParallelStateAborted,
+		HistoryEventTypeParallelStateEntered,
+		HistoryEventTypeParallelStateExited,
+		HistoryEventTypeParallelStateFailed,
+		HistoryEventTypeParallelStateStarted,
+		HistoryEventTypeParallelStateSucceeded,
+		HistoryEventTypePassStateEntered,
+		HistoryEventTypePassStateExited,
+		HistoryEventTypeSucceedStateEntered,
+		HistoryEventTypeSucceedStateExited,
+		HistoryEventTypeTaskFailed,
+		HistoryEventTypeTaskScheduled,
+		HistoryEventTypeTaskStarted,
+		HistoryEventTypeTaskStartFailed,
+		HistoryEventTypeTaskStateAborted,
+		HistoryEventTypeTaskStateEntered,
+		HistoryEventTypeTaskStateExited,
+		HistoryEventTypeTaskSubmitFailed,
+		HistoryEventTypeTaskSubmitted,
+		HistoryEventTypeTaskSucceeded,
+		HistoryEventTypeTaskTimedOut,
+		HistoryEventTypeWaitStateAborted,
+		HistoryEventTypeWaitStateEntered,
+		HistoryEventTypeWaitStateExited,
+	}
+}
+
 const (
 	// LogLevelAll is a LogLevel enum value
 	LogLevelAll = "ALL"
@@ -7798,6 +8632,16 @@ const (
 	LogLevelOff = "OFF"
 )
 
+// LogLevel_Values returns all elements of the LogLevel enum
+func LogLevel_Values() []string {
+	return []string{
+		LogLevelAll,
+		LogLevelError,
+		LogLevelFatal,
+		LogLevelOff,
+	}
+}
+
 const (
 	// StateMachineStatusActive is a StateMachineStatus enum value
 	StateMachineStatusActive = "ACTIVE"
@@ -7806,6 +8650,14 @@ const (
 	StateMachineStatusDeleting = "DELETING"
 )
 
+// StateMachineStatus_Values returns all elements of the StateMachineStatus enum
+func StateMachineStatus_Values() []string {
+	return []string{
+		StateMachineStatusActive,
+		StateMachineStatusDeleting,
+	}
+}
+
 const (
 	// StateMachineTypeStandard is a StateMachineType enum value
 	StateMachineTypeStandard = "STANDARD"
@@ -7813,3 +8665,31 @@ const (
 	// StateMachineTypeExpress is a StateMachineType enum value
 	StateMachineTypeExpress = "EXPRESS"
 )
+
+// StateMachineType_Values returns all elements of the StateMachineType enum
+func StateMachineType_Values() []string {
+	return []string{
+		StateMachineTypeStandard,
+		StateMachineTypeExpress,
+	}
+}
+
+const (
+	// SyncExecutionStatusSucceeded is a SyncExecutionStatus enum value
+	SyncExecutionStatusSucceeded = "SUCCEEDED"
+
+	// SyncExecutionStatusFailed is a SyncExecutionStatus enum value
+	SyncExecutionStatusFailed = "FAILED"
+
+	// SyncExecutionStatusTimedOut is a SyncExecutionStatus enum value
+	SyncExecutionStatusTimedOut = "TIMED_OUT"
+)
+
+// SyncExecutionStatus_Values returns all elements of the SyncExecutionStatus enum
+func SyncExecutionStatus_Values() []string {
+	return []string{
+		SyncExecutionStatusSucceeded,
+		SyncExecutionStatusFailed,
+		SyncExecutionStatusTimedOut,
+	}
+}

@@ -183,7 +183,7 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 	// add the task that we're actually stepping back so that we know to activate it
 	if prevTask.GenerateTask && originalStepbackTask != nil {
-		return prevTask.SetGeneratedTasksToStepback(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName)
+		return prevTask.SetGeneratedTasksToActivate(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName)
 	}
 	return nil
 }
@@ -1361,6 +1361,9 @@ func UpdateDisplayTask(t *task.Task) error {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
 			t.Activated = true
+			if utility.IsZeroTime(t.ActivatedTime) {
+				t.ActivatedTime = time.Now()
+			}
 		}
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
@@ -1391,10 +1394,11 @@ func UpdateDisplayTask(t *task.Task) error {
 	}
 
 	update := bson.M{
-		task.StatusKey:    statusTask.Status,
-		task.ActivatedKey: t.Activated,
-		task.TimeTakenKey: timeTaken,
-		task.DetailsKey:   statusTask.Details,
+		task.StatusKey:        statusTask.Status,
+		task.ActivatedKey:     t.Activated,
+		task.ActivatedTimeKey: t.ActivatedTime,
+		task.TimeTakenKey:     timeTaken,
+		task.DetailsKey:       statusTask.Details,
 	}
 
 	if startTime != time.Unix(1<<62, 0) {

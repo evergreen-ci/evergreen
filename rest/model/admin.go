@@ -664,11 +664,12 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 }
 
 type APIOktaConfig struct {
-	ClientID           *string `json:"client_id"`
-	ClientSecret       *string `json:"client_secret"`
-	Issuer             *string `json:"issuer"`
-	UserGroup          *string `json:"user_group"`
-	ExpireAfterMinutes int     `json:"expire_after_minutes"`
+	ClientID           *string  `json:"client_id"`
+	ClientSecret       *string  `json:"client_secret"`
+	Issuer             *string  `json:"issuer"`
+	Scopes             []string `json:"scopes"`
+	UserGroup          *string  `json:"user_group"`
+	ExpireAfterMinutes int      `json:"expire_after_minutes"`
 }
 
 func (a *APIOktaConfig) BuildFromService(h interface{}) error {
@@ -680,6 +681,7 @@ func (a *APIOktaConfig) BuildFromService(h interface{}) error {
 		a.ClientID = utility.ToStringPtr(v.ClientID)
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
 		a.Issuer = utility.ToStringPtr(v.Issuer)
+		a.Scopes = v.Scopes
 		a.UserGroup = utility.ToStringPtr(v.UserGroup)
 		a.ExpireAfterMinutes = v.ExpireAfterMinutes
 		return nil
@@ -696,6 +698,7 @@ func (a *APIOktaConfig) ToService() (interface{}, error) {
 		ClientID:           utility.FromStringPtr(a.ClientID),
 		ClientSecret:       utility.FromStringPtr(a.ClientSecret),
 		Issuer:             utility.FromStringPtr(a.Issuer),
+		Scopes:             a.Scopes,
 		UserGroup:          utility.FromStringPtr(a.UserGroup),
 		ExpireAfterMinutes: a.ExpireAfterMinutes,
 	}, nil
@@ -1577,8 +1580,9 @@ func (a *APIAWSPodConfig) ToService() (interface{}, error) {
 
 // APIECSConfig represents configuration options for AWS ECS.
 type APIECSConfig struct {
-	Role                 *string               `json:"role"`
 	TaskDefinitionPrefix *string               `json:"task_definition_prefix"`
+	TaskRole             *string               `json:"task_role"`
+	ExecutionRole        *string               `json:"execution_role"`
 	Clusters             []APIECSClusterConfig `json:"clusters"`
 }
 
@@ -1586,6 +1590,8 @@ func (a *APIECSConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.ECSConfig:
 		a.TaskDefinitionPrefix = utility.ToStringPtr(v.TaskDefinitionPrefix)
+		a.TaskRole = utility.ToStringPtr(v.TaskRole)
+		a.ExecutionRole = utility.ToStringPtr(v.ExecutionRole)
 		for _, cluster := range v.Clusters {
 			var apiCluster APIECSClusterConfig
 			if err := apiCluster.BuildFromService(cluster); err != nil {
@@ -1616,8 +1622,11 @@ func (a *APIECSConfig) ToService() (interface{}, error) {
 		}
 		clusters = append(clusters, cluster)
 	}
+
 	return evergreen.ECSConfig{
 		TaskDefinitionPrefix: utility.FromStringPtr(a.TaskDefinitionPrefix),
+		TaskRole:             utility.FromStringPtr(a.TaskRole),
+		ExecutionRole:        utility.FromStringPtr(a.ExecutionRole),
 		Clusters:             clusters,
 	}, nil
 }
@@ -1643,9 +1652,13 @@ func (a *APIECSClusterConfig) ToService() (interface{}, error) {
 	if a == nil {
 		return nil, nil
 	}
+	p := evergreen.ECSClusterPlatform(utility.FromStringPtr(a.Platform))
+	if err := p.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid platform")
+	}
 	return evergreen.ECSClusterConfig{
 		Name:     utility.FromStringPtr(a.Name),
-		Platform: evergreen.PodPlatform(utility.FromStringPtr(a.Platform)),
+		Platform: p,
 	}, nil
 }
 

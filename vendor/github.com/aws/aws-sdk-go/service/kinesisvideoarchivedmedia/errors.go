@@ -12,7 +12,8 @@ const (
 	// "ClientLimitExceededException".
 	//
 	// Kinesis Video Streams has throttled the request because you have exceeded
-	// the limit of allowed client calls. Try making the call later.
+	// a limit. Try making the call later. For information about limits, see Kinesis
+	// Video Streams Limits (http://docs.aws.amazon.com/kinesisvideostreams/latest/dg/limits.html).
 	ErrCodeClientLimitExceededException = "ClientLimitExceededException"
 
 	// ErrCodeInvalidArgumentException for service response error code
@@ -28,6 +29,13 @@ const (
 	// The codec private data in at least one of the tracks of the video stream
 	// is not valid for this operation.
 	ErrCodeInvalidCodecPrivateDataException = "InvalidCodecPrivateDataException"
+
+	// ErrCodeInvalidMediaFrameException for service response error code
+	// "InvalidMediaFrameException".
+	//
+	// One or more frames in the requested clip could not be parsed based on the
+	// specified codec.
+	ErrCodeInvalidMediaFrameException = "InvalidMediaFrameException"
 
 	// ErrCodeMissingCodecPrivateDataException for service response error code
 	// "MissingCodecPrivateDataException".
@@ -76,6 +84,7 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"ClientLimitExceededException":        newErrorClientLimitExceededException,
 	"InvalidArgumentException":            newErrorInvalidArgumentException,
 	"InvalidCodecPrivateDataException":    newErrorInvalidCodecPrivateDataException,
+	"InvalidMediaFrameException":          newErrorInvalidMediaFrameException,
 	"MissingCodecPrivateDataException":    newErrorMissingCodecPrivateDataException,
 	"NoDataRetentionException":            newErrorNoDataRetentionException,
 	"NotAuthorizedException":              newErrorNotAuthorizedException,

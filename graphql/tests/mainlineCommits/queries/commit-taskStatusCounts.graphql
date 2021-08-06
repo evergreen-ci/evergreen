@@ -3,14 +3,14 @@
     versions {
       version {
         id
-        taskStatusCounts {
+        taskStatusCounts(options: {}) {
           status
           count
         }
       }
       rolledUpVersions {
         id
-        taskStatusCounts {
+        taskStatusCounts(options: {}) {
           status
           count
         }

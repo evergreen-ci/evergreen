@@ -349,7 +349,7 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 
 // isStepbackTask returns true if the task unit is supposed to be stepped back for this generator
 func isStepbackTask(generatorTask *task.Task, variant, taskName string) bool {
-	for bv, tasks := range generatorTask.GeneratedTasksToStepback {
+	for bv, tasks := range generatorTask.GeneratedTasksToActivate {
 		if bv == variant && utility.StringSliceContains(tasks, taskName) {
 			return true
 		}

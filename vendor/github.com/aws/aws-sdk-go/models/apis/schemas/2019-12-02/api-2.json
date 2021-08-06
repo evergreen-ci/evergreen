@@ -169,6 +169,37 @@
         }
       ]
     },
+    "DeleteResourcePolicy": {
+      "name": "DeleteResourcePolicy",
+      "http": {
+        "method": "DELETE",
+        "requestUri": "/v1/policy",
+        "responseCode": 204
+      },
+      "input": {
+        "shape": "DeleteResourcePolicyRequest"
+      },
+      "errors": [
+        {
+          "shape": "BadRequestException"
+        },
+        {
+          "shape": "UnauthorizedException"
+        },
+        {
+          "shape": "InternalServerErrorException"
+        },
+        {
+          "shape": "ForbiddenException"
+        },
+        {
+          "shape": "NotFoundException"
+        },
+        {
+          "shape": "ServiceUnavailableException"
+        }
+      ]
+    },
     "DeleteSchema": {
       "name": "DeleteSchema",
       "http": {
@@ -432,6 +463,40 @@
         }
       ]
     },
+    "GetResourcePolicy": {
+      "name": "GetResourcePolicy",
+      "http": {
+        "method": "GET",
+        "requestUri": "/v1/policy",
+        "responseCode": 200
+      },
+      "input": {
+        "shape": "GetResourcePolicyRequest"
+      },
+      "output": {
+        "shape": "GetResourcePolicyResponse"
+      },
+      "errors": [
+        {
+          "shape": "BadRequestException"
+        },
+        {
+          "shape": "UnauthorizedException"
+        },
+        {
+          "shape": "InternalServerErrorException"
+        },
+        {
+          "shape": "ForbiddenException"
+        },
+        {
+          "shape": "NotFoundException"
+        },
+        {
+          "shape": "ServiceUnavailableException"
+        }
+      ]
+    },
     "ListDiscoverers": {
       "name": "ListDiscoverers",
       "http": {
@@ -587,38 +652,6 @@
         }
       ]
     },
-    "LockServiceLinkedRole": {
-      "name": "LockServiceLinkedRole",
-      "http": {
-        "method": "POST",
-        "requestUri": "/slr-deletion/lock",
-        "responseCode": 200
-      },
-      "input": {
-        "shape": "LockServiceLinkedRoleRequest"
-      },
-      "output": {
-        "shape": "LockServiceLinkedRoleResponse"
-      },
-      "errors": [
-        {
-          "shape": "ServiceUnavailableException"
-        },
-        {
-          "shape": "BadRequestException"
-        },
-        {
-          "shape": "UnauthorizedException"
-        },
-        {
-          "shape": "InternalServerErrorException"
-        },
-        {
-          "shape": "ForbiddenException"
-        }
-      ],
-      "internal": true
-    },
     "PutCodeBinding": {
       "name": "PutCodeBinding",
       "http": {
@@ -653,6 +686,43 @@
         },
         {
           "shape": "TooManyRequestsException"
+        }
+      ]
+    },
+    "PutResourcePolicy": {
+      "name": "PutResourcePolicy",
+      "http": {
+        "method": "PUT",
+        "requestUri": "/v1/policy",
+        "responseCode": 200
+      },
+      "input": {
+        "shape": "PutResourcePolicyRequest"
+      },
+      "output": {
+        "shape": "PutResourcePolicyResponse"
+      },
+      "errors": [
+        {
+          "shape": "BadRequestException"
+        },
+        {
+          "shape": "UnauthorizedException"
+        },
+        {
+          "shape": "PreconditionFailedException"
+        },
+        {
+          "shape": "InternalServerErrorException"
+        },
+        {
+          "shape": "ForbiddenException"
+        },
+        {
+          "shape": "NotFoundException"
+        },
+        {
+          "shape": "ServiceUnavailableException"
         }
       ]
     },
@@ -780,38 +850,6 @@
         }
       ]
     },
-    "UnlockServiceLinkedRole": {
-      "name": "UnlockServiceLinkedRole",
-      "http": {
-        "method": "POST",
-        "requestUri": "/slr-deletion/unlock",
-        "responseCode": 200
-      },
-      "input": {
-        "shape": "UnlockServiceLinkedRoleRequest"
-      },
-      "output": {
-        "shape": "UnlockServiceLinkedRoleResponse"
-      },
-      "errors": [
-        {
-          "shape": "ServiceUnavailableException"
-        },
-        {
-          "shape": "BadRequestException"
-        },
-        {
-          "shape": "UnauthorizedException"
-        },
-        {
-          "shape": "InternalServerErrorException"
-        },
-        {
-          "shape": "ForbiddenException"
-        }
-      ],
-      "internal": true
-    },
     "UntagResource": {
       "name": "UntagResource",
       "http": {
@@ -933,6 +971,43 @@
         },
         {
           "shape": "ServiceUnavailableException"
+        }
+      ]
+    },
+    "ExportSchema": {
+      "name": "ExportSchema",
+      "http": {
+        "method": "GET",
+        "requestUri": "/v1/registries/name/{registryName}/schemas/name/{schemaName}/export",
+        "responseCode": 200
+      },
+      "input": {
+        "shape": "ExportSchemaRequest"
+      },
+      "output": {
+        "shape": "ExportSchemaResponse"
+      },
+      "errors": [
+        {
+          "shape": "BadRequestException"
+        },
+        {
+          "shape": "UnauthorizedException"
+        },
+        {
+          "shape": "InternalServerErrorException"
+        },
+        {
+          "shape": "ForbiddenException"
+        },
+        {
+          "shape": "NotFoundException"
+        },
+        {
+          "shape": "ServiceUnavailableException"
+        },
+        {
+          "shape": "TooManyRequestsException"
         }
       ]
     }
@@ -1222,6 +1297,16 @@
       "required": [
         "RegistryName"
       ]
+    },
+    "DeleteResourcePolicyRequest": {
+      "type": "structure",
+      "members": {
+        "RegistryName": {
+          "shape": "__string",
+          "location": "querystring",
+          "locationName": "registryName"
+        }
+      }
     },
     "DeleteSchemaRequest": {
       "type": "structure",
@@ -1662,6 +1747,40 @@
       "min": 1,
       "max": 100000
     },
+    "GetResourcePolicyOutput": {
+      "type": "structure",
+      "members": {
+        "Policy": {
+          "shape": "__string",
+          "jsonvalue": true
+        },
+        "RevisionId": {
+          "shape": "__string"
+        }
+      }
+    },
+    "GetResourcePolicyRequest": {
+      "type": "structure",
+      "members": {
+        "RegistryName": {
+          "shape": "__string",
+          "location": "querystring",
+          "locationName": "registryName"
+        }
+      }
+    },
+    "GetResourcePolicyResponse": {
+      "type": "structure",
+      "members": {
+        "Policy": {
+          "shape": "__string",
+          "jsonvalue": true
+        },
+        "RevisionId": {
+          "shape": "__string"
+        }
+      }
+    },
     "GoneException": {
       "type": "structure",
       "members": {
@@ -1900,6 +2019,15 @@
         }
       }
     },
+    "ListTagsForResourceOutput": {
+      "type": "structure",
+      "members": {
+        "Tags": {
+          "shape": "Tags",
+          "locationName": "tags"
+        }
+      }
+    },
     "ListTagsForResourceRequest": {
       "type": "structure",
       "members": {
@@ -1917,12 +2045,10 @@
       "type": "structure",
       "members": {
         "Tags": {
-          "shape": "Tags"
+          "shape": "Tags",
+          "locationName": "tags"
         }
-      },
-      "required": [
-        "Tags"
-      ]
+      }
     },
     "LockServiceLinkedRoleInput": {
       "type": "structure",
@@ -2001,6 +2127,25 @@
         "httpStatusCode": 404
       }
     },
+    "PreconditionFailedException": {
+      "type": "structure",
+      "members": {
+        "Code": {
+          "shape": "__string"
+        },
+        "Message": {
+          "shape": "__string"
+        }
+      },
+      "required": [
+        "Message",
+        "Code"
+      ],
+      "exception": true,
+      "error": {
+        "httpStatusCode": 412
+      }
+    },
     "PutCodeBindingRequest": {
       "type": "structure",
       "members": {
@@ -2045,6 +2190,65 @@
         },
         "Status": {
           "shape": "CodeGenerationStatus"
+        }
+      }
+    },
+    "PutResourcePolicyInput": {
+      "type": "structure",
+      "members": {
+        "Policy": {
+          "shape": "__string",
+          "jsonvalue": true
+        },
+        "RevisionId": {
+          "shape": "__string"
+        }
+      },
+      "required": [
+        "Policy"
+      ]
+    },
+    "PutResourcePolicyOutput": {
+      "type": "structure",
+      "members": {
+        "Policy": {
+          "shape": "__string",
+          "jsonvalue": true
+        },
+        "RevisionId": {
+          "shape": "__string"
+        }
+      }
+    },
+    "PutResourcePolicyRequest": {
+      "type": "structure",
+      "members": {
+        "Policy": {
+          "shape": "__string",
+          "jsonvalue": true
+        },
+        "RegistryName": {
+          "shape": "__string",
+          "location": "querystring",
+          "locationName": "registryName"
+        },
+        "RevisionId": {
+          "shape": "__string"
+        }
+      },
+      "required": [
+        "Policy"
+      ]
+    },
+    "PutResourcePolicyResponse": {
+      "type": "structure",
+      "members": {
+        "Policy": {
+          "shape": "__string",
+          "jsonvalue": true
+        },
+        "RevisionId": {
+          "shape": "__string"
         }
       }
     },
@@ -2143,6 +2347,9 @@
         },
         "SchemaVersion": {
           "shape": "__string"
+        },
+        "Type": {
+          "shape": "__string"
         }
       }
     },
@@ -2170,6 +2377,9 @@
           "shape": "__timestampIso8601"
         },
         "SchemaVersion": {
+          "shape": "__string"
+        },
+        "Type": {
           "shape": "__string"
         }
       }
@@ -2587,6 +2797,76 @@
         },
         "VersionCreatedDate": {
           "shape": "__timestampIso8601"
+        }
+      }
+    },
+    "ExportSchemaOutput": {
+      "type": "structure",
+      "members": {
+        "Content": {
+          "shape": "__string"
+        },
+        "SchemaArn": {
+          "shape": "__string"
+        },
+        "SchemaName": {
+          "shape": "__string"
+        },
+        "SchemaVersion": {
+          "shape": "__string"
+        },
+        "Type": {
+          "shape": "__string"
+        }
+      }
+    },
+    "ExportSchemaRequest": {
+      "type": "structure",
+      "members": {
+        "RegistryName": {
+          "shape": "__string",
+          "location": "uri",
+          "locationName": "registryName"
+        },
+        "SchemaName": {
+          "shape": "__string",
+          "location": "uri",
+          "locationName": "schemaName"
+        },
+        "SchemaVersion": {
+          "shape": "__string",
+          "location": "querystring",
+          "locationName": "schemaVersion"
+        },
+        "Type": {
+          "shape": "__string",
+          "location": "querystring",
+          "locationName": "type"
+        }
+      },
+      "required": [
+        "RegistryName",
+        "SchemaName",
+        "Type"
+      ]
+    },
+    "ExportSchemaResponse": {
+      "type": "structure",
+      "members": {
+        "Content": {
+          "shape": "__string"
+        },
+        "SchemaArn": {
+          "shape": "__string"
+        },
+        "SchemaName": {
+          "shape": "__string"
+        },
+        "SchemaVersion": {
+          "shape": "__string"
+        },
+        "Type": {
+          "shape": "__string"
         }
       }
     },

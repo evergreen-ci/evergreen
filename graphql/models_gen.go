@@ -58,15 +58,17 @@ type DisplayTask struct {
 }
 
 type EditSpawnHostInput struct {
-	HostID              string      `json:"hostId"`
-	DisplayName         *string     `json:"displayName"`
-	Expiration          *time.Time  `json:"expiration"`
-	NoExpiration        *bool       `json:"noExpiration"`
-	InstanceType        *string     `json:"instanceType"`
-	AddedInstanceTags   []*host.Tag `json:"addedInstanceTags"`
-	DeletedInstanceTags []*host.Tag `json:"deletedInstanceTags"`
-	Volume              *string     `json:"volume"`
-	ServicePassword     *string     `json:"servicePassword"`
+	HostID              string          `json:"hostId"`
+	DisplayName         *string         `json:"displayName"`
+	Expiration          *time.Time      `json:"expiration"`
+	NoExpiration        *bool           `json:"noExpiration"`
+	InstanceType        *string         `json:"instanceType"`
+	AddedInstanceTags   []*host.Tag     `json:"addedInstanceTags"`
+	DeletedInstanceTags []*host.Tag     `json:"deletedInstanceTags"`
+	Volume              *string         `json:"volume"`
+	ServicePassword     *string         `json:"servicePassword"`
+	PublicKey           *PublicKeyInput `json:"publicKey"`
+	SavePublicKey       *bool           `json:"savePublicKey"`
 }
 
 type GroupedBuildVariant struct {
@@ -267,6 +269,11 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
+}
+
+type VersionTiming struct {
+	Makespan  *model.APIDuration `json:"makespan"`
+	TimeTaken *model.APIDuration `json:"timeTaken"`
 }
 
 type VolumeHost struct {

@@ -13,6 +13,88 @@ import (
 	"github.com/aws/aws-sdk-go/private/protocol/query"
 )
 
+const opAddSourceIdentifierToSubscription = "AddSourceIdentifierToSubscription"
+
+// AddSourceIdentifierToSubscriptionRequest generates a "aws/request.Request" representing the
+// client's request for the AddSourceIdentifierToSubscription operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See AddSourceIdentifierToSubscription for more information on using the AddSourceIdentifierToSubscription
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the AddSourceIdentifierToSubscriptionRequest method.
+//    req, resp := client.AddSourceIdentifierToSubscriptionRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/AddSourceIdentifierToSubscription
+func (c *DocDB) AddSourceIdentifierToSubscriptionRequest(input *AddSourceIdentifierToSubscriptionInput) (req *request.Request, output *AddSourceIdentifierToSubscriptionOutput) {
+	op := &request.Operation{
+		Name:       opAddSourceIdentifierToSubscription,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &AddSourceIdentifierToSubscriptionInput{}
+	}
+
+	output = &AddSourceIdentifierToSubscriptionOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// AddSourceIdentifierToSubscription API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Adds a source identifier to an existing event notification subscription.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation AddSourceIdentifierToSubscription for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeSubscriptionNotFoundFault "SubscriptionNotFound"
+//   The subscription name does not exist.
+//
+//   * ErrCodeSourceNotFoundFault "SourceNotFound"
+//   The requested source could not be found.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/AddSourceIdentifierToSubscription
+func (c *DocDB) AddSourceIdentifierToSubscription(input *AddSourceIdentifierToSubscriptionInput) (*AddSourceIdentifierToSubscriptionOutput, error) {
+	req, out := c.AddSourceIdentifierToSubscriptionRequest(input)
+	return out, req.Send()
+}
+
+// AddSourceIdentifierToSubscriptionWithContext is the same as AddSourceIdentifierToSubscription with the addition of
+// the ability to pass a context and additional request options.
+//
+// See AddSourceIdentifierToSubscription for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) AddSourceIdentifierToSubscriptionWithContext(ctx aws.Context, input *AddSourceIdentifierToSubscriptionInput, opts ...request.Option) (*AddSourceIdentifierToSubscriptionOutput, error) {
+	req, out := c.AddSourceIdentifierToSubscriptionRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opAddTagsToResource = "AddTagsToResource"
 
 // AddTagsToResourceRequest generates a "aws/request.Request" representing the
@@ -146,8 +228,8 @@ func (c *DocDB) ApplyPendingMaintenanceActionRequest(input *ApplyPendingMaintena
 
 // ApplyPendingMaintenanceAction API operation for Amazon DocumentDB with MongoDB compatibility.
 //
-// Applies a pending maintenance action to a resource (for example, to a DB
-// instance).
+// Applies a pending maintenance action to a resource (for example, to an Amazon
+// DocumentDB instance).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -320,10 +402,12 @@ func (c *DocDB) CopyDBClusterSnapshotRequest(input *CopyDBClusterSnapshotInput) 
 // Copies a snapshot of a cluster.
 //
 // To copy a cluster snapshot from a shared manual cluster snapshot, SourceDBClusterSnapshotIdentifier
-// must be the Amazon Resource Name (ARN) of the shared cluster snapshot.
+// must be the Amazon Resource Name (ARN) of the shared cluster snapshot. You
+// can only copy a shared DB cluster snapshot, whether encrypted or not, in
+// the same AWS Region.
 //
 // To cancel the copy operation after it is in progress, delete the target cluster
-// snapshot identified by TargetDBClusterSnapshotIdentifier while that DB cluster
+// snapshot identified by TargetDBClusterSnapshotIdentifier while that cluster
 // snapshot is in the copying status.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -481,6 +565,12 @@ func (c *DocDB) CreateDBClusterRequest(input *CreateDBClusterInput) (req *reques
 //   Subnets in the subnet group should cover at least two Availability Zones
 //   unless there is only one Availability Zone.
 //
+//   * ErrCodeGlobalClusterNotFoundFault "GlobalClusterNotFoundFault"
+//   The GlobalClusterIdentifier doesn't refer to an existing global cluster.
+//
+//   * ErrCodeInvalidGlobalClusterStateFault "InvalidGlobalClusterStateFault"
+//   The requested operation can't be performed while the cluster is in this state.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/CreateDBCluster
 func (c *DocDB) CreateDBCluster(input *CreateDBClusterInput) (*CreateDBClusterOutput, error) {
 	req, out := c.CreateDBClusterRequest(input)
@@ -550,24 +640,19 @@ func (c *DocDB) CreateDBClusterParameterGroupRequest(input *CreateDBClusterParam
 // Creates a new cluster parameter group.
 //
 // Parameters in a cluster parameter group apply to all of the instances in
-// a DB cluster.
+// a cluster.
 //
 // A cluster parameter group is initially created with the default parameters
-// for the database engine used by instances in the cluster. To provide custom
-// values for any of the parameters, you must modify the group after you create
-// it. After you create a DB cluster parameter group, you must associate it
-// with your cluster. For the new DB cluster parameter group and associated
-// settings to take effect, you must then reboot the instances in the cluster
-// without failover.
-//
-// After you create a cluster parameter group, you should wait at least 5 minutes
-// before creating your first cluster that uses that cluster parameter group
-// as the default parameter group. This allows Amazon DocumentDB to fully complete
-// the create action before the cluster parameter group is used as the default
-// for a new cluster. This step is especially important for parameters that
-// are critical when creating the default database for a cluster, such as the
-// character set for the default database defined by the character_set_database
-// parameter.
+// for the database engine used by instances in the cluster. In Amazon DocumentDB,
+// you cannot make modifications directly to the default.docdb3.6 cluster parameter
+// group. If your Amazon DocumentDB cluster is using the default cluster parameter
+// group and you want to modify a value in it, you must first create a new parameter
+// group (https://docs.aws.amazon.com/documentdb/latest/developerguide/cluster_parameter_group-create.html)
+// or copy an existing parameter group (https://docs.aws.amazon.com/documentdb/latest/developerguide/cluster_parameter_group-copy.html),
+// modify it, and then apply the modified parameter group to your cluster. For
+// the new cluster parameter group and associated settings to take effect, you
+// must then reboot the instances in the cluster without failover. For more
+// information, see Modifying Amazon DocumentDB Cluster Parameter Groups (https://docs.aws.amazon.com/documentdb/latest/developerguide/cluster_parameter_group-modify.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -916,6 +1001,224 @@ func (c *DocDB) CreateDBSubnetGroup(input *CreateDBSubnetGroupInput) (*CreateDBS
 // for more information on using Contexts.
 func (c *DocDB) CreateDBSubnetGroupWithContext(ctx aws.Context, input *CreateDBSubnetGroupInput, opts ...request.Option) (*CreateDBSubnetGroupOutput, error) {
 	req, out := c.CreateDBSubnetGroupRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opCreateEventSubscription = "CreateEventSubscription"
+
+// CreateEventSubscriptionRequest generates a "aws/request.Request" representing the
+// client's request for the CreateEventSubscription operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See CreateEventSubscription for more information on using the CreateEventSubscription
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the CreateEventSubscriptionRequest method.
+//    req, resp := client.CreateEventSubscriptionRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/CreateEventSubscription
+func (c *DocDB) CreateEventSubscriptionRequest(input *CreateEventSubscriptionInput) (req *request.Request, output *CreateEventSubscriptionOutput) {
+	op := &request.Operation{
+		Name:       opCreateEventSubscription,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &CreateEventSubscriptionInput{}
+	}
+
+	output = &CreateEventSubscriptionOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// CreateEventSubscription API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Creates an Amazon DocumentDB event notification subscription. This action
+// requires a topic Amazon Resource Name (ARN) created by using the Amazon DocumentDB
+// console, the Amazon SNS console, or the Amazon SNS API. To obtain an ARN
+// with Amazon SNS, you must create a topic in Amazon SNS and subscribe to the
+// topic. The ARN is displayed in the Amazon SNS console.
+//
+// You can specify the type of source (SourceType) that you want to be notified
+// of. You can also provide a list of Amazon DocumentDB sources (SourceIds)
+// that trigger the events, and you can provide a list of event categories (EventCategories)
+// for events that you want to be notified of. For example, you can specify
+// SourceType = db-instance, SourceIds = mydbinstance1, mydbinstance2 and EventCategories
+// = Availability, Backup.
+//
+// If you specify both the SourceType and SourceIds (such as SourceType = db-instance
+// and SourceIdentifier = myDBInstance1), you are notified of all the db-instance
+// events for the specified source. If you specify a SourceType but do not specify
+// a SourceIdentifier, you receive notice of the events for that source type
+// for all your Amazon DocumentDB sources. If you do not specify either the
+// SourceType or the SourceIdentifier, you are notified of events generated
+// from all Amazon DocumentDB sources belonging to your customer account.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation CreateEventSubscription for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeEventSubscriptionQuotaExceededFault "EventSubscriptionQuotaExceeded"
+//   You have reached the maximum number of event subscriptions.
+//
+//   * ErrCodeSubscriptionAlreadyExistFault "SubscriptionAlreadyExist"
+//   The provided subscription name already exists.
+//
+//   * ErrCodeSNSInvalidTopicFault "SNSInvalidTopic"
+//   Amazon SNS has responded that there is a problem with the specified topic.
+//
+//   * ErrCodeSNSNoAuthorizationFault "SNSNoAuthorization"
+//   You do not have permission to publish to the SNS topic Amazon Resource Name
+//   (ARN).
+//
+//   * ErrCodeSNSTopicArnNotFoundFault "SNSTopicArnNotFound"
+//   The SNS topic Amazon Resource Name (ARN) does not exist.
+//
+//   * ErrCodeSubscriptionCategoryNotFoundFault "SubscriptionCategoryNotFound"
+//   The provided category does not exist.
+//
+//   * ErrCodeSourceNotFoundFault "SourceNotFound"
+//   The requested source could not be found.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/CreateEventSubscription
+func (c *DocDB) CreateEventSubscription(input *CreateEventSubscriptionInput) (*CreateEventSubscriptionOutput, error) {
+	req, out := c.CreateEventSubscriptionRequest(input)
+	return out, req.Send()
+}
+
+// CreateEventSubscriptionWithContext is the same as CreateEventSubscription with the addition of
+// the ability to pass a context and additional request options.
+//
+// See CreateEventSubscription for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) CreateEventSubscriptionWithContext(ctx aws.Context, input *CreateEventSubscriptionInput, opts ...request.Option) (*CreateEventSubscriptionOutput, error) {
+	req, out := c.CreateEventSubscriptionRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opCreateGlobalCluster = "CreateGlobalCluster"
+
+// CreateGlobalClusterRequest generates a "aws/request.Request" representing the
+// client's request for the CreateGlobalCluster operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See CreateGlobalCluster for more information on using the CreateGlobalCluster
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the CreateGlobalClusterRequest method.
+//    req, resp := client.CreateGlobalClusterRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/CreateGlobalCluster
+func (c *DocDB) CreateGlobalClusterRequest(input *CreateGlobalClusterInput) (req *request.Request, output *CreateGlobalClusterOutput) {
+	op := &request.Operation{
+		Name:       opCreateGlobalCluster,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &CreateGlobalClusterInput{}
+	}
+
+	output = &CreateGlobalClusterOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// CreateGlobalCluster API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Creates an Amazon DocumentDB global cluster that can span multiple multiple
+// AWS Regions. The global cluster contains one primary cluster with read-write
+// capability, and up-to give read-only secondary clusters. Global clusters
+// uses storage-based fast replication across regions with latencies less than
+// one second, using dedicated infrastructure with no impact to your workload’s
+// performance.
+//
+// You can create a global cluster that is initially empty, and then add a primary
+// and a secondary to it. Or you can specify an existing cluster during the
+// create operation, and this cluster becomes the primary of the global cluster.
+//
+// This action only applies to Amazon DocumentDB clusters.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation CreateGlobalCluster for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeGlobalClusterAlreadyExistsFault "GlobalClusterAlreadyExistsFault"
+//   The GlobalClusterIdentifier already exists. Choose a new global cluster identifier
+//   (unique name) to create a new global cluster.
+//
+//   * ErrCodeGlobalClusterQuotaExceededFault "GlobalClusterQuotaExceededFault"
+//   The number of global clusters for this account is already at the maximum
+//   allowed.
+//
+//   * ErrCodeInvalidDBClusterStateFault "InvalidDBClusterStateFault"
+//   The cluster isn't in a valid state.
+//
+//   * ErrCodeDBClusterNotFoundFault "DBClusterNotFoundFault"
+//   DBClusterIdentifier doesn't refer to an existing cluster.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/CreateGlobalCluster
+func (c *DocDB) CreateGlobalCluster(input *CreateGlobalClusterInput) (*CreateGlobalClusterOutput, error) {
+	req, out := c.CreateGlobalClusterRequest(input)
+	return out, req.Send()
+}
+
+// CreateGlobalClusterWithContext is the same as CreateGlobalCluster with the addition of
+// the ability to pass a context and additional request options.
+//
+// See CreateGlobalCluster for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) CreateGlobalClusterWithContext(ctx aws.Context, input *CreateGlobalClusterInput, opts ...request.Option) (*CreateGlobalClusterOutput, error) {
+	req, out := c.CreateGlobalClusterRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -1364,6 +1667,174 @@ func (c *DocDB) DeleteDBSubnetGroupWithContext(ctx aws.Context, input *DeleteDBS
 	return out, req.Send()
 }
 
+const opDeleteEventSubscription = "DeleteEventSubscription"
+
+// DeleteEventSubscriptionRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteEventSubscription operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteEventSubscription for more information on using the DeleteEventSubscription
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteEventSubscriptionRequest method.
+//    req, resp := client.DeleteEventSubscriptionRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/DeleteEventSubscription
+func (c *DocDB) DeleteEventSubscriptionRequest(input *DeleteEventSubscriptionInput) (req *request.Request, output *DeleteEventSubscriptionOutput) {
+	op := &request.Operation{
+		Name:       opDeleteEventSubscription,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteEventSubscriptionInput{}
+	}
+
+	output = &DeleteEventSubscriptionOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DeleteEventSubscription API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Deletes an Amazon DocumentDB event notification subscription.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation DeleteEventSubscription for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeSubscriptionNotFoundFault "SubscriptionNotFound"
+//   The subscription name does not exist.
+//
+//   * ErrCodeInvalidEventSubscriptionStateFault "InvalidEventSubscriptionState"
+//   Someone else might be modifying a subscription. Wait a few seconds, and try
+//   again.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/DeleteEventSubscription
+func (c *DocDB) DeleteEventSubscription(input *DeleteEventSubscriptionInput) (*DeleteEventSubscriptionOutput, error) {
+	req, out := c.DeleteEventSubscriptionRequest(input)
+	return out, req.Send()
+}
+
+// DeleteEventSubscriptionWithContext is the same as DeleteEventSubscription with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteEventSubscription for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DeleteEventSubscriptionWithContext(ctx aws.Context, input *DeleteEventSubscriptionInput, opts ...request.Option) (*DeleteEventSubscriptionOutput, error) {
+	req, out := c.DeleteEventSubscriptionRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeleteGlobalCluster = "DeleteGlobalCluster"
+
+// DeleteGlobalClusterRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteGlobalCluster operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteGlobalCluster for more information on using the DeleteGlobalCluster
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteGlobalClusterRequest method.
+//    req, resp := client.DeleteGlobalClusterRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/DeleteGlobalCluster
+func (c *DocDB) DeleteGlobalClusterRequest(input *DeleteGlobalClusterInput) (req *request.Request, output *DeleteGlobalClusterOutput) {
+	op := &request.Operation{
+		Name:       opDeleteGlobalCluster,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteGlobalClusterInput{}
+	}
+
+	output = &DeleteGlobalClusterOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DeleteGlobalCluster API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Deletes a global cluster. The primary and secondary clusters must already
+// be detached or deleted before attempting to delete a global cluster.
+//
+// This action only applies to Amazon DocumentDB clusters.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation DeleteGlobalCluster for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeGlobalClusterNotFoundFault "GlobalClusterNotFoundFault"
+//   The GlobalClusterIdentifier doesn't refer to an existing global cluster.
+//
+//   * ErrCodeInvalidGlobalClusterStateFault "InvalidGlobalClusterStateFault"
+//   The requested operation can't be performed while the cluster is in this state.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/DeleteGlobalCluster
+func (c *DocDB) DeleteGlobalCluster(input *DeleteGlobalClusterInput) (*DeleteGlobalClusterOutput, error) {
+	req, out := c.DeleteGlobalClusterRequest(input)
+	return out, req.Send()
+}
+
+// DeleteGlobalClusterWithContext is the same as DeleteGlobalCluster with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteGlobalCluster for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DeleteGlobalClusterWithContext(ctx aws.Context, input *DeleteGlobalClusterInput, opts ...request.Option) (*DeleteGlobalClusterOutput, error) {
+	req, out := c.DeleteGlobalClusterRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opDescribeCertificates = "DescribeCertificates"
 
 // DescribeCertificatesRequest generates a "aws/request.Request" representing the
@@ -1395,6 +1866,12 @@ func (c *DocDB) DescribeCertificatesRequest(input *DescribeCertificatesInput) (r
 		Name:       opDescribeCertificates,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -1409,10 +1886,7 @@ func (c *DocDB) DescribeCertificatesRequest(input *DescribeCertificatesInput) (r
 // DescribeCertificates API operation for Amazon DocumentDB with MongoDB compatibility.
 //
 // Returns a list of certificate authority (CA) certificates provided by Amazon
-// DocumentDB for this AWS account. For certain management features such as
-// cluster and instance lifecycle management, Amazon DocumentDB leverages operational
-// technology that is shared with Amazon RDS and Amazon Neptune. Use the filterName=engine,Values=docdb
-// filter parameter to return only Amazon DocumentDB clusters.
+// DocumentDB for this AWS account.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1447,6 +1921,58 @@ func (c *DocDB) DescribeCertificatesWithContext(ctx aws.Context, input *Describe
 	return out, req.Send()
 }
 
+// DescribeCertificatesPages iterates over the pages of a DescribeCertificates operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeCertificates method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeCertificates operation.
+//    pageNum := 0
+//    err := client.DescribeCertificatesPages(params,
+//        func(page *docdb.DescribeCertificatesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *DocDB) DescribeCertificatesPages(input *DescribeCertificatesInput, fn func(*DescribeCertificatesOutput, bool) bool) error {
+	return c.DescribeCertificatesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeCertificatesPagesWithContext same as DescribeCertificatesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribeCertificatesPagesWithContext(ctx aws.Context, input *DescribeCertificatesInput, fn func(*DescribeCertificatesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeCertificatesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeCertificatesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeCertificatesOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeDBClusterParameterGroups = "DescribeDBClusterParameterGroups"
 
 // DescribeDBClusterParameterGroupsRequest generates a "aws/request.Request" representing the
@@ -1478,6 +2004,12 @@ func (c *DocDB) DescribeDBClusterParameterGroupsRequest(input *DescribeDBCluster
 		Name:       opDescribeDBClusterParameterGroups,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -1528,6 +2060,58 @@ func (c *DocDB) DescribeDBClusterParameterGroupsWithContext(ctx aws.Context, inp
 	return out, req.Send()
 }
 
+// DescribeDBClusterParameterGroupsPages iterates over the pages of a DescribeDBClusterParameterGroups operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeDBClusterParameterGroups method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeDBClusterParameterGroups operation.
+//    pageNum := 0
+//    err := client.DescribeDBClusterParameterGroupsPages(params,
+//        func(page *docdb.DescribeDBClusterParameterGroupsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *DocDB) DescribeDBClusterParameterGroupsPages(input *DescribeDBClusterParameterGroupsInput, fn func(*DescribeDBClusterParameterGroupsOutput, bool) bool) error {
+	return c.DescribeDBClusterParameterGroupsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeDBClusterParameterGroupsPagesWithContext same as DescribeDBClusterParameterGroupsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribeDBClusterParameterGroupsPagesWithContext(ctx aws.Context, input *DescribeDBClusterParameterGroupsInput, fn func(*DescribeDBClusterParameterGroupsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeDBClusterParameterGroupsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeDBClusterParameterGroupsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeDBClusterParameterGroupsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeDBClusterParameters = "DescribeDBClusterParameters"
 
 // DescribeDBClusterParametersRequest generates a "aws/request.Request" representing the
@@ -1559,6 +2143,12 @@ func (c *DocDB) DescribeDBClusterParametersRequest(input *DescribeDBClusterParam
 		Name:       opDescribeDBClusterParameters,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -1605,6 +2195,58 @@ func (c *DocDB) DescribeDBClusterParametersWithContext(ctx aws.Context, input *D
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeDBClusterParametersPages iterates over the pages of a DescribeDBClusterParameters operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeDBClusterParameters method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeDBClusterParameters operation.
+//    pageNum := 0
+//    err := client.DescribeDBClusterParametersPages(params,
+//        func(page *docdb.DescribeDBClusterParametersOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *DocDB) DescribeDBClusterParametersPages(input *DescribeDBClusterParametersInput, fn func(*DescribeDBClusterParametersOutput, bool) bool) error {
+	return c.DescribeDBClusterParametersPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeDBClusterParametersPagesWithContext same as DescribeDBClusterParametersPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribeDBClusterParametersPagesWithContext(ctx aws.Context, input *DescribeDBClusterParametersInput, fn func(*DescribeDBClusterParametersOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeDBClusterParametersInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeDBClusterParametersRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeDBClusterParametersOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeDBClusterSnapshotAttributes = "DescribeDBClusterSnapshotAttributes"
@@ -1724,6 +2366,12 @@ func (c *DocDB) DescribeDBClusterSnapshotsRequest(input *DescribeDBClusterSnapsh
 		Name:       opDescribeDBClusterSnapshots,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -1771,6 +2419,58 @@ func (c *DocDB) DescribeDBClusterSnapshotsWithContext(ctx aws.Context, input *De
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribeDBClusterSnapshotsPages iterates over the pages of a DescribeDBClusterSnapshots operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeDBClusterSnapshots method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeDBClusterSnapshots operation.
+//    pageNum := 0
+//    err := client.DescribeDBClusterSnapshotsPages(params,
+//        func(page *docdb.DescribeDBClusterSnapshotsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *DocDB) DescribeDBClusterSnapshotsPages(input *DescribeDBClusterSnapshotsInput, fn func(*DescribeDBClusterSnapshotsOutput, bool) bool) error {
+	return c.DescribeDBClusterSnapshotsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeDBClusterSnapshotsPagesWithContext same as DescribeDBClusterSnapshotsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribeDBClusterSnapshotsPagesWithContext(ctx aws.Context, input *DescribeDBClusterSnapshotsInput, fn func(*DescribeDBClusterSnapshotsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeDBClusterSnapshotsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeDBClusterSnapshotsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeDBClusterSnapshotsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opDescribeDBClusters = "DescribeDBClusters"
@@ -1824,7 +2524,10 @@ func (c *DocDB) DescribeDBClustersRequest(input *DescribeDBClustersInput) (req *
 // DescribeDBClusters API operation for Amazon DocumentDB with MongoDB compatibility.
 //
 // Returns information about provisioned Amazon DocumentDB clusters. This API
-// operation supports pagination.
+// operation supports pagination. For certain management features such as cluster
+// and instance lifecycle management, Amazon DocumentDB leverages operational
+// technology that is shared with Amazon RDS and Amazon Neptune. Use the filterName=engine,Values=docdb
+// filter parameter to return only Amazon DocumentDB clusters.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2469,6 +3172,147 @@ func (c *DocDB) DescribeEventCategoriesWithContext(ctx aws.Context, input *Descr
 	return out, req.Send()
 }
 
+const opDescribeEventSubscriptions = "DescribeEventSubscriptions"
+
+// DescribeEventSubscriptionsRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeEventSubscriptions operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeEventSubscriptions for more information on using the DescribeEventSubscriptions
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeEventSubscriptionsRequest method.
+//    req, resp := client.DescribeEventSubscriptionsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/DescribeEventSubscriptions
+func (c *DocDB) DescribeEventSubscriptionsRequest(input *DescribeEventSubscriptionsInput) (req *request.Request, output *DescribeEventSubscriptionsOutput) {
+	op := &request.Operation{
+		Name:       opDescribeEventSubscriptions,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &DescribeEventSubscriptionsInput{}
+	}
+
+	output = &DescribeEventSubscriptionsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeEventSubscriptions API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Lists all the subscription descriptions for a customer account. The description
+// for a subscription includes SubscriptionName, SNSTopicARN, CustomerID, SourceType,
+// SourceID, CreationTime, and Status.
+//
+// If you specify a SubscriptionName, lists the description for that subscription.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation DescribeEventSubscriptions for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeSubscriptionNotFoundFault "SubscriptionNotFound"
+//   The subscription name does not exist.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/DescribeEventSubscriptions
+func (c *DocDB) DescribeEventSubscriptions(input *DescribeEventSubscriptionsInput) (*DescribeEventSubscriptionsOutput, error) {
+	req, out := c.DescribeEventSubscriptionsRequest(input)
+	return out, req.Send()
+}
+
+// DescribeEventSubscriptionsWithContext is the same as DescribeEventSubscriptions with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeEventSubscriptions for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribeEventSubscriptionsWithContext(ctx aws.Context, input *DescribeEventSubscriptionsInput, opts ...request.Option) (*DescribeEventSubscriptionsOutput, error) {
+	req, out := c.DescribeEventSubscriptionsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// DescribeEventSubscriptionsPages iterates over the pages of a DescribeEventSubscriptions operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeEventSubscriptions method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeEventSubscriptions operation.
+//    pageNum := 0
+//    err := client.DescribeEventSubscriptionsPages(params,
+//        func(page *docdb.DescribeEventSubscriptionsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *DocDB) DescribeEventSubscriptionsPages(input *DescribeEventSubscriptionsInput, fn func(*DescribeEventSubscriptionsOutput, bool) bool) error {
+	return c.DescribeEventSubscriptionsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeEventSubscriptionsPagesWithContext same as DescribeEventSubscriptionsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribeEventSubscriptionsPagesWithContext(ctx aws.Context, input *DescribeEventSubscriptionsInput, fn func(*DescribeEventSubscriptionsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeEventSubscriptionsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeEventSubscriptionsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeEventSubscriptionsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
 const opDescribeEvents = "DescribeEvents"
 
 // DescribeEventsRequest generates a "aws/request.Request" representing the
@@ -2597,6 +3441,146 @@ func (c *DocDB) DescribeEventsPagesWithContext(ctx aws.Context, input *DescribeE
 
 	for p.Next() {
 		if !fn(p.Page().(*DescribeEventsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
+}
+
+const opDescribeGlobalClusters = "DescribeGlobalClusters"
+
+// DescribeGlobalClustersRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeGlobalClusters operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeGlobalClusters for more information on using the DescribeGlobalClusters
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeGlobalClustersRequest method.
+//    req, resp := client.DescribeGlobalClustersRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/DescribeGlobalClusters
+func (c *DocDB) DescribeGlobalClustersRequest(input *DescribeGlobalClustersInput) (req *request.Request, output *DescribeGlobalClustersOutput) {
+	op := &request.Operation{
+		Name:       opDescribeGlobalClusters,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &DescribeGlobalClustersInput{}
+	}
+
+	output = &DescribeGlobalClustersOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeGlobalClusters API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Returns information about Amazon DocumentDB global clusters. This API supports
+// pagination.
+//
+// This action only applies to Amazon DocumentDB clusters.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation DescribeGlobalClusters for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeGlobalClusterNotFoundFault "GlobalClusterNotFoundFault"
+//   The GlobalClusterIdentifier doesn't refer to an existing global cluster.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/DescribeGlobalClusters
+func (c *DocDB) DescribeGlobalClusters(input *DescribeGlobalClustersInput) (*DescribeGlobalClustersOutput, error) {
+	req, out := c.DescribeGlobalClustersRequest(input)
+	return out, req.Send()
+}
+
+// DescribeGlobalClustersWithContext is the same as DescribeGlobalClusters with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeGlobalClusters for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribeGlobalClustersWithContext(ctx aws.Context, input *DescribeGlobalClustersInput, opts ...request.Option) (*DescribeGlobalClustersOutput, error) {
+	req, out := c.DescribeGlobalClustersRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// DescribeGlobalClustersPages iterates over the pages of a DescribeGlobalClusters operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribeGlobalClusters method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribeGlobalClusters operation.
+//    pageNum := 0
+//    err := client.DescribeGlobalClustersPages(params,
+//        func(page *docdb.DescribeGlobalClustersOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *DocDB) DescribeGlobalClustersPages(input *DescribeGlobalClustersInput, fn func(*DescribeGlobalClustersOutput, bool) bool) error {
+	return c.DescribeGlobalClustersPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribeGlobalClustersPagesWithContext same as DescribeGlobalClustersPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribeGlobalClustersPagesWithContext(ctx aws.Context, input *DescribeGlobalClustersInput, fn func(*DescribeGlobalClustersOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribeGlobalClustersInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribeGlobalClustersRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribeGlobalClustersOutput), !p.HasNextPage()) {
 			break
 		}
 	}
@@ -2767,6 +3751,12 @@ func (c *DocDB) DescribePendingMaintenanceActionsRequest(input *DescribePendingM
 		Name:       opDescribePendingMaintenanceActions,
 		HTTPMethod: "POST",
 		HTTPPath:   "/",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"Marker"},
+			OutputTokens:    []string{"Marker"},
+			LimitToken:      "MaxRecords",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -2814,6 +3804,58 @@ func (c *DocDB) DescribePendingMaintenanceActionsWithContext(ctx aws.Context, in
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
+}
+
+// DescribePendingMaintenanceActionsPages iterates over the pages of a DescribePendingMaintenanceActions operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See DescribePendingMaintenanceActions method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a DescribePendingMaintenanceActions operation.
+//    pageNum := 0
+//    err := client.DescribePendingMaintenanceActionsPages(params,
+//        func(page *docdb.DescribePendingMaintenanceActionsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *DocDB) DescribePendingMaintenanceActionsPages(input *DescribePendingMaintenanceActionsInput, fn func(*DescribePendingMaintenanceActionsOutput, bool) bool) error {
+	return c.DescribePendingMaintenanceActionsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// DescribePendingMaintenanceActionsPagesWithContext same as DescribePendingMaintenanceActionsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) DescribePendingMaintenanceActionsPagesWithContext(ctx aws.Context, input *DescribePendingMaintenanceActionsInput, fn func(*DescribePendingMaintenanceActionsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *DescribePendingMaintenanceActionsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.DescribePendingMaintenanceActionsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	for p.Next() {
+		if !fn(p.Page().(*DescribePendingMaintenanceActionsOutput), !p.HasNextPage()) {
+			break
+		}
+	}
+
+	return p.Err()
 }
 
 const opFailoverDBCluster = "FailoverDBCluster"
@@ -3522,6 +4564,188 @@ func (c *DocDB) ModifyDBSubnetGroupWithContext(ctx aws.Context, input *ModifyDBS
 	return out, req.Send()
 }
 
+const opModifyEventSubscription = "ModifyEventSubscription"
+
+// ModifyEventSubscriptionRequest generates a "aws/request.Request" representing the
+// client's request for the ModifyEventSubscription operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ModifyEventSubscription for more information on using the ModifyEventSubscription
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ModifyEventSubscriptionRequest method.
+//    req, resp := client.ModifyEventSubscriptionRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/ModifyEventSubscription
+func (c *DocDB) ModifyEventSubscriptionRequest(input *ModifyEventSubscriptionInput) (req *request.Request, output *ModifyEventSubscriptionOutput) {
+	op := &request.Operation{
+		Name:       opModifyEventSubscription,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ModifyEventSubscriptionInput{}
+	}
+
+	output = &ModifyEventSubscriptionOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ModifyEventSubscription API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Modifies an existing Amazon DocumentDB event notification subscription.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation ModifyEventSubscription for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeEventSubscriptionQuotaExceededFault "EventSubscriptionQuotaExceeded"
+//   You have reached the maximum number of event subscriptions.
+//
+//   * ErrCodeSubscriptionNotFoundFault "SubscriptionNotFound"
+//   The subscription name does not exist.
+//
+//   * ErrCodeSNSInvalidTopicFault "SNSInvalidTopic"
+//   Amazon SNS has responded that there is a problem with the specified topic.
+//
+//   * ErrCodeSNSNoAuthorizationFault "SNSNoAuthorization"
+//   You do not have permission to publish to the SNS topic Amazon Resource Name
+//   (ARN).
+//
+//   * ErrCodeSNSTopicArnNotFoundFault "SNSTopicArnNotFound"
+//   The SNS topic Amazon Resource Name (ARN) does not exist.
+//
+//   * ErrCodeSubscriptionCategoryNotFoundFault "SubscriptionCategoryNotFound"
+//   The provided category does not exist.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/ModifyEventSubscription
+func (c *DocDB) ModifyEventSubscription(input *ModifyEventSubscriptionInput) (*ModifyEventSubscriptionOutput, error) {
+	req, out := c.ModifyEventSubscriptionRequest(input)
+	return out, req.Send()
+}
+
+// ModifyEventSubscriptionWithContext is the same as ModifyEventSubscription with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ModifyEventSubscription for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) ModifyEventSubscriptionWithContext(ctx aws.Context, input *ModifyEventSubscriptionInput, opts ...request.Option) (*ModifyEventSubscriptionOutput, error) {
+	req, out := c.ModifyEventSubscriptionRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opModifyGlobalCluster = "ModifyGlobalCluster"
+
+// ModifyGlobalClusterRequest generates a "aws/request.Request" representing the
+// client's request for the ModifyGlobalCluster operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ModifyGlobalCluster for more information on using the ModifyGlobalCluster
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ModifyGlobalClusterRequest method.
+//    req, resp := client.ModifyGlobalClusterRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/ModifyGlobalCluster
+func (c *DocDB) ModifyGlobalClusterRequest(input *ModifyGlobalClusterInput) (req *request.Request, output *ModifyGlobalClusterOutput) {
+	op := &request.Operation{
+		Name:       opModifyGlobalCluster,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ModifyGlobalClusterInput{}
+	}
+
+	output = &ModifyGlobalClusterOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ModifyGlobalCluster API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Modify a setting for an Amazon DocumentDB global cluster. You can change
+// one or more configuration parameters (for example: deletion protection),
+// or the global cluster identifier by specifying these parameters and the new
+// values in the request.
+//
+// This action only applies to Amazon DocumentDB clusters.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation ModifyGlobalCluster for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeGlobalClusterNotFoundFault "GlobalClusterNotFoundFault"
+//   The GlobalClusterIdentifier doesn't refer to an existing global cluster.
+//
+//   * ErrCodeInvalidGlobalClusterStateFault "InvalidGlobalClusterStateFault"
+//   The requested operation can't be performed while the cluster is in this state.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/ModifyGlobalCluster
+func (c *DocDB) ModifyGlobalCluster(input *ModifyGlobalClusterInput) (*ModifyGlobalClusterOutput, error) {
+	req, out := c.ModifyGlobalClusterRequest(input)
+	return out, req.Send()
+}
+
+// ModifyGlobalClusterWithContext is the same as ModifyGlobalCluster with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ModifyGlobalCluster for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) ModifyGlobalClusterWithContext(ctx aws.Context, input *ModifyGlobalClusterInput, opts ...request.Option) (*ModifyGlobalClusterOutput, error) {
+	req, out := c.ModifyGlobalClusterRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opRebootDBInstance = "RebootDBInstance"
 
 // RebootDBInstanceRequest generates a "aws/request.Request" representing the
@@ -3606,6 +4830,178 @@ func (c *DocDB) RebootDBInstance(input *RebootDBInstanceInput) (*RebootDBInstanc
 // for more information on using Contexts.
 func (c *DocDB) RebootDBInstanceWithContext(ctx aws.Context, input *RebootDBInstanceInput, opts ...request.Option) (*RebootDBInstanceOutput, error) {
 	req, out := c.RebootDBInstanceRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opRemoveFromGlobalCluster = "RemoveFromGlobalCluster"
+
+// RemoveFromGlobalClusterRequest generates a "aws/request.Request" representing the
+// client's request for the RemoveFromGlobalCluster operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See RemoveFromGlobalCluster for more information on using the RemoveFromGlobalCluster
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the RemoveFromGlobalClusterRequest method.
+//    req, resp := client.RemoveFromGlobalClusterRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/RemoveFromGlobalCluster
+func (c *DocDB) RemoveFromGlobalClusterRequest(input *RemoveFromGlobalClusterInput) (req *request.Request, output *RemoveFromGlobalClusterOutput) {
+	op := &request.Operation{
+		Name:       opRemoveFromGlobalCluster,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &RemoveFromGlobalClusterInput{}
+	}
+
+	output = &RemoveFromGlobalClusterOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// RemoveFromGlobalCluster API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Detaches an Amazon DocumentDB secondary cluster from a global cluster. The
+// cluster becomes a standalone cluster with read-write capability instead of
+// being read-only and receiving data from a primary in a different region.
+//
+// This action only applies to Amazon DocumentDB clusters.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation RemoveFromGlobalCluster for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeGlobalClusterNotFoundFault "GlobalClusterNotFoundFault"
+//   The GlobalClusterIdentifier doesn't refer to an existing global cluster.
+//
+//   * ErrCodeInvalidGlobalClusterStateFault "InvalidGlobalClusterStateFault"
+//   The requested operation can't be performed while the cluster is in this state.
+//
+//   * ErrCodeDBClusterNotFoundFault "DBClusterNotFoundFault"
+//   DBClusterIdentifier doesn't refer to an existing cluster.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/RemoveFromGlobalCluster
+func (c *DocDB) RemoveFromGlobalCluster(input *RemoveFromGlobalClusterInput) (*RemoveFromGlobalClusterOutput, error) {
+	req, out := c.RemoveFromGlobalClusterRequest(input)
+	return out, req.Send()
+}
+
+// RemoveFromGlobalClusterWithContext is the same as RemoveFromGlobalCluster with the addition of
+// the ability to pass a context and additional request options.
+//
+// See RemoveFromGlobalCluster for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) RemoveFromGlobalClusterWithContext(ctx aws.Context, input *RemoveFromGlobalClusterInput, opts ...request.Option) (*RemoveFromGlobalClusterOutput, error) {
+	req, out := c.RemoveFromGlobalClusterRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opRemoveSourceIdentifierFromSubscription = "RemoveSourceIdentifierFromSubscription"
+
+// RemoveSourceIdentifierFromSubscriptionRequest generates a "aws/request.Request" representing the
+// client's request for the RemoveSourceIdentifierFromSubscription operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See RemoveSourceIdentifierFromSubscription for more information on using the RemoveSourceIdentifierFromSubscription
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the RemoveSourceIdentifierFromSubscriptionRequest method.
+//    req, resp := client.RemoveSourceIdentifierFromSubscriptionRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/RemoveSourceIdentifierFromSubscription
+func (c *DocDB) RemoveSourceIdentifierFromSubscriptionRequest(input *RemoveSourceIdentifierFromSubscriptionInput) (req *request.Request, output *RemoveSourceIdentifierFromSubscriptionOutput) {
+	op := &request.Operation{
+		Name:       opRemoveSourceIdentifierFromSubscription,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &RemoveSourceIdentifierFromSubscriptionInput{}
+	}
+
+	output = &RemoveSourceIdentifierFromSubscriptionOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// RemoveSourceIdentifierFromSubscription API operation for Amazon DocumentDB with MongoDB compatibility.
+//
+// Removes a source identifier from an existing Amazon DocumentDB event notification
+// subscription.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon DocumentDB with MongoDB compatibility's
+// API operation RemoveSourceIdentifierFromSubscription for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeSubscriptionNotFoundFault "SubscriptionNotFound"
+//   The subscription name does not exist.
+//
+//   * ErrCodeSourceNotFoundFault "SourceNotFound"
+//   The requested source could not be found.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/docdb-2014-10-31/RemoveSourceIdentifierFromSubscription
+func (c *DocDB) RemoveSourceIdentifierFromSubscription(input *RemoveSourceIdentifierFromSubscriptionInput) (*RemoveSourceIdentifierFromSubscriptionOutput, error) {
+	req, out := c.RemoveSourceIdentifierFromSubscriptionRequest(input)
+	return out, req.Send()
+}
+
+// RemoveSourceIdentifierFromSubscriptionWithContext is the same as RemoveSourceIdentifierFromSubscription with the addition of
+// the ability to pass a context and additional request options.
+//
+// See RemoveSourceIdentifierFromSubscription for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *DocDB) RemoveSourceIdentifierFromSubscriptionWithContext(ctx aws.Context, input *RemoveSourceIdentifierFromSubscriptionInput, opts ...request.Option) (*RemoveSourceIdentifierFromSubscriptionOutput, error) {
+	req, out := c.RemoveSourceIdentifierFromSubscriptionRequest(input)
 	req.SetContext(ctx)
 	req.ApplyOptions(opts...)
 	return out, req.Send()
@@ -4234,12 +5630,99 @@ func (c *DocDB) StopDBClusterWithContext(ctx aws.Context, input *StopDBClusterIn
 	return out, req.Send()
 }
 
+// Represents the input to AddSourceIdentifierToSubscription.
+type AddSourceIdentifierToSubscriptionInput struct {
+	_ struct{} `type:"structure"`
+
+	// The identifier of the event source to be added:
+	//
+	//    * If the source type is an instance, a DBInstanceIdentifier must be provided.
+	//
+	//    * If the source type is a security group, a DBSecurityGroupName must be
+	//    provided.
+	//
+	//    * If the source type is a parameter group, a DBParameterGroupName must
+	//    be provided.
+	//
+	//    * If the source type is a snapshot, a DBSnapshotIdentifier must be provided.
+	//
+	// SourceIdentifier is a required field
+	SourceIdentifier *string `type:"string" required:"true"`
+
+	// The name of the Amazon DocumentDB event notification subscription that you
+	// want to add a source identifier to.
+	//
+	// SubscriptionName is a required field
+	SubscriptionName *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s AddSourceIdentifierToSubscriptionInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AddSourceIdentifierToSubscriptionInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *AddSourceIdentifierToSubscriptionInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "AddSourceIdentifierToSubscriptionInput"}
+	if s.SourceIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("SourceIdentifier"))
+	}
+	if s.SubscriptionName == nil {
+		invalidParams.Add(request.NewErrParamRequired("SubscriptionName"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetSourceIdentifier sets the SourceIdentifier field's value.
+func (s *AddSourceIdentifierToSubscriptionInput) SetSourceIdentifier(v string) *AddSourceIdentifierToSubscriptionInput {
+	s.SourceIdentifier = &v
+	return s
+}
+
+// SetSubscriptionName sets the SubscriptionName field's value.
+func (s *AddSourceIdentifierToSubscriptionInput) SetSubscriptionName(v string) *AddSourceIdentifierToSubscriptionInput {
+	s.SubscriptionName = &v
+	return s
+}
+
+type AddSourceIdentifierToSubscriptionOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Detailed information about an event to which you have subscribed.
+	EventSubscription *EventSubscription `type:"structure"`
+}
+
+// String returns the string representation
+func (s AddSourceIdentifierToSubscriptionOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AddSourceIdentifierToSubscriptionOutput) GoString() string {
+	return s.String()
+}
+
+// SetEventSubscription sets the EventSubscription field's value.
+func (s *AddSourceIdentifierToSubscriptionOutput) SetEventSubscription(v *EventSubscription) *AddSourceIdentifierToSubscriptionOutput {
+	s.EventSubscription = v
+	return s
+}
+
 // Represents the input to AddTagsToResource.
 type AddTagsToResourceInput struct {
 	_ struct{} `type:"structure"`
 
 	// The Amazon DocumentDB resource that the tags are added to. This value is
-	// an Amazon Resource Name (ARN).
+	// an Amazon Resource Name .
 	//
 	// ResourceName is a required field
 	ResourceName *string `type:"string" required:"true"`
@@ -4562,7 +6045,7 @@ type CopyDBClusterParameterGroupInput struct {
 	//    or a valid ARN.
 	//
 	//    * If the source parameter group is in a different AWS Region than the
-	//    copy, specify a valid cluster parameter group ARN; for example, arn:aws:rds:us-east-1:123456789012:cluster-pg:custom-cluster-group1.
+	//    copy, specify a valid cluster parameter group ARN; for example, arn:aws:rds:us-east-1:123456789012:sample-cluster:sample-parameter-group.
 	//
 	// SourceDBClusterParameterGroupIdentifier is a required field
 	SourceDBClusterParameterGroupIdentifier *string `type:"string" required:"true"`
@@ -4677,6 +6160,9 @@ type CopyDBClusterSnapshotInput struct {
 	// cluster snapshot, and otherwise false. The default is false.
 	CopyTags *bool `type:"boolean"`
 
+	// DestinationRegion is used for presigning the request to a given region.
+	DestinationRegion *string `type:"string"`
+
 	// The AWS KMS key ID for an encrypted cluster snapshot. The AWS KMS key ID
 	// is the Amazon Resource Name (ARN), AWS KMS key identifier, or the AWS KMS
 	// key alias for the AWS KMS encryption key.
@@ -4693,7 +6179,7 @@ type CopyDBClusterSnapshotInput struct {
 	// to the AWS KMS key ID that you want to use to encrypt the copy of the cluster
 	// snapshot in the destination Region. AWS KMS encryption keys are specific
 	// to the AWS Region that they are created in, and you can't use encryption
-	// keys from one Region in another Region.
+	// keys from one AWS Region in another AWS Region.
 	//
 	// If you copy an unencrypted cluster snapshot and specify a value for the KmsKeyId
 	// parameter, an error is returned.
@@ -4701,40 +6187,39 @@ type CopyDBClusterSnapshotInput struct {
 
 	// The URL that contains a Signature Version 4 signed request for the CopyDBClusterSnapshot
 	// API action in the AWS Region that contains the source cluster snapshot to
-	// copy. You must use the PreSignedUrl parameter when copying an encrypted cluster
-	// snapshot from another AWS Region.
+	// copy. You must use the PreSignedUrl parameter when copying a cluster snapshot
+	// from another AWS Region.
 	//
-	// The presigned URL must be a valid request for the CopyDBSClusterSnapshot
-	// API action that can be executed in the source AWS Region that contains the
-	// encrypted DB cluster snapshot to be copied. The presigned URL request must
-	// contain the following parameter values:
+	// If you are using an AWS SDK tool or the AWS CLI, you can specify SourceRegion
+	// (or --source-region for the AWS CLI) instead of specifying PreSignedUrl manually.
+	// Specifying SourceRegion autogenerates a pre-signed URL that is a valid request
+	// for the operation that can be executed in the source AWS Region.
 	//
-	//    * KmsKeyId - The AWS KMS key identifier for the key to use to encrypt
-	//    the copy of the cluster snapshot in the destination AWS Region. This is
-	//    the same identifier for both the CopyDBClusterSnapshot action that is
-	//    called in the destination AWS Region, and the action contained in the
-	//    presigned URL.
+	// The presigned URL must be a valid request for the CopyDBClusterSnapshot API
+	// action that can be executed in the source AWS Region that contains the cluster
+	// snapshot to be copied. The presigned URL request must contain the following
+	// parameter values:
 	//
-	//    * DestinationRegion - The name of the AWS Region that the DB cluster snapshot
-	//    will be created in.
+	//    * SourceRegion - The ID of the region that contains the snapshot to be
+	//    copied.
 	//
-	//    * SourceDBClusterSnapshotIdentifier - The cluster snapshot identifier
-	//    for the encrypted cluster snapshot to be copied. This identifier must
-	//    be in the Amazon Resource Name (ARN) format for the source AWS Region.
-	//    For example, if you are copying an encrypted cluster snapshot from the
-	//    us-west-2 AWS Region, then your SourceDBClusterSnapshotIdentifier looks
-	//    like the following example: arn:aws:rds:us-west-2:123456789012:cluster-snapshot:my-cluster-snapshot-20161115.
+	//    * SourceDBClusterSnapshotIdentifier - The identifier for the the encrypted
+	//    cluster snapshot to be copied. This identifier must be in the Amazon Resource
+	//    Name (ARN) format for the source AWS Region. For example, if you are copying
+	//    an encrypted cluster snapshot from the us-east-1 AWS Region, then your
+	//    SourceDBClusterSnapshotIdentifier looks something like the following:
+	//    arn:aws:rds:us-east-1:12345678012:sample-cluster:sample-cluster-snapshot.
+	//
+	//    * TargetDBClusterSnapshotIdentifier - The identifier for the new cluster
+	//    snapshot to be created. This parameter isn't case sensitive.
 	PreSignedUrl *string `type:"string"`
 
 	// The identifier of the cluster snapshot to copy. This parameter is not case
 	// sensitive.
 	//
-	// You can't copy an encrypted, shared cluster snapshot from one AWS Region
-	// to another.
-	//
 	// Constraints:
 	//
-	//    * Must specify a valid system snapshot in the "available" state.
+	//    * Must specify a valid system snapshot in the available state.
 	//
 	//    * If the source snapshot is in the same AWS Region as the copy, specify
 	//    a valid snapshot identifier.
@@ -4746,6 +6231,11 @@ type CopyDBClusterSnapshotInput struct {
 	//
 	// SourceDBClusterSnapshotIdentifier is a required field
 	SourceDBClusterSnapshotIdentifier *string `type:"string" required:"true"`
+
+	// SourceRegion is the source region where the resource exists. This is not
+	// sent over the wire and is only used for presigning. This value should always
+	// have the same region as the source ARN.
+	SourceRegion *string `type:"string" ignore:"true"`
 
 	// The tags to be assigned to the cluster snapshot.
 	Tags []*Tag `locationNameList:"Tag" type:"list"`
@@ -4799,6 +6289,12 @@ func (s *CopyDBClusterSnapshotInput) SetCopyTags(v bool) *CopyDBClusterSnapshotI
 	return s
 }
 
+// SetDestinationRegion sets the DestinationRegion field's value.
+func (s *CopyDBClusterSnapshotInput) SetDestinationRegion(v string) *CopyDBClusterSnapshotInput {
+	s.DestinationRegion = &v
+	return s
+}
+
 // SetKmsKeyId sets the KmsKeyId field's value.
 func (s *CopyDBClusterSnapshotInput) SetKmsKeyId(v string) *CopyDBClusterSnapshotInput {
 	s.KmsKeyId = &v
@@ -4814,6 +6310,12 @@ func (s *CopyDBClusterSnapshotInput) SetPreSignedUrl(v string) *CopyDBClusterSna
 // SetSourceDBClusterSnapshotIdentifier sets the SourceDBClusterSnapshotIdentifier field's value.
 func (s *CopyDBClusterSnapshotInput) SetSourceDBClusterSnapshotIdentifier(v string) *CopyDBClusterSnapshotInput {
 	s.SourceDBClusterSnapshotIdentifier = &v
+	return s
+}
+
+// SetSourceRegion sets the SourceRegion field's value.
+func (s *CopyDBClusterSnapshotInput) SetSourceRegion(v string) *CopyDBClusterSnapshotInput {
+	s.SourceRegion = &v
 	return s
 }
 
@@ -4902,8 +6404,13 @@ type CreateDBClusterInput struct {
 	// deleted.
 	DeletionProtection *bool `type:"boolean"`
 
+	// DestinationRegion is used for presigning the request to a given region.
+	DestinationRegion *string `type:"string"`
+
 	// A list of log types that need to be enabled for exporting to Amazon CloudWatch
-	// Logs.
+	// Logs. You can enable audit logs or profiler logs. For more information, see
+	// Auditing Amazon DocumentDB Events (https://docs.aws.amazon.com/documentdb/latest/developerguide/event-auditing.html)
+	// and Profiling Amazon DocumentDB Operations (https://docs.aws.amazon.com/documentdb/latest/developerguide/profiling.html).
 	EnableCloudwatchLogsExports []*string `type:"list"`
 
 	// The name of the database engine to be used for this cluster.
@@ -4913,8 +6420,14 @@ type CreateDBClusterInput struct {
 	// Engine is a required field
 	Engine *string `type:"string" required:"true"`
 
-	// The version number of the database engine to use.
+	// The version number of the database engine to use. The --engine-version will
+	// default to the latest major engine version. For production workloads, we
+	// recommend explicitly declaring this parameter with the intended major engine
+	// version.
 	EngineVersion *string `type:"string"`
+
+	// The cluster identifier of the new global cluster.
+	GlobalClusterIdentifier *string `min:"1" type:"string"`
 
 	// The AWS KMS key identifier for an encrypted cluster.
 	//
@@ -4926,19 +6439,11 @@ type CreateDBClusterInput struct {
 	//
 	// If an encryption key is not specified in KmsKeyId:
 	//
-	//    * If ReplicationSourceIdentifier identifies an encrypted source, then
-	//    Amazon DocumentDB uses the encryption key that is used to encrypt the
-	//    source. Otherwise, Amazon DocumentDB uses your default encryption key.
-	//
-	//    * If the StorageEncrypted parameter is true and ReplicationSourceIdentifier
-	//    is not specified, Amazon DocumentDB uses your default encryption key.
+	//    * If the StorageEncrypted parameter is true, Amazon DocumentDB uses your
+	//    default encryption key.
 	//
 	// AWS KMS creates the default encryption key for your AWS account. Your AWS
 	// account has a different default encryption key for each AWS Region.
-	//
-	// If you create a replica of an encrypted cluster in another AWS Region, you
-	// must set KmsKeyId to a KMS key ID that is valid in the destination AWS Region.
-	// This key is used to encrypt the replica in that AWS Region.
 	KmsKeyId *string `type:"string"`
 
 	// The password for the master database user. This password can contain any
@@ -4946,9 +6451,7 @@ type CreateDBClusterInput struct {
 	// the "at" symbol (@).
 	//
 	// Constraints: Must contain from 8 to 100 characters.
-	//
-	// MasterUserPassword is a required field
-	MasterUserPassword *string `type:"string" required:"true"`
+	MasterUserPassword *string `type:"string"`
 
 	// The name of the master user for the cluster.
 	//
@@ -4959,12 +6462,13 @@ type CreateDBClusterInput struct {
 	//    * The first character must be a letter.
 	//
 	//    * Cannot be a reserved word for the chosen database engine.
-	//
-	// MasterUsername is a required field
-	MasterUsername *string `type:"string" required:"true"`
+	MasterUsername *string `type:"string"`
 
 	// The port number on which the instances in the cluster accept connections.
 	Port *int64 `type:"integer"`
+
+	// Not currently supported.
+	PreSignedUrl *string `type:"string"`
 
 	// The daily time range during which automated backups are created if automated
 	// backups are enabled using the BackupRetentionPeriod parameter.
@@ -4996,6 +6500,11 @@ type CreateDBClusterInput struct {
 	// Constraints: Minimum 30-minute window.
 	PreferredMaintenanceWindow *string `type:"string"`
 
+	// SourceRegion is the source region where the resource exists. This is not
+	// sent over the wire and is only used for presigning. This value should always
+	// have the same region as the source ARN.
+	SourceRegion *string `type:"string" ignore:"true"`
+
 	// Specifies whether the cluster is encrypted.
 	StorageEncrypted *bool `type:"boolean"`
 
@@ -5025,11 +6534,8 @@ func (s *CreateDBClusterInput) Validate() error {
 	if s.Engine == nil {
 		invalidParams.Add(request.NewErrParamRequired("Engine"))
 	}
-	if s.MasterUserPassword == nil {
-		invalidParams.Add(request.NewErrParamRequired("MasterUserPassword"))
-	}
-	if s.MasterUsername == nil {
-		invalidParams.Add(request.NewErrParamRequired("MasterUsername"))
+	if s.GlobalClusterIdentifier != nil && len(*s.GlobalClusterIdentifier) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("GlobalClusterIdentifier", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -5074,6 +6580,12 @@ func (s *CreateDBClusterInput) SetDeletionProtection(v bool) *CreateDBClusterInp
 	return s
 }
 
+// SetDestinationRegion sets the DestinationRegion field's value.
+func (s *CreateDBClusterInput) SetDestinationRegion(v string) *CreateDBClusterInput {
+	s.DestinationRegion = &v
+	return s
+}
+
 // SetEnableCloudwatchLogsExports sets the EnableCloudwatchLogsExports field's value.
 func (s *CreateDBClusterInput) SetEnableCloudwatchLogsExports(v []*string) *CreateDBClusterInput {
 	s.EnableCloudwatchLogsExports = v
@@ -5089,6 +6601,12 @@ func (s *CreateDBClusterInput) SetEngine(v string) *CreateDBClusterInput {
 // SetEngineVersion sets the EngineVersion field's value.
 func (s *CreateDBClusterInput) SetEngineVersion(v string) *CreateDBClusterInput {
 	s.EngineVersion = &v
+	return s
+}
+
+// SetGlobalClusterIdentifier sets the GlobalClusterIdentifier field's value.
+func (s *CreateDBClusterInput) SetGlobalClusterIdentifier(v string) *CreateDBClusterInput {
+	s.GlobalClusterIdentifier = &v
 	return s
 }
 
@@ -5116,6 +6634,12 @@ func (s *CreateDBClusterInput) SetPort(v int64) *CreateDBClusterInput {
 	return s
 }
 
+// SetPreSignedUrl sets the PreSignedUrl field's value.
+func (s *CreateDBClusterInput) SetPreSignedUrl(v string) *CreateDBClusterInput {
+	s.PreSignedUrl = &v
+	return s
+}
+
 // SetPreferredBackupWindow sets the PreferredBackupWindow field's value.
 func (s *CreateDBClusterInput) SetPreferredBackupWindow(v string) *CreateDBClusterInput {
 	s.PreferredBackupWindow = &v
@@ -5125,6 +6649,12 @@ func (s *CreateDBClusterInput) SetPreferredBackupWindow(v string) *CreateDBClust
 // SetPreferredMaintenanceWindow sets the PreferredMaintenanceWindow field's value.
 func (s *CreateDBClusterInput) SetPreferredMaintenanceWindow(v string) *CreateDBClusterInput {
 	s.PreferredMaintenanceWindow = &v
+	return s
+}
+
+// SetSourceRegion sets the SourceRegion field's value.
+func (s *CreateDBClusterInput) SetSourceRegion(v string) *CreateDBClusterInput {
+	s.SourceRegion = &v
 	return s
 }
 
@@ -5177,7 +6707,7 @@ type CreateDBClusterParameterGroupInput struct {
 	//
 	// Constraints:
 	//
-	//    * Must match the name of an existing DBClusterParameterGroup.
+	//    * Must not match the name of an existing DBClusterParameterGroup.
 	//
 	// This value is stored as a lowercase string.
 	//
@@ -5393,10 +6923,6 @@ type CreateDBInstanceInput struct {
 	// Region.
 	//
 	// Example: us-east-1d
-	//
-	// Constraint: The AvailabilityZone parameter can't be specified if the MultiAZ
-	// parameter is set to true. The specified Availability Zone must be in the
-	// same AWS Region as the current endpoint.
 	AvailabilityZone *string `type:"string"`
 
 	// The identifier of the cluster that the instance will belong to.
@@ -5671,6 +7197,276 @@ func (s *CreateDBSubnetGroupOutput) SetDBSubnetGroup(v *DBSubnetGroup) *CreateDB
 	return s
 }
 
+// Represents the input to CreateEventSubscription.
+type CreateEventSubscriptionInput struct {
+	_ struct{} `type:"structure"`
+
+	// A Boolean value; set to true to activate the subscription, set to false to
+	// create the subscription but not active it.
+	Enabled *bool `type:"boolean"`
+
+	// A list of event categories for a SourceType that you want to subscribe to.
+	EventCategories []*string `locationNameList:"EventCategory" type:"list"`
+
+	// The Amazon Resource Name (ARN) of the SNS topic created for event notification.
+	// Amazon SNS creates the ARN when you create a topic and subscribe to it.
+	//
+	// SnsTopicArn is a required field
+	SnsTopicArn *string `type:"string" required:"true"`
+
+	// The list of identifiers of the event sources for which events are returned.
+	// If not specified, then all sources are included in the response. An identifier
+	// must begin with a letter and must contain only ASCII letters, digits, and
+	// hyphens; it can't end with a hyphen or contain two consecutive hyphens.
+	//
+	// Constraints:
+	//
+	//    * If SourceIds are provided, SourceType must also be provided.
+	//
+	//    * If the source type is an instance, a DBInstanceIdentifier must be provided.
+	//
+	//    * If the source type is a security group, a DBSecurityGroupName must be
+	//    provided.
+	//
+	//    * If the source type is a parameter group, a DBParameterGroupName must
+	//    be provided.
+	//
+	//    * If the source type is a snapshot, a DBSnapshotIdentifier must be provided.
+	SourceIds []*string `locationNameList:"SourceId" type:"list"`
+
+	// The type of source that is generating the events. For example, if you want
+	// to be notified of events generated by an instance, you would set this parameter
+	// to db-instance. If this value is not specified, all events are returned.
+	//
+	// Valid values: db-instance, db-cluster, db-parameter-group, db-security-group,
+	// db-snapshot, db-cluster-snapshot
+	SourceType *string `type:"string"`
+
+	// The name of the subscription.
+	//
+	// Constraints: The name must be fewer than 255 characters.
+	//
+	// SubscriptionName is a required field
+	SubscriptionName *string `type:"string" required:"true"`
+
+	// The tags to be assigned to the event subscription.
+	Tags []*Tag `locationNameList:"Tag" type:"list"`
+}
+
+// String returns the string representation
+func (s CreateEventSubscriptionInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateEventSubscriptionInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreateEventSubscriptionInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreateEventSubscriptionInput"}
+	if s.SnsTopicArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("SnsTopicArn"))
+	}
+	if s.SubscriptionName == nil {
+		invalidParams.Add(request.NewErrParamRequired("SubscriptionName"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *CreateEventSubscriptionInput) SetEnabled(v bool) *CreateEventSubscriptionInput {
+	s.Enabled = &v
+	return s
+}
+
+// SetEventCategories sets the EventCategories field's value.
+func (s *CreateEventSubscriptionInput) SetEventCategories(v []*string) *CreateEventSubscriptionInput {
+	s.EventCategories = v
+	return s
+}
+
+// SetSnsTopicArn sets the SnsTopicArn field's value.
+func (s *CreateEventSubscriptionInput) SetSnsTopicArn(v string) *CreateEventSubscriptionInput {
+	s.SnsTopicArn = &v
+	return s
+}
+
+// SetSourceIds sets the SourceIds field's value.
+func (s *CreateEventSubscriptionInput) SetSourceIds(v []*string) *CreateEventSubscriptionInput {
+	s.SourceIds = v
+	return s
+}
+
+// SetSourceType sets the SourceType field's value.
+func (s *CreateEventSubscriptionInput) SetSourceType(v string) *CreateEventSubscriptionInput {
+	s.SourceType = &v
+	return s
+}
+
+// SetSubscriptionName sets the SubscriptionName field's value.
+func (s *CreateEventSubscriptionInput) SetSubscriptionName(v string) *CreateEventSubscriptionInput {
+	s.SubscriptionName = &v
+	return s
+}
+
+// SetTags sets the Tags field's value.
+func (s *CreateEventSubscriptionInput) SetTags(v []*Tag) *CreateEventSubscriptionInput {
+	s.Tags = v
+	return s
+}
+
+type CreateEventSubscriptionOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Detailed information about an event to which you have subscribed.
+	EventSubscription *EventSubscription `type:"structure"`
+}
+
+// String returns the string representation
+func (s CreateEventSubscriptionOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateEventSubscriptionOutput) GoString() string {
+	return s.String()
+}
+
+// SetEventSubscription sets the EventSubscription field's value.
+func (s *CreateEventSubscriptionOutput) SetEventSubscription(v *EventSubscription) *CreateEventSubscriptionOutput {
+	s.EventSubscription = v
+	return s
+}
+
+// Represents the input to CreateGlobalCluster.
+type CreateGlobalClusterInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name for your database of up to 64 alpha-numeric characters. If you do
+	// not provide a name, Amazon DocumentDB will not create a database in the global
+	// cluster you are creating.
+	DatabaseName *string `type:"string"`
+
+	// The deletion protection setting for the new global cluster. The global cluster
+	// can't be deleted when deletion protection is enabled.
+	DeletionProtection *bool `type:"boolean"`
+
+	// The name of the database engine to be used for this cluster.
+	Engine *string `type:"string"`
+
+	// The engine version of the global cluster.
+	EngineVersion *string `type:"string"`
+
+	// The cluster identifier of the new global cluster.
+	//
+	// GlobalClusterIdentifier is a required field
+	GlobalClusterIdentifier *string `min:"1" type:"string" required:"true"`
+
+	// The Amazon Resource Name (ARN) to use as the primary cluster of the global
+	// cluster. This parameter is optional.
+	SourceDBClusterIdentifier *string `type:"string"`
+
+	// The storage encryption setting for the new global cluster.
+	StorageEncrypted *bool `type:"boolean"`
+}
+
+// String returns the string representation
+func (s CreateGlobalClusterInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateGlobalClusterInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreateGlobalClusterInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreateGlobalClusterInput"}
+	if s.GlobalClusterIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("GlobalClusterIdentifier"))
+	}
+	if s.GlobalClusterIdentifier != nil && len(*s.GlobalClusterIdentifier) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("GlobalClusterIdentifier", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDatabaseName sets the DatabaseName field's value.
+func (s *CreateGlobalClusterInput) SetDatabaseName(v string) *CreateGlobalClusterInput {
+	s.DatabaseName = &v
+	return s
+}
+
+// SetDeletionProtection sets the DeletionProtection field's value.
+func (s *CreateGlobalClusterInput) SetDeletionProtection(v bool) *CreateGlobalClusterInput {
+	s.DeletionProtection = &v
+	return s
+}
+
+// SetEngine sets the Engine field's value.
+func (s *CreateGlobalClusterInput) SetEngine(v string) *CreateGlobalClusterInput {
+	s.Engine = &v
+	return s
+}
+
+// SetEngineVersion sets the EngineVersion field's value.
+func (s *CreateGlobalClusterInput) SetEngineVersion(v string) *CreateGlobalClusterInput {
+	s.EngineVersion = &v
+	return s
+}
+
+// SetGlobalClusterIdentifier sets the GlobalClusterIdentifier field's value.
+func (s *CreateGlobalClusterInput) SetGlobalClusterIdentifier(v string) *CreateGlobalClusterInput {
+	s.GlobalClusterIdentifier = &v
+	return s
+}
+
+// SetSourceDBClusterIdentifier sets the SourceDBClusterIdentifier field's value.
+func (s *CreateGlobalClusterInput) SetSourceDBClusterIdentifier(v string) *CreateGlobalClusterInput {
+	s.SourceDBClusterIdentifier = &v
+	return s
+}
+
+// SetStorageEncrypted sets the StorageEncrypted field's value.
+func (s *CreateGlobalClusterInput) SetStorageEncrypted(v bool) *CreateGlobalClusterInput {
+	s.StorageEncrypted = &v
+	return s
+}
+
+type CreateGlobalClusterOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A data type representing an Amazon DocumentDB global cluster.
+	GlobalCluster *GlobalCluster `type:"structure"`
+}
+
+// String returns the string representation
+func (s CreateGlobalClusterOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateGlobalClusterOutput) GoString() string {
+	return s.String()
+}
+
+// SetGlobalCluster sets the GlobalCluster field's value.
+func (s *CreateGlobalClusterOutput) SetGlobalCluster(v *GlobalCluster) *CreateGlobalClusterOutput {
+	s.GlobalCluster = v
+	return s
+}
+
 // Detailed information about a cluster.
 type DBCluster struct {
 	_ struct{} `type:"structure"`
@@ -5767,6 +7563,10 @@ type DBCluster struct {
 	// in Universal Coordinated Time (UTC).
 	PreferredMaintenanceWindow *string `type:"string"`
 
+	// Contains one or more identifiers of the secondary clusters that are associated
+	// with this cluster.
+	ReadReplicaIdentifiers []*string `locationNameList:"ReadReplicaIdentifier" type:"list"`
+
 	// The reader endpoint for the cluster. The reader endpoint for a cluster load
 	// balances connections across the Amazon DocumentDB replicas that are available
 	// in a cluster. As clients request new connections to the reader endpoint,
@@ -5779,6 +7579,10 @@ type DBCluster struct {
 	// continue sending your read workload to other Amazon DocumentDB replicas in
 	// the cluster, you can then reconnect to the reader endpoint.
 	ReaderEndpoint *string `type:"string"`
+
+	// Contains the identifier of the source cluster if this cluster is a secondary
+	// cluster.
+	ReplicationSourceIdentifier *string `type:"string"`
 
 	// Specifies the current state of this cluster.
 	Status *string `type:"string"`
@@ -5951,9 +7755,21 @@ func (s *DBCluster) SetPreferredMaintenanceWindow(v string) *DBCluster {
 	return s
 }
 
+// SetReadReplicaIdentifiers sets the ReadReplicaIdentifiers field's value.
+func (s *DBCluster) SetReadReplicaIdentifiers(v []*string) *DBCluster {
+	s.ReadReplicaIdentifiers = v
+	return s
+}
+
 // SetReaderEndpoint sets the ReaderEndpoint field's value.
 func (s *DBCluster) SetReaderEndpoint(v string) *DBCluster {
 	s.ReaderEndpoint = &v
+	return s
+}
+
+// SetReplicationSourceIdentifier sets the ReplicationSourceIdentifier field's value.
+func (s *DBCluster) SetReplicationSourceIdentifier(v string) *DBCluster {
+	s.ReplicationSourceIdentifier = &v
 	return s
 }
 
@@ -7215,6 +9031,134 @@ func (s DeleteDBSubnetGroupOutput) GoString() string {
 	return s.String()
 }
 
+// Represents the input to DeleteEventSubscription.
+type DeleteEventSubscriptionInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the Amazon DocumentDB event notification subscription that you
+	// want to delete.
+	//
+	// SubscriptionName is a required field
+	SubscriptionName *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteEventSubscriptionInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteEventSubscriptionInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteEventSubscriptionInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteEventSubscriptionInput"}
+	if s.SubscriptionName == nil {
+		invalidParams.Add(request.NewErrParamRequired("SubscriptionName"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetSubscriptionName sets the SubscriptionName field's value.
+func (s *DeleteEventSubscriptionInput) SetSubscriptionName(v string) *DeleteEventSubscriptionInput {
+	s.SubscriptionName = &v
+	return s
+}
+
+type DeleteEventSubscriptionOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Detailed information about an event to which you have subscribed.
+	EventSubscription *EventSubscription `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteEventSubscriptionOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteEventSubscriptionOutput) GoString() string {
+	return s.String()
+}
+
+// SetEventSubscription sets the EventSubscription field's value.
+func (s *DeleteEventSubscriptionOutput) SetEventSubscription(v *EventSubscription) *DeleteEventSubscriptionOutput {
+	s.EventSubscription = v
+	return s
+}
+
+// Represents the input to DeleteGlobalCluster.
+type DeleteGlobalClusterInput struct {
+	_ struct{} `type:"structure"`
+
+	// The cluster identifier of the global cluster being deleted.
+	//
+	// GlobalClusterIdentifier is a required field
+	GlobalClusterIdentifier *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteGlobalClusterInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteGlobalClusterInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteGlobalClusterInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteGlobalClusterInput"}
+	if s.GlobalClusterIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("GlobalClusterIdentifier"))
+	}
+	if s.GlobalClusterIdentifier != nil && len(*s.GlobalClusterIdentifier) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("GlobalClusterIdentifier", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetGlobalClusterIdentifier sets the GlobalClusterIdentifier field's value.
+func (s *DeleteGlobalClusterInput) SetGlobalClusterIdentifier(v string) *DeleteGlobalClusterInput {
+	s.GlobalClusterIdentifier = &v
+	return s
+}
+
+type DeleteGlobalClusterOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A data type representing an Amazon DocumentDB global cluster.
+	GlobalCluster *GlobalCluster `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteGlobalClusterOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteGlobalClusterOutput) GoString() string {
+	return s.String()
+}
+
+// SetGlobalCluster sets the GlobalCluster field's value.
+func (s *DeleteGlobalClusterOutput) SetGlobalCluster(v *GlobalCluster) *DeleteGlobalClusterOutput {
+	s.GlobalCluster = v
+	return s
+}
+
 type DescribeCertificatesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7723,7 +9667,7 @@ type DescribeDBClusterSnapshotsInput struct {
 	// If you don't specify a SnapshotType value, then both automated and manual
 	// cluster snapshots are returned. You can include shared cluster snapshots
 	// with these results by setting the IncludeShared parameter to true. You can
-	// include public cluster snapshots with these results by setting the IncludePublic
+	// include public cluster snapshots with these results by setting theIncludePublic
 	// parameter to true.
 	//
 	// The IncludeShared and IncludePublic parameters don't apply for SnapshotType
@@ -7991,7 +9935,7 @@ type DescribeDBEngineVersionsInput struct {
 
 	// The database engine version to return.
 	//
-	// Example: 5.1.49
+	// Example: 3.6.0
 	EngineVersion *string `type:"string"`
 
 	// This parameter is not currently supported.
@@ -8573,6 +10517,121 @@ func (s *DescribeEventCategoriesOutput) SetEventCategoriesMapList(v []*EventCate
 	return s
 }
 
+// Represents the input to DescribeEventSubscriptions.
+type DescribeEventSubscriptionsInput struct {
+	_ struct{} `type:"structure"`
+
+	// This parameter is not currently supported.
+	Filters []*Filter `locationNameList:"Filter" type:"list"`
+
+	// An optional pagination token provided by a previous request. If this parameter
+	// is specified, the response includes only records beyond the marker, up to
+	// the value specified by MaxRecords.
+	Marker *string `type:"string"`
+
+	// The maximum number of records to include in the response. If more records
+	// exist than the specified MaxRecords value, a pagination token (marker) is
+	// included in the response so that the remaining results can be retrieved.
+	//
+	// Default: 100
+	//
+	// Constraints: Minimum 20, maximum 100.
+	MaxRecords *int64 `type:"integer"`
+
+	// The name of the Amazon DocumentDB event notification subscription that you
+	// want to describe.
+	SubscriptionName *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DescribeEventSubscriptionsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeEventSubscriptionsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeEventSubscriptionsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeEventSubscriptionsInput"}
+	if s.Filters != nil {
+		for i, v := range s.Filters {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Filters", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetFilters sets the Filters field's value.
+func (s *DescribeEventSubscriptionsInput) SetFilters(v []*Filter) *DescribeEventSubscriptionsInput {
+	s.Filters = v
+	return s
+}
+
+// SetMarker sets the Marker field's value.
+func (s *DescribeEventSubscriptionsInput) SetMarker(v string) *DescribeEventSubscriptionsInput {
+	s.Marker = &v
+	return s
+}
+
+// SetMaxRecords sets the MaxRecords field's value.
+func (s *DescribeEventSubscriptionsInput) SetMaxRecords(v int64) *DescribeEventSubscriptionsInput {
+	s.MaxRecords = &v
+	return s
+}
+
+// SetSubscriptionName sets the SubscriptionName field's value.
+func (s *DescribeEventSubscriptionsInput) SetSubscriptionName(v string) *DescribeEventSubscriptionsInput {
+	s.SubscriptionName = &v
+	return s
+}
+
+// Represents the output of DescribeEventSubscriptions.
+type DescribeEventSubscriptionsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A list of event subscriptions.
+	EventSubscriptionsList []*EventSubscription `locationNameList:"EventSubscription" type:"list"`
+
+	// An optional pagination token provided by a previous request. If this parameter
+	// is specified, the response includes only records beyond the marker, up to
+	// the value specified by MaxRecords.
+	Marker *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DescribeEventSubscriptionsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeEventSubscriptionsOutput) GoString() string {
+	return s.String()
+}
+
+// SetEventSubscriptionsList sets the EventSubscriptionsList field's value.
+func (s *DescribeEventSubscriptionsOutput) SetEventSubscriptionsList(v []*EventSubscription) *DescribeEventSubscriptionsOutput {
+	s.EventSubscriptionsList = v
+	return s
+}
+
+// SetMarker sets the Marker field's value.
+func (s *DescribeEventSubscriptionsOutput) SetMarker(v string) *DescribeEventSubscriptionsOutput {
+	s.Marker = &v
+	return s
+}
+
 // Represents the input to DescribeEvents.
 type DescribeEventsInput struct {
 	_ struct{} `type:"structure"`
@@ -8755,6 +10814,118 @@ func (s *DescribeEventsOutput) SetEvents(v []*Event) *DescribeEventsOutput {
 
 // SetMarker sets the Marker field's value.
 func (s *DescribeEventsOutput) SetMarker(v string) *DescribeEventsOutput {
+	s.Marker = &v
+	return s
+}
+
+type DescribeGlobalClustersInput struct {
+	_ struct{} `type:"structure"`
+
+	// A filter that specifies one or more global DB clusters to describe.
+	//
+	// Supported filters: db-cluster-id accepts cluster identifiers and cluster
+	// Amazon Resource Names (ARNs). The results list will only include information
+	// about the clusters identified by these ARNs.
+	Filters []*Filter `locationNameList:"Filter" type:"list"`
+
+	// The user-supplied cluster identifier. If this parameter is specified, information
+	// from only the specific cluster is returned. This parameter isn't case-sensitive.
+	GlobalClusterIdentifier *string `min:"1" type:"string"`
+
+	// An optional pagination token provided by a previous DescribeGlobalClusters
+	// request. If this parameter is specified, the response includes only records
+	// beyond the marker, up to the value specified by MaxRecords.
+	Marker *string `type:"string"`
+
+	// The maximum number of records to include in the response. If more records
+	// exist than the specified MaxRecords value, a pagination token called a marker
+	// is included in the response so that you can retrieve the remaining results.
+	MaxRecords *int64 `type:"integer"`
+}
+
+// String returns the string representation
+func (s DescribeGlobalClustersInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeGlobalClustersInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DescribeGlobalClustersInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DescribeGlobalClustersInput"}
+	if s.GlobalClusterIdentifier != nil && len(*s.GlobalClusterIdentifier) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("GlobalClusterIdentifier", 1))
+	}
+	if s.Filters != nil {
+		for i, v := range s.Filters {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Filters", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetFilters sets the Filters field's value.
+func (s *DescribeGlobalClustersInput) SetFilters(v []*Filter) *DescribeGlobalClustersInput {
+	s.Filters = v
+	return s
+}
+
+// SetGlobalClusterIdentifier sets the GlobalClusterIdentifier field's value.
+func (s *DescribeGlobalClustersInput) SetGlobalClusterIdentifier(v string) *DescribeGlobalClustersInput {
+	s.GlobalClusterIdentifier = &v
+	return s
+}
+
+// SetMarker sets the Marker field's value.
+func (s *DescribeGlobalClustersInput) SetMarker(v string) *DescribeGlobalClustersInput {
+	s.Marker = &v
+	return s
+}
+
+// SetMaxRecords sets the MaxRecords field's value.
+func (s *DescribeGlobalClustersInput) SetMaxRecords(v int64) *DescribeGlobalClustersInput {
+	s.MaxRecords = &v
+	return s
+}
+
+type DescribeGlobalClustersOutput struct {
+	_ struct{} `type:"structure"`
+
+	GlobalClusters []*GlobalCluster `locationNameList:"GlobalClusterMember" type:"list"`
+
+	Marker *string `type:"string"`
+}
+
+// String returns the string representation
+func (s DescribeGlobalClustersOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeGlobalClustersOutput) GoString() string {
+	return s.String()
+}
+
+// SetGlobalClusters sets the GlobalClusters field's value.
+func (s *DescribeGlobalClustersOutput) SetGlobalClusters(v []*GlobalCluster) *DescribeGlobalClustersOutput {
+	s.GlobalClusters = v
+	return s
+}
+
+// SetMarker sets the Marker field's value.
+func (s *DescribeGlobalClustersOutput) SetMarker(v string) *DescribeGlobalClustersOutput {
 	s.Marker = &v
 	return s
 }
@@ -9234,6 +11405,123 @@ func (s *EventCategoriesMap) SetSourceType(v string) *EventCategoriesMap {
 	return s
 }
 
+// Detailed information about an event to which you have subscribed.
+type EventSubscription struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon DocumentDB event notification subscription ID.
+	CustSubscriptionId *string `type:"string"`
+
+	// The AWS customer account that is associated with the Amazon DocumentDB event
+	// notification subscription.
+	CustomerAwsId *string `type:"string"`
+
+	// A Boolean value indicating whether the subscription is enabled. A value of
+	// true indicates that the subscription is enabled.
+	Enabled *bool `type:"boolean"`
+
+	// A list of event categories for the Amazon DocumentDB event notification subscription.
+	EventCategoriesList []*string `locationNameList:"EventCategory" type:"list"`
+
+	// The Amazon Resource Name (ARN) for the event subscription.
+	EventSubscriptionArn *string `type:"string"`
+
+	// The topic ARN of the Amazon DocumentDB event notification subscription.
+	SnsTopicArn *string `type:"string"`
+
+	// A list of source IDs for the Amazon DocumentDB event notification subscription.
+	SourceIdsList []*string `locationNameList:"SourceId" type:"list"`
+
+	// The source type for the Amazon DocumentDB event notification subscription.
+	SourceType *string `type:"string"`
+
+	// The status of the Amazon DocumentDB event notification subscription.
+	//
+	// Constraints:
+	//
+	// Can be one of the following: creating, modifying, deleting, active, no-permission,
+	// topic-not-exist
+	//
+	// The no-permission status indicates that Amazon DocumentDB no longer has permission
+	// to post to the SNS topic. The topic-not-exist status indicates that the topic
+	// was deleted after the subscription was created.
+	Status *string `type:"string"`
+
+	// The time at which the Amazon DocumentDB event notification subscription was
+	// created.
+	SubscriptionCreationTime *string `type:"string"`
+}
+
+// String returns the string representation
+func (s EventSubscription) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EventSubscription) GoString() string {
+	return s.String()
+}
+
+// SetCustSubscriptionId sets the CustSubscriptionId field's value.
+func (s *EventSubscription) SetCustSubscriptionId(v string) *EventSubscription {
+	s.CustSubscriptionId = &v
+	return s
+}
+
+// SetCustomerAwsId sets the CustomerAwsId field's value.
+func (s *EventSubscription) SetCustomerAwsId(v string) *EventSubscription {
+	s.CustomerAwsId = &v
+	return s
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *EventSubscription) SetEnabled(v bool) *EventSubscription {
+	s.Enabled = &v
+	return s
+}
+
+// SetEventCategoriesList sets the EventCategoriesList field's value.
+func (s *EventSubscription) SetEventCategoriesList(v []*string) *EventSubscription {
+	s.EventCategoriesList = v
+	return s
+}
+
+// SetEventSubscriptionArn sets the EventSubscriptionArn field's value.
+func (s *EventSubscription) SetEventSubscriptionArn(v string) *EventSubscription {
+	s.EventSubscriptionArn = &v
+	return s
+}
+
+// SetSnsTopicArn sets the SnsTopicArn field's value.
+func (s *EventSubscription) SetSnsTopicArn(v string) *EventSubscription {
+	s.SnsTopicArn = &v
+	return s
+}
+
+// SetSourceIdsList sets the SourceIdsList field's value.
+func (s *EventSubscription) SetSourceIdsList(v []*string) *EventSubscription {
+	s.SourceIdsList = v
+	return s
+}
+
+// SetSourceType sets the SourceType field's value.
+func (s *EventSubscription) SetSourceType(v string) *EventSubscription {
+	s.SourceType = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *EventSubscription) SetStatus(v string) *EventSubscription {
+	s.Status = &v
+	return s
+}
+
+// SetSubscriptionCreationTime sets the SubscriptionCreationTime field's value.
+func (s *EventSubscription) SetSubscriptionCreationTime(v string) *EventSubscription {
+	s.SubscriptionCreationTime = &v
+	return s
+}
+
 // Represents the input to FailoverDBCluster.
 type FailoverDBClusterInput struct {
 	_ struct{} `type:"structure"`
@@ -9352,6 +11640,161 @@ func (s *Filter) SetName(v string) *Filter {
 // SetValues sets the Values field's value.
 func (s *Filter) SetValues(v []*string) *Filter {
 	s.Values = v
+	return s
+}
+
+// A data type representing an Amazon DocumentDB global cluster.
+type GlobalCluster struct {
+	_ struct{} `type:"structure"`
+
+	// The default database name within the new global cluster.
+	DatabaseName *string `type:"string"`
+
+	// The deletion protection setting for the new global cluster.
+	DeletionProtection *bool `type:"boolean"`
+
+	// The Amazon DocumentDB database engine used by the global cluster.
+	Engine *string `type:"string"`
+
+	// Indicates the database engine version.
+	EngineVersion *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) for the global cluster.
+	GlobalClusterArn *string `type:"string"`
+
+	// Contains a user-supplied global cluster identifier. This identifier is the
+	// unique key that identifies a global cluster.
+	GlobalClusterIdentifier *string `min:"1" type:"string"`
+
+	// The list of cluster IDs for secondary clusters within the global cluster.
+	// Currently limited to one item.
+	GlobalClusterMembers []*GlobalClusterMember `locationNameList:"GlobalClusterMember" type:"list"`
+
+	// The AWS Region-unique, immutable identifier for the global database cluster.
+	// This identifier is found in AWS CloudTrail log entries whenever the AWS KMS
+	// customer master key (CMK) for the cluster is accessed.
+	GlobalClusterResourceId *string `type:"string"`
+
+	// Specifies the current state of this global cluster.
+	Status *string `type:"string"`
+
+	// The storage encryption setting for the global cluster.
+	StorageEncrypted *bool `type:"boolean"`
+}
+
+// String returns the string representation
+func (s GlobalCluster) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GlobalCluster) GoString() string {
+	return s.String()
+}
+
+// SetDatabaseName sets the DatabaseName field's value.
+func (s *GlobalCluster) SetDatabaseName(v string) *GlobalCluster {
+	s.DatabaseName = &v
+	return s
+}
+
+// SetDeletionProtection sets the DeletionProtection field's value.
+func (s *GlobalCluster) SetDeletionProtection(v bool) *GlobalCluster {
+	s.DeletionProtection = &v
+	return s
+}
+
+// SetEngine sets the Engine field's value.
+func (s *GlobalCluster) SetEngine(v string) *GlobalCluster {
+	s.Engine = &v
+	return s
+}
+
+// SetEngineVersion sets the EngineVersion field's value.
+func (s *GlobalCluster) SetEngineVersion(v string) *GlobalCluster {
+	s.EngineVersion = &v
+	return s
+}
+
+// SetGlobalClusterArn sets the GlobalClusterArn field's value.
+func (s *GlobalCluster) SetGlobalClusterArn(v string) *GlobalCluster {
+	s.GlobalClusterArn = &v
+	return s
+}
+
+// SetGlobalClusterIdentifier sets the GlobalClusterIdentifier field's value.
+func (s *GlobalCluster) SetGlobalClusterIdentifier(v string) *GlobalCluster {
+	s.GlobalClusterIdentifier = &v
+	return s
+}
+
+// SetGlobalClusterMembers sets the GlobalClusterMembers field's value.
+func (s *GlobalCluster) SetGlobalClusterMembers(v []*GlobalClusterMember) *GlobalCluster {
+	s.GlobalClusterMembers = v
+	return s
+}
+
+// SetGlobalClusterResourceId sets the GlobalClusterResourceId field's value.
+func (s *GlobalCluster) SetGlobalClusterResourceId(v string) *GlobalCluster {
+	s.GlobalClusterResourceId = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *GlobalCluster) SetStatus(v string) *GlobalCluster {
+	s.Status = &v
+	return s
+}
+
+// SetStorageEncrypted sets the StorageEncrypted field's value.
+func (s *GlobalCluster) SetStorageEncrypted(v bool) *GlobalCluster {
+	s.StorageEncrypted = &v
+	return s
+}
+
+// A data structure with information about any primary and secondary clusters
+// associated with an Amazon DocumentDB global clusters.
+type GlobalClusterMember struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) for each Amazon DocumentDB cluster.
+	DBClusterArn *string `type:"string"`
+
+	// Specifies whether the Amazon DocumentDB cluster is the primary cluster (that
+	// is, has read-write capability) for the Amazon DocumentDB global cluster with
+	// which it is associated.
+	IsWriter *bool `type:"boolean"`
+
+	// The Amazon Resource Name (ARN) for each read-only secondary cluster associated
+	// with the Aurora global cluster.
+	Readers []*string `type:"list"`
+}
+
+// String returns the string representation
+func (s GlobalClusterMember) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GlobalClusterMember) GoString() string {
+	return s.String()
+}
+
+// SetDBClusterArn sets the DBClusterArn field's value.
+func (s *GlobalClusterMember) SetDBClusterArn(v string) *GlobalClusterMember {
+	s.DBClusterArn = &v
+	return s
+}
+
+// SetIsWriter sets the IsWriter field's value.
+func (s *GlobalClusterMember) SetIsWriter(v bool) *GlobalClusterMember {
+	s.IsWriter = &v
+	return s
+}
+
+// SetReaders sets the Readers field's value.
+func (s *GlobalClusterMember) SetReaders(v []*string) *GlobalClusterMember {
+	s.Readers = v
 	return s
 }
 
@@ -9492,9 +11935,8 @@ type ModifyDBClusterInput struct {
 	// deleted.
 	DeletionProtection *bool `type:"boolean"`
 
-	// The version number of the database engine to which you want to upgrade. Changing
-	// this parameter results in an outage. The change is applied during the next
-	// maintenance window unless the ApplyImmediately parameter is set to true.
+	// The version number of the database engine to which you want to upgrade. Modifying
+	// engine version is not supported on Amazon DocumentDB.
 	EngineVersion *string `type:"string"`
 
 	// The password for the master database user. This password can contain any
@@ -10159,6 +12601,208 @@ func (s *ModifyDBSubnetGroupOutput) SetDBSubnetGroup(v *DBSubnetGroup) *ModifyDB
 	return s
 }
 
+// Represents the input to ModifyEventSubscription.
+type ModifyEventSubscriptionInput struct {
+	_ struct{} `type:"structure"`
+
+	// A Boolean value; set to true to activate the subscription.
+	Enabled *bool `type:"boolean"`
+
+	// A list of event categories for a SourceType that you want to subscribe to.
+	EventCategories []*string `locationNameList:"EventCategory" type:"list"`
+
+	// The Amazon Resource Name (ARN) of the SNS topic created for event notification.
+	// The ARN is created by Amazon SNS when you create a topic and subscribe to
+	// it.
+	SnsTopicArn *string `type:"string"`
+
+	// The type of source that is generating the events. For example, if you want
+	// to be notified of events generated by an instance, set this parameter to
+	// db-instance. If this value is not specified, all events are returned.
+	//
+	// Valid values: db-instance, db-parameter-group, db-security-group, db-snapshot
+	SourceType *string `type:"string"`
+
+	// The name of the Amazon DocumentDB event notification subscription.
+	//
+	// SubscriptionName is a required field
+	SubscriptionName *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ModifyEventSubscriptionInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ModifyEventSubscriptionInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ModifyEventSubscriptionInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ModifyEventSubscriptionInput"}
+	if s.SubscriptionName == nil {
+		invalidParams.Add(request.NewErrParamRequired("SubscriptionName"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *ModifyEventSubscriptionInput) SetEnabled(v bool) *ModifyEventSubscriptionInput {
+	s.Enabled = &v
+	return s
+}
+
+// SetEventCategories sets the EventCategories field's value.
+func (s *ModifyEventSubscriptionInput) SetEventCategories(v []*string) *ModifyEventSubscriptionInput {
+	s.EventCategories = v
+	return s
+}
+
+// SetSnsTopicArn sets the SnsTopicArn field's value.
+func (s *ModifyEventSubscriptionInput) SetSnsTopicArn(v string) *ModifyEventSubscriptionInput {
+	s.SnsTopicArn = &v
+	return s
+}
+
+// SetSourceType sets the SourceType field's value.
+func (s *ModifyEventSubscriptionInput) SetSourceType(v string) *ModifyEventSubscriptionInput {
+	s.SourceType = &v
+	return s
+}
+
+// SetSubscriptionName sets the SubscriptionName field's value.
+func (s *ModifyEventSubscriptionInput) SetSubscriptionName(v string) *ModifyEventSubscriptionInput {
+	s.SubscriptionName = &v
+	return s
+}
+
+type ModifyEventSubscriptionOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Detailed information about an event to which you have subscribed.
+	EventSubscription *EventSubscription `type:"structure"`
+}
+
+// String returns the string representation
+func (s ModifyEventSubscriptionOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ModifyEventSubscriptionOutput) GoString() string {
+	return s.String()
+}
+
+// SetEventSubscription sets the EventSubscription field's value.
+func (s *ModifyEventSubscriptionOutput) SetEventSubscription(v *EventSubscription) *ModifyEventSubscriptionOutput {
+	s.EventSubscription = v
+	return s
+}
+
+// Represents the input to ModifyGlobalCluster.
+type ModifyGlobalClusterInput struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates if the global cluster has deletion protection enabled. The global
+	// cluster can't be deleted when deletion protection is enabled.
+	DeletionProtection *bool `type:"boolean"`
+
+	// The identifier for the global cluster being modified. This parameter isn't
+	// case-sensitive.
+	//
+	// Constraints:
+	//
+	//    * Must match the identifier of an existing global cluster.
+	//
+	// GlobalClusterIdentifier is a required field
+	GlobalClusterIdentifier *string `min:"1" type:"string" required:"true"`
+
+	// The new identifier for a global cluster when you modify a global cluster.
+	// This value is stored as a lowercase string.
+	//
+	//    * Must contain from 1 to 63 letters, numbers, or hyphens The first character
+	//    must be a letter Can't end with a hyphen or contain two consecutive hyphens
+	//
+	// Example: my-cluster2
+	NewGlobalClusterIdentifier *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ModifyGlobalClusterInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ModifyGlobalClusterInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ModifyGlobalClusterInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ModifyGlobalClusterInput"}
+	if s.GlobalClusterIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("GlobalClusterIdentifier"))
+	}
+	if s.GlobalClusterIdentifier != nil && len(*s.GlobalClusterIdentifier) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("GlobalClusterIdentifier", 1))
+	}
+	if s.NewGlobalClusterIdentifier != nil && len(*s.NewGlobalClusterIdentifier) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NewGlobalClusterIdentifier", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDeletionProtection sets the DeletionProtection field's value.
+func (s *ModifyGlobalClusterInput) SetDeletionProtection(v bool) *ModifyGlobalClusterInput {
+	s.DeletionProtection = &v
+	return s
+}
+
+// SetGlobalClusterIdentifier sets the GlobalClusterIdentifier field's value.
+func (s *ModifyGlobalClusterInput) SetGlobalClusterIdentifier(v string) *ModifyGlobalClusterInput {
+	s.GlobalClusterIdentifier = &v
+	return s
+}
+
+// SetNewGlobalClusterIdentifier sets the NewGlobalClusterIdentifier field's value.
+func (s *ModifyGlobalClusterInput) SetNewGlobalClusterIdentifier(v string) *ModifyGlobalClusterInput {
+	s.NewGlobalClusterIdentifier = &v
+	return s
+}
+
+type ModifyGlobalClusterOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A data type representing an Amazon DocumentDB global cluster.
+	GlobalCluster *GlobalCluster `type:"structure"`
+}
+
+// String returns the string representation
+func (s ModifyGlobalClusterOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ModifyGlobalClusterOutput) GoString() string {
+	return s.String()
+}
+
+// SetGlobalCluster sets the GlobalCluster field's value.
+func (s *ModifyGlobalClusterOutput) SetGlobalCluster(v *GlobalCluster) *ModifyGlobalClusterOutput {
+	s.GlobalCluster = v
+	return s
+}
+
 // The options that are available for an instance.
 type OrderableDBInstanceOption struct {
 	_ struct{} `type:"structure"`
@@ -10673,6 +13317,164 @@ func (s RebootDBInstanceOutput) GoString() string {
 // SetDBInstance sets the DBInstance field's value.
 func (s *RebootDBInstanceOutput) SetDBInstance(v *DBInstance) *RebootDBInstanceOutput {
 	s.DBInstance = v
+	return s
+}
+
+// Represents the input to RemoveFromGlobalCluster.
+type RemoveFromGlobalClusterInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) identifying the cluster that was detached
+	// from the Amazon DocumentDB global cluster.
+	//
+	// DbClusterIdentifier is a required field
+	DbClusterIdentifier *string `type:"string" required:"true"`
+
+	// The cluster identifier to detach from the Amazon DocumentDB global cluster.
+	//
+	// GlobalClusterIdentifier is a required field
+	GlobalClusterIdentifier *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s RemoveFromGlobalClusterInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RemoveFromGlobalClusterInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RemoveFromGlobalClusterInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RemoveFromGlobalClusterInput"}
+	if s.DbClusterIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("DbClusterIdentifier"))
+	}
+	if s.GlobalClusterIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("GlobalClusterIdentifier"))
+	}
+	if s.GlobalClusterIdentifier != nil && len(*s.GlobalClusterIdentifier) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("GlobalClusterIdentifier", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDbClusterIdentifier sets the DbClusterIdentifier field's value.
+func (s *RemoveFromGlobalClusterInput) SetDbClusterIdentifier(v string) *RemoveFromGlobalClusterInput {
+	s.DbClusterIdentifier = &v
+	return s
+}
+
+// SetGlobalClusterIdentifier sets the GlobalClusterIdentifier field's value.
+func (s *RemoveFromGlobalClusterInput) SetGlobalClusterIdentifier(v string) *RemoveFromGlobalClusterInput {
+	s.GlobalClusterIdentifier = &v
+	return s
+}
+
+type RemoveFromGlobalClusterOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A data type representing an Amazon DocumentDB global cluster.
+	GlobalCluster *GlobalCluster `type:"structure"`
+}
+
+// String returns the string representation
+func (s RemoveFromGlobalClusterOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RemoveFromGlobalClusterOutput) GoString() string {
+	return s.String()
+}
+
+// SetGlobalCluster sets the GlobalCluster field's value.
+func (s *RemoveFromGlobalClusterOutput) SetGlobalCluster(v *GlobalCluster) *RemoveFromGlobalClusterOutput {
+	s.GlobalCluster = v
+	return s
+}
+
+// Represents the input to RemoveSourceIdentifierFromSubscription.
+type RemoveSourceIdentifierFromSubscriptionInput struct {
+	_ struct{} `type:"structure"`
+
+	// The source identifier to be removed from the subscription, such as the instance
+	// identifier for an instance, or the name of a security group.
+	//
+	// SourceIdentifier is a required field
+	SourceIdentifier *string `type:"string" required:"true"`
+
+	// The name of the Amazon DocumentDB event notification subscription that you
+	// want to remove a source identifier from.
+	//
+	// SubscriptionName is a required field
+	SubscriptionName *string `type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s RemoveSourceIdentifierFromSubscriptionInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RemoveSourceIdentifierFromSubscriptionInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RemoveSourceIdentifierFromSubscriptionInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RemoveSourceIdentifierFromSubscriptionInput"}
+	if s.SourceIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("SourceIdentifier"))
+	}
+	if s.SubscriptionName == nil {
+		invalidParams.Add(request.NewErrParamRequired("SubscriptionName"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetSourceIdentifier sets the SourceIdentifier field's value.
+func (s *RemoveSourceIdentifierFromSubscriptionInput) SetSourceIdentifier(v string) *RemoveSourceIdentifierFromSubscriptionInput {
+	s.SourceIdentifier = &v
+	return s
+}
+
+// SetSubscriptionName sets the SubscriptionName field's value.
+func (s *RemoveSourceIdentifierFromSubscriptionInput) SetSubscriptionName(v string) *RemoveSourceIdentifierFromSubscriptionInput {
+	s.SubscriptionName = &v
+	return s
+}
+
+type RemoveSourceIdentifierFromSubscriptionOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Detailed information about an event to which you have subscribed.
+	EventSubscription *EventSubscription `type:"structure"`
+}
+
+// String returns the string representation
+func (s RemoveSourceIdentifierFromSubscriptionOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RemoveSourceIdentifierFromSubscriptionOutput) GoString() string {
+	return s.String()
+}
+
+// SetEventSubscription sets the EventSubscription field's value.
+func (s *RemoveSourceIdentifierFromSubscriptionOutput) SetEventSubscription(v *EventSubscription) *RemoveSourceIdentifierFromSubscriptionOutput {
+	s.EventSubscription = v
 	return s
 }
 
@@ -11628,6 +14430,14 @@ const (
 	ApplyMethodPendingReboot = "pending-reboot"
 )
 
+// ApplyMethod_Values returns all elements of the ApplyMethod enum
+func ApplyMethod_Values() []string {
+	return []string{
+		ApplyMethodImmediate,
+		ApplyMethodPendingReboot,
+	}
+}
+
 const (
 	// SourceTypeDbInstance is a SourceType enum value
 	SourceTypeDbInstance = "db-instance"
@@ -11647,3 +14457,15 @@ const (
 	// SourceTypeDbClusterSnapshot is a SourceType enum value
 	SourceTypeDbClusterSnapshot = "db-cluster-snapshot"
 )
+
+// SourceType_Values returns all elements of the SourceType enum
+func SourceType_Values() []string {
+	return []string{
+		SourceTypeDbInstance,
+		SourceTypeDbParameterGroup,
+		SourceTypeDbSecurityGroup,
+		SourceTypeDbSnapshot,
+		SourceTypeDbCluster,
+		SourceTypeDbClusterSnapshot,
+	}
+}

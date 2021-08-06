@@ -64,6 +64,22 @@
       "max":150
     },
     "ErrorMessage":{"type":"string"},
+    "FilterAttributeName":{
+      "type":"string",
+      "max":50,
+      "pattern":"[A-Za-z0-9_]+"
+    },
+    "FilterAttributeValue":{
+      "type":"string",
+      "max":1000,
+      "sensitive":true
+    },
+    "FilterValues":{
+      "type":"map",
+      "key":{"shape":"FilterAttributeName"},
+      "value":{"shape":"FilterAttributeValue"},
+      "max":25
+    },
     "GetPersonalizedRankingRequest":{
       "type":"structure",
       "required":[
@@ -75,13 +91,16 @@
         "campaignArn":{"shape":"Arn"},
         "inputList":{"shape":"InputList"},
         "userId":{"shape":"UserID"},
-        "context":{"shape":"Context"}
+        "context":{"shape":"Context"},
+        "filterArn":{"shape":"Arn"},
+        "filterValues":{"shape":"FilterValues"}
       }
     },
     "GetPersonalizedRankingResponse":{
       "type":"structure",
       "members":{
-        "personalizedRanking":{"shape":"ItemList"}
+        "personalizedRanking":{"shape":"ItemList"},
+        "recommendationId":{"shape":"RecommendationID"}
       }
     },
     "GetRecommendationsRequest":{
@@ -92,13 +111,16 @@
         "itemId":{"shape":"ItemID"},
         "userId":{"shape":"UserID"},
         "numResults":{"shape":"NumResults"},
-        "context":{"shape":"Context"}
+        "context":{"shape":"Context"},
+        "filterArn":{"shape":"Arn"},
+        "filterValues":{"shape":"FilterValues"}
       }
     },
     "GetRecommendationsResponse":{
       "type":"structure",
       "members":{
-        "itemList":{"shape":"ItemList"}
+        "itemList":{"shape":"ItemList"},
+        "recommendationId":{"shape":"RecommendationID"}
       }
     },
     "InputList":{
@@ -128,9 +150,11 @@
     "PredictedItem":{
       "type":"structure",
       "members":{
-        "itemId":{"shape":"ItemID"}
+        "itemId":{"shape":"ItemID"},
+        "score":{"shape":"Score"}
       }
     },
+    "RecommendationID":{"type":"string"},
     "ResourceNotFoundException":{
       "type":"structure",
       "members":{
@@ -139,6 +163,7 @@
       "error":{"httpStatusCode":404},
       "exception":true
     },
+    "Score":{"type":"double"},
     "UserID":{
       "type":"string",
       "max":256

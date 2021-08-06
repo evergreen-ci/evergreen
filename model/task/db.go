@@ -82,7 +82,7 @@ var (
 	GeneratedJSONKey            = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
 	GeneratedJSONAsStringKey    = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
 	GenerateTasksErrorKey       = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
-	GeneratedTasksToStepbackKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToStepback")
+	GeneratedTasksToActivateKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
 	ResetWhenFinishedKey        = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	LogsKey                     = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey         = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
@@ -823,8 +823,8 @@ func FindOne(query db.Q) (*Task, error) {
 	if task == nil {
 		return nil, nil
 	}
-	if err = task.MergeTestResults(); err != nil {
-		return nil, errors.Wrapf(err, "errors merging test results for '%s'", task.Id)
+	if err = task.MergeNewTestResults(); err != nil {
+		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -1051,8 +1051,8 @@ func FindOneOld(query db.Q) (*Task, error) {
 	if task == nil {
 		return nil, nil
 	}
-	if err = task.MergeTestResults(); err != nil {
-		return nil, errors.Wrapf(err, "errors merging test results for '%s'", task.Id)
+	if err = task.MergeNewTestResults(); err != nil {
+		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -1065,8 +1065,8 @@ func FindOld(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 	for i, task := range tasks {
-		if err = task.MergeTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging test results")
+		if err = task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging new test results")
 		}
 		tasks[i] = task
 	}
@@ -1089,8 +1089,8 @@ func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 	for i, task := range tasks {
-		if err = task.MergeTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging test results")
+		if err = task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging new test results")
 		}
 		tasks[i] = task
 	}

@@ -141,6 +141,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(checkUser, addProject, submitPatches, checkCommitQueueItemOwner).RouteHandler(makeMergePatch(sc))
 	app.AddRoute("/pods/{pod_id}/agent/cedar_config").Version(2).Get().Wrap(checkPod).RouteHandler(makePodAgentCedarConfig(env.Settings()))
 	app.AddRoute("/pods/{pod_id}/agent/setup").Version(2).Get().Wrap(checkPod).RouteHandler(makePodAgentSetup(env.Settings()))
+	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(checkPod).RouteHandler(makePodAgentNextTask(env, sc))
+	app.AddRoute("/pods").Version(2).Post().Wrap(adminSettings).RouteHandler(makePostPod(sc))
 	app.AddRoute("/projects").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchProjectsRoute(sc))
 	app.AddRoute("/projects/test_alias").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectAliasResultsHandler(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(checkUser, checkProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject(sc))

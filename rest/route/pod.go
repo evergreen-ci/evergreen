@@ -4,79 +4,78 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
-
-/////////////////////////////////////////
-//
-// GET /rest/v2/pods/{pod_id}/agent/setup
-
-type podAgentSetup struct {
-	settings *evergreen.Settings
-}
-
-func makePodAgentSetup(settings *evergreen.Settings) gimlet.RouteHandler {
-	return &podAgentSetup{
-		settings: settings,
-	}
-}
-
-func (h *podAgentSetup) Factory() gimlet.RouteHandler {
-	return &podAgentSetup{
-		settings: h.settings,
-	}
-}
-
-func (h *podAgentSetup) Parse(ctx context.Context, r *http.Request) error {
-	return nil
-}
-
-func (h *podAgentSetup) Run(ctx context.Context) gimlet.Responder {
-	data := apimodels.AgentSetupData{
-		SplunkServerURL:   h.settings.Splunk.ServerURL,
-		SplunkClientToken: h.settings.Splunk.Token,
-		SplunkChannel:     h.settings.Splunk.Channel,
-		S3Bucket:          h.settings.Providers.AWS.S3.Bucket,
-		S3Key:             h.settings.Providers.AWS.S3.Key,
-		S3Secret:          h.settings.Providers.AWS.S3.Secret,
-		TaskSync:          h.settings.Providers.AWS.TaskSync,
-		LogkeeperURL:      h.settings.LoggerConfig.LogkeeperURL,
-	}
-	return gimlet.NewJSONResponse(data)
-}
 
 ////////////////////////////////////////////////
 //
-// GET /rest/v2/pods/{pod_id}/agent/cedar_config
+// POST /rest/v2/pods
 
-type podAgentCedarConfig struct {
-	settings *evergreen.Settings
+type podPostHandler struct {
+	sc data.Connector
+	p  model.APICreatePod
 }
 
-func makePodAgentCedarConfig(settings *evergreen.Settings) gimlet.RouteHandler {
-	return &podAgentCedarConfig{
-		settings: settings,
+func makePostPod(sc data.Connector) gimlet.RouteHandler {
+	return &podPostHandler{
+		sc: sc,
+		p:  model.APICreatePod{},
 	}
 }
 
-func (h *podAgentCedarConfig) Factory() gimlet.RouteHandler {
-	return &podAgentCedarConfig{
-		settings: h.settings,
+func (h *podPostHandler) Factory() gimlet.RouteHandler {
+	return &podPostHandler{
+		sc: h.sc,
+		p:  model.APICreatePod{},
 	}
 }
 
-func (h *podAgentCedarConfig) Parse(ctx context.Context, r *http.Request) error {
+// Parse fetches the podID and JSON payload from the HTTP request.
+func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := utility.ReadJSON(r.Body, &h.p); err != nil {
+		return errors.Wrap(err, "reading payload body")
+	}
+	if err := h.validatePayload(); err != nil {
+		return errors.Wrap(err, "invalid API input")
+	}
+
 	return nil
 }
 
-func (h *podAgentCedarConfig) Run(ctx context.Context) gimlet.Responder {
-	data := apimodels.CedarConfig{
-		BaseURL:  h.settings.Cedar.BaseURL,
-		RPCPort:  h.settings.Cedar.RPCPort,
-		Username: h.settings.Cedar.User,
-		APIKey:   h.settings.Cedar.APIKey,
+// validatePayload validates that the input request payload is valid.
+func (h *podPostHandler) validatePayload() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(utility.FromStringPtr(h.p.Image) == "", "missing image")
+	catcher.NewWhen(utility.FromStringPtr(h.p.OS) == "", "missing OS")
+	catcher.NewWhen(utility.FromStringPtr(h.p.Arch) == "", "missing architecture")
+	catcher.NewWhen(utility.FromIntPtr(h.p.CPU) <= 0, "CPU must be a positive non-zero value")
+	catcher.NewWhen(utility.FromIntPtr(h.p.Memory) <= 0, "memory must be a positive non-zero value")
+	for i, envVar := range h.p.EnvVars {
+		catcher.ErrorfWhen(utility.FromStringPtr(envVar.Name) == "", "missing environment variable name for variable at index %d", i)
 	}
-	return gimlet.NewJSONResponse(data)
+	return catcher.Resolve()
+}
+
+// Run creates a new resource based on the Request-URI and JSON payload.
+func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
+	res, err := h.sc.CreatePod(h.p)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating new pod"))
+	}
+
+	responder, err := gimlet.NewBasicResponder(http.StatusCreated, gimlet.JSON, res)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "constructing response"))
+	}
+
+	return responder
 }

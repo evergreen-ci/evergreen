@@ -1034,6 +1034,14 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	}
 }
 
+func (h *Host) AddPubKey(ctx context.Context, pubKey string) error {
+	if logs, err := h.RunSSHCommand(ctx, fmt.Sprintf("grep -qxF \"%s\" ~/.ssh/authorized_keys || echo \"%s\" >> ~/.ssh/authorized_keys", pubKey, pubKey)); err != nil {
+		return errors.Wrapf(err, "could not run SSH command to add to authorized keys on '%s'. Logs: '%s'", h.Id, logs)
+	}
+
+	return nil
+}
+
 // SpawnHostSetupCommands returns the commands to handle setting up a spawn
 // host with the evergreen binary and config file for the owner.
 func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, error) {
