@@ -40,7 +40,6 @@ const (
 	StatusStarting Status = "starting"
 	// StatusRunning indicates that the pod's containers are running.
 	StatusRunning Status = "running"
-	// kim: TODO: add StatusStopped
 	// StatusTerminated indicates that all of the pod's containers and
 	// associated resources have been deleted.
 	StatusTerminated Status = "terminated"
@@ -100,10 +99,15 @@ type ResourceInfo struct {
 	DefinitionID string `bson:"definition_id,omitempty" json:"definition_id,omitempty"`
 	// Cluster is the namespace where the containers are running.
 	Cluster string `bson:"cluster,omitempty" json:"cluster,omitempty"`
-	// kim: TODO: populate with task container creation info
 	// Containers include resource information about containers running in the
 	// pod.
-	Containers []ContainerResourceInfo
+	Containers []ContainerResourceInfo `bson:"containers,omitempty" json:"containers,omitempty"`
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (i ResourceInfo) IsZero() bool {
+	return i.ExternalID == "" && i.DefinitionID == "" && i.Cluster == "" && len(i.Containers) == 0
 }
 
 // ContainerResourceInfo represents information about external resources
@@ -111,24 +115,20 @@ type ResourceInfo struct {
 type ContainerResourceInfo struct {
 	// ExternalID is the unique resource identifier for the container running in
 	// the container service.
-	ExternalID string
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
 	// Name is the friendly name of the container.
-	Name string
+	Name string `bson:"name,omitempty" json:"name,omitempty"`
 	// SecretIDs are the resource identifiers for the secrets owned by this
 	// container.
-	SecretIDs []string
+	SecretIDs []string `bson:"secret_ids,omitempty" json:"secret_ids,omitempty"`
 	// Status is the current state of the container.
-	Status ContainerStatus
+	Status ContainerStatus `bson:"status,omitempty" json:"status,omitempty"`
 }
-
-// kim: TODO: make a separate struct for the container name + current
-// status. We might be able to just add some pod statuses and map them as
-// appropriate.
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
-func (o ResourceInfo) IsZero() bool {
-	return o.ExternalID == "" && o.DefinitionID == "" && o.Cluster == ""
+func (i ContainerResourceInfo) IsZero() bool {
+	return i.ExternalID == "" && i.Name == "" && i.Status == "" && len(i.SecretIDs) == 0
 }
 
 // TaskContainerCreationOptions are options to apply to the task's container

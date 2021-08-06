@@ -354,9 +354,10 @@ func (i *APIPodResourceInfo) ToService() (*pod.ResourceInfo, error) {
 // APIPodResourceInfo represents information about external resources associated
 // with a container.
 type APIContainerResourceInfo struct {
-	ExternalID *string
-	Name       *string
-	Status     *APIContainerStatus
+	ExternalID *string             `json:"external_id,omitempty"`
+	Name       *string             `json:"name,omitempty"`
+	SecretIDs  []string            `json:"secret_ids,omitempty"`
+	Status     *APIContainerStatus `json:"status,omitempty"`
 }
 
 // BuildFromService converts service-layer container resource information into
@@ -368,6 +369,7 @@ func (i *APIContainerResourceInfo) BuildFromService(info pod.ContainerResourceIn
 	if err := status.BuildFromService(info.Status); err != nil {
 		return errors.Wrap(err, "building status from service")
 	}
+	i.SecretIDs = info.SecretIDs
 	i.Status = &status
 	return nil
 }
@@ -382,6 +384,7 @@ func (i *APIContainerResourceInfo) ToService() (*pod.ContainerResourceInfo, erro
 	return &pod.ContainerResourceInfo{
 		ExternalID: utility.FromStringPtr(i.ExternalID),
 		Name:       utility.FromStringPtr(i.Name),
+		SecretIDs:  i.SecretIDs,
 		Status:     *status,
 	}, nil
 }

@@ -74,15 +74,26 @@ func TestExportPod(t *testing.T) {
 			exported, err := ExportPod(p, c, v)
 			require.NoError(t, err)
 
-			info, err := exported.Info(ctx)
-			require.NoError(t, err)
+			resources := exported.Resources()
+			assert.Equal(t, p.Resources.ExternalID, utility.FromStringPtr(resources.TaskID))
+			require.NotZero(t, resources.TaskDefinition)
+			assert.Equal(t, p.Resources.DefinitionID, utility.FromStringPtr(resources.TaskDefinition.ID))
+			assert.True(t, utility.FromBoolPtr(resources.TaskDefinition.Owned))
+			assert.Equal(t, p.Resources.Cluster, utility.FromStringPtr(resources.Cluster))
+			require.Len(t, resources.Containers, len(p.Resources.Containers))
+			for i := range p.Resources.Containers {
+				assert.Equal(t, p.Resources.Containers[i].ExternalID, utility.FromStringPtr(resources.Containers[i].ContainerID))
+				assert.Equal(t, p.Resources.Containers[i].Name, utility.FromStringPtr(resources.Containers[i].Name))
+				require.Len(t, resources.Containers[i].Secrets, len(p.Resources.Containers[i].SecretIDs))
+				for _, s := range resources.Containers[i].Secrets {
+					assert.True(t, utility.StringSliceContains(p.Resources.Containers[i].SecretIDs, utility.FromStringPtr(s.Name)))
+				}
+			}
 
-			r := ExportPodResources(p.Resources)
-			assert.Equal(t, r, info.Resources)
-
-			s, err := ExportPodStatus(p.Status)
+			stat := exported.StatusInfo()
+			ps, err := ExportECSPodStatus(p.Status)
 			require.NoError(t, err)
-			assert.Equal(t, s, info.Status)
+			assert.Equal(t, ps, stat.Status)
 		},
 		"FailsWithEmptyPod": func(ctx context.Context, t *testing.T, p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) {
 			exported, err := ExportPod(&pod.Pod{}, c, v)
@@ -106,7 +117,14 @@ func TestExportPod(t *testing.T) {
 					ExternalID:   "task_id",
 					DefinitionID: "task_def_id",
 					Cluster:      "cluster",
-					SecretIDs:    []string{"secret"},
+					Containers: []pod.ContainerResourceInfo{
+						{
+							ExternalID: "container_id",
+							Name:       "container_name",
+							SecretIDs:  []string{"secret"},
+							Status:     pod.ContainerStatusRunning,
+						},
+					},
 				},
 			}
 			ecsClient, err := MakeECSClient(validPodClientSettings())
@@ -126,29 +144,85 @@ func TestExportPod(t *testing.T) {
 	}
 }
 
-func TestExportPodStatus(t *testing.T) {
+func TestExportECSPodStatus(t *testing.T) {
 	t.Run("SucceedsWithStartingStatus", func(t *testing.T) {
-		s, err := ExportPodStatus(pod.StatusStarting)
+		s, err := ExportECSPodStatus(pod.StatusStarting)
 		require.NoError(t, err)
 		assert.Equal(t, cocoa.StatusStarting, s)
 	})
 	t.Run("SucceedsWithRunningStatus", func(t *testing.T) {
-		s, err := ExportPodStatus(pod.StatusRunning)
+		s, err := ExportECSPodStatus(pod.StatusRunning)
 		require.NoError(t, err)
 		assert.Equal(t, cocoa.StatusRunning, s)
 	})
 	t.Run("SucceedsWithTerminatedStatus", func(t *testing.T) {
-		s, err := ExportPodStatus(pod.StatusTerminated)
+		s, err := ExportECSPodStatus(pod.StatusTerminated)
 		require.NoError(t, err)
 		assert.Equal(t, cocoa.StatusDeleted, s)
 	})
 	t.Run("FailsWithInitializingStatus", func(t *testing.T) {
-		s, err := ExportPodStatus(pod.StatusInitializing)
+		s, err := ExportECSPodStatus(pod.StatusInitializing)
+		assert.Error(t, err)
+		assert.Equal(t, cocoa.StatusUnknown, s)
+	})
+	t.Run("FailsWithInvalidStatus", func(t *testing.T) {
+		s, err := ExportECSPodStatus("")
+		assert.Error(t, err)
+		assert.Equal(t, cocoa.StatusUnknown, s)
+	})
+}
+
+func TestExportECSContainerStatus(t *testing.T) {
+	t.Run("SucceedsWithStartingStatus", func(t *testing.T) {
+		s, err := ExportECSContainerStatus(pod.ContainerStatusStarting)
+		require.NoError(t, err)
+		assert.Equal(t, cocoa.StatusStarting, s)
+	})
+	t.Run("SucceedsWithRunningStatus", func(t *testing.T) {
+		s, err := ExportECSContainerStatus(pod.ContainerStatusRunning)
+		require.NoError(t, err)
+		assert.Equal(t, cocoa.StatusRunning, s)
+	})
+	t.Run("SucceedsWithStoppedStatus", func(t *testing.T) {
+		s, err := ExportECSContainerStatus(pod.ContainerStatusStopped)
+		require.NoError(t, err)
+		assert.Equal(t, cocoa.StatusStopped, s)
+	})
+	t.Run("FailsWithInvalidStatus", func(t *testing.T) {
+		s, err := ExportECSContainerStatus("")
+		assert.Error(t, err)
+		assert.Equal(t, cocoa.StatusUnknown, s)
+	})
+}
+
+func TestImportECSContainerStatus(t *testing.T) {
+	t.Run("SucceedsWithStartingStatus", func(t *testing.T) {
+		s, err := ImportECSContainerStatus(cocoa.StatusStarting)
+		require.NoError(t, err)
+		assert.Equal(t, pod.ContainerStatusStarting, s)
+	})
+	t.Run("SucceedsWithRunningStatus", func(t *testing.T) {
+		s, err := ImportECSContainerStatus(cocoa.StatusRunning)
+		require.NoError(t, err)
+		assert.Equal(t, pod.ContainerStatusRunning, s)
+	})
+	t.Run("SucceedsWithStoppedStatus", func(t *testing.T) {
+		s, err := ImportECSContainerStatus(cocoa.StatusStopped)
+		require.NoError(t, err)
+		assert.Equal(t, pod.ContainerStatusStopped, s)
+	})
+	t.Run("SucceedsWithDeletedStatus", func(t *testing.T) {
+		s, err := ImportECSContainerStatus(cocoa.StatusDeleted)
+		require.NoError(t, err)
+		assert.Equal(t, pod.ContainerStatusStopped, s)
+	})
+	t.Run("FailsWithUnknownStatus", func(t *testing.T) {
+		s, err := ImportECSContainerStatus(cocoa.StatusUnknown)
 		assert.Error(t, err)
 		assert.Zero(t, s)
 	})
 	t.Run("FailsWithInvalidStatus", func(t *testing.T) {
-		s, err := ExportPodStatus("")
+		s, err := ImportECSContainerStatus("")
 		assert.Error(t, err)
 		assert.Zero(t, s)
 	})
@@ -166,7 +240,7 @@ func TestExportPodResources(t *testing.T) {
 		assert.Equal(t, id, utility.FromStringPtr(r.TaskID))
 		assert.Zero(t, r.TaskDefinition)
 		assert.Zero(t, r.Cluster)
-		assert.Zero(t, r.Secrets)
+		assert.Zero(t, r.Containers)
 	})
 	t.Run("SetsCluster", func(t *testing.T) {
 		cluster := "cluster"
@@ -176,7 +250,7 @@ func TestExportPodResources(t *testing.T) {
 		assert.Equal(t, cluster, utility.FromStringPtr(r.Cluster))
 		assert.Zero(t, r.TaskID)
 		assert.Zero(t, r.TaskDefinition)
-		assert.Zero(t, r.Secrets)
+		assert.Zero(t, r.Containers)
 	})
 	t.Run("SetsTaskDefinitionID", func(t *testing.T) {
 		id := "task_def_id"
@@ -188,20 +262,114 @@ func TestExportPodResources(t *testing.T) {
 		assert.True(t, utility.FromBoolPtr(r.TaskDefinition.Owned))
 		assert.Zero(t, r.TaskID)
 		assert.Zero(t, r.Cluster)
-		assert.Zero(t, r.Secrets)
+		assert.Zero(t, r.Containers)
 	})
-	t.Run("SetsSecrets", func(t *testing.T) {
-		secrets := []string{"someSecret", "anotherSecret"}
+	t.Run("SetsContainers", func(t *testing.T) {
+		c := pod.ContainerResourceInfo{
+			ExternalID: "container_id",
+			Name:       "container_name",
+			SecretIDs:  []string{"secret0", "secret1"},
+			Status:     pod.ContainerStatusRunning,
+		}
 		r := ExportPodResources(pod.ResourceInfo{
-			SecretIDs: secrets,
+			Containers: []pod.ContainerResourceInfo{c},
 		})
 
-		require.Len(t, r.Secrets, len(secrets))
-		for i, s := range r.Secrets {
-			assert.Equal(t, secrets[i], utility.FromStringPtr(s.Name))
-			assert.Zero(t, s.Value)
-			assert.True(t, utility.FromBoolPtr(s.Owned))
+		require.Len(t, r.Containers, 1)
+		exported := r.Containers[0]
+		assert.Equal(t, c.ExternalID, utility.FromStringPtr(exported.ContainerID))
+		assert.Equal(t, c.Name, utility.FromStringPtr(exported.Name))
+		require.Len(t, exported.Secrets, len(c.SecretIDs))
+		for i := range c.SecretIDs {
+			assert.True(t, utility.StringSliceContains(c.SecretIDs, utility.FromStringPtr(exported.Secrets[i].Name)))
+			assert.True(t, utility.FromBoolPtr(exported.Secrets[i].Owned))
 		}
+	})
+}
+
+func TestExportECSPodStatusInfo(t *testing.T) {
+	t.Run("SucceedsWithoutContainerStatusInfo", func(t *testing.T) {
+		p := pod.Pod{
+			Status: pod.StatusRunning,
+		}
+		exported, err := ExportECSPodStatusInfo(&p)
+		require.NoError(t, err)
+		ps, err := ExportECSPodStatus(p.Status)
+		require.NoError(t, err)
+		assert.Equal(t, ps, exported.Status)
+		assert.Empty(t, exported.Containers)
+	})
+	t.Run("SucceedsWithContainerStatusInfo", func(t *testing.T) {
+		ci := pod.ContainerResourceInfo{
+			ExternalID: "container_id",
+			Name:       "container_name",
+			Status:     pod.ContainerStatusRunning,
+		}
+		p := pod.Pod{
+			Status: pod.StatusRunning,
+			Resources: pod.ResourceInfo{
+				Containers: []pod.ContainerResourceInfo{ci},
+			},
+		}
+		exported, err := ExportECSPodStatusInfo(&p)
+		require.NoError(t, err)
+		ps, err := ExportECSPodStatus(p.Status)
+		require.NoError(t, err)
+		assert.Equal(t, ps, exported.Status)
+		cs, err := ExportECSContainerStatus(ci.Status)
+		require.Len(t, exported.Containers, 1)
+		exportedContainer := exported.Containers[0]
+		require.NoError(t, err)
+		assert.Equal(t, cs, exportedContainer.Status)
+		assert.Equal(t, ci.ExternalID, utility.FromStringPtr(exportedContainer.ContainerID))
+		assert.Equal(t, ci.Name, utility.FromStringPtr(exportedContainer.Name))
+	})
+	t.Run("FailsWithInvalidContainerStatus", func(t *testing.T) {
+		ci := pod.ContainerResourceInfo{}
+		p := pod.Pod{
+			Status: pod.StatusRunning,
+			Resources: pod.ResourceInfo{
+				Containers: []pod.ContainerResourceInfo{ci},
+			},
+		}
+		exported, err := ExportECSPodStatusInfo(&p)
+		assert.Error(t, err)
+		assert.Zero(t, exported)
+	})
+	t.Run("FailsWithInvalidPodStatus", func(t *testing.T) {
+		p := pod.Pod{
+			Status: "",
+		}
+		exported, err := ExportECSPodStatusInfo(&p)
+		assert.Error(t, err)
+		assert.Zero(t, exported)
+	})
+}
+
+func TestExportECSContainerStatusInfo(t *testing.T) {
+	t.Run("Succeeds", func(t *testing.T) {
+		ci := pod.ContainerResourceInfo{
+			ExternalID: "container_id",
+			Name:       "container_name",
+			Status:     pod.ContainerStatusRunning,
+		}
+		exported, err := ExportECSContainerStatusInfo(ci)
+		require.NoError(t, err)
+		cs, err := ExportECSContainerStatus(ci.Status)
+		require.NoError(t, err)
+		assert.Equal(t, cs, exported.Status)
+		assert.Equal(t, ci.ExternalID, utility.FromStringPtr(exported.ContainerID))
+		assert.Equal(t, ci.Name, utility.FromStringPtr(exported.Name))
+	})
+	t.Run("FailsWithInvalidStatus", func(t *testing.T) {
+		ci := pod.ContainerResourceInfo{
+			ExternalID: "container_id",
+			Name:       "container_name",
+			Status:     "",
+		}
+		exported, err := ExportECSContainerStatusInfo(ci)
+		assert.Error(t, err)
+		assert.Zero(t, exported)
 	})
 }
 
