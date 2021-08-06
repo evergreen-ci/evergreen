@@ -368,7 +368,7 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // checks that all fields are empty besides name and tasks
-// otherwise, the vairant is being defined more than once
+// otherwise, the variant is being defined more than once
 func (pbv *parserBV) canMerge() bool {
 	return pbv.Name != "" &&
 		len(pbv.Tasks) != 0 &&
