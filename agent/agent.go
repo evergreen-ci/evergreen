@@ -618,29 +618,37 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 	return detail
 }
 
-func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
+func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error {
 	start := time.Now()
 	a.killProcs(ctx, tc, false)
 	defer a.killProcs(ctx, tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
+	opts := runCommandsOptions{}
 	postCtx, cancel := a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 	taskConfig := tc.getTaskConfig()
 	taskGroup, err := taskConfig.GetTaskGroup(tc.taskGroup)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-task commands"))
-		return
+		return nil
 	}
 	if taskGroup.TeardownTask != nil {
-		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), runCommandsOptions{})
-		tc.logger.Task().Error(message.WrapError(err, message.Fields{
-			"message": "Error running post-task command.",
-		}))
+		opts.shouldSetupFail = taskGroup.TeardownGroupFailTask
+		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), opts)
+		if err != nil {
+			tc.logger.Task().Error(message.WrapError(err, message.Fields{
+				"message": "Error running post-task command.",
+			}))
+			if taskGroup.TeardownGroupFailTask {
+				return err
+			}
+		}
 		tc.logger.Task().InfoWhen(err == nil, message.Fields{
 			"message":    "Finished running post-task commands.",
 			"total_time": time.Since(start).String(),
 		})
 	}
+	return nil
 }
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {

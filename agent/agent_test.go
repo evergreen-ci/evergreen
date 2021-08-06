@@ -335,7 +335,7 @@ post:
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.a.runPostTaskCommands(ctx, s.tc)
+	s.NoError(s.a.runPostTaskCommands(ctx, s.tc))
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running post-task commands.", msgs[1].Message)
@@ -369,7 +369,7 @@ post:
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.a.runPostTaskCommands(ctx, s.tc)
+	s.NoError(s.a.runPostTaskCommands(ctx, s.tc))
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running post-task commands.", msgs[1].Message)
@@ -807,7 +807,7 @@ task_groups:
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.a.runPostTaskCommands(ctx, s.tc)
+	s.NoError(s.a.runPostTaskCommands(ctx, s.tc))
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
