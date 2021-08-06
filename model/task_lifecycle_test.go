@@ -3733,6 +3733,7 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	assert.NoError(err)
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
 
+	// one event inserted for every updated task
 	events, err := event.Find(event.AllLogCollection, db.Q{})
 	assert.NoError(err)
 	assert.Len(events, 4)

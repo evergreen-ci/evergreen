@@ -66,7 +66,6 @@ const (
 	TriggerGithubCheckOutcome        = "github-check-outcome"
 	TriggerFailure                   = "failure"
 	TriggerSuccess                   = "success"
-	TriggerBlocked                   = "blocked"
 	TriggerRegression                = "regression"
 	TriggerExceedsDuration           = "exceeds-duration"
 	TriggerRuntimeChangeByPercent    = "runtime-change"
