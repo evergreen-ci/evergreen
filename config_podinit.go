@@ -1,18 +1,21 @@
 package evergreen
 
 import (
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// PodInitConfig holds logging settings for the podinit process.
+var podInitConfigKey = bsonutil.MustHaveTag(Settings{}, "PodInit")
+
+// PodInitConfig holds logging settings for the pod init process.
 type PodInitConfig struct {
 	S3BaseURL string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
 }
 
-func (c *PodInitConfig) SectionId() string { return "podinit" }
+func (c *PodInitConfig) SectionId() string { return "pod_init" }
 
 func (c *PodInitConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()

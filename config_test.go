@@ -360,6 +360,19 @@ func (s *AdminSuite) TestJiraConfig() {
 	s.Equal(config, settings.Jira)
 }
 
+func (s *AdminSuite) TestPodinitConfig() {
+	config := PodInitConfig{
+		S3BaseURL: "s3_base_url",
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.PodInit)
+}
+
 func (s *AdminSuite) TestProvidersConfig() {
 	config := CloudProviders{
 		AWS: AWSConfig{
@@ -839,7 +852,7 @@ func (s *AdminSuite) TestSSHKeysAppendOnly() {
 	newSettings.SSHKeyPairs = nil
 	s.Error(newSettings.Validate(), "should not be able to delete existing key pair")
 
-	newSettings.SSHKeyPairs = []SSHKeyPair{defaultPair(), SSHKeyPair{
+	newSettings.SSHKeyPairs = []SSHKeyPair{defaultPair(), {
 		Name:    "bar",
 		Public:  "public",
 		Private: "private",

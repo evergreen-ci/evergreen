@@ -32,6 +32,7 @@ func NewConfigModel() *APIAdminSettings {
 		NewRelic:          &APINewRelicConfig{},
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
+		PodInit:           &APIPodInitConfig{},
 		Providers:         &APICloudProviders{},
 		RepoTracker:       &APIRepoTrackerConfig{},
 		Scheduler:         &APISchedulerConfig{},
@@ -74,7 +75,7 @@ type APIAdminSettings struct {
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PodInit             *APIPodInitConfig                 `json:"podinit,omitempty"`
+	PodInit             *APIPodInitConfig                 `json:"pod_init,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
@@ -1923,6 +1924,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 type APIServiceFlags struct {
 	TaskDispatchDisabled          bool `json:"task_dispatch_disabled"`
 	HostInitDisabled              bool `json:"host_init_disabled"`
+	PodInitDisabled               bool `json:"pod_init_disabled"`
 	S3BinaryDownloadsDisabled     bool `json:"s3_binary_downloads_disabled"`
 	MonitorDisabled               bool `json:"monitor_disabled"`
 	AlertsDisabled                bool `json:"alerts_disabled"`
@@ -2181,6 +2183,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 	case evergreen.ServiceFlags:
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
+		as.PodInitDisabled = v.PodInitDisabled
 		as.S3BinaryDownloadsDisabled = v.S3BinaryDownloadsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
@@ -2218,6 +2221,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
 		TaskDispatchDisabled:          as.TaskDispatchDisabled,
 		HostInitDisabled:              as.HostInitDisabled,
+		PodInitDisabled:               as.PodInitDisabled,
 		S3BinaryDownloadsDisabled:     as.S3BinaryDownloadsDisabled,
 		MonitorDisabled:               as.MonitorDisabled,
 		AlertsDisabled:                as.AlertsDisabled,

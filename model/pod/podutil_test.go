@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const workingDir = "/data/mci"
+func TestCurlCommand(t *testing.T) {
+	const workingDir = "/data/mci"
 
-func TestCurlCommandWithRetry(t *testing.T) {
 	t.Run("WithoutS3", func(t *testing.T) {
 		settings := &evergreen.Settings{
 			ApiUrl:            "www.test.com",
@@ -27,10 +27,14 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
+			cmd, err := p.CurlCommand(settings)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
-			expected := "CMD-SHELL curl -LO 'www.test.com/clients/amd64/evergreen' --retry 5 --retry-max-time 10 && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen"
+
+			expected := []string{
+				"CMD-SHELL",
+				"curl -LO 'www.test.com/clients/amd64/evergreen' --retry 10 --retry-max-time 100 && chmod +x /data/mci && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup",
+			}
 			assert.Equal(t, expected, cmd)
 		})
 		t.Run("Windows", func(t *testing.T) {
@@ -43,10 +47,14 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
+			cmd, err := p.CurlCommand(settings)
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
-			expected := "CMD-SHELL curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen.exe"
+
+			expected := []string{
+				"CMD-SHELL",
+				"curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 && chmod +x /data/mci && ./evergreen.exe agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup",
+			}
 			assert.Equal(t, expected, cmd)
 		})
 	})
@@ -67,20 +75,15 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			t.Run("CustomRetry", func(t *testing.T) {
-				cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
-				require.NoError(t, err)
-				require.NotZero(t, cmd)
-				expected := fmt.Sprintf("CMD-SHELL (curl -LO 'https://foo.com/%s/amd64/evergreen' --retry 5 --retry-max-time 10 || curl -LO 'www.test.com/clients/amd64/evergreen' --retry 5 --retry-max-time 10) && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen", evergreen.BuildRevision)
-				assert.Equal(t, expected, cmd)
-			})
-			t.Run("DefaultRetry", func(t *testing.T) {
-				cmd, err := p.CurlCommandWithDefaultRetry(settings)
-				require.NoError(t, err)
-				require.NotZero(t, cmd)
-				expected := fmt.Sprintf("CMD-SHELL (curl -LO 'https://foo.com/%s/amd64/evergreen' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/amd64/evergreen' --retry 10 --retry-max-time 100) && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen", evergreen.BuildRevision)
-				assert.Equal(t, expected, cmd)
-			})
+			cmd, err := p.CurlCommand(settings)
+			require.NoError(t, err)
+			require.NotZero(t, cmd)
+
+			expected := []string{
+				"CMD-SHELL",
+				fmt.Sprintf("(curl -LO 'https://foo.com/%s/amd64/evergreen' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/amd64/evergreen' --retry 10 --retry-max-time 100) && chmod +x /data/mci && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup", evergreen.BuildRevision),
+			}
+			assert.Equal(t, expected, cmd)
 		})
 		t.Run("Windows", func(t *testing.T) {
 			p := &Pod{
@@ -92,20 +95,14 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			t.Run("CustomRetry", func(t *testing.T) {
-				cmd, err := p.CurlCommandWithRetry(settings, 5, 10)
-				require.NoError(t, err)
-				require.NotZero(t, cmd)
-				expected := fmt.Sprintf("CMD-SHELL (curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10) && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen.exe", evergreen.BuildRevision)
-				assert.Equal(t, expected, cmd)
-			})
-			t.Run("DefaultRetry", func(t *testing.T) {
-				cmd, err := p.CurlCommandWithDefaultRetry(settings)
-				require.NoError(t, err)
-				require.NotZero(t, cmd)
-				expected := fmt.Sprintf("CMD-SHELL (curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100) && ./evergreen agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup && chmod +x evergreen.exe", evergreen.BuildRevision)
-				assert.Equal(t, expected, cmd)
-			})
+			cmd, err := p.CurlCommand(settings)
+			require.NoError(t, err)
+			require.NotZero(t, cmd)
+			expected := []string{
+				"CMD-SHELL",
+				fmt.Sprintf("(curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100) && chmod +x /data/mci && ./evergreen.exe agent --api_server=www.test.com --mode=pod --pod_id=id --pod_secret=secret --log_prefix=/data/mci/agent --working_directory=/data/mci --cleanup", evergreen.BuildRevision),
+			}
+			assert.Equal(t, expected, cmd)
 		})
 	})
 }

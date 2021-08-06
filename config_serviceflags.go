@@ -73,7 +73,7 @@ func (c *ServiceFlags) Set() error {
 		"$set": bson.M{
 			taskDispatchKey:                  c.TaskDispatchDisabled,
 			hostInitKey:                      c.HostInitDisabled,
-			podInitKey:                       c.PodInitDisabled,
+			podInitDisabledKey:               c.PodInitDisabled,
 			s3BinaryDownloadsDisabledKey:     c.S3BinaryDownloadsDisabled,
 			monitorKey:                       c.MonitorDisabled,
 			alertsKey:                        c.AlertsDisabled,
