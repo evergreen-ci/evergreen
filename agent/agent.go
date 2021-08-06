@@ -551,11 +551,16 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
-		a.runPostTaskCommands(ctx, tc)
+		if err := a.runPostTaskCommands(ctx, tc); err != nil {
+			tc.logger.Task().Error(errors.Wrap(err, "error running post task commands"))
+			detail.Status = evergreen.TaskFailed
+		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
 		tc.logger.Task().Info("Task completed - FAILURE.")
-		a.runPostTaskCommands(ctx, tc)
+		if err := a.runPostTaskCommands(ctx, tc); err != nil {
+			tc.logger.Task().Error(errors.Wrap(err, "error running post task commands"))
+		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
