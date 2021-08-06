@@ -12,6 +12,7 @@ import (
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
+	ParentPatchUser = "parent_patch"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
