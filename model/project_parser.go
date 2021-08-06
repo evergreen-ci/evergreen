@@ -95,6 +95,7 @@ type parserTaskGroup struct {
 	Stepback              *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MaxHosts              int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
 	SetupGroupFailTask    bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
+	TeardownGroupFailTask bool               `yaml:"teardown_group_can_fail_task,omitempty" bson:"teardown_group_can_fail_task,omitempty"`
 	SetupGroupTimeoutSecs int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
 	SetupGroup            *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
 	TeardownGroup         *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
@@ -697,6 +698,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		tg := TaskGroup{
 			Name:                  ptg.Name,
 			SetupGroupFailTask:    ptg.SetupGroupFailTask,
+			TeardownGroupFailTask: ptg.TeardownGroupFailTask,
 			SetupGroupTimeoutSecs: ptg.SetupGroupTimeoutSecs,
 			SetupGroup:            ptg.SetupGroup,
 			TeardownGroup:         ptg.TeardownGroup,
