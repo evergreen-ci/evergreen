@@ -312,6 +312,34 @@ pre:
 	s.NoError(s.tc.logger.Close())
 }
 
+func (s *AgentSuite) TestPostFailsTask() {
+	projYml := `
+post_error_fails_task: true
+post:
+  - command: subprocess.exec
+    params:
+      command: "doesntexist"
+`
+	p := &model.Project{}
+	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	s.NoError(err)
+	s.tc.taskConfig = &internal.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:      "task_id",
+			Version: versionId,
+		},
+		Project: p,
+		WorkDir: s.tc.taskDirectory,
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Error(s.a.runPostTaskCommands(ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+}
+
 func (s *AgentSuite) TestPost() {
 	projYml := `
 post:
