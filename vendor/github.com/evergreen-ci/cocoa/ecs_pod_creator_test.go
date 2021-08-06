@@ -1,6 +1,7 @@
 package cocoa
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/utility"
@@ -21,9 +22,13 @@ func TestECSPodCreationOptions(t *testing.T) {
 	})
 	t.Run("SetContainerDefinitions", func(t *testing.T) {
 		containerDef := NewECSContainerDefinition().SetImage("image")
-		def := NewECSPodCreationOptions().SetContainerDefinitions([]ECSContainerDefinition{*containerDef})
-		require.Len(t, def.ContainerDefinitions, 1)
-		assert.Equal(t, *containerDef, def.ContainerDefinitions[0])
+
+		opts := NewECSPodCreationOptions().SetContainerDefinitions([]ECSContainerDefinition{*containerDef})
+		require.Len(t, opts.ContainerDefinitions, 1)
+		assert.Equal(t, *containerDef, opts.ContainerDefinitions[0])
+
+		opts.SetContainerDefinitions(nil)
+		assert.Empty(t, opts.ContainerDefinitions)
 	})
 	t.Run("AddContainerDefinitions", func(t *testing.T) {
 		containerDef0 := NewECSContainerDefinition().SetImage("image0")
@@ -33,25 +38,25 @@ func TestECSPodCreationOptions(t *testing.T) {
 		assert.Equal(t, *containerDef0, def.ContainerDefinitions[0])
 		assert.Equal(t, *containerDef1, def.ContainerDefinitions[1])
 		def.AddContainerDefinitions()
-		assert.Len(t, def.ContainerDefinitions, 2)
+		require.Len(t, def.ContainerDefinitions, 2)
+		assert.Equal(t, *containerDef0, def.ContainerDefinitions[0])
+		assert.Equal(t, *containerDef1, def.ContainerDefinitions[1])
 	})
 	t.Run("SetMemoryMB", func(t *testing.T) {
 		mem := 128
-		def := NewECSPodCreationOptions().SetMemoryMB(mem)
-		assert.Equal(t, mem, utility.FromIntPtr(def.MemoryMB))
+		opts := NewECSPodCreationOptions().SetMemoryMB(mem)
+		assert.Equal(t, mem, utility.FromIntPtr(opts.MemoryMB))
 	})
 	t.Run("SetCPU", func(t *testing.T) {
 		cpu := 128
-		def := NewECSPodCreationOptions().SetCPU(cpu)
-		assert.Equal(t, cpu, utility.FromIntPtr(def.CPU))
+		opts := NewECSPodCreationOptions().SetCPU(cpu)
+		assert.Equal(t, cpu, utility.FromIntPtr(opts.CPU))
 	})
-	t.Run("SetTags", func(t *testing.T) {
-		tags := map[string]string{"key": "value"}
-		opts := NewECSPodCreationOptions().SetTags(tags)
-		require.Len(t, opts.Tags, len(tags))
-		for k, v := range tags {
-			assert.Equal(t, v, opts.Tags[k])
-		}
+	t.Run("SetNetworkMode", func(t *testing.T) {
+		mode := NetworkModeAWSVPC
+		opts := NewECSPodCreationOptions().SetNetworkMode(mode)
+		require.NotZero(t, opts.NetworkMode)
+		assert.Equal(t, mode, *opts.NetworkMode)
 	})
 	t.Run("SetTaskRole", func(t *testing.T) {
 		r := "task_role"
@@ -62,6 +67,18 @@ func TestECSPodCreationOptions(t *testing.T) {
 		r := "execution_role"
 		opts := NewECSPodCreationOptions().SetExecutionRole(r)
 		assert.Equal(t, r, utility.FromStringPtr(opts.ExecutionRole))
+	})
+	t.Run("SetTags", func(t *testing.T) {
+		tags := map[string]string{"key": "value"}
+
+		opts := NewECSPodCreationOptions().SetTags(tags)
+		require.Len(t, opts.Tags, len(tags))
+		for k, v := range tags {
+			assert.Equal(t, v, opts.Tags[k])
+		}
+
+		opts.SetTags(nil)
+		assert.Empty(t, opts.Tags)
 	})
 	t.Run("AddTags", func(t *testing.T) {
 		tags := map[string]string{"key0": "val0", "key1": "val1"}
@@ -82,34 +99,37 @@ func TestECSPodCreationOptions(t *testing.T) {
 		})
 		t.Run("MemoryCPUAndContainerDefinitionIsValid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image")
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(128).
 				SetCPU(128)
-			assert.NoError(t, def.Validate())
+			assert.NoError(t, opts.Validate())
 		})
 		t.Run("MissingContainerDefinitionsIsInvalid", func(t *testing.T) {
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				SetMemoryMB(128).
 				SetCPU(128)
-			assert.Error(t, def.Validate())
+			assert.Error(t, opts.Validate())
 		})
 		t.Run("NameIsGenerated", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image")
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(128).
 				SetCPU(128)
-			assert.NoError(t, def.Validate())
-			assert.NotZero(t, utility.FromStringPtr(def.Name))
+			assert.NoError(t, opts.Validate())
+			assert.NotZero(t, utility.FromStringPtr(opts.Name))
 		})
 		t.Run("BadContainerDefinitionIsInvalid", func(t *testing.T) {
-			def := NewECSPodCreationOptions().AddContainerDefinitions(*NewECSContainerDefinition()).SetMemoryMB(128).SetCPU(128)
-			assert.Error(t, def.Validate())
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*NewECSContainerDefinition()).
+				SetMemoryMB(128).
+				SetCPU(128)
+			assert.Error(t, opts.Validate())
 		})
 		t.Run("AllFieldsPopulatedIsValid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image")
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				SetName("name").
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(128).
@@ -117,78 +137,253 @@ func TestECSPodCreationOptions(t *testing.T) {
 				SetTaskRole("role").
 				AddTags(map[string]string{"key": "val"}).
 				SetExecutionOptions(*NewECSPodExecutionOptions())
-			assert.NoError(t, def.Validate())
+			assert.NoError(t, opts.Validate())
 		})
 		t.Run("MissingCPUIsInvalid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image")
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(128)
-			assert.Error(t, def.Validate())
+			assert.Error(t, opts.Validate())
 		})
 		t.Run("MissingPodCPUWithContainerCPUIsValid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image").SetCPU(128)
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(128)
-			assert.NoError(t, def.Validate())
+			assert.NoError(t, opts.Validate())
 		})
 		t.Run("TotalContainerCPUCannotExceedPodCPU", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image").SetCPU(256)
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(1024).
 				SetCPU(128)
-			assert.Error(t, def.Validate())
+			assert.Error(t, opts.Validate())
 		})
 		t.Run("ZeroCPUIsInvalid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image")
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(128).
 				SetCPU(0)
-			assert.Error(t, def.Validate())
+			assert.Error(t, opts.Validate())
 		})
 		t.Run("MissingMemoryIsInvalid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image")
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetCPU(128)
-			assert.Error(t, def.Validate())
+			assert.Error(t, opts.Validate())
 		})
 		t.Run("MissingPodMemoryWithContainerMemoryIsValid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image").SetMemoryMB(128)
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetCPU(128)
-			assert.NoError(t, def.Validate())
+			assert.NoError(t, opts.Validate())
 		})
 		t.Run("TotalContainerMemoryCannotExceedPodMemory", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image").SetMemoryMB(256)
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(128).
 				SetCPU(1024)
-			assert.Error(t, def.Validate())
+			assert.Error(t, opts.Validate())
 		})
 		t.Run("ZeroMemoryIsInvalid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image")
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(0).
 				SetCPU(128)
-			assert.Error(t, def.Validate())
+			assert.Error(t, opts.Validate())
 		})
 		t.Run("BadExecutionOptionsIsInvalid", func(t *testing.T) {
 			containerDef := NewECSContainerDefinition().SetImage("image")
 			placementOpts := NewECSPodPlacementOptions().SetStrategy("foo")
 			execOpts := NewECSPodExecutionOptions().SetPlacementOptions(*placementOpts)
-			def := NewECSPodCreationOptions().
+			opts := NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(128).
 				SetCPU(128).
 				SetExecutionOptions(*execOpts)
-			assert.Error(t, def.Validate())
+			assert.Error(t, opts.Validate())
+		})
+		t.Run("SecretEnvironmentVariablesWithoutExecutionRoleIsInvalid", func(t *testing.T) {
+			secretOpts := NewSecretOptions().SetName("name").SetValue("value")
+			ev := NewEnvironmentVariable().SetName("name").SetSecretOptions(*secretOpts)
+			containerDef := NewECSContainerDefinition().SetImage("image").AddEnvironmentVariables(*ev)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128)
+			assert.Error(t, opts.Validate())
+		})
+		t.Run("BadNetworkModeIsInvalid", func(t *testing.T) {
+			containerDef := NewECSContainerDefinition().SetImage("image")
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode("invalid")
+			assert.Error(t, opts.Validate())
+		})
+		t.Run("NoPortMappingsWithNetworkModeNoneIsValid", func(t *testing.T) {
+			containerDef := NewECSContainerDefinition().SetImage("image")
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeNone)
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("PortMappingsWithNetworkModeNoneIsInvalid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeNone)
+			assert.Error(t, opts.Validate())
+		})
+		t.Run("PortMappingToIdenticalPortWithNetworkModeAWSVPCIsValid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337).SetHostPort(1337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeAWSVPC)
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("PortMappingToUnspecifiedHostPortWithNetworkModeAWSVPCIsValid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeAWSVPC)
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("PortMappingsToMismatchedPortWithNetworkModeAWSVPCIsInvalid", func(t *testing.T) {
+			pm := NewPortMapping().
+				SetContainerPort(1337).
+				SetHostPort(13337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeAWSVPC)
+			assert.Error(t, opts.Validate())
+		})
+		t.Run("PortMappingToIdenticalPortWithNetworkModeHostIsValid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337).SetHostPort(1337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeHost)
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("PortMappingToUnspecifiedHostPortWithNetworkModeHostIsValid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeHost)
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("PortMappingsToMismatchedPortWithNetworkModeHostIsInvalid", func(t *testing.T) {
+			pm := NewPortMapping().
+				SetContainerPort(1337).
+				SetHostPort(13337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeBridge)
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("PortMappingToIdenticalPortWithNetworkModeBridgeIsValid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337).SetHostPort(1337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeHost)
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("PortMappingToUnspecifiedHostPortWithNetworkModeBridgeIsValid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeBridge)
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("PortMappingsToMismatchedPortWithNetworkModeBridgeIsValid", func(t *testing.T) {
+			pm := NewPortMapping().
+				SetContainerPort(1337).
+				SetHostPort(13337)
+			containerDef := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*pm)
+			opts := NewECSPodCreationOptions().
+				AddContainerDefinitions(*containerDef).
+				SetMemoryMB(128).
+				SetCPU(128).
+				SetNetworkMode(NetworkModeBridge)
+			assert.NoError(t, opts.Validate())
+		})
+	})
+}
+
+func TestECSNetworkMode(t *testing.T) {
+	t.Run("Validate", func(t *testing.T) {
+		for _, m := range []ECSNetworkMode{
+			NetworkModeNone,
+			NetworkModeAWSVPC,
+			NetworkModeBridge,
+			NetworkModeHost,
+		} {
+			t.Run(fmt.Sprintf("SucceedsForStatus=%s", m), func(t *testing.T) {
+				assert.NoError(t, m.Validate())
+			})
+		}
+		t.Run("FailsForEmptyStatus", func(t *testing.T) {
+			assert.Error(t, ECSNetworkMode("").Validate())
+		})
+		t.Run("FailsForInvalidStatus", func(t *testing.T) {
+			assert.Error(t, ECSNetworkMode("invalid").Validate())
 		})
 	})
 }
@@ -231,9 +426,13 @@ func TestECSContainerDefinition(t *testing.T) {
 	})
 	t.Run("SetEnvironmentVariables", func(t *testing.T) {
 		ev := NewEnvironmentVariable().SetName("name").SetValue("value")
+
 		def := NewECSContainerDefinition().SetEnvironmentVariables([]EnvironmentVariable{*ev})
 		require.Len(t, def.EnvVars, 1)
 		assert.Equal(t, *ev, def.EnvVars[0])
+
+		def.SetEnvironmentVariables(nil)
+		assert.Empty(t, def.EnvVars)
 	})
 	t.Run("AddEnvironmentVariables", func(t *testing.T) {
 		ev0 := NewEnvironmentVariable().SetName("name0").SetValue("value0")
@@ -243,7 +442,39 @@ func TestECSContainerDefinition(t *testing.T) {
 		assert.Equal(t, *ev0, def.EnvVars[0])
 		assert.Equal(t, *ev1, def.EnvVars[1])
 		def.AddEnvironmentVariables()
-		assert.Len(t, def.EnvVars, 2)
+		require.Len(t, def.EnvVars, 2)
+		assert.Equal(t, *ev0, def.EnvVars[0])
+		assert.Equal(t, *ev1, def.EnvVars[1])
+	})
+	t.Run("SetRepositoryCredentials", func(t *testing.T) {
+		creds := NewRepositoryCredentials().SetSecretName("name")
+		def := NewECSContainerDefinition().SetRepositoryCredentials(*creds)
+		require.NotZero(t, def.RepoCreds)
+		assert.Equal(t, utility.FromStringPtr(creds.SecretName), utility.FromStringPtr(def.RepoCreds.SecretName))
+	})
+	t.Run("SetPortMappings", func(t *testing.T) {
+		pm := NewPortMapping().SetContainerPort(1337)
+
+		def := NewECSContainerDefinition().SetPortMappings([]PortMapping{*pm})
+		require.Len(t, def.PortMappings, 1)
+		assert.Equal(t, *pm, def.PortMappings[0])
+
+		def = NewECSContainerDefinition().SetPortMappings(nil)
+		assert.Empty(t, def.PortMappings)
+	})
+	t.Run("AddPortMappings", func(t *testing.T) {
+		pm0 := NewPortMapping().SetContainerPort(1337)
+		pm1 := NewPortMapping().SetContainerPort(23456)
+
+		def := NewECSContainerDefinition().AddPortMappings(*pm0, *pm1)
+		require.Len(t, def.PortMappings, 2)
+		assert.Equal(t, *pm0, def.PortMappings[0])
+		assert.Equal(t, *pm1, def.PortMappings[1])
+
+		def.AddPortMappings()
+		require.Len(t, def.PortMappings, 2)
+		assert.Equal(t, *pm0, def.PortMappings[0])
+		assert.Equal(t, *pm1, def.PortMappings[1])
 	})
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("EmptyIsInvalid", func(t *testing.T) {
@@ -292,6 +523,18 @@ func TestECSContainerDefinition(t *testing.T) {
 				AddEnvironmentVariables(*NewEnvironmentVariable())
 			assert.Error(t, def.Validate())
 		})
+		t.Run("BadRepositoryCredentialsIsInvalid", func(t *testing.T) {
+			def := NewECSContainerDefinition().
+				SetImage("image").
+				SetRepositoryCredentials(*NewRepositoryCredentials())
+			assert.Error(t, def.Validate())
+		})
+		t.Run("BadPortMappingIsInvalid", func(t *testing.T) {
+			def := NewECSContainerDefinition().
+				SetImage("image").
+				AddPortMappings(*NewPortMapping())
+			assert.Error(t, def.Validate())
+		})
 	})
 }
 
@@ -315,8 +558,8 @@ func TestEnvironmentVariable(t *testing.T) {
 		opts := NewSecretOptions().SetName("name").SetValue("value")
 		ev := NewEnvironmentVariable().SetSecretOptions(*opts)
 		require.NotNil(t, ev.SecretOpts)
-		assert.Equal(t, opts.Name, ev.SecretOpts.Name)
-		assert.Equal(t, opts.Value, ev.SecretOpts.Value)
+		assert.Equal(t, utility.FromStringPtr(opts.Name), utility.FromStringPtr(ev.SecretOpts.Name))
+		assert.Equal(t, utility.FromStringPtr(opts.Value), utility.FromStringPtr(ev.SecretOpts.Value))
 	})
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("EmptyIsInvalid", func(t *testing.T) {
@@ -374,6 +617,91 @@ func TestEnvironmentVariable(t *testing.T) {
 	})
 }
 
+func TestRepositoryCredentials(t *testing.T) {
+	t.Run("NewRepositoryCredentials", func(t *testing.T) {
+		creds := NewRepositoryCredentials()
+		require.NotZero(t, creds)
+		assert.Zero(t, *creds)
+	})
+	t.Run("SetSecretName", func(t *testing.T) {
+		name := "secret_name"
+		creds := NewRepositoryCredentials().SetSecretName(name)
+		assert.Equal(t, name, utility.FromStringPtr(creds.SecretName))
+	})
+	t.Run("SetOwned", func(t *testing.T) {
+		creds := NewRepositoryCredentials().SetOwned(true)
+		assert.True(t, utility.FromBoolPtr(creds.Owned))
+	})
+	t.Run("SetNewCredentials", func(t *testing.T) {
+		storedCreds := NewStoredRepositoryCredentials().
+			SetUsername("username").
+			SetPassword("password")
+		creds := NewRepositoryCredentials().SetNewCredentials(*storedCreds)
+		require.NotZero(t, creds.NewCreds)
+		assert.Equal(t, *storedCreds, *creds.NewCreds)
+	})
+	t.Run("Validate", func(t *testing.T) {
+		t.Run("SucceedsIfNewCredsAreSet", func(t *testing.T) {
+			storedCreds := NewStoredRepositoryCredentials().
+				SetUsername("username").
+				SetPassword("password")
+			creds := NewRepositoryCredentials().
+				SetSecretName("name").
+				SetNewCredentials(*storedCreds)
+			assert.NoError(t, creds.Validate())
+		})
+		t.Run("SucceedsWithJustSecretNameForExistingSecret", func(t *testing.T) {
+			creds := NewRepositoryCredentials().SetSecretName("name")
+			assert.NoError(t, creds.Validate())
+		})
+		t.Run("EmptyIsInvalid", func(t *testing.T) {
+			creds := NewRepositoryCredentials()
+			assert.Error(t, creds.Validate())
+		})
+		t.Run("MissingSecretNameIsInvalid", func(t *testing.T) {
+			storedCreds := NewStoredRepositoryCredentials().
+				SetUsername("username").
+				SetPassword("password")
+			creds := NewRepositoryCredentials().SetNewCredentials(*storedCreds)
+			assert.Error(t, creds.Validate())
+		})
+		t.Run("BadNewCredentialsIsInvalid", func(t *testing.T) {
+			storedCreds := NewStoredRepositoryCredentials()
+			creds := NewRepositoryCredentials().SetNewCredentials(*storedCreds)
+			assert.Error(t, creds.Validate())
+		})
+	})
+}
+
+func TestStoredRepositoryCredentials(t *testing.T) {
+	t.Run("SetUsername", func(t *testing.T) {
+		username := "username"
+		creds := NewStoredRepositoryCredentials().SetUsername(username)
+		assert.Equal(t, username, utility.FromStringPtr(creds.Username))
+	})
+	t.Run("SetPassword", func(t *testing.T) {
+		password := "password"
+		creds := NewStoredRepositoryCredentials().SetPassword(password)
+		assert.Equal(t, password, utility.FromStringPtr(creds.Password))
+	})
+	t.Run("Validate", func(t *testing.T) {
+		t.Run("SucceedsWithUsernameAndPassword", func(t *testing.T) {
+			creds := NewStoredRepositoryCredentials().
+				SetUsername("username").
+				SetPassword("password")
+			assert.NoError(t, creds.Validate())
+		})
+		t.Run("FailsWithoutUsername", func(t *testing.T) {
+			creds := NewStoredRepositoryCredentials().SetPassword("password")
+			assert.Error(t, creds.Validate())
+		})
+		t.Run("FailsWithoutPassword", func(t *testing.T) {
+			creds := NewStoredRepositoryCredentials().SetPassword("password")
+			assert.Error(t, creds.Validate())
+		})
+	})
+}
+
 func TestSecretOptions(t *testing.T) {
 	t.Run("NewSecretOptions", func(t *testing.T) {
 		opts := NewSecretOptions()
@@ -397,6 +725,80 @@ func TestSecretOptions(t *testing.T) {
 	t.Run("SetOwned", func(t *testing.T) {
 		opts := NewSecretOptions().SetOwned(true)
 		assert.True(t, utility.FromBoolPtr(opts.Owned))
+	})
+	t.Run("Validate", func(t *testing.T) {
+		t.Run("NameAndNewValueIsValid", func(t *testing.T) {
+			s := NewSecretOptions().SetName("name").SetValue("value")
+			assert.NoError(t, s.Validate())
+		})
+		t.Run("EmptyIsInvalid", func(t *testing.T) {
+			s := NewSecretOptions()
+			assert.Error(t, s.Validate())
+		})
+		t.Run("ExistingSecretWithNameIsValid", func(t *testing.T) {
+			s := NewSecretOptions().SetName("name").SetExists(true)
+			assert.NoError(t, s.Validate())
+		})
+		t.Run("MissingNameIsInvalid", func(t *testing.T) {
+			s := NewSecretOptions().SetValue("value")
+			assert.Error(t, s.Validate())
+		})
+		t.Run("ExistingSecretWithNewValueIsInvalid", func(t *testing.T) {
+			s := NewSecretOptions().SetName("name").SetExists(true).SetValue("value")
+			assert.Error(t, s.Validate())
+		})
+	})
+}
+
+func TestPortMappings(t *testing.T) {
+	t.Run("NewPortMapping", func(t *testing.T) {
+		pm := NewPortMapping()
+		require.NotZero(t, pm)
+		assert.Zero(t, *pm)
+	})
+	t.Run("SetContainerPort", func(t *testing.T) {
+		port := 1337
+		pm := NewPortMapping().SetContainerPort(1337)
+		assert.Equal(t, port, utility.FromIntPtr(pm.ContainerPort))
+	})
+	t.Run("SetHostPort", func(t *testing.T) {
+		port := 1337
+		pm := NewPortMapping().SetHostPort(1337)
+		assert.Equal(t, port, utility.FromIntPtr(pm.HostPort))
+	})
+	t.Run("Validate", func(t *testing.T) {
+		t.Run("EmptyIsInvalid", func(t *testing.T) {
+			pm := NewPortMapping()
+			assert.Error(t, pm.Validate())
+		})
+		t.Run("JustContainerPortIsValid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337)
+			assert.NoError(t, pm.Validate())
+		})
+		t.Run("ContainerAndHostPortIsValid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(1337).SetHostPort(1337)
+			assert.NoError(t, pm.Validate())
+		})
+		t.Run("NegativeContainerPortIsInvalid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(-100)
+			assert.Error(t, pm.Validate())
+		})
+		t.Run("ContainerPortAboveMaxIsInvalid", func(t *testing.T) {
+			pm := NewPortMapping().SetContainerPort(100000)
+			assert.Error(t, pm.Validate())
+		})
+		t.Run("NegativeHostPortIsInvalid", func(t *testing.T) {
+			pm := NewPortMapping().
+				SetContainerPort(1337).
+				SetHostPort(-100)
+			assert.Error(t, pm.Validate())
+		})
+		t.Run("HostPortAboveMaxIsInvalid", func(t *testing.T) {
+			pm := NewPortMapping().
+				SetContainerPort(1337).
+				SetHostPort(100000)
+			assert.Error(t, pm.Validate())
+		})
 	})
 }
 
@@ -439,6 +841,8 @@ func TestECSPodExecutionOptions(t *testing.T) {
 		assert.Equal(t, val1, opts.Tags[key1])
 		opts.AddTags(map[string]string{})
 		assert.Len(t, opts.Tags, 2)
+		assert.Equal(t, val0, opts.Tags[key0])
+		assert.Equal(t, val1, opts.Tags[key1])
 	})
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("EmptyIsValid", func(t *testing.T) {
@@ -477,6 +881,21 @@ func TestECSPodPlacementOptions(t *testing.T) {
 		param := StrategyParamBinpackCPU
 		opts := NewECSPodPlacementOptions().SetStrategyParameter(param)
 		assert.Equal(t, param, utility.FromStringPtr(opts.StrategyParameter))
+	})
+	t.Run("SetInstanceFilters", func(t *testing.T) {
+		filters := []string{"runningTasksCount == 0"}
+		opts := NewECSPodPlacementOptions().SetInstanceFilters(filters)
+		assert.ElementsMatch(t, filters, opts.InstanceFilters)
+	})
+	t.Run("AddInstanceFilters", func(t *testing.T) {
+		filter := "runningTasksCount == 0"
+		opts := NewECSPodPlacementOptions().AddInstanceFilters(filter)
+		require.Len(t, opts.InstanceFilters, 1)
+		assert.Equal(t, filter, opts.InstanceFilters[0])
+
+		opts.AddInstanceFilters()
+		require.Len(t, opts.InstanceFilters, 1)
+		assert.Equal(t, filter, opts.InstanceFilters[0])
 	})
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("EmptyIsValid", func(t *testing.T) {

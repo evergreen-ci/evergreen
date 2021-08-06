@@ -3,13 +3,19 @@ package cocoa
 import (
 	"context"
 
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 // ECSPod provides an abstraction of a pod backed by AWS ECS.
 type ECSPod interface {
-	// Info returns information about the current state of the pod.
-	Info(ctx context.Context) (*ECSPodInfo, error)
+	// Resources returns information about the current resources being used by
+	// the pod.
+	Resources() ECSPodResources
+	// StatusInfo returns the current cached status information for the pod.
+	StatusInfo() ECSPodStatusInfo
+	// TODO (EVG-15161): add GetLatestStatus method to get non-cached status.
 	// Stop stops the running pod without cleaning up any of its underlying
 	// resources.
 	Stop(ctx context.Context) error
@@ -17,21 +23,111 @@ type ECSPod interface {
 	Delete(ctx context.Context) error
 }
 
-// ECSPodInfo provides information about the current status of the pod.
-type ECSPodInfo struct {
-	// Status is the current status of the pod.
-	Status ECSPodStatus `bson:"-" json:"-" yaml:"-"`
-	// Resources provides information about the underlying ECS resources being
-	// used by the pod.
-	Resources ECSPodResources `bson:"-" json:"-" yaml:"-"`
+// ECSPodStatusInfo represents the current status of a pod and its containers in
+// ECS.
+type ECSPodStatusInfo struct {
+	// Status is the status of the pod as a whole.
+	Status ECSStatus `bson:"-" json:"-" yaml:"-"`
+	// Containers represent the status information of the individual containers
+	// within the pod.
+	Containers []ECSContainerStatusInfo `bson:"-" json:"-" yaml:"-"`
 }
 
-// ECSPodResources are ECS-specific resources that a pod uses.
+// NewECSPodStatusInfo returns a new uninitialized set of status information for
+// a pod.
+func NewECSPodStatusInfo() *ECSPodStatusInfo {
+	return &ECSPodStatusInfo{}
+}
+
+// SetStatus sets the status of the pod as a whole.
+func (i *ECSPodStatusInfo) SetStatus(status ECSStatus) *ECSPodStatusInfo {
+	i.Status = status
+	return i
+}
+
+// SetContainers sets the status information of the individual containers
+// associated with the pod. This overwrites any existing container status
+// information.
+func (i *ECSPodStatusInfo) SetContainers(containers []ECSContainerStatusInfo) *ECSPodStatusInfo {
+	i.Containers = containers
+	return i
+}
+
+// AddContainers adds new container status information to the existing ones
+// associated with the pod.
+func (i *ECSPodStatusInfo) AddContainers(containers ...ECSContainerStatusInfo) *ECSPodStatusInfo {
+	i.Containers = append(i.Containers, containers...)
+	return i
+}
+
+// Validate checks that the required pod status information is populated and the
+// pod status is valid.
+func (i *ECSPodStatusInfo) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(i.Status.Validate(), "invalid pod status")
+	catcher.NewWhen(len(i.Containers) == 0, "missing container statuses")
+	for _, c := range i.Containers {
+		catcher.Wrapf(c.Validate(), "container '%s'", utility.FromStringPtr(c.Name))
+	}
+	return catcher.Resolve()
+}
+
+// ECSContainerStatusInfo represents the current status of a container in ECS.
+type ECSContainerStatusInfo struct {
+	// ContainerID is the resource identifier for the container.
+	ContainerID *string
+	// Name is the friendly name of the container.
+	Name *string
+	// Status is the current status of the container.
+	Status ECSStatus
+}
+
+// NewECSContainerStatusInfo returns a new uninitialized set of status
+// information for a container.
+func NewECSContainerStatusInfo() *ECSContainerStatusInfo {
+	return &ECSContainerStatusInfo{}
+}
+
+// SetContainerID sets the ECS container ID.
+func (i *ECSContainerStatusInfo) SetContainerID(id string) *ECSContainerStatusInfo {
+	i.ContainerID = &id
+	return i
+}
+
+// SetName sets the friendly name for the container.
+func (i *ECSContainerStatusInfo) SetName(name string) *ECSContainerStatusInfo {
+	i.Name = &name
+	return i
+}
+
+// SetStatus sets the status of the container.
+func (i *ECSContainerStatusInfo) SetStatus(status ECSStatus) *ECSContainerStatusInfo {
+	i.Status = status
+	return i
+}
+
+// Validate checks that the required container status information is populated
+// and the container status is valid.
+func (i *ECSContainerStatusInfo) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(utility.FromStringPtr(i.ContainerID) == "", "missing container ID")
+	catcher.NewWhen(utility.FromStringPtr(i.Name) == "", "missing container name")
+	catcher.Wrap(i.Status.Validate(), "invalid status")
+	return catcher.Resolve()
+}
+
+// ECSPodResources are ECS-specific resources associated with a pod.
 type ECSPodResources struct {
-	TaskID         *string            `bson:"-" json:"-" yaml:"-"`
+	// TaskID is the resource identifier for the pod.
+	TaskID *string `bson:"-" json:"-" yaml:"-"`
+	// TaskDefinition is the resource identifier for the definition template
+	// that created the pod.
 	TaskDefinition *ECSTaskDefinition `bson:"-" json:"-" yaml:"-"`
-	Cluster        *string            `bson:"-" json:"-" yaml:"-"`
-	Secrets        []PodSecret        `bson:"-" json:"-" yaml:"-"`
+	// Cluster is the name of the cluster namespace in which the pod is running.
+	Cluster *string `bson:"-" json:"-" yaml:"-"`
+	// Containers represent the resources associated with each individual
+	// container in the pod.
+	Containers []ECSContainerResources `bson:"-" json:"-" yaml:"-"`
 }
 
 // NewECSPodResources returns a new uninitialized set of resources used by a
@@ -58,69 +154,119 @@ func (r *ECSPodResources) SetCluster(cluster string) *ECSPodResources {
 	return r
 }
 
-// SetSecrets sets the secrets associated with the pod. This overwrites any
-// existing secrets.
-func (r *ECSPodResources) SetSecrets(secrets []PodSecret) *ECSPodResources {
+// SetContainers sets the containers associated with the pod. This overwrites
+// any existing containers.
+func (r *ECSPodResources) SetContainers(containers []ECSContainerResources) *ECSPodResources {
+	r.Containers = containers
+	return r
+}
+
+// AddContainers adds new containers to the existing ones associated with the
+// pod.
+func (r *ECSPodResources) AddContainers(containers ...ECSContainerResources) *ECSPodResources {
+	r.Containers = append(r.Containers, containers...)
+	return r
+}
+
+// ECSContainerResources are ECS-specific resources associated with a container.
+type ECSContainerResources struct {
+	// ContainerID is the resource identifier for the container.
+	ContainerID *string `bson:"-" json:"-" yaml:"-"`
+	// Name is the friendly name of the container.
+	Name *string `bson:"-" json:"-" yaml:"-"`
+	// Secrets are the secrets associated with the container.
+	Secrets []ContainerSecret `bson:"-" json:"-" yaml:"-"`
+}
+
+// NewECSContainerResources returns a new uninitialized set of resources used by
+// a container.
+func NewECSContainerResources() *ECSContainerResources {
+	return &ECSContainerResources{}
+}
+
+// SetContainerID sets the ECS container ID associated with the container.
+func (r *ECSContainerResources) SetContainerID(id string) *ECSContainerResources {
+	r.ContainerID = &id
+	return r
+}
+
+// SetName sets the friendly name for the container.
+func (r *ECSContainerResources) SetName(name string) *ECSContainerResources {
+	r.Name = &name
+	return r
+}
+
+// SetSecrets sets the secrets associated with the container. This overwrites
+// any existing secrets.
+func (r *ECSContainerResources) SetSecrets(secrets []ContainerSecret) *ECSContainerResources {
 	r.Secrets = secrets
 	return r
 }
 
-// AddSecrets adds new secrets to the existing ones associated with the pod.
-func (r *ECSPodResources) AddSecrets(secrets ...PodSecret) *ECSPodResources {
+// AddSecrets adds new secrets to the existing ones associated with the
+// container.
+func (r *ECSContainerResources) AddSecrets(secrets ...ContainerSecret) *ECSContainerResources {
 	r.Secrets = append(r.Secrets, secrets...)
 	return r
 }
 
-// PodSecret is a named secret that may or may not be owned by its pod.
-type PodSecret struct {
+// ContainerSecret is a named secret that may or may not be owned by its container.
+type ContainerSecret struct {
 	NamedSecret
-	// Owned determines whether or not the secret is owned by its pod or not.
+	// Owned determines whether or not the secret is owned by its container or
+	// not.
 	Owned *bool
 }
 
-// NewPodSecret creates a new uninitialized pod secret.
-func NewPodSecret() *PodSecret {
-	return &PodSecret{}
+// NewContainerSecret creates a new uninitialized container secret.
+func NewContainerSecret() *ContainerSecret {
+	return &ContainerSecret{}
 }
 
 // SetName sets the secret's name.
-func (s *PodSecret) SetName(name string) *PodSecret {
+func (s *ContainerSecret) SetName(name string) *ContainerSecret {
 	s.Name = &name
 	return s
 }
 
 // SetValue sets the secret's value.
-func (s *PodSecret) SetValue(val string) *PodSecret {
+func (s *ContainerSecret) SetValue(val string) *ContainerSecret {
 	s.Value = &val
 	return s
 }
 
-// SetOwned sets if the secret should be owned by its pod.
-func (s *PodSecret) SetOwned(owned bool) *PodSecret {
+// SetOwned sets if the secret should be owned by its container.
+func (s *ContainerSecret) SetOwned(owned bool) *ContainerSecret {
 	s.Owned = &owned
 	return s
 }
 
-// ECSPodStatus represents the different statuses possible for an ECS pod.
-type ECSPodStatus string
+// ECSStatus represents the different statuses possible for an ECS pod or
+// container.
+type ECSStatus string
 
 const (
-	// StatusStarting indicates that the ECS pod is being prepared to run.
-	StatusStarting ECSPodStatus = "starting"
-	// StatusRunning indicates that the ECS pod is actively running.
-	StatusRunning ECSPodStatus = "running"
-	// StatusStopped indicates the that ECS pod is stopped, but all of its
-	// resources are still available.
-	StatusStopped ECSPodStatus = "stopped"
-	// StatusDeleted indicates that the ECS pod has been cleaned up completely,
-	// including all of its resources.
-	StatusDeleted ECSPodStatus = "deleted"
+	// StatusUnknown indicates that the ECS pod or container status cannot be
+	// determined.
+	StatusUnknown ECSStatus = "unknown"
+	// StatusStarting indicates that the ECS pod or container is being prepared
+	// to run.
+	StatusStarting ECSStatus = "starting"
+	// StatusRunning indicates that the ECS pod or container is actively
+	// running.
+	StatusRunning ECSStatus = "running"
+	// StatusStopped indicates the that ECS pod or container is stopped. For a
+	// pod, all of its resources are still available even if it's stopped.
+	StatusStopped ECSStatus = "stopped"
+	// StatusDeleted indicates that the ECS pod or container has been cleaned up
+	// completely, including all of its resources.
+	StatusDeleted ECSStatus = "deleted"
 )
 
-// Validate checks that the ECS pod status is one of the recognized statuses.
-func (s ECSPodStatus) Validate() error {
+// Validate checks that the ECS status is one of the recognized statuses.
+func (s ECSStatus) Validate() error {
 	switch s {
-	case StatusStarting, StatusRunning, StatusStopped, StatusDeleted:
+	case StatusStarting, StatusRunning, StatusStopped, StatusDeleted, StatusUnknown:
 		return nil
 	default:
 		return errors.Errorf("unrecognized status '%s'", s)
