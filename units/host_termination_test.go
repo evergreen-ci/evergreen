@@ -17,6 +17,7 @@ import (
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func init() {
@@ -25,6 +26,12 @@ func init() {
 	if !utility.StringSliceContains(evergreen.ProviderSpawnable, evergreen.ProviderNameMock) {
 		evergreen.ProviderSpawnable = append(evergreen.ProviderSpawnable, evergreen.ProviderNameMock)
 	}
+}
+
+func setupHostTerminationQueryIndex(t *testing.T) {
+	require.NoError(t, db.EnsureIndex(host.Collection, mongo.IndexModel{
+		Keys: host.StatusIndex,
+	}))
 }
 
 func TestTerminateHosts(t *testing.T) {
@@ -84,8 +91,8 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 		Convey("only hosts in the database who are marked decommissioned"+
 			" should be returned", func() {
 
-			// reset the db
 			require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+			setupHostTerminationQueryIndex(t)
 
 			// insert hosts with different statuses
 
@@ -143,6 +150,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 		// reset the db
 		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+		setupHostTerminationQueryIndex(t)
 
 		Convey("hosts that have not hit the provisioning limit should"+
 			" be ignored", func() {
@@ -261,6 +269,7 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 
 		// reset the db
 		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+		setupHostTerminationQueryIndex(t)
 
 		Convey("only hosts whose provisioning failed should be"+
 			" picked up", func() {
@@ -301,6 +310,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 
 		// reset the db
 		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+		setupHostTerminationQueryIndex(t)
 
 		Convey("hosts started by the default user should be filtered"+
 			" out", func() {

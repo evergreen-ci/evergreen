@@ -1664,7 +1664,10 @@ func FindHostsToTerminate() ([]Host, error) {
 			},
 		},
 	}
-	hosts, err := Find(db.Query(query))
+
+	// In some cases, the query planner will choose a very slow plan for this
+	// query. The hint guarantees that the query will use the host status index.
+	hosts, err := Find(db.Query(query).Hint(StatusIndex))
 
 	if adb.ResultsNotFound(err) {
 		return []Host{}, nil
@@ -1675,6 +1678,18 @@ func FindHostsToTerminate() ([]Host, error) {
 	}
 
 	return hosts, nil
+}
+
+// StatusIndex is the index that is prefixed with the host status.
+var StatusIndex = bson.D{
+	{
+		Key:   StatusKey,
+		Value: 1,
+	},
+	{
+		Key:   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey),
+		Value: 1,
+	},
 }
 
 func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {

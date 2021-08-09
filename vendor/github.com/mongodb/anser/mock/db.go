@@ -180,6 +180,7 @@ type Query struct {
 	SortKeys        []string
 	NumLimit        int
 	NumSkip         int
+	IndexHint       interface{}
 	Error           error
 	CountNum        int
 	ApplyChangeSpec db.Change
@@ -190,6 +191,7 @@ func (q *Query) Count() (int, error)           { return q.CountNum, q.Error }
 func (q *Query) Limit(n int) db.Query          { q.NumLimit = n; return q }
 func (q *Query) Select(p interface{}) db.Query { q.Project = p; return q }
 func (q *Query) Skip(n int) db.Query           { q.NumSkip = n; return q }
+func (q *Query) Hint(h interface{}) db.Query   { q.IndexHint = h; return q }
 func (q *Query) Iter() db.Iterator             { return &Iterator{Error: q.Error, Query: q} }
 func (q *Query) One(r interface{}) error       { return q.Error }
 func (q *Query) All(r interface{}) error       { return q.Error }

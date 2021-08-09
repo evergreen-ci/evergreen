@@ -97,13 +97,14 @@ func TestBackup(t *testing.T) {
 	require.NoError(t, err)
 
 	defer func() {
-		client.Disconnect(ctx)
+		assert.NoError(t, client.Disconnect(ctx))
 	}()
 
 	t.Run("SimpleRoundTrip", func(t *testing.T) {
 		defer func() { require.NoError(t, client.Database("foo").Collection("bar").Drop(ctx)) }()
 
-		res, err := client.Database("foo").Collection("bar").InsertMany(ctx, produceDocuments(nil, 10))
+		var res *mongo.InsertManyResult
+		res, err = client.Database("foo").Collection("bar").InsertMany(ctx, produceDocuments(nil, 10))
 		require.NoError(t, err)
 		require.Len(t, res.InsertedIDs, 10)
 
@@ -118,7 +119,8 @@ func TestBackup(t *testing.T) {
 		buf := files["foo/bar.bson"]
 		count := 0
 		for {
-			doc, err := birch.DC.ReadFromErr(buf)
+			var doc *birch.Document
+			doc, err = birch.DC.ReadFromErr(buf)
 			if err == io.EOF {
 				break
 			}
@@ -133,7 +135,8 @@ func TestBackup(t *testing.T) {
 	t.Run("Filter", func(t *testing.T) {
 		defer func() { require.NoError(t, client.Database("foo").Collection("baz").Drop(ctx)) }()
 
-		res, err := client.Database("foo").Collection("baz").InsertMany(ctx, produceDocuments(birch.DC.Elements(birch.EC.Int("a", 1)), 10))
+		var res *mongo.InsertManyResult
+		res, err = client.Database("foo").Collection("baz").InsertMany(ctx, produceDocuments(birch.DC.Elements(birch.EC.Int("a", 1)), 10))
 		require.NoError(t, err)
 		require.Len(t, res.InsertedIDs, 10)
 
@@ -150,14 +153,16 @@ func TestBackup(t *testing.T) {
 		require.Contains(t, files, "foo/baz.bson")
 		require.Contains(t, files, "foo/baz.metadata.json")
 
-		count, err := client.Database("foo").Collection("baz").EstimatedDocumentCount(ctx)
+		var count int64
+		count, err = client.Database("foo").Collection("baz").EstimatedDocumentCount(ctx)
 		require.NoError(t, err)
 		assert.EqualValues(t, count, 20)
 
 		buf := files["foo/baz.bson"]
 		count = 0
 		for {
-			doc, err := birch.DC.ReadFromErr(buf)
+			var doc *birch.Document
+			doc, err = birch.DC.ReadFromErr(buf)
 			if err == io.EOF {
 				break
 			}
@@ -184,7 +189,8 @@ func TestBackup(t *testing.T) {
 		require.True(t, ok)
 		count := 0
 		for {
-			doc, err := birch.DC.ReadFromErr(buf)
+			var doc *birch.Document
+			doc, err = birch.DC.ReadFromErr(buf)
 			if err == io.EOF {
 				break
 			}
@@ -199,7 +205,8 @@ func TestBackup(t *testing.T) {
 	t.Run("IndexesOnly", func(t *testing.T) {
 		defer func() { require.NoError(t, client.Database("foo").Collection("bat").Drop(ctx)) }()
 
-		res, err := client.Database("foo").Collection("bat").InsertMany(ctx, produceDocuments(nil, 10))
+		var res *mongo.InsertManyResult
+		res, err = client.Database("foo").Collection("bat").InsertMany(ctx, produceDocuments(nil, 10))
 		require.NoError(t, err)
 		require.Len(t, res.InsertedIDs, 10)
 

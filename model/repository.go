@@ -68,15 +68,8 @@ func (tags GitTags) String() string {
 // FindRepository gets the repository object of a project.
 func FindRepository(projectId string) (*Repository, error) {
 	repository := &Repository{}
-	err := db.FindOne(
-		RepositoriesCollection,
-		bson.M{
-			RepoProjectKey: projectId,
-		},
-		db.NoProjection,
-		db.NoSort,
-		repository,
-	)
+	q := db.Query(bson.M{RepoProjectKey: projectId})
+	err := db.FindOneQ(RepositoriesCollection, q, repository)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

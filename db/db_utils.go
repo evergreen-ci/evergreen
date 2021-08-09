@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	NoProjection = bson.M{}
-	NoSort       = []string{}
-	NoSkip       = 0
-	NoLimit      = 0
+	NoProjection             = bson.M{}
+	NoSort                   = []string{}
+	NoSkip                   = 0
+	NoLimit                  = 0
+	NoHint       interface{} = nil
 )
 
 type SessionFactory interface {
@@ -101,8 +102,8 @@ func Clear(collection string) error {
 	return err
 }
 
-// ClearCollections clears all documents from all the specified collections, returning an error
-// immediately if clearing any one of them fails.
+// ClearCollections clears all documents from all the specified collections,
+// returning an error immediately if clearing any one of them fails.
 func ClearCollections(collections ...string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -119,7 +120,8 @@ func ClearCollections(collections ...string) error {
 	return nil
 }
 
-// EnsureIndex takes in a collection and ensures that the
+// EnsureIndex takes in a collection and ensures that the index is created if it
+// does not already exist.
 func EnsureIndex(collection string, index mongo.IndexModel) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
@@ -164,7 +166,7 @@ func RemoveAll(collection string, query interface{}) error {
 // FindOne finds one item from the specified collection and unmarshals it into the
 // provided interface, which must be a pointer.
 func FindOne(collection string, query interface{},
-	projection interface{}, sort []string, out interface{}) error {
+	projection interface{}, sort []string, hint interface{}, out interface{}) error {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -173,7 +175,7 @@ func FindOne(collection string, query interface{},
 	}
 	defer session.Close()
 
-	q := db.C(collection).Find(query).Select(projection).Limit(1)
+	q := db.C(collection).Find(query).Select(projection).Limit(1).Hint(hint)
 	if len(sort) != 0 {
 		q = q.Sort(sort...)
 	}
@@ -183,7 +185,7 @@ func FindOne(collection string, query interface{},
 // FindAll finds the items from the specified collection and unmarshals them into the
 // provided interface, which must be a slice.
 func FindAll(collection string, query interface{},
-	projection interface{}, sort []string, skip int, limit int,
+	projection interface{}, sort []string, skip int, limit int, hint interface{},
 	out interface{}) error {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
@@ -193,7 +195,7 @@ func FindAll(collection string, query interface{},
 	}
 	defer session.Close()
 
-	q := db.C(collection).Find(query)
+	q := db.C(collection).Find(query).Hint(hint)
 	if projection != nil {
 		q = q.Select(projection)
 	}

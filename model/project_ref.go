@@ -802,17 +802,8 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 // Can't hide a repo without hiding the branches, so don't need to aggregate here.
 func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
-	err := db.FindAll(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefHiddenKey: bson.M{"$ne": true},
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
+	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -862,15 +853,8 @@ func FindProjectRefsByIds(ids []string) ([]ProjectRef, error) {
 
 func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
-	err := db.FindAll(
-		ProjectRefCollection,
-		filter,
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
+	q := db.Query(filter)
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1117,23 +1101,16 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRe
 func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	err := db.FindAll(
-		ProjectRefCollection,
-		bson.M{
-			"$or": []bson.M{
-				{
-					ProjectRefOwnerKey: repoRef.Owner,
-					ProjectRefRepoKey:  repoRef.Repo,
-				},
-				{ProjectRefRepoRefIdKey: repoRef.Id},
+	q := db.Query(bson.M{
+		"$or": []bson.M{
+			{
+				ProjectRefOwnerKey: repoRef.Owner,
+				ProjectRefRepoKey:  repoRef.Repo,
 			},
+			{ProjectRefRepoRefIdKey: repoRef.Id},
 		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
+	})
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1216,15 +1193,8 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 		filter[ProjectRefIdKey] = bson.M{"$gte": key}
 	}
 
-	err := db.FindAll(
-		ProjectRefCollection,
-		filter,
-		db.NoProjection,
-		[]string{sortSpec},
-		db.NoSkip,
-		limit,
-		&projectRefs,
-	)
+	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 
 	for i := range projectRefs {
 		projectRefs[i].checkDefaultLogger()
