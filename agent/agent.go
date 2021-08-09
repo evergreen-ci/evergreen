@@ -642,8 +642,13 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 	if taskGroup.TeardownTask != nil {
 		opts.shouldSetupFail = taskGroup.TeardownTaskCanFailTask
 		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), opts)
-		if err != nil && taskGroup.TeardownTaskCanFailTask {
-			return err
+		if err != nil {
+			tc.logger.Task().Error(message.WrapError(err, message.Fields{
+				"message": "Error running post-task command.",
+			}))
+			if taskGroup.TeardownTaskCanFailTask {
+				return err
+			}
 		}
 		tc.logger.Task().InfoWhen(err == nil, message.Fields{
 			"message":    "Finished running post-task commands.",
