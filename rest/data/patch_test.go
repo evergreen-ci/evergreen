@@ -57,9 +57,11 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 		pRef1 := dbModel.ProjectRef{Id: "project1", Identifier: "project_one"}
 		pRef2 := dbModel.ProjectRef{Id: "project2", Identifier: "project_two"}
 		pRef3 := dbModel.ProjectRef{Id: "project3", Identifier: "project_three"}
+		pRef4 := dbModel.ProjectRef{Id: "project4", Identifier: "project_four"}
 		assert.NoError(t, pRef1.Insert())
 		assert.NoError(t, pRef2.Insert())
 		assert.NoError(t, pRef3.Insert())
+		assert.NoError(t, pRef4.Insert())
 		return nil
 	}
 
@@ -81,6 +83,8 @@ func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
 		proj2Identifier := "project_two"
 		proj3 := "project3"
 		proj3Identifier := "project_three"
+		proj4 := "project4"
+		proj4Identifier := "project_four"
 		nowPlus2 := s.time.Add(time.Second * 2)
 		nowPlus4 := s.time.Add(time.Second * 4)
 		nowPlus6 := s.time.Add(time.Second * 6)
@@ -101,6 +105,7 @@ func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
 				{Id: &proj1, Identifier: &proj1Identifier},
 				{Id: &proj2, Identifier: &proj2Identifier},
 				{Id: &proj3, Identifier: &proj3Identifier},
+				{Id: &proj4, Identifier: &proj4Identifier},
 			},
 		},
 		}
@@ -158,8 +163,13 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
 	s.Equal(s.time.Add(time.Second*10), *patches[0].CreateTime)
 }
 
-func (s *PatchConnectorFetchByProjectSuite) TestFetchNonexistentFail() {
-	patches, err := s.ctx.FindPatchesByProject("zzz", s.time, 1)
+func (s *PatchConnectorFetchByProjectSuite) TestProjectNonexistentFail() {
+	_, err := s.ctx.FindPatchesByProject("zzz", s.time, 1)
+	s.Error(err)
+}
+
+func (s *PatchConnectorFetchByProjectSuite) TestPatchNonexistentFail() {
+	patches, err := s.ctx.FindPatchesByProject("project4", s.time, 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }

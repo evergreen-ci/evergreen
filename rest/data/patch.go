@@ -41,9 +41,6 @@ type DBPatchConnector struct{}
 func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	apiPatches := []restModel.APIPatch{}
 	id, err := model.GetIdForProject(projectId)
-	if id == "" {
-		return apiPatches, nil
-	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching project with id %s", projectId)
 	}
@@ -355,7 +352,7 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 		}
 	}
 	if id == "" {
-		return patchesToReturn, nil
+		return nil, errors.Errorf("failed to find project '%s'", projectId)
 	}
 	for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
 		p := hp.CachedPatches[i]
