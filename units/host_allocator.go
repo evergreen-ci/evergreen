@@ -306,7 +306,7 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 			DistroID:     distro.Id,
 			NewCapTarget: newCapTarget,
 		}
-		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)+distro.Id))
+		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "Error drawing down hosts",
