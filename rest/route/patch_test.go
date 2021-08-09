@@ -104,6 +104,8 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 	proj1Identifier := "project_one"
 	proj2 := "project2"
 	proj2Identifier := "project_two"
+	proj3 := "project3"
+	proj3Identifier := "project_three"
 	nowPlus2 := s.now.Add(time.Second * 2)
 	nowPlus4 := s.now.Add(time.Second * 4)
 	nowPlus6 := s.now.Add(time.Second * 6)
@@ -121,6 +123,7 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 		CachedProjectRefs: []model.APIProjectRef{
 			{Id: &proj1, Identifier: &proj1Identifier},
 			{Id: &proj2, Identifier: &proj2Identifier},
+			{Id: &proj3, Identifier: &proj3Identifier},
 		},
 	}
 	s.sc = &data.MockConnector{
@@ -141,6 +144,16 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldSucceedIfNoResults() {
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status(), "%+v", resp.Data())
+}
+
+func (s *PatchesByProjectSuite) TestPaginatorShouldFailIfNoProject() {
+	s.route.projectId = "zzz"
+	s.route.key = s.now
+	s.route.limit = 1
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
