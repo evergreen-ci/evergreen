@@ -45,18 +45,6 @@ const (
 	StatusTerminated Status = "terminated"
 )
 
-// ContainerStatus represents a possible state for a container.
-type ContainerStatus string
-
-const (
-	// StatusStarting indicates that the container is starting.
-	ContainerStatusStarting ContainerStatus = "starting"
-	// ContainerStatusRunning indicates that the container is running.
-	ContainerStatusRunning ContainerStatus = "running"
-	// StatusStopped indicates that the container has finished executing.
-	ContainerStatusStopped ContainerStatus = "stopped"
-)
-
 // Validate checks that the pod status is recognized.
 func (s Status) Validate() error {
 	switch s {
@@ -121,14 +109,12 @@ type ContainerResourceInfo struct {
 	// SecretIDs are the resource identifiers for the secrets owned by this
 	// container.
 	SecretIDs []string `bson:"secret_ids,omitempty" json:"secret_ids,omitempty"`
-	// Status is the current state of the container.
-	Status ContainerStatus `bson:"status,omitempty" json:"status,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (i ContainerResourceInfo) IsZero() bool {
-	return i.ExternalID == "" && i.Name == "" && i.Status == "" && len(i.SecretIDs) == 0
+	return i.ExternalID == "" && i.Name == "" && len(i.SecretIDs) == 0
 }
 
 // TaskContainerCreationOptions are options to apply to the task's container

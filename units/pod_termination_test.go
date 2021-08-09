@@ -44,9 +44,8 @@ func TestTerminatePodJob(t *testing.T) {
 			require.True(t, ok)
 			assert.NotZero(t, smClient.DeleteSecretInput)
 
-			info, err := j.ecsPod.Info(ctx)
-			require.NoError(t, err)
-			assert.Equal(t, cocoa.StatusDeleted, info.Status)
+			stat := j.ecsPod.StatusInfo()
+			assert.Equal(t, cocoa.StatusDeleted, stat.Status)
 		},
 		"SucceedsWithPodFromDB": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
 			require.NoError(t, j.pod.Insert())
@@ -65,9 +64,8 @@ func TestTerminatePodJob(t *testing.T) {
 			require.True(t, ok)
 			assert.NotZero(t, smClient.DeleteSecretInput)
 
-			info, err := j.ecsPod.Info(ctx)
-			require.NoError(t, err)
-			assert.Equal(t, cocoa.StatusDeleted, info.Status)
+			stat := j.ecsPod.StatusInfo()
+			assert.Equal(t, cocoa.StatusDeleted, stat.Status)
 		},
 		"FailsWhenDeletingResourcesErrors": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
 			require.NoError(t, j.pod.Insert())
@@ -196,14 +194,8 @@ func TestTerminatePodJob(t *testing.T) {
 			require.NoError(t, err)
 			j.ecsPod = ecsPod
 
-			info, err := j.ecsPod.Info(ctx)
-			require.NoError(t, err)
-			j.pod.Resources.ExternalID = utility.FromStringPtr(info.Resources.TaskID)
-			j.pod.Resources.DefinitionID = utility.FromStringPtr(info.Resources.TaskDefinition.ID)
-			j.pod.Resources.Cluster = utility.FromStringPtr(info.Resources.Cluster)
-			for _, secret := range info.Resources.Secrets {
-				j.pod.Resources.SecretIDs = append(j.pod.Resources.SecretIDs, utility.FromStringPtr(secret.Name))
-			}
+			res := j.ecsPod.Resources()
+			j.pod.Resources = cloud.ImportPodResources(res)
 
 			tCase(ctx, t, j)
 		})

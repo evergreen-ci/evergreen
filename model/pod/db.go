@@ -41,7 +41,6 @@ var (
 
 	ContainerResourceInfoExternalIDKey = bsonutil.MustHaveTag(ContainerResourceInfo{}, "ExternalID")
 	ContainerResourceInfoNameKey       = bsonutil.MustHaveTag(ContainerResourceInfo{}, "Name")
-	ContainerResourceInfoStatusKey     = bsonutil.MustHaveTag(ContainerResourceInfo{}, "Status")
 	ContainerResourceInfoSecretIDsKey  = bsonutil.MustHaveTag(ContainerResourceInfo{}, "SecretIDs")
 )
 
