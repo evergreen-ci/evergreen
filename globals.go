@@ -253,7 +253,7 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 
-	RetryGenerateTasksError = "error saving config in `generate.tasks`"
+	SaveGenerateTasksError = "error saving config in `generate.tasks`"
 )
 
 var InternalAliases []string = []string{
