@@ -2958,7 +2958,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		})
 	}
 
-	countAndResults := bson.M{
+	tasksAndCountPipeline := bson.M{
 		"$facet": bson.M{
 			"count": []bson.M{
 				{"$count": "count"},
@@ -2967,7 +2967,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		},
 	}
 
-	pipeline = append(pipeline, countAndResults)
+	pipeline = append(pipeline, tasksAndCountPipeline)
 
 	type TasksAndCount struct {
 		Tasks []Task           `bson:"tasks"`
