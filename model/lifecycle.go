@@ -1268,6 +1268,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		TriggerEvent:        v.TriggerEvent,
 		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
 		IsGithubCheck:       isGithubCheck,
+		DisplayTaskId:       utility.ToStringPtr(""), // this will be overridden if the task is an execution task
 	}
 	if buildVarTask.IsGroup {
 		tg := project.FindTaskGroup(buildVarTask.GroupName)
