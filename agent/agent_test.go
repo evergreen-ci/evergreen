@@ -778,7 +778,7 @@ func (s *AgentSuite) TestGroupPostGroupCommandsFail() {
 	projYml := `
 task_groups:
 - name: task_group_name
-  teardown_group_can_fail_task: true
+  teardown_task_can_fail_task: true
   teardown_task:
   - command: thisisnotarealcommand
     params:

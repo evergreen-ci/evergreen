@@ -550,10 +550,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	detail := a.endTaskResponse(tc, status, message)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
-		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostTaskCommands(ctx, tc); err != nil {
+			tc.logger.Task().Info("Task completed - FAILURE.")
 			tc.logger.Task().Error(errors.Wrap(err, "error running post task commands"))
 			detail.Status = evergreen.TaskFailed
+		} else {
+			tc.logger.Task().Info("Task completed - SUCCESS.")
 		}
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
@@ -638,15 +640,10 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 		return nil
 	}
 	if taskGroup.TeardownTask != nil {
-		opts.shouldSetupFail = taskGroup.TeardownGroupFailTask
+		opts.shouldSetupFail = taskGroup.TeardownTaskCanFailTask
 		err = a.runCommands(postCtx, tc, taskGroup.TeardownTask.List(), opts)
-		if err != nil {
-			tc.logger.Task().Error(message.WrapError(err, message.Fields{
-				"message": "Error running post-task command.",
-			}))
-			if taskGroup.TeardownGroupFailTask {
-				return err
-			}
+		if err != nil && taskGroup.TeardownTaskCanFailTask {
+			return err
 		}
 		tc.logger.Task().InfoWhen(err == nil, message.Fields{
 			"message":    "Finished running post-task commands.",

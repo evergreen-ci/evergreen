@@ -85,27 +85,27 @@ type ParserProject struct {
 }
 
 type parserTaskGroup struct {
-	Name                  string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	Priority              int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	Patchable             *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly             *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	AllowForGitTag        *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly            *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	ExecTimeoutSecs       int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Stepback              *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MaxHosts              int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
-	SetupGroupFailTask    bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
-	TeardownGroupFailTask bool               `yaml:"teardown_group_can_fail_task,omitempty" bson:"teardown_group_can_fail_task,omitempty"`
-	SetupGroupTimeoutSecs int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
-	SetupGroup            *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
-	TeardownGroup         *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
-	SetupTask             *YAMLCommandSet    `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
-	TeardownTask          *YAMLCommandSet    `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
-	Timeout               *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	Tasks                 []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DependsOn             parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Tags                  parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
-	ShareProcs            bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
+	Name                    string             `yaml:"name,omitempty" bson:"name,omitempty"`
+	Priority                int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	Patchable               *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly               *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag          *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly              *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	ExecTimeoutSecs         int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Stepback                *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MaxHosts                int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
+	SetupGroupFailTask      bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
+	TeardownTaskCanFailTask bool               `yaml:"teardown_task_can_fail_task,omitempty" bson:"teardown_task_can_fail_task,omitempty"`
+	SetupGroupTimeoutSecs   int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
+	SetupGroup              *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
+	TeardownGroup           *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
+	SetupTask               *YAMLCommandSet    `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
+	TeardownTask            *YAMLCommandSet    `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
+	Timeout                 *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	Tasks                   []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DependsOn               parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Tags                    parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	ShareProcs              bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }
@@ -697,18 +697,18 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 	}
 	for _, ptg := range tgs {
 		tg := TaskGroup{
-			Name:                  ptg.Name,
-			SetupGroupFailTask:    ptg.SetupGroupFailTask,
-			TeardownGroupFailTask: ptg.TeardownGroupFailTask,
-			SetupGroupTimeoutSecs: ptg.SetupGroupTimeoutSecs,
-			SetupGroup:            ptg.SetupGroup,
-			TeardownGroup:         ptg.TeardownGroup,
-			SetupTask:             ptg.SetupTask,
-			TeardownTask:          ptg.TeardownTask,
-			Tags:                  ptg.Tags,
-			MaxHosts:              ptg.MaxHosts,
-			Timeout:               ptg.Timeout,
-			ShareProcs:            ptg.ShareProcs,
+			Name:                    ptg.Name,
+			SetupGroupFailTask:      ptg.SetupGroupFailTask,
+			TeardownTaskCanFailTask: ptg.TeardownTaskCanFailTask,
+			SetupGroupTimeoutSecs:   ptg.SetupGroupTimeoutSecs,
+			SetupGroup:              ptg.SetupGroup,
+			TeardownGroup:           ptg.TeardownGroup,
+			SetupTask:               ptg.SetupTask,
+			TeardownTask:            ptg.TeardownTask,
+			Tags:                    ptg.Tags,
+			MaxHosts:                ptg.MaxHosts,
+			Timeout:                 ptg.Timeout,
+			ShareProcs:              ptg.ShareProcs,
 		}
 		if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1
