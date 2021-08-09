@@ -375,8 +375,8 @@ type Connector interface {
 	// GetDockerStatus returns the status of the given docker container
 	GetDockerStatus(context.Context, string, *host.Host, *evergreen.Settings) (*cloud.ContainerStatus, error)
 
-	//GetProjectSettingsEvent returns the ProjectSettingsEvents of the given identifier and ProjectRef
-	GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
+	//GetProjectSettings returns the ProjectSettingsEvents of the given identifier and ProjectRef
+	GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error)
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)

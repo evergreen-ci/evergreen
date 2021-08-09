@@ -98,6 +98,20 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
+// FindPatchAliasesInProject returns only patch aliases.
+func FindPatchAliasesInProject(projectID string) ([]ProjectAlias, error) {
+	var out []ProjectAlias
+	q := db.Query(bson.M{
+		projectIDKey: projectID,
+		aliasKey:     {"$nin": evergreen.InternalAliases},
+	})
+	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	if err != nil {
+		return []ProjectAlias{}, errors.Wrap(err, "error finding project aliases")
+	}
+	return out, nil
+}
+
 // FindAliasInProjectOrRepo finds all aliases with a given name for a project.
 // If the project has no aliases, the repo is checked for aliases.
 func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {

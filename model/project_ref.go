@@ -1147,7 +1147,82 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	return projectRefs, nil
 }
 
-func GetProjectSettingsEventById(projectId string) (*ProjectSettingsEvent, error) {
+func GetProjectSettingsBySection(projectId string, section ProjectRefSection, isRepo bool) (*ProjectSettings, error) {
+	var err error
+
+	res := &ProjectSettings{}
+	// get the project ref for all sections except the variable section, which doesn't use it
+	if section != ProjectRefVariablesSection {
+		if isRepo {
+			repoRef, err := FindOneRepoRef(projectId)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error finding repo '%s'", projectId)
+			}
+			if repoRef == nil {
+				return nil, errors.Errorf("repo '%s' doesn't exist", projectId)
+
+			}
+			res.ProjectRef = repoRef.ProjectRef
+		} else {
+			projectRef, err := FindOneProjectRef(projectId)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error finding project '%s'", projectId)
+			}
+			if projectRef == nil {
+				return nil, errors.Errorf("project '%s' doesn't exist", projectId)
+			}
+			res.ProjectRef = *projectRef
+			projectId = res.ProjectRef.Id // verify we're using ID and not identifier
+		}
+	} else if !isRepo {
+		// verify that we're using ID and not identifier
+		projectId, err = GetIdForProject(projectId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error getting ID for project")
+		}
+	}
+
+	// add any additional settings that might be necessary
+	switch section {
+	case ProjectRefVariablesSection:
+		vars, err := FindOneProjectVars(projectId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding project vars for '%s'", projectId)
+		}
+		if vars == nil {
+			return nil, errors.Errorf("vars for '%s' don't exist", projectId)
+		}
+		res.Vars = *vars
+	case ProjectRefGithubAndCQSection:
+		hook, err := FindGithubHook(res.ProjectRef.Owner, res.ProjectRef.Repo)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectId)
+		}
+		res.GitHubHooksEnabled = hook != nil
+		res.Aliases = []ProjectAlias{}
+		// all internal aliases belong in this section
+		for _, alias := range evergreen.InternalAliases {
+			aliases, err := FindAliasInProject(projectId, alias)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error finding '%s' aliases for project", alias)
+			}
+			res.Aliases = append(res.Aliases, aliases...)
+		}
+	case ProjectRefPatchAliasSection:
+		res.Aliases, err = FindPatchAliasesInProject(projectId)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding patch aliases for project")
+		}
+	case ProjectRefNotificationsSection:
+		res.Subscriptions, err = event.FindSubscriptionsByOwner(projectId, event.OwnerTypeProject)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding subscription for project")
+		}
+	}
+	return res, nil
+}
+
+func GetProjectSettingsById(projectId string) (*ProjectSettings, error) {
 	pRef, err := FindOneProjectRef(projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref")
@@ -1155,10 +1230,10 @@ func GetProjectSettingsEventById(projectId string) (*ProjectSettingsEvent, error
 	if pRef == nil {
 		return nil, errors.Errorf("couldn't find project ref")
 	}
-	return GetProjectSettingsEvents(pRef)
+	return GetProjectSettings(pRef)
 }
 
-func GetProjectSettingsEvents(p *ProjectRef) (*ProjectSettingsEvent, error) {
+func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	hook, err := FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Id)
@@ -1178,7 +1253,7 @@ func GetProjectSettingsEvents(p *ProjectRef) (*ProjectSettingsEvent, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Id)
 	}
-	projectSettingsEvent := ProjectSettingsEvent{
+	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
 		GitHubHooksEnabled: hook != nil,
 		Vars:               *projectVars,
@@ -1388,7 +1463,7 @@ func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 // If project settings aren't given, we should assume we're defaulting to repo and we need
 // to create our own project settings event  after completing the update.
 func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId string) error {
-	before, err := GetProjectSettingsEventById(projectId)
+	before, err := GetProjectSettingsById(projectId)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
@@ -1456,8 +1531,8 @@ func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId st
 	return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
 }
 
-func getAndLogProjectModified(id, userId string, before *ProjectSettingsEvent) error {
-	after, err := GetProjectSettingsEventById(id)
+func getAndLogProjectModified(id, userId string, before *ProjectSettings) error {
+	after, err := GetProjectSettingsById(id)
 	if err != nil {
 		return errors.Wrap(err, "error getting after project settings event")
 	}

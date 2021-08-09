@@ -276,7 +276,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 					for k, v := range project.Vars {
 						originalVars[k] = v
 					}
-					before := model.ProjectSettingsEvent{
+					before := model.ProjectSettings{
 						Vars: model.ProjectVars{
 							Id:   project.Id,
 							Vars: originalVars,
@@ -289,7 +289,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
 					}
 
-					after := model.ProjectSettingsEvent{
+					after := model.ProjectSettings{
 						Vars: model.ProjectVars{
 							Id:   project.Id,
 							Vars: project.Vars,
@@ -361,8 +361,8 @@ func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo s
 	return model.FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
-func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
-	return model.GetProjectSettingsEvents(p)
+func (pc *DBProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
+	return model.GetProjectSettings(p)
 }
 
 func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
@@ -658,11 +658,11 @@ func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string
 	return nil
 }
 
-func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
+func (pc *MockProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
 	if len(p.Owner) == 0 || len(p.Repo) == 0 {
 		return nil, errors.New("Owner and repository must not be empty strings")
 	}
-	return &model.ProjectSettingsEvent{}, nil
+	return &model.ProjectSettings{}, nil
 }
 
 func (pc *MockProjectConnector) GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error) {
