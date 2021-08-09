@@ -128,7 +128,6 @@ func LogTaskRestarted(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
 }
 
-// TODO: should we also log what task blocked it? (Would only want to log it then if it's blocked for the first time I think)
 func LogTaskBlocked(taskId string, execution int) {
 	logTaskEvent(taskId, TaskBlocked, TaskEventData{Execution: execution})
 }
