@@ -13,7 +13,7 @@ type GenerateConnector struct{}
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage, group amboy.QueueGroup) error {
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneIdNoMerge(taskID)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task %s", taskID)
 	}
@@ -34,7 +34,7 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 }
 
 func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, []string, error) {
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneIdNoMerge(taskID)
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "problem finding task %s", taskID)
 	}

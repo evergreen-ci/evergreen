@@ -885,7 +885,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		var upstreamProjectID string
 		if t.TriggerType == ProjectTriggerLevelTask {
 			var upstreamTask *task.Task
-			upstreamTask, err = task.FindOneId(t.TriggerID)
+			upstreamTask, err = task.FindOneIdNoMerge(t.TriggerID)
 			if err != nil {
 				return nil, errors.Wrap(err, "error finding task")
 			}
@@ -1716,7 +1716,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
 	}
 
-	tasksFromDb, err := task.FindAll(task.ByVersions(versionIds).WithFields(task.StatusFields...))
+	tasksFromDb, err := task.FindAllNoMerge(task.ByVersions(versionIds).WithFields(task.StatusFields...))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
 	}

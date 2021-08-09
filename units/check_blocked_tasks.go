@@ -92,7 +92,7 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 		return
 	}
 
-	tasksToCheck, err := task.Find(task.ByIds(taskIds))
+	tasksToCheck, err := task.FindNoMerge(task.ByIds(taskIds))
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting tasks to check"))
 		return

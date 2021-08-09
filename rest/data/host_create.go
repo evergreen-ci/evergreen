@@ -35,7 +35,7 @@ type DBCreateHostConnector struct{}
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
 func (dc *DBCreateHostConnector) ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	env := evergreen.GetEnvironment()
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneIdNoMerge(taskID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: "error finding task"}
 	}
@@ -436,7 +436,7 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*h
 		}
 	} else {
 		options.UserName = taskID
-		t, err := task.FindOneId(taskID)
+		t, err := task.FindOneIdNoMerge(taskID)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not find task")
 		}

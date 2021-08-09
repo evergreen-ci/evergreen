@@ -452,7 +452,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (ma
 
 	// find all the relevant failed tests
 	failedTestsMap := make(map[string][]task.TestResult)
-	tasks, err := task.Find(task.ByIds(failedTaskIds))
+	tasks, err := task.FindNoMerge(task.ByIds(failedTaskIds))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -800,7 +800,7 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 		task.ProjectKey:             1,
 		task.DetailsKey:             1,
 	}
-	tasks, err := task.Find(db.Query(tasksQuery).Project(projection))
+	tasks, err := task.FindNoMerge(db.Query(tasksQuery).Project(projection))
 	if err != nil {
 		return nil, err
 	}
@@ -1105,7 +1105,7 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 		"time_taken":    1,
 		"build_variant": 1,
 	}
-	last, err := task.Find(db.Query(query).Project(projection))
+	last, err := task.FindNoMerge(db.Query(query).Project(projection))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying tasks")
 	}

@@ -190,7 +190,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 	}
 
 	if len(at.AbortInfo.TaskID) > 0 {
-		abortedTask, err := task.FindOneId(at.AbortInfo.TaskID)
+		abortedTask, err := task.FindOneIdNoMerge(at.AbortInfo.TaskID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *at.Id, err.Error()))
 		}
@@ -221,7 +221,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 		depIds = append(depIds, dep.TaskId)
 	}
 
-	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
+	dependencyTasks, err := task.FindNoMerge(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
@@ -457,7 +457,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	var t *task.Task
 	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
 		options.TaskID = *spawnHostInput.TaskID
-		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
+		if t, err = task.FindOneIdNoMerge(*spawnHostInput.TaskID); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
@@ -891,7 +891,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 }
 
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
-	tasks, err := task.FindAllFirstExecution(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
+	tasks, err := task.FindAllFirstExecutionNoMerge(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -1081,7 +1081,7 @@ func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, 
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
+	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatusNoMerge(taskID, execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -1097,7 +1097,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 }
 
 func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([]*restModel.APITask, error) {
-	latestTask, err := task.FindOneId(taskID)
+	latestTask, err := task.FindOneIdNoMerge(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -1107,7 +1107,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	allTasks := []*restModel.APITask{}
 	for i := 0; i < latestTask.Execution; i++ {
 		var dbTask *task.Task
-		dbTask, err = task.FindByIdExecution(taskID, &i)
+		dbTask, err = task.FindByIdExecutionNoMerge(taskID, &i)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
@@ -1286,7 +1286,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		statusesParam = statuses
 	}
 
-	dbTask, err := task.FindByIdExecution(taskID, execution)
+	dbTask, err := task.FindByIdExecutionNoMerge(taskID, execution)
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
@@ -1457,7 +1457,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 		FileCount:    0,
 		GroupedFiles: []*GroupedFiles{},
 	}
-	t, err := task.FindByIdExecution(taskID, execution)
+	t, err := task.FindByIdExecutionNoMerge(taskID, execution)
 	if t == nil {
 		return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
@@ -1467,7 +1467,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 	groupedFilesList := []*GroupedFiles{}
 	fileCount := 0
 	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		execTasks, err := task.FindNoMerge(task.ByIds(t.ExecutionTasks))
 		if err != nil {
 			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 		}
@@ -1533,7 +1533,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	}
 
 	// need to task to get project id
-	t, err := task.FindByIdExecution(taskID, execution)
+	t, err := task.FindByIdExecutionNoMerge(taskID, execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
 	}
@@ -1939,7 +1939,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 			baseTask, _ := t.FindTaskOnBaseCommit()
 			// If the task is undispatched or doesn't exist on the base commit then we want to schedule
 			if baseTask == nil {
-				generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
+				generatorTask, err := task.FindByIdExecutionNoMerge(t.GeneratedBy, nil)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
 				}
@@ -2083,7 +2083,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
 	}
-	t, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
+	t, err := task.FindOneIdAndExecutionWithDisplayStatusNoMerge(taskID, nil)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
 	}
@@ -2598,7 +2598,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	if obj.GeneratedBy == "" {
 		return nil, nil
 	}
-	generator, err := task.FindOneIdWithFields(obj.GeneratedBy, task.DisplayNameKey)
+	generator, err := task.FindOneIdWithFieldsNoMerge(obj.GeneratedBy, task.DisplayNameKey)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unable to find generator: %s", err.Error()))
 	}
@@ -2700,7 +2700,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	}
 	executionTasks := []*restModel.APITask{}
 	for _, execTaskID := range t.ExecutionTasks {
-		execT, err := task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, &t.Execution)
+		execT, err := task.FindOneIdAndExecutionWithDisplayStatusNoMerge(execTaskID, &t.Execution)
 		if err != nil {
 			// The task is not found, possibly because the execution is out of sync with the display task. Get the latest instead.
 			execT, err = task.FindOne(task.ById(execTaskID))

@@ -185,7 +185,7 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 
 func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := MustHaveUser(ctx)
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneIdNoMerge(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -200,7 +200,7 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 	}
 
 	// Get the modified task back out of the db
-	t, err = task.FindOneId(taskID)
+	t, err = task.FindOneIdNoMerge(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -251,7 +251,7 @@ func getVersionBaseTasks(d data.Connector, versionID string) ([]task.Task, error
 	if baseVersion == nil {
 		return nil, fmt.Errorf("No base version found from version %s", version.Id)
 	}
-	baseTasks, err := task.FindTasksFromVersions([]string{baseVersion.Id})
+	baseTasks, err := task.FindTasksFromVersionsNoMerge([]string{baseVersion.Id})
 	if err != nil {
 		return nil, fmt.Errorf("Error getting tasks from version %s: %s", baseVersion.Id, err.Error())
 	}

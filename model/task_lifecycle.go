@@ -33,7 +33,7 @@ type StatusChanges struct {
 func SetActiveState(t *task.Task, caller string, active bool) error {
 	originalTasks := []task.Task{*t}
 	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		execTasks, err := task.FindNoMerge(task.ByIds(t.ExecutionTasks))
 		if err != nil {
 			return errors.Wrapf(err, "error getting execution tasks")
 		}
@@ -138,7 +138,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 }
 
 func SetActiveStateById(id, user string, active bool) error {
-	t, err := task.FindOneId(id)
+	t, err := task.FindOneIdNoMerge(id)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task '%s'", id)
 	}
@@ -342,7 +342,7 @@ func AbortTask(taskId, caller string) error {
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	statuses := []string{evergreen.TaskUndispatched}
-	allTasks, err := task.FindAll(task.ByActivatedBeforeRevisionWithStatuses(
+	allTasks, err := task.FindAllNoMerge(task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
 		t.BuildVariant,
@@ -356,7 +356,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	if t.DisplayOnly {
 		for _, dt := range allTasks {
 			var execTasks []task.Task
-			execTasks, err = task.Find(task.ByIds(dt.ExecutionTasks))
+			execTasks, err = task.FindNoMerge(task.ByIds(dt.ExecutionTasks))
 			if err != nil {
 				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", t.Id)
 			}
@@ -428,7 +428,7 @@ func getStepback(taskId string) (bool, error) {
 // doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
 func doStepback(t *task.Task) error {
 	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		execTasks, err := task.FindNoMerge(task.ByIds(t.ExecutionTasks))
 		if err != nil {
 			return errors.Wrapf(err, "error finding tasks for stepback of %s", t.Id)
 		}
@@ -745,14 +745,14 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 	if nextItem.Version == "" {
 		return nil
 	}
-	nextMerge, err := task.FindMergeTaskForVersion(nextItem.Version)
+	nextMerge, err := task.FindMergeTaskForVersionNoMerge(nextItem.Version)
 	if err != nil {
 		return errors.Wrap(err, "unable to find next merge task")
 	}
 	if nextMerge == nil {
 		return errors.New("no merge task found")
 	}
-	currentMerge, err := task.FindMergeTaskForVersion(cq.Queue[currentIndex].Version)
+	currentMerge, err := task.FindMergeTaskForVersionNoMerge(cq.Queue[currentIndex].Version)
 	if err != nil {
 		return errors.Wrap(err, "unable to find current merge task")
 	}
@@ -762,7 +762,7 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 
 	if currentIndex > 0 {
 		prevItem := cq.Queue[currentIndex-1]
-		prevMerge, err := task.FindMergeTaskForVersion(prevItem.Version)
+		prevMerge, err := task.FindMergeTaskForVersionNoMerge(prevItem.Version)
 		if err != nil {
 			return errors.Wrap(err, "unable to find previous merge task")
 		}
@@ -871,7 +871,7 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 // UpdateBuildStatus updates the status of the build based on its tasks' statuses.
 // Returns true if the build's status has changed.
 func UpdateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.Find(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
+	buildTasks, err := task.FindNoMerge(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1131,7 +1131,7 @@ func MarkTaskDispatched(t *task.Task, h *host.Host) error {
 func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 	if t.DisplayOnly {
 		for _, et := range t.ExecutionTasks {
-			execTask, err := task.FindOneId(et)
+			execTask, err := task.FindOneIdNoMerge(et)
 			if err != nil {
 				return errors.Wrap(err, "error retrieving execution task")
 			}
@@ -1149,7 +1149,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 }
 
 func MarkTasksReset(taskIds []string) error {
-	tasks, err := task.FindAll(task.ByIds(taskIds))
+	tasks, err := task.FindAllNoMerge(task.ByIds(taskIds))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1198,7 +1198,7 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	if opts.IncludeSetupFailed {
 		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
 	}
-	tasksToRestart, err := task.FindAll(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
+	tasksToRestart, err := task.FindAllNoMerge(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
 	if err != nil {
 		return results, errors.WithStack(err)
 	}
@@ -1349,7 +1349,7 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	var timeTaken time.Duration
 	var statusTask task.Task
-	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+	execTasks, err := task.FindNoMerge(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
@@ -1490,7 +1490,7 @@ func checkResetDisplayTask(t *task.Task) error {
 	if !t.ResetWhenFinished {
 		return nil
 	}
-	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+	execTasks, err := task.FindNoMerge(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrapf(err, "can't get exec tasks for '%s'", t.Id)
 	}

@@ -675,11 +675,11 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Equal(5, pp.ConfigUpdateNumber)
 	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
-	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
+	tasks, err := task.FindAllNoMerge(db.Query(bson.M{task.VersionKey: v.Id})) // with display
 	s.NoError(err)
 	s.Len(builds, 2)
 	s.Len(tasks, 7)
-	existingVariantTasks, err := task.Find(task.ByBuildId(sampleBuild.Id)) // without display
+	existingVariantTasks, err := task.FindNoMerge(task.ByBuildId(sampleBuild.Id)) // without display
 	s.NoError(err)
 	s.Len(existingVariantTasks, 2)
 	for _, existingTask := range existingVariantTasks {
@@ -975,14 +975,14 @@ func TestAddDependencies(t *testing.T) {
 
 	assert.NoError(t, addDependencies(&task.Task{Id: "generator"}, []string{"t3"}))
 
-	t1, err := task.FindOneId("t1")
+	t1, err := task.FindOneIdNoMerge("t1")
 	assert.NoError(t, err)
 	assert.Len(t, t1.DependsOn, 2)
 	for _, dep := range t1.DependsOn {
 		assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
 	}
 
-	t2, err := task.FindOneId("t2")
+	t2, err := task.FindOneIdNoMerge("t2")
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 2)
 	for _, dep := range t2.DependsOn {

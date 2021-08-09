@@ -142,7 +142,7 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 
 func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task) error {
 	// Get task again, to exit early if another generator finished early.
-	t, err := task.FindOneId(g.TaskID)
+	t, err := task.FindOneIdNoMerge(g.TaskID)
 	if err != nil {
 		return errors.Wrapf(err, "error finding task %s", g.TaskID)
 	}

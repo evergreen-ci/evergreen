@@ -547,7 +547,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 	for _, p := range patches {
 		if p.Version != "" {
 			if p.IsCommitQueuePatch() {
-				mergeTask, err := task.FindMergeTaskForVersion(p.Version)
+				mergeTask, err := task.FindMergeTaskForVersionNoMerge(p.Version)
 				if err != nil {
 					return errors.Wrap(err, "unable to find merge task for version")
 				}

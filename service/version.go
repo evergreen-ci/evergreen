@@ -50,7 +50,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		var projectID, revision string
 		if projCtx.Version.TriggerType == model.ProjectTriggerLevelTask {
 			var upstreamTask *task.Task
-			upstreamTask, err = task.FindOneId(projCtx.Version.TriggerID)
+			upstreamTask, err = task.FindOneIdNoMerge(projCtx.Version.TriggerID)
 			if err != nil {
 				http.Error(w, "error finding upstream task", http.StatusInternalServerError)
 				return
@@ -154,7 +154,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo.StatusDiffs = diffs
 	}
 
-	dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+	dbTasks, err := task.FindAllNoMerge(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -279,7 +279,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+	dbTasks, err := task.FindAllNoMerge(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -383,7 +383,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+		dbTasks, err := task.FindAllNoMerge(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

@@ -13,7 +13,7 @@ func (s *SchedulerConnector) CompareTasks(taskIds []string, useLegacy bool) ([]s
 	if len(taskIds) == 0 {
 		return nil, nil, nil
 	}
-	tasks, err := task.Find(task.ByIds(taskIds))
+	tasks, err := task.FindNoMerge(task.ByIds(taskIds))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error finding tasks")
 	}

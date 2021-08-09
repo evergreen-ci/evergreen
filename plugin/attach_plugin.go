@@ -58,7 +58,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					t := context.Task
 					if context.Task.OldTaskId != "" {
 						taskId = context.Task.OldTaskId
-						t, err = task.FindOneId(taskId)
+						t, err = task.FindOneIdNoMerge(taskId)
 						if err != nil {
 							return nil, errors.Wrap(err, "error retrieving task")
 						}

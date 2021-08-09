@@ -206,7 +206,7 @@ func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) er
 		if currentItem.Version == "" {
 			return nil
 		}
-		mergeTask, err := task.FindMergeTaskForVersion(currentItem.Version)
+		mergeTask, err := task.FindMergeTaskForVersionNoMerge(currentItem.Version)
 		if err != nil {
 			return errors.Wrap(err, "unable to find merge task")
 		}
@@ -274,7 +274,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 		return
 	}
 
-	mergeTask, err := task.FindMergeTaskForVersion(nextItem.Version)
+	mergeTask, err := task.FindMergeTaskForVersionNoMerge(nextItem.Version)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "unable to find merge task for version"))
 	}

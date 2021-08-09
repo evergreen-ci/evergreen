@@ -1069,7 +1069,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 	for name, test := range map[string]func(*testing.T){
 		"NotResetWhenFinished": func(t *testing.T) {
 			assert.NoError(t, MarkEnd(runningTask, "test", time.Now(), detail, false))
-			runningTaskDB, err := task.FindOneId(runningTask.Id)
+			runningTaskDB, err := task.FindOneIdNoMerge(runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
 			assert.Equal(t, evergreen.TaskFailed, runningTaskDB.Status)
@@ -1078,7 +1078,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 			assert.NoError(t, runningTask.SetResetWhenFinished())
 			assert.NoError(t, MarkEnd(runningTask, "test", time.Now(), detail, false))
 
-			runningTaskDB, err := task.FindOneId(runningTask.Id)
+			runningTaskDB, err := task.FindOneIdNoMerge(runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
 			assert.NotEqual(t, evergreen.TaskFailed, runningTaskDB.Status)
@@ -1352,11 +1352,11 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 			assert.NoError(TryResetTask(t2Id, "user", "test", nil))
 
 			var err error
-			t1, err = task.FindOneId(t1.Id)
+			t1, err = task.FindOneIdNoMerge(t1.Id)
 			assert.NoError(err)
 			assert.NotNil(t1)
 			assert.Equal(evergreen.TaskUndispatched, t1.Status)
-			t2, err := task.FindOneId(t2Id)
+			t2, err := task.FindOneIdNoMerge(t2Id)
 			assert.NoError(err)
 			assert.NotNil(t2)
 			assert.Equal(evergreen.TaskUndispatched, t2.Status)
@@ -1460,13 +1460,13 @@ func TestAbortTask(t *testing.T) {
 			So(et2.Insert(), ShouldBeNil)
 
 			So(AbortTask(dt.Id, userName), ShouldBeNil)
-			dbTask, err := task.FindOneId(dt.Id)
+			dbTask, err := task.FindOneIdNoMerge(dt.Id)
 			So(err, ShouldBeNil)
 			So(dbTask.Aborted, ShouldBeTrue)
-			dbTask, err = task.FindOneId(et1.Id)
+			dbTask, err = task.FindOneIdNoMerge(et1.Id)
 			So(err, ShouldBeNil)
 			So(dbTask.Aborted, ShouldBeTrue)
-			dbTask, err = task.FindOneId(et2.Id)
+			dbTask, err = task.FindOneIdNoMerge(et2.Id)
 			So(err, ShouldBeNil)
 			So(dbTask.Aborted, ShouldBeFalse)
 		})
@@ -1523,7 +1523,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.Equal(t, cq.FindItem(patchID), -1)
 	assert.Len(t, cq.Queue, 1)
 
-	mergeTask, err := task.FindMergeTaskForVersion(patchID)
+	mergeTask, err := task.FindMergeTaskForVersionNoMerge(patchID)
 	assert.NoError(t, err)
 	assert.Equal(t, mergeTask.Priority, int64(-1))
 	assert.False(t, mergeTask.Activated)
@@ -1610,7 +1610,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.Len(t, cq.Queue, 1)
 
 	// check that all tasks are now in the correct state
-	tasks, err := task.FindAll(db.Q{})
+	tasks, err := task.FindAllNoMerge(db.Q{})
 	assert.NoError(t, err)
 	aborted := 0
 	finished := 0
@@ -1740,19 +1740,19 @@ func TestDequeueAndRestart(t *testing.T) {
 	assert.Len(t, dbCq.Queue, 2)
 	assert.Equal(t, v1.Hex(), dbCq.Queue[0].Issue)
 	assert.Equal(t, v3.Hex(), dbCq.Queue[1].Issue)
-	dbTask1, err := task.FindOneId(t1.Id)
+	dbTask1, err := task.FindOneIdNoMerge(t1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, dbTask1.Execution)
-	dbTask2, err := task.FindOneId(t2.Id)
+	dbTask2, err := task.FindOneIdNoMerge(t2.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, dbTask2.Execution)
-	dbTask3, err := task.FindOneId(t3.Id)
+	dbTask3, err := task.FindOneIdNoMerge(t3.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, dbTask3.Execution)
 	assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
 	assert.Len(t, dbTask3.DependsOn, 1)
 	assert.Equal(t, t1.Id, dbTask3.DependsOn[0].TaskId)
-	dbTask4, err := task.FindOneId(t4.Id)
+	dbTask4, err := task.FindOneIdNoMerge(t4.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, dbTask4.Execution)
 }
@@ -2981,7 +2981,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 
 	err := MarkEnd(&testTask1, "", time.Now(), details, false)
 	assert.NoError(t, err)
-	dbTask, err := task.FindOneId(testTask1.Id)
+	dbTask, err := task.FindOneIdNoMerge(testTask1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
@@ -2993,7 +2993,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 	assert.NoError(t, results.Insert())
 	err = MarkEnd(&testTask2, "", time.Now(), details, false)
 	assert.NoError(t, err)
-	dbTask, err = task.FindOneId(testTask2.Id)
+	dbTask, err = task.FindOneIdNoMerge(testTask2.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
 }
@@ -3372,7 +3372,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 		Status: evergreen.TaskFailed,
 	}
 	assert.NoError(t, MarkEnd(&task1, "test", time.Now(), detail, false))
-	newTask, err := task.FindOneId(task1.Id)
+	newTask, err := task.FindOneIdNoMerge(task1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, newTask.Status)
 	assert.Equal(t, 1, newTask.Execution)
@@ -3513,7 +3513,7 @@ tasks:
 
 	// should not step back if there was never a successful task
 	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskFailed, false))
-	checkTask, err := task.FindOneId(stepbackTask.Id)
+	checkTask, err := task.FindOneIdNoMerge(stepbackTask.Id)
 	assert.NoError(err)
 	assert.False(checkTask.Activated)
 
@@ -3537,7 +3537,7 @@ tasks:
 	}
 	assert.NoError(b1.Insert())
 	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskFailed, false))
-	checkTask, err = task.FindOneId(stepbackTask.Id)
+	checkTask, err = task.FindOneIdNoMerge(stepbackTask.Id)
 	require.NoError(t, err)
 	assert.True(checkTask.Activated)
 
@@ -3609,7 +3609,7 @@ tasks:
 	}
 	assert.NoError(b5.Insert())
 	assert.NoError(evalStepback(&generated, "", evergreen.TaskFailed, false))
-	checkTask, err = task.FindOneId(stepbackTask.Id)
+	checkTask, err = task.FindOneIdNoMerge(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
 }
@@ -3705,31 +3705,31 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 
 	assert.NoError(UpdateBlockedDependencies(&tasks[0]))
 
-	dbTask1, err := task.FindOneId(tasks[1].Id)
+	dbTask1, err := task.FindOneIdNoMerge(tasks[1].Id)
 	assert.NoError(err)
 	assert.Len(dbTask1.DependsOn, 2)
 	assert.True(dbTask1.DependsOn[0].Unattainable)
 	assert.True(dbTask1.DependsOn[1].Unattainable) // this task has duplicates which are also marked
 
-	dbTask2, err := task.FindOneId(tasks[2].Id)
+	dbTask2, err := task.FindOneIdNoMerge(tasks[2].Id)
 	assert.NoError(err)
 	assert.True(dbTask2.DependsOn[0].Unattainable)
 
-	dbTask3, err := task.FindOneId(tasks[3].Id)
+	dbTask3, err := task.FindOneIdNoMerge(tasks[3].Id)
 	assert.NoError(err)
 	assert.True(dbTask3.DependsOn[0].Unattainable)
 
 	// We don't traverse past t3 which was already unattainable == true
-	dbTask4, err := task.FindOneId(tasks[4].Id)
+	dbTask4, err := task.FindOneIdNoMerge(tasks[4].Id)
 	assert.NoError(err)
 	assert.False(dbTask4.DependsOn[0].Unattainable)
 
 	// update more than one dependency (t1 and t5)
-	dbTask5, err := task.FindOneId(tasks[5].Id)
+	dbTask5, err := task.FindOneIdNoMerge(tasks[5].Id)
 	assert.NoError(err)
 	assert.True(dbTask5.DependsOn[0].Unattainable)
 
-	dbExecTask, err := task.FindOneId(execTask.Id)
+	dbExecTask, err := task.FindOneIdNoMerge(execTask.Id)
 	assert.NoError(err)
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
 }
@@ -3799,21 +3799,21 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	assert.NoError(UpdateUnblockedDependencies(&tasks[0], false, ""))
 
 	// this task should still be marked blocked because t1 is unattainable
-	dbTask2, err := task.FindOneId(tasks[2].Id)
+	dbTask2, err := task.FindOneIdNoMerge(tasks[2].Id)
 	assert.NoError(err)
 	assert.False(dbTask2.DependsOn[0].Unattainable)
 	assert.True(dbTask2.DependsOn[1].Unattainable)
 
-	dbTask3, err := task.FindOneId(tasks[3].Id)
+	dbTask3, err := task.FindOneIdNoMerge(tasks[3].Id)
 	assert.NoError(err)
 	assert.False(dbTask3.DependsOn[0].Unattainable)
 
-	dbTask4, err := task.FindOneId(tasks[4].Id)
+	dbTask4, err := task.FindOneIdNoMerge(tasks[4].Id)
 	assert.NoError(err)
 	assert.False(dbTask4.DependsOn[0].Unattainable)
 
 	// We don't traverse past the t4 which was already unattainable == false
-	dbTask5, err := task.FindOneId(tasks[5].Id)
+	dbTask5, err := task.FindOneIdNoMerge(tasks[5].Id)
 	assert.NoError(err)
 	assert.True(dbTask5.DependsOn[0].Unattainable)
 }

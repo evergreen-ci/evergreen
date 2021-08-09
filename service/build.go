@@ -25,7 +25,7 @@ import (
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
 func getUiTaskCache(b *build.Build) ([]uiTask, error) {
-	tasks, err := task.FindAll(task.ByBuildId(b.Id))
+	tasks, err := task.FindAllNoMerge(task.ByBuildId(b.Id))
 	if len(tasks) == 0 {
 		return nil, errors.Wrap(err, "can't get tasks for build")
 	}
@@ -414,7 +414,7 @@ func getTaskMapForBuilds(builds []build.Build) (map[string]task.Task, error) {
 	for _, b := range builds {
 		buildIds = append(buildIds, b.Id)
 	}
-	tasksForBuilds, err := task.FindAll(task.ByBuildIds(buildIds).WithFields(task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey))
+	tasksForBuilds, err := task.FindAllNoMerge(task.ByBuildIds(buildIds).WithFields(task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get tasks for builds")
 	}

@@ -331,7 +331,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 		// If task is display, we skip ticket creation if all execution task failures are only 'stranded'
 		shouldSkipTicket := false
 		if t.task.DisplayOnly {
-			execTasks, err := task.Find(task.ByIds(t.task.ExecutionTasks).WithFields(task.DetailsKey))
+			execTasks, err := task.FindNoMerge(task.ByIds(t.task.ExecutionTasks).WithFields(task.DetailsKey))
 			if err != nil {
 				return nil, errors.Wrapf(err, "error getting execution tasks")
 			}

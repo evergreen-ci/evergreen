@@ -182,7 +182,7 @@ func TestBuildSetPriority(t *testing.T) {
 
 			So(SetBuildPriority(b.Id, 42, ""), ShouldBeNil)
 
-			tasks, err := task.Find(task.ByBuildId(b.Id))
+			tasks, err := task.FindNoMerge(task.ByBuildId(b.Id))
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 3)
 			So(tasks[0].Priority, ShouldEqual, 42)
@@ -356,7 +356,7 @@ func TestBuildMarkAborted(t *testing.T) {
 
 				So(AbortBuild(b.Id, evergreen.DefaultTaskActivator), ShouldBeNil)
 
-				abortedTasks, err := task.Find(task.ByAborted(true))
+				abortedTasks, err := task.FindNoMerge(task.ByAborted(true))
 				So(err, ShouldBeNil)
 				So(len(abortedTasks), ShouldEqual, 2)
 				So(taskIdInSlice(abortedTasks, abortableOne.Id), ShouldBeTrue)
@@ -394,11 +394,11 @@ func TestSetVersionActivation(t *testing.T) {
 		assert.False(t, b.Activated)
 	}
 
-	t0, err := task.FindOneId(tasks[0].Id)
+	t0, err := task.FindOneIdNoMerge(tasks[0].Id)
 	require.NoError(t, err)
 	assert.False(t, t0.Activated)
 
-	t1, err := task.FindOneId(tasks[1].Id)
+	t1, err := task.FindOneIdNoMerge(tasks[1].Id)
 	require.NoError(t, err)
 	assert.True(t, t1.Activated)
 }
@@ -491,7 +491,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
 
 				// only the matching task should have been updated that has not been set by a user
-				deactivatedTasks, err := task.Find(task.ByActivation(false))
+				deactivatedTasks, err := task.FindNoMerge(task.ByActivation(false))
 				So(err, ShouldBeNil)
 				So(len(deactivatedTasks), ShouldEqual, 3)
 				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
@@ -503,7 +503,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
 				So(SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator), ShouldBeNil)
-				activatedTasks, err := task.Find(task.ByActivation(true))
+				activatedTasks, err := task.FindNoMerge(task.ByActivation(true))
 				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
 			})
@@ -1013,7 +1013,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks1.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks2.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks3.InsertUnordered(context.Background()), ShouldBeNil)
-			dbTasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey, task.BuildVariantKey}))
+			dbTasks, err := task.FindNoMerge(task.All.Sort([]string{task.DisplayNameKey, task.BuildVariantKey}))
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 9)
 
@@ -1746,7 +1746,7 @@ func TestVersionRestart(t *testing.T) {
 	// test that restarting a version restarts its tasks
 	taskIds := []string{"task1", "task3", "task4"}
 	assert.NoError(RestartVersion("version", taskIds, false, "test"))
-	tasks, err := task.Find(task.ByIds(taskIds))
+	tasks, err := task.FindNoMerge(task.ByIds(taskIds))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
 	for _, t := range tasks {
@@ -1794,7 +1794,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a version
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion("version", displayTasks, false, "test"))
-	tasks, err := task.FindAll(task.ByIds(allTasks))
+	tasks, err := task.FindAllNoMerge(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1805,7 +1805,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a build
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartBuild("build3", displayTasks, false, "test"))
-	tasks, err = task.FindAll(task.ByIds(allTasks))
+	tasks, err = task.FindAllNoMerge(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1826,7 +1826,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 		}
 	}
 	assert.True(foundDisplayTask)
-	tasks, err = task.FindAll(task.ByIds(allTasks))
+	tasks, err = task.FindAllNoMerge(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1841,7 +1841,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// trying to restart execution tasks should restart the entire display task, if it's done
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion("version", allTasks, false, "test"))
-	tasks, err = task.FindAll(task.ByIds(allTasks))
+	tasks, err = task.FindAllNoMerge(task.ByIds(allTasks))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -2165,7 +2165,7 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 	// t0 should still be activated because it's a dependency of a task that is being activated
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, []string{"t0"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAllNoMerge(db.Q{})
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 4)
 	for _, task := range dbTasks {
@@ -2192,7 +2192,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, []string{"t3"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAllNoMerge(db.Q{})
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 4)
 	for _, dbTask := range dbTasks {
@@ -2222,7 +2222,7 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 	// ignore tasks is ignored for deactivating
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, false, []string{"t0", "t1", "t2"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAllNoMerge(db.Q{})
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 3)
 	for _, task := range dbTasks {
@@ -2271,14 +2271,14 @@ func TestRecomputeNumDependents(t *testing.T) {
 	assert.NoError(t, t5.Insert())
 
 	assert.NoError(t, RecomputeNumDependents(t3))
-	tasks, err := task.Find(task.ByVersion(t1.Version))
+	tasks, err := task.FindNoMerge(task.ByVersion(t1.Version))
 	assert.NoError(t, err)
 	for i, dbTask := range tasks {
 		assert.Equal(t, i, dbTask.NumDependents)
 	}
 
 	assert.NoError(t, RecomputeNumDependents(t5))
-	tasks, err = task.Find(task.ByVersion(t1.Version))
+	tasks, err = task.FindNoMerge(task.ByVersion(t1.Version))
 	assert.NoError(t, err)
 	for i, dbTask := range tasks {
 		assert.Equal(t, i, dbTask.NumDependents)
@@ -2315,7 +2315,7 @@ func TestRecomputeNumDependents(t *testing.T) {
 	assert.NoError(t, t9.Insert())
 
 	assert.NoError(t, RecomputeNumDependents(t8))
-	tasks, err = task.Find(task.ByVersion(t6.Version))
+	tasks, err = task.FindNoMerge(task.ByVersion(t6.Version))
 	assert.NoError(t, err)
 	expected := map[string]int{
 		"6": 0,

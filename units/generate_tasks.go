@@ -89,7 +89,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	// already been updated by another generator and therefore will be invalid because the
 	// config has already been modified. We do this again in `handleError` to reduce the chances
 	// of this race as close to zero as possible.
-	t, err = task.FindOneId(t.Id)
+	t, err = task.FindOneIdNoMerge(t.Id)
 	if err != nil {
 		return errors.Wrapf(err, "error finding task %s", t.Id)
 	}
@@ -205,7 +205,7 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 	// Checking this again here makes it very unlikely that there is a race, because both
 	// `t.GeneratedTasks` checks must have been in between the racing generator's call to
 	// save the config and set the task's boolean.
-	t, err := task.FindOneId(j.TaskID)
+	t, err := task.FindOneIdNoMerge(j.TaskID)
 	if err != nil {
 		return errors.Wrapf(err, "error finding task %s", j.TaskID)
 	}
@@ -249,7 +249,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	start := time.Now()
 
-	t, err := task.FindOneId(j.TaskID)
+	t, err := task.FindOneIdNoMerge(j.TaskID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
 		return

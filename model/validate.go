@@ -102,7 +102,7 @@ func badHostTaskRelationship(h *host.Host, t *task.Task) bool {
 		if h.RunningTask == "" {
 			return false
 		}
-		nextTask, err := task.FindOneId(h.RunningTask)
+		nextTask, err := task.FindOneIdNoMerge(h.RunningTask)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem finding task",

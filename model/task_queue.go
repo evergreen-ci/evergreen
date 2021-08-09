@@ -229,7 +229,7 @@ func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
 }
 
 func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
-	tasksInVersion, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
+	tasksInVersion, err := task.FindAllTasksFromVersionWithDependenciesNoMerge(t.Version)
 	if err != nil {
 		return errors.Wrap(err, "problem finding version for task")
 	}
@@ -257,7 +257,7 @@ func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
 }
 
 func BlockTaskGroupTasks(taskID string) error {
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneIdNoMerge(taskID)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task %s", taskID)
 	}
@@ -287,7 +287,7 @@ func BlockTaskGroupTasks(taskID string) error {
 	for i := indexOfTask + 1; i < len(tg.Tasks); i++ {
 		taskNamesToBlock = append(taskNamesToBlock, tg.Tasks[i])
 	}
-	tasksToBlock, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
+	tasksToBlock, err := task.FindNoMerge(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
 	if err != nil {
 		return errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", "))
 	}

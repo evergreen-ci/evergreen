@@ -250,7 +250,7 @@ func (cq *CommitQueue) RemoveItemAndPreventMerge(issue string, versionExists boo
 
 func preventMergeForItem(item CommitQueueItem, user string) error {
 	// Disable the merge task
-	mergeTask, err := task.FindMergeTaskForVersion(item.Version)
+	mergeTask, err := task.FindMergeTaskForVersionNoMerge(item.Version)
 	if err != nil {
 		return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
 	}

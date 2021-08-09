@@ -297,7 +297,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if uiTask.GeneratedById != "" {
 		var generator *task.Task
-		generator, err = task.FindOneIdWithFields(uiTask.GeneratedById, task.DisplayNameKey)
+		generator, err = task.FindOneIdWithFieldsNoMerge(uiTask.GeneratedById, task.DisplayNameKey)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -467,7 +467,7 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	for _, dep := range t.DependsOn {
 		depIds = append(depIds, dep.TaskId)
 	}
-	dependencies, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
+	dependencies, err := task.FindNoMerge(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
 	if err != nil {
 		return nil, "", err
@@ -907,9 +907,9 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		for _, t := range projCtx.Task.ExecutionTasks {
 			var et *task.Task
 			if uiTask.Archived {
-				et, err = task.FindOneOldNoMergeByIdAndExecution(t, projCtx.Task.Execution)
+				et, err = task.FindOneOldByIdAndExecutionNoMerge(t, projCtx.Task.Execution)
 			} else {
-				et, err = task.FindOneId(t)
+				et, err = task.FindOneIdNoMerge(t)
 			}
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)

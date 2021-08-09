@@ -101,7 +101,7 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 		} else {
 			// Task is display only without tests
 			result := make([]taskInfo, 0)
-			execTasks, err := task.Find(task.ByIds(data.Task.ExecutionTasks))
+			execTasks, err := task.FindNoMerge(task.ByIds(data.Task.ExecutionTasks))
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to fetch execution tasks")
 			}

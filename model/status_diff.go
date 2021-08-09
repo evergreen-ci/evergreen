@@ -68,7 +68,7 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 		Diff: StatusDiff{original.Status, patch.Status},
 	}
 
-	tasks, err := task.FindAll(
+	tasks, err := task.FindAllNoMerge(
 		task.ByBuildIds([]string{original.Id, patch.Id}).WithFields(task.BuildIdKey, task.StatusKey, task.DetailsKey, task.DisplayNameKey))
 	if err != nil {
 		return BuildStatusDiff{}, errors.Wrap(err, "can't get tasks")

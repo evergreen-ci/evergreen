@@ -1822,7 +1822,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	}
 	var projectID string
 	if triggerType == ProjectTriggerLevelTask {
-		upstreamTask, err := task.FindOneId(triggerID)
+		upstreamTask, err := task.FindOneIdNoMerge(triggerID)
 		if err != nil {
 			return "", errors.Wrap(err, "error finding upstream task")
 		}

@@ -362,7 +362,7 @@ func getSoonToBeFreeHosts(existingHosts []host.Host, futureHostFraction float64,
 		return 0.0, nil
 	}
 
-	runningTasks, err := task.Find(task.ByIds(runningTaskIds))
+	runningTasks, err := task.FindNoMerge(task.ByIds(runningTaskIds))
 	if err != nil {
 		return 0.0, err
 	}

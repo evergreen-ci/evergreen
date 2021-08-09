@@ -1005,7 +1005,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 }
 
 func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error) {
-	t, err := task.FindOneId(h.StartedBy)
+	t, err := task.FindOneIdNoMerge(h.StartedBy)
 	if err != nil {
 		return "", errors.Wrapf(err, "problem finding task %s", h.StartedBy)
 	}

@@ -331,7 +331,7 @@ func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contains a single element.
 			item := unit.tasks[0]
 			var nextTaskFromDB *task.Task
-			nextTaskFromDB, err = task.FindOneId(unit.tasks[0].Id)
+			nextTaskFromDB, err = task.FindOneIdNoMerge(unit.tasks[0].Id)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": SchedulableUnitDispatcher,
@@ -427,7 +427,7 @@ func (d *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 			continue
 		}
 
-		nextTaskFromDB, err := task.FindOneId(nextTaskQueueItem.Id)
+		nextTaskFromDB, err := task.FindOneIdNoMerge(nextTaskQueueItem.Id)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"dispatcher": SchedulableUnitDispatcher,

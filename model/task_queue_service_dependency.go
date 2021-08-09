@@ -302,7 +302,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 				continue
 			}
 
-			nextTaskFromDB, err := task.FindOneId(item.Id)
+			nextTaskFromDB, err := task.FindOneIdNoMerge(item.Id)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
@@ -403,7 +403,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 			continue
 		}
 
-		nextTaskFromDB, err := task.FindOneId(nextTaskQueueItem.Id)
+		nextTaskFromDB, err := task.FindOneIdNoMerge(nextTaskQueueItem.Id)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,

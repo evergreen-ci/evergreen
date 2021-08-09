@@ -101,7 +101,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	}
 
 	if j.task == nil && j.TaskID != "" {
-		j.task, err = task.FindOneId(j.TaskID)
+		j.task, err = task.FindOneIdNoMerge(j.TaskID)
 		j.AddError(err)
 	}
 

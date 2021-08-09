@@ -214,7 +214,7 @@ tasks:
 	assert.Len(queue.Queue, 1)
 
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
-	found, err := task.FindOneId("one_1")
+	found, err := task.FindOneIdNoMerge("one_1")
 	assert.NoError(err)
 	require.NotNil(found)
 	require.NotEmpty(found.DependsOn)
@@ -268,7 +268,7 @@ func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {
 		require.NoError(t.Insert())
 	}
 	assert.Error(BlockTaskGroupTasks("task_id"))
-	found, err := task.FindOneId("one")
+	found, err := task.FindOneIdNoMerge("one")
 	assert.NoError(err)
 	assert.Empty(found.DependsOn)
 }

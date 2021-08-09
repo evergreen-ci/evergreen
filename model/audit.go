@@ -97,14 +97,14 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	for _, h := range runningHosts {
 		hostTaskIds = append(hostTaskIds, h.RunningTask)
 	}
-	hostsTasks, err := task.Find(task.ByIds(hostTaskIds))
+	hostsTasks, err := task.FindNoMerge(task.ByIds(hostTaskIds))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "querying for hosts' tasks:")
 	}
 
 	// fetch all tasks with an assigned host and the hosts they say
 	// they are assigned to
-	runningTasks, err := task.Find(task.IsDispatchedOrStarted)
+	runningTasks, err := task.FindNoMerge(task.IsDispatchedOrStarted)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "querying for running tasks:")
 	}

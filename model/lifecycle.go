@@ -96,7 +96,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
 		}
-		tasks, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
+		tasks, err := task.FindAllNoMerge(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrap(err, "can't get tasks to deactivate")
 		}
@@ -118,7 +118,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 			query[task.ActivatedByKey] = caller
 		}
 
-		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
+		tasks, err := task.FindAllNoMerge(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrap(err, "can't get tasks to deactivate")
 		}
@@ -169,7 +169,7 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 		depIDs = append(depIDs, depTask.Id)
 	}
 
-	tasks, err := task.FindAll(db.Query(bson.M{
+	tasks, err := task.FindAllNoMerge(db.Query(bson.M{
 		"$or": []bson.M{
 			{task.IdKey: bson.M{"$in": ids}},
 			{
@@ -219,7 +219,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
-		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}).
+		tasks, err := task.FindAllNoMerge(db.Query(bson.M{task.BuildIdKey: buildId}).
 			WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for build '%s'", buildId)
@@ -245,7 +245,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		var tasks []task.Task
-		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).
+		tasks, err = task.FindAllNoMerge(db.Query(bson.M{task.VersionKey: versionId}).
 			WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for version '%s'", versionId)
@@ -260,7 +260,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 }
 
 func RestartTasksInVersion(versionId string, abortInProgress bool, caller string) error {
-	tasks, err := task.Find(task.ByVersion(versionId))
+	tasks, err := task.FindNoMerge(task.ByVersion(versionId))
 	if err != nil {
 		return errors.Wrap(err, "error finding tasks in version")
 	}
@@ -282,7 +282,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.WithStack(err)
 		}
 	}
-	finishedTasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	finishedTasks, err := task.FindAllNoMerge(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -318,7 +318,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
 	tasksToRestart := finishedTasks
 	if abortInProgress {
-		aborted, err := task.Find(task.BySubsetAborted(taskIds))
+		aborted, err := task.FindNoMerge(task.BySubsetAborted(taskIds))
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -386,7 +386,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	}
 
 	// restart all the 'not in-progress' tasks for the build
-	tasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	tasks, err := task.FindAllNoMerge(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -402,7 +402,7 @@ func RestartAllBuildTasks(buildId string, caller string) error {
 		return errors.WithStack(err)
 	}
 
-	allTasks, err := task.FindAll(task.ByBuildId(buildId))
+	allTasks, err := task.FindAllNoMerge(task.ByBuildId(buildId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -469,7 +469,7 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-	tasks, err := task.FindAll(task.ByBuildId(buildId))
+	tasks, err := task.FindAllNoMerge(task.ByBuildId(buildId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -810,7 +810,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 	generatorIsGithubCheck := false
 	if generatedBy != "" {
-		generateTask, err := task.FindOneId(generatedBy)
+		generateTask, err := task.FindOneIdNoMerge(generatedBy)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding generated task '%s'", generatedBy)
 		}
@@ -1090,7 +1090,7 @@ func RecomputeNumDependents(t task.Task) error {
 		taskPtrs = append(taskPtrs, &depTasks[i])
 	}
 
-	versionTasks, err := task.FindAll(task.ByVersion(t.Version))
+	versionTasks, err := task.FindAllNoMerge(task.ByVersion(t.Version))
 	if err != nil {
 		return errors.Wrap(err, "error getting tasks in version")
 	}
@@ -1607,7 +1607,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	for _, b := range builds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build
-		tasksInBuild, err := task.Find(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey, task.ActivatedKey))
+		tasksInBuild, err := task.FindNoMerge(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey, task.ActivatedKey))
 		if err != nil {
 			return nil, err
 		}
@@ -1690,7 +1690,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs, projectName string) (TaskIdConfig, error) {
 	// The table should include only new and existing tasks
 	taskIdTable := NewPatchTaskIdTable(p, v, newPairs, projectName)
-	existingTasks, err := task.FindAll(task.ByVersion(v.Id).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
+	existingTasks, err := task.FindAllNoMerge(task.ByVersion(v.Id).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "can't get existing task ids")
 	}

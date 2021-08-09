@@ -52,7 +52,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks, err := task.FindAll(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
+	tasks, err := task.FindAllNoMerge(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
 		return
@@ -104,7 +104,7 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks, err := task.FindAll(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
+	tasks, err := task.FindAllNoMerge(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
 		return

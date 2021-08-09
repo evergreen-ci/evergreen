@@ -24,7 +24,7 @@ type DBTaskConnector struct{}
 // FindTaskById uses the service layer's task type to query the backing database for
 // the task with the given taskId.
 func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 }
 
 func (tc *DBTaskConnector) FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
-	t, err := task.FindOneIdAndExecution(taskId, execution)
+	t, err := task.FindOneIdAndExecutionNoMerge(taskId, execution)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (tc *DBTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore
 		return nil, nil
 	}
 
-	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
+	tasks, err := task.FindNoMerge(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
 
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	ts, err := task.Find(task.ByIds(ids))
+	ts, err := task.FindNoMerge(task.ByIds(ids))
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, user string, priority i
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
 func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool) error {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneIdNoMerge(taskId)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task '%s'", t)
 	}
@@ -223,7 +223,7 @@ func (tc *DBTaskConnector) CheckTaskSecret(taskID string, r *http.Request) (int,
 
 // GetManifestByTask finds the manifest corresponding to the given task.
 func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest, error) {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneIdNoMerge(taskId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding task '%s'", t)
 	}
