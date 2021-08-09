@@ -60,11 +60,11 @@ func makeHostDrawdownJob() *hostDrawdownJob {
 	return j
 }
 
-func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, id string) amboy.Job {
+func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, ts string) amboy.Job {
 	j := makeHostDrawdownJob()
 	j.DrawdownInfo = drawdownInfo
 	j.env = env
-	jobID := fmt.Sprintf("%s.%s.%s", hostDrawdownJobName, id, drawdownInfo.DistroID)
+	jobID := fmt.Sprintf("%s.%s.%s", hostDrawdownJobName, drawdownInfo.DistroID, ts)
 	j.SetID(jobID)
 	j.SetScopes([]string{jobID})
 	return j
