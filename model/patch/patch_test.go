@@ -856,7 +856,8 @@ func TestSetParametersFromParent(t *testing.T) {
 		},
 	}
 	assert.NoError(p.Insert())
-	assert.NoError(p.SetParametersFromParent())
+	_, err := p.SetParametersFromParent()
+	assert.NoError(err)
 	assert.Equal(parentPatch.Triggers.DownstreamParameters[0].Key, p.Parameters[0].Key)
 }
 

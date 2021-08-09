@@ -136,8 +136,9 @@ type Task struct {
 	// patch request
 	Requester string `bson:"r" json:"r"`
 
-	// tasks that are part of a child patch will store the id of the parent patch
-	ParentPatchID string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
+	// tasks that are part of a child patch will store the id and patch number of the parent patch
+	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
+	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
 
 	// Status represents the various stages the task could be in
 	Status    string                  `bson:"status" json:"status"`
@@ -803,6 +804,9 @@ func MarkGeneratedTasks(taskID string) error {
 	update := bson.M{
 		"$set": bson.M{
 			GeneratedTasksKey: true,
+		},
+		"$unset": bson.M{
+			GenerateTasksErrorKey: 1,
 		},
 	}
 	err := UpdateOne(query, update)

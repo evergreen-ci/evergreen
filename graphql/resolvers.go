@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -2894,6 +2895,30 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 type versionResolver struct{ *Resolver }
 
+func (r *versionResolver) Manifest(ctx context.Context, v *restModel.APIVersion) (*Manifest, error) {
+	m, err := manifest.FindFromVersion(*v.Id, *v.Project, *v.Revision, *v.Requester)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching manifest for version %s : %s", *v.Id, err.Error()))
+	}
+	if m == nil {
+		return nil, nil
+	}
+	versionManifest := Manifest{
+		ID:              m.Id,
+		Revision:        m.Revision,
+		Project:         m.ProjectName,
+		Branch:          m.Branch,
+		IsBase:          m.IsBase,
+		ModuleOverrides: m.ModuleOverrides,
+	}
+	modules := map[string]interface{}{}
+	for key, module := range m.Modules {
+		modules[key] = module
+	}
+	versionManifest.Modules = modules
+
+	return &versionManifest, nil
+}
 func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVersion) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},

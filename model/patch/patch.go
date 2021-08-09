@@ -724,23 +724,23 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	return childrenOrSiblings, parentPatch, nil
 }
 
-func (p *Patch) SetParametersFromParent() error {
+func (p *Patch) SetParametersFromParent() (*Patch, error) {
 	parentPatchId := p.Triggers.ParentPatch
 	parentPatch, err := FindOneId(parentPatchId)
 	if err != nil {
-		return errors.Wrap(err, "can't get parent patch")
+		return nil, errors.Wrap(err, "can't get parent patch")
 	}
 	if parentPatch == nil {
-		return errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+		return nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
 	}
 
 	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
 		err = p.SetParameters(downstreamParams)
 		if err != nil {
-			return errors.Wrap(err, "error setting parameters")
+			return nil, errors.Wrap(err, "error setting parameters")
 		}
 	}
-	return nil
+	return parentPatch, nil
 }
 
 func (p *Patch) GetRequester() string {

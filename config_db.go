@@ -64,6 +64,7 @@ var (
 	// degraded mode flags
 	taskDispatchKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostInitKey                      = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
+	podInitDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "PodInitDisabled")
 	s3BinaryDownloadsDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "S3BinaryDownloadsDisabled")
 	monitorKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
 	alertsKey                        = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
@@ -102,6 +103,8 @@ var (
 	hostInitCloudStatusBatchSizeKey = bsonutil.MustHaveTag(HostInitConfig{}, "CloudStatusBatchSize")
 	hostInitMaxTotalDynamicHostsKey = bsonutil.MustHaveTag(HostInitConfig{}, "MaxTotalDynamicHosts")
 	hostInitS3BaseURLKey            = bsonutil.MustHaveTag(HostInitConfig{}, "S3BaseURL")
+
+	podInitS3BaseURLKey = bsonutil.MustHaveTag(PodInitConfig{}, "S3BaseURL")
 
 	// Spawnhost keys
 	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableHostsPerUser")

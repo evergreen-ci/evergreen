@@ -178,6 +178,17 @@ type Version {
   parameters: [Parameter!]!
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
+  manifest: Manifest
+}
+
+type Manifest {
+  id: String!
+  revision: String!
+  project: String!
+  branch: String!
+  isBase: Boolean!
+  moduleOverrides: StringMap
+  modules: Map
 }
 
 type VersionTiming {
@@ -1043,3 +1054,4 @@ type Source {
 scalar Time
 scalar Duration
 scalar StringMap
+scalar Map

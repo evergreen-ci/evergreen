@@ -305,10 +305,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
 
+	var parentPatchNumber int
 	if p.IsChild() {
-		if err = p.SetParametersFromParent(); err != nil {
+		parentPatch, err := p.SetParametersFromParent()
+		if err != nil {
 			return nil, errors.Wrap(err, "problem getting parameters from parent patch")
 		}
+		parentPatchNumber = parentPatch.PatchNumber
 	}
 
 	patchVersion := &Version{
@@ -323,6 +326,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
 		ParentPatchID:       p.Triggers.ParentPatch,
+		ParentPatchNumber:   parentPatchNumber,
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,
