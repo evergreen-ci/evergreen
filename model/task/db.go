@@ -1266,7 +1266,7 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
-func UpdateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
+func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
