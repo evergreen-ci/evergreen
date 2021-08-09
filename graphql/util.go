@@ -775,7 +775,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 						return ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found ", childPatchId))
 					}
 					// only modify the child patch if it is finalized
-					if p.Activated {
+					if p.Version != "" {
 						err = ModifyVersionHandler(ctx, dataConnector, childPatchId, modifications)
 						if err != nil {
 							return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
