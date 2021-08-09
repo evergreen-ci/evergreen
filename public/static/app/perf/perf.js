@@ -184,7 +184,7 @@ $http.get(templateUrl).success(function(template) {
   $scope.Math = $window.Math;
   $scope.conf = $window.plugins["perf"];
   $scope.task = $window.task_data;
-  $scope.newTrendChartsUi = PERFORMANCE_ANALYSIS_AND_TRIAGE_API.UI + "/task/" + $scope.task?.id + "/performanceData";
+  $scope.newTrendChartsUi = PERFORMANCE_ANALYSIS_AND_TRIAGE_API.UI + "/task/" + ($scope.task ? $scope.task.id : null) + "/performanceData";
   $scope.tablemode = 'maxthroughput';
   $scope.threadLevelsRadio = {
     options: [{
