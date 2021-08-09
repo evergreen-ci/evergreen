@@ -88,6 +88,7 @@ type Settings struct {
 	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
+	PodInit             PodInitConfig             `yaml:"pod_init" bson:"pod_init" json:"pod_init" id:"pod_init"`
 	PprofPort           string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
 	Providers           CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker         RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
