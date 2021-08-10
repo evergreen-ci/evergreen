@@ -74,7 +74,7 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	if gh.eventType != "pull_request_review_thread" {
+	if gh.eventType != "pull_request_review_thread" && gh.eventType != "workflow_job" {
 		body, err := github.ValidatePayload(r, gh.secret)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
