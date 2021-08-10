@@ -87,6 +87,11 @@ type GroupedProjects struct {
 	Projects []*model.APIProjectRef `json:"projects"`
 }
 
+type HasTestResultInput struct {
+	TestName string `json:"testName"`
+	Status   string `json:"status"`
+}
+
 type HostEvents struct {
 	EventLogEntries []*model.HostAPIEventLogEntry `json:"eventLogEntries"`
 	Count           int                           `json:"count"`

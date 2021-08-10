@@ -701,6 +701,11 @@ type AbortInfo {
   prClosed: Boolean!
 }
 
+input HasTestResultInput {
+  testName: String!
+  status: String!
+}
+
 type Task {
   aborted: Boolean!
   abortInfo: AbortInfo
@@ -766,6 +771,7 @@ type Task {
   totalTestCount: Int!
   version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
+  hasTestResult(options: [HasTestResultInput!]!): Boolean!
 }
 
 type BaseTaskInfo {

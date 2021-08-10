@@ -2747,6 +2747,41 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	return apiVersion, nil
 }
 
+func (r *taskResolver) HasTestResult(ctx context.Context, obj *restModel.APITask, options []*HasTestResultInput) (bool, error) {
+	inputMap := make(map[string]string)
+	for _, inputOpt := range options {
+		inputMap[inputOpt.TestName] = inputOpt.Status
+	}
+	opts := apimodels.GetCedarTestResultsOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		Execution: obj.Execution,
+	}
+	if len(obj.ExecutionTasks) > 0 {
+		opts.DisplayTaskID = *obj.Id
+	} else {
+		opts.TaskID = *obj.Id
+	}
+	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting cedar test results for task %s: %s", *obj.Id, err.Error()))
+	}
+
+	hasMatch := false
+	for _, testResult := range cedarTestResults {
+		if inputStatus, ok := inputMap[testResult.DisplayTestName]; ok {
+			if testResult.Status == inputStatus {
+				hasMatch = true
+			}
+		}
+		if inputStatus, ok := inputMap[testResult.TestName]; ok {
+			if testResult.Status == inputStatus {
+				hasMatch = true
+			}
+		}
+	}
+	return hasMatch, nil
+}
+
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
 

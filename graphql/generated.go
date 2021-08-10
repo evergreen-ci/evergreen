@@ -599,6 +599,7 @@ type ComplexityRoot struct {
 		GenerateTask            func(childComplexity int) int
 		GeneratedBy             func(childComplexity int) int
 		GeneratedByName         func(childComplexity int) int
+		HasTestResult           func(childComplexity int, options []*HasTestResultInput) int
 		HostId                  func(childComplexity int) int
 		Id                      func(childComplexity int) int
 		IngestTime              func(childComplexity int) int
@@ -991,6 +992,7 @@ type TaskResolver interface {
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
+	HasTestResult(ctx context.Context, obj *model.APITask, options []*HasTestResultInput) (bool, error)
 }
 type TaskQueueItemResolver interface {
 	Requester(ctx context.Context, obj *model.APITaskQueueItem) (TaskQueueItemType, error)
@@ -3843,6 +3845,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.GeneratedByName(childComplexity), true
 
+	case "Task.hasTestResult":
+		if e.complexity.Task.HasTestResult == nil {
+			break
+		}
+
+		args, err := ec.field_Task_hasTestResult_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Task.HasTestResult(childComplexity, args["options"].([]*HasTestResultInput)), true
+
 	case "Task.hostId":
 		if e.complexity.Task.HostId == nil {
 			break
@@ -5794,6 +5808,11 @@ type AbortInfo {
   prClosed: Boolean!
 }
 
+input HasTestResultInput {
+  testName: String!
+  status: String!
+}
+
 type Task {
   aborted: Boolean!
   abortInfo: AbortInfo
@@ -5859,6 +5878,7 @@ type Task {
   totalTestCount: Int!
   version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
+  hasTestResult(options: [HasTestResultInput!]!): Boolean!
 }
 
 type BaseTaskInfo {
@@ -7444,6 +7464,20 @@ func (ec *executionContext) field_Query_version_args(ctx context.Context, rawArg
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Task_hasTestResult_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*HasTestResultInput
+	if tmp, ok := rawArgs["options"]; ok {
+		arg0, err = ec.unmarshalNHasTestResultInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHasTestResultInputᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
 	return args, nil
 }
 
@@ -20664,6 +20698,47 @@ func (ec *executionContext) _Task_versionMetadata(ctx context.Context, field gra
 	return ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_hasTestResult(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Task_hasTestResult_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().HasTestResult(rctx, obj, args["options"].([]*HasTestResultInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -26495,6 +26570,30 @@ func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputHasTestResultInput(ctx context.Context, obj interface{}) (HasTestResultInput, error) {
+	var it HasTestResultInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "testName":
+			var err error
+			it.TestName, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "status":
+			var err error
+			it.Status, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputInstanceTagInput(ctx context.Context, obj interface{}) (host.Tag, error) {
 	var it host.Tag
 	var asMap = obj.(map[string]interface{})
@@ -30743,6 +30842,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				}
 				return res
 			})
+		case "hasTestResult":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_hasTestResult(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32601,6 +32714,38 @@ func (ec *executionContext) marshalNGroupedProjects2ᚕᚖgithubᚗcomᚋevergre
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) unmarshalNHasTestResultInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHasTestResultInput(ctx context.Context, v interface{}) (HasTestResultInput, error) {
+	return ec.unmarshalInputHasTestResultInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNHasTestResultInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHasTestResultInputᚄ(ctx context.Context, v interface{}) ([]*HasTestResultInput, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*HasTestResultInput, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNHasTestResultInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHasTestResultInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNHasTestResultInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHasTestResultInput(ctx context.Context, v interface{}) (*HasTestResultInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNHasTestResultInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHasTestResultInput(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalNHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v model.APIHost) graphql.Marshaler {
