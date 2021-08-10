@@ -12,7 +12,7 @@ const findIndex = function (list, predicate) {
 };
 
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $filter, ChangePointsService, PERFORMANCE_ANALYSIS_AND_TRIAGE_API,
+  $scope, $window, $http, $location, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings,
   TestSample, CANARY_EXCLUSION_REGEX, ApiTaskdata,
   loadBuildFailures, loadChangePoints, loadTrendData,
@@ -184,7 +184,6 @@ $http.get(templateUrl).success(function(template) {
   $scope.Math = $window.Math;
   $scope.conf = $window.plugins["perf"];
   $scope.task = $window.task_data;
-  $scope.newTrendChartsUi = PERFORMANCE_ANALYSIS_AND_TRIAGE_API.UI + "/task/" + ($scope.task ? $scope.task.id : null) + "/performanceData";
   $scope.tablemode = 'maxthroughput';
   $scope.threadLevelsRadio = {
     options: [{
