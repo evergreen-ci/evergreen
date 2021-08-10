@@ -2958,7 +2958,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		})
 	}
 
-	// Use a $facet to perform seperate aggregations for $count and to sort and paginate the results in the same query
+	// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
 	tasksAndCountPipeline := bson.M{
 		"$facet": bson.M{
 			"count": []bson.M{
