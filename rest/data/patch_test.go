@@ -168,7 +168,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestProjectNonexistentFail() {
 	s.Error(err)
 }
 
-func (s *PatchConnectorFetchByProjectSuite) TestPatchNonexistentFail() {
+func (s *PatchConnectorFetchByProjectSuite) TestEmptyPatchesOkay() {
 	patches, err := s.ctx.FindPatchesByProject("project4", s.time, 1)
 	s.NoError(err)
 	s.Len(patches, 0)
