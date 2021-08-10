@@ -2920,15 +2920,14 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			},
 		})
 	}
-	countPipeline := []bson.M{}
-	countPipeline = append(countPipeline, pipeline...)
-	countPipeline = append(countPipeline, bson.M{"$count": "count"})
+
+	sortAndPaginatePipeline := []bson.M{}
 
 	sortFields := bson.D{}
 	if len(opts.Sorts) > 0 {
 		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				pipeline = append(pipeline, addStatusColorSort((singleSort.Key)))
+				sortAndPaginatePipeline = append(sortAndPaginatePipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
@@ -2936,15 +2935,16 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		}
 	}
 	sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
-	pipeline = append(pipeline, bson.M{
+
+	sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 		"$sort": sortFields,
 	})
 
 	if opts.Limit > 0 {
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$skip": opts.Page * opts.Limit,
 		})
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$limit": opts.Limit,
 		})
 	}
@@ -2953,12 +2953,28 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		for _, field := range opts.FieldsToProject {
 			fieldKeys[field] = 1
 		}
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$project": fieldKeys,
 		})
 	}
 
-	tasks := []Task{}
+	// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
+	tasksAndCountPipeline := bson.M{
+		"$facet": bson.M{
+			"count": []bson.M{
+				{"$count": "count"},
+			},
+			"tasks": sortAndPaginatePipeline,
+		},
+	}
+
+	pipeline = append(pipeline, tasksAndCountPipeline)
+
+	type TasksAndCount struct {
+		Tasks []Task           `bson:"tasks"`
+		Count []map[string]int `bson:"count"`
+	}
+	results := []TasksAndCount{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -2966,28 +2982,19 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	if err != nil {
 		return nil, 0, err
 	}
-	err = cursor.All(ctx, &tasks)
+	err = cursor.All(ctx, &results)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	type counter struct {
-		Count int `bson:"count"`
-	}
-	tmp := []counter{}
-	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
-	if err != nil {
-		return nil, 0, err
-	}
-	err = cursor.All(ctx, &tmp)
-	if err != nil {
-		return nil, 0, err
+	if len(results) == 0 {
+		return nil, 0, nil
 	}
 	count := 0
-	if len(tmp) > 0 {
-		count = tmp[0].Count
+	result := results[0]
+	if len(result.Count) != 0 {
+		count = result.Count[0]["count"]
 	}
-	return tasks, count, nil
+	return result.Tasks, count, nil
 }
 
 // addStatusColorSort adds a stage which takes a task display status and returns an integer
