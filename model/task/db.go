@@ -802,11 +802,7 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
-type taskBuildVariants struct {
-	BuildVariants []string `bson:"build_variants"`
-}
-
-// FindUniqueBuildVariantNamesByTask returns TaskBuildVariants with a list of unique build variants
+// FindUniqueBuildVariantNamesByTask returns  a list of unique build variants names for a given task name
 func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]string, error) {
 	buildVariantsKey := "build_variants"
 	pipeline := []bson.M{
@@ -842,6 +838,10 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]str
 	pipeline = append(pipeline, group)
 	pipeline = append(pipeline, unwindAndSort...)
 
+	type taskBuildVariants struct {
+		BuildVariants []string `bson:"build_variants"`
+	}
+
 	result := []taskBuildVariants{}
 	if err := Aggregate(pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "can't get build variant tasks")
@@ -852,11 +852,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]str
 	return result[0].BuildVariants, nil
 }
 
-type buildVariantTasks struct {
-	Tasks []string `bson:"tasks"`
-}
-
-// FindTaskNamesByBuildVariant returns BuildVariantTasks with a list of unique task names for a given build variant
+// FindTaskNamesByBuildVariant returns a list of unique task names for a given build variant
 func FindTaskNamesByBuildVariant(projectId string, buildVariant string) ([]string, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -890,6 +886,11 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string) ([]strin
 
 	pipeline = append(pipeline, group)
 	pipeline = append(pipeline, unwindAndSort...)
+
+	type buildVariantTasks struct {
+		Tasks []string `bson:"tasks"`
+	}
+
 	result := []buildVariantTasks{}
 	if err := Aggregate(pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "can't get build variant tasks")
