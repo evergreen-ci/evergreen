@@ -2933,9 +2933,9 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			}
 		}
-	} else {
-		sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
 	}
+	sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
+
 	sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 		"$sort": sortFields,
 	})
