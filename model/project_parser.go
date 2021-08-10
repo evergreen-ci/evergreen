@@ -1142,7 +1142,7 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 		}
 	}
 
-	return errors.Wrap(catcher.Resolve(), "failed to merge unordered unique list")
+	return catcher.Resolve()
 }
 
 // mergeUnordered merges fields that are lists where the order doesn't matter.
@@ -1183,7 +1183,7 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 		pp.EarlyTermination = toMerge.EarlyTermination
 	}
 
-	return errors.Wrap(catcher.Resolve(), "failed to merge ordered unique list")
+	return catcher.Resolve()
 }
 
 // mergeUnique merges fields that are non-lists.
@@ -1240,7 +1240,7 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.ExecTimeoutSecs = toMerge.ExecTimeoutSecs
 	}
 
-	return errors.Wrap(catcher.Resolve(), "failed to merge unique fields")
+	return catcher.Resolve()
 }
 
 // mergeBuildVariant merges build variants.
@@ -1270,7 +1270,7 @@ func (pp *ParserProject) mergeBuildVariant(toMerge *ParserProject) error {
 		pp.BuildVariants = append(pp.BuildVariants, *bv)
 	}
 
-	return errors.Wrap(catcher.Resolve(), "failed to merge build variants")
+	return catcher.Resolve()
 }
 
 // mergeMatrix merges matices/axes.
@@ -1284,7 +1284,7 @@ func (pp *ParserProject) mergeMatrix(toMerge *ParserProject) error {
 		pp.Axes = toMerge.Axes
 	}
 
-	return errors.Wrap(catcher.Resolve(), "failed to merge matrices")
+	return catcher.Resolve()
 }
 
 func (pp *ParserProject) mergeMultipleProjectConfigs(toMerge *ParserProject) error {

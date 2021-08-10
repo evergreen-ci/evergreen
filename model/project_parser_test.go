@@ -1907,29 +1907,32 @@ func TestMergeUnique(t *testing.T) {
 
 func TestMergeUniqueFail(t *testing.T) {
 	main := &ParserProject{
-		Stepback:        utility.ToBoolPtr(true),
-		BatchTime:       utility.ToIntPtr(1),
-		OomTracker:      utility.ToBoolPtr(true),
-		DisplayName:     utility.ToStringPtr("name"),
-		CommandType:     utility.ToStringPtr("type"),
-		CallbackTimeout: utility.ToIntPtr(1),
-		ExecTimeoutSecs: utility.ToIntPtr(1),
+		Stepback:          utility.ToBoolPtr(true),
+		BatchTime:         utility.ToIntPtr(1),
+		OomTracker:        utility.ToBoolPtr(true),
+		PreErrorFailsTask: utility.ToBoolPtr(true),
+		DisplayName:       utility.ToStringPtr("name"),
+		CommandType:       utility.ToStringPtr("type"),
+		CallbackTimeout:   utility.ToIntPtr(1),
+		ExecTimeoutSecs:   utility.ToIntPtr(1),
 	}
 
 	add := &ParserProject{
-		Stepback:        utility.ToBoolPtr(true),
-		BatchTime:       utility.ToIntPtr(1),
-		OomTracker:      utility.ToBoolPtr(true),
-		DisplayName:     utility.ToStringPtr("name"),
-		CommandType:     utility.ToStringPtr("type"),
-		CallbackTimeout: utility.ToIntPtr(1),
-		ExecTimeoutSecs: utility.ToIntPtr(1),
+		Stepback:          utility.ToBoolPtr(true),
+		BatchTime:         utility.ToIntPtr(1),
+		OomTracker:        utility.ToBoolPtr(true),
+		PreErrorFailsTask: utility.ToBoolPtr(true),
+		DisplayName:       utility.ToStringPtr("name"),
+		CommandType:       utility.ToStringPtr("type"),
+		CallbackTimeout:   utility.ToIntPtr(1),
+		ExecTimeoutSecs:   utility.ToIntPtr(1),
 	}
 
 	err := main.mergeUnique(add)
 	assert.Contains(t, err.Error(), "stepback can only be defined in one yaml")
 	assert.Contains(t, err.Error(), "batch time can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "oom tracker can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "OOM tracker can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "pre error fails task can only be defined in one yaml")
 	assert.Contains(t, err.Error(), "display name can only be defined in one yaml")
 	assert.Contains(t, err.Error(), "command type can only be defined in one yaml")
 	assert.Contains(t, err.Error(), "callback timeout can only be defined in one yaml")
