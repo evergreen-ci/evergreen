@@ -2790,9 +2790,9 @@ func (r *queryResolver) BuildVariantHistory(ctx context.Context, projectId strin
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
 	}
 	if buildVariantTasks == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find tasks for build variant: '%s'", buildVariant))
+		return []string{}, nil
 	}
-	return buildVariantTasks.Tasks, nil
+	return buildVariantTasks, nil
 }
 
 func (r *queryResolver) TaskHistory(ctx context.Context, projectId string, taskName string) ([]string, error) {
@@ -2801,9 +2801,9 @@ func (r *queryResolver) TaskHistory(ctx context.Context, projectId string, taskN
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
 	}
 	if taskBuildVariants == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find build variants for task: '%s'", taskName))
+		return []string{}, nil
 	}
-	return taskBuildVariants.BuildVariants, nil
+	return taskBuildVariants, nil
 
 }
 
