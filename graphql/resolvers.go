@@ -2704,7 +2704,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 		execT, err := task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, &t.Execution)
 		if err != nil {
 			// The task is not found, possibly because the execution is out of sync with the display task. Get the latest instead.
-			execT, err = task.FindOne(task.ById(execTaskID))
+			execT, err = task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, nil)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
 			}

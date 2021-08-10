@@ -1156,21 +1156,16 @@ func FindOneOld(query db.Q) (*Task, error) {
 	return task, err
 }
 
-// FindOld returns all task from the old tasks collection that satisfies the query.
-func FindOld(query db.Q) ([]Task, error) {
+// FindOldNoMerge returns all task from the old tasks collection that satisfies
+// the query without merging test results.
+func FindOldNoMerge(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
-	for i, task := range tasks {
-		if err = task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging new test results")
-		}
-		tasks[i] = task
-	}
 
-	// remove display tasks from results
+	// Remove display tasks from results.
 	for i := len(tasks) - 1; i >= 0; i-- {
 		t := tasks[i]
 		if t.DisplayOnly {
@@ -1180,13 +1175,13 @@ func FindOld(query db.Q) ([]Task, error) {
 	return tasks, err
 }
 
-// FindOldWithDisplayTasks finds display and execution tasks in the old collection
-func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
-	tasks := []Task{}
-	err := db.FindAllQ(OldCollection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
+// FindOld returns all task from the old tasks collection that satisfies the query.
+func FindOld(query db.Q) ([]Task, error) {
+	tasks, err := FindOldNoMerge(query)
+	if err != nil {
+		return nil, err
 	}
+
 	for i, task := range tasks {
 		if err = task.MergeNewTestResults(); err != nil {
 			return nil, errors.Wrap(err, "error merging new test results")
@@ -1194,11 +1189,53 @@ func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 		tasks[i] = task
 	}
 
+	return tasks, nil
+}
+
+// FindOldWithDisplayTasksNoMerge finds display and execution tasks in the old
+// collection without merging test results.
+func FindOldWithDisplayTasksNoMerge(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(OldCollection, query, &tasks)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
 	return tasks, err
 }
 
+// FindOldWithDisplayTasks finds display and execution tasks in the old
+// collection.
+func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
+	tasks, err := FindOldWithDisplayTasks(query)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, task := range tasks {
+		if err = task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging new test results")
+		}
+		tasks[i] = task
+	}
+
+	return tasks, nil
+}
+
+// FindOneIdOldOrNewNoMerge attempts to find a given task ID by first looking
+// in the old collection, then the tasks collection, without merging test
+// results.
+func FindOneIdOldOrNewNoMerge(id string, execution int) (*Task, error) {
+	task, err := FindOneOldNoMerge(ById(MakeOldID(id, execution)))
+	if task == nil || err != nil {
+		return FindOneNoMerge(ById(id))
+	}
+
+	return task, err
+}
+
 // FindOneIdOldOrNew attempts to find a given task ID by first looking in the
-// old collection, then the tasks collection
+// old collection, then the tasks collection.
 func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	task, err := FindOneOld(ById(MakeOldID(id, execution)))
 	if task == nil || err != nil {
@@ -1208,8 +1245,20 @@ func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	return task, err
 }
 
+// FindOneIdNewOrOldNoMerge attempts to find a given task ID by first looking
+// in the tasks collection, then the old tasks collection, without merging test
+// results.
+func FindOneIdNewOrOldNoMerge(id string) (*Task, error) {
+	task, err := FindOneNoMerge(ById(id))
+	if task == nil || err != nil {
+		return FindOneOldNoMerge(ById(id))
+	}
+
+	return task, err
+}
+
 // FindOneIdNewOrOld attempts to find a given task ID by first looking in the
-// tasks collection, then the old tasks collection
+// tasks collection, then the old tasks collection.
 func FindOneIdNewOrOld(id string) (*Task, error) {
 	task, err := FindOne(ById(id))
 	if task == nil || err != nil {

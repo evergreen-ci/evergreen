@@ -576,7 +576,7 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 		return false, nil, nil
 	}
 
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
+	previousTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
 		evergreen.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
@@ -815,9 +815,13 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if t.task.DisplayOnly {
 		results, err := t.task.GetTestResultsForDisplayTask()
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't get test results for display task")
+			return nil, errors.Wrap(err, "getting test results for display task")
 		}
 		t.task.LocalTestResults = results
+	} else {
+		if err := t.task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "getting test results for task")
+		}
 	}
 
 	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
@@ -1040,7 +1044,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 	if t.task.TriggerID != "" && sub.Owner != "" { // don't notify committer for a triggered build
 		return nil, nil
 	}
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+	previousTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
 		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
