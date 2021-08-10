@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -253,8 +254,19 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 		}
 	}
 
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	err = json.NewDecoder(body).Decode(&h.annotation)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
 	// check if the task exists
-	t, err := task.FindOne(task.ById(h.taskId))
+	// t, err := task.FindOne(task.ById(h.taskId))
+	t, err := task.FindByIdExecution(h.taskId, h.annotation.TaskExecution)
 	if err != nil {
 		return errors.Wrap(err, "error finding task")
 	}
@@ -264,13 +276,9 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-
-	body := util.NewRequestReader(r)
-	defer body.Close()
-	err = json.NewDecoder(body).Decode(&h.annotation)
-	if err != nil {
+	if !evergreen.IsFailedTaskStatus(t.Status) {
 		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
+			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
 			StatusCode: http.StatusBadRequest,
 		}
 	}

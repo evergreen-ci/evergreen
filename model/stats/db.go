@@ -1029,7 +1029,8 @@ func makeSum(condition bson.M) bson.M {
 
 func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
-	err := db.FindOne(DailyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	q := db.Query(bson.M{dbTestStatsIdKey: id})
+	err := db.FindOneQ(DailyTestStatsCollection, q, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1038,7 +1039,8 @@ func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 
 func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
-	err := db.FindOne(HourlyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	q := db.Query(bson.M{dbTestStatsIdKey: id})
+	err := db.FindOneQ(HourlyTestStatsCollection, q, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1047,7 +1049,8 @@ func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 
 func GetDailyTaskDoc(id DbTaskStatsId) (*DbTaskStats, error) {
 	doc := DbTaskStats{}
-	err := db.FindOne(DailyTaskStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	q := db.Query(bson.M{DbTaskStatsIdKey: id})
+	err := db.FindOneQ(DailyTaskStatsCollection, q, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

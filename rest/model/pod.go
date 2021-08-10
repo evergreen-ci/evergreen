@@ -24,39 +24,24 @@ type APITimeInfo struct {
 
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
-	Name    *string         `json:"name"`
-	Memory  *int            `json:"memory"`
-	CPU     *int            `json:"cpu"`
-	Image   *string         `json:"image"`
-	EnvVars []*APIPodEnvVar `json:"env_vars"`
-	OS      *string         `json:"os"`
-	Arch    *string         `json:"arch"`
-	Secret  *string         `json:"secret"`
+	Name       *string         `json:"name"`
+	Memory     *int            `json:"memory"`
+	CPU        *int            `json:"cpu"`
+	Image      *string         `json:"image"`
+	EnvVars    []*APIPodEnvVar `json:"env_vars"`
+	OS         *string         `json:"os"`
+	Arch       *string         `json:"arch"`
+	Secret     *string         `json:"secret"`
+	WorkingDir *string         `json:"working_dir"`
 }
 
 type APICreatePodResponse struct {
 	ID string `json:"id"`
 }
 
-// fromAPIEnvVars converts a slice of APIPodEnvVars to a map of environment variables and a map of secrets.
-func (p *APICreatePod) fromAPIEnvVars(api []*APIPodEnvVar) (envVars map[string]string, secrets map[string]string) {
-	envVars = make(map[string]string)
-	secrets = make(map[string]string)
-
-	for _, envVar := range api {
-		if utility.FromBoolPtr(envVar.Secret) {
-			secrets[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
-		} else {
-			envVars[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
-		}
-	}
-
-	return envVars, secrets
-}
-
 // ToService returns a service layer pod.Pod using the data from APIPod.
 func (p *APICreatePod) ToService() (interface{}, error) {
-	envVars, secrets := p.fromAPIEnvVars(p.EnvVars)
+	envVars, secrets := p.splitEnvVars()
 	os := pod.OS(utility.FromStringPtr(p.OS))
 	if err := os.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid OS")
@@ -70,6 +55,9 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 		ID:     utility.RandomString(),
 		Secret: utility.FromStringPtr(p.Secret),
 		Status: pod.StatusInitializing,
+		TimeInfo: pod.TimeInfo{
+			Initializing: time.Now(),
+		},
 		TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
 			Image:      utility.FromStringPtr(p.Image),
 			MemoryMB:   utility.FromIntPtr(p.Memory),
@@ -78,8 +66,26 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 			Arch:       arch,
 			EnvVars:    envVars,
 			EnvSecrets: secrets,
+			WorkingDir: utility.FromStringPtr(p.WorkingDir),
 		},
 	}, nil
+}
+
+// splitEnvVars splits its environment variables into its non-secret and secret
+// environment variables.
+func (p *APICreatePod) splitEnvVars() (envVars map[string]string, secrets map[string]string) {
+	envVars = make(map[string]string)
+	secrets = make(map[string]string)
+
+	for _, envVar := range p.EnvVars {
+		if utility.FromBoolPtr(envVar.Secret) {
+			secrets[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
+		} else {
+			envVars[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
+		}
+	}
+
+	return envVars, secrets
 }
 
 // APIPod represents a pod to be used and returned from the REST API.
@@ -88,6 +94,7 @@ type APIPod struct {
 	Status                    *APIPodStatus                      `json:"status"`
 	Secret                    *string                            `json:"secret,omitempty"`
 	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts,omitempty"`
+	TimeInfo                  APIPodTimeInfo                     `json:"time_info,omitempty"`
 	Resources                 APIPodResourceInfo                 `json:"resources,omitempty"`
 }
 
@@ -100,6 +107,7 @@ func (p *APIPod) BuildFromService(dbPod *pod.Pod) error {
 	}
 	p.Status = &status
 	p.Secret = utility.ToStringPtr(dbPod.Secret)
+	p.TimeInfo.BuildFromService(dbPod.TimeInfo)
 	p.TaskContainerCreationOpts.BuildFromService(dbPod.TaskContainerCreationOpts)
 	p.Resources.BuildFromService(dbPod.Resources)
 	return nil
@@ -115,12 +123,14 @@ func (p *APIPod) ToService() (*pod.Pod, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "converting task container creation options to service")
 	}
+	timing := p.TimeInfo.ToService()
 	resources := p.Resources.ToService()
 	return &pod.Pod{
 		ID:                        utility.FromStringPtr(p.ID),
 		Status:                    *s,
 		Secret:                    utility.FromStringPtr(p.Secret),
 		TaskContainerCreationOpts: *taskCreationOpts,
+		TimeInfo:                  timing,
 		Resources:                 resources,
 	}, nil
 }
@@ -186,6 +196,7 @@ type APIPodTaskContainerCreationOptions struct {
 	Arch       *string           `json:"arch,omitempty"`
 	EnvVars    map[string]string `json:"env_vars,omitempty"`
 	EnvSecrets map[string]string `json:"env_secrets,omitempty"`
+	WorkingDir *string           `json:"working_dir,omitempty"`
 }
 
 // BuildFromService converts service-layer task container creation options into
@@ -198,6 +209,7 @@ func (o *APIPodTaskContainerCreationOptions) BuildFromService(opts pod.TaskConta
 	o.Arch = utility.ToStringPtr(string(opts.Arch))
 	o.EnvVars = opts.EnvVars
 	o.EnvSecrets = opts.EnvSecrets
+	o.WorkingDir = utility.ToStringPtr(opts.WorkingDir)
 }
 
 // ToService converts REST API task container creation options into
@@ -219,13 +231,39 @@ func (o *APIPodTaskContainerCreationOptions) ToService() (*pod.TaskContainerCrea
 		Arch:       arch,
 		EnvVars:    o.EnvVars,
 		EnvSecrets: o.EnvSecrets,
+		WorkingDir: utility.FromStringPtr(o.WorkingDir),
 	}, nil
+}
+
+// APIPodResourceInfo represents timing information about the pod lifecycle.
+type APIPodTimeInfo struct {
+	Initializing     *time.Time `json:"initializing,omitempty"`
+	Starting         *time.Time `json:"starting,omitempty"`
+	LastCommunicated *time.Time `json:"last_communicated,omitempty"`
+}
+
+// BuildFromService converts service-layer resource information into REST API
+// timing information.
+func (i *APIPodTimeInfo) BuildFromService(info pod.TimeInfo) {
+	i.Initializing = utility.ToTimePtr(info.Initializing)
+	i.Starting = utility.ToTimePtr(info.Starting)
+	i.LastCommunicated = utility.ToTimePtr(info.LastCommunicated)
+}
+
+// BuildFromService converts service-layer resource information into REST API
+// timing information.
+func (i *APIPodTimeInfo) ToService() pod.TimeInfo {
+	return pod.TimeInfo{
+		Initializing:     utility.FromTimePtr(i.Initializing),
+		Starting:         utility.FromTimePtr(i.Starting),
+		LastCommunicated: utility.FromTimePtr(i.LastCommunicated),
+	}
 }
 
 // APIPodResourceInfo represents information about external resources associated
 // with a pod.
 type APIPodResourceInfo struct {
-	ID           *string  `json:"id,omitempty"`
+	ExternalID   *string  `json:"external_id,omitempty"`
 	DefinitionID *string  `json:"definition_id,omitempty"`
 	Cluster      *string  `json:"cluster,omitempty"`
 	SecretIDs    []string `json:"secret_ids,omitempty"`
@@ -234,7 +272,7 @@ type APIPodResourceInfo struct {
 // BuildFromService converts service-layer resource information into REST API
 // resource information.
 func (i *APIPodResourceInfo) BuildFromService(info pod.ResourceInfo) {
-	i.ID = utility.ToStringPtr(info.ID)
+	i.ExternalID = utility.ToStringPtr(info.ExternalID)
 	i.DefinitionID = utility.ToStringPtr(info.DefinitionID)
 	i.Cluster = utility.ToStringPtr(info.Cluster)
 	i.SecretIDs = info.SecretIDs
@@ -244,7 +282,7 @@ func (i *APIPodResourceInfo) BuildFromService(info pod.ResourceInfo) {
 // information.
 func (i *APIPodResourceInfo) ToService() pod.ResourceInfo {
 	return pod.ResourceInfo{
-		ID:           utility.FromStringPtr(i.ID),
+		ExternalID:   utility.FromStringPtr(i.ExternalID),
 		DefinitionID: utility.FromStringPtr(i.DefinitionID),
 		Cluster:      utility.FromStringPtr(i.Cluster),
 		SecretIDs:    i.SecretIDs,

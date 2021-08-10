@@ -130,7 +130,7 @@ func TestMonitor(t *testing.T) {
 				RequestID:    84,
 				Command:      nil,
 			})
-			_, ok := m.inProg[84]
+			_, ok = m.inProg[84]
 			assert.True(t, ok)
 			assert.Equal(t, "", m.inProg[84].collName)
 			assert.Equal(t, "wat", m.inProg[84].cmdName)
@@ -156,7 +156,8 @@ func TestMonitor(t *testing.T) {
 			collector.Succeeded(ctx, &event.CommandSucceededEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 42}})
 			assert.Len(t, m.current, 1)
 
-			op, ok := m.current[eventKey{dbName: "amboy", cmdName: "find", collName: "jobs"}]
+			var op *eventRecord
+			op, ok = m.current[eventKey{dbName: "amboy", cmdName: "find", collName: "jobs"}]
 			require.True(t, ok)
 			assert.EqualValues(t, 1, op.Succeeded)
 			assert.EqualValues(t, 0, op.Failed)
@@ -175,13 +176,14 @@ func TestMonitor(t *testing.T) {
 			collector.Failed(ctx, &event.CommandFailedEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 100}})
 			assert.Len(t, m.current, 1)
 
-			op, ok := m.current[eventKey{dbName: "amboy", cmdName: "aggregate", collName: "group.jobs"}]
+			var op *eventRecord
+			op, ok = m.current[eventKey{dbName: "amboy", cmdName: "aggregate", collName: "group.jobs"}]
 			require.True(t, ok)
 			assert.EqualValues(t, 0, op.Succeeded)
 			assert.EqualValues(t, 1, op.Failed)
 		})
 		t.Run("Wrapper", func(t *testing.T) {
-			m, ok := NewBasicMonitor(nil).(*basicMonitor)
+			m, ok = NewBasicMonitor(nil).(*basicMonitor)
 			require.True(t, ok)
 			t.Run("Logging", func(t *testing.T) {
 				nctx, ncancel := context.WithCancel(ctx)
@@ -209,7 +211,9 @@ func TestMonitor(t *testing.T) {
 	})
 	t.Run("Rotate", func(t *testing.T) {
 		t.Run("Timestamp", func(t *testing.T) {
+			m.currentLock.Lock() // We have to lock because race detector complains
 			startedAt := m.currentStartAt
+			m.currentLock.Unlock()
 			_ = m.Rotate()
 			assert.True(t, startedAt.Before(m.currentStartAt))
 		})
@@ -284,7 +288,7 @@ func resetMonitor(t *testing.T, in Monitor) {
 	}
 }
 
-func buildCommand(t *testing.T, doc *birch.Document) bson.Raw {
+func buildCommand(t *testing.T, doc *birch.Document) bson.Raw { //nolint: interfacer
 	raw, err := doc.MarshalBSON()
 	require.NoError(t, err)
 	return bson.Raw(raw)

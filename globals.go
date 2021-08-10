@@ -12,6 +12,7 @@ import (
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
+	ParentPatchUser = "parent_patch"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
@@ -115,6 +116,7 @@ const (
 	PatchStarted     = "started"
 	PatchSucceeded   = "succeeded"
 	PatchFailed      = "failed"
+	PatchAborted     = "aborted" // This is a display status only and not a real patch status
 	PatchAllOutcomes = "*"
 
 	PushLogPushing = "pushing"
@@ -251,7 +253,7 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 
-	RetryGenerateTasksError = "error saving config in `generate.tasks`"
+	SaveGenerateTasksError = "error saving config in `generate.tasks`"
 )
 
 var InternalAliases []string = []string{
@@ -317,7 +319,7 @@ func VersionStatusToPatchStatus(versionStatus string) (string, error) {
 	case VersionSucceeded:
 		return PatchSucceeded, nil
 	default:
-		return "", errors.New("unknown version status")
+		return "", errors.Errorf("unknown version status: %s", versionStatus)
 	}
 }
 
@@ -344,8 +346,11 @@ const (
 )
 
 const (
+	// CredentialsCollection is the collection containing TLS credentials to
+	// connect to a Jasper service running on a host.
 	CredentialsCollection = "credentials"
-	CAName                = "evergreen"
+	// CAName is the name of the root CA for the TLS credentials.
+	CAName = "evergreen"
 )
 
 // cloud provider related constants

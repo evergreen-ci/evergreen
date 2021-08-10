@@ -114,6 +114,16 @@ type MainlineCommitsOptions struct {
 	SkipOrderNumber *int   `json:"skipOrderNumber"`
 }
 
+type Manifest struct {
+	ID              string                 `json:"id"`
+	Revision        string                 `json:"revision"`
+	Project         string                 `json:"project"`
+	Branch          string                 `json:"branch"`
+	IsBase          bool                   `json:"isBase"`
+	ModuleOverrides map[string]string      `json:"moduleOverrides"`
+	Modules         map[string]interface{} `json:"modules"`
+}
+
 type PatchConfigure struct {
 	Description   string                `json:"description"`
 	VariantsTasks []*VariantTasks       `json:"variantsTasks"`
@@ -269,6 +279,11 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
+}
+
+type VersionTiming struct {
+	Makespan  *model.APIDuration `json:"makespan"`
+	TimeTaken *model.APIDuration `json:"timeTaken"`
 }
 
 type VolumeHost struct {

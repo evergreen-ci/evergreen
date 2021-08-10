@@ -1,8 +1,12 @@
 package pod
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -10,8 +14,7 @@ import (
 // Pod represents a related collection of containers. This model holds metadata
 // about containers running in a container orchestration system.
 type Pod struct {
-	// ID is the unique identifier for the metadata document. This is
-	// semantically unrelated to the ExternalID.
+	// ID is the unique identifier for the metadata document.
 	ID string `bson:"_id" json:"id"`
 	// Status is the current state of the pod.
 	Status Status `bson:"pod_status"`
@@ -21,8 +24,10 @@ type Pod struct {
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
-	// Resources are external resources that are managed by this pod.
-	Resources ResourceInfo `bson:"ecs_info" json:"ecs_info"`
+	// TimeInfo contains timing information for the pod's lifecycle.
+	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
+	// Resources are external resources that are owned and managed by this pod.
+	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
 }
 
 // Status represents a possible state that a pod can be in.
@@ -50,25 +55,46 @@ func (s Status) Validate() error {
 	}
 }
 
+// TimeInfo represents timing information about the pod.
+type TimeInfo struct {
+	// Initializing is the time when this pod was initialized and is waiting to
+	// be created in the container orchestration service. This should correspond
+	// with the time when the pod transitions to the "initializing" status.
+	Initializing time.Time `bson:"initializing,omitempty" json:"initializing,omitempty"`
+	// Starting is the time when this pod was actually requested to start its
+	// containers. This should correspond with the time when the pod transitions
+	// to the "starting" status.
+	Starting time.Time `bson:"starting,omitempty" json:"starting,omitempty"`
+	// LastCommunicated is the last time that the pod connected to the
+	// application server or the application server connected to the pod. This
+	// is used as one indicator of liveliness.
+	LastCommunicated time.Time `bson:"last_communicated,omitempty" json:"last_communicated,omitempty"`
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (i TimeInfo) IsZero() bool {
+	return i.Initializing.IsZero() && i.Starting.IsZero() && i.LastCommunicated.IsZero()
+}
+
 // ResourceInfo represents information about external resources associated with
 // a pod.
 type ResourceInfo struct {
-	// ID is the unique resource identifier for the collection of containers
-	// running.
-	ID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
+	// ExternalID is the unique resource identifier for the aggregate collection
+	// of containers running for the pod in the container service.
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
 	// DefinitionID is the resource identifier for the pod definition template.
-	DefinitionID string `bson:"definition_id" json:"definition_id"`
-	// Cluster is the name of the cluster where the containers are running.
-	Cluster string `bson:"cluster" json:"cluster"`
-	// SecretIDs are the resource identifiers for the secrets owned by this pod
-	// in Secrets Manager.
-	SecretIDs []string `bson:"secret_ids" json:"secret_ids"`
+	DefinitionID string `bson:"definition_id,omitempty" json:"definition_id,omitempty"`
+	// Cluster is the namespace where the containers are running.
+	Cluster string `bson:"cluster,omitempty" json:"cluster,omitempty"`
+	// SecretIDs are the resource identifiers for the secrets owned by this pod.
+	SecretIDs []string `bson:"secret_ids,omitempty" json:"secret_ids,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o ResourceInfo) IsZero() bool {
-	return o.ID == "" && o.DefinitionID == "" && o.Cluster == "" && len(o.SecretIDs) == 0
+	return o.ExternalID == "" && o.DefinitionID == "" && o.Cluster == "" && len(o.SecretIDs) == 0
 }
 
 // TaskContainerCreationOptions are options to apply to the task's container
@@ -95,6 +121,8 @@ type TaskContainerCreationOptions struct {
 	// task's container environment variables. The secret name is the
 	// environment variable name.
 	EnvSecrets map[string]string `bson:"env_secrets,omitempty" json:"env_secrets,omitempty"`
+	// WorkingDir is the working directory for the task's container.
+	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir,omitempty"`
 }
 
 // OS represents recognized operating systems for pods.
@@ -156,13 +184,27 @@ func (p *Pod) Remove() error {
 	)
 }
 
-// UpdateStatus updates the pod status.
+// UpdateStatus updates the pod status. If the new status is identical to the
+// current one, this is a no-op.
 func (p *Pod) UpdateStatus(s Status) error {
+	if p.Status == s {
+		return nil
+	}
+
 	byIDAndStatus := ByID(p.ID)
 	byIDAndStatus[StatusKey] = p.Status
 
+	updated := utility.BSONTime(time.Now())
+	setFields := bson.M{StatusKey: s}
+	switch s {
+	case StatusInitializing:
+		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoInitializingKey)] = updated
+	case StatusStarting:
+		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey)] = updated
+	}
+
 	if err := UpdateOne(byIDAndStatus, bson.M{
-		"$set": bson.M{StatusKey: s},
+		"$set": setFields,
 	}); err != nil {
 		return err
 	}
@@ -170,6 +212,29 @@ func (p *Pod) UpdateStatus(s Status) error {
 	event.LogPodStatusChanged(p.ID, string(p.Status), string(s))
 
 	p.Status = s
+	switch s {
+	case StatusInitializing:
+		p.TimeInfo.Initializing = updated
+	case StatusStarting:
+		p.TimeInfo.Starting = updated
+	}
+
+	return nil
+}
+
+// UpdateResources updates the pod resources.
+func (p *Pod) UpdateResources(info ResourceInfo) error {
+	setFields := bson.M{
+		ResourcesKey: info,
+	}
+
+	if err := UpdateOne(ByID(p.ID), bson.M{
+		"$set": setFields,
+	}); err != nil {
+		return err
+	}
+
+	p.Resources = info
 
 	return nil
 }

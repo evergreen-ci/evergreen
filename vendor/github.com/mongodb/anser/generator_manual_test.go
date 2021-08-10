@@ -129,7 +129,8 @@ func TestManualMigrationGenerator(t *testing.T) {
 			assert.Len(t, ids, 3)
 			assert.Len(t, job.Migrations, 3)
 
-			network, err := env.GetDependencyNetwork()
+			var network model.DependencyNetworker
+			network, err = env.GetDependencyNetwork()
 			require.NoError(t, err)
 			network.AddGroup(job.ID(), ids)
 			networkMap := network.Network()

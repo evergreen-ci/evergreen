@@ -251,6 +251,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// GetDisplayTask will set the DisplayTask on t if applicable
+	// we set this before the collect task end job is run to prevent data race
+	dt, err := t.GetDisplayTask()
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+	}
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
@@ -310,14 +316,20 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		endTaskResp.ShouldExit = true
 	}
 
-	grip.Info(message.Fields{
+	msg := message.Fields{
 		"message":     "Successfully marked task as finished",
 		"task_id":     t.Id,
 		"execution":   t.Execution,
 		"operation":   "mark end",
 		"duration":    time.Since(finishTime),
 		"should_exit": endTaskResp.ShouldExit,
-	})
+	}
+
+	if dt != nil {
+		msg["display_task_id"] = t.DisplayTask.Id
+	}
+
+	grip.Info(msg)
 	gimlet.WriteJSON(w, endTaskResp)
 }
 
@@ -591,7 +603,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
 					dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
 				} else if nextTask.TaskGroupOrder > 1 {
-					// if the previous task in the group has yet to run and should run, then wait for it
+					// If the previous task in the group has yet to run and should run, then wait for it.
 					tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
 					if err != nil {
 						return nil, false, errors.WithStack(err)
@@ -600,7 +612,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 						if tgTask.TaskGroupOrder == nextTask.TaskGroupOrder {
 							break
 						}
-						if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsDispatchable() {
+						if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsDispatchable() && !tgTask.Blocked() {
 							dispatchRace = fmt.Sprintf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
 						}
 					}

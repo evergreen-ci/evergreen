@@ -39,11 +39,15 @@ type DBPatchConnector struct{}
 // FindPatchesByProject uses the service layer's patches type to query the backing database for
 // the patches.
 func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
-	patches, err := patch.Find(patch.PatchesByProject(projectId, ts, limit))
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching patches for project %s", projectId)
-	}
 	apiPatches := []restModel.APIPatch{}
+	id, err := model.GetIdForProject(projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching project with id %s", projectId)
+	}
+	patches, err := patch.Find(patch.PatchesByProject(id, ts, limit))
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching patches for project %s", id)
+	}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
@@ -327,10 +331,11 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockPatchConnector struct {
-	CachedPatches    []restModel.APIPatch
-	CachedAborted    map[string]string
-	CachedPriority   map[string]int64
-	CachedRawPatches map[string]string
+	CachedPatches     []restModel.APIPatch
+	CachedProjectRefs []restModel.APIProjectRef
+	CachedAborted     map[string]string
+	CachedPriority    map[string]int64
+	CachedRawPatches  map[string]string
 }
 
 // FindPatchesByProject queries the cached patches splice for the matching patches.
@@ -340,9 +345,18 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 	if limit <= 0 {
 		return patchesToReturn, nil
 	}
+	var id string
+	for _, p := range hp.CachedProjectRefs {
+		if *p.Id == projectId || *p.Identifier == projectId {
+			id = *p.Id
+		}
+	}
+	if id == "" {
+		return nil, errors.Errorf("failed to find project '%s'", projectId)
+	}
 	for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
 		p := hp.CachedPatches[i]
-		if *p.ProjectId == projectId && !p.CreateTime.After(ts) {
+		if *p.ProjectId == id && !p.CreateTime.After(ts) {
 			patchesToReturn = append(patchesToReturn, p)
 			if len(patchesToReturn) == limit {
 				break

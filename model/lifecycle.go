@@ -672,6 +672,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		RevisionOrderNumber: args.Version.RevisionOrderNumber,
 		Requester:           args.Version.Requester,
 		ParentPatchID:       args.Version.ParentPatchID,
+		ParentPatchNumber:   args.Version.ParentPatchNumber,
 		TriggerID:           args.Version.TriggerID,
 		TriggerType:         args.Version.TriggerType,
 		TriggerEvent:        args.Version.TriggerEvent,
@@ -868,6 +869,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		if !createAll && !utility.StringSliceContains(displayNames, dt.Name) {
 			// this display task already exists, but may need to be updated
 			execTaskIds := []string{}
+			displayTaskActivated := false
 			for _, et := range dt.ExecTasks {
 				execTaskId := execTable.GetId(b.BuildVariant, et)
 				if execTaskId == "" {
@@ -883,8 +885,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 					continue
 				}
 				execTaskIds = append(execTaskIds, execTaskId)
+				if execTask, ok := taskMap[execTaskId]; ok && execTask.Activated {
+					displayTaskActivated = true
+				}
 			}
-			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds), message.Fields{
+			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds, displayTaskActivated), message.Fields{
 				"message":      "problem adding exec tasks to display tasks",
 				"exec_tasks":   execTaskIds,
 				"display_task": dt.Name,
@@ -1245,6 +1250,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Requester:           v.Requester,
 		ParentPatchID:       b.ParentPatchID,
+		ParentPatchNumber:   b.ParentPatchNumber,
 		Version:             v.Id,
 		Revision:            v.Revision,
 		MustHaveResults:     utility.FromBoolPtr(project.GetSpecForTask(buildVarTask.Name).MustHaveResults),
@@ -1288,6 +1294,7 @@ func createDisplayTask(id string, displayName string, execTasks []string, bv *Bu
 		Project:             p.Identifier,
 		Requester:           v.Requester,
 		ParentPatchID:       b.ParentPatchID,
+		ParentPatchNumber:   b.ParentPatchNumber,
 		DisplayOnly:         true,
 		ExecutionTasks:      execTasks,
 		Status:              evergreen.TaskUndispatched,

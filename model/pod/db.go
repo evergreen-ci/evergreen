@@ -1,6 +1,8 @@
 package pod
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -17,6 +19,7 @@ var (
 	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
 	SecretKey                    = bsonutil.MustHaveTag(Pod{}, "Secret")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
+	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
 
 	TaskContainerCreationOptsImageKey    = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Image")
@@ -27,11 +30,21 @@ var (
 	TaskContainerCreationOptsEnvVarsKey  = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvVars")
 	TaskContainerCreationOptsSecretsKey  = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "EnvSecrets")
 
-	ResourceInfoID           = bsonutil.MustHaveTag(ResourceInfo{}, "ID")
-	ResourceInfoDefinitionID = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
-	ResourceInfoCluster      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
-	ResourceInfoSecretIDs    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
+	TimeInfoInitializingKey     = bsonutil.MustHaveTag(TimeInfo{}, "Initializing")
+	TimeInfoStartingKey         = bsonutil.MustHaveTag(TimeInfo{}, "Starting")
+	TimeInfoLastCommunicatedKey = bsonutil.MustHaveTag(TimeInfo{}, "LastCommunicated")
+
+	ResourceInfoExternalIDKey   = bsonutil.MustHaveTag(ResourceInfo{}, "ExternalID")
+	ResourceInfoDefinitionIDKey = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
+	ResourceInfoClusterKey      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
+	ResourceInfoSecretIDsKey    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
 )
+
+// Find finds all pods matching the given query.
+func Find(q bson.M) ([]Pod, error) {
+	pods := []Pod{}
+	return pods, errors.WithStack(db.FindAllQ(Collection, db.Query(q), &pods))
+}
 
 // FindOne finds one pod by the given query.
 func FindOne(q bson.M) (*Pod, error) {
@@ -65,4 +78,21 @@ func UpdateOne(query interface{}, update interface{}) error {
 		query,
 		update,
 	)
+}
+
+// FindByStaleStarting finds all pods running tasks that have been stuck in
+// the starting state for an extended period of time.
+func FindByStaleStarting() ([]Pod, error) {
+	startingCutoff := time.Now().Add(-15 * time.Minute)
+	return Find(bson.M{
+		bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey): bson.M{"$lte": startingCutoff},
+		StatusKey: StatusStarting,
+	})
+}
+
+// FindByInitializing find all pods that are initializing but have not started any containers.
+func FindByInitializing() ([]Pod, error) {
+	return Find(bson.M{
+		StatusKey: StatusInitializing,
+	})
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -166,7 +167,7 @@ type PeriodicBuildDefinition struct {
 
 type WorkstationConfig struct {
 	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
-	GitClone      bool                      `bson:"git_clone" json:"git_clone"`
+	GitClone      *bool                     `bson:"git_clone" json:"git_clone"`
 }
 
 type WorkstationSetupCommand struct {
@@ -203,8 +204,8 @@ var (
 	ProjectRefRemotePathKey              = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefHiddenKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
 	ProjectRefRepotrackerError           = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
-	ProjectRefFilesIgnoredFromCache      = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
-	ProjectRefDisabledStatsCache         = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
+	ProjectRefFilesIgnoredFromCacheKey   = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
+	ProjectRefDisabledStatsCacheKey      = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
@@ -304,6 +305,10 @@ func (ts *TaskSyncOptions) IsConfigEnabled() bool {
 	return utility.FromBoolPtr(ts.ConfigEnabled)
 }
 
+func (c *WorkstationConfig) ShouldGitClone() bool {
+	return utility.FromBoolPtr(c.GitClone)
+}
+
 func (p *ProjectRef) AliasesNeeded() bool {
 	return p.IsGithubChecksEnabled() || p.IsGitTagVersionsEnabled() || p.IsGithubChecksEnabled() || p.IsPRTestingEnabled()
 }
@@ -314,6 +319,20 @@ const (
 	ProjectTriggerLevelBuild = "build"
 	intervalPrefix           = "@every"
 	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
+)
+
+type ProjectRefSection string
+
+const (
+	ProjectRefGeneralSection        = "general"
+	ProjectRefAccessSection         = "access"
+	ProjectRefVariablesSection      = "variables"
+	ProjectRefGithubAndCQSection    = "github_and_commit_queue"
+	ProjectRefNotificationsSection  = "notifications"
+	ProjectRefPatchAliasSection     = "patch_alias"
+	ProjectRefWorkstationsSection   = "workstations"
+	ProjectRefTriggersSection       = "triggers"
+	ProjectRefPeriodicBuildsSection = "periodic-builds"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -802,17 +821,8 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 // Can't hide a repo without hiding the branches, so don't need to aggregate here.
 func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
-	err := db.FindAll(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefHiddenKey: bson.M{"$ne": true},
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
+	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -862,15 +872,8 @@ func FindProjectRefsByIds(ids []string) ([]ProjectRef, error) {
 
 func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
-	err := db.FindAll(
-		ProjectRefCollection,
-		filter,
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
+	q := db.Query(filter)
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1117,23 +1120,16 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRe
 func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	err := db.FindAll(
-		ProjectRefCollection,
-		bson.M{
-			"$or": []bson.M{
-				{
-					ProjectRefOwnerKey: repoRef.Owner,
-					ProjectRefRepoKey:  repoRef.Repo,
-				},
-				{ProjectRefRepoRefIdKey: repoRef.Id},
+	q := db.Query(bson.M{
+		"$or": []bson.M{
+			{
+				ProjectRefOwnerKey: repoRef.Owner,
+				ProjectRefRepoKey:  repoRef.Repo,
 			},
+			{ProjectRefRepoRefIdKey: repoRef.Id},
 		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
+	})
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1149,6 +1145,47 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 		}
 	}
 	return projectRefs, nil
+}
+
+func GetProjectSettingsEventById(projectId string) (*ProjectSettingsEvent, error) {
+	pRef, err := FindOneProjectRef(projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding project ref")
+	}
+	if pRef == nil {
+		return nil, errors.Errorf("couldn't find project ref")
+	}
+	return GetProjectSettingsEvents(pRef)
+}
+
+func GetProjectSettingsEvents(p *ProjectRef) (*ProjectSettingsEvent, error) {
+	hook, err := FindGithubHook(p.Owner, p.Repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Id)
+	}
+	projectVars, err := FindOneProjectVars(p.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Id)
+	}
+	if projectVars == nil {
+		projectVars = &ProjectVars{}
+	}
+	projectAliases, err := FindAliasesForProject(p.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Id)
+	}
+	subscriptions, err := event.FindSubscriptionsByOwner(p.Id, event.OwnerTypeProject)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Id)
+	}
+	projectSettingsEvent := ProjectSettingsEvent{
+		ProjectRef:         *p,
+		GitHubHooksEnabled: hook != nil,
+		Vars:               *projectVars,
+		Aliases:            projectAliases,
+		Subscriptions:      subscriptions,
+	}
+	return &projectSettingsEvent, nil
 }
 
 func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
@@ -1216,15 +1253,8 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 		filter[ProjectRefIdKey] = bson.M{"$gte": key}
 	}
 
-	err := db.FindAll(
-		ProjectRefCollection,
-		filter,
-		db.NoProjection,
-		[]string{sortSpec},
-		db.NoSkip,
-		limit,
-		&projectRefs,
-	)
+	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 
 	for i := range projectRefs {
 		projectRefs[i].checkDefaultLogger()
@@ -1253,6 +1283,185 @@ func (projectRef *ProjectRef) Upsert() error {
 			ProjectRefIdKey: projectRef.Id,
 		}, projectRef)
 	return err
+}
+
+// if projectSettings aren't given, default the section to the repo
+func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRefSection) (bool, error) {
+	if p == nil {
+		p = &ProjectRef{} // use a blank project ref to default the section to repo
+	}
+	var err error
+	switch section {
+	case ProjectRefGeneralSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					ProjectRefEnabledKey:                 p.Enabled,
+					ProjectRefBatchTimeKey:               p.BatchTime,
+					ProjectRefRemotePathKey:              p.RemotePath,
+					projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
+					projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+					ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
+					projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
+					projectRefDefaultLoggerKey:           p.DefaultLogger,
+					projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
+					projectRefPatchingDisabledKey:        p.PatchingDisabled,
+					projectRefTaskSyncKey:                p.TaskSync,
+					ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
+					ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
+				},
+			})
+	case ProjectRefAccessSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					ProjectRefPrivateKey:    p.Private,
+					ProjectRefRestrictedKey: p.Restricted,
+					ProjectRefAdminsKey:     p.Admins,
+				},
+			})
+	case ProjectRefGithubAndCQSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefPRTestingEnabledKey:      p.PRTestingEnabled,
+					projectRefGithubChecksEnabledKey:   p.GithubChecksEnabled,
+					projectRefGithubTriggerAliasesKey:  p.PatchTriggerAliases,
+					projectRefGitTagVersionsEnabledKey: p.GitTagVersionsEnabled,
+					ProjectRefGitTagAuthorizedUsersKey: p.GitTagAuthorizedUsers,
+					ProjectRefGitTagAuthorizedTeamsKey: p.GitTagAuthorizedTeams,
+					projectRefCommitQueueKey:           p.CommitQueue,
+				},
+			})
+	case ProjectRefNotificationsSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{projectRefNotifyOnFailureKey: p.NotifyOnBuildFailure},
+			})
+	case ProjectRefWorkstationsSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{projectRefWorkstationConfigKey: p.WorkstationConfig},
+			})
+	case ProjectRefTriggersSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefTriggersKey: p.Triggers,
+				},
+			})
+	case ProjectRefPatchAliasSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefPatchTriggerAliasesKey: p.PatchTriggerAliases,
+				},
+			})
+	case ProjectRefPeriodicBuildsSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
+			})
+	case ProjectRefVariablesSection:
+		// this section doesn't modify the project ref
+		return false, nil
+	default:
+		return false, errors.Errorf("invalid section")
+	}
+
+	if err != nil {
+		return false, errors.Wrap(err, "error saving section")
+	}
+	return true, nil
+}
+
+// DefaultSectionToRepo modifies a subset of the project ref to use the repo values instead.
+// This subset is based on the pages used in Spruce.
+// If project settings aren't given, we should assume we're defaulting to repo and we need
+// to create our own project settings event  after completing the update.
+func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId string) error {
+	before, err := GetProjectSettingsEventById(projectId)
+	if err != nil {
+		return errors.Wrap(err, "error getting before project settings event")
+	}
+
+	modified, err := saveProjectRefForSection(projectId, nil, section)
+	if err != nil {
+		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
+	}
+
+	// Handle sections that modify collections outside of the project ref.
+	// Handle errors at the end so that we can still log the project as modified, if applicable.
+	catcher := grip.NewBasicCatcher()
+	switch section {
+	case ProjectRefVariablesSection:
+		err = db.Update(ProjectVarsCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$unset": bson.M{
+					projectVarsMapKey:    1,
+					privateVarsMapKey:    1,
+					restrictedVarsMapKey: 1,
+				},
+			})
+		if err == nil {
+			modified = true
+		}
+		catcher.Wrapf(err, "error defaulting to repo for section '%s'", section)
+	case ProjectRefGithubAndCQSection:
+		for _, a := range before.Aliases {
+			// remove only internal aliases; any alias without these labels is a patch alias
+			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
+				err = RemoveProjectAlias(a.ID.Hex())
+				if err == nil {
+					modified = true // track if any aliases here were correctly modified so we can log the changes
+				}
+				catcher.Add(err)
+			}
+		}
+	case ProjectRefNotificationsSection:
+		// handle subscriptions
+		for _, sub := range before.Subscriptions {
+			err = event.RemoveSubscription(sub.ID)
+			if err == nil {
+				modified = true // track if any subscriptions were correctly modified so we can log the changes
+			}
+			catcher.Add(err)
+		}
+	case ProjectRefPatchAliasSection:
+		catcher := grip.NewBasicCatcher()
+		// remove only patch aliases, i.e. aliases without an Evergreen-internal label
+		for _, a := range before.Aliases {
+			if !utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
+				err = RemoveProjectAlias(a.ID.Hex())
+				if err == nil {
+					modified = true // track if any aliases were correctly modified so we can log the changes
+				}
+				catcher.Add(err)
+			}
+		}
+	}
+	if modified {
+		catcher.Add(getAndLogProjectModified(projectId, userId, before))
+	}
+
+	return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
+}
+
+func getAndLogProjectModified(id, userId string, before *ProjectSettingsEvent) error {
+	after, err := GetProjectSettingsEventById(id)
+	if err != nil {
+		return errors.Wrap(err, "error getting after project settings event")
+	}
+	return errors.Wrapf(LogProjectModified(id, userId, before, after), "error logging project modified")
 }
 
 // getBatchTimeForVariant returns the Batch Time to be used for this variant
@@ -1354,7 +1563,8 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 	}
 
 	for _, buildStatus := range lastActivated.BuildVariants {
-		if buildStatus.BuildVariant != t.Variant || !buildStatus.Activated {
+		// don't check buildStatus activation; this corresponds to the batchtime for the overall variant, not the individual tasks.
+		if buildStatus.BuildVariant != t.Variant {
 			continue
 		}
 		for _, taskStatus := range buildStatus.BatchTimeTasks {
@@ -1544,14 +1754,14 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser string,
 // Stderr/Stdin are passed through to the commands as well as Stdout, when opts.Quiet is false
 // The commands' working directories may not exist and need to be created before running the commands
 func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
-	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.GitClone {
+	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.ShouldGitClone() {
 		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Id)
 	}
 
 	baseDir := filepath.Join(opts.Directory, p.Id)
 	cmds := []*jasper.Command{}
 
-	if p.WorkstationConfig.GitClone {
+	if p.WorkstationConfig.ShouldGitClone() {
 		args := []string{"git", "clone", "-b", p.Branch, fmt.Sprintf("git@github.com:%s/%s.git", p.Owner, p.Repo), opts.Directory}
 
 		cmd := jasper.NewCommand().Add(args).

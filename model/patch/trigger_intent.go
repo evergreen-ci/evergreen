@@ -60,7 +60,7 @@ func (t *TriggerIntent) GetType() string {
 func (t *TriggerIntent) NewPatch() *Patch {
 	return &Patch{
 		Id:       mgobson.ObjectIdHex(t.Id),
-		Author:   t.Author,
+		Author:   evergreen.ParentPatchUser,
 		Triggers: TriggerInfo{ParentPatch: t.ParentID},
 		Status:   evergreen.PatchCreated,
 		Project:  t.ProjectID,

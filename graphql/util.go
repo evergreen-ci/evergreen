@@ -36,14 +36,15 @@ import (
 )
 
 type FilterSortAndPaginateCedarTestResultsOpts struct {
-	GroupID     string
-	Limit       int
-	Page        int
-	SortBy      string
-	SortDir     int
-	Statuses    []string
-	TestName    string
-	TestResults []apimodels.CedarTestResult
+	GroupID          string
+	Limit            int
+	Page             int
+	SortBy           string
+	SortDir          int
+	Statuses         []string
+	TestName         string
+	TestResults      []apimodels.CedarTestResult
+	BaseTestStatuses map[string]string
 }
 
 // FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array.
@@ -98,10 +99,17 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if opts.SortDir == 1 {
-					return testResultI.TestName < testResultJ.TestName
+				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
+					if opts.SortDir == 1 {
+						return testResultI.DisplayTestName < testResultJ.DisplayTestName
+					}
+					return testResultI.DisplayTestName > testResultJ.DisplayTestName
+				} else {
+					if opts.SortDir == 1 {
+						return testResultI.TestName < testResultJ.TestName
+					}
+					return testResultI.TestName > testResultJ.TestName
 				}
-				return testResultI.TestName > testResultJ.TestName
 			})
 			break
 		case testresult.StatusKey:
@@ -112,6 +120,24 @@ func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestRe
 					return testResultI.Status < testResultJ.Status
 				}
 				return testResultI.Status > testResultJ.Status
+			})
+			break
+		case "base_status":
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+
+				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
+					if opts.SortDir == 1 {
+						return opts.BaseTestStatuses[testResultI.DisplayTestName] < opts.BaseTestStatuses[testResultJ.DisplayTestName]
+					}
+					return opts.BaseTestStatuses[testResultI.DisplayTestName] > opts.BaseTestStatuses[testResultJ.DisplayTestName]
+				} else {
+					if opts.SortDir == 1 {
+						return opts.BaseTestStatuses[testResultI.TestName] < opts.BaseTestStatuses[testResultJ.TestName]
+					}
+					return opts.BaseTestStatuses[testResultI.TestName] > opts.BaseTestStatuses[testResultJ.TestName]
+				}
 			})
 			break
 		}
@@ -726,6 +752,42 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
+
+	if evergreen.IsPatchRequester(version.Requester) {
+		// restart is handled through graphql because we need the user to specify
+		// which downstream tasks they want to restart
+		if modifications.Action != Restart {
+			//do the same for child patches
+			p, err := patch.FindOneId(patchID)
+			if err != nil {
+				return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
+			}
+			if p == nil {
+				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found ", patchID))
+			}
+			if p.IsParent() {
+				for _, childPatchId := range p.Triggers.ChildPatches {
+					p, err := patch.FindOneId(childPatchId)
+					if err != nil {
+						return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding child patch %s: %s", childPatchId, err.Error()))
+					}
+					if p == nil {
+						return ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found ", childPatchId))
+					}
+					// only modify the child patch if it is finalized
+					if p.Version != "" {
+						err = ModifyVersionHandler(ctx, dataConnector, childPatchId, modifications)
+						if err != nil {
+							return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
+						}
+					}
+
+				}
+			}
+
+		}
+	}
+
 	return nil
 }
 

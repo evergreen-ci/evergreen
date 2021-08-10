@@ -273,6 +273,11 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
       label: "this task fails",
     },
     {
+      trigger: "task-failed-or-blocked",
+      resource_type: "TASK",
+      label: "this task fails or is blocked",
+    },
+    {
       trigger: "success",
       resource_type: "TASK",
       label: "this task succeeds",
@@ -375,7 +380,11 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
         url += lineNum;
       }
     }
-
+    const deprecatedLogkeeperLobsterURL = "https://logkeeper.mongodb.org";
+    const isLogkeeperLink = url.includes(`${deprecatedLogkeeperLobsterURL}/build`);
+    if(!isRaw && isLogkeeperLink) {
+      url = url.replace(deprecatedLogkeeperLobsterURL, `${window.evgBaseUrl}/lobster`);
+    }
     return url;
   };
 

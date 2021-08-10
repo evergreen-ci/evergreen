@@ -154,7 +154,7 @@ func (aws *awsSns) handleNotification(ctx context.Context) error {
 					Message:    errors.Wrap(err, "problem processing instance termination").Error(),
 				}
 			}
-		case ec2.InstanceStateNameStopped:
+		case ec2.InstanceStateNameStopped, ec2.InstanceStateNameStopping:
 			if err := aws.handleInstanceStopped(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
@@ -189,11 +189,23 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 			instanceType = stringVal
 		}
 	}
+	existingHostCount, err := host.CountRunningHosts(h.Distro.Id)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "database error counting running hosts by distro_id",
+			"host_id":       h.Id,
+			"distro_id":     h.Distro.Id,
+			"instance_type": instanceType,
+		}))
+		existingHostCount = -1
+	}
+
 	grip.Info(message.Fields{
-		"message":       "got interruption warning from AWS",
-		"distro":        h.Distro.Id,
-		"instance_type": instanceType,
-		"host_id":       h.Id,
+		"message":            "got interruption warning from AWS",
+		"distro":             h.Distro.Id,
+		"running_host_count": existingHostCount,
+		"instance_type":      instanceType,
+		"host_id":            h.Id,
 	})
 
 	if h.Status == evergreen.HostTerminated {

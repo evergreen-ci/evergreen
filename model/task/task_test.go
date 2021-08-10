@@ -2616,12 +2616,13 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	dt1 := Task{
 		Id:             "dt1",
 		DisplayOnly:    true,
+		Activated:      false,
 		ExecutionTasks: []string{"et1", "et2"},
 	}
 	assert.NoError(t, dt1.Insert())
 
 	// no tasks to add
-	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{}))
+	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{}, false))
 	dtFromDB, err := FindOneId(dt1.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dtFromDB)
@@ -2630,7 +2631,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et2")
 
 	// new and existing tasks to add (existing tasks not duplicated)
-	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{"et2", "et3", "et4"}))
+	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{"et2", "et3", "et4"}, true))
 	dtFromDB, err = FindOneId(dt1.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dtFromDB)
@@ -2639,4 +2640,6 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et2")
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et3")
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et4")
+	assert.True(t, dtFromDB.Activated)
+	assert.False(t, utility.IsZeroTime(dtFromDB.ActivatedTime))
 }

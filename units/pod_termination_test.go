@@ -71,7 +71,7 @@ func TestTerminatePodJob(t *testing.T) {
 		},
 		"FailsWhenDeletingResourcesErrors": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
 			require.NoError(t, j.pod.Insert())
-			j.pod.Resources.ID = utility.RandomString()
+			j.pod.Resources.ExternalID = utility.RandomString()
 			j.ecsPod = nil
 
 			j.Run(ctx)
@@ -184,22 +184,21 @@ func TestTerminatePodJob(t *testing.T) {
 				SetImage(p.TaskContainerCreationOpts.Image).
 				AddEnvironmentVariables(envVars...)
 
-			execOpts := cocoa.NewECSPodExecutionOptions().
-				SetCluster(cluster).
-				SetExecutionRole("execution_role")
+			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
 
 			ecsPod, err := pc.CreatePod(ctx, cocoa.NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 				SetCPU(p.TaskContainerCreationOpts.CPU).
 				SetTaskRole("task_role").
+				SetExecutionRole("execution_role").
 				SetExecutionOptions(*execOpts))
 			require.NoError(t, err)
 			j.ecsPod = ecsPod
 
 			info, err := j.ecsPod.Info(ctx)
 			require.NoError(t, err)
-			j.pod.Resources.ID = utility.FromStringPtr(info.Resources.TaskID)
+			j.pod.Resources.ExternalID = utility.FromStringPtr(info.Resources.TaskID)
 			j.pod.Resources.DefinitionID = utility.FromStringPtr(info.Resources.TaskDefinition.ID)
 			j.pod.Resources.Cluster = utility.FromStringPtr(info.Resources.Cluster)
 			for _, secret := range info.Resources.Secrets {

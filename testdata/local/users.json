@@ -2,3 +2,4 @@
 {"_id":"privileged","display_name":"Privileged User","email":"","apikey":"abb623665fdbf368a1db980dde6ee0f0", "roles": ["logkeeper", "evergreen", "localhostEdit", "localhost2", "project_super", "distro_super"]}
 {"_id":"regular","display_name":"Regular User","email":"","apikey":"abb623665fdbf368a1db980dde6ee0f0", "roles": ["logkeeper", "evergreen", "localhostEdit", "localhost2"]}
 { "_id": "bob.hicks", "display_name": "Bob Hicks", "first_name": "Bob", "last_name": "Hicks", "settings": { "timezone": "America/New_York", "region": "us-west-1", "github_user": { "last_known_as": "bob_smith_1" } } }
+{ "_id": "annie.black", "display_name": "Annie Black", "first_name": "Annie", "last_name": "Black", "settings": { "timezone": "America/New_York", "region": "us-west-1", "github_user": { "last_known_as": "ablack12" } } }

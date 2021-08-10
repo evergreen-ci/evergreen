@@ -10,6 +10,7 @@ type Query {
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
+  version(id: String!): Version!
   projects: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
@@ -153,6 +154,7 @@ type MainlineCommitVersion {
   version: Version
   rolledUpVersions: [Version!]
 }
+
 type Version {
   id: String!
   createTime: Time!
@@ -165,12 +167,38 @@ type Version {
   order: Int!
   repo: String!
   project: String!
+  projectIdentifier: String!
   branch: String!
   requester: String!
   activated: Boolean
   taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+  isPatch: Boolean!
+  patch: Patch
+  taskCount: Int
+  baseVersionID: String
+  versionTiming: VersionTiming
+  parameters: [Parameter!]!
+  taskStatuses: [String!]!
+  baseTaskStatuses: [String!]!
+  manifest: Manifest
 }
+
+type Manifest {
+  id: String!
+  revision: String!
+  project: String!
+  branch: String!
+  isBase: Boolean!
+  moduleOverrides: StringMap
+  modules: Map
+}
+
+type VersionTiming {
+  makespan: Duration
+  timeTaken: Duration
+}
+
 type StatusCount {
   status: String!
   count: Int!
@@ -724,7 +752,7 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
-  patchMetadata: PatchMetadata!
+  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int
   project: Project
@@ -741,7 +769,8 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   totalTestCount: Int!
-  version: String!
+  version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
+  versionMetadata: Version!
 }
 
 type BaseTaskInfo {
@@ -1030,3 +1059,4 @@ type Source {
 scalar Time
 scalar Duration
 scalar StringMap
+scalar Map
