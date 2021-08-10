@@ -46,6 +46,9 @@ type Query interface {
 	Select(interface{}) Query
 	Skip(n int) Query
 	Sort(...string) Query
+	// Hint tells the query which index to use. The input must be either the
+	// name of the index as a string or the index specification as a document.
+	Hint(interface{}) Query
 	Apply(Change, interface{}) (*ChangeInfo, error)
 	Results
 }

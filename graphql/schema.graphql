@@ -73,7 +73,10 @@ type Query {
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
+  buildVariantHistory(projectId: String!, buildVariant: String!): [String!]
+  taskHistory(projectId: String!, taskName: String!): [String!]
 }
+
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
@@ -178,6 +181,17 @@ type Version {
   parameters: [Parameter!]!
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
+  manifest: Manifest
+}
+
+type Manifest {
+  id: String!
+  revision: String!
+  project: String!
+  branch: String!
+  isBase: Boolean!
+  moduleOverrides: StringMap
+  modules: Map
 }
 
 type VersionTiming {
@@ -200,6 +214,8 @@ input MainlineCommitsOptions {
   limit: Int = 7
   skipOrderNumber: Int = 0
 }
+
+
 enum SpawnHostStatusActions {
   START
   STOP
@@ -1043,3 +1059,4 @@ type Source {
 scalar Time
 scalar Duration
 scalar StringMap
+scalar Map

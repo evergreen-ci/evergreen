@@ -26,6 +26,7 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskFinished, makeTaskTriggers)
+	registry.registerEventHandler(event.ResourceTypeTask, event.TaskBlocked, makeTaskTriggers)
 }
 
 const (
@@ -34,6 +35,7 @@ const (
 	triggerTaskRegressionByTest              = "regression-by-test"
 	triggerBuildBreak                        = "build-break"
 	keyFailureType                           = "failure-type"
+	triggerTaskFailedOrBlocked               = "task-failed-or-blocked"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -52,6 +54,7 @@ func makeTaskTriggers() eventHandler {
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
 		triggerBuildBreak:                        t.buildBreak,
+		triggerTaskFailedOrBlocked:               t.taskFailedOrBlocked,
 	}
 
 	return t
@@ -471,6 +474,21 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 	}
 
 	return t.generate(sub, "", "")
+}
+
+func (t *taskTriggers) taskFailedOrBlocked(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
+	// pass in past tense override so that the message reads "has been blocked" rather than building on status
+	if t.task.Blocked() {
+		return t.generate(sub, "been blocked", "")
+
+	}
+
+	// check if it's failed instead
+	return t.taskFailure(sub)
 }
 
 func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notification.Notification, error) {

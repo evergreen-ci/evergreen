@@ -405,12 +405,14 @@ type queryWrapper struct {
 	limit      int
 	skip       int
 	sort       []string
+	hint       interface{}
 }
 
 func (q *queryWrapper) Limit(l int) Query             { q.limit = l; return q }
 func (q *queryWrapper) Select(proj interface{}) Query { q.projection = proj; return q }
 func (q *queryWrapper) Sort(keys ...string) Query     { q.sort = append(q.sort, keys...); return q }
 func (q *queryWrapper) Skip(s int) Query              { q.skip = s; return q }
+func (q *queryWrapper) Hint(h interface{}) Query      { q.hint = h; return q }
 func (q *queryWrapper) Count() (int, error) {
 	v, err := q.coll.CountDocuments(q.ctx, q.filter)
 	return int(v), errors.WithStack(err)
@@ -494,6 +496,9 @@ func (q *queryWrapper) exec() error {
 	}
 	if q.skip > 0 {
 		opts.SetSkip(int64(q.skip))
+	}
+	if q.hint != "" {
+		opts.SetHint(q.hint)
 	}
 
 	var err error

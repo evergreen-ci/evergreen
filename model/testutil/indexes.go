@@ -10,7 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// AddTestIndexes drops and adds indexes for a given collection
+// AddTestIndexes drops all existing indexes and adds indexes for a given
+// collection
 func AddTestIndexes(collection string, unique, sparse bool, key ...string) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(db.DropAllIndexes(collection))
@@ -27,5 +28,6 @@ func AddTestIndexes(collection string, unique, sparse bool, key ...string) error
 		Keys:    spec,
 		Options: options.Index().SetUnique(unique).SetSparse(sparse),
 	}))
+
 	return catcher.Resolve()
 }

@@ -58,13 +58,8 @@ func GetDistroAliasQueueInfo(distroID string) (DistroQueueInfo, error) {
 
 func getDistroQueueInfoCollection(distroID, collection string) (DistroQueueInfo, error) {
 	taskQueue := &TaskQueue{}
-	err := db.FindOne(
-		collection,
-		bson.M{taskQueueDistroKey: distroID},
-		bson.M{taskQueueDistroQueueInfoKey: 1},
-		db.NoSort,
-		taskQueue,
-	)
+	q := db.Query(bson.M{taskQueueDistroKey: distroID}).Project(bson.M{taskQueueDistroQueueInfoKey: 1})
+	err := db.FindOneQ(collection, q, taskQueue)
 
 	if err != nil {
 		return DistroQueueInfo{}, errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", distroID)
@@ -624,26 +619,13 @@ func FindEnqueuedTaskIDs(taskIDs []string, coll string) ([]string, error) {
 
 func FindAllTaskQueues() ([]TaskQueue, error) {
 	taskQueues := []TaskQueue{}
-	err := db.FindAll(
-		TaskQueuesCollection,
-		bson.M{},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&taskQueues,
-	)
+	err := db.FindAllQ(TaskQueuesCollection, db.Query(bson.M{}), &taskQueues)
 	return taskQueues, err
 }
 
 func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
-	err := db.FindOne(
-		TaskQueuesCollection,
-		bson.M{taskQueueDistroKey: distroID},
-		db.NoProjection,
-		db.NoSort,
-		&queue)
+	err := db.FindOneQ(TaskQueuesCollection, db.Query(bson.M{taskQueueDistroKey: distroID}), &queue)
 
 	grip.DebugWhen(err == nil, message.Fields{
 		"message":                              "fetched the distro's TaskQueueItems to create its TaskQueue",
@@ -660,12 +642,8 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 
 func FindDistroAliasTaskQueue(distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
-	err := db.FindOne(
-		TaskAliasQueuesCollection,
-		bson.M{taskQueueDistroKey: distroID},
-		db.NoProjection,
-		db.NoSort,
-		&queue)
+	q := db.Query(bson.M{taskQueueDistroKey: distroID})
+	err := db.FindOneQ(TaskAliasQueuesCollection, q, &queue)
 
 	return queue, errors.WithStack(err)
 }

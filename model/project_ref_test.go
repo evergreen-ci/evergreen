@@ -8,12 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -66,7 +68,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 			{ChildProject: "a different branch"},
 		},
 		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
-		WorkstationConfig: WorkstationConfig{GitClone: true},
+		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
 		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.FalsePtr()},
 	}
 	assert.NoError(t, projectRef.Insert())
@@ -118,7 +120,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.True(t, mergedProject.CommitQueue.IsEnabled())
 	assert.Equal(t, "using repo commit queue", mergedProject.CommitQueue.Message)
 
-	assert.True(t, mergedProject.WorkstationConfig.GitClone)
+	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
 }
 
@@ -260,6 +262,206 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 		},
 	} {
 		t.Run(name, test)
+	}
+}
+
+func TestDefaultRepoBySection(t *testing.T) {
+	for name, test := range map[string]func(t *testing.T, id string){
+		ProjectRefGeneralSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefGeneralSection, "me"))
+
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Equal(t, pRefFromDb.BatchTime, 0)
+			assert.Nil(t, pRefFromDb.RepotrackerDisabled)
+			assert.Nil(t, pRefFromDb.DeactivatePrevious)
+			assert.Empty(t, pRefFromDb.RemotePath)
+			assert.Nil(t, pRefFromDb.TaskSync.ConfigEnabled)
+			assert.Nil(t, pRefFromDb.FilesIgnoredFromCache)
+		},
+		ProjectRefAccessSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefAccessSection, "me"))
+
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.Private)
+			assert.Nil(t, pRefFromDb.Restricted)
+			assert.Nil(t, pRefFromDb.Admins)
+		},
+		ProjectRefVariablesSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefVariablesSection, "me"))
+
+			varsFromDb, err := FindOneProjectVars(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, varsFromDb)
+			assert.Nil(t, varsFromDb.Vars)
+			assert.Nil(t, varsFromDb.PrivateVars)
+			assert.Nil(t, varsFromDb.RestrictedVars)
+			assert.NotEmpty(t, varsFromDb.Id)
+		},
+		ProjectRefGithubAndCQSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProject(id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefGithubAndCQSection, "me"))
+
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.PRTestingEnabled)
+			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
+			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
+			aliases, err = FindAliasesForProject(id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 1)
+			// assert that only patch aliases are left
+			for _, a := range aliases {
+				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
+			}
+		},
+		ProjectRefNotificationsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefNotificationsSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
+		},
+		ProjectRefPatchAliasSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProject(id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 5)
+
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefPatchAliasSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
+
+			aliases, err = FindAliasesForProject(id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 4)
+			// assert that no patch aliases are left
+			for _, a := range aliases {
+				assert.Contains(t, evergreen.InternalAliases, a.Alias)
+			}
+		},
+		ProjectRefTriggersSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefTriggersSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.Triggers)
+		},
+		ProjectRefWorkstationsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefWorkstationsSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.WorkstationConfig.GitClone)
+			assert.Nil(t, pRefFromDb.WorkstationConfig.SetupCommands)
+		},
+		ProjectRefPeriodicBuildsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefPeriodicBuildsSection, "me"))
+			pRefFromDb, err := FindOneProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.PeriodicBuilds)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, ProjectAliasCollection,
+				event.SubscriptionsCollection, event.AllLogCollection))
+
+			pRef := ProjectRef{
+				Id:                    "my_project",
+				Owner:                 "candy",
+				Repo:                  "land",
+				BatchTime:             10,
+				RepotrackerDisabled:   utility.TruePtr(),
+				DeactivatePrevious:    utility.FalsePtr(),
+				RemotePath:            "path.yml",
+				TaskSync:              TaskSyncOptions{ConfigEnabled: utility.TruePtr()},
+				FilesIgnoredFromCache: []string{},
+				Private:               utility.TruePtr(),
+				Restricted:            utility.FalsePtr(),
+				Admins:                []string{"annie"},
+				PRTestingEnabled:      utility.TruePtr(),
+				GithubChecksEnabled:   utility.FalsePtr(),
+				GitTagAuthorizedUsers: []string{"anna"},
+				NotifyOnBuildFailure:  utility.FalsePtr(),
+				Triggers: []TriggerDefinition{
+					{Project: "your_project"},
+				},
+				PatchTriggerAliases: []patch.PatchTriggerDefinition{
+					{ChildProject: "your_project"},
+				},
+				WorkstationConfig: WorkstationConfig{
+					GitClone: utility.TruePtr(),
+					SetupCommands: []WorkstationSetupCommand{
+						{Command: "expeliarmus"},
+					},
+				},
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{
+						ID:         "so_occasional",
+						ConfigFile: "build.yml",
+					},
+				},
+			}
+			assert.NoError(t, pRef.Insert())
+
+			pVars := ProjectVars{
+				Id:             pRef.Id,
+				Vars:           map[string]string{"hello": "world"},
+				PrivateVars:    map[string]bool{"hello": true},
+				RestrictedVars: map[string]bool{"hello": true},
+			}
+			assert.NoError(t, pVars.Insert())
+
+			aliases := []ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: pRef.Id,
+					Alias:     evergreen.GithubPRAlias,
+					Variant:   "v",
+					Task:      "t",
+				},
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: pRef.Id,
+					Alias:     evergreen.GitTagAlias,
+					Variant:   "v",
+					Task:      "t",
+				},
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: pRef.Id,
+					Alias:     evergreen.CommitQueueAlias,
+					Variant:   "v",
+					Task:      "t",
+				},
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: pRef.Id,
+					Alias:     evergreen.GithubChecksAlias,
+					Variant:   "v",
+					Task:      "t",
+				},
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: pRef.Id,
+					Alias:     "i am a patch alias!",
+					Variant:   "v",
+					Task:      "t",
+				},
+			}
+			for _, a := range aliases {
+				assert.NoError(t, a.Upsert())
+			}
+			test(t, pRef.Id)
+		})
 	}
 }
 
@@ -1204,7 +1406,7 @@ func TestPointers(t *testing.T) {
 	}{
 		MyString: "this is a string",
 		MyBool:   false,
-		MyStruct: WorkstationConfig{GitClone: true},
+		MyStruct: WorkstationConfig{GitClone: utility.TruePtr()},
 	}
 
 	assert.NoError(t, db.Insert(ProjectRefCollection, ref))
@@ -1214,9 +1416,9 @@ func TestPointers(t *testing.T) {
 		PtrBool   *bool              `bson:"my_bool"`
 		PtrStruct *WorkstationConfig `bson:"config"`
 	}{}
-	assert.NoError(t, db.FindOne(ProjectRefCollection, nil, nil, nil, &pointerRef))
+	assert.NoError(t, db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
 	assert.Equal(t, ref.MyString, *pointerRef.PtrString)
 	assert.False(t, utility.FromBoolTPtr(pointerRef.PtrBool))
 	assert.NotNil(t, pointerRef.PtrStruct)
-	assert.True(t, pointerRef.PtrStruct.GitClone)
+	assert.True(t, pointerRef.PtrStruct.ShouldGitClone())
 }

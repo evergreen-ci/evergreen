@@ -12,6 +12,7 @@ type Q struct {
 	sort       []string
 	skip       int
 	limit      int
+	hint       interface{} // should be bson.D of the index keys or string name of the hint
 }
 
 // Query creates a db.Q for the given MongoDB query. The filter
@@ -63,6 +64,13 @@ func (q Q) Limit(limit int) Q {
 	return q
 }
 
+// Hint sets the hint for a query to determine what index will be used. The hint
+// can be either the index as an ordered document of the keys or a
+func (q Q) Hint(hint interface{}) Q {
+	q.hint = hint
+	return q
+}
+
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
 func FindOneQ(collection string, q Q, out interface{}) error {
@@ -71,6 +79,7 @@ func FindOneQ(collection string, q Q, out interface{}) error {
 		q.filter,
 		q.projection,
 		q.sort,
+		q.hint,
 		out,
 	)
 }
@@ -84,6 +93,7 @@ func FindAllQ(collection string, q Q, out interface{}) error {
 		q.sort,
 		q.skip,
 		q.limit,
+		q.hint,
 		out,
 	))
 }

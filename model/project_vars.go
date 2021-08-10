@@ -50,15 +50,8 @@ type AWSSSHKey struct {
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
-	err := db.FindOne(
-		ProjectVarsCollection,
-		bson.M{
-			projectVarIdKey: projectId,
-		},
-		db.NoProjection,
-		db.NoSort,
-		projectVars,
-	)
+	q := db.Query(bson.M{projectVarIdKey: projectId})
+	err := db.FindOneQ(ProjectVarsCollection, q, projectVars)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -256,17 +249,8 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 func GetVarsByValue(val string) ([]*ProjectVars, error) {
 	matchingProjects := []*ProjectVars{}
 	filter := fmt.Sprintf("function() { for (var field in this.vars) { if (this.vars[field] == \"%s\") return true; } return false; }", val)
-	err := db.FindAll(
-		ProjectVarsCollection,
-		bson.M{
-			"$where": filter,
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&matchingProjects,
-	)
+	q := db.Query(bson.M{"$where": filter})
+	err := db.FindAllQ(ProjectVarsCollection, q, &matchingProjects)
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil

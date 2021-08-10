@@ -803,6 +803,105 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
+// FindUniqueBuildVariantNamesByTask returns  a list of unique build variants names for a given task name
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]string, error) {
+	buildVariantsKey := "build_variants"
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			ProjectKey:     projectId,
+			DisplayNameKey: taskName,
+			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes}},
+		}}
+
+	group := bson.M{
+		"$group": bson.M{
+			"_id":            taskName,
+			buildVariantsKey: bson.M{"$addToSet": "$" + BuildVariantKey},
+		},
+	}
+	unwindAndSort := []bson.M{
+		{
+			"$unwind": "$build_variants",
+		},
+		{
+			"$sort": bson.M{
+				"build_variants": 1,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":            nil,
+				buildVariantsKey: bson.M{"$push": "$" + buildVariantsKey},
+			},
+		},
+	}
+
+	pipeline = append(pipeline, group)
+	pipeline = append(pipeline, unwindAndSort...)
+
+	type taskBuildVariants struct {
+		BuildVariants []string `bson:"build_variants"`
+	}
+
+	result := []taskBuildVariants{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "can't get build variant tasks")
+	}
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return result[0].BuildVariants, nil
+}
+
+// FindTaskNamesByBuildVariant returns a list of unique task names for a given build variant
+func FindTaskNamesByBuildVariant(projectId string, buildVariant string) ([]string, error) {
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			ProjectKey:      projectId,
+			BuildVariantKey: buildVariant,
+			RequesterKey:    bson.M{"$in": evergreen.SystemVersionRequesterTypes}},
+		}}
+
+	group := bson.M{
+		"$group": bson.M{
+			"_id":   buildVariant,
+			"tasks": bson.M{"$addToSet": "$" + DisplayNameKey},
+		},
+	}
+	unwindAndSort := []bson.M{
+		{
+			"$unwind": "$tasks",
+		},
+		{
+			"$sort": bson.M{
+				"tasks": 1,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":   nil,
+				"tasks": bson.M{"$push": "$tasks"},
+			},
+		},
+	}
+
+	pipeline = append(pipeline, group)
+	pipeline = append(pipeline, unwindAndSort...)
+
+	type buildVariantTasks struct {
+		Tasks []string `bson:"tasks"`
+	}
+
+	result := []buildVariantTasks{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "can't get build variant tasks")
+	}
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return result[0].Tasks, nil
+}
+
 // DB Boilerplate
 
 // FindOneNoMerge returns a single task that satisfies the given query without
@@ -1314,9 +1413,7 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
-// UpdateAllMatchingDependenciesForTask updates matching dependencies of the
-// task with the given id.
-func UpdateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
+func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattainable bool) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()

@@ -21,8 +21,11 @@ type databaseLegacyWrapper struct {
 	*mgo.Database
 }
 
-func (d databaseLegacyWrapper) Name() string          { return d.Database.Name }
-func (d databaseLegacyWrapper) C(n string) Collection { return collectionLegacyWrapper{d.Database.C(n)} }
+func (d databaseLegacyWrapper) Name() string { return d.Database.Name }
+
+func (d databaseLegacyWrapper) C(n string) Collection {
+	return collectionLegacyWrapper{Collection: d.Database.C(n)}
+}
 
 type collectionLegacyWrapper struct {
 	*mgo.Collection
@@ -74,6 +77,10 @@ func (q queryLegacyWrapper) Iter() Iterator             { return q.Query.Iter() 
 func (q queryLegacyWrapper) Limit(n int) Query          { return queryLegacyWrapper{q.Query.Limit(n)} }
 func (q queryLegacyWrapper) Skip(n int) Query           { return queryLegacyWrapper{q.Query.Skip(n)} }
 func (q queryLegacyWrapper) Select(p interface{}) Query { return queryLegacyWrapper{q.Query.Select(p)} }
+
+// Hint is an unsupported no-op because the legacy driver's support for hints is
+// limited.
+func (q queryLegacyWrapper) Hint(h interface{}) Query { return queryLegacyWrapper{q.Query} }
 
 func (q queryLegacyWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error) {
 	i, err := q.Query.Apply(buildChange(ch), result)

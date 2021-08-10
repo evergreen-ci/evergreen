@@ -46,6 +46,7 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 			{Project: "project1", CreateTime: s.time.Add(time.Second * 6)},
 			{Project: "project2", CreateTime: s.time.Add(time.Second * 8)},
 			{Project: "project1", CreateTime: s.time.Add(time.Second * 10)},
+			{Project: "project3", CreateTime: s.time.Add(time.Second * 12)},
 		}
 
 		for _, p := range patches {
@@ -55,13 +56,17 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 		}
 		pRef1 := dbModel.ProjectRef{Id: "project1", Identifier: "project_one"}
 		pRef2 := dbModel.ProjectRef{Id: "project2", Identifier: "project_two"}
+		pRef3 := dbModel.ProjectRef{Id: "project3", Identifier: "project_three"}
+		pRef4 := dbModel.ProjectRef{Id: "project4", Identifier: "project_four"}
 		assert.NoError(t, pRef1.Insert())
 		assert.NoError(t, pRef2.Insert())
+		assert.NoError(t, pRef3.Insert())
+		assert.NoError(t, pRef4.Insert())
 		return nil
 	}
 
 	s.teardown = func() error {
-		return db.Clear(patch.Collection)
+		return db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection)
 	}
 
 	suite.Run(t, s)
@@ -73,12 +78,19 @@ func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
 		proj1 := "project1"
+		proj1Identifier := "project_one"
 		proj2 := "project2"
+		proj2Identifier := "project_two"
+		proj3 := "project3"
+		proj3Identifier := "project_three"
+		proj4 := "project4"
+		proj4Identifier := "project_four"
 		nowPlus2 := s.time.Add(time.Second * 2)
 		nowPlus4 := s.time.Add(time.Second * 4)
 		nowPlus6 := s.time.Add(time.Second * 6)
 		nowPlus8 := s.time.Add(time.Second * 8)
 		nowPlus10 := s.time.Add(time.Second * 10)
+		nowPlus12 := s.time.Add(time.Second * 12)
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
 			CachedPatches: []model.APIPatch{
 				{ProjectId: &proj1, CreateTime: &s.time},
@@ -87,6 +99,13 @@ func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
 				{ProjectId: &proj1, CreateTime: &nowPlus6},
 				{ProjectId: &proj2, CreateTime: &nowPlus8},
 				{ProjectId: &proj1, CreateTime: &nowPlus10},
+				{ProjectId: &proj3, ProjectIdentifier: &proj3Identifier, CreateTime: &nowPlus12},
+			},
+			CachedProjectRefs: []model.APIProjectRef{
+				{Id: &proj1, Identifier: &proj1Identifier},
+				{Id: &proj2, Identifier: &proj2Identifier},
+				{Id: &proj3, Identifier: &proj3Identifier},
+				{Id: &proj4, Identifier: &proj4Identifier},
 			},
 		},
 		}
@@ -144,8 +163,13 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
 	s.Equal(s.time.Add(time.Second*10), *patches[0].CreateTime)
 }
 
-func (s *PatchConnectorFetchByProjectSuite) TestFetchNonexistentFail() {
-	patches, err := s.ctx.FindPatchesByProject("zzz", s.time, 1)
+func (s *PatchConnectorFetchByProjectSuite) TestProjectNonexistentFail() {
+	_, err := s.ctx.FindPatchesByProject("zzz", s.time, 1)
+	s.Error(err)
+}
+
+func (s *PatchConnectorFetchByProjectSuite) TestEmptyPatchesOkay() {
+	patches, err := s.ctx.FindPatchesByProject("project4", s.time, 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }
@@ -162,6 +186,14 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
 	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Len(patches, 0)
+}
+
+func (s *PatchConnectorFetchByProjectSuite) TestFindPatchesByIdentifier() {
+	patches, err := s.ctx.FindPatchesByProject("project_three", s.time.Add(time.Second*14), 1)
+	s.NoError(err)
+	s.NotNil(patches)
+	s.Len(patches, 1)
+	s.Equal("project3", *patches[0].ProjectId)
 }
 
 ////////////////////////////////////////////////////////////////////////

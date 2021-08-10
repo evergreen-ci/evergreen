@@ -62,7 +62,8 @@ type Version struct {
 	Requester string `bson:"r" json:"requester,omitempty"`
 
 	// child patches will store the id of the parent patch
-	ParentPatchID string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
+	ParentPatchID     string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
+	ParentPatchNumber int    `bson:"parent_patch_number" json:"parent_patch_number,omitempty"`
 
 	// version errors - this is used to keep track of any errors that were
 	// encountered in the process of creating a version. If there are no errors

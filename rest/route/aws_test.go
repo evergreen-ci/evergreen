@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -67,6 +66,7 @@ func TestAWSSNSNotificationHandlers(t *testing.T) {
 		Id:        "agent_host",
 		StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 		StartedBy: evergreen.User,
+		Provider:  evergreen.ProviderNameMock,
 	}
 	spawnHost := host.Host{
 		Id:        "spawn_host",
@@ -89,17 +89,14 @@ func TestAWSSNSNotificationHandlers(t *testing.T) {
 			aws.payload = sns.Payload{MessageId: messageID}
 			require.NoError(t, aws.handleInstanceInterruptionWarning(ctx, agentHost.Id))
 			require.Equal(t, 1, aws.queue.Stats(ctx).Total)
-			assert.True(t, strings.HasPrefix(aws.queue.Next(ctx).ID(), fmt.Sprintf("host-termination-job.%s", agentHost.Id)))
 		},
 		"InstanceTerminatedInitiatesInstanceStatusCheck": func(t *testing.T) {
 			require.NoError(t, aws.handleInstanceTerminated(ctx, agentHost.Id))
 			require.Equal(t, 1, aws.queue.Stats(ctx).Total)
-			assert.Equal(t, fmt.Sprintf("host-monitoring-external-state-check.%s.%s", agentHost.Id, messageID), aws.queue.Next(ctx).ID())
 		},
 		"InstanceStoppedWithAgentHostInitiatesInstanceStatusCheck": func(t *testing.T) {
 			require.NoError(t, aws.handleInstanceStopped(ctx, agentHost.Id))
 			require.Equal(t, 1, aws.queue.Stats(ctx).Total)
-			assert.Equal(t, fmt.Sprintf("host-monitoring-external-state-check.%s.%s", agentHost.Id, messageID), aws.queue.Next(ctx).ID())
 		},
 		"InstanceStoppedWithSpawnHostNoops": func(t *testing.T) {
 			require.NoError(t, aws.handleInstanceStopped(ctx, spawnHost.Id))

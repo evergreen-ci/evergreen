@@ -616,7 +616,7 @@ func ByIds(ids []string) db.Q {
 func FindOneByJasperCredentialsID(id string) (*Host, error) {
 	h := &Host{}
 	query := bson.M{JasperCredentialsIDKey: id}
-	if err := db.FindOne(Collection, query, db.NoProjection, db.NoSort, h); err != nil {
+	if err := db.FindOneQ(Collection, db.Query(query), h); err != nil {
 		return nil, errors.Wrapf(err, "could not find host with Jasper credentials ID '%s'", id)
 	}
 	return h, nil
@@ -932,8 +932,9 @@ func RemoveStaleInitializing(distroID string) error {
 		query[key] = distroID
 	}
 
+	q := db.Query(query).Project(bson.M{IdKey: 1})
 	hosts := []Host{}
-	if err := db.FindAll(Collection, query, bson.M{IdKey: 1}, db.NoSort, db.NoSkip, db.NoLimit, &hosts); err != nil {
+	if err := db.FindAllQ(Collection, q, &hosts); err != nil {
 		return errors.WithStack(err)
 	}
 	ids := []string{}
@@ -1270,7 +1271,7 @@ func (h *Host) RemoveVolumeFromHost(volumeId string) error {
 // FindOne gets one Volume for the given query.
 func FindOneVolume(query interface{}) (*Volume, error) {
 	v := &Volume{}
-	err := db.FindOne(VolumesCollection, query, db.NoProjection, db.NoSort, v)
+	err := db.FindOneQ(VolumesCollection, db.Query(query), v)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1290,9 +1291,7 @@ func FindDistroForHost(hostID string) (string, error) {
 
 func findVolumes(q bson.M) ([]Volume, error) {
 	volumes := []Volume{}
-	err := db.FindAll(VolumesCollection, q, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &volumes)
-
-	return volumes, err
+	return volumes, db.FindAllQ(VolumesCollection, db.Query(q), &volumes)
 }
 
 type ClientOptions struct {

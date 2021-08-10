@@ -575,7 +575,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 	}
 
 	for _, dependentTask := range dependentTasks {
-		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
+		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
@@ -601,7 +601,7 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error
 	}
 
 	for _, blockedTask := range blockedTasks {
-		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
+		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
 			return errors.Wrap(err, "error marking dependency attainable")
 		}
 		if err = UpdateUnblockedDependencies(&blockedTask, logIDs, caller); err != nil {
