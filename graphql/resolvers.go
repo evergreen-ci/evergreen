@@ -1970,6 +1970,10 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		}
 		scheduledTasks = append(scheduledTasks, task)
 	}
+	// sort scheduledTasks by display name to gurantee the order of the tasks
+	sort.Slice(scheduledTasks, func(i, j int) bool {
+		return *scheduledTasks[i].DisplayName < *scheduledTasks[j].DisplayName
+	})
 
 	return scheduledTasks, nil
 }
