@@ -74,33 +74,33 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	body, err := github.ValidatePayload(r, gh.secret)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"source":  "github hook",
-			"message": "rejecting github webhook",
-			"msg_id":  gh.msgID,
-			"event":   gh.eventType,
-		}))
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "failed to read request body",
+	if gh.eventType != "pull_request_review_thread" {
+		body, err := github.ValidatePayload(r, gh.secret)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"message": "rejecting github webhook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+			}))
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "failed to read request body",
+			}
 		}
-	}
 
-	gh.event, err = github.ParseWebHook(gh.eventType, body)
-	if err != nil {
-		if gh.eventType != "pull_request_review_thread" {
+		gh.event, err = github.ParseWebHook(gh.eventType, body)
+		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
 				"message": "rejecting github webhook",
 			}))
-		}
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 	}
 
