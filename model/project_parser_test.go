@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1574,7 +1573,6 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 }
 
 func TestMergeUnorderedUnique(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
 	main := &ParserProject{
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
@@ -1659,8 +1657,7 @@ func TestMergeUnorderedUnique(t *testing.T) {
 		},
 	}
 
-	main.mergeUnorderedUnique(toMerge, catcher)
-	err := catcher.Resolve()
+	err := main.mergeUnorderedUnique(toMerge)
 	assert.NoError(t, err)
 	assert.Equal(t, len(main.Tasks), 4)
 	assert.Equal(t, len(main.TaskGroups), 2)
@@ -1670,8 +1667,6 @@ func TestMergeUnorderedUnique(t *testing.T) {
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
@@ -1754,8 +1749,7 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 		},
 	}
 
-	main.mergeUnorderedUnique(fail, catcher)
-	err := catcher.Resolve()
+	err := main.mergeUnorderedUnique(fail)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "task 'my_task' has been declared already")
 	assert.Contains(t, err.Error(), "task group 'my_tg' has been declared already")
@@ -1795,8 +1789,6 @@ func TestMergeUnordered(t *testing.T) {
 }
 
 func TestMergeOrderedUnique(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		Pre: &YAMLCommandSet{
 			SingleCommand: &PluginCommandConf{
@@ -1823,8 +1815,7 @@ func TestMergeOrderedUnique(t *testing.T) {
 		},
 	}
 
-	main.mergeOrderedUnique(add, catcher)
-	err := catcher.Resolve()
+	err := main.mergeOrderedUnique(add)
 	assert.NoError(t, err)
 	assert.NotNil(t, main.Pre)
 	assert.NotNil(t, main.Post)
@@ -1833,8 +1824,6 @@ func TestMergeOrderedUnique(t *testing.T) {
 }
 
 func TestMergeOrderedUniqueFail(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		Pre: &YAMLCommandSet{
 			SingleCommand: &PluginCommandConf{
@@ -1881,8 +1870,7 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 		},
 	}
 
-	main.mergeOrderedUnique(add, catcher)
-	err := catcher.Resolve()
+	err := main.mergeOrderedUnique(add)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "pre can only be defined in one yaml")
 	assert.Contains(t, err.Error(), "post can only be defined in one yaml")
@@ -1891,8 +1879,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 }
 
 func TestMergeUnique(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		Stepback:    utility.ToBoolPtr(true),
 		BatchTime:   utility.ToIntPtr(1),
@@ -1901,26 +1887,25 @@ func TestMergeUnique(t *testing.T) {
 	}
 
 	add := &ParserProject{
-		CommandType:     utility.ToStringPtr("type"),
-		CallbackTimeout: utility.ToIntPtr(1),
-		ExecTimeoutSecs: utility.ToIntPtr(1),
+		PreErrorFailsTask: utility.ToBoolPtr(true),
+		CommandType:       utility.ToStringPtr("type"),
+		CallbackTimeout:   utility.ToIntPtr(1),
+		ExecTimeoutSecs:   utility.ToIntPtr(1),
 	}
 
-	main.mergeUnique(add, catcher)
-	err := catcher.Resolve()
+	err := main.mergeUnique(add)
 	assert.NoError(t, err)
 	assert.NotNil(t, main.Stepback)
 	assert.NotNil(t, main.BatchTime)
 	assert.NotNil(t, main.OomTracker)
 	assert.NotNil(t, main.DisplayName)
+	assert.NotNil(t, main.PreErrorFailsTask)
 	assert.NotNil(t, main.CommandType)
 	assert.NotNil(t, main.CallbackTimeout)
 	assert.NotNil(t, main.ExecTimeoutSecs)
 }
 
 func TestMergeUniqueFail(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		Stepback:        utility.ToBoolPtr(true),
 		BatchTime:       utility.ToIntPtr(1),
@@ -1941,8 +1926,7 @@ func TestMergeUniqueFail(t *testing.T) {
 		ExecTimeoutSecs: utility.ToIntPtr(1),
 	}
 
-	main.mergeUnique(add, catcher)
-	err := catcher.Resolve()
+	err := main.mergeUnique(add)
 	assert.Contains(t, err.Error(), "stepback can only be defined in one yaml")
 	assert.Contains(t, err.Error(), "batch time can only be defined in one yaml")
 	assert.Contains(t, err.Error(), "oom tracker can only be defined in one yaml")
@@ -1953,8 +1937,6 @@ func TestMergeUniqueFail(t *testing.T) {
 }
 
 func TestMergeBuildVariant(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		BuildVariants: []parserBV{
 			parserBV{
@@ -2007,16 +1989,13 @@ func TestMergeBuildVariant(t *testing.T) {
 		},
 	}
 
-	main.mergeBuildVariant(add, catcher)
-	err := catcher.Resolve()
+	err := main.mergeBuildVariant(add)
 	assert.NoError(t, err)
 	assert.Equal(t, len(main.BuildVariants), 2)
 	assert.Equal(t, len(main.BuildVariants[0].Tasks), 2)
 }
 
 func TestMergeBuildVariantFail(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		BuildVariants: []parserBV{
 			parserBV{
@@ -2051,15 +2030,12 @@ func TestMergeBuildVariantFail(t *testing.T) {
 		},
 	}
 
-	main.mergeBuildVariant(add, catcher)
-	err := catcher.Resolve()
+	err := main.mergeBuildVariant(add)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "build variant 'a_variant' has been declared already")
 }
 
 func TestMergeMatrix(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		Axes: []matrixAxis{
 			{
@@ -2076,15 +2052,12 @@ func TestMergeMatrix(t *testing.T) {
 
 	add := &ParserProject{}
 
-	main.mergeMatrix(add, catcher)
-	err := catcher.Resolve()
+	err := main.mergeMatrix(add)
 	assert.NoError(t, err)
 	assert.Equal(t, len(main.Axes), 1)
 }
 
 func TestMergeMatrixFail(t *testing.T) {
-	catcher := grip.NewBasicCatcher()
-
 	main := &ParserProject{
 		Axes: []matrixAxis{
 			{
@@ -2113,8 +2086,7 @@ func TestMergeMatrixFail(t *testing.T) {
 		},
 	}
 
-	main.mergeMatrix(add, catcher)
-	err := catcher.Resolve()
+	err := main.mergeMatrix(add)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "matrixes can only be defined in one yaml")
 }
