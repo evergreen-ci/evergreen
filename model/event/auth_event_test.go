@@ -23,19 +23,14 @@ func TestLogUserRolesEvent(t *testing.T) {
 		assert.NoError(t, LogUserEvent("user", UserEventTypeRolesUpdate, before, after))
 
 		e := &EventLogEntry{}
-		err := db.FindOne(
-			AllLogCollection,
-			bson.M{
-				"r_type": ResourceTypeUser,
-				"e_type": UserEventTypeRolesUpdate,
-				bsonutil.GetDottedKeyName("data", "user"):   "user",
-				bsonutil.GetDottedKeyName("data", "before"): before,
-				bsonutil.GetDottedKeyName("data", "after"):  after,
-			},
-			nil,
-			[]string{},
-			e,
-		)
+		q := db.Query(bson.M{
+			"r_type": ResourceTypeUser,
+			"e_type": UserEventTypeRolesUpdate,
+			bsonutil.GetDottedKeyName("data", "user"):   "user",
+			bsonutil.GetDottedKeyName("data", "before"): before,
+			bsonutil.GetDottedKeyName("data", "after"):  after,
+		})
+		err := db.FindOneQ(AllLogCollection, q, e)
 		require.NoError(t, err)
 	})
 }

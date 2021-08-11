@@ -441,7 +441,7 @@ func (t *Task) AddDependency(d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return errors.Wrapf(UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable),
+			return errors.Wrapf(t.MarkUnattainableDependency(existingDependency.TaskId, d.Unattainable),
 				"error updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
 		}
 	}
@@ -807,6 +807,9 @@ func MarkGeneratedTasks(taskID string) error {
 	update := bson.M{
 		"$set": bson.M{
 			GeneratedTasksKey: true,
+		},
+		"$unset": bson.M{
+			GenerateTasksErrorKey: 1,
 		},
 	}
 	err := UpdateOne(query, update)
@@ -1766,15 +1769,26 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
+// MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
+// and logs if the task is newly blocked.
+func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
+	wasBlocked := t.Blocked()
 	// check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
-		if t.DependsOn[i].TaskId == dependency.Id {
+		if t.DependsOn[i].TaskId == dependencyId {
 			t.DependsOn[i].Unattainable = unattainable
 		}
 	}
 
-	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
+	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
+		return err
+	}
+
+	// only want to log the task as blocked if it wasn't already blocked
+	if !wasBlocked && unattainable {
+		event.LogTaskBlocked(t.Id, t.Execution)
+	}
+	return nil
 }
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
@@ -2422,7 +2436,7 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 		if dtId != "" {
 			dt, err = FindOneOldNoMergeByIdAndExecution(dtId, t.Execution)
 		} else {
-			dt, err = FindOneOld(ByExecutionTask(t.OldTaskId))
+			dt, err = FindOneOldNoMerge(ByExecutionTask(t.OldTaskId))
 			if dt != nil {
 				dtId = dt.OldTaskId // save the original task ID to cache
 			}
@@ -2431,7 +2445,7 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 		if dtId != "" {
 			dt, err = FindOneId(dtId)
 		} else {
-			dt, err = FindOne(ByExecutionTask(t.Id))
+			dt, err = FindOneNoMerge(ByExecutionTask(t.Id))
 			if dt != nil {
 				dtId = dt.Id
 			}
@@ -2939,15 +2953,14 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			},
 		})
 	}
-	countPipeline := []bson.M{}
-	countPipeline = append(countPipeline, pipeline...)
-	countPipeline = append(countPipeline, bson.M{"$count": "count"})
+
+	sortAndPaginatePipeline := []bson.M{}
 
 	sortFields := bson.D{}
 	if len(opts.Sorts) > 0 {
 		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				pipeline = append(pipeline, addStatusColorSort((singleSort.Key)))
+				sortAndPaginatePipeline = append(sortAndPaginatePipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
@@ -2955,15 +2968,16 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		}
 	}
 	sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
-	pipeline = append(pipeline, bson.M{
+
+	sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 		"$sort": sortFields,
 	})
 
 	if opts.Limit > 0 {
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$skip": opts.Page * opts.Limit,
 		})
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$limit": opts.Limit,
 		})
 	}
@@ -2972,12 +2986,28 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		for _, field := range opts.FieldsToProject {
 			fieldKeys[field] = 1
 		}
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$project": fieldKeys,
 		})
 	}
 
-	tasks := []Task{}
+	// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
+	tasksAndCountPipeline := bson.M{
+		"$facet": bson.M{
+			"count": []bson.M{
+				{"$count": "count"},
+			},
+			"tasks": sortAndPaginatePipeline,
+		},
+	}
+
+	pipeline = append(pipeline, tasksAndCountPipeline)
+
+	type TasksAndCount struct {
+		Tasks []Task           `bson:"tasks"`
+		Count []map[string]int `bson:"count"`
+	}
+	results := []TasksAndCount{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -2985,28 +3015,19 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	if err != nil {
 		return nil, 0, err
 	}
-	err = cursor.All(ctx, &tasks)
+	err = cursor.All(ctx, &results)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	type counter struct {
-		Count int `bson:"count"`
-	}
-	tmp := []counter{}
-	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
-	if err != nil {
-		return nil, 0, err
-	}
-	err = cursor.All(ctx, &tmp)
-	if err != nil {
-		return nil, 0, err
+	if len(results) == 0 {
+		return nil, 0, nil
 	}
 	count := 0
-	if len(tmp) > 0 {
-		count = tmp[0].Count
+	result := results[0]
+	if len(result.Count) != 0 {
+		count = result.Count[0]["count"]
 	}
-	return tasks, count, nil
+	return result.Tasks, count, nil
 }
 
 // addStatusColorSort adds a stage which takes a task display status and returns an integer

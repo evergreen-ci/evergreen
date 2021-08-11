@@ -153,7 +153,7 @@ func SetActiveStateById(id, user string, active bool) error {
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
 func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task) error {
 	// find the task first
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -162,7 +162,7 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 
 	// find previous task limiting to just the last one
-	prevTask, err := task.FindOne(task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester))
+	prevTask, err := task.FindOneNoMerge(task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester))
 	if err != nil {
 		return errors.Wrap(err, "Error finding previous task")
 	}
@@ -247,7 +247,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			if detail != nil {
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
-						execTask, err = task.FindOne(task.ById(etId))
+						execTask, err = task.FindOneId(etId)
 						if err != nil {
 							return errors.Wrap(err, "error finding execution task")
 						}
@@ -272,7 +272,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			if t.DisplayOnly {
 				execTasks := map[string]string{}
 				for _, et := range t.ExecutionTasks {
-					execTask, err = task.FindOne(task.ById(et))
+					execTask, err = task.FindOneId(et)
 					if err != nil {
 						continue
 					}
@@ -311,7 +311,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 }
 
 func AbortTask(taskId, caller string) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return err
 	}
@@ -396,7 +396,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 // otherwise. Note that the setting is obtained from the top-level
 // project, if not explicitly set on the task.
 func getStepback(taskId string) (bool, error) {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return false, errors.Wrapf(err, "problem finding task %s", taskId)
 	}
@@ -583,7 +583,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 	}
 
 	for _, dependentTask := range dependentTasks {
-		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
+		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
@@ -609,7 +609,7 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error
 	}
 
 	for _, blockedTask := range blockedTasks {
-		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
+		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
 			return errors.Wrap(err, "error marking dependency attainable")
 		}
 		if err = UpdateUnblockedDependencies(&blockedTask, logIDs, caller); err != nil {
@@ -1290,7 +1290,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return nil
 	}
 
-	t, err := task.FindOne(task.ById(h.RunningTask))
+	t, err := task.FindOneId(h.RunningTask)
 	if err != nil {
 		return errors.Wrapf(err, "database error clearing task '%s' from host '%s'",
 			t.Id, h.Id)
@@ -1329,7 +1329,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
 				var execTask *task.Task
-				execTask, err = task.FindOne(task.ById(etID))
+				execTask, err = task.FindOneId(etID)
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
 				}

@@ -50,8 +50,8 @@ func createDefaultStatsStatus(projectId string) StatsStatus {
 // GetStatsStatus retrieves the status of the stats pre-computations for a project.
 func GetStatsStatus(projectId string) (StatsStatus, error) {
 	status := StatsStatus{}
-	query := statsStatusQuery(projectId)
-	err := db.FindOne(DailyStatsStatusCollection, query, db.NoProjection, db.NoSort, &status)
+	q := db.Query(statsStatusQuery(projectId))
+	err := db.FindOneQ(DailyStatsStatusCollection, q, &status)
 	if adb.ResultsNotFound(err) {
 		return createDefaultStatsStatus(projectId), nil
 	}

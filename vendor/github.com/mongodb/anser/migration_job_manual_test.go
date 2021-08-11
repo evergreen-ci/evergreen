@@ -6,12 +6,12 @@ import (
 
 	"gopkg.in/mgo.v2/bson"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/anser/client"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
-	"github.com/evergreen-ci/birch"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

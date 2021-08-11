@@ -265,7 +265,6 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 	}
 
 	// check if the task exists
-	// t, err := task.FindOne(task.ById(h.taskId))
 	t, err := task.FindByIdExecution(h.taskId, h.annotation.TaskExecution)
 	if err != nil {
 		return errors.Wrap(err, "error finding task")
@@ -384,7 +383,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	h.execution = execution
 
 	// check if the task exists
-	t, err := task.FindOne(task.ById(h.taskId))
+	t, err := task.FindOneId(h.taskId)
 	if err != nil {
 		return errors.Wrap(err, "error finding task")
 	}

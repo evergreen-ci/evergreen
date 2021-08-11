@@ -1,0 +1,11 @@
+{
+    "tests": [
+      {
+          "query_file": "taskHistory.graphql",
+          "result": {
+            "data": {"taskHistory":[ "osx", "ubuntu1604"]}
+          }
+        }
+    ]
+}
+  

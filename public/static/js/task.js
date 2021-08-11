@@ -273,6 +273,11 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
       label: "this task fails",
     },
     {
+      trigger: "task-failed-or-blocked",
+      resource_type: "TASK",
+      label: "this task fails or is blocked",
+    },
+    {
       trigger: "success",
       resource_type: "TASK",
       label: "this task succeeds",

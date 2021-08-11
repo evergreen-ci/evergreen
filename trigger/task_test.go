@@ -278,6 +278,7 @@ func (s *taskSuite) SetupTest() {
 			Type:   event.JIRACommentSubscriberType,
 			Target: "A-3",
 		}),
+		event.NewSubscriptionByID(event.ResourceTypeTask, triggerTaskFailedOrBlocked, s.event.ResourceId, apiSub),
 	}
 
 	for i := range s.subs {
@@ -386,13 +387,13 @@ func (s *taskSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 4)
+	s.Len(n, 5)
 
 	s.task.DisplayOnly = true
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 3)
+	s.Len(n, 4)
 }
 
 func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
@@ -468,6 +469,27 @@ func (s *taskSuite) TestOutcome() {
 
 	s.data.Status = evergreen.TaskFailed
 	n, err = s.t.taskOutcome(&s.subs[0])
+	s.NoError(err)
+	s.NotNil(n)
+}
+
+func (s *taskSuite) TestFailedOrBlocked() {
+	s.data.Status = evergreen.TaskUndispatched
+	s.t.task.DependsOn = []task.Dependency{
+		{
+			TaskId:       "blocking",
+			Unattainable: false,
+		},
+		{TaskId: "not blocking",
+			Unattainable: false,
+		},
+	}
+	n, err := s.t.taskFailedOrBlocked(&s.subs[7])
+	s.NoError(err)
+	s.Nil(n)
+
+	s.t.task.DependsOn[0].Unattainable = true
+	n, err = s.t.taskFailedOrBlocked(&s.subs[7])
 	s.NoError(err)
 	s.NotNil(n)
 }

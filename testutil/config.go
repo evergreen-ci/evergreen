@@ -218,7 +218,10 @@ func MockConfig() *evergreen.Settings {
 				AdminEmail: []string{"email"},
 			},
 		},
-		Plugins:   map[string]map[string]interface{}{"k4": {"k5": "v5"}},
+		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
+		PodInit: evergreen.PodInitConfig{
+			S3BaseURL: "s3_base_url",
+		},
 		PprofPort: "port",
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
@@ -300,6 +303,7 @@ func MockConfig() *evergreen.Settings {
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:          true,
 			HostInitDisabled:              true,
+			PodInitDisabled:               true,
 			S3BinaryDownloadsDisabled:     true,
 			MonitorDisabled:               true,
 			AlertsDisabled:                true,

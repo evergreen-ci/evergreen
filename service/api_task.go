@@ -1044,7 +1044,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) {
 	var err error
 	var t *task.Task
-	t, err = task.FindOne(task.ById(h.RunningTask))
+	t, err = task.FindOneId(h.RunningTask)
 	if err != nil {
 		err = errors.Wrapf(err, "error getting running task %s", h.RunningTask)
 		grip.Error(err)
