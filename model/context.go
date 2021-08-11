@@ -97,11 +97,11 @@ func (ctx *Context) populateTaskBuildVersion(taskId, buildId, versionId string) 
 	var err error
 	// Fetch task if there's a task ID present; if we find one, populate build/version IDs from it
 	if len(taskId) > 0 {
-		ctx.Task, err = task.FindOne(task.ById(taskId))
+		ctx.Task, err = task.FindOneId(taskId)
 		if err != nil || ctx.Task == nil {
 			// if no task found, see if this is an old task
 			var tasks []task.Task
-			tasks, err = task.FindOld(task.ById(taskId))
+			tasks, err = task.FindOldNoMerge(task.ById(taskId))
 			if err != nil {
 				return "", err
 			}

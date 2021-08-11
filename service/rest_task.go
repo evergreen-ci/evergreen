@@ -138,33 +138,29 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 		destTask.MinQueuePos = 0
 	}
 
-	// Copy over the status details
+	// Copy over the status details.
 	destTask.StatusDetails.TimedOut = srcTask.Details.TimedOut
 	destTask.StatusDetails.TimeoutStage = srcTask.Details.Description
 
-	// Copy over the test results
-	testResults := srcTask.LocalTestResults
-	if srcTask.DisplayOnly {
-		testResults, err = srcTask.GetTestResultsForDisplayTask()
-		if err != nil {
-			err = errors.Wrapf(err, "Error finding test results for display task '%s'", srcTask.Id)
-			grip.Error(err)
-			gimlet.WriteJSONInternalError(w, responseError{Message: err.Error()})
-			return
-		}
+	// Copy over the test results.
+	if err := srcTask.PopulateTestResults(); err != nil {
+		err = errors.Wrapf(err, "Error finding test results for task '%s'", srcTask.Id)
+		grip.Error(err)
+		gimlet.WriteJSONInternalError(w, responseError{Message: err.Error()})
+		return
 	}
-	destTask.LocalTestResults = make(taskTestResultsByName, len(testResults))
-	for _, _testResult := range testResults {
-		numSecs := _testResult.EndTime - _testResult.StartTime
+	destTask.LocalTestResults = make(taskTestResultsByName, len(srcTask.LocalTestResults))
+	for _, tr := range srcTask.LocalTestResults {
+		numSecs := tr.EndTime - tr.StartTime
 		testResult := taskTestResult{
-			Status:    _testResult.Status,
+			Status:    tr.Status,
 			TimeTaken: time.Duration(numSecs * float64(time.Second)),
-			Logs:      taskTestLogURL{_testResult.URL},
+			Logs:      taskTestLogURL{tr.URL},
 		}
-		destTask.LocalTestResults[_testResult.TestFile] = testResult
+		destTask.LocalTestResults[tr.TestFile] = testResult
 	}
 
-	// Copy over artifacts and binaries
+	// Copy over artifacts and binaries.
 	entries, err := artifact.FindAll(artifact.ByTaskId(srcTask.Id))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%v'", srcTask.Id)

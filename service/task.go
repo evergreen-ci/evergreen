@@ -891,6 +891,11 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 	var err error
 	var testResults []task.TestResult
 
+	if err := projCtx.Task.PopulateTestResults(); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return nil
+	}
+
 	uiTask.TestResults = []uiTestResult{}
 	if uiTask.DisplayOnly {
 		execTaskDisplayNameMap := map[string]string{}
@@ -921,12 +926,6 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				TimeTaken: et.TimeTaken,
 				Status:    et.ResultStatus(),
 			})
-		}
-
-		testResults, err = projCtx.Task.GetTestResultsForDisplayTask()
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return nil
 		}
 
 		for _, tr := range testResults {

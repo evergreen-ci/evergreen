@@ -459,7 +459,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (ma
 
 	// create the mapping of the task id to the list of failed tasks
 	for _, task := range tasks {
-		if err := task.MergeNewTestResults(); err != nil {
+		if err := task.PopulateTestResults(); err != nil {
 			return nil, err
 		}
 		for _, test := range task.LocalTestResults {

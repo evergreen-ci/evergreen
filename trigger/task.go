@@ -812,16 +812,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	if t.task.DisplayOnly {
-		results, err := t.task.GetTestResultsForDisplayTask()
-		if err != nil {
-			return nil, errors.Wrap(err, "getting test results for display task")
-		}
-		t.task.LocalTestResults = results
-	} else {
-		if err := t.task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "getting test results for task")
-		}
+	if err := t.task.PopulateTestResults(); err != nil {
+		return nil, errors.Wrap(err, "populating test results for task")
 	}
 
 	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
@@ -842,19 +834,10 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}
 	if previousCompleteTask != nil {
-		if previousCompleteTask.DisplayOnly {
-			var results []task.TestResult
-			results, err = previousCompleteTask.GetTestResultsForDisplayTask()
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get test results for previous display task '%s'", previousCompleteTask.Id)
-			}
-			t.oldTestResults = mapTestResultsByTestFile(results)
-		} else {
-			if err = previousCompleteTask.MergeTestResults(); err != nil {
-				return nil, errors.Wrapf(err, "can't get test results for previous task '%s'", previousCompleteTask.Id)
-			}
-			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
+		if err = previousCompleteTask.PopulateTestResults(); err != nil {
+			return nil, errors.Wrapf(err, "populating test results for previous task '%s'", previousCompleteTask.Id)
 		}
+		t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
 	}
 
 	testsToAlert := []task.TestResult{}
