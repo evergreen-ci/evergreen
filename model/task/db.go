@@ -1175,7 +1175,8 @@ func FindOldNoMerge(query db.Q) ([]Task, error) {
 	return tasks, err
 }
 
-// FindOld returns all task from the old tasks collection that satisfies the query.
+// FindOld returns all task from the old tasks collection that satisfies the
+// query and merges test results.
 func FindOld(query db.Q) ([]Task, error) {
 	tasks, err := FindOldNoMerge(query)
 	if err != nil {
@@ -1205,7 +1206,7 @@ func FindOldWithDisplayTasksNoMerge(query db.Q) ([]Task, error) {
 }
 
 // FindOldWithDisplayTasks finds display and execution tasks in the old
-// collection.
+// collection and merges test results.
 func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 	tasks, err := FindOldWithDisplayTasksNoMerge(query)
 	if err != nil {
@@ -1235,7 +1236,7 @@ func FindOneIdOldOrNewNoMerge(id string, execution int) (*Task, error) {
 }
 
 // FindOneIdOldOrNew attempts to find a given task ID by first looking in the
-// old collection, then the tasks collection.
+// old collection, then the tasks collection and merges test results.
 func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	task, err := FindOneOld(ById(MakeOldID(id, execution)))
 	if task == nil || err != nil {
@@ -1258,7 +1259,7 @@ func FindOneIdNewOrOldNoMerge(id string) (*Task, error) {
 }
 
 // FindOneIdNewOrOld attempts to find a given task ID by first looking in the
-// tasks collection, then the old tasks collection.
+// tasks collection, then the old tasks collection and merges test results.
 func FindOneIdNewOrOld(id string) (*Task, error) {
 	task, err := FindOne(ById(id))
 	if task == nil || err != nil {
