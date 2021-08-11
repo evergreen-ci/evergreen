@@ -177,7 +177,8 @@ type Task struct {
 	ResetWhenFinished  bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
 	DisplayTask        *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
-	// DisplayTaskId is populated for execution tasks created after this change and is explicitly empty for non execution tasks.
+	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
+	// and is nil if we haven't yet checked whether or not this task has a display task.
 	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
 
 	// GenerateTask indicates that the task generates other tasks, which the
