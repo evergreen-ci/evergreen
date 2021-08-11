@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/model/user"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -26,11 +28,8 @@ import (
 
 // filterViewableProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view
-func (uis *UIServer) filterViewableProjects(u gimlet.User) ([]model.ProjectRef, error) {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	projectIds, err := rolemanager.FindAllowedResources(ctx, env.RoleManager(), u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
+func (uis *UIServer) filterViewableProjects(u *user.DBUser) ([]model.ProjectRef, error) {
+	projectIds, err := u.GetViewableProjects()
 	if err != nil {
 		return nil, err
 	}

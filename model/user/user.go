@@ -3,6 +3,8 @@ package user
 import (
 	"time"
 
+	"github.com/evergreen-ci/gimlet/rolemanager"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -330,6 +332,23 @@ func (u *DBUser) RemoveRole(role string) error {
 	}
 
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
+}
+
+// GetViewableProjects returns the lists of projects/repos the user can view.
+func (u *DBUser) GetViewableProjects() ([]string, error) {
+	if evergreen.PermissionsDisabledForTests() {
+		return nil, nil
+	}
+	env := evergreen.GetEnvironment()
+	roleManager := env.RoleManager()
+	ctx, cancel := env.Context()
+	defer cancel()
+
+	viewProjects, err := rolemanager.FindAllowedResources(ctx, roleManager, u.Roles(), evergreen.ProjectResourceType, evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView.Value)
+	if err != nil {
+		return nil, err
+	}
+	return viewProjects, nil
 }
 
 func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
