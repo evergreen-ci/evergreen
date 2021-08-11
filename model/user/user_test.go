@@ -715,7 +715,7 @@ func TestGetOrCreateUser(t *testing.T) {
 
 func TestViewableProjects(t *testing.T) {
 	rm := evergreen.GetEnvironment().RoleManager()
-	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
 	editScope := gimlet.Scope{
 		ID:        "edit_scope",
 		Resources: []string{"edit1", "edit2"},
@@ -762,6 +762,7 @@ func TestViewableProjects(t *testing.T) {
 	myUser := DBUser{
 		Id: "me",
 	}
+	assert.NoError(t, myUser.Insert())
 	assert.NoError(t, myUser.AddRole(viewRole.ID))
 	assert.NoError(t, myUser.AddRole(editRole.ID))
 	assert.NoError(t, myUser.AddRole(otherRole.ID))
