@@ -922,8 +922,8 @@ func FindOne(query db.Q) (*Task, error) {
 	if task == nil {
 		return nil, nil
 	}
-	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
+	if err = task.MergeTestResults(); err != nil {
+		return nil, errors.Wrapf(err, "errors merging test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -1150,8 +1150,8 @@ func FindOneOld(query db.Q) (*Task, error) {
 	if task == nil {
 		return nil, nil
 	}
-	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
+	if err = task.MergeTestResults(); err != nil {
+		return nil, errors.Wrapf(err, "errors merging test results for '%s'", task.Id)
 	}
 	return task, err
 }
@@ -1184,7 +1184,7 @@ func FindOld(query db.Q) ([]Task, error) {
 	}
 
 	for i, task := range tasks {
-		if err = task.MergeNewTestResults(); err != nil {
+		if err = task.MergeTestResults(); err != nil {
 			return nil, errors.Wrap(err, "error merging new test results")
 		}
 		tasks[i] = task
@@ -1214,8 +1214,8 @@ func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 	}
 
 	for i, task := range tasks {
-		if err = task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging new test results")
+		if err = task.MergeTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging test results")
 		}
 		tasks[i] = task
 	}

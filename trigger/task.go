@@ -850,7 +850,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			}
 			t.oldTestResults = mapTestResultsByTestFile(results)
 		} else {
-			if err = previousCompleteTask.MergeNewTestResults(); err != nil {
+			if err = previousCompleteTask.MergeTestResults(); err != nil {
 				return nil, errors.Wrapf(err, "can't get test results for previous task '%s'", previousCompleteTask.Id)
 			}
 			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
