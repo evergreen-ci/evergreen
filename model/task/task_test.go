@@ -903,7 +903,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 
 	// Should fetch tasks from the old collection
 	assert.NoError(taskDoc.Archive())
-	task, err = FindOneOldNoMergeByIdAndExecution(taskDoc.Id, 0)
+	task, err = FindOneOldByIdAndExecution(taskDoc.Id, 0)
 	assert.NoError(err)
 	assert.NotNil(task)
 	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))

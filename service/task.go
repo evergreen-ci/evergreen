@@ -339,6 +339,10 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+		if err := taskOnBaseCommit.PopulateTestResults(); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 		taskPatch := &uiPatch{Patch: *projCtx.Patch}
 		if taskOnBaseCommit != nil {
 			taskPatch.BaseTaskId = taskOnBaseCommit.Id
@@ -902,7 +906,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		for _, t := range projCtx.Task.ExecutionTasks {
 			var et *task.Task
 			if uiTask.Archived {
-				et, err = task.FindOneOldNoMergeByIdAndExecution(t, projCtx.Task.Execution)
+				et, err = task.FindOneOldByIdAndExecution(t, projCtx.Task.Execution)
 			} else {
 				et, err = task.FindOneId(t)
 			}

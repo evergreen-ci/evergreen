@@ -42,7 +42,6 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return taskNotFound, err
-
 	}
 	if t == nil {
 		taskNotFound = true

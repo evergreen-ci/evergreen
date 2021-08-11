@@ -705,7 +705,7 @@ func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, 
 	if len(statuses) == 0 {
 		statuses = evergreen.CompletedStatuses
 	}
-	return FindOneNoMerge(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
+	return FindOne(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
@@ -2454,9 +2454,9 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 	var dt *Task
 	var err error
 	if t.Archived {
-		dt, err = FindOneOldNoMerge(ByExecutionTask(t.OldTaskId))
+		dt, err = FindOneOld(ByExecutionTask(t.OldTaskId))
 	} else {
-		dt, err = FindOneNoMerge(ByExecutionTask(t.Id))
+		dt, err = FindOne(ByExecutionTask(t.Id))
 	}
 	if err != nil {
 		return nil, err
