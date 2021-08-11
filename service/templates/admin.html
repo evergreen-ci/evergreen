@@ -133,6 +133,17 @@ Admin Settings
 										</thead>
 										<tbody>
 											<tr>
+												<td>Plugin settings on admin page</td>
+												<td colspan="2">
+													<md-radio-group
+															data-ng-model="Settings.service_flags.plugin_admin_page_disabled"
+															layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>Dispatch tasks</td>
 												<td colspan="2">
 													<md-radio-group

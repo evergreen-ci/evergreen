@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
 	"html/template"
 	"net/url"
 
@@ -36,7 +37,21 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	}
 
 	for projName, proj := range bbpOptions.Projects {
-		webhookConfigured := proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != ""
+		var webHook evergreen.WebHook
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.Wrap(err, "error retrieving admin settings")
+		}
+		if flags.PluginAdminPageDisabled {
+			projectRef, err := model.FindOneProjectRef(projName)
+			if err != nil {
+				return errors.Wrap(err, "unable to find project ref")
+			}
+			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+		} else {
+			webHook = proj.TaskAnnotationSettings.FileTicketWebHook
+		}
+		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
 			return fmt.Errorf("ticket_create_project and taskAnnotationSettings.FileTicketWebHook endpoint cannot both be blank")
 		}
@@ -69,7 +84,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 					"message":      "The custom file ticket webhook and the build baron TicketCreateProject should not both be configured",
 					"project_name": projName})
 			}
-			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
+			if _, err := url.Parse(webHook.Endpoint); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":      "Failed to parse webhook endpoint for project",
 					"project_name": projName}))

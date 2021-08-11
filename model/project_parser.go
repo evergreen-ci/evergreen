@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
 	"reflect"
 	"strings"
 	"time"
@@ -49,35 +50,36 @@ const LoadProjectError = "load project error(s)"
 // to allow for flexible handling.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
-	Id                 string                     `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber int                        `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
-	Enabled            *bool                      `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
-	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
-	BatchTime          *int                       `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Owner              *string                    `yaml:"owner,omitempty" bson:"owner,omitempty"`
-	Repo               *string                    `yaml:"repo,omitempty" bson:"repo,omitempty"`
-	RemotePath         *string                    `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
-	Branch             *string                    `yaml:"branch,omitempty" bson:"branch,omitempty"`
-	Identifier         *string                    `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
-	DisplayName        *string                    `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	CommandType        *string                    `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
-	Ignore             parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
-	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
-	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
-	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
-	TaskGroups         []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
-	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
-	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	Id                     string                        `yaml:"_id" bson:"_id"` // should be the same as the version's ID
+	ConfigUpdateNumber     int                           `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	Enabled                *bool                         `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+	Stepback               *bool                         `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	PreErrorFailsTask      *bool                         `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	OomTracker             *bool                         `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
+	BatchTime              *int                          `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Owner                  *string                       `yaml:"owner,omitempty" bson:"owner,omitempty"`
+	Repo                   *string                       `yaml:"repo,omitempty" bson:"repo,omitempty"`
+	RemotePath             *string                       `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
+	Branch                 *string                       `yaml:"branch,omitempty" bson:"branch,omitempty"`
+	Identifier             *string                       `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	DisplayName            *string                       `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	CommandType            *string                       `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
+	Ignore                 parserStringSlice             `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Parameters             []ParameterInfo               `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
+	Pre                    *YAMLCommandSet               `yaml:"pre,omitempty" bson:"pre,omitempty"`
+	Post                   *YAMLCommandSet               `yaml:"post,omitempty" bson:"post,omitempty"`
+	Timeout                *YAMLCommandSet               `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	EarlyTermination       *YAMLCommandSet               `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
+	CallbackTimeout        *int                          `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Modules                []Module                      `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BuildVariants          []parserBV                    `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
+	Functions              map[string]*YAMLCommandSet    `yaml:"functions,omitempty" bson:"functions,omitempty"`
+	TaskGroups             []parserTaskGroup             `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
+	Tasks                  []parserTask                  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	ExecTimeoutSecs        *int                          `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Loggers                *LoggerConfig                 `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	CreateTime             time.Time                     `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	TaskAnnotationSettings evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -585,29 +587,30 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:           utility.FromBoolPtr(pp.Enabled),
-		Stepback:          utility.FromBoolPtr(pp.Stepback),
-		PreErrorFailsTask: utility.FromBoolPtr(pp.PreErrorFailsTask),
-		OomTracker:        utility.FromBoolPtr(pp.OomTracker),
-		BatchTime:         utility.FromIntPtr(pp.BatchTime),
-		Owner:             utility.FromStringPtr(pp.Owner),
-		Repo:              utility.FromStringPtr(pp.Repo),
-		RemotePath:        utility.FromStringPtr(pp.RemotePath),
-		Branch:            utility.FromStringPtr(pp.Branch),
-		Identifier:        utility.FromStringPtr(pp.Identifier),
-		DisplayName:       utility.FromStringPtr(pp.DisplayName),
-		CommandType:       utility.FromStringPtr(pp.CommandType),
-		Ignore:            pp.Ignore,
-		Parameters:        pp.Parameters,
-		Pre:               pp.Pre,
-		Post:              pp.Post,
-		EarlyTermination:  pp.EarlyTermination,
-		Timeout:           pp.Timeout,
-		CallbackTimeout:   utility.FromIntPtr(pp.CallbackTimeout),
-		Modules:           pp.Modules,
-		Functions:         pp.Functions,
-		ExecTimeoutSecs:   utility.FromIntPtr(pp.ExecTimeoutSecs),
-		Loggers:           pp.Loggers,
+		Enabled:                utility.FromBoolPtr(pp.Enabled),
+		Stepback:               utility.FromBoolPtr(pp.Stepback),
+		PreErrorFailsTask:      utility.FromBoolPtr(pp.PreErrorFailsTask),
+		OomTracker:             utility.FromBoolPtr(pp.OomTracker),
+		BatchTime:              utility.FromIntPtr(pp.BatchTime),
+		Owner:                  utility.FromStringPtr(pp.Owner),
+		Repo:                   utility.FromStringPtr(pp.Repo),
+		RemotePath:             utility.FromStringPtr(pp.RemotePath),
+		Branch:                 utility.FromStringPtr(pp.Branch),
+		Identifier:             utility.FromStringPtr(pp.Identifier),
+		DisplayName:            utility.FromStringPtr(pp.DisplayName),
+		CommandType:            utility.FromStringPtr(pp.CommandType),
+		Ignore:                 pp.Ignore,
+		Parameters:             pp.Parameters,
+		Pre:                    pp.Pre,
+		Post:                   pp.Post,
+		EarlyTermination:       pp.EarlyTermination,
+		Timeout:                pp.Timeout,
+		CallbackTimeout:        utility.FromIntPtr(pp.CallbackTimeout),
+		Modules:                pp.Modules,
+		Functions:              pp.Functions,
+		ExecTimeoutSecs:        utility.FromIntPtr(pp.ExecTimeoutSecs),
+		Loggers:                pp.Loggers,
+		TaskAnnotationSettings: pp.TaskAnnotationSettings,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)

@@ -52,11 +52,24 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	settings := env.Settings()
 	queue := env.RemoteQueue()
 	bbProject, ok := BbGetProject(settings, t.Project)
+	var webHook evergreen.WebHook
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return false, errors.Wrap(err, "error retrieving admin settings")
+	}
+	if flags.PluginAdminPageDisabled {
+		projectRef, err := model.FindOneProjectRef(t.Project)
+		if err != nil {
+			return false, errors.Wrap(err, "problem finding project ref")
+		}
+		webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+	} else {
+		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
+	}
 	if !ok {
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
 
-	webHook := bbProject.TaskAnnotationSettings.FileTicketWebHook
 	if webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
@@ -79,8 +92,21 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 }
 
 func IsWebhookConfigured(t *task.Task) bool {
-	bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), t.Project)
-	webHook := bbProject.TaskAnnotationSettings.FileTicketWebHook
+	var webHook evergreen.WebHook
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return false
+	}
+	if flags.PluginAdminPageDisabled {
+		projectRef, err := model.FindOneProjectRef(t.Project)
+		if err != nil {
+			return false
+		}
+		webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+	} else {
+		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), t.Project)
+		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
+	}
 	return webHook.Endpoint != ""
 }
 
