@@ -125,9 +125,6 @@ func (p *APIPod) ToService() (*pod.Pod, error) {
 	}
 	timing := p.TimeInfo.ToService()
 	resources := p.Resources.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting resource info to service")
-	}
 	return &pod.Pod{
 		ID:                        utility.FromStringPtr(p.ID),
 		Status:                    *s,
