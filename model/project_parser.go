@@ -1146,7 +1146,7 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 }
 
 // mergeUnordered merges fields that are lists where the order doesn't matter.
-// These fields can only be defined 1 yaml and does not consider naming conflicts.
+// These fields can only be defined in one yaml and does not consider naming conflicts.
 // These fields include: [ignore, loggers]
 func (pp *ParserProject) mergeUnordered(toMerge *ParserProject) {
 	pp.Ignore = append(pp.Ignore, toMerge.Ignore...)
@@ -1154,7 +1154,7 @@ func (pp *ParserProject) mergeUnordered(toMerge *ParserProject) {
 }
 
 // mergeOrderedUnique merges fields that are lists where the order does matter.
-// These fields can only be defined 1 yaml.
+// These fields can only be defined in one yaml.
 // These fields are: [pre, post, timeout, early termination]
 func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
