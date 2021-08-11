@@ -204,6 +204,8 @@ type Task struct {
 
 	CanSync       bool             `bson:"can_sync" json:"can_sync"`
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
+
+	testResultsPopulated bool
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -2062,6 +2064,14 @@ func (t *Task) makeArchivedTask() *Task {
 // collection) and new (from the testresults collection) OR Cedar test results
 // merged into the Task's LocalTestResults field.
 func (t *Task) PopulateTestResults() error {
+	if t.testResultsPopulated {
+		return nil
+	}
+	if !evergreen.IsFinishedTaskStatus(t.Status) && t.Status != evergreen.TaskStarted {
+		// Task won't have test results.
+		return nil
+	}
+
 	if t.DisplayOnly && !t.hasCedarResults() {
 		return t.populateTestResultsForDisplayTask()
 	}
@@ -2074,6 +2084,7 @@ func (t *Task) PopulateTestResults() error {
 		return errors.Wrap(err, "getting test results from cedar")
 	}
 	t.LocalTestResults = append(t.LocalTestResults, results...)
+	t.testResultsPopulated = true
 
 	return nil
 }
@@ -2085,10 +2096,6 @@ func (t *Task) populateNewTestResults() error {
 	id := t.Id
 	if t.Archived {
 		id = t.OldTaskId
-	}
-	if !evergreen.IsFinishedTaskStatus(t.Status) && t.Status != evergreen.TaskStarted {
-		// Task won't have test results.
-		return nil
 	}
 
 	newTestResults, err := testresult.FindByTaskIDAndExecution(id, t.Execution)
@@ -2110,6 +2117,7 @@ func (t *Task) populateNewTestResults() error {
 			EndTime:         result.EndTime,
 		})
 	}
+	t.testResultsPopulated = true
 
 	// Store whether or not results exist so we know if we should look them
 	// up in the future.
@@ -2127,7 +2135,12 @@ func (t *Task) populateTestResultsForDisplayTask() error {
 	}
 
 	_, err := MergeTestResultsBulk([]Task{*t}, nil)
-	return errors.Wrap(err, "merging test results for display task")
+	if err != nil {
+		return errors.Wrap(err, "merging test results for display task")
+	}
+	t.testResultsPopulated = true
+
+	return nil
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group
@@ -2150,7 +2163,10 @@ func (t *Task) SetResetWhenFinished() error {
 // test results populated. Note that the order may change. The second parameter
 // can be used to use a specific test result filtering query, otherwise all test
 // results for the passed in tasks will be merged. Display tasks will have
-// the execution task results merged
+// the execution task results merged.
+//
+// Keeping this function public for backwards compatibility (legacy test
+// results uses this for test history).
 func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	out := []Task{}
 	if query == nil {
