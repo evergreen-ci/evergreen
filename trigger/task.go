@@ -159,7 +159,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 
-	t.task, err = task.FindOneIdOldOrNew(e.ResourceId, t.data.Execution)
+	t.task, err = task.FindOneIdOldOrNewNoMerge(e.ResourceId, t.data.Execution)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch task")
 	}

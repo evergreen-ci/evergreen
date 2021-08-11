@@ -1207,7 +1207,7 @@ func FindOldWithDisplayTasksNoMerge(query db.Q) ([]Task, error) {
 // FindOldWithDisplayTasks finds display and execution tasks in the old
 // collection.
 func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
-	tasks, err := FindOldWithDisplayTasks(query)
+	tasks, err := FindOldWithDisplayTasksNoMerge(query)
 	if err != nil {
 		return nil, err
 	}
