@@ -62,13 +62,13 @@ func ExportECSPodStatusInfo(p *pod.Pod) (*cocoa.ECSPodStatusInfo, error) {
 		return nil, errors.Wrap(err, "exporting pod status")
 	}
 
-	stat := cocoa.NewECSPodStatusInfo().SetStatus(ps)
+	status := cocoa.NewECSPodStatusInfo().SetStatus(ps)
 
 	for _, container := range p.Resources.Containers {
-		stat.AddContainers(ExportECSContainerStatusInfo(container))
+		status.AddContainers(ExportECSContainerStatusInfo(container))
 	}
 
-	return stat, nil
+	return status, nil
 }
 
 // ExportECSContainerStatusInfo exports the container's resource and status

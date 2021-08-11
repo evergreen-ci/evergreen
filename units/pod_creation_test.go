@@ -43,8 +43,7 @@ func TestCreatePodJob(t *testing.T) {
 			require.NoError(t, j.Error())
 
 			res := j.ecsPod.Resources()
-			stat := j.ecsPod.StatusInfo()
-			assert.Equal(t, cocoa.StatusStarting, stat.Status)
+			assert.Equal(t, cocoa.StatusStarting, j.ecsPod.StatusInfo().Status)
 			assert.Equal(t, pod.StatusStarting, j.pod.Status)
 			assert.Equal(t, "cluster", utility.FromStringPtr(res.Cluster))
 			assert.Equal(t, j.pod.Resources.DefinitionID, utility.FromStringPtr(res.TaskDefinition.ID))

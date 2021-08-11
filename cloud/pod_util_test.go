@@ -90,10 +90,9 @@ func TestExportPod(t *testing.T) {
 				}
 			}
 
-			stat := exported.StatusInfo()
 			ps, err := ExportECSPodStatus(p.Status)
 			require.NoError(t, err)
-			assert.Equal(t, ps, stat.Status)
+			assert.Equal(t, ps, exported.StatusInfo().Status)
 		},
 		"FailsWithEmptyPod": func(ctx context.Context, t *testing.T, p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) {
 			exported, err := ExportPod(&pod.Pod{}, c, v)
