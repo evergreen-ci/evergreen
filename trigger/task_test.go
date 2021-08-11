@@ -413,6 +413,7 @@ func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
 
 func (s *taskSuite) TestExecutionTask() {
 	t := task.Task{
+		Id:             "dt",
 		DisplayName:    "displaytask",
 		ExecutionTasks: []string{s.task.Id},
 	}

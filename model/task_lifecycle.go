@@ -541,11 +541,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	// activate/deactivate other task if this is not a patch request's task
 	if !evergreen.IsPatchRequester(t.Requester) {
 		if t.IsPartOfDisplay() {
-			dt, err := t.GetDisplayTask()
+			_, err = t.GetDisplayTask()
 			if err != nil {
 				return errors.Wrap(err, "error getting display task")
 			}
-			err = evalStepback(dt, caller, dt.Status, deactivatePrevious)
+			err = evalStepback(t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
 		} else {
 			err = evalStepback(t, caller, status, deactivatePrevious)
 		}
@@ -1347,7 +1347,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	if t.IsPartOfDisplay() {
 		dt, err := t.GetDisplayTask()
 		if err != nil {
-			errors.Wrap(err, "error getting display task")
+			return errors.Wrap(err, "error getting display task")
 		}
 		if err = dt.SetResetWhenFinished(); err != nil {
 			return errors.Wrap(err, "can't mark display task for reset")
