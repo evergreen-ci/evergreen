@@ -37,7 +37,11 @@ var (
 	ResourceInfoExternalIDKey   = bsonutil.MustHaveTag(ResourceInfo{}, "ExternalID")
 	ResourceInfoDefinitionIDKey = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
 	ResourceInfoClusterKey      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
-	ResourceInfoSecretIDsKey    = bsonutil.MustHaveTag(ResourceInfo{}, "SecretIDs")
+	ResourceInfoContainersKey   = bsonutil.MustHaveTag(ResourceInfo{}, "Containers")
+
+	ContainerResourceInfoExternalIDKey = bsonutil.MustHaveTag(ContainerResourceInfo{}, "ExternalID")
+	ContainerResourceInfoNameKey       = bsonutil.MustHaveTag(ContainerResourceInfo{}, "Name")
+	ContainerResourceInfoSecretIDsKey  = bsonutil.MustHaveTag(ContainerResourceInfo{}, "SecretIDs")
 )
 
 // Find finds all pods matching the given query.

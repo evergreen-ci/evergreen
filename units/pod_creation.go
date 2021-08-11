@@ -104,24 +104,8 @@ func (j *createPodJob) Run(ctx context.Context) {
 
 		j.ecsPod = p
 
-		info, err := p.Info(ctx)
-		if err != nil {
-			j.AddError(errors.Wrap(err, "getting pod info"))
-		}
-
-		var ids []string
-		for _, secret := range info.Resources.Secrets {
-			ids = append(ids, utility.FromStringPtr(secret.NamedSecret.Name))
-		}
-
-		resourceInfo := pod.ResourceInfo{
-			ExternalID:   utility.FromStringPtr(info.Resources.TaskID),
-			DefinitionID: utility.FromStringPtr(info.Resources.TaskDefinition.ID),
-			Cluster:      utility.FromStringPtr(info.Resources.Cluster),
-			SecretIDs:    ids,
-		}
-
-		if err := j.pod.UpdateResources(resourceInfo); err != nil {
+		res := p.Resources()
+		if err := j.pod.UpdateResources(cloud.ImportPodResources(res)); err != nil {
 			j.AddError(errors.Wrap(err, "updating pod resources"))
 		}
 

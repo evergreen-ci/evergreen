@@ -34,16 +34,20 @@ func TestBasicECSPod(t *testing.T) {
 		},
 		"InfoIsPopulated": func(ctx context.Context, t *testing.T, c cocoa.ECSClient) {
 			res := cocoa.NewECSPodResources().SetTaskID("task_id")
-			stat := cocoa.StatusStarting
-			opts := NewBasicECSPodOptions().SetClient(c).SetResources(*res).SetStatus(stat)
+			stat := cocoa.NewECSPodStatusInfo().
+				SetStatus(cocoa.StatusRunning).
+				AddContainers(*cocoa.NewECSContainerStatusInfo().
+					SetContainerID("container_id").
+					SetName("name").
+					SetStatus(cocoa.StatusRunning))
+			opts := NewBasicECSPodOptions().SetClient(c).SetResources(*res).SetStatusInfo(*stat)
 
 			p, err := NewBasicECSPod(opts)
 			require.NoError(t, err)
 
-			info, err := p.Info(ctx)
-			require.NoError(t, err)
-			assert.Equal(t, *res, info.Resources)
-			assert.Equal(t, stat, info.Status)
+			podRes := p.Resources()
+			assert.Equal(t, *res, podRes)
+			assert.Equal(t, *stat, p.StatusInfo())
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -65,9 +69,7 @@ func TestBasicECSPod(t *testing.T) {
 
 			tCase(tctx, t, c)
 		})
-
 	}
-
 }
 
 // TODO (EVG-14979): clean up resources in ECS tests more thoroughly
@@ -93,9 +95,11 @@ func TestECSPod(t *testing.T) {
 
 			c, err := NewBasicECSClient(*awsOpts)
 			require.NoError(t, err)
-			defer c.Close(ctx)
+			defer func() {
+				assert.NoError(t, c.Close(ctx))
+			}()
 
-			secretsClient, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
+			smc, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
 				Creds:  credentials.NewEnvCredentials(),
 				Region: aws.String(testutil.AWSRegion()),
 				Role:   aws.String(testutil.AWSRole()),
@@ -105,17 +109,16 @@ func TestECSPod(t *testing.T) {
 				HTTPClient: hc,
 			})
 			require.NoError(t, err)
-			require.NotNil(t, c)
-			defer secretsClient.Close(ctx)
+			defer func() {
+				assert.NoError(t, smc.Close(tctx))
+			}()
 
-			m := secret.NewBasicSecretsManager(secretsClient)
-			require.NotNil(t, m)
+			v := secret.NewBasicSecretsManager(smc)
 
-			pc, err := NewBasicECSPodCreator(c, m)
+			pc, err := NewBasicECSPodCreator(c, v)
 			require.NoError(t, err)
-			require.NotZero(t, pc)
 
-			tCase(tctx, t, m, pc)
+			tCase(tctx, t, pc, c, v)
 		})
 	}
 }
@@ -145,90 +148,104 @@ func TestBasicECSPodOptions(t *testing.T) {
 		require.NotZero(t, opts.Resources)
 		assert.Equal(t, *res, *opts.Resources)
 	})
-	t.Run("SetStatus", func(t *testing.T) {
-		stat := cocoa.StatusStarting
-		opts := NewBasicECSPodOptions().SetStatus(stat)
-		require.NotNil(t, opts.Status)
-		assert.Equal(t, stat, *opts.Status)
+	t.Run("SetStatusInfo", func(t *testing.T) {
+		stat := cocoa.NewECSPodStatusInfo().SetStatus(cocoa.StatusRunning)
+		opts := NewBasicECSPodOptions().SetStatusInfo(*stat)
+		require.NotNil(t, opts.StatusInfo)
+		assert.Equal(t, *stat, *opts.StatusInfo)
 	})
 	t.Run("Validate", func(t *testing.T) {
+		validResources := func() cocoa.ECSPodResources {
+			return *cocoa.NewECSPodResources().
+				SetTaskID("task_id").
+				SetCluster("cluster").
+				AddContainers(*cocoa.NewECSContainerResources().
+					SetContainerID("container_id").
+					SetName("container_name"))
+		}
+		validStatusInfo := func() cocoa.ECSPodStatusInfo {
+			return *cocoa.NewECSPodStatusInfo().
+				SetStatus(cocoa.StatusRunning).
+				AddContainers(*cocoa.NewECSContainerStatusInfo().
+					SetContainerID("container_id").
+					SetName("name").
+					SetStatus(cocoa.StatusRunning))
+		}
+		validAWSOpts := func() awsutil.ClientOptions {
+			return *awsutil.NewClientOptions().
+				SetCredentials(credentials.NewEnvCredentials()).
+				SetRegion("us-east-1")
+		}
 		t.Run("EmptyIsInvalid", func(t *testing.T) {
 			opts := NewBasicECSPodOptions()
 			assert.Error(t, opts.Validate())
 		})
 		t.Run("AllFieldsPopulatedIsValid", func(t *testing.T) {
-			awsOpts := awsutil.NewClientOptions().SetCredentials(credentials.NewEnvCredentials()).SetRegion("us-east-1")
-			ecsClient, err := NewBasicECSClient(*awsOpts)
+			ecsClient, err := NewBasicECSClient(validAWSOpts())
 			require.NoError(t, err)
-			smClient, err := secret.NewBasicSecretsManagerClient(*awsOpts)
+			smClient, err := secret.NewBasicSecretsManagerClient(validAWSOpts())
 			require.NoError(t, err)
 			v := secret.NewBasicSecretsManager(smClient)
-			res := cocoa.NewECSPodResources().SetTaskID("id")
 			opts := NewBasicECSPodOptions().
 				SetClient(ecsClient).
 				SetVault(v).
-				SetResources(*res).
-				SetStatus(cocoa.StatusStarting)
+				SetResources(validResources()).
+				SetStatusInfo(validStatusInfo())
 			assert.NoError(t, opts.Validate())
 		})
 		t.Run("MissingClientIsInvalid", func(t *testing.T) {
-			awsOpts := awsutil.NewClientOptions().SetCredentials(credentials.NewEnvCredentials()).SetRegion("us-east-1")
-			smClient, err := secret.NewBasicSecretsManagerClient(*awsOpts)
+			smClient, err := secret.NewBasicSecretsManagerClient(validAWSOpts())
 			require.NoError(t, err)
 			v := secret.NewBasicSecretsManager(smClient)
-			res := cocoa.NewECSPodResources().SetTaskID("id")
 			opts := NewBasicECSPodOptions().
 				SetVault(v).
-				SetResources(*res).
-				SetStatus(cocoa.StatusStarting)
+				SetResources(validResources()).
+				SetStatusInfo(validStatusInfo())
 			assert.Error(t, opts.Validate())
 		})
 		t.Run("MissingVaultIsValid", func(t *testing.T) {
-			awsOpts := awsutil.NewClientOptions().SetCredentials(credentials.NewEnvCredentials()).SetRegion("us-east-1")
-			ecsClient, err := NewBasicECSClient(*awsOpts)
+			ecsClient, err := NewBasicECSClient(validAWSOpts())
 			require.NoError(t, err)
-			res := cocoa.NewECSPodResources().SetTaskID("id")
 			opts := NewBasicECSPodOptions().
 				SetClient(ecsClient).
-				SetResources(*res).
-				SetStatus(cocoa.StatusStarting)
+				SetResources(validResources()).
+				SetStatusInfo(validStatusInfo())
 			assert.NoError(t, opts.Validate())
 		})
 		t.Run("MissingResourcesIsInvalid", func(t *testing.T) {
-			awsOpts := awsutil.NewClientOptions().SetCredentials(credentials.NewEnvCredentials()).SetRegion("us-east-1")
-			smClient, err := secret.NewBasicSecretsManagerClient(*awsOpts)
+			ecsClient, err := NewBasicECSClient(validAWSOpts())
 			require.NoError(t, err)
-			v := secret.NewBasicSecretsManager(smClient)
-			res := cocoa.NewECSPodResources()
 			opts := NewBasicECSPodOptions().
-				SetVault(v).
-				SetResources(*res).
-				SetStatus(cocoa.StatusStarting)
+				SetClient(ecsClient).
+				SetStatusInfo(validStatusInfo())
 			assert.Error(t, opts.Validate())
 		})
 		t.Run("BadResourcesIsInvalid", func(t *testing.T) {
-			awsOpts := awsutil.NewClientOptions().SetCredentials(credentials.NewEnvCredentials()).SetRegion("us-east-1")
-			smClient, err := secret.NewBasicSecretsManagerClient(*awsOpts)
+			ecsClient, err := NewBasicECSClient(validAWSOpts())
 			require.NoError(t, err)
-			v := secret.NewBasicSecretsManager(smClient)
 			opts := NewBasicECSPodOptions().
-				SetVault(v).
-				SetStatus(cocoa.StatusStarting)
+				SetClient(ecsClient).
+				SetResources(*cocoa.NewECSPodResources()).
+				SetStatusInfo(validStatusInfo())
 			assert.Error(t, opts.Validate())
 		})
 		t.Run("MissingStatusIsInvalid", func(t *testing.T) {
-			awsOpts := awsutil.NewClientOptions().SetCredentials(credentials.NewEnvCredentials()).SetRegion("us-east-1")
-			ecsClient, err := NewBasicECSClient(*awsOpts)
+			ecsClient, err := NewBasicECSClient(validAWSOpts())
 			require.NoError(t, err)
-			smClient, err := secret.NewBasicSecretsManagerClient(*awsOpts)
-			require.NoError(t, err)
-			v := secret.NewBasicSecretsManager(smClient)
-			res := cocoa.NewECSPodResources().SetTaskID("id")
 			opts := NewBasicECSPodOptions().
 				SetClient(ecsClient).
-				SetVault(v).
-				SetResources(*res)
+				SetResources(validResources())
 			assert.Error(t, opts.Validate())
+		})
+		t.Run("BadStatusIsInvalid", func(t *testing.T) {
+			ecsClient, err := NewBasicECSClient(validAWSOpts())
+			require.NoError(t, err)
+			opts := NewBasicECSPodOptions().
+				SetClient(ecsClient).
+				SetResources(validResources()).
+				SetStatusInfo(*cocoa.NewECSPodStatusInfo())
+			assert.Error(t, opts.Validate())
+
 		})
 	})
 }

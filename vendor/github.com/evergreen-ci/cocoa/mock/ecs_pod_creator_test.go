@@ -24,7 +24,7 @@ func TestECSPodCreator(t *testing.T) {
 
 	GlobalECSService.Clusters[testutil.ECSClusterName()] = ECSCluster{}
 
-	for tName, tCase := range ecsPodCreatorInputTests() {
+	for tName, tCase := range ecsPodCreatorTests() {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, time.Second)
 			defer tcancel()
@@ -96,7 +96,9 @@ func TestECSPodCreator(t *testing.T) {
 	}
 }
 
-func ecsPodCreatorInputTests() map[string]func(ctx context.Context, t *testing.T, pc cocoa.ECSPodCreator, c *ECSClient, sm *SecretsManagerClient) {
+// ecsPodCreatorTests are mock-specific tests for ECS and Secrets Manager with
+// the ECS pod creator.
+func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc cocoa.ECSPodCreator, c *ECSClient, sm *SecretsManagerClient) {
 	return map[string]func(ctx context.Context, t *testing.T, pc cocoa.ECSPodCreator, c *ECSClient, sm *SecretsManagerClient){
 		"RegistersTaskDefinitionAndRunsTaskWithAllFieldsSet": func(ctx context.Context, t *testing.T, pc cocoa.ECSPodCreator, c *ECSClient, sm *SecretsManagerClient) {
 			envVar := cocoa.NewEnvironmentVariable().
@@ -112,7 +114,8 @@ func ecsPodCreatorInputTests() map[string]func(ctx context.Context, t *testing.T
 				AddEnvironmentVariables(*envVar)
 			placementOpts := cocoa.NewECSPodPlacementOptions().
 				SetStrategy(cocoa.StrategyBinpack).
-				SetStrategyParameter(cocoa.StrategyParamBinpackMemory)
+				SetStrategyParameter(cocoa.StrategyParamBinpackMemory).
+				AddInstanceFilters("runningTaskCount == 0")
 			execOpts := cocoa.NewECSPodExecutionOptions().
 				SetCluster(testutil.ECSClusterName()).
 				SetPlacementOptions(*placementOpts).
@@ -158,6 +161,9 @@ func ecsPodCreatorInputTests() map[string]func(ctx context.Context, t *testing.T
 			require.Len(t, c.RunTaskInput.PlacementStrategy, 1)
 			assert.EqualValues(t, *placementOpts.Strategy, utility.FromStringPtr(c.RunTaskInput.PlacementStrategy[0].Type))
 			assert.Equal(t, utility.FromStringPtr(placementOpts.StrategyParameter), utility.FromStringPtr(c.RunTaskInput.PlacementStrategy[0].Field))
+			require.Len(t, c.RunTaskInput.PlacementConstraints, 1)
+			assert.Equal(t, placementOpts.InstanceFilters[0], utility.FromStringPtr(c.RunTaskInput.PlacementConstraints[0].Expression))
+			assert.Equal(t, "memberOf", utility.FromStringPtr(c.RunTaskInput.PlacementConstraints[0].Type))
 			require.Len(t, c.RunTaskInput.Tags, 1)
 			assert.Equal(t, "execution_tag", utility.FromStringPtr(c.RunTaskInput.Tags[0].Key))
 			assert.Equal(t, execOpts.Tags["execution_tag"], utility.FromStringPtr(c.RunTaskInput.Tags[0].Value))

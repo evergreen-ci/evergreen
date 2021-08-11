@@ -42,18 +42,21 @@ func TestCreatePodJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			info, err := j.ecsPod.Info(ctx)
-			require.NoError(t, err)
-			assert.Equal(t, cocoa.StatusRunning, info.Status)
+			res := j.ecsPod.Resources()
+			assert.Equal(t, cocoa.StatusStarting, j.ecsPod.StatusInfo().Status)
 			assert.Equal(t, pod.StatusStarting, j.pod.Status)
-			require.NotZero(t, info.Resources)
-			assert.Equal(t, "cluster", utility.FromStringPtr(info.Resources.Cluster))
-			assert.Equal(t, j.pod.Resources.DefinitionID, utility.FromStringPtr(info.Resources.TaskDefinition.ID))
-			assert.Equal(t, j.pod.Resources.ExternalID, utility.FromStringPtr(info.Resources.TaskID))
-			require.Len(t, info.Resources.Secrets, 2)
+			assert.Equal(t, "cluster", utility.FromStringPtr(res.Cluster))
+			assert.Equal(t, j.pod.Resources.DefinitionID, utility.FromStringPtr(res.TaskDefinition.ID))
+			assert.Equal(t, j.pod.Resources.ExternalID, utility.FromStringPtr(res.TaskID))
+			require.Len(t, res.Containers, 1)
+			require.Len(t, res.Containers[0].Secrets, 2)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 2)
-			for _, secret := range info.Resources.Secrets {
-				assert.Contains(t, j.pod.Resources.SecretIDs, utility.FromStringPtr(secret.Name))
+			for _, secret := range res.Containers[0].Secrets {
+				id := utility.FromStringPtr(secret.Name)
+				assert.Contains(t, j.pod.Resources.Containers[0].SecretIDs, id)
+				val, err := j.vault.GetValue(ctx, id)
+				require.NoError(t, err)
+				assert.Equal(t, utility.FromStringPtr(secret.Value), val)
 			}
 
 			dbPod, err := pod.FindOneByID(j.PodID)

@@ -89,10 +89,16 @@ func TestAPIPod(t *testing.T) {
 				LastCommunicated: time.Now(),
 			},
 			Resources: pod.ResourceInfo{
-				ExternalID:   "external_id",
+				ExternalID:   "task_id",
 				DefinitionID: "definition_id",
 				Cluster:      "cluster",
-				SecretIDs:    []string{"secret_id0", "secret_id1"},
+				Containers: []pod.ContainerResourceInfo{
+					{
+						ExternalID: "container_id",
+						Name:       "container_name",
+						SecretIDs:  []string{"secret_id0", "secret_id1"},
+					},
+				},
 			},
 		}
 	}
@@ -128,7 +134,13 @@ func TestAPIPod(t *testing.T) {
 				ExternalID:   utility.ToStringPtr("task_id"),
 				DefinitionID: utility.ToStringPtr("definition_id"),
 				Cluster:      utility.ToStringPtr("cluster"),
-				SecretIDs:    []string{"secret_id0", "secret_id1"},
+				Containers: []APIContainerResourceInfo{
+					{
+						ExternalID: utility.ToStringPtr("container_id"),
+						Name:       utility.ToStringPtr("container_name"),
+						SecretIDs:  []string{"secret_id0", "secret_id1"},
+					},
+				},
 			},
 		}
 	}
@@ -159,9 +171,14 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.ExternalID), dbPod.Resources.ExternalID)
 			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.DefinitionID), dbPod.Resources.DefinitionID)
 			assert.Equal(t, utility.FromStringPtr(apiPod.Resources.Cluster), dbPod.Resources.Cluster)
-			left, right := utility.StringSliceSymmetricDifference(dbPod.Resources.SecretIDs, apiPod.Resources.SecretIDs)
-			assert.Empty(t, left, "actual is missing secret IDs: %s", left)
-			assert.Empty(t, right, "actual has extra unexpected secret IDs: %s", right)
+			require.Len(t, dbPod.Resources.Containers, len(apiPod.Resources.Containers))
+			for i := range apiPod.Resources.Containers {
+				assert.Equal(t, utility.FromStringPtr(apiPod.Resources.Containers[i].ExternalID), dbPod.Resources.Containers[i].ExternalID)
+				assert.Equal(t, utility.FromStringPtr(apiPod.Resources.Containers[i].Name), dbPod.Resources.Containers[i].Name)
+				left, right := utility.StringSliceSymmetricDifference(apiPod.Resources.Containers[i].SecretIDs, dbPod.Resources.Containers[i].SecretIDs)
+				assert.Empty(t, left, "actual is missing container secret IDs: %s", left)
+				assert.Empty(t, right, "actual has extra unexpected container secret IDs: %s", right)
+			}
 		})
 		t.Run("FailsWithInvalidStatus", func(t *testing.T) {
 			apiPod := validAPIPod()
@@ -211,9 +228,14 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, dbPod.Resources.ExternalID, utility.FromStringPtr(apiPod.Resources.ExternalID))
 			assert.Equal(t, dbPod.Resources.DefinitionID, utility.FromStringPtr(apiPod.Resources.DefinitionID))
 			assert.Equal(t, dbPod.Resources.Cluster, utility.FromStringPtr(apiPod.Resources.Cluster))
-			left, right := utility.StringSliceSymmetricDifference(dbPod.Resources.SecretIDs, apiPod.Resources.SecretIDs)
-			assert.Empty(t, left)
-			assert.Empty(t, right)
+			require.Len(t, apiPod.Resources.Containers, len(dbPod.Resources.Containers))
+			for i := range dbPod.Resources.Containers {
+				assert.Equal(t, dbPod.Resources.Containers[i].ExternalID, utility.FromStringPtr(apiPod.Resources.Containers[i].ExternalID))
+				assert.Equal(t, dbPod.Resources.Containers[i].Name, utility.FromStringPtr(apiPod.Resources.Containers[i].Name))
+				left, right := utility.StringSliceSymmetricDifference(dbPod.Resources.Containers[i].SecretIDs, apiPod.Resources.Containers[i].SecretIDs)
+				assert.Empty(t, left, "actual is missing container secret IDs: %s", left)
+				assert.Empty(t, right, "actual has extra unexpected container secret IDs: %s", right)
+			}
 		})
 		t.Run("FailsWithInvalidStatus", func(t *testing.T) {
 			dbPod := validDBPod()
