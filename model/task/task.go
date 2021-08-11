@@ -2425,9 +2425,9 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 	var dt *Task
 	var err error
 	if t.Archived {
-		dt, err = FindOneOld(ByExecutionTask(t.OldTaskId))
+		dt, err = FindOneOldNoMerge(ByExecutionTask(t.OldTaskId))
 	} else {
-		dt, err = FindOne(ByExecutionTask(t.Id))
+		dt, err = FindOneNoMerge(ByExecutionTask(t.Id))
 	}
 	if err != nil {
 		return nil, err
