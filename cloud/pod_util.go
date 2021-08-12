@@ -177,6 +177,7 @@ func ExportPodContainerDef(opts pod.TaskContainerCreationOptions) (*cocoa.ECSCon
 		SetImage(opts.Image).
 		SetMemoryMB(opts.MemoryMB).
 		SetCPU(opts.CPU).
+		SetWorkingDir(opts.WorkingDir).
 		SetEnvironmentVariables(exportEnvVars(opts.EnvVars, opts.EnvSecrets)), nil
 }
 
