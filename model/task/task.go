@@ -2852,20 +2852,57 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	)
 
 	if !opts.IncludeExecutionTasks {
-		pipeline = append(pipeline, []bson.M{
-			// do a self join to filter off execution tasks
-			{"$lookup": bson.M{
-				"from":         Collection,
-				"localField":   IdKey,
-				"foreignField": ExecutionTasksKey,
-				"as":           tempParentKey,
-			}},
-			{
-				"$match": bson.M{
-					tempParentKey: []interface{}{},
+		// Split tasks so that we only look up if the task is an execution task if display task ID is unset and
+		// display only is false (i.e. we don't know if it's a display task or not).
+		facet := bson.M{
+			"$facet": bson.M{
+				// we skip lookup for anything we already know is not part of a display task
+				"id_empty": []bson.M{
+					{
+						"$match": bson.M{
+							"$or": []bson.M{
+								{DisplayTaskIdKey: ""},
+								{DisplayOnlyKey: true},
+							},
+						},
+					},
+				},
+				// no ID and not display task: lookup if it's an execution task for some task, and then filter it out if it is
+				"no_id": []bson.M{
+					{
+						"$match": bson.M{
+							DisplayTaskIdKey: nil,
+							DisplayOnlyKey:   bson.M{"$ne": true},
+						},
+					},
+					{"$lookup": bson.M{
+						"from":         Collection,
+						"localField":   IdKey,
+						"foreignField": ExecutionTasksKey,
+						"as":           tempParentKey,
+					}},
+					{
+						"$match": bson.M{
+							tempParentKey: []interface{}{},
+						},
+					},
 				},
 			},
-		}...)
+		}
+		pipeline = append(pipeline, facet)
+
+		// recombine the tasks so that we can continue the pipeline on the joined tasks
+		recombineTasks := []bson.M{
+			{"$project": bson.M{
+				"tasks": bson.M{
+					"$setUnion": []string{"$no_id", "$id_empty"},
+				}},
+			},
+			{"$unwind": "$tasks"},
+			{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
+		}
+
+		pipeline = append(pipeline, recombineTasks...)
 	}
 	pipeline = append(pipeline, []bson.M{
 		// get any annotation that has at least one issue
