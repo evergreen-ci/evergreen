@@ -2134,10 +2134,11 @@ func (t *Task) populateTestResultsForDisplayTask() error {
 		return errors.Errorf("%s is not a display task", t.Id)
 	}
 
-	_, err := MergeTestResultsBulk([]Task{*t}, nil)
+	out, err := MergeTestResultsBulk([]Task{*t}, nil)
 	if err != nil {
 		return errors.Wrap(err, "merging test results for display task")
 	}
+	t.LocalTestResults = out[0].LocalTestResults
 	t.testResultsPopulated = true
 
 	return nil

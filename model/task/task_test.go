@@ -1112,14 +1112,12 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	require.NotNil(task00)
 	assert.Equal("task_0", task00.Id)
 	assert.Equal(0, task00.Execution)
-	assert.Len(task00.LocalTestResults, 1)
 
 	task01, err := FindOneIdOldOrNew("task", 1)
 	assert.NoError(err)
 	require.NotNil(task01)
 	assert.Equal("task", task01.Id)
 	assert.Equal(1, task01.Execution)
-	assert.Len(task01.LocalTestResults, 1)
 }
 
 func TestPopulateTestResultsForDisplayTask(t *testing.T) {

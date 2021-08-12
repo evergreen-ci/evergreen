@@ -195,6 +195,10 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
 	}
+	if err := task.PopulateTestResults(); err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error populating test results"})
+		return
+	}
 
 	result := taskStatusContent{
 		Id:     task.Id,
