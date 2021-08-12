@@ -209,6 +209,8 @@ type Task struct {
 	CanSync       bool             `bson:"can_sync" json:"can_sync"`
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
 
+	// testResultsPopulated is a local field that indicates whether the
+	// task's test results are successfully cached in LocalTestResults.
 	testResultsPopulated bool
 }
 
