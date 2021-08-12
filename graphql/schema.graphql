@@ -215,7 +215,6 @@ input MainlineCommitsOptions {
   skipOrderNumber: Int = 0
 }
 
-
 enum SpawnHostStatusActions {
   START
   STOP
@@ -752,7 +751,10 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
-  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
+  patchMetadata: PatchMetadata!
+    @deprecated(
+      reason: "patchMetadata is deprecated. Use versionMetadata instead."
+    )
   patchNumber: Int
   priority: Int
   project: Project
@@ -765,11 +767,13 @@ type Task {
   spawnHostLink: String
   startTime: Time
   status: String!
+  originalStatus: String
   taskGroup: String
   taskGroupMaxHosts: Int
   timeTaken: Duration
   totalTestCount: Int!
-  version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
+  version: String!
+    @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
 }
 
