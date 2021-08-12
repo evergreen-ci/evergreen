@@ -1122,7 +1122,7 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	assert.Len(task01.LocalTestResults, 1)
 }
 
-func TestGetTestResultsForDisplayTask(t *testing.T) {
+func TestPopulateTestResultsForDisplayTask(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, testresult.Collection))
 	dt := Task{
@@ -1136,10 +1136,9 @@ func TestGetTestResultsForDisplayTask(t *testing.T) {
 		TestFile: "myTest",
 	}
 	assert.NoError(test.Insert())
-	results, err := dt.GetTestResultsForDisplayTask()
-	assert.NoError(err)
-	assert.Len(results, 1)
-	assert.Equal("myTest", results[0].TestFile)
+	require.NoError(t, dt.populateTestResultsForDisplayTask())
+	require.Len(t, dt.LocalTestResults, 1)
+	assert.Equal("myTest", dt.LocalTestResults[0].TestFile)
 }
 
 func TestBlocked(t *testing.T) {

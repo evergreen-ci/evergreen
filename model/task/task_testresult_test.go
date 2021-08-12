@@ -77,8 +77,7 @@ func (s *TaskTestResultSuite) TestNoOldNoNewTestResults() {
 	t, err := FindOne(ById(s.tasks[2].Id))
 	s.NoError(err)
 
-	err = t.MergeNewTestResults()
-	s.NoError(err)
+	s.NoError(t.PopulateTestResults())
 
 	s.Equal("taskid-2", t.Id)
 	s.Equal("secret-2", t.Secret)
@@ -130,8 +129,7 @@ func (s *TaskTestResultSuite) TestNoOldNewTestResults() {
 	t, err = FindOne(ById("taskid-10"))
 	s.NoError(err)
 
-	err = t.MergeNewTestResults()
-	s.NoError(err)
+	s.NoError(t.PopulateTestResults())
 
 	s.Equal("taskid-10", t.Id)
 	s.Equal("secret-10", t.Secret)
@@ -185,8 +183,7 @@ func (s *TaskTestResultSuite) TestArchivedTask() {
 	t, err = FindOneOld(ById("taskid-20_3"))
 	s.NoError(err)
 
-	err = t.MergeNewTestResults()
-	s.NoError(err)
+	s.NoError(t.PopulateTestResults())
 
 	s.Equal("taskid-20_3", t.Id)
 	s.Equal("secret-20", t.Secret)
