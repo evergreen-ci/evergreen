@@ -25,7 +25,7 @@ func TestVerifyAliasExists(t *testing.T) {
 		ProjectID: "evergreen",
 	}
 	require.NoError(t, alias.Upsert())
-	aliases, err := model.FindAliasInProject("evergreen", evergreen.GithubPRAlias)
+	aliases, err := model.FindAliasInProjectOrRepo("evergreen", evergreen.GithubPRAlias)
 	require.NoError(t, err)
 	require.Len(t, aliases, 1)
 	exists, err = verifyAliasExists(evergreen.GithubPRAlias, "evergreen", []model.ProjectAlias{}, []string{})
