@@ -974,7 +974,10 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		TaskDisplayName: t.DisplayName,
 	}
 	if t.IsPartOfDisplay() {
-		data.TaskDisplayName = t.DisplayTask.DisplayName
+		dt, _ := t.GetDisplayTask()
+		if dt != nil {
+			data.TaskDisplayName = dt.DisplayName
+		}
 	}
 
 	builder := jiraBuilder{

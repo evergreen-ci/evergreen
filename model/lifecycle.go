@@ -888,6 +888,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				if execTask, ok := taskMap[execTaskId]; ok && execTask.Activated {
 					displayTaskActivated = true
 				}
+
+				// add display task ID to any new execution task
+				if _, ok := taskMap[execTaskId]; ok {
+					taskMap[execTaskId].DisplayTaskId = utility.ToStringPtr(id)
+				}
 			}
 			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds, displayTaskActivated), message.Fields{
 				"message":      "problem adding exec tasks to display tasks",
@@ -927,6 +932,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		for _, etID := range newDisplayTask.ExecutionTasks {
 			if _, ok := taskMap[etID]; ok {
 				taskMap[etID].DisplayTask = newDisplayTask
+				taskMap[etID].DisplayTaskId = utility.ToStringPtr(id)
 			}
 		}
 		newDisplayTask.DependsOn, err = task.GetAllDependencies(newDisplayTask.ExecutionTasks, taskMap)
@@ -1262,6 +1268,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		TriggerEvent:        v.TriggerEvent,
 		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
 		IsGithubCheck:       isGithubCheck,
+		DisplayTaskId:       utility.ToStringPtr(""), // this will be overridden if the task is an execution task
 	}
 	if buildVarTask.IsGroup {
 		tg := project.FindTaskGroup(buildVarTask.GroupName)
