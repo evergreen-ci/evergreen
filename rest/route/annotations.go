@@ -282,9 +282,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 				StatusCode: http.StatusBadRequest,
 			}
 		}
-	}
-
-	if h.annotation.TaskExecution == nil && taskExecutionsAsString == "" {
+	} else if h.annotation.TaskExecution == nil {
 		return gimlet.ErrorResponse{
 			Message:    "task execution must be specified in the url or request body",
 			StatusCode: http.StatusBadRequest,
