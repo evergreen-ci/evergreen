@@ -66,6 +66,7 @@ var (
 	ExecutionTasksKey           = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	ExecutionTasksFullKey       = bsonutil.MustHaveTag(Task{}, "ExecutionTasksFull")
 	DisplayOnlyKey              = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
+	DisplayTaskIdKey            = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
 	TaskGroupKey                = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	TaskGroupMaxHostsKey        = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
 	TaskGroupOrderKey           = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
@@ -1339,24 +1340,6 @@ func FindAllOld(query db.Q) ([]Task, error) {
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
-	return tasks, err
-}
-
-func FindWithDisplayTasks(query db.Q) ([]Task, error) {
-	tasks := []Task{}
-	err := db.FindAllQ(Collection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-
-	for i, t := range tasks {
-		_, err = t.GetDisplayTask()
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to retrieve parent display task")
-		}
-		tasks[i] = t
-	}
-
 	return tasks, err
 }
 

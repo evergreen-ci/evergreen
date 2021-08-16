@@ -165,7 +165,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 
 	if execution != "" && h.fetchAllExecutions == true {
 		return gimlet.ErrorResponse{
-			Message:    "fetchAllExecutions=true cannot be combined with execution={task_execution}",
+			Message:    "fetchAllExecutions=true cannot be combined with execution={execution}",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -247,6 +247,7 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.taskId = gimlet.GetVars(r)["task_id"]
+	taskExecutionsAsString := r.URL.Query().Get("execution")
 	if h.taskId == "" {
 		return gimlet.ErrorResponse{
 			Message:    "task ID cannot be empty",
@@ -260,6 +261,30 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if taskExecutionsAsString != "" {
+		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    "cannot convert execution to integer value",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+
+		if h.annotation.TaskExecution == nil {
+			h.annotation.TaskExecution = &taskExecution
+		} else if *h.annotation.TaskExecution != taskExecution {
+			return gimlet.ErrorResponse{
+				Message:    "Task execution must equal the task execution specified in the annotation",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	} else if h.annotation.TaskExecution == nil {
+		return gimlet.ErrorResponse{
+			Message:    "task execution must be specified in the url or request body",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -296,10 +321,6 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 		}
 	}
 
-	// set TaskExecution to the latest execution
-	if h.annotation.TaskExecution == nil {
-		h.annotation.TaskExecution = &t.Execution
-	}
 	if h.annotation.TaskId == nil {
 		taskId := h.taskId
 		h.annotation.TaskId = &taskId

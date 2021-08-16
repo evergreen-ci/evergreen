@@ -1956,7 +1956,7 @@ func resetTaskData() error {
 	if err := displayTask.Insert(); err != nil {
 		return err
 	}
-	if err := UpdateDisplayTask(displayTask); err != nil {
+	if err := UpdateDisplayTaskForTask(task5); err != nil {
 		return err
 	}
 	return nil
