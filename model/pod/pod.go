@@ -17,7 +17,7 @@ type Pod struct {
 	// ID is the unique identifier for the metadata document.
 	ID string `bson:"_id" json:"id"`
 	// Status is the current state of the pod.
-	Status Status `bson:"pod_status"`
+	Status Status `bson:"status"`
 	// Secret is the shared secret between the server and the pod for
 	// authentication when the host is provisioned.
 	Secret string `bson:"secret" json:"secret"`
