@@ -20,17 +20,12 @@ import (
 
 func TestNewCreatePodJob(t *testing.T) {
 	podID := utility.RandomString()
-	p := pod.Pod{
-		ID:     podID,
-		Status: pod.StatusInitializing,
-	}
 
-	j, ok := NewCreatePodJob(&evgMock.Environment{}, &p, utility.RoundPartOfMinute(0).Format(TSFormat)).(*createPodJob)
+	j, ok := NewCreatePodJob(&evgMock.Environment{}, podID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*createPodJob)
 	require.True(t, ok)
 
 	assert.NotZero(t, j.ID())
 	assert.Equal(t, podID, j.PodID)
-	assert.Equal(t, pod.StatusInitializing, j.pod.Status)
 }
 
 func TestCreatePodJob(t *testing.T) {
@@ -193,7 +188,7 @@ func TestCreatePodJob(t *testing.T) {
 				},
 			}
 
-			env := evgMock.Environment{}
+			var env evgMock.Environment
 			require.NoError(t, env.Configure(ctx))
 			var envClusters []evergreen.ECSClusterConfig
 			for name := range cocoaMock.GlobalECSService.Clusters {
@@ -204,7 +199,7 @@ func TestCreatePodJob(t *testing.T) {
 			}
 			env.EvergreenSettings.Providers.AWS.Pod.ECS.Clusters = envClusters
 
-			j, ok := NewCreatePodJob(&env, &p, utility.RoundPartOfMinute(0).Format(TSFormat)).(*createPodJob)
+			j, ok := NewCreatePodJob(&env, p.ID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*createPodJob)
 			require.True(t, ok)
 
 			j.pod = &p

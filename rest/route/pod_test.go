@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -159,8 +160,10 @@ func TestPostPod(t *testing.T) {
 			defer cancel()
 
 			sc := &data.MockConnector{}
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
 
-			p := makePostPod(sc)
+			p := makePostPod(env, sc)
 			require.NotZero(t, p)
 
 			tCase(ctx, t, p.(*podPostHandler))
