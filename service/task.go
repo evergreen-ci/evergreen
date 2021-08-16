@@ -330,7 +330,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	testResults := uis.getTestResults(w, r, projCtx, &uiTask)
-
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
 		var testResultsOnBaseCommit []task.TestResult
@@ -892,9 +891,6 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData) []task.TestResult {
-	var err error
-	var testResults []task.TestResult
-
 	if err := projCtx.Task.PopulateTestResults(); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return nil
@@ -904,7 +900,10 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 	if uiTask.DisplayOnly {
 		execTaskDisplayNameMap := map[string]string{}
 		for _, t := range projCtx.Task.ExecutionTasks {
-			var et *task.Task
+			var (
+				et  *task.Task
+				err error
+			)
 			if uiTask.Archived {
 				et, err = task.FindOneOldByIdAndExecution(t, projCtx.Task.Execution)
 			} else {
@@ -932,7 +931,7 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			})
 		}
 
-		for _, tr := range testResults {
+		for _, tr := range projCtx.Task.LocalTestResults {
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 				TestResult: tr,
 				TaskId:     tr.TaskID,
@@ -946,12 +945,11 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				TaskId:     tr.TaskID,
 			})
 		}
-		testResults = projCtx.Task.LocalTestResults
 
 		if uiTask.PartOfDisplay {
 			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
 		}
 	}
 
-	return testResults
+	return projCtx.Task.LocalTestResults
 }
