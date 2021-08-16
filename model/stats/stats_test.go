@@ -801,13 +801,12 @@ func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId) (*testresult.T
 }
 
 func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*dbTestStats, error) {
-	var lastTestStats *dbTestStats
-	testResults := []dbTestStats{}
+	testResults := &dbTestStats{}
 
 	start := utility.GetUTCDay(testStatsID.Date)
 	end := start.Add(24 * time.Hour)
 
-	qry := bson.M{
+	q := db.Query(bson.M{
 		"_id." + dbTestStatsIdProjectKey:      testStatsID.Project,
 		"_id." + dbTestStatsIdRequesterKey:    testStatsID.Requester,
 		"_id." + dbTestStatsIdTestFileKey:     testStatsID.TestFile,
@@ -818,16 +817,11 @@ func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*dbTestSt
 			"$gte": start,
 			"$lt":  end,
 		},
-	}
-	err := db.FindAll(HourlyTestStatsCollection, qry, db.NoProjection, []string{"-last_id"}, db.NoSkip, 1, &testResults)
+	}).Sort([]string{"-last_id"})
+	err := db.FindOneQ(HourlyTestStatsCollection, q, testResults)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
-	if err != nil {
-		lastTestStats = nil
-	} else {
-		lastTestStats = &testResults[0]
-	}
-	return lastTestStats, err
+	return testResults, err
 }

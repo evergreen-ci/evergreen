@@ -157,7 +157,7 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
-	// WaitSinceDependenciesMet is populatd in GetDistroQueueInfo, used for host allocation
+	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
 	// how long we expect the task to take from start to
@@ -176,6 +176,10 @@ type Task struct {
 	ExecutionTasksFull []Task   `bson:"execution_tasks_full" json:"-"` // this is a local pointer from a display task to its execution tasks
 	ResetWhenFinished  bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
 	DisplayTask        *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+
+	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
+	// and is nil if we haven't yet checked whether or not this task has a display task.
+	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
@@ -437,7 +441,7 @@ func (t *Task) AddDependency(d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return errors.Wrapf(UpdateAllMatchingDependenciesForTask(t.Id, existingDependency.TaskId, d.Unattainable),
+			return errors.Wrapf(t.MarkUnattainableDependency(existingDependency.TaskId, d.Unattainable),
 				"error updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
 		}
 	}
@@ -757,11 +761,10 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 	if err != nil {
 		return errors.Wrapf(err, "error marking task %s as dispatched", t.Id)
 	}
-	if t.IsPartOfDisplay() {
-		//when dispatching an execution task, mark its parent as dispatched
-		if t.DisplayTask != nil && t.DisplayTask.DispatchTime == utility.ZeroTime {
-			return t.DisplayTask.MarkAsDispatched("", "", "", dispatchTime)
-		}
+
+	//when dispatching an execution task, mark its parent as dispatched
+	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
+		return dt.MarkAsDispatched("", "", "", dispatchTime)
 	}
 	return nil
 }
@@ -900,14 +903,9 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 		ids = append(ids, tasks[i].Id)
 
 		// Display tasks are considered scheduled when their first exec task is scheduled
-		displayTask, err := tasks[i].GetDisplayTask()
-		if err != nil {
-			return errors.Wrapf(err, "can't get display task for task %s", tasks[i].Id)
+		if tasks[i].IsPartOfDisplay() {
+			ids = append(ids, utility.FromStringPtr(tasks[i].DisplayTaskId))
 		}
-		if displayTask != nil {
-			ids = append(ids, displayTask.Id)
-		}
-
 	}
 	info, err := UpdateAll(
 		bson.M{
@@ -1771,15 +1769,26 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
+// MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
+// and logs if the task is newly blocked.
+func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
+	wasBlocked := t.Blocked()
 	// check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
-		if t.DependsOn[i].TaskId == dependency.Id {
+		if t.DependsOn[i].TaskId == dependencyId {
 			t.DependsOn[i].Unattainable = unattainable
 		}
 	}
 
-	return UpdateAllMatchingDependenciesForTask(t.Id, dependency.Id, unattainable)
+	if err := updateAllMatchingDependenciesForTask(t.Id, dependencyId, unattainable); err != nil {
+		return err
+	}
+
+	// only want to log the task as blocked if it wasn't already blocked
+	if !wasBlocked && unattainable {
+		event.LogTaskBlocked(t.Id, t.Execution)
+	}
+	return nil
 }
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
@@ -2396,31 +2405,66 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 }
 
 func (t *Task) IsPartOfDisplay() bool {
-	dt, err := t.GetDisplayTask()
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "unable to get display task",
-			"execution_task": t.Id,
-		}))
-		return false
+	// if display task ID is nil, we need to check manually if we have an execution task
+	if t.DisplayTaskId == nil {
+		dt, err := t.GetDisplayTask()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "unable to get display task",
+				"execution_task": t.Id,
+			}))
+			return false
+		}
+		return dt != nil
 	}
-	return dt != nil
+
+	return utility.FromStringPtr(t.DisplayTaskId) != ""
 }
 
 func (t *Task) GetDisplayTask() (*Task, error) {
 	if t.DisplayTask != nil {
 		return t.DisplayTask, nil
 	}
+	dtId := utility.FromStringPtr(t.DisplayTaskId)
+	if t.DisplayTaskId != nil && dtId == "" {
+		// display task ID is explicitly set to empty if it's not a display task
+		return nil, nil
+	}
 	var dt *Task
 	var err error
 	if t.Archived {
-		dt, err = FindOneOld(ByExecutionTask(t.OldTaskId))
+		if dtId != "" {
+			dt, err = FindOneOldNoMergeByIdAndExecution(dtId, t.Execution)
+		} else {
+			dt, err = FindOneOldNoMerge(ByExecutionTask(t.OldTaskId))
+			if dt != nil {
+				dtId = dt.OldTaskId // save the original task ID to cache
+			}
+		}
 	} else {
-		dt, err = FindOne(ByExecutionTask(t.Id))
+		if dtId != "" {
+			dt, err = FindOneId(dtId)
+		} else {
+			dt, err = FindOneNoMerge(ByExecutionTask(t.Id))
+			if dt != nil {
+				dtId = dt.Id
+			}
+		}
 	}
 	if err != nil {
 		return nil, err
 	}
+
+	if t.DisplayTaskId == nil {
+		// Cache display task ID for future use. If we couldn't find the display task,
+		// we cache the empty string to show that it doesn't exist.
+		grip.Error(message.WrapError(t.SetDisplayTaskID(dtId), message.Fields{
+			"message":         "failed to cache display task ID for task",
+			"task_id":         t.Id,
+			"display_task_id": dtId,
+		}))
+	}
+
 	t.DisplayTask = dt
 	return dt, nil
 }
@@ -2909,15 +2953,14 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			},
 		})
 	}
-	countPipeline := []bson.M{}
-	countPipeline = append(countPipeline, pipeline...)
-	countPipeline = append(countPipeline, bson.M{"$count": "count"})
+
+	sortAndPaginatePipeline := []bson.M{}
 
 	sortFields := bson.D{}
 	if len(opts.Sorts) > 0 {
 		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				pipeline = append(pipeline, addStatusColorSort((singleSort.Key)))
+				sortAndPaginatePipeline = append(sortAndPaginatePipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
@@ -2925,15 +2968,16 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		}
 	}
 	sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
-	pipeline = append(pipeline, bson.M{
+
+	sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 		"$sort": sortFields,
 	})
 
 	if opts.Limit > 0 {
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$skip": opts.Page * opts.Limit,
 		})
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$limit": opts.Limit,
 		})
 	}
@@ -2942,12 +2986,28 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		for _, field := range opts.FieldsToProject {
 			fieldKeys[field] = 1
 		}
-		pipeline = append(pipeline, bson.M{
+		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
 			"$project": fieldKeys,
 		})
 	}
 
-	tasks := []Task{}
+	// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
+	tasksAndCountPipeline := bson.M{
+		"$facet": bson.M{
+			"count": []bson.M{
+				{"$count": "count"},
+			},
+			"tasks": sortAndPaginatePipeline,
+		},
+	}
+
+	pipeline = append(pipeline, tasksAndCountPipeline)
+
+	type TasksAndCount struct {
+		Tasks []Task           `bson:"tasks"`
+		Count []map[string]int `bson:"count"`
+	}
+	results := []TasksAndCount{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -2955,28 +3015,19 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	if err != nil {
 		return nil, 0, err
 	}
-	err = cursor.All(ctx, &tasks)
+	err = cursor.All(ctx, &results)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	type counter struct {
-		Count int `bson:"count"`
-	}
-	tmp := []counter{}
-	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
-	if err != nil {
-		return nil, 0, err
-	}
-	err = cursor.All(ctx, &tmp)
-	if err != nil {
-		return nil, 0, err
+	if len(results) == 0 {
+		return nil, 0, nil
 	}
 	count := 0
-	if len(tmp) > 0 {
-		count = tmp[0].Count
+	result := results[0]
+	if len(result.Count) != 0 {
+		count = result.Count[0]["count"]
 	}
-	return tasks, count, nil
+	return result.Tasks, count, nil
 }
 
 // addStatusColorSort adds a stage which takes a task display status and returns an integer
@@ -3088,6 +3139,14 @@ func (t *Task) SetTaskGroupInfo() error {
 		bson.M{"$set": bson.M{
 			TaskGroupOrderKey:    t.TaskGroupOrder,
 			TaskGroupMaxHostsKey: t.TaskGroupMaxHosts,
+		}}))
+}
+
+func (t *Task) SetDisplayTaskID(id string) error {
+	t.DisplayTaskId = utility.ToStringPtr(id)
+	return errors.WithStack(UpdateOne(bson.M{IdKey: t.Id},
+		bson.M{"$set": bson.M{
+			DisplayTaskIdKey: id,
 		}}))
 }
 

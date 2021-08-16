@@ -577,6 +577,19 @@ func (o *LogOpts) IsValid() error {
 	return catcher.Resolve()
 }
 
+func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
+	if main == nil {
+		return add
+	} else if add == nil {
+		return main
+	} else {
+		main.Agent = append(main.Agent, add.Agent...)
+		main.System = append(main.System, add.System...)
+		main.Task = append(main.Task, add.Task...)
+	}
+	return main
+}
+
 const (
 	EvergreenLogSender   = "evergreen"
 	FileLogSender        = "file"

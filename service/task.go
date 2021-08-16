@@ -218,7 +218,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		tId = projCtx.Task.OldTaskId
 
 		// Get total number of executions for executions drop down
-		mostRecentExecution, err := task.FindOne(task.ById(tId))
+		mostRecentExecution, err := task.FindOneId(tId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error finding most recent execution by id %s", tId))
@@ -410,7 +410,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
-	abortedTask, err := task.FindOne(task.ById(abortedByTaskId))
+	abortedTask, err := task.FindOneId(abortedByTaskId)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy task")
 	}

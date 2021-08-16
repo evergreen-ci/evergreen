@@ -1917,7 +1917,6 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	opts := data.TaskFilterOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
-		Sorts:                 []task.TasksSortOrder{{Key: task.DisplayNameKey, Order: 1}},
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -1970,6 +1969,10 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		}
 		scheduledTasks = append(scheduledTasks, task)
 	}
+	// sort scheduledTasks by display name to guarantee the order of the tasks
+	sort.Slice(scheduledTasks, func(i, j int) bool {
+		return *scheduledTasks[i].DisplayName < *scheduledTasks[j].DisplayName
+	})
 
 	return scheduledTasks, nil
 }
@@ -2704,7 +2707,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 		execT, err := task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, &t.Execution)
 		if err != nil {
 			// The task is not found, possibly because the execution is out of sync with the display task. Get the latest instead.
-			execT, err = task.FindOne(task.ById(execTaskID))
+			execT, err = task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, nil)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
 			}
@@ -2782,6 +2785,29 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	}
 
 	return createdTickets, nil
+}
+
+func (r *queryResolver) BuildVariantHistory(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
+	}
+	if buildVariantTasks == nil {
+		return []string{}, nil
+	}
+	return buildVariantTasks, nil
+}
+
+func (r *queryResolver) TaskHistory(ctx context.Context, projectId string, taskName string) ([]string, error) {
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(projectId, taskName)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
+	}
+	if taskBuildVariants == nil {
+		return []string{}, nil
+	}
+	return taskBuildVariants, nil
+
 }
 
 // Will return an array of activated and unactivated versions

@@ -26,6 +26,7 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskFinished, makeTaskTriggers)
+	registry.registerEventHandler(event.ResourceTypeTask, event.TaskBlocked, makeTaskTriggers)
 }
 
 const (
@@ -34,6 +35,7 @@ const (
 	triggerTaskRegressionByTest              = "regression-by-test"
 	triggerBuildBreak                        = "build-break"
 	keyFailureType                           = "failure-type"
+	triggerTaskFailedOrBlocked               = "task-failed-or-blocked"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -52,6 +54,7 @@ func makeTaskTriggers() eventHandler {
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
 		triggerBuildBreak:                        t.buildBreak,
+		triggerTaskFailedOrBlocked:               t.taskFailedOrBlocked,
 	}
 
 	return t
@@ -156,7 +159,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 
-	t.task, err = task.FindOneIdOldOrNew(e.ResourceId, t.data.Execution)
+	t.task, err = task.FindOneIdOldOrNewNoMerge(e.ResourceId, t.data.Execution)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch task")
 	}
@@ -473,6 +476,21 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 	return t.generate(sub, "", "")
 }
 
+func (t *taskTriggers) taskFailedOrBlocked(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
+	// pass in past tense override so that the message reads "has been blocked" rather than building on status
+	if t.task.Blocked() {
+		return t.generate(sub, "been blocked", "")
+
+	}
+
+	// check if it's failed instead
+	return t.taskFailure(sub)
+}
+
 func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notification.Notification, error) {
 	if t.task.DisplayOnly {
 		return nil, nil
@@ -558,7 +576,7 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 		return false, nil, nil
 	}
 
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
+	previousTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
 		evergreen.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
@@ -797,9 +815,13 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if t.task.DisplayOnly {
 		results, err := t.task.GetTestResultsForDisplayTask()
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't get test results for display task")
+			return nil, errors.Wrap(err, "getting test results for display task")
 		}
 		t.task.LocalTestResults = results
+	} else {
+		if err := t.task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "getting test results for task")
+		}
 	}
 
 	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
@@ -952,7 +974,10 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		TaskDisplayName: t.DisplayName,
 	}
 	if t.IsPartOfDisplay() {
-		data.TaskDisplayName = t.DisplayTask.DisplayName
+		dt, _ := t.GetDisplayTask()
+		if dt != nil {
+			data.TaskDisplayName = dt.DisplayName
+		}
 	}
 
 	builder := jiraBuilder{
@@ -1022,7 +1047,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 	if t.task.TriggerID != "" && sub.Owner != "" { // don't notify committer for a triggered build
 		return nil, nil
 	}
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+	previousTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
 		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")

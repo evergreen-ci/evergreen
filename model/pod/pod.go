@@ -30,7 +30,7 @@ type Pod struct {
 	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
 }
 
-// Status represents a possible state that a pod can be in.
+// Status represents a possible state for a pod.
 type Status string
 
 const (
@@ -40,8 +40,8 @@ const (
 	StatusStarting Status = "starting"
 	// StatusRunning indicates that the pod's containers are running.
 	StatusRunning Status = "running"
-	// StatusTerminated indicates that the pod's containers have been
-	// deleted.
+	// StatusTerminated indicates that all of the pod's containers and
+	// associated resources have been deleted.
 	StatusTerminated Status = "terminated"
 )
 
@@ -87,14 +87,34 @@ type ResourceInfo struct {
 	DefinitionID string `bson:"definition_id,omitempty" json:"definition_id,omitempty"`
 	// Cluster is the namespace where the containers are running.
 	Cluster string `bson:"cluster,omitempty" json:"cluster,omitempty"`
-	// SecretIDs are the resource identifiers for the secrets owned by this pod.
+	// Containers include resource information about containers running in the
+	// pod.
+	Containers []ContainerResourceInfo `bson:"containers,omitempty" json:"containers,omitempty"`
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (i ResourceInfo) IsZero() bool {
+	return i.ExternalID == "" && i.DefinitionID == "" && i.Cluster == "" && len(i.Containers) == 0
+}
+
+// ContainerResourceInfo represents information about external resources
+// associated with a container.
+type ContainerResourceInfo struct {
+	// ExternalID is the unique resource identifier for the container running in
+	// the container service.
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
+	// Name is the friendly name of the container.
+	Name string `bson:"name,omitempty" json:"name,omitempty"`
+	// SecretIDs are the resource identifiers for the secrets owned by this
+	// container.
 	SecretIDs []string `bson:"secret_ids,omitempty" json:"secret_ids,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
-func (o ResourceInfo) IsZero() bool {
-	return o.ExternalID == "" && o.DefinitionID == "" && o.Cluster == "" && len(o.SecretIDs) == 0
+func (i ContainerResourceInfo) IsZero() bool {
+	return i.ExternalID == "" && i.Name == "" && len(i.SecretIDs) == 0
 }
 
 // TaskContainerCreationOptions are options to apply to the task's container

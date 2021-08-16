@@ -265,7 +265,7 @@ func CreateAllHostUtilizationBuckets(daysBack, granularity int) ([]HostUtilizati
 		return nil, err
 	}
 
-	oldTasks, err := task.FindOld(task.ByTimeRun(bounds.StartTime, bounds.EndTime))
+	oldTasks, err := task.FindOldNoMerge(task.ByTimeRun(bounds.StartTime, bounds.EndTime))
 	if err != nil {
 		return nil, err
 	}

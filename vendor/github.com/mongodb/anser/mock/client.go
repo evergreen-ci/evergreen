@@ -153,6 +153,10 @@ func NewSingleResult() *SingleResult {
 	return &SingleResult{DecodeBytesValue: val}
 }
 
-func (sr *SingleResult) Decode(in interface{}) error  { return sr.DecodeError }
-func (sr *SingleResult) DecodeBytes() ([]byte, error) { return sr.DecodeBytesValue, sr.DecodeBytesError }
-func (sr *SingleResult) Err() error                   { return sr.ErrorValue }
+func (sr *SingleResult) Decode(in interface{}) error { return sr.DecodeError }
+
+func (sr *SingleResult) DecodeBytes() ([]byte, error) {
+	return sr.DecodeBytesValue, sr.DecodeBytesError
+}
+
+func (sr *SingleResult) Err() error { return sr.ErrorValue }
