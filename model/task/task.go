@@ -2856,7 +2856,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		// display only is false (i.e. we don't know if it's a display task or not).
 		facet := bson.M{
 			"$facet": bson.M{
-				// we skip lookup for anything we already know is not part of a display task
+				// We skip lookup for anything we already know is not part of a display task
 				"id_empty": []bson.M{
 					{
 						"$match": bson.M{
@@ -2867,7 +2867,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 						},
 					},
 				},
-				// no ID and not display task: lookup if it's an execution task for some task, and then filter it out if it is
+				// No ID and not display task: lookup if it's an execution task for some task, and then filter it out if it is
 				"no_id": []bson.M{
 					{
 						"$match": bson.M{
@@ -2891,7 +2891,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		}
 		pipeline = append(pipeline, facet)
 
-		// recombine the tasks so that we can continue the pipeline on the joined tasks
+		// Recombine the tasks so that we can continue the pipeline on the joined tasks
 		recombineTasks := []bson.M{
 			{"$project": bson.M{
 				"tasks": bson.M{
@@ -2905,7 +2905,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		pipeline = append(pipeline, recombineTasks...)
 	}
 	pipeline = append(pipeline, []bson.M{
-		// get any annotation that has at least one issue
+		// Get any annotation that has at least one issue
 		{
 			"$lookup": bson.M{
 				"from": annotations.Collection,
@@ -2935,9 +2935,9 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			},
 		},
 
-		// add a field for the display status of each task
+		// Add a field for the display status of each task
 		addDisplayStatus,
-		// add data about the base task
+		// Add data about the base task
 		{"$lookup": bson.M{
 			"from": Collection,
 			"let": bson.M{
