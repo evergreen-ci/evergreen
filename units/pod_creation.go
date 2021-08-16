@@ -18,17 +18,17 @@ import (
 )
 
 const (
-	createPodJobName     = "create-pod"
-	createPodMaxAttempts = 15
+	podCreationJobName     = "pod-creation"
+	podCreationMaxAttempts = 15
 )
 
 func init() {
-	registry.AddJobType(createPodJobName, func() amboy.Job {
-		return makeCreatePodJob()
+	registry.AddJobType(podCreationJobName, func() amboy.Job {
+		return makePodCreationJob()
 	})
 }
 
-type createPodJob struct {
+type podCreationJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 	PodID    string `bson:"pod_id" json:"pod_id" yaml:"pod_id"`
 
@@ -41,11 +41,11 @@ type createPodJob struct {
 	env           evergreen.Environment
 }
 
-func makeCreatePodJob() *createPodJob {
-	j := &createPodJob{
+func makePodCreationJob() *podCreationJob {
+	j := &podCreationJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    createPodJobName,
+				Name:    podCreationJobName,
 				Version: 0,
 			},
 		},
@@ -55,24 +55,23 @@ func makeCreatePodJob() *createPodJob {
 	return j
 }
 
-// NewCreatePodJob creates a job that starts the given pod.
-func NewCreatePodJob(env evergreen.Environment, podID, id string) amboy.Job {
-	j := makeCreatePodJob()
+// NewPodCreationJob creates a job that starts the pod in the container service.
+func NewPodCreationJob(podID, id string) amboy.Job {
+	j := makePodCreationJob()
 	j.PodID = podID
-	j.env = env
-	j.SetID(fmt.Sprintf("%s.%s.%s", createPodJobName, j.PodID, id))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", createPodJobName, j.PodID), podLifecycleScope(j.PodID)})
+	j.SetID(fmt.Sprintf("%s.%s.%s", podCreationJobName, j.PodID, id))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", podCreationJobName, j.PodID), podLifecycleScope(j.PodID)})
 	j.SetShouldApplyScopesOnEnqueue(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(createPodMaxAttempts),
+		MaxAttempts: utility.ToIntPtr(podCreationMaxAttempts),
 		WaitUntil:   utility.ToTimeDurationPtr(10 * time.Second),
 	})
 
 	return j
 }
 
-func (j *createPodJob) Run(ctx context.Context) {
+func (j *podCreationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
@@ -117,7 +116,7 @@ func (j *createPodJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *createPodJob) populateIfUnset(ctx context.Context) error {
+func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
