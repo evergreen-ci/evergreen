@@ -256,6 +256,11 @@ type TaskTestResult struct {
 	TestResults       []*model.APITest `json:"testResults"`
 }
 
+type TriggerAlias struct {
+	Alias        string `json:"alias"`
+	ChildProject string `json:"childProject"`
+}
+
 type UpdateVolumeInput struct {
 	Expiration   *time.Time `json:"expiration"`
 	NoExpiration *bool      `json:"noExpiration"`

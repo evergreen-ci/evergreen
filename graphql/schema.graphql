@@ -506,6 +506,11 @@ type FileDiff {
   description: String!
 }
 
+type TriggerAlias {
+  alias: String!
+  childProject: String!
+}
+
 type UserPatches {
   patches: [Patch!]!
   filteredPatchCount: Int!
@@ -546,6 +551,7 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
+  triggerAliases: [TriggerAlias!]!
 }
 
 type Build {
