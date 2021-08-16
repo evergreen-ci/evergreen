@@ -54,6 +54,7 @@ type ParserProject struct {
 	Enabled            *bool                      `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
 	BatchTime          *int                       `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
 	Owner              *string                    `yaml:"owner,omitempty" bson:"owner,omitempty"`
@@ -84,26 +85,27 @@ type ParserProject struct {
 }
 
 type parserTaskGroup struct {
-	Name                  string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	Priority              int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	Patchable             *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	PatchOnly             *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	AllowForGitTag        *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
-	GitTagOnly            *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
-	ExecTimeoutSecs       int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Stepback              *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	MaxHosts              int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
-	SetupGroupFailTask    bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
-	SetupGroupTimeoutSecs int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
-	SetupGroup            *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
-	TeardownGroup         *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
-	SetupTask             *YAMLCommandSet    `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
-	TeardownTask          *YAMLCommandSet    `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
-	Timeout               *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	Tasks                 []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DependsOn             parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	Tags                  parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
-	ShareProcs            bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
+	Name                    string             `yaml:"name,omitempty" bson:"name,omitempty"`
+	Priority                int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
+	Patchable               *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly               *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	AllowForGitTag          *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
+	GitTagOnly              *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
+	ExecTimeoutSecs         int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Stepback                *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	MaxHosts                int                `yaml:"max_hosts,omitempty" bson:"max_hosts,omitempty"`
+	SetupGroupFailTask      bool               `yaml:"setup_group_can_fail_task,omitempty" bson:"setup_group_can_fail_task,omitempty"`
+	TeardownTaskCanFailTask bool               `yaml:"teardown_task_can_fail_task,omitempty" bson:"teardown_task_can_fail_task,omitempty"`
+	SetupGroupTimeoutSecs   int                `yaml:"setup_group_timeout_secs,omitempty" bson:"setup_group_timeout_secs,omitempty"`
+	SetupGroup              *YAMLCommandSet    `yaml:"setup_group,omitempty" bson:"setup_group,omitempty"`
+	TeardownGroup           *YAMLCommandSet    `yaml:"teardown_group,omitempty" bson:"teardown_group,omitempty"`
+	SetupTask               *YAMLCommandSet    `yaml:"setup_task,omitempty" bson:"setup_task,omitempty"`
+	TeardownTask            *YAMLCommandSet    `yaml:"teardown_task,omitempty" bson:"teardown_task,omitempty"`
+	Timeout                 *YAMLCommandSet    `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	Tasks                   []string           `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DependsOn               parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Tags                    parserStringSlice  `yaml:"tags,omitempty" bson:"tags,omitempty"`
+	ShareProcs              bool               `yaml:"share_processes,omitempty" bson:"share_processes,omitempty"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }
@@ -609,29 +611,30 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:           utility.FromBoolPtr(pp.Enabled),
-		Stepback:          utility.FromBoolPtr(pp.Stepback),
-		PreErrorFailsTask: utility.FromBoolPtr(pp.PreErrorFailsTask),
-		OomTracker:        utility.FromBoolPtr(pp.OomTracker),
-		BatchTime:         utility.FromIntPtr(pp.BatchTime),
-		Owner:             utility.FromStringPtr(pp.Owner),
-		Repo:              utility.FromStringPtr(pp.Repo),
-		RemotePath:        utility.FromStringPtr(pp.RemotePath),
-		Branch:            utility.FromStringPtr(pp.Branch),
-		Identifier:        utility.FromStringPtr(pp.Identifier),
-		DisplayName:       utility.FromStringPtr(pp.DisplayName),
-		CommandType:       utility.FromStringPtr(pp.CommandType),
-		Ignore:            pp.Ignore,
-		Parameters:        pp.Parameters,
-		Pre:               pp.Pre,
-		Post:              pp.Post,
-		EarlyTermination:  pp.EarlyTermination,
-		Timeout:           pp.Timeout,
-		CallbackTimeout:   utility.FromIntPtr(pp.CallbackTimeout),
-		Modules:           pp.Modules,
-		Functions:         pp.Functions,
-		ExecTimeoutSecs:   utility.FromIntPtr(pp.ExecTimeoutSecs),
-		Loggers:           pp.Loggers,
+		Enabled:            utility.FromBoolPtr(pp.Enabled),
+		Stepback:           utility.FromBoolPtr(pp.Stepback),
+		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
+		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
+		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
+		BatchTime:          utility.FromIntPtr(pp.BatchTime),
+		Owner:              utility.FromStringPtr(pp.Owner),
+		Repo:               utility.FromStringPtr(pp.Repo),
+		RemotePath:         utility.FromStringPtr(pp.RemotePath),
+		Branch:             utility.FromStringPtr(pp.Branch),
+		Identifier:         utility.FromStringPtr(pp.Identifier),
+		DisplayName:        utility.FromStringPtr(pp.DisplayName),
+		CommandType:        utility.FromStringPtr(pp.CommandType),
+		Ignore:             pp.Ignore,
+		Parameters:         pp.Parameters,
+		Pre:                pp.Pre,
+		Post:               pp.Post,
+		EarlyTermination:   pp.EarlyTermination,
+		Timeout:            pp.Timeout,
+		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
+		Modules:            pp.Modules,
+		Functions:          pp.Functions,
+		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
+		Loggers:            pp.Loggers,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -718,17 +721,18 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 	}
 	for _, ptg := range tgs {
 		tg := TaskGroup{
-			Name:                  ptg.Name,
-			SetupGroupFailTask:    ptg.SetupGroupFailTask,
-			SetupGroupTimeoutSecs: ptg.SetupGroupTimeoutSecs,
-			SetupGroup:            ptg.SetupGroup,
-			TeardownGroup:         ptg.TeardownGroup,
-			SetupTask:             ptg.SetupTask,
-			TeardownTask:          ptg.TeardownTask,
-			Tags:                  ptg.Tags,
-			MaxHosts:              ptg.MaxHosts,
-			Timeout:               ptg.Timeout,
-			ShareProcs:            ptg.ShareProcs,
+			Name:                    ptg.Name,
+			SetupGroupFailTask:      ptg.SetupGroupFailTask,
+			TeardownTaskCanFailTask: ptg.TeardownTaskCanFailTask,
+			SetupGroupTimeoutSecs:   ptg.SetupGroupTimeoutSecs,
+			SetupGroup:              ptg.SetupGroup,
+			TeardownGroup:           ptg.TeardownGroup,
+			SetupTask:               ptg.SetupTask,
+			TeardownTask:            ptg.TeardownTask,
+			Tags:                    ptg.Tags,
+			MaxHosts:                ptg.MaxHosts,
+			Timeout:                 ptg.Timeout,
+			ShareProcs:              ptg.ShareProcs,
 		}
 		if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1
@@ -1208,6 +1212,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		catcher.New("pre error fails task can only be defined in one yaml")
 	} else if toMerge.PreErrorFailsTask != nil {
 		pp.PreErrorFailsTask = toMerge.PreErrorFailsTask
+	}
+
+	if pp.PostErrorFailsTask != nil && toMerge.PostErrorFailsTask != nil {
+		catcher.New("post error fails task can only be defined in one yaml")
+	} else if toMerge.PostErrorFailsTask != nil {
+		pp.PostErrorFailsTask = toMerge.PostErrorFailsTask
 	}
 
 	if pp.OomTracker != nil && toMerge.OomTracker != nil {

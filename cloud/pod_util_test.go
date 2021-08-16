@@ -340,9 +340,10 @@ func TestExportPodCreationOptions(t *testing.T) {
 					},
 				},
 			}, pod.TaskContainerCreationOptions{
-				Image:    "image",
-				MemoryMB: 128,
-				CPU:      128,
+				Image:      "image",
+				MemoryMB:   128,
+				CPU:        128,
+				WorkingDir: "/root",
 				EnvVars: map[string]string{
 					"name": "value",
 				},
@@ -363,6 +364,7 @@ func TestExportPodCreationOptions(t *testing.T) {
 		require.Equal(t, "image", utility.FromStringPtr(opts.ContainerDefinitions[0].Image))
 		require.Equal(t, 128, utility.FromIntPtr(opts.ContainerDefinitions[0].MemoryMB))
 		require.Equal(t, 128, utility.FromIntPtr(opts.ContainerDefinitions[0].CPU))
+		require.Equal(t, "/root", utility.FromStringPtr(opts.ContainerDefinitions[0].WorkingDir))
 		require.Len(t, opts.ContainerDefinitions[0].EnvVars, 2)
 		for _, envVar := range opts.ContainerDefinitions[0].EnvVars {
 			if envVar.SecretOpts != nil {

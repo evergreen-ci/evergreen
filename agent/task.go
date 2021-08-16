@@ -186,7 +186,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		}
 		if taskGroup.SetupGroup != nil {
 			tc.logger.Task().Infof("Running setup_group for '%s'.", taskGroup.Name)
-			opts.shouldSetupFail = taskGroup.SetupGroupFailTask
+			opts.failPreAndPost = taskGroup.SetupGroupFailTask
 			if taskGroup.SetupGroupTimeoutSecs > 0 {
 				ctx2, cancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
 			} else {
@@ -213,13 +213,13 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 
 	if taskGroup.SetupTask != nil {
 		tc.logger.Task().Infof("Running setup_task for '%s'.", taskGroup.Name)
-		opts.shouldSetupFail = taskGroup.SetupGroupFailTask
+		opts.failPreAndPost = taskGroup.SetupGroupFailTask
 		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts)
 	}
 	if err != nil {
 		msg := fmt.Sprintf("Running pre-task commands failed: %v", err)
 		tc.logger.Task().Error(msg)
-		if opts.shouldSetupFail {
+		if opts.failPreAndPost {
 			return errors.New(msg)
 		}
 	}

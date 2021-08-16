@@ -15,13 +15,6 @@ type APIPodEnvVar struct {
 	Secret *bool   `json:"secret"`
 }
 
-// APITimeInfo is the model for the timing information of a pod.
-type APITimeInfo struct {
-	Initialized time.Time `json:"initialized"`
-	Started     time.Time `json:"started"`
-	Provisioned time.Time `json:"provisioned"`
-}
-
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
 	Name       *string         `json:"name"`
