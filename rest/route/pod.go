@@ -82,7 +82,7 @@ func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "constructing response"))
 	}
 
-	j := units.NewCreatePodJob(h.env, res.ID, utility.RoundPartOfMinute(0).Format(units.TSFormat))
+	j := units.NewPodCreationJob(res.ID, utility.RoundPartOfMinute(0).Format(units.TSFormat))
 	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not enqueue Amboy job to create pod",

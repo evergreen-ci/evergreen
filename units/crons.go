@@ -1232,22 +1232,6 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
-func PopulatePodInitializingJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		pods, err := pod.FindByInitializing()
-		if err != nil {
-			return errors.Wrap(err, "error fetching initializing pods")
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewCreatePodJob(env, p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing job to create pod %s", p.ID)
-		}
-
-		return catcher.Resolve()
-	}
-}
-
 func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
@@ -1271,6 +1255,22 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "error fetching initializing pods")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing job to create pod %s", p.ID)
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		pods, err := pod.FindByStaleStarting()
@@ -1280,7 +1280,7 @@ func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation 
 
 		catcher := grip.NewBasicCatcher()
 		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewTerminatePodJob(p.ID, "pod has been stuck starting for too long", utility.RoundPartOfMinute(0))), "pod '%s'", p.ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodTerminationJob(p.ID, "pod has been stuck starting for too long", utility.RoundPartOfMinute(0))), "pod '%s'", p.ID)
 		}
 		return catcher.Resolve()
 	}
