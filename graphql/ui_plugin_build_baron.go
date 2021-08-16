@@ -279,7 +279,11 @@ func BbGetTask(taskId string, executionString string) (*task.Task, error) {
 		return nil, errors.Errorf("no task found for task id: %s and execution: %d", taskId, execution)
 	}
 
-	return t, errors.Wrap(t.PopulateTestResults(), "populating test results")
+	if err = t.PopulateTestResults(); err != nil {
+		return nil, errors.Wrap(err, "populating test results")
+	}
+
+	return t, nil
 }
 
 func (js *JiraSuggest) GetTimeout() time.Duration {
