@@ -1214,6 +1214,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.PreErrorFailsTask = toMerge.PreErrorFailsTask
 	}
 
+	if pp.PostErrorFailsTask != nil && toMerge.PostErrorFailsTask != nil {
+		catcher.New("post error fails task can only be defined in one yaml")
+	} else if toMerge.PostErrorFailsTask != nil {
+		pp.PostErrorFailsTask = toMerge.PostErrorFailsTask
+	}
+
 	if pp.OomTracker != nil && toMerge.OomTracker != nil {
 		catcher.New("OOM tracker can only be defined in one yaml")
 	} else if toMerge.OomTracker != nil {
