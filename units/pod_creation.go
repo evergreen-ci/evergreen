@@ -56,10 +56,9 @@ func makeCreatePodJob() *createPodJob {
 }
 
 // NewCreatePodJob creates a job that starts the given pod.
-func NewCreatePodJob(env evergreen.Environment, p *pod.Pod, id string) amboy.Job {
+func NewCreatePodJob(env evergreen.Environment, podID, id string) amboy.Job {
 	j := makeCreatePodJob()
-	j.pod = p
-	j.PodID = p.ID
+	j.PodID = podID
 	j.env = env
 	j.SetID(fmt.Sprintf("%s.%s.%s", createPodJobName, j.PodID, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", createPodJobName, j.PodID), podLifecycleScope(j.PodID)})
