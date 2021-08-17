@@ -297,7 +297,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if putParams.UseTaskConfig {
-		t, err := task.FindOneNoMerge(task.ById(putParams.Task))
+		t, err := task.FindOne(task.ById(putParams.Task))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error finding task"))
 			return

@@ -250,8 +250,8 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 // addFailedAndStartedTests adds all of the failed tests associated with a task
 func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStartedTasks []task.Task) error {
 	for i := range failedAndStartedTasks {
-		if err := failedAndStartedTasks[i].MergeNewTestResults(); err != nil {
-			return errors.Wrap(err, "error merging test results")
+		if err := failedAndStartedTasks[i].PopulateTestResults(); err != nil {
+			return errors.Wrap(err, "populating test results")
 		}
 	}
 

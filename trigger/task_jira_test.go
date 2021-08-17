@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -451,6 +452,7 @@ func TestCustomFields(t *testing.T) {
 					{TestFile: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
 					{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 				},
+				HasLegacyResults: utility.ToBoolPtr(true),
 			},
 			Host:  &host.Host{Id: hostId, Host: hostDNS},
 			Build: &build.Build{DisplayName: buildName, Id: buildId},
@@ -558,7 +560,7 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		data: jiraTemplateData{
-			Task:    &task.Task{Status: evergreen.TaskSucceeded},
+			Task:    &task.Task{Status: evergreen.TaskSucceeded, HasLegacyResults: utility.ToBoolPtr(true)},
 			Project: &model.ProjectRef{},
 			Build:   &build.Build{},
 			Version: &model.Version{Revision: "abcdefgh"},
