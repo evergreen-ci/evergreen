@@ -1,6 +1,8 @@
 package cloud
 
 import (
+	"strings"
+
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/ecs"
@@ -171,17 +173,29 @@ func ExportECSContainerResources(info pod.ContainerResourceInfo) cocoa.ECSContai
 	return *res
 }
 
-// ExportPodContainerDef exports the ECS pod container definition into the equivalent cocoa.ECSContainerDefintion.
-func ExportPodContainerDef(opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
+// agentContainerName is the standard name for the container that's running the
+// agent in a pod.
+const agentContainerName = "evg-agent"
+
+// ExportPodContainerDef exports the ECS pod container definition into the
+// equivalent cocoa.ECSContainerDefintion.
+func ExportPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSContainerDefinition, error) {
+	script, err := agentScript(settings, p)
+	if err != nil {
+		return nil, errors.Wrap(err, "building agent script")
+	}
 	return cocoa.NewECSContainerDefinition().
-		SetImage(opts.Image).
-		SetMemoryMB(opts.MemoryMB).
-		SetCPU(opts.CPU).
-		SetWorkingDir(opts.WorkingDir).
-		SetEnvironmentVariables(exportEnvVars(opts.EnvVars, opts.EnvSecrets)), nil
+		SetName(agentContainerName).
+		SetImage(p.TaskContainerCreationOpts.Image).
+		SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
+		SetCPU(p.TaskContainerCreationOpts.CPU).
+		SetWorkingDir(p.TaskContainerCreationOpts.WorkingDir).
+		SetCommand(script).
+		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, p)), nil
 }
 
-// ExportPodExecutionOptions exports the ECS configuration into cocoa.ECSPodExecutionOptions.
+// ExportPodExecutionOptions exports the ECS configuration into
+// cocoa.ECSPodExecutionOptions.
 func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*cocoa.ECSPodExecutionOptions, error) {
 	if len(ecsConfig.Clusters) == 0 {
 		return nil, errors.New("must specify at least one cluster to use")
@@ -196,21 +210,24 @@ func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*co
 	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(podOS))
 }
 
-// ExportPodCreationOptions exports the ECS pod resources into cocoa.ECSPodExecutionOptions.
-func ExportPodCreationOptions(ecsConfig evergreen.ECSConfig, taskContainerCreationOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodCreationOptions, error) {
-	execOpts, err := ExportPodExecutionOptions(ecsConfig, taskContainerCreationOpts.OS)
+// ExportPodCreationOptions exports the ECS pod resources into
+// cocoa.ECSPodExecutionOptions.
+func ExportPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSPodCreationOptions, error) {
+	ecsConf := settings.Providers.AWS.Pod.ECS
+	execOpts, err := ExportPodExecutionOptions(ecsConf, p.TaskContainerCreationOpts.OS)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod execution options")
 	}
 
-	containerDef, err := ExportPodContainerDef(taskContainerCreationOpts)
+	containerDef, err := ExportPodContainerDef(settings, p)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod container definition")
 	}
 
 	return cocoa.NewECSPodCreationOptions().
-		SetTaskRole(ecsConfig.TaskRole).
-		SetExecutionRole(ecsConfig.ExecutionRole).
+		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", p.ID}, "-")).
+		SetTaskRole(ecsConf.TaskRole).
+		SetExecutionRole(ecsConf.ExecutionRole).
 		SetExecutionOptions(*execOpts).
 		AddContainerDefinitions(*containerDef), nil
 }
@@ -228,18 +245,20 @@ func podAWSOptions(settings *evergreen.Settings) awsutil.ClientOptions {
 	return *opts
 }
 
-// exportEnvVars converts a map of environment variables and a map of secrets to a slice of cocoa.EnvironmentVariables.
-func exportEnvVars(envVars map[string]string, secrets map[string]string) []cocoa.EnvironmentVariable {
+// exportPodEnvVars converts a map of environment variables and a map of secrets
+// to a slice of cocoa.EnvironmentVariables.
+func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, p *pod.Pod) []cocoa.EnvironmentVariable {
 	var allEnvVars []cocoa.EnvironmentVariable
 
-	for k, v := range envVars {
+	for k, v := range p.TaskContainerCreationOpts.EnvVars {
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetValue(v))
 	}
 
-	for k, v := range secrets {
+	for k, v := range p.TaskContainerCreationOpts.EnvSecrets {
+		secretName := strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", p.ID, k}, "/")
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetSecretOptions(
 			*cocoa.NewSecretOptions().
-				SetName(k).
+				SetName(secretName).
 				SetValue(v).
 				SetExists(false).
 				SetOwned(true)))
