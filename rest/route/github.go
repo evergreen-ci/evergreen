@@ -88,7 +88,13 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	gh.event, _ = github.ParseWebHook(gh.eventType, body)
+	gh.event, err = github.ParseWebHook(gh.eventType, body)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}
+	}
 
 	return nil
 }
