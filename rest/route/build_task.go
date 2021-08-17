@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/utility"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -123,15 +125,8 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if tbh.fetchParentIds {
-			var parentTask *task.Task
-
-			parentTask, err = tasks[i].GetDisplayTask()
-			if err != nil {
-				return gimlet.MakeJSONErrorResponder(err)
-			}
-
-			if parentTask != nil {
-				taskModel.ParentTaskId = parentTask.Id
+			if tasks[i].IsPartOfDisplay() {
+				taskModel.ParentTaskId = utility.FromStringPtr(tasks[i].DisplayTaskId)
 			}
 		}
 

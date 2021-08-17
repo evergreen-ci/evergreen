@@ -35,6 +35,7 @@ type Project struct {
 	Enabled                bool                          `yaml:"enabled,omitempty" bson:"enabled"`
 	Stepback               bool                          `yaml:"stepback,omitempty" bson:"stepback"`
 	PreErrorFailsTask      bool                          `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask     bool
 	OomTracker             bool                          `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
 	BatchTime              int                           `yaml:"batchtime,omitempty" bson:"batch_time"`
 	Owner                  string                        `yaml:"owner,omitempty" bson:"owner_name"`
@@ -490,16 +491,17 @@ type TaskGroup struct {
 	Name string `yaml:"name" bson:"name"`
 
 	// data about the task group
-	MaxHosts              int             `yaml:"max_hosts" bson:"max_hosts"`
-	SetupGroupFailTask    bool            `yaml:"setup_group_can_fail_task" bson:"setup_group_can_fail_task"`
-	SetupGroupTimeoutSecs int             `yaml:"setup_group_timeout_secs" bson:"setup_group_timeout_secs"`
-	SetupGroup            *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
-	TeardownGroup         *YAMLCommandSet `yaml:"teardown_group" bson:"teardown_group"`
-	SetupTask             *YAMLCommandSet `yaml:"setup_task" bson:"setup_task"`
-	TeardownTask          *YAMLCommandSet `yaml:"teardown_task" bson:"teardown_task"`
-	Timeout               *YAMLCommandSet `yaml:"timeout,omitempty" bson:"timeout"`
-	Tasks                 []string        `yaml:"tasks" bson:"tasks"`
-	Tags                  []string        `yaml:"tags,omitempty" bson:"tags"`
+	MaxHosts                int             `yaml:"max_hosts" bson:"max_hosts"`
+	SetupGroupFailTask      bool            `yaml:"setup_group_can_fail_task" bson:"setup_group_can_fail_task"`
+	SetupGroupTimeoutSecs   int             `yaml:"setup_group_timeout_secs" bson:"setup_group_timeout_secs"`
+	SetupGroup              *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
+	TeardownTaskCanFailTask bool            `yaml:"teardown_task_can_fail_task" bson:"teardown_task_can_fail_task"`
+	TeardownGroup           *YAMLCommandSet `yaml:"teardown_group" bson:"teardown_group"`
+	SetupTask               *YAMLCommandSet `yaml:"setup_task" bson:"setup_task"`
+	TeardownTask            *YAMLCommandSet `yaml:"teardown_task" bson:"teardown_task"`
+	Timeout                 *YAMLCommandSet `yaml:"timeout,omitempty" bson:"timeout"`
+	Tasks                   []string        `yaml:"tasks" bson:"tasks"`
+	Tags                    []string        `yaml:"tags,omitempty" bson:"tags"`
 	// ShareProcs causes processes to persist between task group tasks.
 	ShareProcs bool `yaml:"share_processes" bson:"share_processes"`
 }
@@ -574,6 +576,19 @@ func (o *LogOpts) IsValid() error {
 	}
 
 	return catcher.Resolve()
+}
+
+func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
+	if main == nil {
+		return add
+	} else if add == nil {
+		return main
+	} else {
+		main.Agent = append(main.Agent, add.Agent...)
+		main.System = append(main.System, add.System...)
+		main.Task = append(main.Task, add.Task...)
+	}
+	return main
 }
 
 const (
@@ -878,7 +893,9 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier) // TODO: depreciate
 	expansions.Put("project_id", projectRef.Id)
-
+	if t.ActivatedBy == evergreen.StepbackTaskActivator {
+		expansions.Put("is_stepback", "true")
+	}
 	if t.TriggerID != "" {
 		expansions.Put("trigger_event_identifier", t.TriggerID)
 		expansions.Put("trigger_event_type", t.TriggerType)

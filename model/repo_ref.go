@@ -153,7 +153,7 @@ func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 
 	adminScope := gimlet.Scope{
 		ID:        GetRepoAdminScope(r.Id),
-		Resources: []string{r.Id},
+		Resources: []string{r.Id}, // projects that use repo settings will also be added to this scope
 		Name:      r.Id,
 		Type:      evergreen.ProjectResourceType,
 	}
@@ -319,16 +319,6 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		}
 	}
 	return nil
-}
-
-func addAdminToRepo(repoId, admin string) error {
-	return db.UpdateId(
-		RepoRefCollection,
-		repoId,
-		bson.M{
-			"$push": bson.M{RepoRefAdminsKey: admin},
-		},
-	)
 }
 
 // GetUnrestrictedBranchProjectsScope returns the scope ID that includes the unrestricted branches for this project.

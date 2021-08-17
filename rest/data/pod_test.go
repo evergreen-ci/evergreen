@@ -54,10 +54,14 @@ func (s *podConnectorSuite) TestCreatePod() {
 	s.Require().NoError(err)
 	s.Require().NotZero(res)
 
-	podDB, err := pod.FindOneByID(res.ID)
+	dbPod, err := pod.FindOneByID(res.ID)
 	s.Require().NoError(err)
-	s.Assert().Equal("secret", podDB.Secret)
-	s.Assert().Equal("env_value", podDB.TaskContainerCreationOpts.EnvVars["env_name"])
+	s.Equal("secret", dbPod.Secret)
+	s.Require().NotZero(dbPod.TaskContainerCreationOpts.EnvVars)
+	s.Equal("env_value", dbPod.TaskContainerCreationOpts.EnvVars["env_name"])
+	s.NotZero(dbPod.TaskContainerCreationOpts.EnvVars["POD_ID"])
+	s.Require().NotZero(dbPod.TaskContainerCreationOpts.EnvSecrets)
+	s.Equal(utility.FromStringPtr(p.Secret), dbPod.TaskContainerCreationOpts.EnvSecrets["POD_SECRET"])
 }
 
 func (s *podConnectorSuite) TestFindPodByIDSucceeds() {

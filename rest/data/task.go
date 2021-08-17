@@ -24,7 +24,7 @@ type DBTaskConnector struct{}
 // FindTaskById uses the service layer's task type to query the backing database for
 // the task with the given taskId.
 func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 }
 
 func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
-	ts, err := task.FindOldWithDisplayTasks(task.ByOldTaskID(id))
+	ts, err := task.FindOldWithDisplayTasksNoMerge(task.ByOldTaskID(id))
 	if err != nil {
 		return nil, err
 	}

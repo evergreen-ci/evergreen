@@ -18,42 +18,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewCreatePodJob(t *testing.T) {
+func TestNewPodCreationJob(t *testing.T) {
 	podID := utility.RandomString()
-	p := pod.Pod{
-		ID:     podID,
-		Status: pod.StatusInitializing,
-	}
 
-	j, ok := NewCreatePodJob(&evgMock.Environment{}, &p, utility.RoundPartOfMinute(0).Format(TSFormat)).(*createPodJob)
+	j, ok := NewPodCreationJob(podID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podCreationJob)
 	require.True(t, ok)
 
 	assert.NotZero(t, j.ID())
 	assert.Equal(t, podID, j.PodID)
-	assert.Equal(t, pod.StatusInitializing, j.pod.Status)
 }
 
-func TestCreatePodJob(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *createPodJob){
-		"Succeeds": func(ctx context.Context, t *testing.T, j *createPodJob) {
+func TestPodCreationJob(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podCreationJob){
+		"Succeeds": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			require.NoError(t, j.pod.Insert())
 			assert.Equal(t, pod.StatusInitializing, j.pod.Status)
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			info, err := j.ecsPod.Info(ctx)
-			require.NoError(t, err)
-			assert.Equal(t, cocoa.StatusRunning, info.Status)
+			res := j.ecsPod.Resources()
+			assert.Equal(t, cocoa.StatusStarting, j.ecsPod.StatusInfo().Status)
 			assert.Equal(t, pod.StatusStarting, j.pod.Status)
-			require.NotZero(t, info.Resources)
-			assert.Equal(t, "cluster", utility.FromStringPtr(info.Resources.Cluster))
-			assert.Equal(t, j.pod.Resources.DefinitionID, utility.FromStringPtr(info.Resources.TaskDefinition.ID))
-			assert.Equal(t, j.pod.Resources.ExternalID, utility.FromStringPtr(info.Resources.TaskID))
-			require.Len(t, info.Resources.Secrets, 2)
+			assert.Equal(t, "cluster", utility.FromStringPtr(res.Cluster))
+			assert.Equal(t, j.pod.Resources.DefinitionID, utility.FromStringPtr(res.TaskDefinition.ID))
+			assert.Equal(t, j.pod.Resources.ExternalID, utility.FromStringPtr(res.TaskID))
+			require.Len(t, res.Containers, 1)
+			require.Len(t, res.Containers[0].Secrets, 2)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 2)
-			for _, secret := range info.Resources.Secrets {
-				assert.Contains(t, j.pod.Resources.SecretIDs, utility.FromStringPtr(secret.Name))
+			for _, secret := range res.Containers[0].Secrets {
+				id := utility.FromStringPtr(secret.Name)
+				assert.Contains(t, j.pod.Resources.Containers[0].SecretIDs, id)
+				val, err := j.vault.GetValue(ctx, id)
+				require.NoError(t, err)
+				assert.Equal(t, utility.FromStringPtr(secret.Value), val)
 			}
 
 			dbPod, err := pod.FindOneByID(j.PodID)
@@ -61,7 +59,7 @@ func TestCreatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusStarting, dbPod.Status)
 		},
-		"FailsWithStartingStatus": func(ctx context.Context, t *testing.T, j *createPodJob) {
+		"FailsWithStartingStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			require.NoError(t, j.pod.Insert())
 			require.NoError(t, j.pod.UpdateStatus(pod.StatusStarting))
 			assert.Equal(t, pod.StatusStarting, j.pod.Status)
@@ -77,7 +75,7 @@ func TestCreatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusStarting, dbPod.Status)
 		},
-		"FailsWithRunningStatus": func(ctx context.Context, t *testing.T, j *createPodJob) {
+		"FailsWithRunningStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			require.NoError(t, j.pod.Insert())
 			require.NoError(t, j.pod.UpdateStatus(pod.StatusRunning))
 			assert.Equal(t, pod.StatusRunning, j.pod.Status)
@@ -93,7 +91,7 @@ func TestCreatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
 		},
-		"FailsWithTerminatedStatus": func(ctx context.Context, t *testing.T, j *createPodJob) {
+		"FailsWithTerminatedStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			require.NoError(t, j.pod.Insert())
 			require.NoError(t, j.pod.UpdateStatus(pod.StatusTerminated))
 
@@ -108,7 +106,7 @@ func TestCreatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 		},
-		"FailsWhenExportingOpts": func(ctx context.Context, t *testing.T, j *createPodJob) {
+		"FailsWhenExportingOpts": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			j.pod.TaskContainerCreationOpts.Image = ""
 			require.NoError(t, j.pod.Insert())
 
@@ -123,7 +121,7 @@ func TestCreatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
 		},
-		"FailsWhenCreatingPod": func(ctx context.Context, t *testing.T, j *createPodJob) {
+		"FailsWhenCreatingPod": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			j.pod.TaskContainerCreationOpts.CPU = 0
 			require.NoError(t, j.pod.Insert())
 
@@ -138,7 +136,7 @@ func TestCreatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
 		},
-		"FailsWithMismatchedPlatformOS": func(ctx context.Context, t *testing.T, j *createPodJob) {
+		"FailsWithMismatchedPlatformOS": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			j.pod.TaskContainerCreationOpts.OS = "windows"
 			require.NoError(t, j.pod.Insert())
 
@@ -190,7 +188,7 @@ func TestCreatePodJob(t *testing.T) {
 				},
 			}
 
-			env := evgMock.Environment{}
+			env := &evgMock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 			var envClusters []evergreen.ECSClusterConfig
 			for name := range cocoaMock.GlobalECSService.Clusters {
@@ -201,10 +199,11 @@ func TestCreatePodJob(t *testing.T) {
 			}
 			env.EvergreenSettings.Providers.AWS.Pod.ECS.Clusters = envClusters
 
-			j, ok := NewCreatePodJob(&env, &p, utility.RoundPartOfMinute(0).Format(TSFormat)).(*createPodJob)
+			j, ok := NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podCreationJob)
 			require.True(t, ok)
 
 			j.pod = &p
+			j.env = env
 
 			j.smClient = &cocoaMock.SecretsManagerClient{}
 			defer func() {

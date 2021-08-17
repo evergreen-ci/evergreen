@@ -807,7 +807,7 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 }
 
 func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	t, err := task.FindOneIdNewOrOld(*at.Id)
+	t, err := task.FindOneIdNewOrOldNoMerge(*at.Id)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}

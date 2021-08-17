@@ -96,7 +96,7 @@ func perfGetCommit(w http.ResponseWriter, r *http.Request) {
 func perfGetTaskHistory(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 
-	t, err := task.FindOne(task.ById(vars["task_id"]))
+	t, err := task.FindOneId(vars["task_id"])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

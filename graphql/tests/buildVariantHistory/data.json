@@ -1,0 +1,32 @@
+{
+    "tasks": [
+        {
+            "_id": "t1",
+            "display_name" : "test-agent",
+            "build_variant": "ubuntu1604",
+            "branch": "evergreen",
+            "r": "gitter_request"
+        },
+        {
+            "_id": "t2",
+            "display_name" : "dist",
+            "build_variant": "ubuntu1604",
+            "branch": "evergreen",
+            "r": "gitter_request"
+        },
+        {
+            "_id": "t3",
+            "display_name" : "test-graphql",
+            "build_variant": "ubuntu1604",
+            "branch": "evergreen",
+            "r": "gitter_request"
+        },
+        {
+            "_id": "t4",
+            "display_name" : "test-agent",
+            "build_variant": "osx",
+            "branch": "evergreen",
+            "r": "gitter_request"
+        }
+    ]
+}

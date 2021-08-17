@@ -15,13 +15,6 @@ type APIPodEnvVar struct {
 	Secret *bool   `json:"secret"`
 }
 
-// APITimeInfo is the model for the timing information of a pod.
-type APITimeInfo struct {
-	Initialized time.Time `json:"initialized"`
-	Started     time.Time `json:"started"`
-	Provisioned time.Time `json:"provisioned"`
-}
-
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
 	Name       *string         `json:"name"`
@@ -173,7 +166,7 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 	var converted pod.Status
 	switch *s {
 	case PodStatusInitializing:
-		converted = pod.StatusTerminated
+		converted = pod.StatusInitializing
 	case PodStatusStarting:
 		converted = pod.StatusStarting
 	case PodStatusRunning:
@@ -263,28 +256,62 @@ func (i *APIPodTimeInfo) ToService() pod.TimeInfo {
 // APIPodResourceInfo represents information about external resources associated
 // with a pod.
 type APIPodResourceInfo struct {
-	ExternalID   *string  `json:"external_id,omitempty"`
-	DefinitionID *string  `json:"definition_id,omitempty"`
-	Cluster      *string  `json:"cluster,omitempty"`
-	SecretIDs    []string `json:"secret_ids,omitempty"`
+	ExternalID   *string                    `json:"external_id,omitempty"`
+	DefinitionID *string                    `json:"definition_id,omitempty"`
+	Cluster      *string                    `json:"cluster,omitempty"`
+	Containers   []APIContainerResourceInfo `json:"containers,omitempty"`
 }
 
-// BuildFromService converts service-layer resource information into REST API
-// resource information.
+// BuildFromService converts service-layer pod resource information into REST
+// API pod resource information.
 func (i *APIPodResourceInfo) BuildFromService(info pod.ResourceInfo) {
 	i.ExternalID = utility.ToStringPtr(info.ExternalID)
 	i.DefinitionID = utility.ToStringPtr(info.DefinitionID)
 	i.Cluster = utility.ToStringPtr(info.Cluster)
-	i.SecretIDs = info.SecretIDs
+	for _, container := range info.Containers {
+		var containerInfo APIContainerResourceInfo
+		containerInfo.BuildFromService(container)
+		i.Containers = append(i.Containers, containerInfo)
+	}
 }
 
-// ToService converts REST API resource information into service-layer resource
-// information.
+// ToService converts REST API pod resource information into service-layer
+// pod resource information.
 func (i *APIPodResourceInfo) ToService() pod.ResourceInfo {
+	var containers []pod.ContainerResourceInfo
+	for _, container := range i.Containers {
+		containers = append(containers, container.ToService())
+	}
 	return pod.ResourceInfo{
 		ExternalID:   utility.FromStringPtr(i.ExternalID),
 		DefinitionID: utility.FromStringPtr(i.DefinitionID),
 		Cluster:      utility.FromStringPtr(i.Cluster),
-		SecretIDs:    i.SecretIDs,
+		Containers:   containers,
+	}
+}
+
+// APIPodResourceInfo represents information about external resources associated
+// with a container.
+type APIContainerResourceInfo struct {
+	ExternalID *string  `json:"external_id,omitempty"`
+	Name       *string  `json:"name,omitempty"`
+	SecretIDs  []string `json:"secret_ids,omitempty"`
+}
+
+// BuildFromService converts service-layer container resource information into
+// REST API container resource information.
+func (i *APIContainerResourceInfo) BuildFromService(info pod.ContainerResourceInfo) {
+	i.ExternalID = utility.ToStringPtr(info.ExternalID)
+	i.Name = utility.ToStringPtr(info.Name)
+	i.SecretIDs = info.SecretIDs
+}
+
+// ToService converts REST API container resource information into service-layer
+// container resource information.
+func (i *APIContainerResourceInfo) ToService() pod.ContainerResourceInfo {
+	return pod.ContainerResourceInfo{
+		ExternalID: utility.FromStringPtr(i.ExternalID),
+		Name:       utility.FromStringPtr(i.Name),
+		SecretIDs:  i.SecretIDs,
 	}
 }
