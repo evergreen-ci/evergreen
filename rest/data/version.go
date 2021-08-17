@@ -383,7 +383,13 @@ func (mvc *MockVersionConnector) CreateVersionFromConfig(ctx context.Context, pr
 func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, error) {
 	if v.Config != "" {
 		p := &model.Project{}
-		pp, err := model.LoadProjectInto([]byte(v.Config), projectId, p)
+		ctx := context.Background()
+		opts := model.GetProjectOpts{
+			Ref: &model.ProjectRef{
+				Id: projectId,
+			},
+		}
+		pp, err := model.LoadProjectInto(ctx, []byte(v.Config), opts, p)
 		return p, pp, err
 	}
 	return nil, nil, errors.New("no project for version")

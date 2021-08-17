@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -81,6 +82,9 @@ type ParserProject struct {
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
+
+	// List of yamls to merge
+	Include []string `yaml:"include,omitempty" bson:"include,omitempty"`
 }
 
 type parserTaskGroup struct {
@@ -514,7 +518,14 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 		return nil, nil, errors.New("version has no config")
 	}
 	p := &Project{}
-	pp, err = LoadProjectInto([]byte(v.Config), id, p)
+	projRef, err := FindOneProjectRef(id)
+	opts := GetProjectOpts{
+		Ref:        projRef,
+		RemotePath: projRef.RemotePath,
+		Revision:   v.Revision,
+	}
+	ctx := context.Background()
+	pp, err = LoadProjectInto(ctx, []byte(v.Config), opts, p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}
@@ -547,10 +558,25 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
-func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserProject, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, project *Project) (*ParserProject, error) {
 	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
+	}
+	if intermediateProject.Include != nil {
+		for _, path := range intermediateProject.Include {
+			opts.RemotePath = path
+			yaml, err := retrieveFile(ctx, opts)
+			if err != nil {
+				return nil, errors.Wrapf(err, LoadProjectError)
+			}
+			add, err := createIntermediateProject(yaml)
+			if err != nil {
+				return nil, errors.Wrapf(err, LoadProjectError)
+			}
+			intermediateProject.mergeMultipleProjectConfigs(add)
+		}
+		intermediateProject.Include = nil
 	}
 
 	// return project even with errors
@@ -558,7 +584,7 @@ func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserP
 	if p != nil {
 		*project = *p
 	}
-	project.Identifier = identifier
+	project.Identifier = opts.Ref.Id
 	return intermediateProject, errors.Wrap(err, LoadProjectError)
 }
 
@@ -569,18 +595,36 @@ type GetProjectOpts struct {
 	Token      string
 }
 
-func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
-	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
+	conf, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
+		return nil, errors.Wrap(err, "can't get evergreen configuration")
 	}
+	ghToken, err := conf.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
+	}
+	configFile, err := thirdparty.GetGithubFile(ctx, ghToken, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
+	}
+
 	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
+		return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
+	}
+
+	return fileContents, nil
+}
+
+func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
+	fileContents, err := retrieveFile(ctx, opts)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	config := Project{}
-	pp, err := LoadProjectInto(fileContents, opts.Ref.Id, &config)
+	pp, err := LoadProjectInto(ctx, fileContents, opts, &config)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
 	}
@@ -1187,7 +1231,7 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 }
 
 // mergeUnique merges fields that are non-lists.
-// These fields can only be defined 1 yaml.
+// These fields can only be defined one yaml.
 // These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout]
 func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
@@ -1274,7 +1318,7 @@ func (pp *ParserProject) mergeBuildVariant(toMerge *ParserProject) error {
 }
 
 // mergeMatrix merges matices/axes.
-// Matices/axes cannot be defined for more than 1 yaml.
+// Matices/axes cannot be defined for more than one yaml.
 func (pp *ParserProject) mergeMatrix(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 

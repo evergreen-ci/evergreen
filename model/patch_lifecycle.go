@@ -120,9 +120,12 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 
 	project := &Project{}
+	opts := GetProjectOpts{
+		Ref: projectRef,
+	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Id, project); err != nil {
+		if _, err = LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -174,7 +177,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	if _, err := LoadProjectInto(projectFileBytes, projectRef.Id, project); err != nil {
+	if _, err := LoadProjectInto(ctx, projectFileBytes, opts, project); err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 
@@ -276,7 +279,12 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	intermediateProject, err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
+	opts := GetProjectOpts{
+		Ref: &ProjectRef{
+			Id: p.Project,
+		},
+	}
+	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -669,7 +677,11 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string
 	}
 
 	project := &Project{}
-	if _, err = LoadProjectInto([]byte(existingPatch.PatchedConfig), existingPatch.Project, project); err != nil {
+	ctx := context.Background()
+	opts := GetProjectOpts{
+		Ref: projectRef,
+	}
+	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedConfig), opts, project); err != nil {
 		return nil, errors.Wrap(err, "problem loading project")
 	}
 

@@ -335,7 +335,13 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if _, err = model.LoadProjectInto([]byte(p.PatchedConfig), p.Project, project); err != nil {
+	ctx := context.Background()
+	opts := model.GetProjectOpts{
+		Ref: &model.ProjectRef{
+			Id: p.Project,
+		},
+	}
+	if _, err = model.LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, project); err != nil {
 		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
 	}
 
@@ -364,7 +370,7 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 
 	// create a separate context from the one the callar has so that the caller
 	// can't interrupt the db operations here
-	ctx := context.Background()
+	ctx = context.Background()
 	if p.Version != "" {
 		p.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
@@ -463,7 +469,13 @@ type VariantsAndTasksFromProject struct {
 
 func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
-	if _, err := model.LoadProjectInto([]byte(patchedConfig), patchProject, project); err != nil {
+	ctx := context.Background()
+	opts := model.GetProjectOpts{
+		Ref: &model.ProjectRef{
+			Id: patchProject,
+		},
+	}
+	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), opts, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
 	}
 

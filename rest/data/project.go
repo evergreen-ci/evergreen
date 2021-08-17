@@ -496,7 +496,12 @@ tasks:
 - name: t1
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(config), pRef.Id, p)
+	opts := model.GetProjectOpts{
+		Ref:        &pRef,
+		RemotePath: file,
+		Token:      token,
+	}
+	pp, err := model.LoadProjectInto(ctx, []byte(config), opts, p)
 	return p, pp, err
 }
 

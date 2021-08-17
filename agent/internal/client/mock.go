@@ -188,7 +188,8 @@ func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Proje
 		grip.Error(err)
 	}
 	proj := &serviceModel.Project{}
-	_, err = serviceModel.LoadProjectInto(data, "", proj)
+	opts := serviceModel.GetProjectOpts{}
+	_, err = serviceModel.LoadProjectInto(ctx, data, opts, proj)
 	return proj, err
 }
 

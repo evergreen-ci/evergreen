@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 
@@ -40,7 +41,9 @@ func Evaluate() cli.Command {
 			}
 
 			p := &model.Project{}
-			_, err = model.LoadProjectInto(configBytes, "", p)
+			ctx := context.Background()
+			opts := model.GetProjectOpts{}
+			_, err = model.LoadProjectInto(ctx, configBytes, opts, p)
 			if err != nil {
 				return errors.Wrap(err, "error loading project")
 			}
