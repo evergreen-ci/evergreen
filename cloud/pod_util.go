@@ -173,6 +173,10 @@ func ExportECSContainerResources(info pod.ContainerResourceInfo) cocoa.ECSContai
 	return *res
 }
 
+// agentContainerName is the standard name for the container that's running the
+// agent in a pod.
+const agentContainerName = "evg-agent"
+
 // ExportPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
 func ExportPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSContainerDefinition, error) {
@@ -181,7 +185,7 @@ func ExportPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECS
 		return nil, errors.Wrap(err, "building agent script")
 	}
 	return cocoa.NewECSContainerDefinition().
-		SetName("evg-agent").
+		SetName(agentContainerName).
 		SetImage(p.TaskContainerCreationOpts.Image).
 		SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 		SetCPU(p.TaskContainerCreationOpts.CPU).
