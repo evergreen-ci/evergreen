@@ -339,12 +339,13 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if err := taskOnBaseCommit.PopulateTestResults(); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
 		taskPatch := &uiPatch{Patch: *projCtx.Patch}
 		if taskOnBaseCommit != nil {
+			if err = taskOnBaseCommit.PopulateTestResults(); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+
 			taskPatch.BaseTaskId = taskOnBaseCommit.Id
 			taskPatch.BaseTimeTaken = taskOnBaseCommit.TimeTaken
 			testResultsOnBaseCommit = taskOnBaseCommit.LocalTestResults
