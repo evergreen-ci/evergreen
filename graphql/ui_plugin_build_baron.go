@@ -280,6 +280,20 @@ func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronPr
 }
 
 func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
+	flags, err := evergreen.GetServiceFlags()
+	var bb evergreen.BuildBaronProject
+	if err != nil {
+		return bb, false
+	}
+	if flags.PluginAdminPageDisabled {
+		projectRef, err := model.FindOneProjectRef(projectId)
+		if err != nil {
+			return bb, false
+		}
+		return projectRef.BuildBaronProject, true
+	}
+	//todo remove below section once expose configs project is comlpete
+
 	buildBaronProjects := BbGetConfig(settings)
 	bbProject, ok := buildBaronProjects[projectId]
 	if !ok {

@@ -77,7 +77,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
 				"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 		}
-		// the webhook cannot be used if the default build baron creation and search is configurd
+		// the webhook cannot be used if the default build baron creation and search is configured
 		if webhookConfigured {
 			if len(proj.TicketCreateProject) != 0 {
 				grip.Error(message.Fields{
@@ -108,10 +108,20 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
-					enabled := len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
-					if !enabled {
-						enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
+					enabled := false
+					flags, err := evergreen.GetServiceFlags()
+					if err != nil {
+						return nil, err
 					}
+					if flags.PluginAdminPageDisabled {
+						enabled = len(context.ProjectRef.BuildBaronProject.TicketSearchProjects) > 0
+					} else {
+						enabled = len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
+						if !enabled {
+							enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
+						}
+					}
+
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil

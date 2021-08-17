@@ -80,6 +80,7 @@ type ParserProject struct {
 	Loggers                *LoggerConfig                 `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime             time.Time                     `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	TaskAnnotationSettings evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+	BuildBaronProject      evergreen.BuildBaronProject   `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -611,6 +612,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		ExecTimeoutSecs:        utility.FromIntPtr(pp.ExecTimeoutSecs),
 		Loggers:                pp.Loggers,
 		TaskAnnotationSettings: pp.TaskAnnotationSettings,
+		BuildBaronProject:      pp.BuildBaronProject,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
