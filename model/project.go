@@ -892,7 +892,9 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier) // TODO: depreciate
 	expansions.Put("project_id", projectRef.Id)
-
+	if t.ActivatedBy == evergreen.StepbackTaskActivator {
+		expansions.Put("is_stepback", "true")
+	}
 	if t.TriggerID != "" {
 		expansions.Put("trigger_event_identifier", t.TriggerID)
 		expansions.Put("trigger_event_type", t.TriggerType)
