@@ -55,7 +55,7 @@ type ParserProject struct {
 	Enabled                *bool                         `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 	Stepback               *bool                         `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	PreErrorFailsTask      *bool                         `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	PostErrorFailsTask     *bool
+	PostErrorFailsTask     *bool                         `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker             *bool                         `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
 	BatchTime              *int                          `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
 	Owner                  *string                       `yaml:"owner,omitempty" bson:"owner,omitempty"`
