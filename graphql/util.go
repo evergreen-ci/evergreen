@@ -311,7 +311,7 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
-func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
+func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter, patchTriggerAliases []string) (error, int, string, string) {
 	var err error
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
@@ -405,6 +405,14 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks())
 		if err != nil {
 			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
+		}
+
+		projectRef, err := model.FindOneProjectRef(project.Identifier)
+		if err != nil {
+			return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
+		}
+		if err := units.ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), patchTriggerAliases); err != nil {
+			return errors.Wrap(err, "Error processing patch trigger aliases"), http.StatusInternalServerError, "", ""
 		}
 
 		requester := p.GetRequester()

@@ -336,7 +336,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	patchDoc.Id = j.PatchID
 
-	if err = j.processTriggerAliases(ctx, patchDoc, pref); err != nil {
+	if err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
 		return errors.Wrap(err, "problem processing trigger aliases")
 	}
 
@@ -476,8 +476,8 @@ func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project
 	return res, nil
 }
 
-func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef) error {
-	if len(p.Triggers.Aliases) == 0 {
+func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
+	if len(aliasNames) == 0 {
 		return nil
 	}
 
@@ -487,7 +487,7 @@ func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *pat
 		parentAsModule string
 	}
 	aliasGroups := make(map[aliasGroup][]patch.PatchTriggerDefinition)
-	for _, aliasName := range p.Triggers.Aliases {
+	for _, aliasName := range aliasNames {
 		alias, found := projectRef.GetPatchTriggerAlias(aliasName)
 		if !found {
 			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
@@ -537,7 +537,7 @@ func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *pat
 				return errors.Wrap(err, "problem processing child patch")
 			}
 		} else {
-			if err := j.env.RemoteQueue().Put(ctx, job); err != nil {
+			if err := env.RemoteQueue().Put(ctx, job); err != nil {
 				return errors.Wrap(err, "problem enqueueing child patch processing")
 			}
 		}
