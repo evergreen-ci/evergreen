@@ -113,6 +113,24 @@ func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEn
 	return taskEndResp, nil
 }
 
+// DisableHost signals to the app server that the host should be disabled
+func (c *hostCommunicator) DisableHost(ctx context.Context, hostID string, details apimodels.DisableInfo) error {
+	info := requestInfo{
+		method:  http.MethodPost,
+		version: apiVersion1,
+	}
+	info.path = fmt.Sprintf("hosts/%s/disable", hostID)
+	resp, err := c.retryRequest(ctx, info, &details)
+	if err != nil {
+		err = utility.RespErrorf(resp, "failed to disable host: %s", err.Error())
+		grip.Critical(err)
+		return err
+	}
+
+	defer resp.Body.Close()
+	return nil
+}
+
 // GetTask returns the active task.
 func (c *hostCommunicator) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
 	task := &task.Task{}

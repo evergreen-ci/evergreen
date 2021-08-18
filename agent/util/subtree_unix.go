@@ -26,6 +26,8 @@ const (
 	MarkerInEvergreen = "IN_EVERGREEN"
 )
 
+var PsTimeoutError = errors.New("ps timeout")
+
 // TrackProcess is a noop by default if we don't need to do any special
 // bookkeeping up-front.
 func TrackProcess(key string, pid int, logger grip.Journaler) {}
@@ -173,6 +175,9 @@ func psWithArgs(ctx context.Context, args []string) ([]process, error) {
 	defer cancel()
 	out, err := exec.CommandContext(psCtx, "ps", args...).CombinedOutput()
 	if err != nil {
+		if errors.Cause(err) == context.DeadlineExceeded {
+			return nil, PsTimeoutError
+		}
 		return nil, errors.Wrap(err, "running ps")
 	}
 	return parsePs(string(out)), nil
