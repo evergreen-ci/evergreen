@@ -387,4 +387,5 @@ func (sns *ecsSNS) handleNotification(ctx context.Context) error {
 			Message:    errors.Wrap(err, "unmarshalling notification").Error(),
 		}
 	}
+	return nil
 }
