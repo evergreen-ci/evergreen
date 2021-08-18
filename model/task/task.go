@@ -1058,7 +1058,11 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 	}
 
 	if !t.DisplayOnly && t.IsPartOfDisplay() {
-		return t.DisplayTask.SetHasCedarResults(hasCedarResults, failedResults)
+		displayTask, err := t.GetDisplayTask()
+		if err != nil {
+			return errors.Wrap(err, "getting display task")
+		}
+		return displayTask.SetHasCedarResults(hasCedarResults, failedResults)
 	}
 
 	return nil
