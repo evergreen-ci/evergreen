@@ -190,6 +190,7 @@ func (unit *Unit) RankValue() int64 {
 		inPatch          bool
 		anyNonGroupTasks bool
 		generateTask     bool
+		stepbackTask     bool
 	)
 
 	for _, t := range unit.tasks {
@@ -204,6 +205,9 @@ func (unit *Unit) RankValue() int64 {
 		}
 		if t.GenerateTask {
 			generateTask = true
+		}
+		if t.ActivatedBy == evergreen.StepbackTaskActivator {
+			stepbackTask = true
 		}
 
 		if !t.ActivatedTime.IsZero() {
@@ -230,6 +234,10 @@ func (unit *Unit) RankValue() int64 {
 	if generateTask {
 		// give generators a boost so people don't have to wait twice.
 		priority = priority * unit.distro.GetGenerateTaskFactor()
+	}
+	if stepbackTask {
+		// give stepback tasks a priority over mainline
+		priority = priority * unit.distro.GetStepbackTaskFactor()
 	}
 
 	if inPatch {

@@ -233,6 +233,7 @@ type PlannerSettings struct {
 	MainlineTimeInQueueFactor int64         `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 	GenerateTaskFactor        int64         `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
+	StepbackTaskFactor        int64         `bson:"stepback_task_factor" json:"stepback_task_factor" mapstructure:"stepback_task_factor"`
 
 	maxDurationPerHost time.Duration
 }
@@ -363,6 +364,13 @@ func (d *Distro) GetMainlineTimeInQueueFactor() int64 {
 		return 1
 	}
 	return d.PlannerSettings.MainlineTimeInQueueFactor
+}
+
+func (d *Distro) GetStepbackTaskFactor() int64 {
+	if d.PlannerSettings.StepbackTaskFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.StepbackTaskFactor
 }
 
 func (d *Distro) GetExpectedRuntimeFactor() int64 {
@@ -695,6 +703,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		MainlineTimeInQueueFactor: ps.MainlineTimeInQueueFactor,
 		ExpectedRuntimeFactor:     ps.ExpectedRuntimeFactor,
 		GenerateTaskFactor:        ps.GenerateTaskFactor,
+		StepbackTaskFactor:        ps.StepbackTaskFactor,
 		maxDurationPerHost:        evergreen.MaxDurationPerDistroHost,
 	}
 
