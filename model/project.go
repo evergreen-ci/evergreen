@@ -277,6 +277,11 @@ type Module struct {
 	Ref    string `yaml:"ref,omitempty" bson:"ref"`
 }
 
+type Include struct {
+	FileName string `yaml:"filename,omitempty" bson:"filename"`
+	Module   string `yaml:"module,omitempty" bson:"module"`
+}
+
 type ModuleList []Module
 
 func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {

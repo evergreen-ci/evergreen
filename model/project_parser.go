@@ -80,7 +80,7 @@ type ParserProject struct {
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	// List of yamls to merge
-	Include []string `yaml:"include,omitempty" bson:"include,omitempty"`
+	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -561,7 +561,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 	}
 	if intermediateProject.Include != nil {
 		for _, path := range intermediateProject.Include {
-			opts.RemotePath = path
+			opts.RemotePath = path.FileName
 			yaml, err := retrieveFile(ctx, opts)
 			if err != nil {
 				return nil, errors.Wrapf(err, LoadProjectError)
