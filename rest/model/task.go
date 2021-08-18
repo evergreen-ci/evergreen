@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -50,7 +49,6 @@ type APITask struct {
 	Execution               int                 `json:"execution"`
 	Order                   int                 `json:"order"`
 	Status                  *string             `json:"status"`
-	OriginalStatus          *string             `json:"original_status"`
 	DisplayStatus           *string             `json:"display_status"`
 	Details                 ApiTaskEndDetail    `json:"status_details"`
 	Logs                    LogLinks            `json:"logs"`
@@ -223,6 +221,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Execution:               v.Execution,
 			Order:                   v.RevisionOrderNumber,
 			Status:                  utility.ToStringPtr(v.Status),
+			DisplayStatus:           utility.ToStringPtr(v.GetDisplayStatus()),
 			TimeTaken:               NewAPIDuration(v.TimeTaken),
 			ExpectedDuration:        NewAPIDuration(v.ExpectedDuration),
 			GenerateTask:            v.GenerateTask,
@@ -248,20 +247,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				PRClosed:   v.AbortInfo.PRClosed,
 			},
 		}
-
-		annotation, err := annotations.FindOneByTaskIdAndExecution(id, v.Execution)
-		if err != nil {
-			return errors.Wrap(err, "can't fetch annotation for task")
-		}
-
-		if annotation != nil && len(annotation.Issues) > 0 {
-			at.DisplayStatus = utility.ToStringPtr(evergreen.TaskKnownIssue)
-			at.OriginalStatus = utility.ToStringPtr(v.Status)
-
-		} else {
-			at.DisplayStatus = utility.ToStringPtr(v.GetDisplayStatus())
-		}
-
 		if v.BaseTask.Id != "" {
 			at.BaseTask = APIBaseTaskInfo{
 				Id:     utility.ToStringPtr(v.BaseTask.Id),
@@ -362,6 +347,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		Execution:           ad.Execution,
 		RevisionOrderNumber: ad.Order,
 		Status:              utility.FromStringPtr(ad.Status),
+		DisplayStatus:       utility.FromStringPtr(ad.DisplayStatus),
 		TimeTaken:           ad.TimeTaken.ToDuration(),
 		ExpectedDuration:    ad.ExpectedDuration.ToDuration(),
 		GenerateTask:        ad.GenerateTask,
@@ -380,12 +366,6 @@ func (ad *APITask) ToService() (interface{}, error) {
 			Status: utility.FromStringPtr(ad.BaseTask.Status),
 		},
 	}
-	if ad.OriginalStatus != nil {
-		st.DisplayStatus = utility.FromStringPtr(ad.OriginalStatus)
-	} else {
-		st.DisplayStatus = utility.FromStringPtr(ad.DisplayStatus)
-	}
-
 	catcher := grip.NewBasicCatcher()
 	serviceDetails, err := ad.Details.ToService()
 	catcher.Add(err)

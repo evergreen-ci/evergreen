@@ -992,6 +992,7 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
+	OriginalStatus(ctx context.Context, obj *model.APITask) (*string, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 
@@ -5880,10 +5881,7 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
-  patchMetadata: PatchMetadata!
-    @deprecated(
-      reason: "patchMetadata is deprecated. Use versionMetadata instead."
-    )
+  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead." )
   patchNumber: Int
   priority: Int
   project: Project
@@ -5901,8 +5899,7 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   totalTestCount: Int!
-  version: String!
-    @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
+  version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
 }
 
@@ -20646,13 +20643,13 @@ func (ec *executionContext) _Task_originalStatus(ctx context.Context, field grap
 		Object:   "Task",
 		Field:    field,
 		Args:     nil,
-		IsMethod: false,
+		IsMethod: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.OriginalStatus, nil
+		return ec.resolvers.Task().OriginalStatus(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -30924,7 +30921,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				return res
 			})
 		case "originalStatus":
-			out.Values[i] = ec._Task_originalStatus(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_originalStatus(ctx, field, obj)
+				return res
+			})
 		case "taskGroup":
 			out.Values[i] = ec._Task_taskGroup(ctx, field, obj)
 		case "taskGroupMaxHosts":

@@ -2594,6 +2594,19 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 	return *obj.DisplayStatus, nil
 }
 
+func (r *taskResolver) OriginalStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding task annotation: %s", err.Error()))
+	}
+
+	if annotation != nil && len(annotation.Issues) > 0 {
+		return utility.ToStringPtr(evergreen.TaskKnownIssue), nil
+
+	}
+	return nil, nil
+}
+
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
 	return task.GetLatestExecution(*obj.Id)
 }
