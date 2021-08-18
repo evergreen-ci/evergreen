@@ -262,11 +262,11 @@
       }
     },
     {
-      "query_file": "trigger-aliases.graphql",
+      "query_file": "patch-trigger-aliases.graphql",
       "result": {
         "data": {
           "patch": {
-            "triggerAliases": [
+            "patchTriggerAliases": [
               { "alias": "__commit_queue", "childProject": "child"}
             ]
           }

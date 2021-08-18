@@ -418,6 +418,7 @@ type ComplexityRoot struct {
 		ModuleCodeChanges       func(childComplexity int) int
 		Parameters              func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
+		PatchTriggerAliases     func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
 		ProjectIdentifier       func(childComplexity int) int
@@ -426,7 +427,6 @@ type ComplexityRoot struct {
 		TaskStatuses            func(childComplexity int) int
 		Tasks                   func(childComplexity int) int
 		Time                    func(childComplexity int) int
-		TriggerAliases          func(childComplexity int) int
 		Variants                func(childComplexity int) int
 		VariantsTasks           func(childComplexity int) int
 		Version                 func(childComplexity int) int
@@ -914,7 +914,7 @@ type PatchResolver interface {
 	TaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 	BaseTaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 
-	TriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*PatchTriggerAlias, error)
+	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*PatchTriggerAlias, error)
 }
 type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
@@ -2835,6 +2835,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.PatchNumber(childComplexity), true
 
+	case "Patch.patchTriggerAliases":
+		if e.complexity.Patch.PatchTriggerAliases == nil {
+			break
+		}
+
+		return e.complexity.Patch.PatchTriggerAliases(childComplexity), true
+
 	case "Patch.project":
 		if e.complexity.Patch.Project == nil {
 			break
@@ -2890,13 +2897,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Time(childComplexity), true
-
-	case "Patch.triggerAliases":
-		if e.complexity.Patch.TriggerAliases == nil {
-			break
-		}
-
-		return e.complexity.Patch.TriggerAliases(childComplexity), true
 
 	case "Patch.variants":
 		if e.complexity.Patch.Variants == nil {
@@ -5701,7 +5701,7 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
-  triggerAliases: [PatchTriggerAlias!]!
+  patchTriggerAliases: [PatchTriggerAlias!]!
 }
 
 type Build {
@@ -15783,7 +15783,7 @@ func (ec *executionContext) _Patch_canEnqueueToCommitQueue(ctx context.Context, 
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Patch_triggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+func (ec *executionContext) _Patch_patchTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -15800,7 +15800,7 @@ func (ec *executionContext) _Patch_triggerAliases(ctx context.Context, field gra
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Patch().TriggerAliases(rctx, obj)
+		return ec.resolvers.Patch().PatchTriggerAliases(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -29519,7 +29519,7 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "triggerAliases":
+		case "patchTriggerAliases":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -29527,7 +29527,7 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Patch_triggerAliases(ctx, field, obj)
+				res = ec._Patch_patchTriggerAliases(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

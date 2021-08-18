@@ -551,7 +551,7 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
-  triggerAliases: [PatchTriggerAlias!]!
+  patchTriggerAliases: [PatchTriggerAlias!]!
 }
 
 type Build {
