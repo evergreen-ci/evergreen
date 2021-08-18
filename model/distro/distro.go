@@ -703,7 +703,6 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		MainlineTimeInQueueFactor: ps.MainlineTimeInQueueFactor,
 		ExpectedRuntimeFactor:     ps.ExpectedRuntimeFactor,
 		GenerateTaskFactor:        ps.GenerateTaskFactor,
-		StepbackTaskFactor:        ps.StepbackTaskFactor,
 		maxDurationPerHost:        evergreen.MaxDurationPerDistroHost,
 	}
 
@@ -747,6 +746,10 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if resolved.GenerateTaskFactor == 0 {
 		resolved.GenerateTaskFactor = config.GenerateTaskFactor
 	}
+
+	// StepbackTaskFactor is always undefined in distro
+	resolved.GenerateTaskFactor = config.StepbackTaskFactor
+
 	if catcher.HasErrors() {
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
 	}
