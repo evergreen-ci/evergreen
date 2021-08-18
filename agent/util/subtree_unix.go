@@ -116,6 +116,9 @@ func commandInWorkingDir(command, workingDir string) bool {
 	return strings.HasPrefix(command, workingDir)
 }
 
+// waitForExit is a best-effort attempt to wait for processes to exit.
+// Any processes still running when the context is cancelled or when we run
+// out of attempts will have their pids included in the returned slice.
 func waitForExit(ctx context.Context, pids []int) []int {
 	var unkilledPids []int
 	// Retry listing processes until all have successfully exited
@@ -125,12 +128,17 @@ func waitForExit(ctx context.Context, pids []int) []int {
 			unkilledPids = []int{}
 			processes, err := psProcesses(ctx, pids)
 			if err != nil {
-				return false, errors.Wrap(err, "can't get list of processes still running")
+				return false, errors.Wrap(err, "listing processes still running")
 			}
+
 			for _, process := range processes {
 				unkilledPids = append(unkilledPids, process.pid)
 			}
-			return len(unkilledPids) != 0, nil
+			if len(unkilledPids) > 0 {
+				return true, errors.Errorf("'%d' of '%d' processes are still running", len(unkilledPids), len(pids))
+			}
+
+			return false, nil
 		}, utility.RetryOptions{
 			MaxAttempts: cleanupCheckAttempts,
 			MinDelay:    cleanupCheckTimeoutMin,
@@ -203,6 +211,7 @@ func parsePs(psOutput string) []process {
 
 		command := splitLine[1]
 
+		// arguments to the command will be included in the process.env, but it's good enough for our purposes.
 		var env []string
 		if len(splitLine) > 2 {
 			env = splitLine[2:]

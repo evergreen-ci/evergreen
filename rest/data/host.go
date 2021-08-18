@@ -453,8 +453,9 @@ func (hc *MockHostConnector) TerminateHost(ctx context.Context, host *host.Host,
 }
 
 func (hc *MockHostConnector) DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
-	for _, h := range hc.CachedHosts {
+	for i, h := range hc.CachedHosts {
 		if h.Id == host.Id {
+			hc.CachedHosts[i].Status = evergreen.HostDecommissioned
 			return nil
 		}
 	}
