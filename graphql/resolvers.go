@@ -972,15 +972,15 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 	return *obj.Id, nil
 }
 
-func (r *patchResolver) TriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*TriggerAlias, error) {
+func (r *patchResolver) TriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*PatchTriggerAlias, error) {
 	project, err := r.sc.FindProjectById(*obj.ProjectId, true)
 	if err != nil || project == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.ProjectId, err))
 	}
 
-	aliases := []*TriggerAlias{}
+	aliases := []*PatchTriggerAlias{}
 	for _, alias := range project.PatchTriggerAliases {
-		aliases = append(aliases, &TriggerAlias{Alias: alias.Alias, ChildProject: alias.ChildProject})
+		aliases = append(aliases, &PatchTriggerAlias{Alias: alias.Alias, ChildProject: alias.ChildProject})
 	}
 	return aliases, nil
 }

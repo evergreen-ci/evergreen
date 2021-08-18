@@ -506,7 +506,7 @@ type FileDiff {
   description: String!
 }
 
-type TriggerAlias {
+type PatchTriggerAlias {
   alias: String!
   childProject: String!
 }
@@ -551,7 +551,7 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
-  triggerAliases: [TriggerAlias!]!
+  triggerAliases: [PatchTriggerAlias!]!
 }
 
 type Build {

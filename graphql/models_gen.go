@@ -156,6 +156,11 @@ type PatchTime struct {
 	SubmittedAt string  `json:"submittedAt"`
 }
 
+type PatchTriggerAlias struct {
+	Alias        string `json:"alias"`
+	ChildProject string `json:"childProject"`
+}
+
 type Patches struct {
 	Patches            []*model.APIPatch `json:"patches"`
 	FilteredPatchCount int               `json:"filteredPatchCount"`
@@ -254,11 +259,6 @@ type TaskTestResult struct {
 	TotalTestCount    int              `json:"totalTestCount"`
 	FilteredTestCount int              `json:"filteredTestCount"`
 	TestResults       []*model.APITest `json:"testResults"`
-}
-
-type TriggerAlias struct {
-	Alias        string `json:"alias"`
-	ChildProject string `json:"childProject"`
 }
 
 type UpdateVolumeInput struct {
