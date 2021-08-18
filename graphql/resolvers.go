@@ -2591,20 +2591,20 @@ func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITas
 }
 
 func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (string, error) {
+	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
+	if err != nil {
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("error finding task annotation: %s", err.Error()))
+	}
+
+	if annotation != nil && len(annotation.Issues) > 0 {
+		return evergreen.TaskKnownIssue, nil
+
+	}
 	return *obj.DisplayStatus, nil
 }
 
 func (r *taskResolver) OriginalStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding task annotation: %s", err.Error()))
-	}
-
-	if annotation != nil && len(annotation.Issues) > 0 {
-		return utility.ToStringPtr(evergreen.TaskKnownIssue), nil
-
-	}
-	return nil, nil
+	return obj.Status, nil
 }
 
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
