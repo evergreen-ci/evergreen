@@ -94,6 +94,10 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "problem parsing JSON")
 	}
 	if err = comm.GenerateTasks(ctx, td, post); err != nil {
+		if strings.Contains(err.Error(), evergreen.TasksAlreadyGeneratedError) {
+			logger.Task().Info("Tasks have already been generated, nooping.")
+			return nil
+		}
 		return errors.Wrap(err, "Problem posting task data")
 	}
 
