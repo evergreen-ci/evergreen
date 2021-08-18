@@ -58,7 +58,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	opts := model.GetProjectOpts{
 		Ref: modelData.ProjectRef,
 	}
-	pp, err := model.LoadProjectInto(ctx, projectConfig, opts, project)
+	pp, err := model.LoadProjectInto(ctx, projectConfig, opts, "", project)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}

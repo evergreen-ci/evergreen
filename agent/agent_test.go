@@ -261,7 +261,9 @@ pre:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -293,7 +295,9 @@ pre:
       command: "doesntexist"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -320,7 +324,9 @@ post:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -354,7 +360,9 @@ post:
       script: "exit 0"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -652,7 +660,9 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -689,7 +699,9 @@ task_groups:
       script: "sleep 10"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -723,7 +735,9 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -756,7 +770,9 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -791,7 +807,9 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -827,7 +845,9 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -865,7 +885,9 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -905,7 +927,9 @@ timeout:
       echo "bye"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	p.CallbackTimeout = 2
 	s.tc.taskConfig = &internal.TaskConfig{

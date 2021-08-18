@@ -1324,7 +1324,9 @@ func TestCreateTaskGroup(t *testing.T) {
     - name: example_task_3
   `
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(projYml), "test", proj)
+	ctx := context.Background()
+	opts := GetProjectOpts{}
+	_, err := LoadProjectInto(ctx, []byte(projYml), opts, "test", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	v := &Version{

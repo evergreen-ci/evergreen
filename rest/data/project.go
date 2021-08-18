@@ -501,7 +501,7 @@ tasks:
 		RemotePath: file,
 		Token:      token,
 	}
-	pp, err := model.LoadProjectInto(ctx, []byte(config), opts, p)
+	pp, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)
 	return p, pp, err
 }
 

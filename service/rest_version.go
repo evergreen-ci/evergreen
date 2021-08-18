@@ -365,12 +365,8 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 	if pp == nil || pp.ConfigUpdateNumber < srcVersion.ConfigUpdateNumber {
 		p := &model.Project{}
 		ctx := context.Background()
-		opts := model.GetProjectOpts{
-			Ref: &model.ProjectRef{
-				Id: srcVersion.Identifier,
-			},
-		}
-		pp, err = model.LoadProjectInto(ctx, []byte(srcVersion.Config), opts, p)
+		opts := model.GetProjectOpts{}
+		pp, err = model.LoadProjectInto(ctx, []byte(srcVersion.Config), opts, srcVersion.Identifier, p)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem reading project from version"})
 			return

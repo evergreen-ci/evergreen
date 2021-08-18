@@ -2,7 +2,6 @@ package operations
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -292,13 +291,12 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 		return nil, NewAPIError(resp)
 	}
 	ref := &model.Project{}
-	ctx := context.Background()
 	yamlBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 	opts := model.GetProjectOpts{}
-	if _, err := model.LoadProjectInto(ctx, yamlBytes, opts, ref); err != nil {
+	if _, err := model.LoadProjectInto(resp.Request.Context(), yamlBytes, opts, "", ref); err != nil {
 		return nil, err
 	}
 	return ref, nil

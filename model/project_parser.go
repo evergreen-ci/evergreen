@@ -79,12 +79,11 @@ type ParserProject struct {
 	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	// List of yamls to merge
+	Include []string `yaml:"include,omitempty" bson:"include,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
-
-	// List of yamls to merge
-	Include []string `yaml:"include,omitempty" bson:"include,omitempty"`
 }
 
 type parserTaskGroup struct {
@@ -518,14 +517,10 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 		return nil, nil, errors.New("version has no config")
 	}
 	p := &Project{}
-	projRef, err := FindOneProjectRef(id)
-	opts := GetProjectOpts{
-		Ref:        projRef,
-		RemotePath: projRef.RemotePath,
-		Revision:   v.Revision,
-	}
+	// opts empty because project yaml that has include will hit this case
+	opts := GetProjectOpts{}
 	ctx := context.Background()
-	pp, err = LoadProjectInto(ctx, []byte(v.Config), opts, p)
+	pp, err = LoadProjectInto(ctx, []byte(v.Config), opts, id, p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}
@@ -558,7 +553,8 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
-func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, project *Project) (*ParserProject, error) {
+// opts is used to look up files on github if the main parser project has an Include.
+func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
 	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
@@ -574,7 +570,10 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, proj
 			if err != nil {
 				return nil, errors.Wrapf(err, LoadProjectError)
 			}
-			intermediateProject.mergeMultipleProjectConfigs(add)
+			err = intermediateProject.mergeMultipleProjectConfigs(add)
+			if err != nil {
+				return nil, errors.Wrapf(err, LoadProjectError)
+			}
 		}
 		intermediateProject.Include = nil
 	}
@@ -584,7 +583,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, proj
 	if p != nil {
 		*project = *p
 	}
-	project.Identifier = opts.Ref.Id
+	project.Identifier = identifier
 	return intermediateProject, errors.Wrap(err, LoadProjectError)
 }
 
@@ -624,7 +623,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *Pa
 	}
 
 	config := Project{}
-	pp, err := LoadProjectInto(ctx, fileContents, opts, &config)
+	pp, err := LoadProjectInto(ctx, fileContents, opts, opts.Ref.Id, &config)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
 	}
@@ -1231,7 +1230,7 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 }
 
 // mergeUnique merges fields that are non-lists.
-// These fields can only be defined one yaml.
+// These fields can only be defined in one yaml.
 // These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout]
 func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()

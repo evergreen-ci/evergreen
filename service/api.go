@@ -553,7 +553,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	ctx := context.Background()
 	opts := model.GetProjectOpts{}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, project); err != nil {
+	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
