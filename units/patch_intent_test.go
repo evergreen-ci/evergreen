@@ -632,3 +632,49 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 	s.Len(backportPatch.Patches, 1)
 	s.Equal(sourcePatch.Patches[0].PatchSet.Patch, backportPatch.Patches[0].PatchSet.Patch)
 }
+
+const PatchId = "58d156352cfeb61064cf08b3"
+
+func (s *PatchIntentUnitsSuite) TestSchedulePatchWithAliases() {
+	s.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, model.VersionCollection, user.Collection))
+
+	p := &patch.Patch{
+		Id:      patch.NewId(PatchId),
+		Project: "proj",
+		Author:  "u1",
+	}
+	s.NoError(p.Insert())
+
+	projectRef := &model.ProjectRef{
+		Id: "proj",
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
+			{Alias: "patch-alias", ChildProject: "childProj"},
+		},
+	}
+	s.NoError(projectRef.Insert())
+
+	childProjectRef := model.ProjectRef{
+		Id: "childProj",
+	}
+	s.NoError(childProjectRef.Insert())
+
+	project := model.Project{
+		Identifier: projectRef.Id,
+	}
+
+	v := model.Version{
+		Id:         "v",
+		Identifier: project.Identifier,
+	}
+	s.NoError(v.Insert())
+
+	u := &user.DBUser{
+		Id: "u1",
+	}
+	s.NoError(u.Insert())
+
+	ctx := context.Background()
+	s.Len(p.Triggers.ChildPatches, 0)
+	ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), []string{"patch-alias"})
+	s.Len(p.Triggers.ChildPatches, 1)
+}
