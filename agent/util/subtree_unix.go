@@ -20,13 +20,7 @@ const (
 	cleanupCheckTimeoutMin = 100 * time.Millisecond
 	cleanupCheckTimeoutMax = 1 * time.Second
 	contextTimeout         = 10 * time.Second
-
-	MarkerTaskID      = "EVR_TASK_ID"
-	MarkerAgentPID    = "EVR_AGENT_PID"
-	MarkerInEvergreen = "IN_EVERGREEN"
 )
-
-var PsTimeoutError = errors.New("ps timeout")
 
 // TrackProcess is a noop by default if we don't need to do any special
 // bookkeeping up-front.
