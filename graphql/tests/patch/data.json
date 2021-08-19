@@ -868,7 +868,8 @@
   "project_ref": [
     {
       "_id": "evergreen",
-      "identifier": "evergreen"
+      "identifier": "evergreen",
+      "patch_trigger_aliases": [{"alias": "__commit_queue", "child_project": "child", "task_specifiers": [ {"task_regex": ".*", "variant_regex": ".*" }]}]
     },
     {
       "_id": "spruce",

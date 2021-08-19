@@ -260,6 +260,18 @@
           }
         }
       }
+    },
+    {
+      "query_file": "patch-trigger-aliases.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "patchTriggerAliases": [
+              { "alias": "__commit_queue", "childProject": "child"}
+            ]
+          }
+        }
+      }
     }
   ]
 }

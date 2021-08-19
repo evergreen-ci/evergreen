@@ -156,6 +156,11 @@ type PatchTime struct {
 	SubmittedAt string  `json:"submittedAt"`
 }
 
+type PatchTriggerAlias struct {
+	Alias        string `json:"alias"`
+	ChildProject string `json:"childProject"`
+}
+
 type Patches struct {
 	Patches            []*model.APIPatch `json:"patches"`
 	FilteredPatchCount int               `json:"filteredPatchCount"`
