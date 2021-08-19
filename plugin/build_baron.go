@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -37,19 +37,9 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	}
 
 	for projName, proj := range bbpOptions.Projects {
-		var webHook evergreen.WebHook
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.Wrap(err, "error retrieving admin settings")
-		}
-		if flags.PluginAdminPageDisabled {
-			projectRef, err := model.FindOneProjectRef(projName)
-			if err != nil {
-				return errors.Wrap(err, "unable to find project ref")
-			}
-			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
-		} else {
-			webHook = proj.TaskAnnotationSettings.FileTicketWebHook
+		webHook, ok := graphql.IsWebhookConfigured(projName)
+		if !ok {
+			return errors.Wrap(err, "error retrieving webook config")
 		}
 		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {

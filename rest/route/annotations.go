@@ -416,7 +416,8 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	}
 	// if there is no custom webhook configured, return an error because the
 	// purpose of this endpoint is to store the ticket created by the web-hook
-	if !graphql.IsWebhookConfigured(t) {
+	_, ok := graphql.IsWebhookConfigured(t.Project)
+	if !ok {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("there is no webhook configured for '%s'", t.Project),
 			StatusCode: http.StatusBadRequest,
