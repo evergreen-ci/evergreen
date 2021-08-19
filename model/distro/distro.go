@@ -747,8 +747,8 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		resolved.GenerateTaskFactor = config.GenerateTaskFactor
 	}
 
-	// StepbackTaskFactor is always undefined in distro
-	resolved.GenerateTaskFactor = config.StepbackTaskFactor
+	// StepbackTaskFactor isn't configurable by distro
+	resolved.StepbackTaskFactor = config.StepbackTaskFactor
 
 	if catcher.HasErrors() {
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
