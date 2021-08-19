@@ -459,7 +459,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (ma
 
 	// create the mapping of the task id to the list of failed tasks
 	for _, task := range tasks {
-		if err := task.MergeNewTestResults(); err != nil {
+		if err := task.PopulateTestResults(); err != nil {
 			return nil, err
 		}
 		for _, test := range task.LocalTestResults {
@@ -804,7 +804,7 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	oldTasks, err := task.FindOldNoMerge(db.Query(tasksQuery).Project(projection))
+	oldTasks, err := task.FindOld(db.Query(tasksQuery).Project(projection))
 	if err != nil {
 		return nil, err
 	}

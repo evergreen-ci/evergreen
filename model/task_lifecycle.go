@@ -162,7 +162,7 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 
 	// find previous task limiting to just the last one
-	prevTask, err := task.FindOneNoMerge(task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester))
+	prevTask, err := task.FindOne(task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester))
 	if err != nil {
 		return errors.Wrap(err, "Error finding previous task")
 	}
@@ -198,7 +198,7 @@ func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 
 // reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
 func resetTask(taskId, caller string, logIDs bool) error {
-	t, err := task.FindOneNoMerge(task.ById(taskId))
+	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -223,7 +223,7 @@ func resetTask(taskId, caller string, logIDs bool) error {
 
 // TryResetTask resets a task
 func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) error {
-	t, err := task.FindOneNoMerge(task.ById(taskId))
+	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1433,7 +1433,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	}
 
 	// refresh task status from db in case of race
-	taskWithStatus, err := task.FindOneNoMerge(task.ById(dt.Id).WithFields(task.StatusKey))
+	taskWithStatus, err := task.FindOne(task.ById(dt.Id).WithFields(task.StatusKey))
 	if err != nil {
 		return errors.Wrap(err, "error refreshing task status from db")
 	}

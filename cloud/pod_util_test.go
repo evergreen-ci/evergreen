@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/cocoa"
@@ -310,39 +311,14 @@ func TestExportECSContainerStatusInfo(t *testing.T) {
 }
 
 func TestExportPodCreationOptions(t *testing.T) {
-	t.Run("FailsWithNoECSConfig", func(t *testing.T) {
-		opts, err := ExportPodCreationOptions(evergreen.ECSConfig{}, pod.TaskContainerCreationOptions{})
-		require.NotZero(t, err)
-		require.Zero(t, opts)
-	})
-	t.Run("FailsWithNoClusterName", func(t *testing.T) {
-		opts, err := ExportPodCreationOptions(
-			evergreen.ECSConfig{
-				TaskRole:      "role",
-				ExecutionRole: "role",
-				Clusters: []evergreen.ECSClusterConfig{
-					{
-						Platform: "linux",
-					},
-				},
-			}, pod.TaskContainerCreationOptions{})
-		require.NotZero(t, err)
-		require.Zero(t, opts)
-	})
-	t.Run("Succeeds", func(t *testing.T) {
-		opts, err := ExportPodCreationOptions(
-			evergreen.ECSConfig{
-				TaskRole:      "task_role",
-				ExecutionRole: "execution_role",
-				Clusters: []evergreen.ECSClusterConfig{
-					{
-						Name: "cluster",
-					},
-				},
-			}, pod.TaskContainerCreationOptions{
+	validPod := func() *pod.Pod {
+		return &pod.Pod{
+			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
 				Image:      "image",
 				MemoryMB:   128,
 				CPU:        128,
+				OS:         "linux",
+				Arch:       "amd64",
 				WorkingDir: "/root",
 				EnvVars: map[string]string{
 					"name": "value",
@@ -350,33 +326,84 @@ func TestExportPodCreationOptions(t *testing.T) {
 				EnvSecrets: map[string]string{
 					"s1": "secret",
 				},
-			})
-		require.Zero(t, err)
+			},
+		}
+	}
+	validSettings := func() *evergreen.Settings {
+		return &evergreen.Settings{
+			Providers: evergreen.CloudProviders{
+				AWS: evergreen.AWSConfig{
+					Pod: evergreen.AWSPodConfig{
+						ECS: evergreen.ECSConfig{
+							TaskRole:             "task_role",
+							TaskDefinitionPrefix: "task_definition_prefix",
+							ExecutionRole:        "execution_role",
+							Clusters: []evergreen.ECSClusterConfig{
+								{
+									Platform: "linux",
+									Name:     "cluster",
+								},
+							},
+						},
+						SecretsManager: evergreen.SecretsManagerConfig{
+							SecretPrefix: "secret_prefix",
+						},
+					},
+				},
+			},
+		}
+	}
+	t.Run("Succeeds", func(t *testing.T) {
+		settings := validSettings()
+		p := validPod()
+		opts, err := ExportPodCreationOptions(settings, p)
+		require.NoError(t, err)
 		require.NotZero(t, opts)
-		require.Equal(t, "task_role", utility.FromStringPtr(opts.TaskRole))
-		require.Equal(t, "execution_role", utility.FromStringPtr(opts.ExecutionRole))
+		require.Equal(t, settings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(opts.TaskRole))
+		require.Equal(t, settings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(opts.ExecutionRole))
 
 		require.NotZero(t, opts.ExecutionOpts)
-		require.Equal(t, "cluster", utility.FromStringPtr(opts.ExecutionOpts.Cluster))
+		require.Equal(t, settings.Providers.AWS.Pod.ECS.Clusters[0].Name, utility.FromStringPtr(opts.ExecutionOpts.Cluster))
 
-		require.NotZero(t, opts.ContainerDefinitions)
+		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
+		assert.Contains(t, utility.FromStringPtr(opts.Name), p.ID)
+
 		require.Len(t, opts.ContainerDefinitions, 1)
-		require.Equal(t, "image", utility.FromStringPtr(opts.ContainerDefinitions[0].Image))
-		require.Equal(t, 128, utility.FromIntPtr(opts.ContainerDefinitions[0].MemoryMB))
-		require.Equal(t, 128, utility.FromIntPtr(opts.ContainerDefinitions[0].CPU))
-		require.Equal(t, "/root", utility.FromStringPtr(opts.ContainerDefinitions[0].WorkingDir))
+		require.Equal(t, p.TaskContainerCreationOpts.Image, utility.FromStringPtr(opts.ContainerDefinitions[0].Image))
+		require.Equal(t, p.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(opts.ContainerDefinitions[0].MemoryMB))
+		require.Equal(t, p.TaskContainerCreationOpts.CPU, utility.FromIntPtr(opts.ContainerDefinitions[0].CPU))
+		require.Equal(t, p.TaskContainerCreationOpts.WorkingDir, utility.FromStringPtr(opts.ContainerDefinitions[0].WorkingDir))
 		require.Len(t, opts.ContainerDefinitions[0].EnvVars, 2)
 		for _, envVar := range opts.ContainerDefinitions[0].EnvVars {
 			if envVar.SecretOpts != nil {
-				require.Equal(t, "s1", utility.FromStringPtr(envVar.SecretOpts.Name))
-				require.Equal(t, "secret", utility.FromStringPtr(envVar.SecretOpts.Value))
-				require.Equal(t, false, utility.FromBoolPtr(envVar.SecretOpts.Exists))
-				require.Equal(t, true, utility.FromBoolPtr(envVar.SecretOpts.Owned))
+				name := utility.FromStringPtr(envVar.Name)
+				assert.Equal(t, "s1", name)
+				assert.Equal(t, p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.SecretOpts.Value))
+				secretRef := utility.FromStringPtr(envVar.SecretOpts.Name)
+				assert.True(t, strings.HasPrefix(secretRef, settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
+				assert.Contains(t, secretRef, p.ID)
+				assert.Contains(t, secretRef, name)
+				assert.False(t, utility.FromBoolPtr(envVar.SecretOpts.Exists))
+				assert.True(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
 			} else {
-				require.Equal(t, "name", utility.FromStringPtr(envVar.Name))
-				require.Equal(t, "value", utility.FromStringPtr(envVar.Value))
+				assert.Equal(t, "name", utility.FromStringPtr(envVar.Name))
+				assert.Equal(t, p.TaskContainerCreationOpts.EnvVars[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.Value))
 			}
 		}
+	})
+	t.Run("FailsWithNoECSConfig", func(t *testing.T) {
+		settings := validSettings()
+		settings.Providers.AWS.Pod.ECS = evergreen.ECSConfig{}
+		opts, err := ExportPodCreationOptions(settings, validPod())
+		require.NotZero(t, err)
+		require.Zero(t, opts)
+	})
+	t.Run("FailsWithNoClusters", func(t *testing.T) {
+		settings := validSettings()
+		settings.Providers.AWS.Pod.ECS.Clusters = nil
+		opts, err := ExportPodCreationOptions(settings, &pod.Pod{})
+		assert.Error(t, err)
+		assert.Zero(t, opts)
 	})
 }
 

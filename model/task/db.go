@@ -904,8 +904,8 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string) ([]strin
 
 // DB Boilerplate
 
-// FindOneNoMerge is a FindOne without merging test results.
-func FindOneNoMerge(query db.Q) (*Task, error) {
+// FindOne returns a single task that satisfies the query.
+func FindOne(query db.Q) (*Task, error) {
 	task := &Task{}
 	err := db.FindOneQ(Collection, query, task)
 	if adb.ResultsNotFound(err) {
@@ -914,21 +914,7 @@ func FindOneNoMerge(query db.Q) (*Task, error) {
 	return task, err
 }
 
-// FindOne returns one task that satisfies the query.
-func FindOne(query db.Q) (*Task, error) {
-	task, err := FindOneNoMerge(query)
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding task")
-	}
-	if task == nil {
-		return nil, nil
-	}
-	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
-	}
-	return task, err
-}
-
+// FindOneId returns a single task with the given ID.
 func FindOneId(id string) (*Task, error) {
 	task := &Task{}
 	query := db.Query(bson.M{IdKey: id})
@@ -944,6 +930,8 @@ func FindOneId(id string) (*Task, error) {
 	return task, nil
 }
 
+// FindByIdExecution returns a single task with the given ID and execution. If
+// execution is nil, the latest execution is returned.
 func FindByIdExecution(id string, execution *int) (*Task, error) {
 	if execution == nil {
 		return FindOneId(id)
@@ -951,6 +939,7 @@ func FindByIdExecution(id string, execution *int) (*Task, error) {
 	return FindOneIdAndExecution(id, *execution)
 }
 
+// FindOneIdAndExecution returns a single task with the given ID and execution.
 func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 	task := &Task{}
 	query := db.Query(bson.M{
@@ -960,16 +949,17 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 	err := db.FindOneQ(Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
-		return FindOneOldNoMergeByIdAndExecution(id, execution)
+		return FindOneOldByIdAndExecution(id, execution)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding task by id and execution")
+		return nil, errors.Wrap(err, "finding task by id and execution")
 	}
 
 	return task, nil
 }
 
-// FindOneIdAndExecutionWithDisplayStatus is FindOneIdAndExecution with display statuses added
+// FindOneIdAndExecutionWithDisplayStatus returns a single task with the given
+// ID and execution, with display statuses added.
 func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
 	tasks := []Task{}
 	match := bson.M{
@@ -983,18 +973,20 @@ func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, e
 		addDisplayStatus,
 	}
 	if err := Aggregate(pipeline, &tasks); err != nil {
-		return nil, errors.Wrap(err, "Couldnt find task")
+		return nil, errors.Wrap(err, "finding task")
 	}
 	if len(tasks) != 0 {
 		t := tasks[0]
 		return &t, nil
 	}
-	return FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id, execution)
 
+	return FindOneOldByIdAndExecutionWithDisplayStatus(id, execution)
 }
 
-// FindOneOldNoMergeByIdAndExecutionWithDisplayStatus is a FindOneOldNoMergeByIdAndExecution with display statuses added
-func FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
+// FindOneOldByIdAndExecutionWithDisplayStatus returns a single task with the
+// given ID and execution from the old tasks collection, with display statuses
+// added.
+func FindOneOldByIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
 	tasks := []Task{}
 	match := bson.M{
 		OldTaskIdKey: id,
@@ -1008,17 +1000,19 @@ func FindOneOldNoMergeByIdAndExecutionWithDisplayStatus(id string, execution *in
 	}
 
 	if err := db.Aggregate(OldCollection, pipeline, &tasks); err != nil {
-		return nil, errors.Wrap(err, "Couldn't find task")
+		return nil, errors.Wrap(err, "finding task")
 	}
 	if len(tasks) != 0 {
 		t := tasks[0]
 		return &t, nil
 	}
-	return nil, errors.New("cant find task")
+
+	return nil, errors.New("task not found")
 }
 
-// FindOneOldNoMerge is a FindOneOld without merging test results.
-func FindOneOldNoMerge(query db.Q) (*Task, error) {
+// FindOneOld returns a single task from the old tasks collection that
+// satifisfies the given query.
+func FindOneOld(query db.Q) (*Task, error) {
 	task := &Task{}
 	err := db.FindOneQ(OldCollection, query, task)
 	if adb.ResultsNotFound(err) {
@@ -1027,15 +1021,18 @@ func FindOneOldNoMerge(query db.Q) (*Task, error) {
 	return task, err
 }
 
-// FindOneOldNoMergeByIdAndExecution finds a task from the old tasks collection without test results.
-func FindOneOldNoMergeByIdAndExecution(id string, execution int) (*Task, error) {
+// FindOneOldByIdAndExecution returns a single task from the old tasks
+// collection with the given ID and execution.
+func FindOneOldByIdAndExecution(id string, execution int) (*Task, error) {
 	query := db.Query(bson.M{
 		OldTaskIdKey: id,
 		ExecutionKey: execution,
 	})
-	return FindOneOldNoMerge(query)
+	return FindOneOld(query)
 }
 
+// FindOneIdWithFields returns a single task with the given ID, projecting only
+// the given fields.
 func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 	task := &Task{}
 	query := db.Query(bson.M{IdKey: id})
@@ -1074,6 +1071,8 @@ func findAllTaskIDs(q db.Q) ([]string, error) {
 	return ids, nil
 }
 
+// FindStuckDispatching returns all "stuck" tasks. A task is considered stuck
+// if it has a "dispatched" status for more than 30 minutes.
 func FindStuckDispatching() ([]Task, error) {
 	tasks, err := FindAll(db.Query(bson.M{
 		StatusKey:       evergreen.TaskDispatched,
@@ -1142,24 +1141,9 @@ func FindMergeTaskForVersion(versionId string) (*Task, error) {
 	return task, err
 }
 
-// FindOneOld returns one task from the old tasks collection that satisfies the query.
-func FindOneOld(query db.Q) (*Task, error) {
-	task, err := FindOneOldNoMerge(query)
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding task")
-	}
-	if task == nil {
-		return nil, nil
-	}
-	if err = task.MergeNewTestResults(); err != nil {
-		return nil, errors.Wrapf(err, "errors merging new test results for '%s'", task.Id)
-	}
-	return task, err
-}
-
-// FindOldNoMerge returns all task from the old tasks collection that satisfies
-// the query without merging test results.
-func FindOldNoMerge(query db.Q) ([]Task, error) {
+// FindOld returns all non-display tasks from the old tasks collection that
+// satisfy the given query.
+func FindOld(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
@@ -1176,27 +1160,9 @@ func FindOldNoMerge(query db.Q) ([]Task, error) {
 	return tasks, err
 }
 
-// FindOld returns all task from the old tasks collection that satisfies the
-// query and merges test results.
-func FindOld(query db.Q) ([]Task, error) {
-	tasks, err := FindOldNoMerge(query)
-	if err != nil {
-		return nil, err
-	}
-
-	for i, task := range tasks {
-		if err = task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging new test results")
-		}
-		tasks[i] = task
-	}
-
-	return tasks, nil
-}
-
-// FindOldWithDisplayTasksNoMerge finds display and execution tasks in the old
-// collection without merging test results.
-func FindOldWithDisplayTasksNoMerge(query db.Q) ([]Task, error) {
+// FindOldWithDisplayTasks returns all display and execution tasks from the old
+// collection that satisfy the given query.
+func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
@@ -1206,38 +1172,8 @@ func FindOldWithDisplayTasksNoMerge(query db.Q) ([]Task, error) {
 	return tasks, err
 }
 
-// FindOldWithDisplayTasks finds display and execution tasks in the old
-// collection and merges test results.
-func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
-	tasks, err := FindOldWithDisplayTasksNoMerge(query)
-	if err != nil {
-		return nil, err
-	}
-
-	for i, task := range tasks {
-		if err = task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging new test results")
-		}
-		tasks[i] = task
-	}
-
-	return tasks, nil
-}
-
-// FindOneIdOldOrNewNoMerge attempts to find a given task ID by first looking
-// in the old collection, then the tasks collection, without merging test
-// results.
-func FindOneIdOldOrNewNoMerge(id string, execution int) (*Task, error) {
-	task, err := FindOneOldNoMerge(ById(MakeOldID(id, execution)))
-	if task == nil || err != nil {
-		return FindOneNoMerge(ById(id))
-	}
-
-	return task, err
-}
-
-// FindOneIdOldOrNew attempts to find a given task ID by first looking in the
-// old collection, then the tasks collection and merges test results.
+// FindOneIdOldOrNew returns a single task with the given ID and execution,
+// first looking in the old tasks collection, then the tasks collection.
 func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	task, err := FindOneOld(ById(MakeOldID(id, execution)))
 	if task == nil || err != nil {
@@ -1247,20 +1183,8 @@ func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	return task, err
 }
 
-// FindOneIdNewOrOldNoMerge attempts to find a given task ID by first looking
-// in the tasks collection, then the old tasks collection, without merging test
-// results.
-func FindOneIdNewOrOldNoMerge(id string) (*Task, error) {
-	task, err := FindOneNoMerge(ById(id))
-	if task == nil || err != nil {
-		return FindOneOldNoMerge(ById(id))
-	}
-
-	return task, err
-}
-
-// FindOneIdNewOrOld attempts to find a given task ID by first looking in the
-// tasks collection, then the old tasks collection and merges test results.
+// FindOneIdNewOrOld returns a single task with the given ID and execution,
+// first looking in the tasks collection, then the old tasks collection.
 func FindOneIdNewOrOld(id string) (*Task, error) {
 	task, err := FindOne(ById(id))
 	if task == nil || err != nil {
@@ -1388,7 +1312,7 @@ func Count(query db.Q) (int, error) {
 }
 
 func FindProjectForTask(taskID string) (string, error) {
-	t, err := FindOneNoMerge(ById(taskID).Project(bson.M{ProjectKey: 1}))
+	t, err := FindOne(ById(taskID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
 		return "", err
 	}

@@ -2192,7 +2192,13 @@ buildvariants:
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
 	assert.Equal(t, len(p1.BuildVariants), 2)
-	assert.Equal(t, len(p1.BuildVariants[0].Tasks), 2)
+	if p1.BuildVariants[0].name() == "bv1" {
+		assert.Equal(t, len(p1.BuildVariants[0].Tasks), 2)
+		assert.Equal(t, len(p1.BuildVariants[1].Tasks), 1)
+	} else {
+		assert.Equal(t, len(p1.BuildVariants[0].Tasks), 1)
+		assert.Equal(t, len(p1.BuildVariants[1].Tasks), 2)
+	}
 	err = p1.mergeMultipleProjectConfigs(p3)
 	assert.Error(t, err)
 }

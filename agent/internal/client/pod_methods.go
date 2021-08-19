@@ -98,7 +98,22 @@ func (c *podCommunicator) FetchExpansionVars(ctx context.Context, taskData TaskD
 
 // GetNextTask returns a next task response by getting the next task for a given host.
 func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
-	return nil, errors.New("TODO: implement")
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("pods/%s/agent/next_task", c.podID),
+	}
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, "getting next task: %s", err.Error())
+	}
+
+	var nextTask apimodels.NextTaskResponse
+	if err := utility.ReadJSON(resp.Body, &nextTask); err != nil {
+		return nil, errors.Wrap(err, "reading next task from response")
+	}
+
+	return &nextTask, nil
 }
 
 // DisableHost signals to the app server that the host should be disabled
