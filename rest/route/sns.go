@@ -104,7 +104,7 @@ func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
 	case messageTypeUnsubscribeConfirmation:
 		grip.Alert(message.Fields{
 			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
-			"unsubscribe_url": sns.payload.SubscribeURL,
+			"unsubscribe_url": sns.payload.UnsubscribeURL,
 			"topic_arn":       sns.payload.TopicArn,
 		})
 	case messageTypeNotification:
@@ -353,7 +353,7 @@ func (sns *ecsSNS) Run(ctx context.Context) gimlet.Responder {
 	case messageTypeUnsubscribeConfirmation:
 		grip.Alert(message.Fields{
 			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
-			"unsubscribe_url": sns.payload.SubscribeURL,
+			"unsubscribe_url": sns.payload.UnsubscribeURL,
 			"topic_arn":       sns.payload.TopicArn,
 		})
 	case messageTypeNotification:
