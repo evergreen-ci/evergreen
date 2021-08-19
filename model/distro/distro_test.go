@@ -379,6 +379,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
 		GenerateTaskFactor:            20,
+		StepbackTaskFactor:            40,
 	}
 
 	settings0 := &evergreen.Settings{Scheduler: config0}
@@ -400,6 +401,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	// Fallback to the SchedulerConfig.ExpectedRuntimeFactor as PlannerSettings.ExpectedRunTimeFactor is equal to 0.
 	assert.EqualValues(t, 7, resolved0.ExpectedRuntimeFactor)
 	assert.EqualValues(t, 20, resolved0.GenerateTaskFactor)
+	assert.EqualValues(t, 40, resolved0.StepbackTaskFactor)
 
 	d1 := Distro{
 		Id: "distro1",
