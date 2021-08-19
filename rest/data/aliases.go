@@ -131,7 +131,7 @@ func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAli
 		if shouldSkipAliasForSection(section, originalAlias.Alias) {
 			continue
 		}
-		id := originalAlias.ID.String()
+		id := originalAlias.ID.Hex()
 		if _, ok := aliasesIdMap[id]; !ok {
 			catcher.Add(model.RemoveProjectAlias(id))
 		}
