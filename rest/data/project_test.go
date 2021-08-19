@@ -643,7 +643,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			Admins:          []string{"oldAdmin"},
 		}
 		assert.NoError(t, pRef.Insert())
-		repoRef := model.RepoRef{model.ProjectRef{
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 			Id:         pRef.RepoRefId,
 			Restricted: utility.TruePtr(),
 		}}

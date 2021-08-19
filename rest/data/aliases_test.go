@@ -235,5 +235,5 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	a.True(modified)
 	aliasesFromDb, err = model.FindAliasesForProject("project_id")
 	a.NoError(err)
-	a.Len(aliasesFromDb, 3) // adds internal alias
+	a.Len(aliasesFromDb, 4) // adds internal alias
 }
