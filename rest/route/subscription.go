@@ -44,7 +44,7 @@ func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
-	err := s.sc.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions)
+	err := s.sc.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

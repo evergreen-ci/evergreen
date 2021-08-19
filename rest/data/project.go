@@ -80,6 +80,81 @@ func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 	return nil
 }
 
+// SaveProjectSettingsForSection passes in the existing state of the project page, but saves only the pieces
+// related to the specified section. This handles project ref, webhooks, auth, and project variables.
+func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
+	section model.ProjectRefSection, userId string) error {
+	before, err := model.GetProjectSettingsById(projectId)
+	if err != nil {
+		return errors.Wrap(err, "error getting before project settings event")
+	}
+	v, err := changes.ProjectRef.ToService()
+	if err != nil {
+		return errors.Wrap(err, "error converting project ref")
+	}
+	newProjectRef := v.(*model.ProjectRef)
+	// if the project ref doesn't use the repo, then this will just be the same as newProjectRef
+	// used to verify that if something is set to nil in the request, we properly validate using the merged project ref
+	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
+	if err != nil {
+		return errors.Wrapf(err, "error merging project ref")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	modified := false
+	switch section {
+	// aliases and notifications use a different connector and should be handled separated
+	case model.ProjectRefGeneralSection:
+		// check if webhook is enabled if the owner/repo has changed
+		if mergedProjectRef.Owner != before.ProjectRef.Owner || mergedProjectRef.Repo != before.ProjectRef.Repo {
+			_, err = pc.EnableWebhooks(ctx, mergedProjectRef)
+			if err != nil {
+				return errors.Wrapf(err, "Error enabling webhooks for project '%s'", projectId)
+			}
+		}
+	case model.ProjectRefAccessSection:
+		// For any admins that are only in the original settings, remove access.
+		// For any admins that are only in the updated settings, give them access.
+		adminsToDelete, adminsToAdd := utility.StringSliceSymmetricDifference(before.ProjectRef.Admins, mergedProjectRef.Admins)
+		if err = pc.UpdateAdminRoles(newProjectRef, adminsToAdd, adminsToDelete); err != nil {
+			return errors.Wrap(err, "error updating admin roles")
+		}
+		modified = true
+		if !before.ProjectRef.IsRestricted() && mergedProjectRef.IsRestricted() {
+			catcher.Wrap(before.ProjectRef.MakeRestricted(), "error making project restricted")
+		}
+		if before.ProjectRef.IsRestricted() && !mergedProjectRef.IsRestricted() {
+			catcher.Wrap(before.ProjectRef.MakeUnrestricted(), "error making unrestricted")
+		}
+
+	case model.ProjectRefVariablesSection:
+		// Remove any variables that only exist in the original settings. (It's possible we can send this information
+		// from the UI in the future instead)
+		toDelete := []string{}
+		for key, _ := range before.Vars.Vars {
+			if _, ok := changes.Vars.Vars[key]; !ok {
+				toDelete = append(toDelete, key)
+			}
+		}
+		changes.Vars.VarsToDelete = toDelete
+		if err = pc.UpdateProjectVars(projectId, &changes.Vars, false); err != nil { // destructively modifies vars
+			return errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
+		}
+	}
+	// save project ref only after the rest of the section has been validated.
+	// How do we know here if ProjectRef should be nil or not? Or should we just pass in the project and update regardless of whether or not it's changed (like the API route?)
+	modifiedProjectRef, err := model.SaveProjectRefForSection(projectId, newProjectRef, section)
+	if err != nil {
+		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
+	}
+
+	if modified || modifiedProjectRef {
+		catcher.Add(model.GetAndLogProjectModified(projectId, userId, before))
+	}
+
+	return errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
+}
+
 func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (*model.Project, *model.ParserProject, error) {
 	opts := model.GetProjectOpts{
 		Ref:        &pRef,
@@ -276,7 +351,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 					for k, v := range project.Vars {
 						originalVars[k] = v
 					}
-					before := model.ProjectSettingsEvent{
+					before := model.ProjectSettings{
 						Vars: model.ProjectVars{
 							Id:   project.Id,
 							Vars: originalVars,
@@ -289,7 +364,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
 					}
 
-					after := model.ProjectSettingsEvent{
+					after := model.ProjectSettings{
 						Vars: model.ProjectVars{
 							Id:   project.Id,
 							Vars: project.Vars,
@@ -361,8 +436,8 @@ func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo s
 	return model.FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
-func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
-	return model.GetProjectSettingsEvents(p)
+func (pc *DBProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
+	return model.GetProjectSettings(p)
 }
 
 func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
@@ -658,11 +733,11 @@ func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string
 	return nil
 }
 
-func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
+func (pc *MockProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
 	if len(p.Owner) == 0 || len(p.Repo) == 0 {
 		return nil, errors.New("Owner and repository must not be empty strings")
 	}
-	return &model.ProjectSettingsEvent{}, nil
+	return &model.ProjectSettings{}, nil
 }
 
 func (pc *MockProjectConnector) GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error) {

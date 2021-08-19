@@ -1147,7 +1147,7 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	return projectRefs, nil
 }
 
-func GetProjectSettingsEventById(projectId string) (*ProjectSettingsEvent, error) {
+func GetProjectSettingsById(projectId string) (*ProjectSettings, error) {
 	pRef, err := FindOneProjectRef(projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref")
@@ -1155,10 +1155,10 @@ func GetProjectSettingsEventById(projectId string) (*ProjectSettingsEvent, error
 	if pRef == nil {
 		return nil, errors.Errorf("couldn't find project ref")
 	}
-	return GetProjectSettingsEvents(pRef)
+	return GetProjectSettings(pRef)
 }
 
-func GetProjectSettingsEvents(p *ProjectRef) (*ProjectSettingsEvent, error) {
+func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	hook, err := FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Id)
@@ -1178,7 +1178,7 @@ func GetProjectSettingsEvents(p *ProjectRef) (*ProjectSettingsEvent, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Id)
 	}
-	projectSettingsEvent := ProjectSettingsEvent{
+	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
 		GitHubHooksEnabled: hook != nil,
 		Vars:               *projectVars,
@@ -1285,8 +1285,8 @@ func (projectRef *ProjectRef) Upsert() error {
 	return err
 }
 
-// if projectSettings aren't given, default the section to the repo
-func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRefSection) (bool, error) {
+// SaveProjectRefForSection updates the project ref variables for the section (if no project is given, we unset to default to repo)
+func SaveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRefSection) (bool, error) {
 	if p == nil {
 		p = &ProjectRef{} // use a blank project ref to default the section to repo
 	}
@@ -1388,12 +1388,12 @@ func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 // If project settings aren't given, we should assume we're defaulting to repo and we need
 // to create our own project settings event  after completing the update.
 func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId string) error {
-	before, err := GetProjectSettingsEventById(projectId)
+	before, err := GetProjectSettingsById(projectId)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
 
-	modified, err := saveProjectRefForSection(projectId, nil, section)
+	modified, err := SaveProjectRefForSection(projectId, nil, section)
 	if err != nil {
 		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
 	}
@@ -1450,18 +1450,10 @@ func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId st
 		}
 	}
 	if modified {
-		catcher.Add(getAndLogProjectModified(projectId, userId, before))
+		catcher.Add(GetAndLogProjectModified(projectId, userId, before))
 	}
 
 	return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
-}
-
-func getAndLogProjectModified(id, userId string, before *ProjectSettingsEvent) error {
-	after, err := GetProjectSettingsEventById(id)
-	if err != nil {
-		return errors.Wrap(err, "error getting after project settings event")
-	}
-	return errors.Wrapf(LogProjectModified(id, userId, before, after), "error logging project modified")
 }
 
 // getBatchTimeForVariant returns the Batch Time to be used for this variant
