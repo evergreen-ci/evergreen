@@ -658,10 +658,13 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.removeTaskDirectory(tc)
-	defer a.killProcs(ctx, tc, true)
 	if tc.taskConfig == nil {
 		return
 	}
+	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
+	// empty working directory to killProcs, and is okay because this
+	// killProcs is only for the processes run in runPostGroupCommands.
+	defer a.killProcs(ctx, tc, true)
 	defer func() {
 		if tc.logger != nil {
 			grip.Error(tc.logger.Close())
