@@ -60,4 +60,5 @@ evergreen
 
 package-lock.json
 
-.ignore # ag and ripgrep ignore file
+# ag and ripgrep ignore file
+.ignore
