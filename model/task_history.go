@@ -804,7 +804,7 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	oldTasks, err := task.FindOld(db.Query(tasksQuery).Project(projection))
+	oldTasks, err := task.FindOldNoMerge(db.Query(tasksQuery).Project(projection))
 	if err != nil {
 		return nil, err
 	}

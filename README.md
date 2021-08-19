@@ -30,7 +30,8 @@ See test results for your code changes before committing.
 Automatically run past commits to pinpoint the origin of a test failure.
 
 ## Go Requirements
-* [Install Go 1.9 or later](https://golang.org/dl/).
+* [Install Go 1.16 or later](https://golang.org/dl/).
+* Set GO111MODULE="off". Make sure GOPATH and GOROOT are set.
 
 ## Building the Binaries
 

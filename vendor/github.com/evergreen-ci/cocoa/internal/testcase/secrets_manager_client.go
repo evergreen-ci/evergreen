@@ -21,8 +21,144 @@ type SecretsManagerClientTestCase func(ctx context.Context, t *testing.T, c coco
 // cocoa.SecretsManagerClient should support.
 func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 	return map[string]SecretsManagerClientTestCase{
+		"CreateSecretSucceeds": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			out, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+				Name:         aws.String(testutil.NewSecretName(t.Name())),
+				SecretString: aws.String(utility.RandomString()),
+			})
+			require.NoError(t, err)
+			require.NotZero(t, out)
+
+			cleanupSecret(ctx, t, c, out)
+		},
 		"CreateSecretFailsWithInvalidInput": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
 			out, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{})
+			assert.Error(t, err)
+			assert.Zero(t, out)
+		},
+		"GetSecretValueSucceedsWithExistingSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			secretName := testutil.NewSecretName(t.Name())
+			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+				Name:         aws.String(secretName),
+				SecretString: aws.String("foo"),
+			})
+			require.NoError(t, err)
+			require.NotZero(t, createOut)
+
+			defer cleanupSecret(ctx, t, c, createOut)
+
+			require.NotZero(t, createOut.ARN)
+
+			out, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+				SecretId: createOut.ARN,
+			})
+			require.NoError(t, err)
+			require.NotZero(t, out)
+			assert.Equal(t, "foo", *out.SecretString)
+			assert.Equal(t, secretName, *out.Name)
+		},
+		"GetSecretValueFailsWithInvalidInput": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			out, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{})
+			assert.Error(t, err)
+			assert.Zero(t, out)
+		},
+		"GetSecretValueFailsWithValidNonexistentSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			out, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+				SecretId: aws.String(testutil.NewSecretName(t.Name())),
+			})
+			assert.Error(t, err)
+			assert.Zero(t, out)
+		},
+		"UpdateSecretValueSucceedsWithExistingSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			secretName := testutil.NewSecretName(t.Name())
+			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+				Name:         aws.String(secretName),
+				SecretString: aws.String("bar"),
+			})
+			require.NoError(t, err)
+			require.NotZero(t, createOut)
+
+			defer cleanupSecret(ctx, t, c, createOut)
+
+			require.NotZero(t, createOut.ARN)
+
+			updateOut, err := c.UpdateSecretValue(ctx, &secretsmanager.UpdateSecretInput{
+				SecretId:     createOut.ARN,
+				SecretString: aws.String("leaf"),
+			})
+			require.NoError(t, err)
+			require.NotZero(t, updateOut)
+
+			getOut, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+				SecretId: createOut.ARN,
+			})
+			require.NoError(t, err)
+			require.NotZero(t, getOut)
+			assert.Equal(t, "leaf", utility.FromStringPtr(getOut.SecretString))
+			assert.Equal(t, secretName, utility.FromStringPtr(getOut.Name))
+		},
+		"UpdateSecretValueFailsWithInvalidInput": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			out, err := c.UpdateSecretValue(ctx, &secretsmanager.UpdateSecretInput{})
+			assert.Error(t, err)
+			assert.Zero(t, out)
+		},
+		"UpdateSecretValueFailsWithValidNonexistentSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			out, err := c.UpdateSecretValue(ctx, &secretsmanager.UpdateSecretInput{
+				SecretId:     aws.String(testutil.NewSecretName(t.Name())),
+				SecretString: aws.String("hello"),
+			})
+			assert.Error(t, err)
+			assert.Zero(t, out)
+		},
+		"DescribeSecretSucceeds": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+				Name:         aws.String(testutil.NewSecretName(t.Name())),
+				SecretString: aws.String("bar"),
+			})
+			require.NoError(t, err)
+			require.NotZero(t, createOut)
+
+			defer cleanupSecret(ctx, t, c, createOut)
+
+			require.NotZero(t, createOut.ARN)
+
+			describeOut, err := c.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
+				SecretId: createOut.ARN,
+			})
+			require.NoError(t, err)
+			require.NotZero(t, describeOut)
+			assert.Equal(t, createOut.ARN, describeOut.ARN)
+		},
+		"DescribeSecretSucceedsAfterDeletion": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+				Name:         aws.String(testutil.NewSecretName(t.Name())),
+				SecretString: aws.String("bar"),
+			})
+			require.NoError(t, err)
+			require.NotZero(t, createOut)
+
+			defer cleanupSecret(ctx, t, c, createOut)
+
+			require.NotZero(t, createOut.ARN)
+
+			cleanupSecret(ctx, t, c, createOut)
+
+			describeOut, err := c.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{
+				SecretId: createOut.ARN,
+			})
+			require.NoError(t, err)
+			require.NotZero(t, describeOut)
+			assert.Equal(t, createOut.ARN, describeOut.ARN)
+		},
+		"DescribeSecretFailsWithInvalidInput": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			out, err := c.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{})
+			assert.Error(t, err)
+			assert.Zero(t, out)
+		},
+		"DescribeSecretFailsWithValidNonexistentSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			out, err := c.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{
+				SecretId: aws.String(testutil.NewSecretName(t.Name())),
+			})
 			assert.Error(t, err)
 			assert.Zero(t, out)
 		},
@@ -31,97 +167,19 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 			assert.Error(t, err)
 			assert.Zero(t, out)
 		},
-		"CreateAndDeleteSecretSucceed": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
-			createSecretOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+		"DeleteSecretSucceeds": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
+			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 				Name:         aws.String(testutil.NewSecretName(t.Name())),
 				SecretString: aws.String("hello"),
 			})
 			require.NoError(t, err)
-			require.NotZero(t, createSecretOut)
-			require.NotZero(t, createSecretOut.ARN)
+			require.NotZero(t, createOut)
 			out, err := c.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{
 				ForceDeleteWithoutRecovery: aws.Bool(true),
-				SecretId:                   createSecretOut.ARN,
+				SecretId:                   createOut.ARN,
 			})
 			require.NoError(t, err)
 			require.NotZero(t, out)
-
-		},
-		"GetValueFailsWithInvalidInput": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
-			out, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{})
-			assert.Error(t, err)
-			assert.Zero(t, out)
-		},
-		"GetValueFailsWithValidNonexistentInput": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
-			out, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-				SecretId: aws.String(utility.RandomString()),
-			})
-			assert.Error(t, err)
-			assert.Zero(t, out)
-		},
-		"UpdateValueFailsWithValidNonexistentInput": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
-			out, err := c.UpdateSecretValue(ctx, &secretsmanager.UpdateSecretInput{
-				SecretId:     aws.String(utility.RandomString()),
-				SecretString: aws.String("hello"),
-			})
-			assert.Error(t, err)
-			assert.Zero(t, out)
-		},
-		"CreateAndGetSucceed": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
-			secretName := testutil.NewSecretName(t.Name())
-			outCreate, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
-				Name:         aws.String(secretName),
-				SecretString: aws.String("foo"),
-			})
-			require.NoError(t, err)
-			require.NotZero(t, outCreate)
-			require.NotZero(t, &outCreate)
-
-			defer cleanupSecret(ctx, t, c, outCreate)
-
-			require.NotZero(t, outCreate.ARN)
-			require.NotZero(t, &outCreate.ARN)
-
-			out, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-				SecretId: outCreate.ARN,
-			})
-			require.NoError(t, err)
-			require.NotZero(t, out)
-			assert.Equal(t, "foo", *out.SecretString)
-			assert.Equal(t, secretName, *out.Name)
-		},
-		"UpdateSecretModifiesValue": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
-			secretName := testutil.NewSecretName(t.Name())
-			out, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
-				Name:         aws.String(secretName),
-				SecretString: aws.String("bar"),
-			})
-			require.NoError(t, err)
-			require.NotZero(t, out)
-			require.NotZero(t, &out)
-
-			defer cleanupSecret(ctx, t, c, out)
-
-			require.NotZero(t, out.ARN)
-
-			if out != nil && out.ARN != nil {
-				out, err := c.UpdateSecretValue(ctx, &secretsmanager.UpdateSecretInput{
-					SecretId:     out.ARN,
-					SecretString: aws.String("leaf"),
-				})
-				require.NoError(t, err)
-				require.NotZero(t, out)
-			}
-
-			if out != nil && out.ARN != nil {
-				out, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-					SecretId: out.ARN,
-				})
-				require.NoError(t, err)
-				require.NotZero(t, out)
-				assert.Equal(t, "leaf", *out.SecretString)
-				assert.Equal(t, secretName, *out.Name)
-			}
 		},
 	}
 }

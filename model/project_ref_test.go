@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -666,9 +667,14 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	u := user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
-	repoRef, err := doc2.createNewRepoRef(&u)
+	// this will create the new repo ref
+	assert.NoError(t, doc2.AddToRepoScope(&u))
+	assert.NotEmpty(t, doc2.RepoRefId)
+
+	repoRef, err := FindOneRepoRef(doc2.RepoRefId)
 	assert.NoError(t, err)
-	require.NotNil(t, repoRef)
+	assert.NotNil(t, repoRef)
+
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Contains(t, repoRef.Admins, "bob")
@@ -711,6 +717,15 @@ func TestCreateNewRepoRef(t *testing.T) {
 			assert.Contains(t, a.VariantTags, "v1")
 		}
 	}
+
+	// verify that both the project and repo are part of the scope
+	rm := evergreen.GetEnvironment().RoleManager()
+	scope, err := rm.GetScope(context.TODO(), GetRepoAdminScope(repoRef.Id))
+	assert.NoError(t, err)
+	assert.NotNil(t, scope)
+	assert.Contains(t, scope.Resources, repoRef.Id)
+	assert.Contains(t, scope.Resources, doc2.Id)
+	assert.NotContains(t, scope.Resources, doc1.Id)
 }
 
 func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {

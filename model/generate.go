@@ -300,16 +300,24 @@ func (b *specificActivationInfo) variantHasSpecificActivation(variant string) bo
 	return utility.StringSliceContains(b.activationVariants, variant)
 }
 
-func (b *specificActivationInfo) getTasks(variant string) []string {
+func (b *specificActivationInfo) getActivationTasks(variant string) []string {
 	return b.activationTasks[variant]
 }
 
-func (b *specificActivationInfo) hasTasks() bool {
+func (b *specificActivationInfo) getStepbackTasks(variant string) []string {
+	return b.stepbackTasks[variant]
+}
+
+func (b *specificActivationInfo) hasActivationTasks() bool {
 	return len(b.activationTasks) > 0
 }
 
 func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
 	return utility.StringSliceContains(b.stepbackTasks[variant], task)
+}
+
+func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string) bool {
+	return utility.StringSliceContains(b.activationTasks[variant], task)
 }
 
 // given some list of tasks, returns the tasks that don't have batchtime

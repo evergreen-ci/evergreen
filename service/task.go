@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -218,7 +219,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		tId = projCtx.Task.OldTaskId
 
 		// Get total number of executions for executions drop down
-		mostRecentExecution, err := task.FindOne(task.ById(tId))
+		mostRecentExecution, err := task.FindOneId(tId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error finding most recent execution by id %s", tId))
@@ -410,7 +411,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
-	abortedTask, err := task.FindOne(task.ById(abortedByTaskId))
+	abortedTask, err := task.FindOneId(abortedByTaskId)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy task")
 	}
@@ -994,7 +995,8 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 
 		if uiTask.PartOfDisplay {
-			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
+			// Display task ID would've been populated when setting PartOfDisplay.
+			uiTask.DisplayTaskID = utility.FromStringPtr(projCtx.Task.DisplayTaskId)
 		}
 	}
 

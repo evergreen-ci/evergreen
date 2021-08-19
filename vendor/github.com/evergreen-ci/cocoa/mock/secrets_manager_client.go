@@ -13,9 +13,14 @@ import (
 // StoredSecret is a representation of a secret kept in the global secret
 // storage cache.
 type StoredSecret struct {
+	ARN         string
 	Value       string
 	BinaryValue []byte
+	IsDeleted   bool
 	Created     time.Time
+	Updated     time.Time
+	Accessed    time.Time
+	Deleted     time.Time
 }
 
 // GlobalSecretCache is a global secret storage cache that provides a simplified
@@ -35,15 +40,22 @@ func init() {
 type SecretsManagerClient struct {
 	CreateSecretInput  *secretsmanager.CreateSecretInput
 	CreateSecretOutput *secretsmanager.CreateSecretOutput
+	CreateSecretError  error
 
 	GetSecretValueInput  *secretsmanager.GetSecretValueInput
 	GetSecretValueOutput *secretsmanager.GetSecretValueOutput
+	GetSecretValueError  error
+
+	DescribeSecretInput  *secretsmanager.DescribeSecretInput
+	DescribeSecretOutput *secretsmanager.DescribeSecretOutput
 
 	UpdateSecretInput  *secretsmanager.UpdateSecretInput
 	UpdateSecretOutput *secretsmanager.UpdateSecretOutput
+	UpdateSecretError  error
 
 	DeleteSecretInput  *secretsmanager.DeleteSecretInput
 	DeleteSecretOutput *secretsmanager.DeleteSecretOutput
+	DeleteSecretError  error
 }
 
 // CreateSecret saves the input options and returns a new mock secret. The mock
@@ -52,8 +64,8 @@ type SecretsManagerClient struct {
 func (c *SecretsManagerClient) CreateSecret(ctx context.Context, in *secretsmanager.CreateSecretInput) (*secretsmanager.CreateSecretOutput, error) {
 	c.CreateSecretInput = in
 
-	if c.CreateSecretOutput != nil {
-		return c.CreateSecretOutput, nil
+	if c.CreateSecretOutput != nil || c.CreateSecretError != nil {
+		return c.CreateSecretOutput, c.CreateSecretError
 	}
 
 	if in.Name == nil {
@@ -66,9 +78,11 @@ func (c *SecretsManagerClient) CreateSecret(ctx context.Context, in *secretsmana
 		return nil, errors.New("must specify either secret binary or secret string")
 	}
 
+	ts := time.Now()
 	GlobalSecretCache[*in.Name] = StoredSecret{
 		BinaryValue: in.SecretBinary,
-		Created:     time.Now(),
+		Created:     ts,
+		Accessed:    ts,
 		Value:       utility.FromStringPtr(in.SecretString),
 	}
 
@@ -84,8 +98,8 @@ func (c *SecretsManagerClient) CreateSecret(ctx context.Context, in *secretsmana
 func (c *SecretsManagerClient) GetSecretValue(ctx context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
 	c.GetSecretValueInput = in
 
-	if c.GetSecretValueOutput != nil {
-		return c.GetSecretValueOutput, nil
+	if c.GetSecretValueOutput != nil || c.GetSecretValueError != nil {
+		return c.GetSecretValueOutput, c.GetSecretValueError
 	}
 
 	if in.SecretId == nil {
@@ -97,6 +111,13 @@ func (c *SecretsManagerClient) GetSecretValue(ctx context.Context, in *secretsma
 		return nil, errors.New("secret not found")
 	}
 
+	if s.IsDeleted {
+		return nil, errors.New("secret is deleted")
+	}
+
+	s.Accessed = time.Now()
+	GlobalSecretCache[*in.SecretId] = s
+
 	return &secretsmanager.GetSecretValueOutput{
 		Name:         in.SecretId,
 		ARN:          in.SecretId,
@@ -106,14 +127,44 @@ func (c *SecretsManagerClient) GetSecretValue(ctx context.Context, in *secretsma
 	}, nil
 }
 
+// DescribeSecret saves the input options and returns an existing mock secret's
+// metadata information. The mock output can be customized. By default, it will
+// return information about the cached mock secret if it exists in the global
+// secret cache.
+func (c *SecretsManagerClient) DescribeSecret(ctx context.Context, in *secretsmanager.DescribeSecretInput) (*secretsmanager.DescribeSecretOutput, error) {
+	c.DescribeSecretInput = in
+
+	if c.DescribeSecretOutput != nil {
+		return c.DescribeSecretOutput, nil
+	}
+
+	if in.SecretId == nil {
+		return nil, errors.New("missing secret ID")
+	}
+
+	s, ok := GlobalSecretCache[utility.FromStringPtr(in.SecretId)]
+	if !ok {
+		return nil, errors.New("secret not found")
+	}
+
+	return &secretsmanager.DescribeSecretOutput{
+		ARN:              in.SecretId,
+		Name:             in.SecretId,
+		CreatedDate:      utility.ToTimePtr(s.Created),
+		LastAccessedDate: utility.ToTimePtr(s.Accessed),
+		LastChangedDate:  utility.ToTimePtr(s.Updated),
+		DeletedDate:      utility.ToTimePtr(s.Deleted),
+	}, nil
+}
+
 // UpdateSecretValue saves the input options and returns an updated mock secret
 // value. The mock output can be customized. By default, it will update a cached
 // mock secret if it exists in the global secret cache.
 func (c *SecretsManagerClient) UpdateSecretValue(ctx context.Context, in *secretsmanager.UpdateSecretInput) (*secretsmanager.UpdateSecretOutput, error) {
 	c.UpdateSecretInput = in
 
-	if c.UpdateSecretOutput != nil {
-		return c.UpdateSecretOutput, nil
+	if c.UpdateSecretOutput != nil || c.UpdateSecretError != nil {
+		return c.UpdateSecretOutput, c.UpdateSecretError
 	}
 
 	if in.SecretId == nil {
@@ -138,6 +189,10 @@ func (c *SecretsManagerClient) UpdateSecretValue(ctx context.Context, in *secret
 		s.Value = *in.SecretString
 	}
 
+	ts := time.Now()
+	s.Accessed = ts
+	s.Updated = ts
+
 	GlobalSecretCache[*in.SecretId] = s
 
 	return &secretsmanager.UpdateSecretOutput{
@@ -152,26 +207,44 @@ func (c *SecretsManagerClient) UpdateSecretValue(ctx context.Context, in *secret
 func (c *SecretsManagerClient) DeleteSecret(ctx context.Context, in *secretsmanager.DeleteSecretInput) (*secretsmanager.DeleteSecretOutput, error) {
 	c.DeleteSecretInput = in
 
-	if c.DeleteSecretOutput != nil {
-		return c.DeleteSecretOutput, nil
+	if c.DeleteSecretOutput != nil || c.DeleteSecretError != nil {
+		return c.DeleteSecretOutput, c.DeleteSecretError
 	}
 
 	if in.SecretId == nil {
 		return nil, errors.New("missing secret ID")
 	}
 
-	if !utility.FromBoolPtr(in.ForceDeleteWithoutRecovery) {
-		if _, ok := GlobalSecretCache[*in.SecretId]; !ok {
-			return nil, errors.New("secret not found")
-		}
+	if utility.FromBoolPtr(in.ForceDeleteWithoutRecovery) && in.RecoveryWindowInDays != nil {
+		return nil, errors.New("cannot force delete without recovery and also schedule a recovery window")
 	}
 
-	delete(GlobalSecretCache, *in.SecretId)
+	window := int(utility.FromInt64Ptr(in.RecoveryWindowInDays))
+	if in.RecoveryWindowInDays != nil && (window < 7 || window > 30) {
+		return nil, errors.New("recovery window must be between 7 and 30 days")
+	}
+	if window == 0 {
+		window = 30
+	}
+
+	s, ok := GlobalSecretCache[*in.SecretId]
+	if !utility.FromBoolPtr(in.ForceDeleteWithoutRecovery) && !ok {
+		return nil, errors.New("secret not found")
+	}
+
+	ts := time.Now()
+	s.Accessed = ts
+	s.Updated = ts
+	if !utility.FromBoolPtr(in.ForceDeleteWithoutRecovery) {
+		s.Deleted = ts.AddDate(0, 0, window)
+	}
+	s.IsDeleted = true
+	GlobalSecretCache[*in.SecretId] = s
 
 	return &secretsmanager.DeleteSecretOutput{
 		ARN:          in.SecretId,
 		Name:         in.SecretId,
-		DeletionDate: aws.Time(time.Now()),
+		DeletionDate: aws.Time(s.Deleted),
 	}, nil
 }
 

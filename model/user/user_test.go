@@ -712,3 +712,67 @@ func TestGetOrCreateUser(t *testing.T) {
 		})
 	}
 }
+
+func TestViewableProjects(t *testing.T) {
+	rm := evergreen.GetEnvironment().RoleManager()
+	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
+	editScope := gimlet.Scope{
+		ID:        "edit_scope",
+		Resources: []string{"edit1", "edit2"},
+		Type:      evergreen.ProjectResourceType,
+	}
+	assert.NoError(t, rm.AddScope(editScope))
+	editPermissions := gimlet.Permissions{
+		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+	}
+	editRole := gimlet.Role{
+		ID:          "edit_role",
+		Scope:       editScope.ID,
+		Permissions: editPermissions,
+	}
+	assert.NoError(t, rm.UpdateRole(editRole))
+	viewScope := gimlet.Scope{
+		ID:        "view_scope",
+		Resources: []string{"view1"},
+		Type:      evergreen.ProjectResourceType,
+	}
+	assert.NoError(t, rm.AddScope(viewScope))
+	viewPermissions := gimlet.Permissions{
+		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
+	}
+	viewRole := gimlet.Role{
+		ID:          "view_role",
+		Scope:       viewScope.ID,
+		Permissions: viewPermissions,
+	}
+	assert.NoError(t, rm.UpdateRole(viewRole))
+	otherScope := gimlet.Scope{
+		ID:        "others_scope",
+		Resources: []string{"other"},
+		Type:      evergreen.ProjectResourceType,
+	}
+	assert.NoError(t, rm.AddScope(otherScope))
+
+	otherRole := gimlet.Role{
+		ID:          "other_role",
+		Scope:       otherScope.ID,
+		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsNone.Value},
+	}
+	assert.NoError(t, rm.UpdateRole(otherRole))
+	myUser := DBUser{
+		Id: "me",
+	}
+	assert.NoError(t, myUser.Insert())
+	assert.NoError(t, myUser.AddRole(viewRole.ID))
+	assert.NoError(t, myUser.AddRole(editRole.ID))
+	assert.NoError(t, myUser.AddRole(otherRole.ID))
+
+	// assert that viewable projects contains the edit projects and the view projects
+	projects, err := myUser.GetViewableProjects()
+	assert.NoError(t, err)
+	assert.Len(t, projects, 3)
+	assert.Contains(t, projects, "edit1")
+	assert.Contains(t, projects, "edit2")
+	assert.Contains(t, projects, "view1")
+	assert.NotContains(t, projects, "other")
+}

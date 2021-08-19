@@ -50,37 +50,38 @@ const LoadProjectError = "load project error(s)"
 // to allow for flexible handling.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
-	Id                     string                        `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber     int                           `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
-	Enabled                *bool                         `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
-	Stepback               *bool                         `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	PreErrorFailsTask      *bool                         `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	OomTracker             *bool                         `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
-	BatchTime              *int                          `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Owner                  *string                       `yaml:"owner,omitempty" bson:"owner,omitempty"`
-	Repo                   *string                       `yaml:"repo,omitempty" bson:"repo,omitempty"`
-	RemotePath             *string                       `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
-	Branch                 *string                       `yaml:"branch,omitempty" bson:"branch,omitempty"`
-	Identifier             *string                       `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
-	DisplayName            *string                       `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	CommandType            *string                       `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
-	Ignore                 parserStringSlice             `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
-	Parameters             []ParameterInfo               `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
-	Pre                    *YAMLCommandSet               `yaml:"pre,omitempty" bson:"pre,omitempty"`
-	Post                   *YAMLCommandSet               `yaml:"post,omitempty" bson:"post,omitempty"`
-	Timeout                *YAMLCommandSet               `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	EarlyTermination       *YAMLCommandSet               `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
-	CallbackTimeout        *int                          `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
-	Modules                []Module                      `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	BuildVariants          []parserBV                    `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
-	Functions              map[string]*YAMLCommandSet    `yaml:"functions,omitempty" bson:"functions,omitempty"`
-	TaskGroups             []parserTaskGroup             `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
-	Tasks                  []parserTask                  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	ExecTimeoutSecs        *int                          `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Loggers                *LoggerConfig                 `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
-	CreateTime             time.Time                     `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
-	TaskAnnotationSettings evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-	BuildBaronProject      evergreen.BuildBaronProject   `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
+	Id                     string                         `yaml:"_id" bson:"_id"` // should be the same as the version's ID
+	ConfigUpdateNumber     int                            `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	Enabled                *bool                          `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+	Stepback               *bool                          `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	PreErrorFailsTask      *bool                          `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask     *bool                          `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
+	OomTracker             *bool                          `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
+	BatchTime              *int                           `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Owner                  *string                        `yaml:"owner,omitempty" bson:"owner,omitempty"`
+	Repo                   *string                        `yaml:"repo,omitempty" bson:"repo,omitempty"`
+	RemotePath             *string                        `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
+	Branch                 *string                        `yaml:"branch,omitempty" bson:"branch,omitempty"`
+	Identifier             *string                        `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	DisplayName            *string                        `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	CommandType            *string                        `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
+	Ignore                 parserStringSlice              `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Parameters             []ParameterInfo                `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
+	Pre                    *YAMLCommandSet                `yaml:"pre,omitempty" bson:"pre,omitempty"`
+	Post                   *YAMLCommandSet                `yaml:"post,omitempty" bson:"post,omitempty"`
+	Timeout                *YAMLCommandSet                `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	EarlyTermination       *YAMLCommandSet                `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
+	CallbackTimeout        *int                           `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Modules                []Module                       `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BuildVariants          []parserBV                     `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
+	Functions              map[string]*YAMLCommandSet     `yaml:"functions,omitempty" bson:"functions,omitempty"`
+	TaskGroups             []parserTaskGroup              `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
+	Tasks                  []parserTask                   `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	ExecTimeoutSecs        *int                           `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	CreateTime             time.Time                      `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+	BuildBaronProject      *evergreen.BuildBaronProject   `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -612,7 +613,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		ExecTimeoutSecs:        utility.FromIntPtr(pp.ExecTimeoutSecs),
 		Loggers:                pp.Loggers,
 		TaskAnnotationSettings: pp.TaskAnnotationSettings,
-		BuildBaronProject:      pp.BuildBaronProject,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)

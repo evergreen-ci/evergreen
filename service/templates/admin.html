@@ -61,6 +61,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('alerts')">Alerts</li>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
 						<li class="link" ng-click="scrollTo('hostinit')">Hostinit</li>
+						<li class="link" ng-click="scrollTo('pod_init')">Pod init</li>
 						<li class="link" ng-click="scrollTo('scheduler')">Scheduler</li>
 						<li class="link" ng-click="scrollTo('repotracker')">Repotracker</li>
 						<div>Web</div>
@@ -133,17 +134,6 @@ Admin Settings
 										</thead>
 										<tbody>
 											<tr>
-												<td>Plugin settings on admin page</td>
-												<td colspan="2">
-													<md-radio-group
-															data-ng-model="Settings.service_flags.plugin_admin_page_disabled"
-															layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
 												<td>Dispatch tasks</td>
 												<td colspan="2">
 													<md-radio-group
@@ -159,6 +149,17 @@ Admin Settings
 												<td colspan="2">
 													<md-radio-group
 														data-ng-model="Settings.service_flags.host_init_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Create and provision pods</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.pod_init_disabled"
 														layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
@@ -443,6 +444,17 @@ Admin Settings
 													</md-radio-group>
 												</td>
 											</tr>
+											<tr>
+												<td>Use admin-level config for plugin settings</td>
+												<td colspan="2">
+													<md-radio-group
+															data-ng-model="Settings.service_flags.plugin_admin_page_disabled"
+															layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
 										</tbody>
 									</table>
 
@@ -599,6 +611,26 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
+							<md-card flex=50 id="pod_init">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Pod init</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('pod_init')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>S3 Download Base URL</label>
+										<input type="text" ng-model="Settings.pod_init.s3_base_url">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+
+						</section>
+
+						<section layout="row" flex>
 
 							<md-card flex=50 id="scheduler">
 								<md-card-title>
@@ -700,10 +732,6 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-
-						</section>
-
-						<section layout="row" flex>
 
 							<md-card flex=50 id="repotracker" style="max-width:49%">
 								<md-card-title>

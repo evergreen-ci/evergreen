@@ -1,0 +1,11 @@
+{
+    "tests": [
+      {
+          "query_file": "buildVariantHistory.graphql",
+          "result": {
+            "data": {"buildVariantHistory":["dist", "test-agent", "test-graphql"]}
+          }
+        }
+    ]
+}
+  

@@ -131,6 +131,32 @@ func (c *BasicSecretsManagerClient) GetSecretValue(ctx context.Context, in *secr
 	return out, nil
 }
 
+// DescribeSecret gets the metadata information about a secret.
+func (c *BasicSecretsManagerClient) DescribeSecret(ctx context.Context, in *secretsmanager.DescribeSecretInput) (*secretsmanager.DescribeSecretOutput, error) {
+	if err := c.setup(); err != nil {
+		return nil, errors.Wrap(err, "setting up client")
+	}
+
+	var out *secretsmanager.DescribeSecretOutput
+	var err error
+	msg := awsutil.MakeAPILogMessage("DescribeSecret", in)
+	if err := utility.Retry(
+		ctx,
+		func() (bool, error) {
+			out, err = c.sm.DescribeSecretWithContext(ctx, in)
+			if awsErr, ok := err.(awserr.Error); ok {
+				grip.Debug(message.WrapError(awsErr, msg))
+				if c.isNonRetryableErrorCode(awsErr.Code()) {
+					return false, err
+				}
+			}
+			return true, err
+		}, *c.opts.RetryOpts); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UpdateSecretValue updates the value of an existing secret.
 func (c *BasicSecretsManagerClient) UpdateSecretValue(ctx context.Context, in *secretsmanager.UpdateSecretInput) (*secretsmanager.UpdateSecretOutput, error) {
 	if err := c.setup(); err != nil {
