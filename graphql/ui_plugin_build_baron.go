@@ -56,10 +56,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
 
-	webHook, ok := IsWebhookConfigured(t.Project)
-	if !ok {
-		return false, errors.Wrap(err, "error retrieving webhook config")
-	}
+	webHook, _ := IsWebhookConfigured(t.Project)
 	if webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
@@ -88,7 +85,11 @@ func IsWebhookConfigured(project string) (evergreen.WebHook, bool) {
 		return evergreen.WebHook{}, false
 	}
 	if flags.PluginAdminPageDisabled {
-		parserProject, err := model.ParserProjectFindOneById(project)
+		lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
+		if err != nil {
+			return evergreen.WebHook{}, false
+		}
+		parserProject, err := model.ParserProjectFindOneById(lastGoodVersion.Id)
 		if err != nil {
 			return evergreen.WebHook{}, false
 		}

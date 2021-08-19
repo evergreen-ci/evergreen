@@ -43,11 +43,23 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Wrap(err, "error retrieving admin settings")
 		}
 		if flags.PluginAdminPageDisabled {
-			projectRef, err := model.FindOneProjectRef(projName)
+			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(projName, -1)
 			if err != nil {
-				return errors.Wrap(err, "unable to find project ref")
+				return errors.Wrap(err, "unable to find version for last good config for project")
 			}
-			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+			parserProject, err := model.ParserProjectFindOneById(lastGoodVersion.Id)
+			if err != nil {
+				return errors.Wrap(err, "unable to find parser project from last good config")
+			}
+			if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
+				webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
+			} else {
+				projectRef, err := model.FindMergedProjectRef(lastGoodVersion.Id)
+				if err != nil {
+					return errors.Wrap(err, "unable to find project ref")
+				}
+				webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+			}
 		} else {
 			webHook = proj.TaskAnnotationSettings.FileTicketWebHook
 		}
