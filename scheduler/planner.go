@@ -253,15 +253,15 @@ func (unit *Unit) RankValue() int64 {
 		// of a bump, to avoid running older builds first.
 		avgLifeTime := timeInQueue / time.Duration(length)
 
-		mainlinePriority := int64(1)
+		var mainlinePriority int64
 		if avgLifeTime < time.Duration(7*24)*time.Hour {
-			mainlinePriority = unit.distro.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
+			mainlinePriority += unit.distro.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
 		if stepbackTask {
 			mainlinePriority += unit.distro.GetStepbackTaskFactor()
 		}
 
-		unit.cachedValue = priority * mainlinePriority
+		unit.cachedValue += priority * mainlinePriority
 	}
 
 	// Start with the number of tasks so that units with more
