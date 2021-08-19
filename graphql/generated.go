@@ -992,7 +992,7 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
-	OriginalStatus(ctx context.Context, obj *model.APITask) (*string, error)
+	OriginalStatus(ctx context.Context, obj *model.APITask) (string, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 
@@ -5881,7 +5881,7 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
-  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead." )
+  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int
   project: Project
@@ -5894,7 +5894,7 @@ type Task {
   spawnHostLink: String
   startTime: Time
   status: String!
-  originalStatus: String
+  originalStatus: String!
   taskGroup: String
   taskGroupMaxHosts: Int
   timeTaken: Duration
@@ -6189,8 +6189,7 @@ type Source {
 scalar Time
 scalar Duration
 scalar StringMap
-scalar Map
-`, BuiltIn: false},
+scalar Map`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -20656,11 +20655,14 @@ func (ec *executionContext) _Task_originalStatus(ctx context.Context, field grap
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_taskGroup(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -30929,6 +30931,9 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_originalStatus(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "taskGroup":
