@@ -373,6 +373,23 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
+func GetMostRecentMainlineCommit(projectId string) (*Version, error) {
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+	}
+	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: -1}}, {"$limit": 1}}
+	res := []Version{}
+
+	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+		return nil, errors.Wrapf(err, "error aggregating versions")
+	}
+
+	return &res[0], nil
+}
+
 type MainlineCommitVersionOptions struct {
 	Limit           int
 	SkipOrderNumber int
