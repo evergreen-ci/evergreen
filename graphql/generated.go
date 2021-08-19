@@ -311,6 +311,7 @@ type ComplexityRoot struct {
 
 	MainlineCommits struct {
 		NextPageOrderNumber func(childComplexity int) int
+		PrevPageOrderNumber func(childComplexity int) int
 		Versions            func(childComplexity int) int
 	}
 
@@ -2091,6 +2092,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.MainlineCommits.NextPageOrderNumber(childComplexity), true
+
+	case "MainlineCommits.prevPageOrderNumber":
+		if e.complexity.MainlineCommits.PrevPageOrderNumber == nil {
+			break
+		}
+
+		return e.complexity.MainlineCommits.PrevPageOrderNumber(childComplexity), true
 
 	case "MainlineCommits.versions":
 		if e.complexity.MainlineCommits.Versions == nil {
@@ -5268,6 +5276,7 @@ type Mutation {
 # nextPage represents the last activated order number returned
 type MainlineCommits {
   nextPageOrderNumber: Int
+  prevPageOrderNumber: Int
   versions: [MainlineCommitVersion!]!
 }
 
@@ -12473,6 +12482,37 @@ func (ec *executionContext) _MainlineCommits_nextPageOrderNumber(ctx context.Con
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.NextPageOrderNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MainlineCommits_prevPageOrderNumber(ctx context.Context, field graphql.CollectedField, obj *MainlineCommits) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "MainlineCommits",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrevPageOrderNumber, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -28712,6 +28752,8 @@ func (ec *executionContext) _MainlineCommits(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("MainlineCommits")
 		case "nextPageOrderNumber":
 			out.Values[i] = ec._MainlineCommits_nextPageOrderNumber(ctx, field, obj)
+		case "prevPageOrderNumber":
+			out.Values[i] = ec._MainlineCommits_prevPageOrderNumber(ctx, field, obj)
 		case "versions":
 			out.Values[i] = ec._MainlineCommits_versions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

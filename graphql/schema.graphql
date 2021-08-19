@@ -147,6 +147,7 @@ type Mutation {
 # nextPage represents the last activated order number returned
 type MainlineCommits {
   nextPageOrderNumber: Int
+  prevPageOrderNumber: Int
   versions: [MainlineCommitVersion!]!
 }
 
