@@ -2594,10 +2594,10 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 	return *obj.DisplayStatus, nil
 }
 
-func (r *taskResolver) OriginalStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
+func (r *taskResolver) OriginalStatus(ctx context.Context, obj *restModel.APITask) (string, error) {
 	// this is needed for the task (as opposed to tasks) so that we don't overwrite
 	// the Status field in the cache, since tasks handles the status value differently
-	return obj.DisplayStatus, nil
+	return *obj.DisplayStatus, nil
 }
 
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {

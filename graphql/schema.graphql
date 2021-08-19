@@ -764,7 +764,7 @@ type Task {
   spawnHostLink: String
   startTime: Time
   status: String!
-  originalStatus: String
+  originalStatus: String!
   taskGroup: String
   taskGroupMaxHosts: Int
   timeTaken: Duration
