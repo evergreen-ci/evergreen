@@ -795,7 +795,6 @@ type BuildBaronProject struct {
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
 
-	// todo: remove once expose configurations project is done
 	TaskAnnotationSettings AnnotationsSettings `mapstructure:"task_annotation_settings" bson:"task_annotation_settings"`
 
 	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
@@ -845,7 +844,6 @@ func (e *envState) SaveConfig() error {
 	}
 
 	gob.Register(map[interface{}]interface{}{})
-	//todo remove after build baron plugins are fully migrated
 	for pluginName, plugin := range copy.Plugins {
 		if pluginName == "buildbaron" {
 			for fieldName, field := range plugin {

@@ -294,7 +294,6 @@ func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.Bui
 		}
 		return projectRef.BuildBaronProject, true
 	}
-	//todo remove below section once expose configs project is comlpete
 
 	buildBaronProjects := BbGetConfig(settings)
 	bbProject, ok := buildBaronProjects[projectId]
