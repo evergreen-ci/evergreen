@@ -261,8 +261,6 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	}
 	defer session.Close()
 
-	session.SetSocketTimeout(time.Minute)
-
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
 	if err != nil {
 		return chunk, errors.WithStack(err)
@@ -335,7 +333,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	agg := database.C(task.Collection).Pipe(pipeline)
+	agg := database.C(task.Collection).Pipe(pipeline).MaxTime(time.Minute)
 	var aggregatedTasks []bson.M
 	if err = agg.All(&aggregatedTasks); err != nil {
 		return chunk, errors.WithStack(err)
@@ -357,8 +355,6 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 		return nil, errors.Wrap(err, "problem getting database session")
 	}
 	defer session.Close()
-
-	session.SetSocketTimeout(time.Minute)
 
 	pipeline := mdb.C(task.Collection).Pipe(
 		[]bson.M{
@@ -395,9 +391,9 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
 		},
 	)
+	pipeline.MaxTime(time.Minute)
 
 	var output []bson.M
-
 	if err = pipeline.All(&output); err != nil {
 		return nil, errors.WithStack(err)
 	}
