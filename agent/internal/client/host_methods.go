@@ -890,7 +890,7 @@ func (c *hostCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
 	if err != nil {
-		return utility.RespErrorf(resp, "problem sending `generate.tasks` request", err.Error())
+		return utility.RespErrorf(resp, "problem sending `generate.tasks` request: %s", err.Error())
 	}
 	return nil
 }
