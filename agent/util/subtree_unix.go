@@ -177,7 +177,9 @@ func psWithArgs(ctx context.Context, args []string) ([]process, error) {
 	defer cancel()
 	out, err := exec.CommandContext(psCtx, "ps", args...).CombinedOutput()
 	if err != nil {
-		if errors.Cause(err) == context.DeadlineExceeded {
+		// If the context's deadline was exceeded we conclude the process blocked
+		// and was killed when the context was closed.
+		if psCtx.Err() == context.DeadlineExceeded {
 			return nil, PsTimeoutError
 		}
 		return nil, errors.Wrap(err, "running ps")
