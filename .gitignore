@@ -59,3 +59,5 @@ evergreen
 !cmd/evergreen
 
 package-lock.json
+
+.ignore # ag and ripgrep ignore file
