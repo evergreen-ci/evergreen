@@ -117,7 +117,7 @@ func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEn
 func (c *hostCommunicator) DisableHost(ctx context.Context, hostID string, details apimodels.DisableInfo) error {
 	info := requestInfo{
 		method:  http.MethodPost,
-		version: apiVersion1,
+		version: apiVersion2,
 	}
 	info.path = fmt.Sprintf("hosts/%s/disable", hostID)
 	resp, err := c.retryRequest(ctx, info, &details)
