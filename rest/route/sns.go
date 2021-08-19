@@ -173,11 +173,6 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 				}
 			}
 		}
-	case ecsTaskStateChangeType:
-		// TODO (EVG-14811): implement and remove this temporary log message.
-		grip.Info(message.Fields{
-			"message": "received ECS task state change event",
-		})
 	default:
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -379,6 +374,7 @@ func (sns *ecsSNS) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+// TODO (EVG-14811): handle SNS notification for ECS task state change.
 func (sns *ecsSNS) handleNotification(ctx context.Context) error {
 	notification := &ecsEventBridgeNotification{}
 	if err := json.Unmarshal([]byte(sns.payload.Message), notification); err != nil {
