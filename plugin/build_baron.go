@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -75,7 +75,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
 				"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 		}
-		// the webhook cannot be used if the default build baron creation and search is configured
+		// the webhook cannot be used if the default build baron creation and search is configurd
 		if webhookConfigured {
 			if len(proj.TicketCreateProject) != 0 {
 				grip.Error(message.Fields{
@@ -106,20 +106,10 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
-					enabled := false
-					flags, err := evergreen.GetServiceFlags()
-					if err != nil {
-						return nil, err
+					enabled := len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
+					if !enabled {
+						enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
 					}
-					if flags.PluginAdminPageDisabled {
-						enabled = len(context.ProjectRef.BuildBaronProject.TicketSearchProjects) > 0
-					} else {
-						enabled = len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
-						if !enabled {
-							enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
-						}
-					}
-
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil
@@ -127,99 +117,4 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 			},
 		},
 	}, nil
-}
-
-func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool) {
-	var webHook evergreen.WebHook
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return evergreen.WebHook{}, false
-	}
-	if flags.PluginAdminPageDisabled {
-		if version == "" {
-			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
-			if err != nil || lastGoodVersion == nil {
-				return evergreen.WebHook{}, false
-			}
-			version = lastGoodVersion.Id
-		}
-		parserProject, err := model.ParserProjectFindOneById(version)
-		if err != nil {
-			return evergreen.WebHook{}, false
-		}
-		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
-			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
-		} else {
-			projectRef, err := model.FindMergedProjectRef(project)
-			if err != nil || projectRef == nil {
-				return evergreen.WebHook{}, false
-			}
-			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
-		}
-	} else {
-		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
-		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
-	}
-	if webHook.Endpoint != "" {
-		return webHook, true
-	} else {
-		return evergreen.WebHook{}, false
-	}
-}
-
-func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
-	bbconf, ok := settings.Plugins["buildbaron"]
-	if !ok {
-		return nil
-	}
-
-	projectConfig, ok := bbconf["projects"]
-	if !ok {
-		grip.Error("no build baron projects configured")
-		return nil
-	}
-
-	projects := map[string]evergreen.BuildBaronProject{}
-	err := mapstructure.Decode(projectConfig, &projects)
-	if err != nil {
-		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
-	}
-
-	return projects
-}
-
-func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return evergreen.BuildBaronProject{}, false
-	}
-	if flags.PluginAdminPageDisabled {
-		lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(projectId, -1)
-		if err != nil || lastGoodVersion == nil {
-			return evergreen.BuildBaronProject{}, false
-		}
-		parserProject, err := model.ParserProjectFindOneById(lastGoodVersion.Id)
-		if err != nil {
-			return evergreen.BuildBaronProject{}, false
-		}
-		if parserProject != nil && parserProject.BuildBaronProject != nil {
-			return *parserProject.BuildBaronProject, true
-		} else {
-			projectRef, err := model.FindMergedProjectRef(projectId)
-			if err != nil || projectRef == nil {
-				return evergreen.BuildBaronProject{}, false
-			}
-			return projectRef.BuildBaronProject, true
-		}
-	}
-	buildBaronProjects := BbGetConfig(settings)
-	bbProject, ok := buildBaronProjects[projectId]
-	if !ok {
-		// project may be stored under the identifier rather than the ID
-		identifier, err := model.GetIdentifierForProject(projectId)
-		if err == nil && identifier != "" {
-			bbProject, ok = buildBaronProjects[identifier]
-		}
-	}
-	return bbProject, ok
 }
