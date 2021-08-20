@@ -751,7 +751,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			hosts[i], hosts[j] = hosts[j], hosts[i]
 		}
 
-		// refersh HostInit
+		// refresh HostInit
 		if err := env.Settings().HostInit.Get(env); err != nil {
 			return errors.Wrap(err, "problem getting global config")
 		}
