@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -177,7 +178,7 @@ func (t TestHistoryParameters) QueryString() string {
 
 type TaskHistoryIterator interface {
 	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
-	GetDistinctTestNames(numCommits int) ([]string, error)
+	GetDistinctTestNames(ctx context.Context, numCommits int) ([]string, error)
 }
 
 func NewTaskHistoryIterator(name string, buildVariants []string, projectName string) TaskHistoryIterator {
@@ -349,7 +350,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	return chunk, nil
 }
 
-func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string, error) {
+func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCommits int) ([]string, error) {
 	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting database session")
@@ -393,14 +394,15 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 	)
 	pipeline.MaxTime(time.Minute)
 
-	var output []bson.M
-	if err = pipeline.All(&output); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	names := make([]string, 0)
-	for _, doc := range output {
-		names = append(names, doc["_id"].(string))
+	var names []string
+	res := bson.M{}
+	iter := pipeline.Iter()
+	for iter.Next(&res) {
+		names = append(names, res["_id"].(string))
+		if ctx.Err() != nil {
+			_ = iter.Close()
+			return nil, errors.Wrap(ctx.Err(), "iterating results")
+		}
 	}
 
 	return names, nil
