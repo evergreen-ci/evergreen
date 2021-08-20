@@ -80,7 +80,8 @@ type ParserProject struct {
 	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
-	// List of yamls to merge
+	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+  // List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 
 	// Matrix code
@@ -659,30 +660,31 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:            utility.FromBoolPtr(pp.Enabled),
-		Stepback:           utility.FromBoolPtr(pp.Stepback),
-		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
-		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
-		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
-		BatchTime:          utility.FromIntPtr(pp.BatchTime),
-		Owner:              utility.FromStringPtr(pp.Owner),
-		Repo:               utility.FromStringPtr(pp.Repo),
-		RemotePath:         utility.FromStringPtr(pp.RemotePath),
-		Branch:             utility.FromStringPtr(pp.Branch),
-		Identifier:         utility.FromStringPtr(pp.Identifier),
-		DisplayName:        utility.FromStringPtr(pp.DisplayName),
-		CommandType:        utility.FromStringPtr(pp.CommandType),
-		Ignore:             pp.Ignore,
-		Parameters:         pp.Parameters,
-		Pre:                pp.Pre,
-		Post:               pp.Post,
-		EarlyTermination:   pp.EarlyTermination,
-		Timeout:            pp.Timeout,
-		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
-		Modules:            pp.Modules,
-		Functions:          pp.Functions,
-		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
-		Loggers:            pp.Loggers,
+		Enabled:                utility.FromBoolPtr(pp.Enabled),
+		Stepback:               utility.FromBoolPtr(pp.Stepback),
+		PreErrorFailsTask:      utility.FromBoolPtr(pp.PreErrorFailsTask),
+		PostErrorFailsTask:     utility.FromBoolPtr(pp.PostErrorFailsTask),
+		OomTracker:             utility.FromBoolPtr(pp.OomTracker),
+		BatchTime:              utility.FromIntPtr(pp.BatchTime),
+		Owner:                  utility.FromStringPtr(pp.Owner),
+		Repo:                   utility.FromStringPtr(pp.Repo),
+		RemotePath:             utility.FromStringPtr(pp.RemotePath),
+		Branch:                 utility.FromStringPtr(pp.Branch),
+		Identifier:             utility.FromStringPtr(pp.Identifier),
+		DisplayName:            utility.FromStringPtr(pp.DisplayName),
+		CommandType:            utility.FromStringPtr(pp.CommandType),
+		Ignore:                 pp.Ignore,
+		Parameters:             pp.Parameters,
+		Pre:                    pp.Pre,
+		Post:                   pp.Post,
+		EarlyTermination:       pp.EarlyTermination,
+		Timeout:                pp.Timeout,
+		CallbackTimeout:        utility.FromIntPtr(pp.CallbackTimeout),
+		Modules:                pp.Modules,
+		Functions:              pp.Functions,
+		ExecTimeoutSecs:        utility.FromIntPtr(pp.ExecTimeoutSecs),
+		Loggers:                pp.Loggers,
+		TaskAnnotationSettings: pp.TaskAnnotationSettings,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -1240,7 +1242,7 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 
 // mergeUnique merges fields that are non-lists.
 // These fields can only be defined in one yaml.
-// These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout]
+// These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout, task annotations]
 func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
@@ -1296,6 +1298,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		catcher.New("exec timeout secs can only be defined in one yaml")
 	} else if toMerge.ExecTimeoutSecs != nil {
 		pp.ExecTimeoutSecs = toMerge.ExecTimeoutSecs
+	}
+
+	if pp.TaskAnnotationSettings != nil && toMerge.TaskAnnotationSettings != nil {
+		catcher.New("task annotation settings can only be defined in one yaml")
+	} else if toMerge.TaskAnnotationSettings != nil {
+		pp.TaskAnnotationSettings = toMerge.TaskAnnotationSettings
 	}
 
 	return catcher.Resolve()
