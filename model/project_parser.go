@@ -606,7 +606,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		opts.Token = ghToken
 	}
 	if opts.Revision == "" && opts.Ref != nil {
-		opts.RemotePath = opts.Ref.RemotePath
+		opts.Revision = opts.Ref.RemotePath
 	}
 	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 	if err != nil {
