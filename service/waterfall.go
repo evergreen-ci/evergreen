@@ -383,8 +383,8 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 					// only call the legacy function if we need to, i.e. we aren't using cedar, we know there are legacy results,
 					// or we don't know because we haven't cached this information yet.
 					if !t.HasCedarResults && utility.FromBoolTPtr(t.HasLegacyResults) && numTestResultCalls < maxTestResultCalls {
-						if err = t.MergeNewTestResults(); err != nil {
-							return versionVariantData{}, errors.Wrap(err, "error merging test results")
+						if err = t.PopulateTestResults(); err != nil {
+							return versionVariantData{}, errors.Wrap(err, "populating test results")
 						}
 						numTestResultCalls++
 					}

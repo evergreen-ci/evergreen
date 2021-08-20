@@ -78,7 +78,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 	// The task was restarted before the job ran.
 	if j.task == nil {
-		j.task, err = task.FindOneOldNoMergeByIdAndExecution(j.TaskID, j.Execution)
+		j.task, err = task.FindOneOldByIdAndExecution(j.TaskID, j.Execution)
 		j.AddError(err)
 		if err != nil {
 			return

@@ -253,7 +253,8 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 
-	SaveGenerateTasksError = "error saving config in `generate.tasks`"
+	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
+	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 )
 
 var InternalAliases []string = []string{

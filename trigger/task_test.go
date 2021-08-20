@@ -1350,20 +1350,20 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	tr.task = &tasks[0]
 	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
-	assert.NotNil(t, notification)
+	require.NotNil(t, notification)
 	assert.Equal(t, "dt0_0", notification.Metadata.TaskID)
 
-	// don't alert on the second run of the display task for a different execution task (et1) that contains the same test (f0)
-	tr.task = &tasks[3]
-	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
-	assert.NoError(t, err)
-	assert.Nil(t, notification)
-
 	// alert for the second run of the display task with the same execution task (et0) failing with a new test (f1)
+	tr.task = &tasks[3]
 	newResult := testresult.TestResult{TaskID: "et0_1", TestFile: "f1", Status: evergreen.TestFailedStatus}
 	assert.NoError(t, newResult.Insert())
 	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
-	assert.NotNil(t, notification)
+	require.NotNil(t, notification)
 	assert.Equal(t, "dt0_1", notification.Metadata.TaskID)
+
+	// don't alert on the second run of the display task for a different execution task (et1) that contains the same test (f0)
+	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
+	assert.NoError(t, err)
+	assert.Nil(t, notification)
 }
