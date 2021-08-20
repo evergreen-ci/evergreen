@@ -400,10 +400,13 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCo
 	for iter.Next(&res) {
 		names = append(names, res["_id"].(string))
 		if ctx.Err() != nil {
-			_ = iter.Close()
-			return nil, errors.Wrap(ctx.Err(), "iterating results")
+			catcher := grip.NewBasicCatcher()
+			catcher.Add(errors.Wrap(ctx.Err(), "iterating results"))
+			catcher.Add(iter.Close())
+			return nil, catcher.Resolve()
 		}
 	}
+	sort.Strings(names)
 
 	return names, nil
 }
