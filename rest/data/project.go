@@ -113,6 +113,7 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 				return errors.Wrapf(err, "Error enabling webhooks for project '%s'", projectId)
 			}
 		}
+		modified = true
 	case model.ProjectRefAccessSection:
 		// For any admins that are only in the original settings, remove access.
 		// For any admins that are only in the updated settings, give them access.
@@ -141,6 +142,7 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 		if err = pc.UpdateProjectVars(projectId, &changes.Vars, false); err != nil { // destructively modifies vars
 			return errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
 		}
+		modified = true
 	}
 
 	// How do we know here if ProjectRef should be nil or not? Or should we just pass in the project and update regardless of whether or not it's changed (like the API route?)
