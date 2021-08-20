@@ -385,14 +385,40 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
+// AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
+// Any values that previously were unset will now use the repo value.
+// If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
+func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
+	before, err := GetProjectSettingsEventById(p.Id)
+	if err != nil {
+		return errors.Wrap(err, "error getting before project settings event")
+	}
+	if err := p.AddToRepoScope(u); err != nil {
+		return err
+	}
+	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": bson.M{
+			projectRefUseRepoSettingsKey: true,
+			ProjectRefRepoRefIdKey:       p.RepoRefId, // this is set locally in AddToRepoScope
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "error attaching repo to scope")
+	}
+	p.UseRepoSettings = true
+	return getAndLogProjectModified(p.Id, u.Id, before)
+}
+
+// AddToRepoScope adds the branch to the unrestricted branches under repo scope, adds repo view permission for
+// branch admins, and adds branch edit access for repo admins.
+func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	repoRef, err := FindRepoRefByOwnerAndRepo(p.Owner, p.Repo)
 	if err != nil {
 		return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
 	}
 	if repoRef == nil {
-		repoRef, err = p.createNewRepoRef(user)
+		repoRef, err = p.createNewRepoRef(u)
 		if err != nil {
 			return errors.Wrapf(err, "error creating new repo ref")
 		}
@@ -420,6 +446,96 @@ func (p *ProjectRef) AddToRepoScope(user *user.DBUser) error {
 	return nil
 }
 
+// DetachFromRepo removes the branch from the relevant repo scopes, and updates the project to not point to the repo.
+// Any values that previously defaulted to repo will have the repo value explicitly set.
+func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
+	before, err := GetProjectSettingsEventById(p.Id)
+	if err != nil {
+		return errors.Wrap(err, "error getting before project settings event")
+	}
+
+	// remove from relevant repo scopes
+	if err = p.RemoveFromRepoScope(); err != nil {
+		return err
+	}
+
+	mergedProject, err := FindMergedProjectRef(p.Id)
+	if err != nil {
+		return errors.Wrap(err, "error finding merged project ref")
+	}
+
+	// Save repo variables that don't exist in the repo as the project variables.
+	// Wait to save merged project until we've gotten the variables.
+	mergedVars, err := FindMergedProjectVars(before.ProjectRef.Id)
+	if err != nil {
+		return errors.Wrap(err, "error finding merged project vars")
+	}
+
+	mergedProject.UseRepoSettings = false
+	mergedProject.RepoRefId = ""
+	if err = mergedProject.Upsert(); err != nil {
+		return errors.Wrap(err, "error detaching project from repo")
+	}
+
+	// catch any resulting errors so that we log before returning
+	catcher := grip.NewBasicCatcher()
+	if mergedVars != nil {
+		_, err = mergedVars.Upsert()
+		catcher.Wrap(err, "error saving merged vars")
+	}
+
+	if len(before.Subscriptions) == 0 {
+		// Save repo subscriptions as project subscriptions if none exist
+		subs, err := event.FindSubscriptionsByOwner(before.ProjectRef.RepoRefId, event.OwnerTypeProject)
+		catcher.Wrap(err, "error finding repo subscriptions")
+
+		for _, s := range subs {
+			s.ID = ""
+			s.Owner = p.Id
+			catcher.Add(s.Upsert())
+		}
+	}
+
+	// Handle each category of aliases as it's own case
+	repoAliases, err := FindAliasesForProject(before.ProjectRef.RepoRefId)
+	catcher.Wrap(err, "error finding repo aliases")
+
+	hasInternalAliases := map[string]bool{}
+	hasPatchAlias := false
+	for _, a := range before.Aliases {
+		if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
+			hasInternalAliases[a.Alias] = true
+		} else { // if it's not an internal alias, it's a patch alias. Only add repo patch aliases if no patch aliases exist for the project.
+			hasPatchAlias = true
+		}
+	}
+	repoAliasesToCopy := []ProjectAlias{}
+	for _, internalAlias := range evergreen.InternalAliases {
+		// if the branch doesn't have the internal alias set, add any that exist for the repo
+		if !hasInternalAliases[internalAlias] {
+			for _, repoAlias := range repoAliases {
+				if repoAlias.Alias == internalAlias {
+					repoAliasesToCopy = append(repoAliasesToCopy, repoAlias)
+				}
+			}
+		}
+	}
+	if !hasPatchAlias {
+		// if the branch doesn't have patch aliases set, add any non-internal aliases that exist for the repo
+		for _, repoAlias := range repoAliases {
+			if !utility.StringSliceContains(evergreen.InternalAliases, repoAlias.Alias) {
+				repoAliasesToCopy = append(repoAliasesToCopy, repoAlias)
+			}
+		}
+	}
+	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
+
+	catcher.Add(getAndLogProjectModified(p.Id, u.Id, before))
+	return catcher.Resolve()
+}
+
+// RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope, removes repo view permission
+// for branch admins, and removes branch edit access for repo admins.
 func (p *ProjectRef) RemoveFromRepoScope() error {
 	if p.RepoRefId == "" {
 		return nil
