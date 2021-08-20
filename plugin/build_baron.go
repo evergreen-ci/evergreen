@@ -6,7 +6,6 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -43,11 +42,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Wrap(err, "error getting service flags")
 		}
 		if flags.PluginAdminPageDisabled {
-			wh, ok := IsWebhookConfigured(projName, "")
-			if !ok {
-				return errors.Wrap(err, "error retrieving webook config")
-			}
-			webHook = wh
+			webHook, _ = IsWebhookConfigured(projName, "")
 		}
 		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
@@ -75,14 +70,14 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
 				"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 		}
-		// the webhook cannot be used if the default build baron creation and search is configured
+		// the webhook cannot be used if the default build baron creation and search is configurd
 		if webhookConfigured {
 			if len(proj.TicketCreateProject) != 0 {
 				grip.Error(message.Fields{
 					"message":      "The custom file ticket webhook and the build baron TicketCreateProject should not both be configured",
 					"project_name": projName})
 			}
-			if _, err := url.Parse(webHook.Endpoint); err != nil {
+			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":      "Failed to parse webhook endpoint for project",
 					"project_name": projName}))
@@ -106,20 +101,10 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
-					enabled := false
-					flags, err := evergreen.GetServiceFlags()
-					if err != nil {
-						return nil, err
+					enabled := len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
+					if !enabled {
+						enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
 					}
-					if flags.PluginAdminPageDisabled {
-						enabled = len(context.ProjectRef.BuildBaronProject.TicketSearchProjects) > 0
-					} else {
-						enabled = len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
-						if !enabled {
-							enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
-						}
-					}
-
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil
@@ -129,6 +114,9 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 	}, nil
 }
 
+// IsWebhookConfigured webhook will can be retrieved from project or admin config depending on PluginAdminPageDisabled flag
+// if deriving from project config, we first try to retrieve webhook config prom project parser config, otherwise we fallback to project page settings
+// version is needed to retrieve last good project config, if version is not available/empty when calling this function we must first retrieve it
 func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool) {
 	var webHook evergreen.WebHook
 	flags, err := evergreen.GetServiceFlags()

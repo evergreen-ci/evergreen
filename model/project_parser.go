@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -1197,7 +1196,7 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 
 // mergeUnique merges fields that are non-lists.
 // These fields can only be defined 1 yaml.
-// These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout, task annotations]
+// These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout]
 func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
@@ -1253,12 +1252,6 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		catcher.New("exec timeout secs can only be defined in one yaml")
 	} else if toMerge.ExecTimeoutSecs != nil {
 		pp.ExecTimeoutSecs = toMerge.ExecTimeoutSecs
-	}
-
-	if pp.TaskAnnotationSettings != nil && toMerge.TaskAnnotationSettings != nil {
-		catcher.New("task annotation settings can only be defined in one yaml")
-	} else if toMerge.TaskAnnotationSettings != nil {
-		pp.TaskAnnotationSettings = toMerge.TaskAnnotationSettings
 	}
 
 	return catcher.Resolve()
