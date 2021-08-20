@@ -596,11 +596,11 @@ type GetProjectOpts struct {
 }
 
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
-	conf, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get evergreen configuration")
-	}
 	if opts.Token == "" {
+		conf, err := evergreen.GetConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get evergreen configuration")
+		}
 		ghToken, err := conf.GetGithubOauthToken()
 		if err != nil {
 			return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
