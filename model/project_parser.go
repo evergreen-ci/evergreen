@@ -596,6 +596,9 @@ type GetProjectOpts struct {
 }
 
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
+	if opts.RemotePath == "" && opts.Ref != nil {
+		opts.RemotePath = opts.Ref.RemotePath
+	}
 	if opts.Token == "" {
 		conf, err := evergreen.GetConfig()
 		if err != nil {
@@ -606,9 +609,6 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
 		}
 		opts.Token = ghToken
-	}
-	if opts.Revision == "" && opts.Ref != nil {
-		opts.Revision = opts.Ref.RemotePath
 	}
 	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 	if err != nil {
