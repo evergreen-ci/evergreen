@@ -243,8 +243,144 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return subnet && subnet.az && subnet.subnet_id;
   }
 
+  $scope.addAWSVPCSubnet = function () {
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {
+          "pod": {
+            "ecs": {
+              "awsvpc": {
+                "subnets": []
+              }
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws == null) {
+      $scope.Settings.providers.aws = {
+        "pod": {
+          "ecs": {
+            "awsvpc": {
+              "subnets": []
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod == null) {
+      $scope.Settings.providers.aws.pod = {
+        "ecs": {
+          "awsvpc": {
+            "subnets": []
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs == null) {
+      $scope.Settings.providers.aws.pod.ecs = {
+        "awsvpc": {
+          "subnets": []
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs.awsvpc == null) {
+      $scope.Settings.providers.aws.pod.ecs.awsvpc = {
+        "subnets": []
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs.awsvpc.subnets == null) {
+      $scope.Settings.providers.aws.pod.ecs.awsvpc.subnets = [];
+    }
+
+    if (!$scope.validAWSVPCSubnet($scope.new_awsvpc_subnet)) {
+      $scope.invalidAWSVPCSubnet = "Subnet ID cannot be empty.";
+      return
+    }
+
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.subnets.push($scope.new_awsvpc_subnet);
+    $scope.new_awsvpc_subnet = "";
+    $scope.invalidAWSVPCSubnet = "";
+  }
+
+  $scope.validAWSVPCSubnet = function (subnet) {
+    return subnet;
+  }
+
+  $scope.deleteAWSVPCSubnet = function (index) {
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.subnets.split(index, 1);
+  }
+
+  $scope.addAWSVPCSecurityGroup = function () {
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {
+          "pod": {
+            "ecs": {
+              "awsvpc": {
+                "security_groups": []
+              }
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws == null) {
+      $scope.Settings.providers.aws = {
+        "pod": {
+          "ecs": {
+            "awsvpc": {
+              "security_groups": []
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod == null) {
+      $scope.Settings.providers.aws.pod = {
+        "ecs": {
+          "awsvpc": {
+            "security_groups": []
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs == null) {
+      $scope.Settings.providers.aws.pod.ecs = {
+        "awsvpc": {
+          "security_groups": []
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs.awsvpc == null) {
+      $scope.Settings.providers.aws.pod.ecs.awsvpc = {
+        "security_groups": []
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups == null) {
+      $scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups = [];
+    }
+
+    if (!$scope.validAWSVPCSecurityGroup($scope.new_awsvpc_security_group)) {
+      $scope.invalidAWSVPCSecurityGroup = "Security group cannot be empty.";
+      return
+    }
+
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups.push($scope.new_awsvpc_security_group);
+    $scope.new_awsvpc_security_group = "";
+    $scope.invalidAWSVPCSecurityGroup = "";
+  }
+
+  $scope.validAWSVPCSecurityGroup = function (sg) {
+    return sg;
+  }
+
+  $scope.deleteAWSVPCSecurityGroup = function (index) {
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups.split(index, 1);
+  }
+
   $scope.addECSCluster = function () {
-    if ($scope.Settings.providers === null || $scope.Settings.providers === undefined) {
+    if ($scope.Settings.providers == null) {
       $scope.Settings.providers = {
         "aws": {
           "pod": {
@@ -255,7 +391,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         }
       };
     }
-    if ($scope.Settings.providers.aws === null || $scope.Settings.providers.aws === undefined) {
+    if ($scope.Settings.providers.aws == null) {
       $scope.Settings.providers.aws = {
         "pod": {
           "ecs": {
@@ -264,20 +400,20 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         }
       };
     }
-    if ($scope.Settings.providers.aws.pod === null || $scope.Settings.providers.aws.pod === undefined) {
+    if ($scope.Settings.providers.aws.pod == null) {
       $scope.Settings.providers.aws.pod = {
         "ecs": {
           "clusters": []
         }
       };
     }
-    if ($scope.Settings.providers.aws.pod.ecs === null || $scope.Settings.providers.aws.pod.ecs === undefined) {
+    if ($scope.Settings.providers.aws.pod.ecs == null) {
       $scope.Settings.providers.aws.pod.ecs = {
         "clusters": []
       };
     }
 
-    if ($scope.Settings.providers.aws.pod.ecs.clusters == null || $scope.Settings.providers.aws.pod.ecs.clusters === undefined) {
+    if ($scope.Settings.providers.aws.pod.ecs.clusters == null) {
       $scope.Settings.providers.aws.pod.ecs.clusters = [];
     }
 
