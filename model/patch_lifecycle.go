@@ -120,7 +120,10 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 
 	project := &Project{}
-	opts := GetProjectOpts{}
+	opts := GetProjectOpts{
+		Ref:   projectRef,
+		Token: githubOauthToken,
+	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
 		if _, err = LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {

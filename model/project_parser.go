@@ -1298,7 +1298,8 @@ func (pp *ParserProject) mergeBuildVariant(toMerge *ParserProject) error {
 
 	bvs := map[string]*parserBV{}
 	for _, bv := range pp.BuildVariants {
-		bvs[bv.Name] = &bv
+		newBv := bv
+		bvs[bv.Name] = &newBv
 	}
 	for _, bv := range toMerge.BuildVariants {
 		if _, ok := bvs[bv.Name]; ok {
