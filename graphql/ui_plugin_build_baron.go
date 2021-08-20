@@ -54,7 +54,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
 
-	webHook, _ := plugin.IsWebhookConfigured(t.Project, t.Version, evergreen.WebHook{})
+	webHook, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
 	if webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)

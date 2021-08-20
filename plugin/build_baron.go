@@ -37,7 +37,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	}
 
 	for projName, proj := range bbpOptions.Projects {
-		webHook, ok := IsWebhookConfigured(projName, "", proj.TaskAnnotationSettings.FileTicketWebHook)
+		webHook, ok := IsWebhookConfigured(projName, "")
 		if !ok {
 			return errors.Wrap(err, "error retrieving webook config")
 		}
@@ -111,7 +111,7 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 	}, nil
 }
 
-func IsWebhookConfigured(project string, version string, wh evergreen.WebHook) (evergreen.WebHook, bool) {
+func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool) {
 	var webHook evergreen.WebHook
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -138,8 +138,6 @@ func IsWebhookConfigured(project string, version string, wh evergreen.WebHook) (
 			}
 			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
 		}
-	} else if version == "" {
-		webHook = wh
 	} else {
 		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
 		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
