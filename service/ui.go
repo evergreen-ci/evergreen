@@ -95,7 +95,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		Home:               home,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
-		buildBaronProjects: graphql.BbGetConfig(settings),
+		buildBaronProjects: plugin.BbGetConfig(settings),
 		render:             gimlet.NewHTMLRenderer(ropts),
 		renderText:         gimlet.NewTextRenderer(ropts),
 		jiraHandler:        thirdparty.NewJiraHandler(*settings.Jira.Export()),
