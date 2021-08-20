@@ -130,8 +130,7 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 		}
 
 	case model.ProjectRefVariablesSection:
-		// Remove any variables that only exist in the original settings. (It's possible we can send this information
-		// from the UI in the future instead)
+		// Remove any variables that only exist in the original settings.
 		toDelete := []string{}
 		for key, _ := range before.Vars.Vars {
 			if _, ok := changes.Vars.Vars[key]; !ok {
