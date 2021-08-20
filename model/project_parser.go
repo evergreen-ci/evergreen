@@ -1255,6 +1255,18 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.ExecTimeoutSecs = toMerge.ExecTimeoutSecs
 	}
 
+	if pp.TaskAnnotationSettings != nil && toMerge.TaskAnnotationSettings != nil {
+		catcher.New("task annotation settings can only be defined in one yaml")
+	} else if toMerge.TaskAnnotationSettings != nil {
+		pp.TaskAnnotationSettings = toMerge.TaskAnnotationSettings
+	}
+
+	if pp.BuildBaronProject != nil && toMerge.BuildBaronProject != nil {
+		catcher.New("build baron settings can only be defined in one yaml")
+	} else if toMerge.BuildBaronProject != nil {
+		pp.BuildBaronProject = toMerge.BuildBaronProject
+	}
+
 	return catcher.Resolve()
 }
 

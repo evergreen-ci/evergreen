@@ -78,7 +78,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 					"message":      "The custom file ticket webhook and the build baron TicketCreateProject should not both be configured",
 					"project_name": projName})
 			}
-			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
+			if _, err := url.Parse(webHook.Endpoint); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":      "Failed to parse webhook endpoint for project",
 					"project_name": projName}))
