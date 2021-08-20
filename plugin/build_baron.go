@@ -6,7 +6,6 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -140,7 +139,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
 		}
 	} else {
-		bbProject, _ := graphql.BbGetProject(evergreen.GetEnvironment().Settings(), project)
+		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
 		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
 	}
 	if webHook.Endpoint != "" {
@@ -148,4 +147,38 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	} else {
 		return evergreen.WebHook{}, false
 	}
+}
+
+func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
+	bbconf, ok := settings.Plugins["buildbaron"]
+	if !ok {
+		return nil
+	}
+
+	projectConfig, ok := bbconf["projects"]
+	if !ok {
+		grip.Error("no build baron projects configured")
+		return nil
+	}
+
+	projects := map[string]evergreen.BuildBaronProject{}
+	err := mapstructure.Decode(projectConfig, &projects)
+	if err != nil {
+		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
+	}
+
+	return projects
+}
+
+func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
+	buildBaronProjects := BbGetConfig(settings)
+	bbProject, ok := buildBaronProjects[projectId]
+	if !ok {
+		// project may be stored under the identifier rather than the ID
+		identifier, err := model.GetIdentifierForProject(projectId)
+		if err == nil && identifier != "" {
+			bbProject, ok = buildBaronProjects[identifier]
+		}
+	}
+	return bbProject, ok
 }
