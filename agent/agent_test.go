@@ -325,7 +325,9 @@ post:
       command: "doesntexist"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -799,7 +801,9 @@ task_groups:
       script: "echo hi"
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
