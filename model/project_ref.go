@@ -102,6 +102,11 @@ type ProjectRef struct {
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
 	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 
+	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
+	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+
+	BuildBaronProject evergreen.BuildBaronProject `bson:"build_baron_project,omitempty" json:"build_baron_project,omitempty" yaml:"build_baron_project,omitempty"`
+
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
 	RepoRefId       string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
@@ -326,15 +331,17 @@ const (
 type ProjectRefSection string
 
 const (
-	ProjectRefGeneralSection        = "general"
-	ProjectRefAccessSection         = "access"
-	ProjectRefVariablesSection      = "variables"
-	ProjectRefGithubAndCQSection    = "github_and_commit_queue"
-	ProjectRefNotificationsSection  = "notifications"
-	ProjectRefPatchAliasSection     = "patch_alias"
-	ProjectRefWorkstationsSection   = "workstations"
-	ProjectRefTriggersSection       = "triggers"
-	ProjectRefPeriodicBuildsSection = "periodic-builds"
+	ProjectRefGeneralSection         = "general"
+	ProjectRefAccessSection          = "access"
+	ProjectRefVariablesSection       = "variables"
+	ProjectRefGithubAndCQSection     = "github_and_commit_queue"
+	ProjectRefNotificationsSection   = "notifications"
+	ProjectRefPatchAliasSection      = "patch_alias"
+	ProjectRefWorkstationsSection    = "workstations"
+	ProjectRefTriggersSection        = "triggers"
+	ProjectRefPeriodicBuildsSection  = "periodic-builds"
+	ProjectRefBuildBaronSection      = "build_baron"
+	ProjectRefTaskAnnotationsSection = "task_annotation"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -1356,6 +1363,22 @@ func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 			bson.M{
 				"$set": bson.M{
 					projectRefTriggersKey: p.Triggers,
+				},
+			})
+	case ProjectRefBuildBaronSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefBuildBaronProjectKey: p.BuildBaronProject,
+				},
+			})
+	case ProjectRefTaskAnnotationsSection:
+		err = db.Update(ProjectRefCollection,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefTaskAnnotationSettingsKey: p.TaskAnnotationSettings,
 				},
 			})
 	case ProjectRefPatchAliasSection:
