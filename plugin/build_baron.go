@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -37,31 +38,9 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	}
 
 	for projName, proj := range bbpOptions.Projects {
-		var webHook evergreen.WebHook
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.Wrap(err, "error retrieving admin settings")
-		}
-		if flags.PluginAdminPageDisabled {
-			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(projName, -1)
-			if err != nil {
-				return errors.Wrap(err, "unable to find version for last good config for project")
-			}
-			parserProject, err := model.ParserProjectFindOneById(lastGoodVersion.Id)
-			if err != nil {
-				return errors.Wrap(err, "unable to find parser project from last good config")
-			}
-			if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
-				webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
-			} else {
-				projectRef, err := model.FindMergedProjectRef(lastGoodVersion.Id)
-				if err != nil {
-					return errors.Wrap(err, "unable to find project ref")
-				}
-				webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
-			}
-		} else {
-			webHook = proj.TaskAnnotationSettings.FileTicketWebHook
+		webHook, ok := IsWebhookConfigured(projName, "")
+		if !ok {
+			return errors.Wrap(err, "error retrieving webook config")
 		}
 		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
@@ -131,4 +110,42 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 			},
 		},
 	}, nil
+}
+
+func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool) {
+	var webHook evergreen.WebHook
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return evergreen.WebHook{}, false
+	}
+	if flags.PluginAdminPageDisabled {
+		if version == "" {
+			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
+			if err != nil || lastGoodVersion == nil {
+				return evergreen.WebHook{}, false
+			}
+			version = lastGoodVersion.Id
+		}
+		parserProject, err := model.ParserProjectFindOneById(version)
+		if err != nil {
+			return evergreen.WebHook{}, false
+		}
+		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
+			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
+		} else {
+			projectRef, err := model.FindMergedProjectRef(project)
+			if err != nil || projectRef == nil {
+				return evergreen.WebHook{}, false
+			}
+			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+		}
+	} else {
+		bbProject, _ := graphql.BbGetProject(evergreen.GetEnvironment().Settings(), project)
+		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
+	}
+	if webHook.Endpoint != "" {
+		return webHook, true
+	} else {
+		return evergreen.WebHook{}, false
+	}
 }

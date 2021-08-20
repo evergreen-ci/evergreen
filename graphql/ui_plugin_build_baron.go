@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
@@ -56,7 +57,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
 
-	webHook, _ := IsWebhookConfigured(t.Project)
+	webHook, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
 	if webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
@@ -76,41 +77,6 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	}
 
 	return taskNotFound, nil
-}
-
-func IsWebhookConfigured(project string) (evergreen.WebHook, bool) {
-	var webHook evergreen.WebHook
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return evergreen.WebHook{}, false
-	}
-	if flags.PluginAdminPageDisabled {
-		lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
-		if err != nil {
-			return evergreen.WebHook{}, false
-		}
-		parserProject, err := model.ParserProjectFindOneById(lastGoodVersion.Id)
-		if err != nil {
-			return evergreen.WebHook{}, false
-		}
-		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
-			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
-		} else {
-			projectRef, err := model.FindMergedProjectRef(project)
-			if err != nil || projectRef == nil {
-				return evergreen.WebHook{}, false
-			}
-			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
-		}
-	} else {
-		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
-		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
-	}
-	if webHook.Endpoint != "" {
-		return webHook, true
-	} else {
-		return evergreen.WebHook{}, false
-	}
 }
 
 // fileTicketCustomHook uses a custom hook to create a ticket for a task with the given test failures.
