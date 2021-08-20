@@ -224,7 +224,10 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 			c.catcher.Add(err)
 		})
 		if err != nil {
-			return timingInfo
+			grip.Warning(message.WrapError(err, message.Fields{
+				"project_id": c.ProjectID,
+				"job_time":   c.JobTime,
+			}))
 		}
 	}
 
@@ -236,7 +239,10 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 			c.catcher.Add(err)
 		})
 		if err != nil {
-			return timingInfo
+			grip.Warning(message.WrapError(err, message.Fields{
+				"project_id": c.ProjectID,
+				"job_time":   c.JobTime,
+			}))
 		}
 	}
 
