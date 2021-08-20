@@ -278,8 +278,8 @@ type Module struct {
 }
 
 type Include struct {
-	FileName string `yaml:"filename,omitempty" bson:"filename"`
-	Module   string `yaml:"module,omitempty" bson:"module"`
+	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty"`
+	Module   string `yaml:"module,omitempty" bson:"module,omitempty"`
 }
 
 type ModuleList []Module

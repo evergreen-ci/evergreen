@@ -517,7 +517,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 		return nil, nil, errors.New("version has no config")
 	}
 	p := &Project{}
-	// opts empty because project yaml that has include will hit this case
+	// opts empty because project yaml with `include` will not hit this case
 	opts := GetProjectOpts{}
 	ctx := context.Background()
 	pp, err = LoadProjectInto(ctx, []byte(v.Config), opts, id, p)
@@ -559,24 +559,23 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
-	if intermediateProject.Include != nil {
-		for _, path := range intermediateProject.Include {
-			opts.RemotePath = path.FileName
-			yaml, err := retrieveFile(ctx, opts)
-			if err != nil {
-				return nil, errors.Wrapf(err, LoadProjectError)
-			}
-			add, err := createIntermediateProject(yaml)
-			if err != nil {
-				return nil, errors.Wrapf(err, LoadProjectError)
-			}
-			err = intermediateProject.mergeMultipleProjectConfigs(add)
-			if err != nil {
-				return nil, errors.Wrapf(err, LoadProjectError)
-			}
+
+	for _, path := range intermediateProject.Include {
+		opts.RemotePath = path.FileName
+		yaml, err := retrieveFile(ctx, opts)
+		if err != nil {
+			return nil, errors.Wrapf(err, LoadProjectError)
 		}
-		intermediateProject.Include = nil
+		add, err := createIntermediateProject(yaml)
+		if err != nil {
+			return nil, errors.Wrapf(err, LoadProjectError)
+		}
+		err = intermediateProject.mergeMultipleProjectConfigs(add)
+		if err != nil {
+			return nil, errors.Wrapf(err, LoadProjectError)
+		}
 	}
+	intermediateProject.Include = nil
 
 	// return project even with errors
 	p, err := TranslateProject(intermediateProject)
@@ -599,11 +598,17 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get evergreen configuration")
 	}
-	ghToken, err := conf.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
+	if opts.Token == "" {
+		ghToken, err := conf.GetGithubOauthToken()
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
+		}
+		opts.Token = ghToken
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, ghToken, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+	if opts.Revision == "" && opts.Ref != nil {
+		opts.RemotePath = opts.Ref.RemotePath
+	}
+	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
 	}

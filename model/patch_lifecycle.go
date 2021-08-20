@@ -120,9 +120,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 
 	project := &Project{}
-	opts := GetProjectOpts{
-		Ref: projectRef,
-	}
+	opts := GetProjectOpts{}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
 		if _, err = LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
@@ -674,9 +672,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	project := &Project{}
-	opts := GetProjectOpts{
-		Ref: projectRef,
-	}
+	opts := GetProjectOpts{}
 	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedConfig), opts, existingPatch.Project, project); err != nil {
 		return nil, errors.Wrap(err, "problem loading project")
 	}
