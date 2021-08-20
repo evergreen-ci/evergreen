@@ -43,11 +43,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Wrap(err, "error getting service flags")
 		}
 		if flags.PluginAdminPageDisabled {
-			wh, ok := IsWebhookConfigured(projName, "")
-			if !ok {
-				return errors.Wrap(err, "error retrieving webook config")
-			}
-			webHook = wh
+			webHook, _ = IsWebhookConfigured(projName, "")
 		}
 		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
@@ -119,6 +115,9 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 	}, nil
 }
 
+// IsWebhookConfigured webhook will can be retrieved from project or admin config depending on PluginAdminPageDisabled flag
+// if deriving from project config, we first try to retrieve webhook config prom project parser config, otherwise we fallback to project page settings
+// version is needed to retrieve last good project config, if version is not available/empty when calling this function we must first retrieve it
 func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool) {
 	var webHook evergreen.WebHook
 	flags, err := evergreen.GetServiceFlags()
