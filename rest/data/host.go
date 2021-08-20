@@ -170,6 +170,8 @@ func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, u
 	return errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, user, "terminated via REST API"))
 }
 
+// DisableHost disables the host, notifies it's been disabled,
+// and clears and resets its running task.
 func (hc *DBHostConnector) DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
 	return units.HandlePoisonedHost(ctx, env, host, reason)
 }

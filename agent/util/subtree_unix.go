@@ -18,7 +18,7 @@ import (
 const (
 	cleanupCheckAttempts   = 10
 	cleanupCheckTimeoutMin = 100 * time.Millisecond
-	cleanupCheckTimeoutMax = 1 * time.Second
+	cleanupCheckTimeoutMax = time.Second
 	contextTimeout         = 10 * time.Second
 )
 
@@ -27,7 +27,7 @@ const (
 func TrackProcess(key string, pid int, logger grip.Journaler) {}
 
 // KillSpawnedProcs kills processes that descend from the agent and waits
-// for them to terminate
+// for them to terminate.
 func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.Journaler) error {
 	pidsToKill, err := getPIDsToKill(ctx, key, workingDir, logger)
 	if err != nil {
@@ -44,7 +44,10 @@ func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.J
 		}
 	}
 
-	pidsStillRunning := waitForExit(ctx, pidsToKill)
+	pidsStillRunning, err := waitForExit(ctx, pidsToKill)
+	if err != nil {
+		logger.Infof("Problem waiting for processes to exit: %s", err)
+	}
 	for _, pid := range pidsStillRunning {
 		logger.Infof("Failed to clean up process '%d'", pid)
 	}
@@ -113,10 +116,9 @@ func commandInWorkingDir(command, workingDir string) bool {
 // waitForExit is a best-effort attempt to wait for processes to exit.
 // Any processes still running when the context is cancelled or when we run
 // out of attempts will have their pids included in the returned slice.
-func waitForExit(ctx context.Context, pids []int) []int {
+func waitForExit(ctx context.Context, pids []int) ([]int, error) {
 	var unkilledPids []int
-	// Retry listing processes until all have successfully exited
-	_ = utility.Retry(
+	err := utility.Retry(
 		ctx,
 		func() (bool, error) {
 			unkilledPids = []int{}
@@ -139,7 +141,7 @@ func waitForExit(ctx context.Context, pids []int) []int {
 			MaxDelay:    cleanupCheckTimeoutMax,
 		})
 
-	return unkilledPids
+	return unkilledPids, err
 }
 
 type process struct {
@@ -188,7 +190,7 @@ func psWithArgs(ctx context.Context, args []string) ([]process, error) {
 }
 
 func parsePs(psOutput string) []process {
-	lines := strings.Split(string(psOutput), "\n")
+	lines := strings.Split(psOutput, "\n")
 	processes := make([]process, 0, len(lines))
 	for _, line := range lines {
 		if len(line) == 0 {

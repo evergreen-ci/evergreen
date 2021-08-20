@@ -40,7 +40,7 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 }
 
 func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, reason string) error {
-	if h.Status == evergreen.HostDecommissioned || h.Status == evergreen.HostTerminated {
+	if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		return nil
 	}
 

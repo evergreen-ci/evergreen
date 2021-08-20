@@ -42,7 +42,7 @@ func TestGetPIDsToKill(t *testing.T) {
 	require.NoError(t, inWorkingDirCmd.Start())
 	inWorkingDirPID := inWorkingDirCmd.Process.Pid
 
-	pids, err := getPIDsToKill(context.Background(), "", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
+	pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
 	require.NoError(t, err)
 	assert.Contains(t, pids, inEvergreenPID)
 	assert.Contains(t, pids, inWorkingDirPID)
@@ -64,16 +64,19 @@ func TestWaitForExit(t *testing.T) {
 
 	for testName, test := range map[string]func(*testing.T){
 		"non-existent process": func(t *testing.T) {
-			waitCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+			waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
-			require.Empty(t, waitForExit(waitCtx, []int{1234567890}))
+			pids, err := waitForExit(waitCtx, []int{1234567890})
+			assert.NoError(t, err)
+			assert.Empty(t, pids)
 		},
 		"long-running process": func(t *testing.T) {
 			longProcess := exec.CommandContext(ctx, "sleep", "10")
 			require.NoError(t, longProcess.Start())
 			waitCtx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
-			pids := waitForExit(waitCtx, []int{longProcess.Process.Pid})
+			pids, err := waitForExit(waitCtx, []int{longProcess.Process.Pid})
+			assert.NoError(t, err)
 			require.Len(t, pids, 1)
 			assert.Equal(t, longProcess.Process.Pid, pids[0])
 		},

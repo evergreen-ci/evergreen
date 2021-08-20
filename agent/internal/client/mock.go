@@ -390,7 +390,7 @@ func (c *Mock) SetHasCedarResults(ctx context.Context, td TaskData, failed bool)
 	return nil
 }
 
-// DisableHost signals to the app server that the host should be disabled
+// DisableHost signals to the app server that the host should be disabled.
 func (c *Mock) DisableHost(ctx context.Context, hostID string, info apimodels.DisableInfo) error {
 	return nil
 }
