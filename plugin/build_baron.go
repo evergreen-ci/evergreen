@@ -37,9 +37,17 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	}
 
 	for projName, proj := range bbpOptions.Projects {
-		webHook, ok := IsWebhookConfigured(projName, "")
-		if !ok {
-			return errors.Wrap(err, "error retrieving webook config")
+		webHook := proj.TaskAnnotationSettings.FileTicketWebHook
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.Wrap(err, "error getting service flags")
+		}
+		if flags.PluginAdminPageDisabled {
+			wh, ok := IsWebhookConfigured(projName, "")
+			if !ok {
+				return errors.Wrap(err, "error retrieving webook config")
+			}
+			webHook = wh
 		}
 		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
