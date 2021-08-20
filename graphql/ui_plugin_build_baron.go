@@ -12,16 +12,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/utility"
-	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -51,15 +49,12 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	queue := env.RemoteQueue()
-	bbProject, ok := BbGetProject(settings, t.Project)
+	bbProject, ok := plugin.BbGetProject(settings, t.Project)
 	if !ok {
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
 
-	webHook, ok := IsWebhookConfigured(t.Project)
-	if !ok {
-		return false, errors.Wrap(err, "error retrieving webhook config")
-	}
+	webHook, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
 	if webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
@@ -79,37 +74,6 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	}
 
 	return taskNotFound, nil
-}
-
-func IsWebhookConfigured(project string) (evergreen.WebHook, bool) {
-	var webHook evergreen.WebHook
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return evergreen.WebHook{}, false
-	}
-	if flags.PluginAdminPageDisabled {
-		parserProject, err := model.ParserProjectFindOneById(project)
-		if err != nil {
-			return evergreen.WebHook{}, false
-		}
-		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
-			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
-		} else {
-			projectRef, err := model.FindMergedProjectRef(project)
-			if err != nil || projectRef == nil {
-				return evergreen.WebHook{}, false
-			}
-			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
-		}
-	} else {
-		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
-		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
-	}
-	if webHook.Endpoint != "" {
-		return webHook, true
-	} else {
-		return evergreen.WebHook{}, false
-	}
 }
 
 // fileTicketCustomHook uses a custom hook to create a ticket for a task with the given test failures.
@@ -221,7 +185,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 		return nil, bbConfig, err
 	}
 	settings := evergreen.GetEnvironment().Settings()
-	bbProj, ok := BbGetProject(settings, t.Project)
+	bbProj, ok := plugin.BbGetProject(settings, t.Project)
 	if !ok {
 		// build baron project not found, meaning it's not configured for
 		// either regular build baron or for a custom ticket filing webhook
@@ -258,53 +222,6 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 		featuresURL = ""
 	}
 	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, bbConfig, nil
-}
-
-func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
-	bbconf, ok := settings.Plugins["buildbaron"]
-	if !ok {
-		return nil
-	}
-
-	projectConfig, ok := bbconf["projects"]
-	if !ok {
-		grip.Error("no build baron projects configured")
-		return nil
-	}
-
-	projects := map[string]evergreen.BuildBaronProject{}
-	err := mapstructure.Decode(projectConfig, &projects)
-	if err != nil {
-		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
-	}
-
-	return projects
-}
-
-func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
-	flags, err := evergreen.GetServiceFlags()
-	var bb evergreen.BuildBaronProject
-	if err != nil {
-		return bb, false
-	}
-	if flags.PluginAdminPageDisabled {
-		projectRef, err := model.FindOneProjectRef(projectId)
-		if err != nil {
-			return bb, false
-		}
-		return projectRef.BuildBaronProject, true
-	}
-
-	buildBaronProjects := BbGetConfig(settings)
-	bbProject, ok := buildBaronProjects[projectId]
-	if !ok {
-		// project may be stored under the identifier rather than the ID
-		identifier, err := model.GetIdentifierForProject(projectId)
-		if err == nil && identifier != "" {
-			bbProject, ok = buildBaronProjects[identifier]
-		}
-	}
-	return bbProject, ok
 }
 
 func BbGetTask(taskId string, executionString string) (*task.Task, error) {
