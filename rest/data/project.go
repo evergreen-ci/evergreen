@@ -84,6 +84,7 @@ func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 // related to the specified section. This handles project ref, webhooks, auth, and project variables.
 func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectRefSection, userId string) error {
+	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end
 	before, err := model.GetProjectSettingsById(projectId)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
@@ -141,7 +142,7 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 			return errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
 		}
 	}
-	// save project ref only after the rest of the section has been validated.
+
 	// How do we know here if ProjectRef should be nil or not? Or should we just pass in the project and update regardless of whether or not it's changed (like the API route?)
 	modifiedProjectRef, err := model.SaveProjectRefForSection(projectId, newProjectRef, section)
 	if err != nil {
