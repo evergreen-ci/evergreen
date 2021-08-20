@@ -144,7 +144,6 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 		modified = true
 	}
 
-	// How do we know here if ProjectRef should be nil or not? Or should we just pass in the project and update regardless of whether or not it's changed (like the API route?)
 	modifiedProjectRef, err := model.SaveProjectRefForSection(projectId, newProjectRef, section)
 	if err != nil {
 		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
