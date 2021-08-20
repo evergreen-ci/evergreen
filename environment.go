@@ -857,18 +857,6 @@ func (e *envState) SaveConfig() error {
 				}
 			}
 		}
-		if pluginName == "dashboard" {
-			for fieldName, field := range plugin {
-				if fieldName == "branches" {
-					var branches map[string][]string
-					err := mapstructure.Decode(field, &branches)
-					if err != nil {
-						return errors.Wrap(err, "problem decoding dashboard branches")
-					}
-					plugin[fieldName] = branches
-				}
-			}
-		}
 	}
 
 	return errors.WithStack(UpdateConfig(&copy))

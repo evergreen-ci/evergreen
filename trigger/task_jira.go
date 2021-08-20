@@ -187,14 +187,18 @@ func makeSummaryPrefix(t *task.Task, failed int) string {
 }
 
 func (j *jiraBuilder) build() (*message.JiraIssue, error) {
+	if err := j.data.Task.PopulateTestResults(); err != nil {
+		return nil, errors.Wrap(err, "populating test results")
+	}
+
 	j.data.SpecificTaskStatus = j.data.Task.GetDisplayStatus()
 	description, err := j.getDescription()
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating description")
+		return nil, errors.Wrap(err, "creating description")
 	}
 	summary, err := j.getSummary()
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating summary")
+		return nil, errors.Wrap(err, "creating summary")
 	}
 
 	fields := map[string]interface{}{}

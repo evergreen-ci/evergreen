@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewTerminatePodJob(t *testing.T) {
+func TestNewPodTerminationJob(t *testing.T) {
 	podID := "id"
 	reason := "reason"
-	j, ok := NewTerminatePodJob(podID, reason, utility.RoundPartOfMinute(0)).(*terminatePodJob)
+	j, ok := NewPodTerminationJob(podID, reason, utility.RoundPartOfMinute(0)).(*podTerminationJob)
 	require.True(t, ok)
 
 	assert.NotZero(t, j.ID())
@@ -27,9 +27,9 @@ func TestNewTerminatePodJob(t *testing.T) {
 	assert.Equal(t, podID, j.PodID)
 }
 
-func TestTerminatePodJob(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *terminatePodJob){
-		"TerminatesAndDeletesResourcesForRunningPod": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
+func TestPodTerminationJob(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podTerminationJob){
+		"TerminatesAndDeletesResourcesForRunningPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			require.NoError(t, j.pod.Insert())
 
 			j.Run(ctx)
@@ -46,7 +46,7 @@ func TestTerminatePodJob(t *testing.T) {
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
-		"SucceedsWithPodFromDB": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
+		"SucceedsWithPodFromDB": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			require.NoError(t, j.pod.Insert())
 			j.pod = nil
 			j.ecsPod = nil
@@ -65,7 +65,7 @@ func TestTerminatePodJob(t *testing.T) {
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
-		"FailsWhenDeletingResourcesErrors": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
+		"FailsWhenDeletingResourcesErrors": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			require.NoError(t, j.pod.Insert())
 			j.pod.Resources.ExternalID = utility.RandomString()
 			j.ecsPod = nil
@@ -78,7 +78,7 @@ func TestTerminatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.NotEqual(t, pod.StatusTerminated, dbPod.Status)
 		},
-		"FailsWhenPodStatusUpdateErrors": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
+		"FailsWhenPodStatusUpdateErrors": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			require.NoError(t, j.pod.Insert())
 			j.pod.Status = pod.StatusInitializing
 
@@ -90,7 +90,7 @@ func TestTerminatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.NotEqual(t, pod.StatusTerminated, j.pod.Status)
 		},
-		"TerminatesWithoutDeletingResourcesForInitializingPod": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
+		"TerminatesWithoutDeletingResourcesForInitializingPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusInitializing
 			require.NoError(t, j.pod.Insert())
 
@@ -102,7 +102,7 @@ func TestTerminatePodJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 		},
-		"NoopsforTerminatedPod": func(ctx context.Context, t *testing.T, j *terminatePodJob) {
+		"NoopsforTerminatedPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusTerminated
 			require.NoError(t, j.pod.Insert())
 
@@ -150,7 +150,7 @@ func TestTerminatePodJob(t *testing.T) {
 				},
 			}
 
-			j, ok := NewTerminatePodJob(p.ID, "reason", utility.RoundPartOfMinute(0)).(*terminatePodJob)
+			j, ok := NewPodTerminationJob(p.ID, "reason", utility.RoundPartOfMinute(0)).(*podTerminationJob)
 			require.True(t, ok)
 			j.pod = &p
 			j.smClient = &mock.SecretsManagerClient{}

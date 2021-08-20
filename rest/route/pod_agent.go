@@ -119,7 +119,7 @@ func (h *podAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
-	j := units.NewTerminatePodJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
+	j := units.NewPodTerminationJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
 	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

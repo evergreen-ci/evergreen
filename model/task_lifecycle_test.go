@@ -3194,7 +3194,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(task10.Insert())
 
 	// test that updating the status + activated from execution tasks works
-	assert.NoError(UpdateDisplayTask(&dt))
+	assert.NoError(UpdateDisplayTaskForTask(&task1))
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
@@ -3205,11 +3205,11 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.Equal(task2.StartTime, dbTask.StartTime)
 	assert.Equal(task4.FinishTime, dbTask.FinishTime)
 
-	// test that you can't update an execution task
-	assert.Error(UpdateDisplayTask(&task1))
+	// test that you can't update a display task
+	assert.Error(UpdateDisplayTaskForTask(&dt))
 
 	// test that a display task with a finished + unstarted task is "started"
-	assert.NoError(UpdateDisplayTask(&dt2))
+	assert.NoError(UpdateDisplayTaskForTask(&task5))
 	dbTask, err = task.FindOne(task.ById(dt2.Id))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
@@ -3224,7 +3224,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.Len(events, 0)
 
 	// a blocked execution task + unblocked unfinshed tasks should still be "started"
-	assert.NoError(UpdateDisplayTask(&blockedDt))
+	assert.NoError(UpdateDisplayTaskForTask(&task7))
 	dbTask, err = task.FindOne(task.ById(blockedDt.Id))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
@@ -3232,7 +3232,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 
 	// a blocked execution task should not contribute to the status
 	assert.NoError(task10.MarkFailed())
-	assert.NoError(UpdateDisplayTask(&blockedDt))
+	assert.NoError(UpdateDisplayTaskForTask(&task8))
 	dbTask, err = task.FindOne(task.ById(blockedDt.Id))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
@@ -3273,7 +3273,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 	assert.NoError(task2.Insert())
 
 	// test that updating the status + activated from execution tasks shows started
-	assert.NoError(UpdateDisplayTask(&dt))
+	assert.NoError(UpdateDisplayTaskForTask(&task1))
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
@@ -3404,7 +3404,7 @@ func TestDisplayTaskFailedExecTasks(t *testing.T) {
 	execTask1 := task.Task{Id: "exec1", Status: evergreen.TaskUndispatched}
 	assert.NoError(execTask1.Insert())
 
-	assert.NoError(UpdateDisplayTask(&dt))
+	assert.NoError(UpdateDisplayTaskForTask(&execTask0))
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
@@ -3436,7 +3436,7 @@ func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 	execTask1 := task.Task{Id: "exec1", Activated: true, Status: evergreen.TaskSucceeded}
 	assert.NoError(execTask1.Insert())
 
-	assert.NoError(UpdateDisplayTask(&dt))
+	assert.NoError(UpdateDisplayTaskForTask(&execTask0))
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)

@@ -31,9 +31,11 @@ const (
 
 	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
+
+	ecsTaskStateChangeType = "ECS Task State Change"
 )
 
-type awsSns struct {
+type baseSNS struct {
 	sc    data.Connector
 	queue amboy.Queue
 	env   evergreen.Environment
@@ -42,38 +44,30 @@ type awsSns struct {
 	payload     sns.Payload
 }
 
-func makeAwsSnsRoute(sc data.Connector, env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
-	return &awsSns{
+func makeBaseSNS(sc data.Connector, env evergreen.Environment, queue amboy.Queue) baseSNS {
+	return baseSNS{
 		sc:    sc,
 		env:   env,
 		queue: queue,
 	}
 }
 
-func (aws *awsSns) Factory() gimlet.RouteHandler {
-	return &awsSns{
-		sc:    aws.sc,
-		env:   aws.env,
-		queue: aws.queue,
-	}
-}
-
-func (aws *awsSns) Parse(ctx context.Context, r *http.Request) error {
-	aws.messageType = r.Header.Get("x-amz-sns-message-type")
+func (sns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
+	sns.messageType = r.Header.Get("x-amz-sns-message-type")
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return errors.Wrap(err, "problem reading body")
 	}
-	if err = json.Unmarshal(body, &aws.payload); err != nil {
+	if err = json.Unmarshal(body, &sns.payload); err != nil {
 		return errors.Wrap(err, "problem unmarshalling payload")
 	}
 
-	if err = aws.payload.VerifyPayload(); err != nil {
+	if err = sns.payload.VerifyPayload(); err != nil {
 		msg := "AWS SNS message failed validation"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": msg,
-			"payload": aws.payload,
+			"payload": sns.payload,
 		}))
 		return errors.Wrap(err, msg)
 	}
@@ -81,55 +75,73 @@ func (aws *awsSns) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (aws *awsSns) Run(ctx context.Context) gimlet.Responder {
-	// Subscription/Unsubscription is a rare action that we will handle manually and will be logged to splunk given the logging level.
-	switch aws.messageType {
+type ec2SNS struct {
+	baseSNS
+}
+
+func makeEC2SNS(sc data.Connector, env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
+	return &ec2SNS{
+		baseSNS: makeBaseSNS(sc, env, queue),
+	}
+}
+
+func (sns *ec2SNS) Factory() gimlet.RouteHandler {
+	return &ec2SNS{
+		baseSNS: makeBaseSNS(sns.sc, sns.env, sns.queue),
+	}
+}
+
+func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
+	// Subscription/Unsubscription is a rare action that we will handle manually
+	// and will be logged to splunk given the logging level.
+	switch sns.messageType {
 	case messageTypeSubscriptionConfirmation:
 		grip.Alert(message.Fields{
 			"message":       "got AWS SNS subscription confirmation. Visit subscribe_url to confirm",
-			"subscribe_url": aws.payload.SubscribeURL,
-			"topic_arn":     aws.payload.TopicArn,
+			"subscribe_url": sns.payload.SubscribeURL,
+			"topic_arn":     sns.payload.TopicArn,
 		})
 	case messageTypeUnsubscribeConfirmation:
 		grip.Alert(message.Fields{
 			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
-			"unsubscribe_url": aws.payload.SubscribeURL,
-			"topic_arn":       aws.payload.TopicArn,
+			"unsubscribe_url": sns.payload.UnsubscribeURL,
+			"topic_arn":       sns.payload.TopicArn,
 		})
 	case messageTypeNotification:
-		if err := aws.handleNotification(ctx); err != nil {
+		if err := sns.handleNotification(ctx); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":      "problem handling SNS notification",
-				"notification": aws.payload.Message,
+				"notification": sns.payload.Message,
 			}))
 			return gimlet.NewJSONResponse(err)
 		}
 	default:
 		grip.Error(message.Fields{
 			"message":         "got an unknown message type",
-			"type":            aws.messageType,
-			"payload_subject": aws.payload.Subject,
-			"payload_message": aws.payload.Message,
-			"payload_topic":   aws.payload.TopicArn,
+			"type":            sns.messageType,
+			"payload_subject": sns.payload.Subject,
+			"payload_message": sns.payload.Message,
+			"payload_topic":   sns.payload.TopicArn,
 		})
-		return gimlet.NewTextErrorResponse(fmt.Sprintf("message type '%s' is not recognized", aws.messageType))
+		return gimlet.NewTextErrorResponse(fmt.Sprintf("message type '%s' is not recognized", sns.messageType))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-type eventBridgeNotification struct {
-	DetailType string      `json:"detail-type"`
-	Detail     eventDetail `json:"detail"`
+type ec2EventBridgeNotification struct {
+	DetailType string         `json:"detail-type"`
+	Detail     ec2EventDetail `json:"detail"`
 }
-type eventDetail struct {
+
+type ec2EventDetail struct {
 	InstanceID string `json:"instance-id"`
 	State      string `json:"state"`
 }
 
-func (aws *awsSns) handleNotification(ctx context.Context) error {
-	notification := &eventBridgeNotification{}
-	if err := json.Unmarshal([]byte(aws.payload.Message), notification); err != nil {
+func (sns *ec2SNS) handleNotification(ctx context.Context) error {
+	notification := &ec2EventBridgeNotification{}
+	if err := json.Unmarshal([]byte(sns.payload.Message), notification); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    errors.Wrap(err, "problem unmarshalling notification").Error(),
@@ -138,31 +150,29 @@ func (aws *awsSns) handleNotification(ctx context.Context) error {
 
 	switch notification.DetailType {
 	case interruptionWarningType:
-		if err := aws.handleInstanceInterruptionWarning(ctx, notification.Detail.InstanceID); err != nil {
+		if err := sns.handleInstanceInterruptionWarning(ctx, notification.Detail.InstanceID); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrap(err, "problem processing interruption warning").Error(),
 			}
 		}
-
 	case instanceStateChangeType:
 		switch notification.Detail.State {
 		case ec2.InstanceStateNameTerminated:
-			if err := aws.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
+			if err := sns.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "problem processing instance termination").Error(),
 				}
 			}
 		case ec2.InstanceStateNameStopped, ec2.InstanceStateNameStopping:
-			if err := aws.handleInstanceStopped(ctx, notification.Detail.InstanceID); err != nil {
+			if err := sns.handleInstanceStopped(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "problem processing stopped instance").Error(),
 				}
 			}
 		}
-
 	default:
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -173,8 +183,8 @@ func (aws *awsSns) handleNotification(ctx context.Context) error {
 	return nil
 }
 
-func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
-	h, err := aws.sc.FindHostById(instanceID)
+func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
+	h, err := sns.sc.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}
@@ -212,13 +222,13 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 		return nil
 	}
 
-	if skipEarlyTermination(h) {
+	if sns.skipEarlyTermination(h) {
 		return nil
 	}
 
 	// return success on duplicate job errors so AWS won't keep retrying
-	terminationJob := units.NewHostTerminationJob(aws.env, h, true, "got interruption warning")
-	if err := amboy.EnqueueUniqueJob(ctx, aws.queue, terminationJob); err != nil {
+	terminationJob := units.NewHostTerminationJob(sns.env, h, true, "got interruption warning")
+	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, terminationJob); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":          "could not enqueue host termination job",
 			"host_id":          h.Id,
@@ -231,7 +241,7 @@ func (aws *awsSns) handleInstanceInterruptionWarning(ctx context.Context, instan
 
 // skipEarlyTermination decides if we should terminate the instance now or wait for AWS to do it.
 // See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html#billing-for-interrupted-spot-instances
-func skipEarlyTermination(h *host.Host) bool {
+func (sns *ec2SNS) skipEarlyTermination(h *host.Host) bool {
 	// Let AWS terminate if we're within the first hour
 	if utility.IsZeroTime(h.StartTime) || time.Now().Sub(h.StartTime) < time.Hour {
 		return true
@@ -245,8 +255,8 @@ func skipEarlyTermination(h *host.Host) bool {
 	return false
 }
 
-func (aws *awsSns) handleInstanceTerminated(ctx context.Context, instanceID string) error {
-	h, err := aws.sc.FindHostById(instanceID)
+func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {
+	h, err := sns.sc.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}
@@ -259,7 +269,7 @@ func (aws *awsSns) handleInstanceTerminated(ctx context.Context, instanceID stri
 		return nil
 	}
 
-	if err := amboy.EnqueueUniqueJob(ctx, aws.queue, units.NewHostMonitorExternalStateJob(aws.env, h, aws.payload.MessageId)); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitorExternalStateJob(sns.env, h, sns.payload.MessageId)); err != nil {
 		return err
 	}
 
@@ -269,8 +279,8 @@ func (aws *awsSns) handleInstanceTerminated(ctx context.Context, instanceID stri
 // handleInstanceStopped handles an agent host when AWS reports that it is
 // stopped. Agent hosts that are stopped externally are treated the same as an
 // externally-terminated host.
-func (aws *awsSns) handleInstanceStopped(ctx context.Context, instanceID string) error {
-	h, err := aws.sc.FindHostById(instanceID)
+func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string) error {
+	h, err := sns.sc.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}
@@ -292,9 +302,86 @@ func (aws *awsSns) handleInstanceStopped(ctx context.Context, instanceID string)
 		return nil
 	}
 
-	if err := amboy.EnqueueUniqueJob(ctx, aws.queue, units.NewHostMonitorExternalStateJob(aws.env, h, aws.payload.MessageId)); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitorExternalStateJob(sns.env, h, sns.payload.MessageId)); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+type ecsSNS struct {
+	baseSNS
+}
+
+type ecsEventBridgeNotification struct {
+	DetailType string         `json:"detail-type"`
+	Detail     ecsEventDetail `json:"detail"`
+}
+
+type ecsEventDetail struct {
+	TaskARN    string `json:"taskArn"`
+	LastStatus string `json:"lastStatus"`
+}
+
+func makeECSSNS(sc data.Connector, env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
+	return &ecsSNS{
+		baseSNS: makeBaseSNS(sc, env, queue),
+	}
+}
+
+func (sns *ecsSNS) Factory() gimlet.RouteHandler {
+	return &ecsSNS{
+		baseSNS: makeBaseSNS(sns.sc, sns.env, sns.queue),
+	}
+}
+
+func (sns *ecsSNS) Run(ctx context.Context) gimlet.Responder {
+	// Subscription/Unsubscription is a rare action that we will handle manually
+	// and will be logged to splunk given the logging level.
+	switch sns.messageType {
+	case messageTypeSubscriptionConfirmation:
+		grip.Alert(message.Fields{
+			"message":       "got AWS SNS subscription confirmation. Visit subscribe_url to confirm",
+			"subscribe_url": sns.payload.SubscribeURL,
+			"topic_arn":     sns.payload.TopicArn,
+		})
+	case messageTypeUnsubscribeConfirmation:
+		grip.Alert(message.Fields{
+			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
+			"unsubscribe_url": sns.payload.UnsubscribeURL,
+			"topic_arn":       sns.payload.TopicArn,
+		})
+	case messageTypeNotification:
+		// TODO (EVG-14811): handle SNS notification for ECS task state change
+		// and remove this debug log.
+		grip.Info(message.Fields{
+			"message":      "received ECS SNS notification",
+			"message_id":   sns.payload.MessageId,
+			"message_type": sns.payload.Type,
+			"topic":        sns.payload.TopicArn,
+		})
+	default:
+		grip.Error(message.Fields{
+			"message":         "got an unknown message type",
+			"type":            sns.messageType,
+			"payload_subject": sns.payload.Subject,
+			"payload_message": sns.payload.Message,
+			"payload_topic":   sns.payload.TopicArn,
+		})
+		return gimlet.NewTextErrorResponse(fmt.Sprintf("message type '%s' is not recognized", sns.messageType))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// TODO (EVG-14811): handle SNS notification for ECS task state change.
+func (sns *ecsSNS) handleNotification(ctx context.Context) error {
+	notification := &ecsEventBridgeNotification{}
+	if err := json.Unmarshal([]byte(sns.payload.Message), notification); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "unmarshalling notification").Error(),
+		}
+	}
 	return nil
 }

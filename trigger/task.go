@@ -84,12 +84,12 @@ func taskFinishedTwoOrMoreDaysAgo(taskID string, sub *event.Subscription) (bool,
 	if renotify == "" || err != nil || !found {
 		renotifyInterval = 48
 	}
-	t, err := task.FindOneNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
+	t, err := task.FindOne(task.ById(taskID).WithFields(task.FinishTimeKey))
 	if err != nil {
 		return false, errors.Wrapf(err, "error finding task '%s'", taskID)
 	}
 	if t == nil {
-		t, err = task.FindOneOldNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
+		t, err = task.FindOneOld(task.ById(taskID).WithFields(task.FinishTimeKey))
 		if err != nil {
 			return false, errors.Wrapf(err, "error finding old task '%s'", taskID)
 		}
@@ -159,7 +159,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 
-	t.task, err = task.FindOneIdOldOrNewNoMerge(e.ResourceId, t.data.Execution)
+	t.task, err = task.FindOneIdOldOrNew(e.ResourceId, t.data.Execution)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch task")
 	}
@@ -576,7 +576,7 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 		return false, nil, nil
 	}
 
-	previousTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
 		evergreen.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
@@ -812,16 +812,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	if t.task.DisplayOnly {
-		results, err := t.task.GetTestResultsForDisplayTask()
-		if err != nil {
-			return nil, errors.Wrap(err, "getting test results for display task")
-		}
-		t.task.LocalTestResults = results
-	} else {
-		if err := t.task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "getting test results for task")
-		}
+	if err := t.task.PopulateTestResults(); err != nil {
+		return nil, errors.Wrap(err, "populating test results for task")
 	}
 
 	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
@@ -836,25 +828,16 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	catcher := grip.NewBasicCatcher()
-	previousCompleteTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
 		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}
 	if previousCompleteTask != nil {
-		if previousCompleteTask.DisplayOnly {
-			var results []task.TestResult
-			results, err = previousCompleteTask.GetTestResultsForDisplayTask()
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get test results for previous display task '%s'", previousCompleteTask.Id)
-			}
-			t.oldTestResults = mapTestResultsByTestFile(results)
-		} else {
-			if err = previousCompleteTask.MergeNewTestResults(); err != nil {
-				return nil, errors.Wrapf(err, "can't get test results for previous task '%s'", previousCompleteTask.Id)
-			}
-			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
+		if err = previousCompleteTask.PopulateTestResults(); err != nil {
+			return nil, errors.Wrapf(err, "populating test results for previous task '%s'", previousCompleteTask.Id)
 		}
+		t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
 	}
 
 	testsToAlert := []task.TestResult{}
@@ -974,7 +957,10 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		TaskDisplayName: t.DisplayName,
 	}
 	if t.IsPartOfDisplay() {
-		data.TaskDisplayName = t.DisplayTask.DisplayName
+		dt, _ := t.GetDisplayTask()
+		if dt != nil {
+			data.TaskDisplayName = dt.DisplayName
+		}
 	}
 
 	builder := jiraBuilder{
@@ -1044,7 +1030,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 	if t.task.TriggerID != "" && sub.Owner != "" { // don't notify committer for a triggered build
 		return nil, nil
 	}
-	previousTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
 		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")

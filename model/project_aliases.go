@@ -84,8 +84,9 @@ func FindAliasesForProject(projectID string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
-// FindAliasInProject finds all aliases with a given name for a project.
-func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
+// findAliasInProject finds all aliases with a given name for a project.
+// Typically FindAliasInProjectOrRepo should be used.
+func findAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
@@ -101,7 +102,7 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 // FindAliasInProjectOrRepo finds all aliases with a given name for a project.
 // If the project has no aliases, the repo is checked for aliases.
 func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
-	aliases, err := FindAliasInProject(projectID, alias)
+	aliases, err := findAliasInProject(projectID, alias)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "error finding aliases for project '%s'", projectID)
 	}
@@ -120,7 +121,7 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 		return aliases, nil
 	}
 
-	aliases, err = FindAliasInProject(project.RepoRefId, alias)
+	aliases, err = findAliasInProject(project.RepoRefId, alias)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "error finding aliases for repo '%s'", project.RepoRefId)
 	}

@@ -4,12 +4,16 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -18,21 +22,22 @@ import (
 // POST /rest/v2/pods
 
 type podPostHandler struct {
-	sc data.Connector
-	p  model.APICreatePod
+	env evergreen.Environment
+	sc  data.Connector
+	p   model.APICreatePod
 }
 
-func makePostPod(sc data.Connector) gimlet.RouteHandler {
+func makePostPod(env evergreen.Environment, sc data.Connector) gimlet.RouteHandler {
 	return &podPostHandler{
-		sc: sc,
-		p:  model.APICreatePod{},
+		env: env,
+		sc:  sc,
 	}
 }
 
 func (h *podPostHandler) Factory() gimlet.RouteHandler {
 	return &podPostHandler{
-		sc: h.sc,
-		p:  model.APICreatePod{},
+		env: h.env,
+		sc:  h.sc,
 	}
 }
 
@@ -75,6 +80,16 @@ func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 	responder, err := gimlet.NewBasicResponder(http.StatusCreated, gimlet.JSON, res)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "constructing response"))
+	}
+
+	j := units.NewPodCreationJob(res.ID, utility.RoundPartOfMinute(0).Format(units.TSFormat))
+	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not enqueue Amboy job to create pod",
+			"pod_id":  res.ID,
+			"job_id":  j.ID(),
+			"route":   "/rest/v2/pods",
+		}))
 	}
 
 	return responder

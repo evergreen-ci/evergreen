@@ -443,7 +443,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, false, nil
 		}
 
-		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
+		nextTask, err := task.FindOne(task.ById(queueItem.Id))
 		if err != nil {
 			grip.DebugWhen(queueItem.Group != "", message.Fields{
 				"message":            "error retrieving next task",

@@ -903,7 +903,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 
 	// Should fetch tasks from the old collection
 	assert.NoError(taskDoc.Archive())
-	task, err = FindOneOldNoMergeByIdAndExecution(taskDoc.Id, 0)
+	task, err = FindOneOldByIdAndExecution(taskDoc.Id, 0)
 	assert.NoError(err)
 	assert.NotNil(task)
 	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
@@ -1112,17 +1112,15 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	require.NotNil(task00)
 	assert.Equal("task_0", task00.Id)
 	assert.Equal(0, task00.Execution)
-	assert.Len(task00.LocalTestResults, 1)
 
 	task01, err := FindOneIdOldOrNew("task", 1)
 	assert.NoError(err)
 	require.NotNil(task01)
 	assert.Equal("task", task01.Id)
 	assert.Equal(1, task01.Execution)
-	assert.Len(task01.LocalTestResults, 1)
 }
 
-func TestGetTestResultsForDisplayTask(t *testing.T) {
+func TestPopulateTestResultsForDisplayTask(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, testresult.Collection))
 	dt := Task{
@@ -1136,10 +1134,9 @@ func TestGetTestResultsForDisplayTask(t *testing.T) {
 		TestFile: "myTest",
 	}
 	assert.NoError(test.Insert())
-	results, err := dt.GetTestResultsForDisplayTask()
-	assert.NoError(err)
-	assert.Len(results, 1)
-	assert.Equal("myTest", results[0].TestFile)
+	require.NoError(t, dt.populateTestResultsForDisplayTask())
+	require.Len(t, dt.LocalTestResults, 1)
+	assert.Equal("myTest", dt.LocalTestResults[0].TestFile)
 }
 
 func TestBlocked(t *testing.T) {
@@ -2642,4 +2639,45 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et4")
 	assert.True(t, dtFromDB.Activated)
 	assert.False(t, utility.IsZeroTime(dtFromDB.ActivatedTime))
+}
+
+func TestGetTasksByVersionExecTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	// test that we can handle the different kinds of tasks
+	t1 := Task{
+		Id:            "execWithDisplayId",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr("displayTask"),
+	}
+	t2 := Task{
+		Id:            "notAnExec",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr(""),
+	}
+
+	t3 := Task{
+		Id:      "execWithNoId",
+		Version: "v1",
+	}
+	t4 := Task{
+		Id:      "notAnExecWithNoId",
+		Version: "v1",
+	}
+	dt := Task{
+		Id:             "displayTask",
+		Version:        "v1",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"execWithDisplayId", "execWithNoId"},
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, dt))
+
+	// execution tasks have been filtered outs
+	opts := GetTasksByVersionOptions{}
+	tasks, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 3)
+	// alphabetical order
+	assert.Equal(t, dt.Id, tasks[0].Id)
+	assert.Equal(t, t2.Id, tasks[1].Id)
+	assert.Equal(t, t4.Id, tasks[2].Id)
 }

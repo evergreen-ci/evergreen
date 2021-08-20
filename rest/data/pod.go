@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -16,19 +17,21 @@ type DBPodConnector struct{}
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
 func (c *DBPodConnector) CreatePod(p model.APICreatePod) (*model.APICreatePodResponse, error) {
-	podDB, err := translatePod(p)
+	dbPod, err := translatePod(p)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := podDB.Insert(); err != nil {
+	addAgentPodSettings(dbPod)
+
+	if err := dbPod.Insert(); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("pod with id '%s' was not inserted", podDB.ID),
+			Message:    fmt.Sprintf("pod with id '%s' was not inserted", dbPod.ID),
 		}
 	}
 
-	return &model.APICreatePodResponse{ID: podDB.ID}, nil
+	return &model.APICreatePodResponse{ID: dbPod.ID}, nil
 }
 
 // CheckPodSecret checks for a pod with a matching ID and secret in the
@@ -90,14 +93,16 @@ type MockPodConnector struct {
 }
 
 func (c *MockPodConnector) CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
-	podDB, err := translatePod(apiPod)
+	dbPod, err := translatePod(apiPod)
 	if err != nil {
 		return nil, err
 	}
 
-	c.CachedPods = append(c.CachedPods, *podDB)
+	addAgentPodSettings(dbPod)
 
-	return &model.APICreatePodResponse{ID: podDB.ID}, nil
+	c.CachedPods = append(c.CachedPods, *dbPod)
+
+	return &model.APICreatePodResponse{ID: dbPod.ID}, nil
 }
 
 // CheckPodSecret checks the cache for a matching pod by ID and verifies that
@@ -114,6 +119,7 @@ func (c *MockPodConnector) CheckPodSecret(id, secret string) error {
 	return errors.New("pod does not exist")
 }
 
+// translatePod translates a pod creation request into its data model.
 func translatePod(p model.APICreatePod) (*pod.Pod, error) {
 	i, err := p.ToService()
 	if err != nil {
@@ -123,7 +129,7 @@ func translatePod(p model.APICreatePod) (*pod.Pod, error) {
 		}
 	}
 
-	podDB, ok := i.(pod.Pod)
+	dbPod, ok := i.(pod.Pod)
 	if !ok {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -131,7 +137,23 @@ func translatePod(p model.APICreatePod) (*pod.Pod, error) {
 		}
 	}
 
-	return &podDB, nil
+	return &dbPod, nil
+}
+
+// addAgentPodSettings adds any pod configuration that is necessary to run the
+// agent.
+func addAgentPodSettings(p *pod.Pod) {
+	if p.Secret == "" {
+		p.Secret = utility.RandomString()
+	}
+	if p.TaskContainerCreationOpts.EnvSecrets == nil {
+		p.TaskContainerCreationOpts.EnvSecrets = map[string]string{}
+	}
+	p.TaskContainerCreationOpts.EnvSecrets["POD_SECRET"] = p.Secret
+	if p.TaskContainerCreationOpts.EnvVars == nil {
+		p.TaskContainerCreationOpts.EnvVars = map[string]string{}
+	}
+	p.TaskContainerCreationOpts.EnvVars["POD_ID"] = p.ID
 }
 
 // FindPodByID checks the cache for a matching pod by ID.

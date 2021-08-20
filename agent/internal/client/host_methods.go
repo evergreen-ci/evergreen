@@ -888,8 +888,11 @@ func (c *hostCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 		version:  apiVersion2,
 	}
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
-	_, err := c.retryRequest(ctx, info, jsonBytes)
-	return errors.Wrap(err, "problem sending `generate.tasks` request")
+	resp, err := c.retryRequest(ctx, info, jsonBytes)
+	if err != nil {
+		return utility.RespErrorf(resp, "problem sending `generate.tasks` request: %s", err.Error())
+	}
+	return nil
 }
 
 // GenerateTasksPoll posts new tasks for the `generate.tasks` command.

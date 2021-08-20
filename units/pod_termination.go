@@ -18,15 +18,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-const terminatePodJobName = "terminate-pod"
+const podTerminationJobName = "pod-termination"
 
 func init() {
-	registry.AddJobType(terminatePodJobName, func() amboy.Job {
-		return makeTerminatePodJob()
+	registry.AddJobType(podTerminationJobName, func() amboy.Job {
+		return makePodTerminationJob()
 	})
 }
 
-type terminatePodJob struct {
+type podTerminationJob struct {
 	job.Base `bson:"metadata" json:"metadata"`
 	PodID    string `bson:"pod_id" json:"pod_id"`
 	Reason   string `bson:"reason,omitempty" json:"reason,omitempty"`
@@ -45,11 +45,11 @@ func podLifecycleScope(id string) string {
 	return fmt.Sprintf("pod-lifecycle.%s", id)
 }
 
-func makeTerminatePodJob() *terminatePodJob {
-	j := &terminatePodJob{
+func makePodTerminationJob() *podTerminationJob {
+	j := &podTerminationJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    terminatePodJobName,
+				Name:    podTerminationJobName,
 				Version: 0,
 			},
 		},
@@ -58,21 +58,21 @@ func makeTerminatePodJob() *terminatePodJob {
 	return j
 }
 
-// NewTerminatePodJob creates a job to terminate the given pod with the given
+// NewPodTerminationJob creates a job to terminate the given pod with the given
 // termination reason. Callers should populate the reason with as much context
 // as possible for why the pod is being terminated.
-func NewTerminatePodJob(podID, reason string, ts time.Time) amboy.Job {
-	j := makeTerminatePodJob()
+func NewPodTerminationJob(podID, reason string, ts time.Time) amboy.Job {
+	j := makePodTerminationJob()
 	j.PodID = podID
 	j.Reason = reason
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", terminatePodJobName, podID), podLifecycleScope(podID)})
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", podTerminationJobName, podID), podLifecycleScope(podID)})
 	j.SetShouldApplyScopesOnEnqueue(true)
-	j.SetID(fmt.Sprintf("%s.%s.%s", terminatePodJobName, podID, ts.Format(TSFormat)))
+	j.SetID(fmt.Sprintf("%s.%s.%s", podTerminationJobName, podID, ts.Format(TSFormat)))
 
 	return j
 }
 
-func (j *terminatePodJob) Run(ctx context.Context) {
+func (j *podTerminationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
@@ -124,7 +124,7 @@ func (j *terminatePodJob) Run(ctx context.Context) {
 	})
 }
 
-func (j *terminatePodJob) populateIfUnset(ctx context.Context) error {
+func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}

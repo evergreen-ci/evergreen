@@ -79,7 +79,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 								return nil, errors.Wrap(err, "error signing urls")
 							}
 							var execTask *task.Task
-							execTask, err = task.FindOne(task.ById(execTaskID))
+							execTask, err = task.FindOneId(execTaskID)
 							if err != nil {
 								return nil, err
 							}
