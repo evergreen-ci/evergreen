@@ -225,8 +225,8 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 		})
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
+				"message":    "error iterating over hourly stats",
 				"project_id": c.ProjectID,
-				"job_time":   c.JobTime,
 			}))
 		}
 	}
@@ -240,8 +240,8 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 		})
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
+				"message":    "serror iterating over daily stats",
 				"project_id": c.ProjectID,
-				"job_time":   c.JobTime,
 			}))
 		}
 	}
