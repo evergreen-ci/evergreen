@@ -42,7 +42,9 @@ func Evaluate() cli.Command {
 
 			p := &model.Project{}
 			ctx := context.Background()
-			opts := model.GetProjectOpts{}
+			opts := model.GetProjectOpts{
+				Type: model.LocalOpts,
+			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
 				return errors.Wrap(err, "error loading project")

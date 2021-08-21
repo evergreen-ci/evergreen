@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"strings"
 	"time"
@@ -558,6 +559,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
+	catcher := grip.NewBasicCatcher()
 	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
@@ -567,15 +569,18 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 		opts.RemotePath = path.FileName
 		yaml, err := retrieveFile(ctx, opts)
 		if err != nil {
-			return nil, errors.Wrapf(err, LoadProjectError)
+			catcher.Wrapf(err, LoadProjectError)
+			break
 		}
 		add, err := createIntermediateProject(yaml)
 		if err != nil {
-			return nil, errors.Wrapf(err, LoadProjectError)
+			catcher.Wrapf(err, LoadProjectError)
+			break
 		}
 		err = intermediateProject.mergeMultipleProjectConfigs(add)
 		if err != nil {
-			return nil, errors.Wrapf(err, LoadProjectError)
+			catcher.Wrapf(err, LoadProjectError)
+			break
 		}
 	}
 	intermediateProject.Include = nil
@@ -585,43 +590,58 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 	if p != nil {
 		*project = *p
 	}
+	catcher.Wrapf(err, LoadProjectError)
 	project.Identifier = identifier
-	return intermediateProject, errors.Wrap(err, LoadProjectError)
+	return intermediateProject, catcher.Resolve()
 }
+
+const (
+	MainlineOpts = "mainline"
+	PatchOpts    = "patch"
+	LocalOpts    = "local"
+)
 
 type GetProjectOpts struct {
 	Ref        *ProjectRef
 	RemotePath string
 	Revision   string
 	Token      string
+	Type       string
 }
 
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
 	}
-	if opts.Token == "" {
-		conf, err := evergreen.GetConfig()
+	switch opts.Type {
+	case LocalOpts:
+		fileContents, err := ioutil.ReadFile(opts.RemotePath)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get evergreen configuration")
+			return nil, errors.Wrap(err, "error reading project config")
 		}
-		ghToken, err := conf.GetGithubOauthToken()
+		return fileContents, nil
+	default:
+		if opts.Token == "" {
+			conf, err := evergreen.GetConfig()
+			if err != nil {
+				return nil, errors.Wrap(err, "can't get evergreen configuration")
+			}
+			ghToken, err := conf.GetGithubOauthToken()
+			if err != nil {
+				return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
+			}
+			opts.Token = ghToken
+		}
+		configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
+			return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
 		}
-		opts.Token = ghToken
+		fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
+		}
+		return fileContents, nil
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
-	}
-
-	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
-	}
-
-	return fileContents, nil
 }
 
 func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
