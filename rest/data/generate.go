@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
@@ -21,9 +22,9 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 		return errors.Errorf("could not find task %s", taskID)
 	}
 
-	// If a generator has already run, noop.
+	// Don't continue if the generator has already run
 	if t.GeneratedTasks {
-		return nil
+		return errors.New(evergreen.TasksAlreadyGeneratedError)
 	}
 
 	if err = t.SetGeneratedJSON(jsonBytes); err != nil {

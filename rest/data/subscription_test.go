@@ -81,15 +81,15 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, subs []restModel.APISubscription){
 		"InvalidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
 			subs[0].RegexSelectors[0].Data = utility.ToStringPtr("")
-			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}))
+			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
 		},
 		"ValidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			assert.NoError(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}))
+			assert.NoError(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
 		},
 		"ModifyExistingSubscription": func(t *testing.T, subs []restModel.APISubscription) {
 			newData := utility.ToStringPtr("5678")
 			subs[1].Selectors[0].Data = newData
-			assert.NoError(t, c.SaveSubscriptions("my-project", []restModel.APISubscription{subs[1]}))
+			assert.NoError(t, c.SaveSubscriptions("my-project", []restModel.APISubscription{subs[1]}, true))
 
 			dbSubs, err := c.GetSubscriptions("my-project", event.OwnerTypeProject)
 			assert.NoError(t, err)

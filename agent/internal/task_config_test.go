@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -71,7 +72,9 @@ task_groups:
   - example_task_2
 `
 	p := &model.Project{}
-	_, err := model.LoadProjectInto([]byte(projYml), "", p)
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), opts, "", p)
 	require.NoError(t, err)
 	v := model.Version{
 		Id:     "v1",

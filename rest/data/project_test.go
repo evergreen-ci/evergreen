@@ -1,13 +1,17 @@
 package data
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,8 +37,8 @@ const (
 	projEventCount = 10
 )
 
-func getMockProjectSettings() model.ProjectSettingsEvent {
-	return model.ProjectSettingsEvent{
+func getMockProjectSettings() model.ProjectSettings {
+	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
 			Enabled: utility.TruePtr(),
@@ -348,7 +352,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 	s.NotNil(projRef)
 }
 
-func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
+func (s *ProjectConnectorGetSuite) TestGetProjectSettings() {
 	projRef := &model.ProjectRef{
 		Owner:   "admin",
 		Enabled: utility.TruePtr(),
@@ -357,12 +361,12 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
 		Admins:  []string{},
 		Repo:    "SomeRepo",
 	}
-	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
+	projectSettingsEvent, err := s.ctx.GetProjectSettings(projRef)
 	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
 }
 
-func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
+func (s *ProjectConnectorGetSuite) TestGetProjectSettingsNoRepo() {
 	projRef := &model.ProjectRef{
 		Owner:   "admin",
 		Enabled: utility.TruePtr(),
@@ -370,7 +374,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
 		Id:      projectId,
 		Admins:  []string{},
 	}
-	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
+	projectSettingsEvent, err := s.ctx.GetProjectSettings(projRef)
 	s.NotNil(err)
 	s.Nil(projectSettingsEvent)
 }
@@ -536,4 +540,164 @@ func TestGetProjectAliasResults(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 2)
+}
+
+func TestSaveProjectSettingsForSection(t *testing.T) {
+	dc := &DBProjectConnector{}
+	ctx := context.Background()
+	rm := evergreen.GetEnvironment().RoleManager()
+
+	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
+		model.ProjectRefGeneralSection: func(t *testing.T, ref model.ProjectRef) {
+			assert.Empty(t, ref.SpawnHostScriptPath)
+
+			ref.SpawnHostScriptPath = "my script path"
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			// ensure that we're saving settings without a special case
+			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectRefGeneralSection, "me"))
+			pRefFromDB, err := model.FindOneProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDB)
+			assert.NotEmpty(t, pRefFromDB.SpawnHostScriptPath)
+		},
+		model.ProjectRefAccessSection: func(t *testing.T, ref model.ProjectRef) {
+			newAdmin := user.DBUser{
+				Id: "newAdmin",
+			}
+			require.NoError(t, newAdmin.Insert())
+			ref.Restricted = nil // should now default to the repo value
+			ref.Admins = []string{"oldAdmin", newAdmin.Id}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectRefAccessSection, "me"))
+			pRefFromDB, err := model.FindOneProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDB)
+			assert.Nil(t, pRefFromDB.Restricted)
+			assert.Equal(t, pRefFromDB.Admins, ref.Admins)
+
+			mergedProject, err := model.FindMergedProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, mergedProject)
+			assert.True(t, mergedProject.IsRestricted())
+
+			restrictedScope, err := rm.GetScope(ctx, evergreen.RestrictedProjectsScope)
+			assert.NoError(t, err)
+			assert.NotNil(t, restrictedScope)
+			assert.Contains(t, restrictedScope.Resources, ref.Id)
+
+			unrestrictedScope, err := rm.GetScope(ctx, evergreen.UnrestrictedProjectsScope)
+			assert.NoError(t, err)
+			assert.NotNil(t, unrestrictedScope)
+			assert.NotContains(t, unrestrictedScope.Resources, ref.Id)
+
+			newAdminFromDB, err := user.FindOneById("newAdmin")
+			assert.NoError(t, err)
+			assert.NotNil(t, newAdminFromDB)
+			assert.Contains(t, newAdminFromDB.Roles(), "admin")
+		},
+		model.ProjectRefVariablesSection: func(t *testing.T, ref model.ProjectRef) {
+			// remove a variable, modify a variable, add a variable
+			updatedVars := &model.ProjectVars{
+				Id:          ref.Id,
+				Vars:        map[string]string{"it": "me", "banana": "phone"},
+				PrivateVars: map[string]bool{"banana": true},
+			}
+			apiProjectVars := restModel.APIProjectVars{}
+			assert.NoError(t, apiProjectVars.BuildFromService(updatedVars))
+			apiChanges := &restModel.APIProjectSettings{
+				Vars: apiProjectVars,
+			}
+			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectRefVariablesSection, "me"))
+			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, varsFromDb)
+			assert.Equal(t, varsFromDb.Vars["it"], "me")
+			assert.Equal(t, varsFromDb.Vars["banana"], "phone")
+			assert.Equal(t, varsFromDb.Vars["hello"], "")
+			assert.False(t, varsFromDb.PrivateVars["it"])
+			assert.False(t, varsFromDb.PrivateVars["hello"])
+			assert.True(t, varsFromDb.PrivateVars["banana"])
+		},
+	} {
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
+			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+
+		pRef := model.ProjectRef{
+			Id:              "myId",
+			Owner:           "evergreen-ci",
+			Repo:            "evergreen",
+			Restricted:      utility.FalsePtr(),
+			UseRepoSettings: true,
+			RepoRefId:       "myRepoId",
+			Admins:          []string{"oldAdmin"},
+		}
+		assert.NoError(t, pRef.Insert())
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+			Id:         pRef.RepoRefId,
+			Restricted: utility.TruePtr(),
+		}}
+		assert.NoError(t, repoRef.Upsert())
+
+		pVars := model.ProjectVars{
+			Id:          pRef.Id,
+			Vars:        map[string]string{"hello": "world", "it": "adele"},
+			PrivateVars: map[string]bool{"hello": true},
+		}
+		assert.NoError(t, pVars.Insert())
+		// add scopes
+		allProjectsScope := gimlet.Scope{
+			ID:        evergreen.AllProjectsScope,
+			Resources: []string{},
+		}
+		assert.NoError(t, rm.AddScope(allProjectsScope))
+		restrictedScope := gimlet.Scope{
+			ID:          evergreen.RestrictedProjectsScope,
+			Resources:   []string{repoRef.Id},
+			ParentScope: evergreen.AllProjectsScope,
+		}
+		assert.NoError(t, rm.AddScope(restrictedScope))
+		unrestrictedScope := gimlet.Scope{
+			ID:          evergreen.UnrestrictedProjectsScope,
+			Resources:   []string{pRef.Id},
+			ParentScope: evergreen.AllProjectsScope,
+		}
+		assert.NoError(t, rm.AddScope(unrestrictedScope))
+		adminScope := gimlet.Scope{
+			ID:        "project_scope",
+			Resources: []string{pRef.Id},
+			Type:      evergreen.ProjectResourceType,
+		}
+		assert.NoError(t, rm.AddScope(adminScope))
+
+		adminRole := gimlet.Role{
+			ID:    "admin",
+			Scope: adminScope.ID,
+			Permissions: gimlet.Permissions{
+				evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+				evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+				evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+				evergreen.PermissionLogs:            evergreen.LogsView.Value,
+			},
+		}
+		require.NoError(t, rm.UpdateRole(adminRole))
+		oldAdmin := user.DBUser{
+			Id:          "oldAdmin",
+			SystemRoles: []string{"admin"},
+		}
+		require.NoError(t, oldAdmin.Insert())
+
+		t.Run(name, func(t *testing.T) {
+			test(t, pRef)
+		})
+	}
+
 }

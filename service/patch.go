@@ -50,7 +50,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshall project and get project variants and tasks
-	variantsAndTasksFromProject, err := graphql.GetVariantsAndTasksFromProject(projCtx.Patch.PatchedConfig, projCtx.Patch.Project)
+	variantsAndTasksFromProject, err := graphql.GetVariantsAndTasksFromProject(r.Context(), projCtx.Patch.PatchedConfig, projCtx.Patch.Project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
@@ -98,7 +98,7 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 
-	err, status, successMessage, versionId := graphql.SchedulePatch(projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq, nil, nil)
+	err, status, successMessage, versionId := graphql.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq, nil, nil)
 	if err != nil {
 		uis.LoggedError(w, r, status, err)
 		return
