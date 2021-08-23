@@ -165,9 +165,7 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 }
 
 func TestBbGetProject(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ParserProjectCollection),
+	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ParserProjectCollection),
 		"Error clearing task collections")
 
 	myProject := model.ProjectRef{
@@ -201,19 +199,19 @@ func TestBbGetProject(t *testing.T) {
 		Version:   "proj2",
 	}
 
-	assert.NoError(testTask.Insert())
-	assert.NoError(myProject.Insert())
-	assert.NoError(myProject2.Insert())
-	assert.NoError(myProjectParser.Insert())
+	assert.NoError(t, testTask.Insert())
+	assert.NoError(t, myProject.Insert())
+	assert.NoError(t, myProject2.Insert())
+	assert.NoError(t, myProjectParser.Insert())
 
 	env := evergreen.GetEnvironment().Settings()
 	flags := evergreen.ServiceFlags{
 		PluginAdminPageDisabled: true,
 	}
-	assert.NoError(evergreen.SetServiceFlags(flags))
+	assert.NoError(t, evergreen.SetServiceFlags(flags))
 
 	bbProj, _ := BbGetProject(env, testTask.Project, testTask.Version)
 	bbProj2, _ := BbGetProject(env, testTask2.Project, testTask2.Version)
-	assert.Equal(bbProj.TicketCreateProject, "BFG")
-	assert.Equal(bbProj2.TicketCreateProject, "ABC")
+	assert.Equal(t, bbProj.TicketCreateProject, "BFG")
+	assert.Equal(t, bbProj2.TicketCreateProject, "ABC")
 }
