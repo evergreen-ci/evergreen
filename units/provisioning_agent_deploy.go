@@ -118,6 +118,8 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
+	// Use the latest service flags instead of those cached in the environment.
+	settings.ServiceFlags = *flags
 
 	if err = j.host.UpdateLastCommunicated(); err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))

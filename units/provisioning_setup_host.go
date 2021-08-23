@@ -114,6 +114,12 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
+	// Use the latest service flags instead of those cached in the environment.
+	flags, err := evergreen.GetServiceFlags()
+	j.AddError(errors.Wrap(err, "getting service flags"))
+	if flags != nil {
+		settings.ServiceFlags = *flags
+	}
 
 	j.AddError(j.setupHost(ctx, settings))
 }
