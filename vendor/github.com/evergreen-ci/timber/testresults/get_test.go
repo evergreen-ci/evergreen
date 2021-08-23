@@ -41,6 +41,18 @@ func TestTestResultsGetOptionsValidate(t *testing.T) {
 			hasErr: true,
 		},
 		{
+			name: "TestNameAndFailedSample",
+			opts: TestResultsGetOptions{
+				CedarOpts: timber.GetOptions{
+					BaseURL: "https://url.com",
+				},
+				TaskID:       "display",
+				TestName:     "test",
+				FailedSample: true,
+			},
+			hasErr: true,
+		},
+		{
 			name: "TaskID",
 			opts: TestResultsGetOptions{
 				CedarOpts: timber.GetOptions{
@@ -50,12 +62,32 @@ func TestTestResultsGetOptionsValidate(t *testing.T) {
 			},
 		},
 		{
+			name: "TaskIDAndFailedSample",
+			opts: TestResultsGetOptions{
+				CedarOpts: timber.GetOptions{
+					BaseURL: "https://url.com",
+				},
+				TaskID:       "task",
+				FailedSample: true,
+			},
+		},
+		{
 			name: "DisplayTaskID",
 			opts: TestResultsGetOptions{
 				CedarOpts: timber.GetOptions{
 					BaseURL: "https://url.com",
 				},
 				DisplayTaskID: "display",
+			},
+		},
+		{
+			name: "DisplayTaskIDAndFailedSample",
+			opts: TestResultsGetOptions{
+				CedarOpts: timber.GetOptions{
+					BaseURL: "https://url.com",
+				},
+				DisplayTaskID: "display",
+				FailedSample:  true,
 			},
 		},
 		{
