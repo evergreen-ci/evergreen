@@ -127,7 +127,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	if flags.PluginAdminPageDisabled {
 		if version == "" {
 			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
-			if err == nil && lastGoodVersion == nil {
+			if err == nil && lastGoodVersion != nil {
 				version = lastGoodVersion.Id
 			}
 		}
