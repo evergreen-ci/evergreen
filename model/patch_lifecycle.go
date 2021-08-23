@@ -120,9 +120,13 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 
 	project := &Project{}
+	opts := GetProjectOpts{
+		Ref:   projectRef,
+		Token: githubOauthToken,
+	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Id, project); err != nil {
+		if _, err = LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -174,7 +178,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	if _, err := LoadProjectInto(projectFileBytes, projectRef.Id, project); err != nil {
+	if _, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project); err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 
@@ -276,7 +280,8 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	intermediateProject, err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
+	opts := GetProjectOpts{}
+	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -640,7 +645,8 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
 	}
 
-	mergePatch, err := MakeMergePatchFromExisting(existingPatch, "")
+	ctx := context.Background()
+	mergePatch, err := MakeMergePatchFromExisting(ctx, existingPatch, "")
 	if err != nil {
 		return errors.Wrap(err, "problem making merge patch")
 	}
@@ -654,7 +660,7 @@ func (e *EnqueuePatch) Valid() bool {
 	return patch.IsValidId(e.PatchID)
 }
 
-func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
+func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
 	if !existingPatch.HasValidGitInfo() {
 		return nil, errors.Errorf("can't enqueue patch '%s' without metadata", existingPatch.Id.Hex())
 	}
@@ -669,7 +675,8 @@ func MakeMergePatchFromExisting(existingPatch *patch.Patch, commitMessage string
 	}
 
 	project := &Project{}
-	if _, err = LoadProjectInto([]byte(existingPatch.PatchedConfig), existingPatch.Project, project); err != nil {
+	opts := GetProjectOpts{}
+	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedConfig), opts, existingPatch.Project, project); err != nil {
 		return nil, errors.Wrap(err, "problem loading project")
 	}
 

@@ -311,7 +311,7 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
-func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
+func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
 	var err error
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
@@ -335,7 +335,8 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if _, err = model.LoadProjectInto([]byte(p.PatchedConfig), p.Project, project); err != nil {
+	opts := model.GetProjectOpts{}
+	if _, err = model.LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
 		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
 	}
 
@@ -364,7 +365,7 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 
 	// create a separate context from the one the callar has so that the caller
 	// can't interrupt the db operations here
-	ctx := context.Background()
+	newCxt := context.Background()
 	if p.Version != "" {
 		p.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
@@ -385,7 +386,7 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 			return errors.Wrapf(err, "Error creating new tasks for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
 
-		err = model.AddNewBuildsForPatch(ctx, p, version, project, tasks, projectRef)
+		err = model.AddNewBuildsForPatch(newCxt, p, version, project, tasks, projectRef)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating new builds for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
@@ -408,7 +409,7 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 		}
 
 		requester := p.GetRequester()
-		ver, err := model.FinalizePatch(ctx, p, requester, githubOauthToken)
+		ver, err := model.FinalizePatch(newCxt, p, requester, githubOauthToken)
 		if err != nil {
 			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
 		}
@@ -427,7 +428,7 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 
 		if p.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
-			if err := evergreen.GetEnvironment().LocalQueue().Put(ctx, job); err != nil {
+			if err := evergreen.GetEnvironment().LocalQueue().Put(newCxt, job); err != nil {
 				return errors.Wrap(err, "Error adding github status update job to queue"), http.StatusInternalServerError, "", ""
 			}
 		}
@@ -461,9 +462,10 @@ type VariantsAndTasksFromProject struct {
 	Project  model.Project
 }
 
-func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
+func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
-	if _, err := model.LoadProjectInto([]byte(patchedConfig), patchProject, project); err != nil {
+	opts := model.GetProjectOpts{}
+	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), opts, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
 	}
 
@@ -502,7 +504,7 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 
 // GetPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
 func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	patchProjectVariantsAndTasks, err := GetVariantsAndTasksFromProject(*apiPatch.PatchedConfig, *apiPatch.ProjectId)
+	patchProjectVariantsAndTasks, err := GetVariantsAndTasksFromProject(ctx, *apiPatch.PatchedConfig, *apiPatch.ProjectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
 	}

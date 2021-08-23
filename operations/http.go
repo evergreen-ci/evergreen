@@ -295,7 +295,8 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := model.LoadProjectInto(yamlBytes, "", ref); err != nil {
+	opts := model.GetProjectOpts{}
+	if _, err := model.LoadProjectInto(resp.Request.Context(), yamlBytes, opts, "", ref); err != nil {
 		return nil, err
 	}
 	return ref, nil
