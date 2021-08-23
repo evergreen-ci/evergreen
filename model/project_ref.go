@@ -393,7 +393,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // Any values that previously were unset will now use the repo value.
 // If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
-	before, err := GetProjectSettingsEventById(p.Id)
+	before, err := GetProjectSettingsById(p.Id)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
@@ -410,7 +410,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "error attaching repo to scope")
 	}
 	p.UseRepoSettings = true
-	return getAndLogProjectModified(p.Id, u.Id, before)
+	return GetAndLogProjectModified(p.Id, u.Id, before)
 }
 
 // AddToRepoScope adds the branch to the unrestricted branches under repo scope, adds repo view permission for
@@ -453,7 +453,7 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 // DetachFromRepo removes the branch from the relevant repo scopes, and updates the project to not point to the repo.
 // Any values that previously defaulted to repo will have the repo value explicitly set.
 func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
-	before, err := GetProjectSettingsEventById(p.Id)
+	before, err := GetProjectSettingsById(p.Id)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
@@ -534,7 +534,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
 
-	catcher.Add(getAndLogProjectModified(p.Id, u.Id, before))
+	catcher.Add(GetAndLogProjectModified(p.Id, u.Id, before))
 	return catcher.Resolve()
 }
 
