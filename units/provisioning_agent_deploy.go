@@ -117,7 +117,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
+	settings := *j.env.Settings()
 	// Use the latest service flags instead of those cached in the environment.
 	settings.ServiceFlags = *flags
 
@@ -148,7 +148,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		}
 	}()
 
-	if err := j.startAgentOnHost(ctx, settings); err != nil {
+	if err := j.startAgentOnHost(ctx, &settings); err != nil {
 		if j.host.Status == evergreen.HostRunning {
 			j.AddRetryableError(err)
 		} else {

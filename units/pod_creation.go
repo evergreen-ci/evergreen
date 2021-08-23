@@ -83,13 +83,22 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 
+	settings := *j.env.Settings()
+	// Use the latest service flags instead of those cached in the environment.
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
+		return
+	}
+	settings.ServiceFlags = *flags
+
 	switch j.pod.Status {
 	case pod.StatusInitializing:
-		opts, err := cloud.ExportPodCreationOptions(j.env.Settings(), j.pod)
+		opts, err := cloud.ExportPodCreationOptions(&settings, j.pod)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "exporting pod creation options"))
 		}
