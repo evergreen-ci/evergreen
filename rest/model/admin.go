@@ -1619,7 +1619,7 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 	}, nil
 }
 
-// APIAWSVPCConfig represents configuration optsion for tasks in ECS using
+// APIAWSVPCConfig represents configuration options for tasks in ECS using
 // AWSVPC networking.
 type APIAWSVPCConfig struct {
 	Subnets        []string `json:"subnets,omitempty"`
