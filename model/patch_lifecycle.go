@@ -441,8 +441,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
 			return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
 		}
+		if p.IsParent() {
+			if err = p.SetChildPatches(sessCtx); err != nil {
+				return nil, errors.Wrapf(err, "error attaching child patches '%s'", patchVersion.Id)
+			}
+		}
 		if err = p.SetActivated(sessCtx, patchVersion.Id); err != nil {
-			return nil, errors.Wrapf(err, "eror activating patch '%s'", patchVersion.Id)
+			return nil, errors.Wrapf(err, "error activating patch '%s'", patchVersion.Id)
 		}
 		return nil, err
 	}

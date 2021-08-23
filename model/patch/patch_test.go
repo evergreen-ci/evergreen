@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -893,4 +894,31 @@ func TestSetDownstreamParameters(t *testing.T) {
 	assert.Equal(p.Triggers.DownstreamParameters[0].Key, "key_0")
 	assert.Equal(p.Triggers.DownstreamParameters[1].Key, "key_1")
 	assert.Equal(p.Triggers.DownstreamParameters[2].Key, "key_2")
+}
+
+func TestSetChildPatches(t *testing.T) {
+	ctx := context.Background()
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	p := Patch{
+		Id: bson.NewObjectId(),
+		Triggers: TriggerInfo{
+			ChildPatches: []string{"id_0"},
+		},
+	}
+	assert.NoError(p.Insert())
+
+	p.Triggers.ChildPatches = []string{
+		"id_1",
+		"id_2",
+	}
+
+	assert.NoError(p.SetChildPatches(ctx))
+
+	dbPatch, err := FindOne(ById(p.Id))
+	assert.NoError(err)
+	assert.Equal(dbPatch.Triggers.ChildPatches[0], "id_0")
+	assert.Equal(dbPatch.Triggers.ChildPatches[1], "id_1")
+	assert.Equal(dbPatch.Triggers.ChildPatches[2], "id_2")
 }
