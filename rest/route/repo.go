@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -149,9 +148,9 @@ func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
-	before, err := h.sc.GetProjectSettingsEvent(&h.newRepoRef.ProjectRef)
+	before, err := h.sc.GetProjectSettings(&h.newRepoRef.ProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for repo '%s'", h.repoName))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings before update for repo '%s'", h.repoName))
 	}
 
 	catcher := grip.NewSimpleCatcher()
@@ -227,11 +226,8 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = h.newRepoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.repoName))
 	}
-	for i := range h.apiNewRepoRef.Subscriptions {
-		h.apiNewRepoRef.Subscriptions[i].OwnerType = utility.ToStringPtr(string(event.OwnerTypeProject))
-		h.apiNewRepoRef.Subscriptions[i].Owner = utility.ToStringPtr(h.repoName)
-	}
-	if err = h.sc.SaveSubscriptions(h.newRepoRef.Id, h.apiNewRepoRef.Subscriptions); err != nil {
+
+	if err = h.sc.SaveSubscriptions(h.newRepoRef.Id, h.apiNewRepoRef.Subscriptions, true); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.repoName))
 	}
 
@@ -243,9 +239,9 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.repoName))
 	}
 
-	after, err := h.sc.GetProjectSettingsEvent(&h.newRepoRef.ProjectRef)
+	after, err := h.sc.GetProjectSettings(&h.newRepoRef.ProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", h.repoName))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings after update for project '%s'", h.repoName))
 	}
 	if err = dbModel.LogProjectModified(h.newRepoRef.Id, h.user.Username(), before, after); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project '%s'", h.repoName))

@@ -152,6 +152,10 @@ func (a *Agent) setupSystemMetricsCollector(ctx context.Context, tc *taskContext
 	if err != nil {
 		return errors.Wrap(err, "getting cedar gRPC client connection")
 	}
+
+	tc.Lock()
+	defer tc.Unlock()
+
 	tc.systemMetricsCollector, err = newSystemMetricsCollector(ctx, &systemMetricsCollectorOptions{
 		task:     tc.taskModel,
 		interval: defaultStatsInterval,

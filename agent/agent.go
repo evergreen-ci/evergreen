@@ -574,10 +574,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Errorf("Programmer error: Invalid task status %s", detail.Status)
 	}
 
+	tc.Lock()
 	if tc.systemMetricsCollector != nil {
 		err := tc.systemMetricsCollector.Close()
 		tc.logger.System().Error(errors.Wrap(err, "error closing system metrics collector"))
 	}
+	tc.Unlock()
 
 	a.killProcs(ctx, tc, false)
 

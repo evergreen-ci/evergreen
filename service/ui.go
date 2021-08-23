@@ -95,7 +95,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		Home:               home,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
-		buildBaronProjects: graphql.BbGetConfig(settings),
+		buildBaronProjects: plugin.BbGetConfig(settings),
 		render:             gimlet.NewHTMLRenderer(ropts),
 		renderText:         gimlet.NewTextRenderer(ropts),
 		jiraHandler:        thirdparty.NewJiraHandler(*settings.Jira.Export()),
@@ -444,7 +444,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Plugin routes
 	app.PrefixRoute("/plugin").Route("/manifest/get/{project_id}/{revision}").Wrap(needsLogin, viewTasks).Handler(uis.GetManifest).Get()
-	app.PrefixRoute("/plugin").Route("/dashboard/tasks/project/{project_id}/version/{version_id}").Wrap(needsLogin, viewTasks).Handler(perfDashGetTasksForVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version").Handler(perfGetVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version/{version_id}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTasksForVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version/latest/{project_id}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTasksForLatestVersion).Get()

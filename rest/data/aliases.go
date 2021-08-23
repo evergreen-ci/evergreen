@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -107,6 +108,49 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 	return catcher.Resolve()
 }
 
+// should be called in the resolver
+func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
+	originalAliases []model.ProjectAlias, section model.ProjectRefSection) (bool, error) {
+	aliasesIdMap := map[string]bool{}
+	aliasesToUpdate := []restModel.APIProjectAlias{}
+
+	for _, a := range updatedAliases {
+		if shouldSkipAliasForSection(section, utility.FromStringPtr(a.Alias)) {
+			continue
+		}
+		aliasesToUpdate = append(aliasesToUpdate, a)
+		aliasesIdMap[utility.FromStringPtr(a.ID)] = true
+	}
+	if err := pc.UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
+		return false, errors.Wrap(err, "error updating project aliases")
+	}
+	catcher := grip.NewBasicCatcher()
+	// delete any aliasesToUpdate that were in the list before but are not now
+	for _, originalAlias := range originalAliases {
+		// only look at the relevant aliases to update
+		if shouldSkipAliasForSection(section, originalAlias.Alias) {
+			continue
+		}
+		id := originalAlias.ID.Hex()
+		if _, ok := aliasesIdMap[id]; !ok {
+			catcher.Add(model.RemoveProjectAlias(id))
+		}
+	}
+	return true, catcher.Resolve()
+}
+
+func shouldSkipAliasForSection(section model.ProjectRefSection, alias string) bool {
+	// if we're updating internal aliases, skip non-internal aliases
+	if section == model.ProjectRefGithubAndCQSection && !utility.StringSliceContains(evergreen.InternalAliases, alias) {
+		return true
+	}
+	// if we're updating patch aliases, skip internal aliases
+	if section == model.ProjectRefPatchAliasSection && utility.StringSliceContains(evergreen.InternalAliases, alias) {
+		return true
+	}
+	return false
+}
+
 //  GetMatchingGitTagAliasesForProject returns matching git tag aliases that match the given git tag
 func (d *DBAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
 	aliases, err := model.FindMatchingGitTagAliasesInProject(projectId, tag)
@@ -138,6 +182,12 @@ func (d *MockAliasConnector) CopyProjectAliases(oldProjectId, newProjectId strin
 func (d *MockAliasConnector) UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
 	return nil
 }
+
+func (pc *MockAliasConnector) UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
+	originalAliases []model.ProjectAlias, section model.ProjectRefSection) (bool, error) {
+	return false, nil
+}
+
 func (d *MockAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
 	if len(d.Aliases) == 1 && utility.FromStringPtr(d.Aliases[0].RemotePath) != "" {
 		return true, utility.FromStringPtr(d.Aliases[0].RemotePath), nil

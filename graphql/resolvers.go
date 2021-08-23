@@ -1888,7 +1888,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
-	err, _, _, versionID := SchedulePatch(patchID, version, patchUpdateReq, configure.Parameters)
+	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq, configure.Parameters)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
 	}
@@ -2259,7 +2259,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	default:
 		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
 	}
-	err = r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription})
+	err = r.sc.SaveSubscriptions(username, []restModel.APISubscription{subscription}, false)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error saving subscription: %s", err.Error()))
 	}
@@ -3154,7 +3154,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
 		}
 		if len(p.ChildPatches) > 0 {
-			patchStatuses := []string{}
+			patchStatuses := []string{*p.Status}
 			for _, cp := range p.ChildPatches {
 				patchStatuses = append(patchStatuses, *cp.Status)
 				// add the child patch tasks to tasks so that we can consider their status
@@ -3262,7 +3262,8 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	if t == nil {
 		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
-	return IsWebhookConfigured(t), nil
+	_, ok := plugin.IsWebhookConfigured(t.Project, t.Version)
+	return ok, nil
 }
 
 func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIssueLink) (*thirdparty.JiraTicket, error) {

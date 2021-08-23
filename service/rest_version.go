@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -363,7 +364,9 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 	}
 	if pp == nil || pp.ConfigUpdateNumber < srcVersion.ConfigUpdateNumber {
 		p := &model.Project{}
-		pp, err = model.LoadProjectInto([]byte(srcVersion.Config), srcVersion.Identifier, p)
+		ctx := context.Background()
+		opts := model.GetProjectOpts{}
+		pp, err = model.LoadProjectInto(ctx, []byte(srcVersion.Config), opts, srcVersion.Identifier, p)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem reading project from version"})
 			return
