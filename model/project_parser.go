@@ -559,7 +559,6 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
-	catcher := grip.NewBasicCatcher()
 	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
@@ -569,18 +568,15 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 		opts.RemotePath = path.FileName
 		yaml, err := retrieveFile(ctx, opts)
 		if err != nil {
-			catcher.Wrapf(err, LoadProjectError)
-			break
+			return intermediateProject, errors.Wrapf(err, LoadProjectError)
 		}
 		add, err := createIntermediateProject(yaml)
 		if err != nil {
-			catcher.Wrapf(err, LoadProjectError)
-			break
+			return intermediateProject, errors.Wrapf(err, LoadProjectError)
 		}
 		err = intermediateProject.mergeMultipleProjectConfigs(add)
 		if err != nil {
-			catcher.Wrapf(err, LoadProjectError)
-			break
+			return intermediateProject, errors.Wrapf(err, LoadProjectError)
 		}
 	}
 	intermediateProject.Include = nil
@@ -590,9 +586,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 	if p != nil {
 		*project = *p
 	}
-	catcher.Wrapf(err, LoadProjectError)
 	project.Identifier = identifier
-	return intermediateProject, catcher.Resolve()
+	return intermediateProject, errors.Wrapf(err, LoadProjectError)
 }
 
 const (
@@ -602,18 +597,18 @@ const (
 )
 
 type GetProjectOpts struct {
-	Ref        *ProjectRef
-	RemotePath string
-	Revision   string
-	Token      string
-	Type       string
+	Ref          *ProjectRef
+	RemotePath   string
+	Revision     string
+	Token        string
+	ReadFileFrom string
 }
 
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
 	}
-	switch opts.Type {
+	switch opts.ReadFileFrom {
 	case LocalOpts:
 		fileContents, err := ioutil.ReadFile(opts.RemotePath)
 		if err != nil {

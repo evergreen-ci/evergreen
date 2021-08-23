@@ -43,7 +43,7 @@ func Evaluate() cli.Command {
 			p := &model.Project{}
 			ctx := context.Background()
 			opts := model.GetProjectOpts{
-				Type: model.LocalOpts,
+				ReadFileFrom: model.LocalOpts,
 			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
