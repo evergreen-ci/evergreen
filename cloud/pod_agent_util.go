@@ -13,7 +13,7 @@ import (
 // agentScript returns the script to provision and run the agent in the pod's
 // container.
 func agentScript(settings *evergreen.Settings, p *pod.Pod) ([]string, error) {
-	curlCmd, err := downloadAgentCommands(settings, p)
+	downloadCmd, err := downloadAgentCommands(settings, p)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -21,8 +21,8 @@ func agentScript(settings *evergreen.Settings, p *pod.Pod) ([]string, error) {
 	agentCmd := strings.Join(agentCommand(settings, p), " ")
 
 	return []string{
-		"CMD-SHELL",
-		strings.Join([]string{curlCmd, fmt.Sprintf("chmod +x %s", clientName(p)), agentCmd}, " && "),
+		"bash", "-c",
+		strings.Join([]string{downloadCmd, fmt.Sprintf("chmod +x %s", clientName(p)), agentCmd}, " && "),
 	}, nil
 }
 
@@ -90,8 +90,8 @@ func downloadAgentCommands(settings *evergreen.Settings, p *pod.Pod) (string, er
 
 	var curlCmd string
 	if !flags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
-		// Attempt to download the agent from S3, but fall back to downloading from
-		// the app server if it fails.
+		// Attempt to download the agent from S3, but fall back to downloading
+		// from the app server if it fails.
 		curlCmd = fmt.Sprintf("(curl -LO '%s' %s || curl -LO '%s' %s)", s3ClientURL(settings, p), retryArgs, clientURL(settings, p), retryArgs)
 	} else {
 		curlCmd = fmt.Sprintf("curl -LO '%s' %s", clientURL(settings, p), retryArgs)
