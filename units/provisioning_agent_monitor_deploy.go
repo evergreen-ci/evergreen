@@ -142,9 +142,6 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}()
 
-	settings := j.env.Settings()
-	settings.ServiceFlags = *flags
-
 	var alive bool
 	alive, err = j.checkAgentMonitor(ctx)
 	if err != nil {
@@ -162,17 +159,20 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.fetchClient(ctx, settings); err != nil {
+	settings := *j.env.Settings()
+	settings.ServiceFlags = *flags
+
+	if err = j.fetchClient(ctx, &settings); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
 
-	if err = j.runSetupScript(ctx, settings); err != nil {
+	if err = j.runSetupScript(ctx, &settings); err != nil {
 		j.AddError(err)
 		return
 	}
 
-	if err := j.startAgentMonitor(ctx, settings); err != nil {
+	if err := j.startAgentMonitor(ctx, &settings); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
