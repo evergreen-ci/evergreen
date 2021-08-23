@@ -564,6 +564,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
+	// return intermediateProject even if we run into issues to show merge progress
 	for _, path := range intermediateProject.Include {
 		opts.RemotePath = path.FileName
 		yaml, err := retrieveFile(ctx, opts)
@@ -591,9 +592,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 }
 
 const (
-	MainlineOpts = "mainline"
-	PatchOpts    = "patch"
-	LocalOpts    = "local"
+	ReadfromGithub = "github"
+	ReadFromLocal  = "local"
+	ReadFromPatch  = "patch"
 )
 
 type GetProjectOpts struct {
@@ -609,7 +610,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		opts.RemotePath = opts.Ref.RemotePath
 	}
 	switch opts.ReadFileFrom {
-	case LocalOpts:
+	case ReadFromLocal:
 		fileContents, err := ioutil.ReadFile(opts.RemotePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading project config")
