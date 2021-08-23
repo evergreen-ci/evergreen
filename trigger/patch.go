@@ -173,7 +173,7 @@ func checkPatchStatus(p *patch.Patch) (bool, *patch.Patch, bool, error) {
 	// make sure the parent is done, if not, wait for the parent
 	if p.IsChild() {
 		if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
-			return isReady, nil, false, nil
+			return isReady, parentPatch, false, nil
 		}
 	}
 	childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
