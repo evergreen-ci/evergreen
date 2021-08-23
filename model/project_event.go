@@ -145,8 +145,8 @@ func LogProjectAdded(projectId, username string) error {
 	return LogProjectEvent(EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
 }
 
-func GetAndLogProjectModified(id, userId string, before *ProjectSettings) error {
-	after, err := GetProjectSettingsById(id)
+func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSettings) error {
+	after, err := GetProjectSettingsById(id, isRepo)
 	if err != nil {
 		return errors.Wrap(err, "error getting after project settings event")
 	}

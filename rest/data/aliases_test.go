@@ -215,7 +215,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 
 	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
-	modified, err := a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectRefPatchAliasSection)
+	modified, err := a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
 	a.NoError(err)
 	a.True(modified)
 
@@ -230,7 +230,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectRefGithubAndCQSection)
+	modified, err = a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
 	a.NoError(err)
 	a.True(modified)
 	aliasesFromDb, err = model.FindAliasesForProject("project_id")
