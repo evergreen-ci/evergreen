@@ -579,7 +579,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		err := tc.systemMetricsCollector.Close()
 		tc.logger.System().Error(errors.Wrap(err, "error closing system metrics collector"))
 	}
-	defer tc.Unlock()
+	tc.Unlock()
 
 	a.killProcs(ctx, tc, false)
 
