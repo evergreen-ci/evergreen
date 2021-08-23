@@ -167,7 +167,7 @@ func checkPatchStatus(p *patch.Patch) (bool, *patch.Patch, bool, error) {
 	isReady := false
 	childrenOrSiblings, parentPatch, err := p.GetPatchFamily()
 	if err != nil {
-		return isReady, nil, false, errors.Wrap(err, "error getting child or sibling patches")
+		return isReady, parentPatch, false, errors.Wrap(err, "error getting child or sibling patches")
 	}
 
 	// make sure the parent is done, if not, wait for the parent
@@ -178,10 +178,10 @@ func checkPatchStatus(p *patch.Patch) (bool, *patch.Patch, bool, error) {
 	}
 	childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
 	if err != nil {
-		return isReady, nil, false, errors.Wrap(err, "error getting child or sibling information")
+		return isReady, parentPatch, false, errors.Wrap(err, "error getting child or sibling information")
 	}
 	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
-		return isReady, nil, false, nil
+		return isReady, parentPatch, false, nil
 	}
 	isReady = true
 
