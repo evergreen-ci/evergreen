@@ -145,7 +145,7 @@ var (
 		"$reduce": bson.M{
 			"input":        "$" + DependsOnKey,
 			"initialValue": false,
-			"in":           bson.M{"$or": []interface{}{"$$value", "$$" + bsonutil.GetDottedKeyName("this", DependencyUnattainableKey)}},
+			"in":           bson.M{"$or": []interface{}{"$$value", bsonutil.GetDottedKeyName("$$this", DependencyUnattainableKey)}},
 		},
 	}
 
