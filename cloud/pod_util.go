@@ -197,13 +197,17 @@ func ExportPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECS
 // ExportPodExecutionOptions exports the ECS configuration into
 // cocoa.ECSPodExecutionOptions.
 func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*cocoa.ECSPodExecutionOptions, error) {
-	if len(ecsConfig.Clusters) == 0 {
-		return nil, errors.New("must specify at least one cluster to use")
+	opts := cocoa.NewECSPodExecutionOptions()
+
+	if len(ecsConfig.AWSVPC.Subnets) != 0 || len(ecsConfig.AWSVPC.SecurityGroups) != 0 {
+		opts.SetAWSVPCOptions(*cocoa.NewAWSVPCOptions().
+			SetSubnets(ecsConfig.AWSVPC.Subnets).
+			SetSecurityGroups(ecsConfig.AWSVPC.SecurityGroups))
 	}
 
 	for _, cluster := range ecsConfig.Clusters {
 		if string(podOS) == string(cluster.Platform) {
-			return cocoa.NewECSPodExecutionOptions().SetCluster(cluster.Name), nil
+			return opts.SetCluster(cluster.Name), nil
 		}
 	}
 
@@ -228,6 +232,7 @@ func ExportPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*cocoa.
 		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", p.ID}, "-")).
 		SetTaskRole(ecsConf.TaskRole).
 		SetExecutionRole(ecsConf.ExecutionRole).
+		SetNetworkMode(cocoa.NetworkModeAWSVPC).
 		SetExecutionOptions(*execOpts).
 		AddContainerDefinitions(*containerDef), nil
 }
