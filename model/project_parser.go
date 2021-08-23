@@ -81,7 +81,7 @@ type ParserProject struct {
 	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime             time.Time                      `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-	BuildBaronProject      *evergreen.BuildBaronProject   `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
+	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -639,7 +639,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		ExecTimeoutSecs:        utility.FromIntPtr(pp.ExecTimeoutSecs),
 		Loggers:                pp.Loggers,
 		TaskAnnotationSettings: pp.TaskAnnotationSettings,
-		BuildBaronProject:      pp.BuildBaronProject,
+		BuildBaronSettings:     pp.BuildBaronSettings,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -1197,7 +1197,7 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 
 // mergeUnique merges fields that are non-lists.
 // These fields can only be defined 1 yaml.
-// These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout]
+// These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout, task annotations, build baron]
 func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
@@ -1261,10 +1261,10 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.TaskAnnotationSettings = toMerge.TaskAnnotationSettings
 	}
 
-	if pp.BuildBaronProject != nil && toMerge.BuildBaronProject != nil {
+	if pp.BuildBaronSettings != nil && toMerge.BuildBaronSettings != nil {
 		catcher.New("build baron settings can only be defined in one yaml")
-	} else if toMerge.BuildBaronProject != nil {
-		pp.BuildBaronProject = toMerge.BuildBaronProject
+	} else if toMerge.BuildBaronSettings != nil {
+		pp.BuildBaronSettings = toMerge.BuildBaronSettings
 	}
 
 	return catcher.Resolve()

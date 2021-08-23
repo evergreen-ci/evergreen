@@ -37,12 +37,11 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	umconf             gimlet.UserMiddlewareConfiguration
-	Settings           evergreen.Settings
-	CookieStore        *sessions.CookieStore
-	clientConfig       *evergreen.ClientConfig
-	jiraHandler        thirdparty.JiraHandler
-	buildBaronProjects map[string]evergreen.BuildBaronProject
+	umconf       gimlet.UserMiddlewareConfiguration
+	Settings     evergreen.Settings
+	CookieStore  *sessions.CookieStore
+	clientConfig *evergreen.ClientConfig
+	jiraHandler  thirdparty.JiraHandler
 
 	hostCache map[string]hostCacheItem
 

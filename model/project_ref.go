@@ -105,7 +105,7 @@ type ProjectRef struct {
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
-	BuildBaronProject evergreen.BuildBaronProject `bson:"build_baron_project,omitempty" json:"build_baron_project,omitempty" yaml:"build_baron_project,omitempty"`
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_project,omitempty" json:"build_baron_project,omitempty" yaml:"build_baron_project,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -234,7 +234,7 @@ var (
 	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey  = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
-	projectRefBuildBaronProjectKey       = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronProject")
+	projectRefBuildBaronSettingsKey      = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -1365,22 +1365,9 @@ func saveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-	case ProjectRefBuildBaronSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: projectId},
-			bson.M{
-				"$set": bson.M{
-					projectRefBuildBaronProjectKey: p.BuildBaronProject,
-				},
-			})
-	case ProjectRefTaskAnnotationsSection:
-		err = db.Update(ProjectRefCollection,
-			bson.M{ProjectRefIdKey: projectId},
-			bson.M{
-				"$set": bson.M{
-					projectRefTaskAnnotationSettingsKey: p.TaskAnnotationSettings,
-				},
-			})
+
+	// todo: add casing on Build Baron and task annotation settings once EVG-15218 is complete
+
 	case ProjectRefPatchAliasSection:
 		err = db.Update(ProjectRefCollection,
 			bson.M{ProjectRefIdKey: projectId},

@@ -60,7 +60,7 @@ type Project struct {
 	ExecTimeoutSecs        int                            `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-	BuildBaronProject      *evergreen.BuildBaronProject   `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
+	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
