@@ -338,6 +338,10 @@ func TestExportPodCreationOptions(t *testing.T) {
 							TaskRole:             "task_role",
 							TaskDefinitionPrefix: "task_definition_prefix",
 							ExecutionRole:        "execution_role",
+							AWSVPC: evergreen.AWSVPCConfig{
+								Subnets:        []string{"subnet-12345"},
+								SecurityGroups: []string{"sg-12345"},
+							},
 							Clusters: []evergreen.ECSClusterConfig{
 								{
 									Platform: "linux",
