@@ -155,6 +155,7 @@ var (
 		},
 	}
 
+	// This should reflect Task.GetDisplayStatus()
 	displayStatusExpression = bson.M{
 		"$switch": bson.M{
 			"branches": []bson.M{
