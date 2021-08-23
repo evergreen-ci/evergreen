@@ -40,8 +40,9 @@ func TestCoalesce(t *testing.T) {
 }
 
 func TestStringContainsSliceRegex(t *testing.T) {
-	assert := assert.New(t)
 	domains := []string{".*.corp.mongodb.com", "https://something.mongodb.com"}
-	assert.Equal(true, StringContainsSliceRegex(domains, "https://patch-analysis-ui.server-tig.staging.corp.mongodb.com"))
-	assert.Equal(true, StringContainsSliceRegex(domains, "https://something.mongodb.com"))
+	assert.Equal(t, true, StringContainsSliceRegex(domains, "https://patch-analysis-ui.server-tig.staging.corp.mongodb.com"))
+	assert.Equal(t, true, StringContainsSliceRegex(domains, "https://something.mongodb.com"))
+	assert.Equal(t, false, StringContainsSliceRegex(domains, "corp.mongodb.com"))
+	assert.Equal(t, false, StringContainsSliceRegex(domains, "https://something-else.mongodb.com"))
 }
