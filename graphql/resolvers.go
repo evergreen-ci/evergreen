@@ -3154,7 +3154,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
 		}
 		if len(p.ChildPatches) > 0 {
-			patchStatuses := []string{}
+			patchStatuses := []string{*p.Status}
 			for _, cp := range p.ChildPatches {
 				patchStatuses = append(patchStatuses, *cp.Status)
 				// add the child patch tasks to tasks so that we can consider their status
