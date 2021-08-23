@@ -141,15 +141,14 @@ var (
 	}
 
 	// Checks if task dependencies are attainable/ have met all their dependencies and are not blocked
-	isAttainable = bson.M{
-		"$ne": []interface{}{bson.M{"$reduce": bson.M{
+	isUnattainable = bson.M{
+		"$reduce": bson.M{
 			"input":        "$" + DependsOnKey,
 			"initialValue": false,
-			"in":           bson.M{"$or": []interface{}{"$$" + bsonutil.GetDottedKeyName("value", DependencyUnattainableKey), "$$" + bsonutil.GetDottedKeyName("this", DependencyUnattainableKey)}},
+			"in":           bson.M{"$or": []interface{}{"$$value", "$$" + bsonutil.GetDottedKeyName("this", DependencyUnattainableKey)}},
 		},
-		}, true},
 	}
-	// This should reflect Task.GetDisplayStatus()
+
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
 			DisplayStatusKey: displayStatusExpression,
@@ -233,7 +232,7 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
-							{"$eq": []interface{}{isAttainable, false}},
+							isUnattainable,
 						},
 					},
 					"then": evergreen.TaskStatusBlocked,
