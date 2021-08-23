@@ -117,10 +117,6 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := *j.env.Settings()
-	// Use the latest service flags instead of those cached in the environment.
-	settings.ServiceFlags = *flags
-
 	if err = j.host.UpdateLastCommunicated(); err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
 	}
@@ -147,6 +143,10 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
 		}
 	}()
+
+	settings := *j.env.Settings()
+	// Use the latest service flags instead of those cached in the environment.
+	settings.ServiceFlags = *flags
 
 	if err := j.startAgentOnHost(ctx, &settings); err != nil {
 		if j.host.Status == evergreen.HostRunning {
