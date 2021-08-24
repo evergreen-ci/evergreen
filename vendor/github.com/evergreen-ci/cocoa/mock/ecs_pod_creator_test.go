@@ -7,15 +7,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/cocoa/internal/testcase"
 	"github.com/evergreen-ci/cocoa/internal/testutil"
 	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func cleanupECSAndSecretsManagerCache() {
+	GlobalECSService.Clusters[testutil.ECSClusterName()] = ECSCluster{}
+	GlobalSecretCache = map[string]StoredSecret{}
+}
 
 func TestECSPodCreator(t *testing.T) {
 	assert.Implements(t, (*cocoa.ECSPodCreator)(nil), &ECSPodCreator{})
@@ -23,12 +30,12 @@ func TestECSPodCreator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	GlobalECSService.Clusters[testutil.ECSClusterName()] = ECSCluster{}
-
 	for tName, tCase := range ecsPodCreatorTests() {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, time.Second)
 			defer tcancel()
+
+			cleanupECSAndSecretsManagerCache()
 
 			c := &ECSClient{}
 			defer func() {
@@ -56,6 +63,8 @@ func TestECSPodCreator(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, time.Second)
 			defer tcancel()
 
+			cleanupECSAndSecretsManagerCache()
+
 			c := &ECSClient{}
 			defer func() {
 				assert.NoError(t, c.Close(ctx))
@@ -64,9 +73,9 @@ func TestECSPodCreator(t *testing.T) {
 			pc, err := ecs.NewBasicECSPodCreator(c, nil)
 			require.NoError(t, err)
 
-			podCreator := NewECSPodCreator(pc)
+			mpc := NewECSPodCreator(pc)
 
-			tCase(tctx, t, podCreator)
+			tCase(tctx, t, mpc)
 		})
 	}
 
@@ -74,6 +83,8 @@ func TestECSPodCreator(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, time.Second)
 			defer tcancel()
+
+			cleanupECSAndSecretsManagerCache()
 
 			c := &ECSClient{}
 			defer func() {
@@ -90,9 +101,9 @@ func TestECSPodCreator(t *testing.T) {
 			pc, err := ecs.NewBasicECSPodCreator(c, v)
 			require.NoError(t, err)
 
-			podCreator := NewECSPodCreator(pc)
+			mpc := NewECSPodCreator(pc)
 
-			tCase(tctx, t, podCreator)
+			tCase(tctx, t, mpc)
 		})
 	}
 }
@@ -117,9 +128,13 @@ func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc 
 				SetStrategy(cocoa.StrategyBinpack).
 				SetStrategyParameter(cocoa.StrategyParamBinpackMemory).
 				AddInstanceFilters("runningTaskCount == 0")
+			awsvpcOpts := cocoa.NewAWSVPCOptions().
+				AddSubnets("subnet-12345").
+				AddSecurityGroups("sg-12345")
 			execOpts := cocoa.NewECSPodExecutionOptions().
 				SetCluster(testutil.ECSClusterName()).
 				SetPlacementOptions(*placementOpts).
+				SetAWSVPCOptions(*awsvpcOpts).
 				SetTags(map[string]string{"execution_tag": "execution_val"}).
 				SetSupportsDebugMode(true)
 			opts := cocoa.NewECSPodCreationOptions().
@@ -127,6 +142,7 @@ func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc 
 				SetCPU(1024).
 				SetTaskRole("task_role").
 				SetExecutionRole("execution_role").
+				SetNetworkMode(cocoa.NetworkModeAWSVPC).
 				SetTags(map[string]string{"creation_tag": "creation_val"}).
 				AddContainerDefinitions(*containerDef).
 				SetExecutionOptions(*execOpts)
@@ -142,6 +158,8 @@ func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc 
 			cpu, err := strconv.Atoi(utility.FromStringPtr(c.RegisterTaskDefinitionInput.Cpu))
 			require.NoError(t, err)
 			assert.Equal(t, utility.FromIntPtr(opts.CPU), cpu)
+			require.NotZero(t, opts.NetworkMode)
+			assert.EqualValues(t, *opts.NetworkMode, utility.FromStringPtr(c.RegisterTaskDefinitionInput.NetworkMode))
 			assert.Equal(t, utility.FromStringPtr(opts.TaskRole), utility.FromStringPtr(c.RegisterTaskDefinitionInput.TaskRoleArn))
 			assert.Equal(t, utility.FromStringPtr(opts.ExecutionRole), utility.FromStringPtr(c.RegisterTaskDefinitionInput.ExecutionRoleArn))
 			require.Len(t, c.RegisterTaskDefinitionInput.Tags, 1)
@@ -157,12 +175,17 @@ func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc 
 			assert.Equal(t, utility.FromStringPtr(envVar.Value), utility.FromStringPtr(c.RegisterTaskDefinitionInput.ContainerDefinitions[0].Environment[0].Value))
 
 			require.NotZero(t, c.RunTaskInput)
+			assert.Equal(t, utility.FromStringPtr(execOpts.Cluster), utility.FromStringPtr(c.RunTaskInput.Cluster))
 			require.Len(t, c.RunTaskInput.PlacementStrategy, 1)
 			assert.EqualValues(t, *placementOpts.Strategy, utility.FromStringPtr(c.RunTaskInput.PlacementStrategy[0].Type))
 			assert.Equal(t, utility.FromStringPtr(placementOpts.StrategyParameter), utility.FromStringPtr(c.RunTaskInput.PlacementStrategy[0].Field))
 			require.Len(t, c.RunTaskInput.PlacementConstraints, 1)
 			assert.Equal(t, placementOpts.InstanceFilters[0], utility.FromStringPtr(c.RunTaskInput.PlacementConstraints[0].Expression))
 			assert.Equal(t, "memberOf", utility.FromStringPtr(c.RunTaskInput.PlacementConstraints[0].Type))
+			require.NotZero(t, c.RunTaskInput.NetworkConfiguration)
+			require.NotZero(t, c.RunTaskInput.NetworkConfiguration.AwsvpcConfiguration)
+			assert.ElementsMatch(t, execOpts.AWSVPCOpts.Subnets, utility.FromStringPtrSlice(c.RunTaskInput.NetworkConfiguration.AwsvpcConfiguration.Subnets))
+			assert.ElementsMatch(t, execOpts.AWSVPCOpts.SecurityGroups, utility.FromStringPtrSlice(c.RunTaskInput.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups))
 			require.Len(t, c.RunTaskInput.Tags, 1)
 			assert.Equal(t, "execution_tag", utility.FromStringPtr(c.RunTaskInput.Tags[0].Key))
 			assert.Equal(t, execOpts.Tags["execution_tag"], utility.FromStringPtr(c.RunTaskInput.Tags[0].Value))
@@ -255,8 +278,6 @@ func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc 
 			require.NoError(t, err)
 			assert.Equal(t, string(storedCreds), utility.FromStringPtr(sm.CreateSecretInput.SecretString))
 		},
-<<<<<<< HEAD
-=======
 		"CreatingNewSecretsIsRetryable": func(ctx context.Context, t *testing.T, pc cocoa.ECSPodCreator, c *ECSClient, sm *SecretsManagerClient) {
 			secretOpts := cocoa.NewSecretOptions().
 				SetName("secret_name").
@@ -306,6 +327,5 @@ func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc 
 			require.NotZero(t, getSecretOut)
 			assert.Equal(t, utility.FromStringPtr(secretOpts.NewValue), utility.FromStringPtr(getSecretOut.SecretString))
 		},
->>>>>>> d9c96f3c6 (Revendor cocoa to c01c6ca413ec66e814e9cf1f098eddb046f37ebc)
 	}
 }

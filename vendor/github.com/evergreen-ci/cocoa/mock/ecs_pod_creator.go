@@ -15,6 +15,7 @@ type ECSPodCreator struct {
 
 	CreatePodInput  []cocoa.ECSPodCreationOptions
 	CreatePodOutput *cocoa.ECSPod
+	CreatePodError  error
 }
 
 // NewECSPodCreator creates a mock ECS Pod Creator backed by the given Pod Creator.
@@ -31,7 +32,9 @@ func (m *ECSPodCreator) CreatePod(ctx context.Context, opts ...cocoa.ECSPodCreat
 	m.CreatePodInput = opts
 
 	if m.CreatePodOutput != nil {
-		return *m.CreatePodOutput, nil
+		return *m.CreatePodOutput, m.CreatePodError
+	} else if m.CreatePodError != nil {
+		return nil, m.CreatePodError
 	}
 
 	return m.ECSPodCreator.CreatePod(ctx, opts...)

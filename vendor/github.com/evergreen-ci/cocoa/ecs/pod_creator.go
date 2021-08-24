@@ -424,7 +424,8 @@ func (pc *BasicECSPodCreator) exportTaskExecutionOptions(opts cocoa.ECSPodExecut
 		SetTags(pc.exportTags(opts.Tags)).
 		SetEnableExecuteCommand(utility.FromBoolPtr(opts.SupportsDebugMode)).
 		SetPlacementStrategy(pc.exportStrategy(opts.PlacementOpts)).
-		SetPlacementConstraints(pc.exportPlacementConstraints(opts.PlacementOpts))
+		SetPlacementConstraints(pc.exportPlacementConstraints(opts.PlacementOpts)).
+		SetNetworkConfiguration(pc.exportAWSVPCOptions(opts.AWSVPCOpts))
 	return &runTask
 }
 
@@ -433,9 +434,33 @@ func (pc *BasicECSPodCreator) exportPortMappings(mappings []cocoa.PortMapping) [
 	var converted []*ecs.PortMapping
 	for _, pm := range mappings {
 		mapping := &ecs.PortMapping{}
-		mapping.SetContainerPort(int64(utility.FromIntPtr(pm.ContainerPort))).
-			SetHostPort(int64(utility.FromIntPtr(pm.HostPort)))
+		if pm.ContainerPort != nil {
+			mapping.SetContainerPort(int64(utility.FromIntPtr(pm.ContainerPort)))
+		}
+		if pm.HostPort != nil {
+			mapping.SetHostPort(int64(utility.FromIntPtr(pm.HostPort)))
+		}
 		converted = append(converted, mapping)
 	}
 	return converted
+}
+
+// exportAWSVPCOptions converts AWSVPC options into ECS AWSVPC options.
+func (pc *BasicECSPodCreator) exportAWSVPCOptions(opts *cocoa.AWSVPCOptions) *ecs.NetworkConfiguration {
+	if opts == nil {
+		return nil
+	}
+
+	var converted ecs.AwsVpcConfiguration
+	if len(opts.Subnets) != 0 {
+		converted.SetSubnets(utility.ToStringPtrSlice(opts.Subnets))
+	}
+	if len(opts.SecurityGroups) != 0 {
+		converted.SetSecurityGroups(utility.ToStringPtrSlice(opts.SecurityGroups))
+	}
+
+	var networkConf ecs.NetworkConfiguration
+	networkConf.SetAwsvpcConfiguration(&converted)
+
+	return &networkConf
 }

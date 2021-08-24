@@ -24,12 +24,12 @@ func TestECSPod(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	GlobalECSService.Clusters[testutil.ECSClusterName()] = ECSCluster{}
-
 	for tName, tCase := range ecsPodTests() {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, time.Second)
 			defer tcancel()
+
+			cleanupECSAndSecretsManagerCache()
 
 			c := &ECSClient{}
 			defer func() {
@@ -54,6 +54,8 @@ func TestECSPod(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, time.Second)
 			defer tcancel()
+
+			cleanupECSAndSecretsManagerCache()
 
 			c := &ECSClient{}
 			defer func() {
