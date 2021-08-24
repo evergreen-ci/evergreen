@@ -124,23 +124,7 @@ func TestPodCreationJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 		},
-		"FailsWithBadContainerOptions": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			j.pod.TaskContainerCreationOpts = pod.TaskContainerCreationOptions{}
-			require.NoError(t, j.pod.Insert())
-
-			j.Run(ctx)
-			require.Error(t, j.Error())
-			require.Zero(t, j.ecsPod)
-			require.Zero(t, j.pod.Resources)
-			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
-			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
-
-			dbPod, err := pod.FindOneByID(j.PodID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
-		},
-		"DecommissionsInitializingPodWithNoMoreAttempts": func(ctx context.Context, t *testing.T, j *podCreationJob) {
+		"DecommissionsInitializingPodWithBadContainerOptions": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			j.pod.TaskContainerCreationOpts = pod.TaskContainerCreationOptions{}
 			require.NoError(t, j.pod.Insert())
 
