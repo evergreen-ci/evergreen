@@ -671,6 +671,8 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 	s.NoError(err)
 
 	s.Len(p.Triggers.ChildPatches, 0)
-	s.NoError(ProcessTriggerAliases(ctx, p, projectRef, s.env, []string{"patch-alias"}))
+	childPatchIds, err := ProcessTriggerAliases(ctx, p, projectRef, s.env, []string{"patch-alias"})
+	s.NoError(err)
+	s.Len(childPatchIds, 1)
 	s.Len(p.Triggers.ChildPatches, 1)
 }

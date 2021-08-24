@@ -226,7 +226,7 @@ func TestFinalizePatch(t *testing.T) {
 				configPatch.PatchedConfig = projectYaml
 				token, err = patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
+				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token, nil)
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				So(version.Parameters, ShouldHaveLength, 1)
@@ -252,7 +252,7 @@ func TestFinalizePatch(t *testing.T) {
 				configPatch.PatchedConfig = projectYaml
 				token, err = patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
+				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token, nil)
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				So(err, ShouldBeNil)
@@ -276,14 +276,14 @@ func TestFinalizePatch(t *testing.T) {
 				configPatch.Tasks = []string{}
 				configPatch.BuildVariants = []string{}
 				configPatch.VariantsTasks = []patch.VariantTasks{}
-				v, err := FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
+				v, err := FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token, nil)
 				So(err, ShouldBeNil)
 				So(v, ShouldNotBeNil)
 				So(v.BuildIds, ShouldBeEmpty)
 
 				// commit queue patch should not
 				configPatch.Alias = evergreen.CommitQueueAlias
-				_, err = FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
+				_, err = FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token, nil)
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, "No builds or tasks for commit queue version")
 			})

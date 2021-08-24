@@ -159,7 +159,7 @@ func (pc *DBPatchConnector) SetPatchActivated(ctx context.Context, patchId strin
 		if err != nil {
 			return errors.Wrap(err, "error getting github token from settings")
 		}
-		if _, err = model.FinalizePatch(ctx, p, requester, token); err != nil {
+		if _, err = model.FinalizePatch(ctx, p, requester, token, nil); err != nil {
 			return errors.Wrapf(err, "error finalizing patch '%s'", p.Id.Hex())
 		}
 		if requester == evergreen.PatchVersionRequester {
