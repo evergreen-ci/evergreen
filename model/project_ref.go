@@ -1505,7 +1505,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 
 	// todo: add casing on Build Baron and task annotation settings once EVG-15218 is complete
 
-	case ProjectRefPatchAliasSection:
+	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
