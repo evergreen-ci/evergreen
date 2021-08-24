@@ -93,15 +93,15 @@ func FindByNeedsTermination() ([]Pod, error) {
 	return Find(bson.M{
 		"$or": []bson.M{
 			{
-				StatusKey: StatusDecommissioned,
-			},
-			{
-				bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey): bson.M{"$lte": staleCutoff},
-				StatusKey: StatusStarting,
-			},
-			{
 				StatusKey: StatusInitializing,
 				bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoInitializingKey): bson.M{"$lte": staleCutoff},
+			},
+			{
+				StatusKey: StatusStarting,
+				bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey): bson.M{"$lte": staleCutoff},
+			},
+			{
+				StatusKey: StatusDecommissioned,
 			},
 		},
 	})
