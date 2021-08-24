@@ -315,7 +315,7 @@ type Connector interface {
 	// UpdateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
 	// upserts any current aliases, and deletes any aliases that existed previously but not anymore (only
 	// considers the aliases that are relevant for the section).
-	UpdateAliasesForSection(string, []restModel.APIProjectAlias, []model.ProjectAlias, model.ProjectRefSection) (bool, error)
+	UpdateAliasesForSection(string, []restModel.APIProjectAlias, []model.ProjectAlias, model.ProjectPageSection) (bool, error)
 	// HasMatchingGitTagAliasAndRemotePath returns true if the project has aliases defined that match the given tag, and
 	// returns the remote path if applicable
 	HasMatchingGitTagAliasAndRemotePath(string, string) (bool, string, error)
@@ -383,6 +383,9 @@ type Connector interface {
 
 	//GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
 	GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error)
+	// SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
+	// RepoRef related functions and collection instead of ProjectRef.
+	SaveProjectSettingsForSection(context.Context, string, *restModel.APIProjectSettings, model.ProjectPageSection, bool, string) error
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)

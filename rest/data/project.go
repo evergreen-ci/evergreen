@@ -82,10 +82,11 @@ func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 
 // SaveProjectSettingsForSection passes in the existing state of the project page, but saves only the pieces
 // related to the specified section. This handles project ref, webhooks, auth, and project variables.
+// If isRepo is set, uses RepoRef related functions and the RepoRef collection as opposed to the ProjectRef.
 func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
-	section model.ProjectRefSection, userId string) error {
+	section model.ProjectPageSection, isRepo bool, userId string) error {
 	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end
-	before, err := model.GetProjectSettingsById(projectId)
+	before, err := model.GetProjectSettingsById(projectId, isRepo)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
@@ -94,8 +95,8 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 		return errors.Wrap(err, "error converting project ref")
 	}
 	newProjectRef := v.(*model.ProjectRef)
-	// if the project ref doesn't use the repo, then this will just be the same as newProjectRef
-	// used to verify that if something is set to nil in the request, we properly validate using the merged project ref
+	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as newProjectRef.
+	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
 	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
 	if err != nil {
 		return errors.Wrapf(err, "error merging project ref")
@@ -105,7 +106,7 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 	modified := false
 	switch section {
 	// aliases and notifications use a different connector and should be handled separated
-	case model.ProjectRefGeneralSection:
+	case model.ProjectPageGeneralSection:
 		// check if webhook is enabled if the owner/repo has changed
 		if mergedProjectRef.Owner != before.ProjectRef.Owner || mergedProjectRef.Repo != before.ProjectRef.Repo {
 			_, err = pc.EnableWebhooks(ctx, mergedProjectRef)
@@ -114,22 +115,43 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 			}
 		}
 		modified = true
-	case model.ProjectRefAccessSection:
+	case model.ProjectPageAccessSection:
 		// For any admins that are only in the original settings, remove access.
 		// For any admins that are only in the updated settings, give them access.
 		adminsToDelete, adminsToAdd := utility.StringSliceSymmetricDifference(before.ProjectRef.Admins, mergedProjectRef.Admins)
-		if err = pc.UpdateAdminRoles(newProjectRef, adminsToAdd, adminsToDelete); err != nil {
-			return errors.Wrap(err, "error updating admin roles")
-		}
-		modified = true
-		if !before.ProjectRef.IsRestricted() && mergedProjectRef.IsRestricted() {
-			catcher.Wrap(before.ProjectRef.MakeRestricted(), "error making project restricted")
-		}
-		if before.ProjectRef.IsRestricted() && !mergedProjectRef.IsRestricted() {
-			catcher.Wrap(before.ProjectRef.MakeUnrestricted(), "error making unrestricted")
+		makeRestricted := !before.ProjectRef.IsRestricted() && mergedProjectRef.IsRestricted()
+		makeUnrestricted := before.ProjectRef.IsRestricted() && !mergedProjectRef.IsRestricted()
+		if isRepo {
+			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
+			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
+			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+				return errors.Wrap(err, "error updating repo admin roles")
+			}
+			branchProjects, err := model.FindMergedProjectRefsForRepo(repoRef)
+			if err != nil {
+				return errors.Wrapf(err, "error finding branch projects for repo")
+			}
+			modified = true
+			if makeRestricted {
+				catcher.Wrap(repoRef.MakeRestricted(branchProjects), "error making repo restricted")
+			}
+			if makeUnrestricted {
+				catcher.Wrap(repoRef.MakeUnrestricted(branchProjects), "error making repo unrestricted")
+			}
+		} else {
+			if err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+				return errors.Wrap(err, "error updating project admin roles")
+			}
+			modified = true
+			if makeRestricted {
+				catcher.Wrap(before.ProjectRef.MakeRestricted(), "error making branch restricted")
+			}
+			if makeUnrestricted {
+				catcher.Wrap(before.ProjectRef.MakeUnrestricted(), "error making branch unrestricted")
+			}
 		}
 
-	case model.ProjectRefVariablesSection:
+	case model.ProjectPageVariablesSection:
 		// Remove any variables that only exist in the original settings.
 		toDelete := []string{}
 		for key, _ := range before.Vars.Vars {
@@ -144,13 +166,13 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 		modified = true
 	}
 
-	modifiedProjectRef, err := model.SaveProjectRefForSection(projectId, newProjectRef, section)
+	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
 	}
 
 	if modified || modifiedProjectRef {
-		catcher.Add(model.GetAndLogProjectModified(projectId, userId, before))
+		catcher.Add(model.GetAndLogProjectModified(projectId, userId, isRepo, before))
 	}
 
 	return errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
@@ -550,6 +572,11 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 }
 
 func (pc *MockProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
+	return nil
+}
+
+func (pc *MockProjectConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
+	section model.ProjectPageSection, isRepo bool, userId string) error {
 	return nil
 }
 

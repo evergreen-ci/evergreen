@@ -325,18 +325,18 @@ const (
 	maxBatchTime             = 153722867 // math.MaxInt64 / 60 / 1_000_000_000
 )
 
-type ProjectRefSection string
+type ProjectPageSection string
 
 const (
-	ProjectRefGeneralSection        = "general"
-	ProjectRefAccessSection         = "access"
-	ProjectRefVariablesSection      = "variables"
-	ProjectRefGithubAndCQSection    = "github_and_commit_queue"
-	ProjectRefNotificationsSection  = "notifications"
-	ProjectRefPatchAliasSection     = "patch_alias"
-	ProjectRefWorkstationsSection   = "workstations"
-	ProjectRefTriggersSection       = "triggers"
-	ProjectRefPeriodicBuildsSection = "periodic-builds"
+	ProjectPageGeneralSection        = "general"
+	ProjectPageAccessSection         = "access"
+	ProjectPageVariablesSection      = "variables"
+	ProjectPageGithubAndCQSection    = "github_and_commit_queue"
+	ProjectPageNotificationsSection  = "notifications"
+	ProjectPagePatchAliasSection     = "patch_alias"
+	ProjectPageWorkstationsSection   = "workstations"
+	ProjectPageTriggersSection       = "triggers"
+	ProjectPagePeriodicBuildsSection = "periodic-builds"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -393,7 +393,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // Any values that previously were unset will now use the repo value.
 // If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
-	before, err := GetProjectSettingsById(p.Id)
+	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
@@ -410,7 +410,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "error attaching repo to scope")
 	}
 	p.UseRepoSettings = true
-	return GetAndLogProjectModified(p.Id, u.Id, before)
+	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
 
 // AddToRepoScope adds the branch to the unrestricted branches under repo scope, adds repo view permission for
@@ -453,7 +453,7 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 // DetachFromRepo removes the branch from the relevant repo scopes, and updates the project to not point to the repo.
 // Any values that previously defaulted to repo will have the repo value explicitly set.
 func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
-	before, err := GetProjectSettingsById(p.Id)
+	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
@@ -534,7 +534,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
 
-	catcher.Add(GetAndLogProjectModified(p.Id, u.Id, before))
+	catcher.Add(GetAndLogProjectModified(p.Id, u.Id, false, before))
 	return catcher.Resolve()
 }
 
@@ -1267,8 +1267,22 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	return projectRefs, nil
 }
 
-func GetProjectSettingsById(projectId string) (*ProjectSettings, error) {
-	pRef, err := FindOneProjectRef(projectId)
+func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, error) {
+	var pRef *ProjectRef
+	var err error
+	if isRepo {
+		repoRef, err := FindOneRepoRef(projectId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding repo ref")
+		}
+		if repoRef == nil {
+			return nil, errors.Wrap(err, "couldn't find repo ref")
+		}
+		pRef = &repoRef.ProjectRef
+	} else {
+		pRef, err = FindOneProjectRef(projectId)
+
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref")
 	}
@@ -1405,15 +1419,22 @@ func (projectRef *ProjectRef) Upsert() error {
 	return err
 }
 
-// SaveProjectRefForSection updates the project ref variables for the section (if no project is given, we unset to default to repo)
-func SaveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRefSection) (bool, error) {
+// SaveProjectPageForSection updates the project or repo ref variables for the section (if no project is given, we unset to default to repo).
+func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectPageSection, isRepo bool) (bool, error) {
+	coll := ProjectRefCollection
+	if isRepo {
+		coll = RepoRefCollection
+		if p == nil {
+			return false, errors.New("can't default repo to repo")
+		}
+	}
 	if p == nil {
 		p = &ProjectRef{} // use a blank project ref to default the section to repo
 	}
 	var err error
 	switch section {
-	case ProjectRefGeneralSection:
-		err = db.Update(ProjectRefCollection,
+	case ProjectPageGeneralSection:
+		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -1432,8 +1453,8 @@ func SaveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 					ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 				},
 			})
-	case ProjectRefAccessSection:
-		err = db.Update(ProjectRefCollection,
+	case ProjectPageAccessSection:
+		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -1442,8 +1463,8 @@ func SaveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 					ProjectRefAdminsKey:     p.Admins,
 				},
 			})
-	case ProjectRefGithubAndCQSection:
-		err = db.Update(ProjectRefCollection,
+	case ProjectPageGithubAndCQSection:
+		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -1456,42 +1477,42 @@ func SaveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 					projectRefCommitQueueKey:           p.CommitQueue,
 				},
 			})
-	case ProjectRefNotificationsSection:
-		err = db.Update(ProjectRefCollection,
+	case ProjectPageNotificationsSection:
+		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefNotifyOnFailureKey: p.NotifyOnBuildFailure},
 			})
-	case ProjectRefWorkstationsSection:
-		err = db.Update(ProjectRefCollection,
+	case ProjectPageWorkstationsSection:
+		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefWorkstationConfigKey: p.WorkstationConfig},
 			})
-	case ProjectRefTriggersSection:
-		err = db.Update(ProjectRefCollection,
+	case ProjectPageTriggersSection:
+		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-	case ProjectRefPatchAliasSection:
-		err = db.Update(ProjectRefCollection,
+	case ProjectPagePatchAliasSection:
+		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
 					projectRefPatchTriggerAliasesKey: p.PatchTriggerAliases,
 				},
 			})
-	case ProjectRefPeriodicBuildsSection:
-		err = db.Update(ProjectRefCollection,
+	case ProjectPagePeriodicBuildsSection:
+		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
 			})
-	case ProjectRefVariablesSection:
-		// this section doesn't modify the project ref
+	case ProjectPageVariablesSection:
+		// this section doesn't modify the project/repo ref
 		return false, nil
 	default:
 		return false, errors.Errorf("invalid section")
@@ -1507,13 +1528,13 @@ func SaveProjectRefForSection(projectId string, p *ProjectRef, section ProjectRe
 // This subset is based on the pages used in Spruce.
 // If project settings aren't given, we should assume we're defaulting to repo and we need
 // to create our own project settings event  after completing the update.
-func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId string) error {
-	before, err := GetProjectSettingsById(projectId)
+func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId string) error {
+	before, err := GetProjectSettingsById(projectId, false)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
 	}
 
-	modified, err := SaveProjectRefForSection(projectId, nil, section)
+	modified, err := SaveProjectPageForSection(projectId, nil, section, false)
 	if err != nil {
 		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
 	}
@@ -1522,7 +1543,7 @@ func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId st
 	// Handle errors at the end so that we can still log the project as modified, if applicable.
 	catcher := grip.NewBasicCatcher()
 	switch section {
-	case ProjectRefVariablesSection:
+	case ProjectPageVariablesSection:
 		err = db.Update(ProjectVarsCollection,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
@@ -1536,7 +1557,7 @@ func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId st
 			modified = true
 		}
 		catcher.Wrapf(err, "error defaulting to repo for section '%s'", section)
-	case ProjectRefGithubAndCQSection:
+	case ProjectPageGithubAndCQSection:
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
@@ -1547,7 +1568,7 @@ func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId st
 				catcher.Add(err)
 			}
 		}
-	case ProjectRefNotificationsSection:
+	case ProjectPageNotificationsSection:
 		// handle subscriptions
 		for _, sub := range before.Subscriptions {
 			err = event.RemoveSubscription(sub.ID)
@@ -1556,7 +1577,7 @@ func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId st
 			}
 			catcher.Add(err)
 		}
-	case ProjectRefPatchAliasSection:
+	case ProjectPagePatchAliasSection:
 		catcher := grip.NewBasicCatcher()
 		// remove only patch aliases, i.e. aliases without an Evergreen-internal label
 		for _, a := range before.Aliases {
@@ -1570,7 +1591,7 @@ func DefaultSectionToRepo(projectId string, section ProjectRefSection, userId st
 		}
 	}
 	if modified {
-		catcher.Add(GetAndLogProjectModified(projectId, userId, before))
+		catcher.Add(GetAndLogProjectModified(projectId, userId, false, before))
 	}
 
 	return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
