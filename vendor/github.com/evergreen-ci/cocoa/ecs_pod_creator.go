@@ -15,10 +15,10 @@ type ECSPodCreator interface {
 	// CreatePod creates a new pod backed by ECS with the given options. Options
 	// are applied in the order they're specified and conflicting options are
 	// overwritten.
-	CreatePod(ctx context.Context, opts ...*ECSPodCreationOptions) (ECSPod, error)
+	CreatePod(ctx context.Context, opts ...ECSPodCreationOptions) (ECSPod, error)
 	// CreatePodFromExistingDefinition creates a new pod backed by ECS from an
 	// existing task definition.
-	CreatePodFromExistingDefinition(ctx context.Context, def ECSTaskDefinition, opts ...*ECSPodExecutionOptions) (ECSPod, error)
+	CreatePodFromExistingDefinition(ctx context.Context, def ECSTaskDefinition, opts ...ECSPodExecutionOptions) (ECSPod, error)
 }
 
 // ECSPodCreationOptions provide options to create a pod backed by ECS.
@@ -156,7 +156,7 @@ func (o *ECSPodCreationOptions) validateContainerDefinitions() error {
 
 	var totalContainerMemMB, totalContainerCPU int
 	for i, def := range o.ContainerDefinitions {
-		catcher.Wrapf(o.ContainerDefinitions[i].Validate(), "container definition '%s'", def.Name)
+		catcher.Wrapf(o.ContainerDefinitions[i].Validate(), "container definition '%s'", utility.FromStringPtr(def.Name))
 
 		switch networkMode {
 		case NetworkModeNone:
@@ -237,14 +237,10 @@ func (o *ECSPodCreationOptions) Validate() error {
 // MergeECSPodCreationOptions merges all the given options to create an ECS pod.
 // Options are applied in the order that they're specified and conflicting
 // options are overwritten.
-func MergeECSPodCreationOptions(opts ...*ECSPodCreationOptions) ECSPodCreationOptions {
+func MergeECSPodCreationOptions(opts ...ECSPodCreationOptions) ECSPodCreationOptions {
 	merged := ECSPodCreationOptions{}
 
 	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-
 		if opt.Name != nil {
 			merged.Name = opt.Name
 		}
@@ -398,7 +394,7 @@ func (d *ECSContainerDefinition) Validate() error {
 	catcher.NewWhen(d.MemoryMB != nil && *d.MemoryMB <= 0, "must have positive memory value if non-default")
 	catcher.NewWhen(d.CPU != nil && *d.CPU <= 0, "must have positive CPU value if non-default")
 	for _, ev := range d.EnvVars {
-		catcher.Wrapf(ev.Validate(), "environment variable '%s'", ev.Name)
+		catcher.Wrapf(ev.Validate(), "environment variable '%s'", utility.FromStringPtr(ev.Name))
 	}
 	if d.RepoCreds != nil {
 		catcher.Wrap(d.RepoCreds.Validate(), "invalid repository credentials")
@@ -473,10 +469,15 @@ func (e *EnvironmentVariable) Validate() error {
 // SecretOptions represents a secret with a name and value that may or may not
 // be owned by its container.
 type SecretOptions struct {
-	ContainerSecret
-	// Exists determines whether or not the secret already exists or must be
-	// created before it can be used.
-	Exists *bool
+	// ID is the unique resource identfier for an existing secret.
+	ID *string
+	// Name is the friendly name of the secret.
+	Name *string
+	// NewValue is the value of the secret if it must be created.
+	NewValue *string
+	// Owned determines whether or not the secret is owned by its container or
+	// not.
+	Owned *bool
 }
 
 // NewSecretOptions returns new uninitialized options for a secret.
@@ -484,25 +485,25 @@ func NewSecretOptions() *SecretOptions {
 	return &SecretOptions{}
 }
 
-// SetName sets the secret name.
+// SetID sets the unique resource identifier for an existing secret.
+func (s *SecretOptions) SetID(id string) *SecretOptions {
+	s.ID = &id
+	return s
+}
+
+// SetName sets the friendly name of the secret.
 func (s *SecretOptions) SetName(name string) *SecretOptions {
 	s.Name = &name
 	return s
 }
 
-// SetValue sets the secret value.
-func (s *SecretOptions) SetValue(val string) *SecretOptions {
-	s.Value = &val
+// SetNewValue sets the value of the new secret to be created.
+func (s *SecretOptions) SetNewValue(val string) *SecretOptions {
+	s.NewValue = &val
 	return s
 }
 
-// SetExists sets whether or not the secret already exists or must be created.
-func (s *SecretOptions) SetExists(exists bool) *SecretOptions {
-	s.Exists = &exists
-	return s
-}
-
-// SetOwned returns whether or not the secret is owned by its pod.
+// SetOwned returns whether or not the secret is owned by its container.
 func (s *SecretOptions) SetOwned(owned bool) *SecretOptions {
 	s.Owned = &owned
 	return s
@@ -512,19 +513,22 @@ func (s *SecretOptions) SetOwned(owned bool) *SecretOptions {
 // already exists or the new secret's value is given.
 func (s *SecretOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(s.Name == nil, "must specify a name")
-	catcher.NewWhen(s.Name != nil && *s.Name == "", "cannot specify an empty name")
-	catcher.NewWhen(!utility.FromBoolPtr(s.Exists) && s.Value == nil, "either a new secret's value must be given or the secret must already exist")
-	catcher.NewWhen(utility.FromBoolPtr(s.Exists) && s.Value != nil, "cannot specify a new secret value when the secret already exists")
+	catcher.NewWhen(s.ID == nil && s.NewValue == nil, "must specify either an existing secret ID or a new secret to be created")
+	catcher.NewWhen(s.ID != nil && s.NewValue != nil, "cannot specify both an existing secret ID and a new secret to be created")
+	catcher.NewWhen(s.NewValue != nil && s.Name == nil, "cannot specify a new secret to be created without a name")
+	catcher.NewWhen(s.ID != nil && utility.FromStringPtr(s.ID) == "", "cannot specify an empty secret ID")
 	return catcher.Resolve()
 }
 
 // RepositoryCredentials are credentials for using images from private
 // repositories. The credentials must be stored in a secret vault.
 type RepositoryCredentials struct {
-	// SecretName is either the friendly name of the secret to be created or the
-	// resource name of an existing secret.
-	SecretName *string
+	// ID is the unique resource identifier for an existing secret containing
+	// the credentials for a private repository.
+	ID *string
+	// Name is the friendly name of the secret containing the credentials
+	// for a private repository.
+	Name *string
 	// NewCreds are the new credentials to be stored. If this is unspecified,
 	// the secrets are assumed to already exist.
 	NewCreds *StoredRepositoryCredentials
@@ -538,14 +542,19 @@ func NewRepositoryCredentials() *RepositoryCredentials {
 	return &RepositoryCredentials{}
 }
 
-// SetSecretName sets the either the friendly name for the new secret to be
-// created or the resource name of an existing secret.
-func (c *RepositoryCredentials) SetSecretName(name string) *RepositoryCredentials {
-	c.SecretName = &name
+// SetID sets the unique resource identifier for an existing secret.
+func (c *RepositoryCredentials) SetID(id string) *RepositoryCredentials {
+	c.ID = &id
 	return c
 }
 
-// SetNewCredentials sets the new credentials to be store.
+// SetName sets the friendly name of the secret containing the credentials.
+func (c *RepositoryCredentials) SetName(name string) *RepositoryCredentials {
+	c.Name = &name
+	return c
+}
+
+// SetNewCredentials sets the new credentials to be stored.
 func (c *RepositoryCredentials) SetNewCredentials(creds StoredRepositoryCredentials) *RepositoryCredentials {
 	c.NewCreds = &creds
 	return c
@@ -562,8 +571,10 @@ func (c *RepositoryCredentials) SetOwned(owned bool) *RepositoryCredentials {
 // new credentials to create are specified, or the secret already exists.
 func (c *RepositoryCredentials) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(c.SecretName == nil, "must specify a secret name")
-	catcher.NewWhen(c.SecretName != nil && *c.SecretName == "", "cannot specify an empty secret name")
+	catcher.NewWhen(c.ID == nil && c.NewCreds == nil, "must specify either an existing secret ID or new credentials to create")
+	catcher.NewWhen(c.ID != nil && c.NewCreds != nil, "cannot specify both an existing secret ID and a new secret to create")
+	catcher.NewWhen(c.NewCreds != nil && c.Name == nil, "cannot specify a new secret to be created without a name")
+	catcher.NewWhen(c.ID != nil && utility.FromStringPtr(c.ID) == "", "cannot specify an empty secret ID")
 	if c.NewCreds != nil {
 		catcher.Wrap(c.NewCreds.Validate(), "invalid new credentials to create")
 	}
@@ -597,7 +608,7 @@ func (c *StoredRepositoryCredentials) SetPassword(pwd string) *StoredRepositoryC
 	return c
 }
 
-// Validate checks that both the username and password are set.
+// Validate checks that the username and password are set.
 func (c *StoredRepositoryCredentials) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(utility.FromStringPtr(c.Username) == "", "must specify a username")
@@ -737,14 +748,10 @@ func (o *ECSPodExecutionOptions) Validate() error {
 // MergeECSPodExecutionOptions merges all the given options to execute an ECS pod.
 // Options are applied in the order that they're specified and conflicting
 // options are overwritten.
-func MergeECSPodExecutionOptions(opts ...*ECSPodExecutionOptions) ECSPodExecutionOptions {
+func MergeECSPodExecutionOptions(opts ...ECSPodExecutionOptions) ECSPodExecutionOptions {
 	merged := ECSPodExecutionOptions{}
 
 	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-
 		if opt.Cluster != nil {
 			merged.Cluster = opt.Cluster
 		}
@@ -953,4 +960,12 @@ func (d *ECSTaskDefinition) SetID(id string) *ECSTaskDefinition {
 func (d *ECSTaskDefinition) SetOwned(owned bool) *ECSTaskDefinition {
 	d.Owned = &owned
 	return d
+}
+
+// Validate checsk that the task definition ID is given.
+func (d *ECSTaskDefinition) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(d.ID == nil, "must specify a task definition ID")
+	catcher.NewWhen(utility.FromStringPtr(d.ID) == "", "must specify a non-empty task definition ID")
+	return catcher.Resolve()
 }

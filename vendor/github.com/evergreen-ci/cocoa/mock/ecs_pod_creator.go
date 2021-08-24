@@ -13,7 +13,7 @@ import (
 type ECSPodCreator struct {
 	cocoa.ECSPodCreator
 
-	CreatePodInput  []*cocoa.ECSPodCreationOptions
+	CreatePodInput  []cocoa.ECSPodCreationOptions
 	CreatePodOutput *cocoa.ECSPod
 }
 
@@ -27,7 +27,7 @@ func NewECSPodCreator(c cocoa.ECSPodCreator) *ECSPodCreator {
 // CreatePod saves the input and returns a new mock pod. The mock output can be
 // customized. By default, it will create a new pod based on the input that is
 // backed by a mock ECSClient.
-func (m *ECSPodCreator) CreatePod(ctx context.Context, opts ...*cocoa.ECSPodCreationOptions) (cocoa.ECSPod, error) {
+func (m *ECSPodCreator) CreatePod(ctx context.Context, opts ...cocoa.ECSPodCreationOptions) (cocoa.ECSPod, error) {
 	m.CreatePodInput = opts
 
 	if m.CreatePodOutput != nil {
@@ -40,6 +40,6 @@ func (m *ECSPodCreator) CreatePod(ctx context.Context, opts ...*cocoa.ECSPodCrea
 // CreatePodFromExistingDefinition saves the input and returns a new mock pod.
 // The mock output can be customized. By default, it will create a new pod from
 // the existing task definition that is backed by a mock ECSClient.
-func (m *ECSPodCreator) CreatePodFromExistingDefinition(ctx context.Context, def cocoa.ECSTaskDefinition, opts ...*cocoa.ECSPodExecutionOptions) (cocoa.ECSPod, error) {
+func (m *ECSPodCreator) CreatePodFromExistingDefinition(ctx context.Context, def cocoa.ECSTaskDefinition, opts ...cocoa.ECSPodExecutionOptions) (cocoa.ECSPod, error) {
 	return nil, errors.New("TODO: implement")
 }
