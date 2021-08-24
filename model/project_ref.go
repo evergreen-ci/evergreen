@@ -331,15 +331,15 @@ const (
 type ProjectPageSection string
 
 const (
-	ProjectRefGeneralSection         = "general"
-	ProjectRefAccessSection          = "access"
-	ProjectRefVariablesSection       = "variables"
-	ProjectRefGithubAndCQSection     = "github_and_commit_queue"
-	ProjectRefNotificationsSection   = "notifications"
-	ProjectRefPatchAliasSection      = "patch_alias"
-	ProjectRefWorkstationsSection    = "workstations"
-	ProjectRefTriggersSection        = "triggers"
-	ProjectRefPeriodicBuildsSection  = "periodic-builds"
+	ProjectPageGeneralSection        = "general"
+	ProjectPageAccessSection         = "access"
+	ProjectPageVariablesSection      = "variables"
+	ProjectPageGithubAndCQSection    = "github_and_commit_queue"
+	ProjectPageNotificationsSection  = "notifications"
+	ProjectPagePatchAliasSection     = "patch_alias"
+	ProjectPageWorkstationsSection   = "workstations"
+	ProjectPageTriggersSection       = "triggers"
+	ProjectPagePeriodicBuildsSection = "periodic-builds"
 	ProjectRefBuildBaronSection      = "build_baron"
 	ProjectRefTaskAnnotationsSection = "task_annotation"
 )
