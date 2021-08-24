@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -81,11 +82,28 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		if j.ecsClient != nil {
 			j.AddError(j.ecsClient.Close(ctx))
 		}
+
+		if j.pod != nil {
+			// kim: TODO: check that message.WrapError formats as desired.
+			if j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+				if err := j.pod.UpdateStatus(pod.StatusDecommissioned); err != nil {
+					j.AddError(message.WrapError(err, message.Fields{
+						"message": "could not set pod to decommissioned after failing to start",
+						"pod_id":  j.PodID,
+					}))
+				}
+			}
+		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
+
+	// j.AddError(message.WrapError(errors.New("kim: some test error"), message.Fields{
+	//     "message": "kim: testing error format in Splunk",
+	//     "pod_id":  j.PodID,
+	// }))
 
 	settings := *j.env.Settings()
 	// Use the latest service flags instead of those cached in the environment.

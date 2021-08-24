@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,6 +31,8 @@ func TestNewPodCreationJob(t *testing.T) {
 }
 
 func TestPodCreationJob(t *testing.T) {
+	const clusterName = "cluster"
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podCreationJob){
 		"Succeeds": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			require.NoError(t, j.pod.Insert())
@@ -41,11 +44,12 @@ func TestPodCreationJob(t *testing.T) {
 			res := j.ecsPod.Resources()
 			assert.Equal(t, cocoa.StatusStarting, j.ecsPod.StatusInfo().Status)
 			assert.Equal(t, pod.StatusStarting, j.pod.Status)
-			assert.Equal(t, "cluster", utility.FromStringPtr(res.Cluster))
+			assert.Equal(t, clusterName, utility.FromStringPtr(res.Cluster))
 			assert.Equal(t, j.pod.Resources.DefinitionID, utility.FromStringPtr(res.TaskDefinition.ID))
 			assert.Equal(t, j.pod.Resources.ExternalID, utility.FromStringPtr(res.TaskID))
 			require.Len(t, res.Containers, 1)
 			require.Len(t, res.Containers[0].Secrets, 2)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 1)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 2)
 			for _, secret := range res.Containers[0].Secrets {
 				id := utility.FromStringPtr(secret.ID)
@@ -80,6 +84,7 @@ func TestPodCreationJob(t *testing.T) {
 			require.Zero(t, j.ecsPod)
 			require.Zero(t, j.pod.Resources)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -93,9 +98,10 @@ func TestPodCreationJob(t *testing.T) {
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
-			require.Zero(t, j.ecsPod)
-			require.Zero(t, j.pod.Resources)
+			assert.Zero(t, j.ecsPod)
+			assert.Zero(t, j.pod.Resources)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -108,17 +114,18 @@ func TestPodCreationJob(t *testing.T) {
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
-			require.Zero(t, j.ecsPod)
-			require.Zero(t, j.pod.Resources)
+			assert.Zero(t, j.ecsPod)
+			assert.Zero(t, j.pod.Resources)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 		},
-		"FailsWhenExportingOpts": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			j.pod.TaskContainerCreationOpts.Image = ""
+		"FailsWithBadContainerOptions": func(ctx context.Context, t *testing.T, j *podCreationJob) {
+			j.pod.TaskContainerCreationOpts = pod.TaskContainerCreationOptions{}
 			require.NoError(t, j.pod.Insert())
 
 			j.Run(ctx)
@@ -126,41 +133,31 @@ func TestPodCreationJob(t *testing.T) {
 			require.Zero(t, j.ecsPod)
 			require.Zero(t, j.pod.Resources)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
 		},
-		"FailsWhenCreatingPod": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			j.pod.TaskContainerCreationOpts.CPU = 0
+		"DecommissionsInitializingPodWithNoMoreAttempts": func(ctx context.Context, t *testing.T, j *podCreationJob) {
+			j.pod.TaskContainerCreationOpts = pod.TaskContainerCreationOptions{}
 			require.NoError(t, j.pod.Insert())
 
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				MaxAttempts: utility.ToIntPtr(1),
+			})
+
 			j.Run(ctx)
-			require.Error(t, j.Error())
-			require.Zero(t, j.ecsPod)
-			require.Zero(t, j.pod.Resources)
+			require.Error(t, j.pod.Insert())
+			assert.Zero(t, j.ecsPod)
+			assert.Zero(t, j.pod.Resources)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
-		},
-		"FailsWithMismatchedPlatformOS": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			j.pod.TaskContainerCreationOpts.OS = "windows"
-			require.NoError(t, j.pod.Insert())
-
-			j.Run(ctx)
-			require.Error(t, j.Error())
-			require.Zero(t, j.ecsPod)
-			require.Zero(t, j.pod.Resources)
-			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
-
-			dbPod, err := pod.FindOneByID(j.PodID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
+			assert.Equal(t, pod.StatusDecommissioned, dbPod.Status)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -172,8 +169,13 @@ func TestPodCreationJob(t *testing.T) {
 				assert.NoError(t, db.ClearCollections(pod.Collection, event.AllLogCollection))
 			}()
 
-			cluster := "cluster"
-			cocoaMock.GlobalECSService.Clusters[cluster] = cocoaMock.ECSCluster{}
+			cocoaMock.GlobalECSService = cocoaMock.ECSService{
+				Clusters: map[string]cocoaMock.ECSCluster{
+					clusterName: {},
+				},
+				TaskDefs: map[string][]cocoaMock.ECSTaskDefinition{},
+			}
+			cocoaMock.GlobalSecretCache = map[string]cocoaMock.StoredSecret{}
 
 			defer func() {
 				cocoaMock.GlobalECSService = cocoaMock.ECSService{
