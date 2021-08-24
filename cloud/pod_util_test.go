@@ -69,10 +69,10 @@ func TestMakeECSPodCreator(t *testing.T) {
 	})
 }
 
-func TestExportPod(t *testing.T) {
+func TestExportECSPod(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault){
 		"Succeeds": func(ctx context.Context, t *testing.T, p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) {
-			exported, err := ExportPod(p, c, v)
+			exported, err := ExportECSPod(p, c, v)
 			require.NoError(t, err)
 
 			resources := exported.Resources()
@@ -96,12 +96,12 @@ func TestExportPod(t *testing.T) {
 			assert.Equal(t, ps, exported.StatusInfo().Status)
 		},
 		"FailsWithEmptyPod": func(ctx context.Context, t *testing.T, p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) {
-			exported, err := ExportPod(&pod.Pod{}, c, v)
+			exported, err := ExportECSPod(&pod.Pod{}, c, v)
 			assert.Error(t, err)
 			assert.Zero(t, exported)
 		},
 		"FailsWithInvalidECSClientAndVault": func(ctx context.Context, t *testing.T, p *pod.Pod, _ cocoa.ECSClient, _ cocoa.Vault) {
-			exported, err := ExportPod(p, nil, nil)
+			exported, err := ExportECSPod(p, nil, nil)
 			assert.Error(t, err)
 			assert.Zero(t, exported)
 		},
@@ -143,6 +143,46 @@ func TestExportPod(t *testing.T) {
 	}
 }
 
+// func TestExportECSPodContainerDef(t *testing.T) {
+//     validPod := func() pod.Pod {
+//         return pod.Pod{
+//             ID: "pod_id",
+//             TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
+//                 Image:      "image",
+//                 MemoryMB:   128,
+//                 CPU:        256,
+//                 WorkingDir: "/working_dir",
+//                 EnvVars: map[string]string{
+//                     "ENV_VAR": "env_value",
+//                 },
+//                 EnvSecrets: map[string]string{
+//                     "SECRET_VAR": "secret_value",
+//                 },
+//             },
+//         }
+//     }
+//     validSettings := func() evergreen.Settings {
+//         return evergreen.Settings{
+//             Providers: evergreen.CloudProviders{
+//                 AWS: evergreen.AWSConfig{
+//                     Pod: evergreen.AWSPodConfig{
+//                         SecretsManager: evergreen.SecretsManagerConfig{
+//                             SecretPrefix: "secret_prefix/",
+//                         },
+//                     },
+//                 },
+//             },
+//         }
+//     }
+//     t.Run("Succeeds", func(t *testing.T) {
+//         p := validPod()
+//         settings := validSettings()
+//         def, err := exportECSPodContainerDef(&settings, &p)
+//         require.NoError(t, err)
+//         // kim: TODO: continue testing
+//     })
+// }
+
 func TestExportECSPodStatus(t *testing.T) {
 	t.Run("SucceedsWithStartingStatus", func(t *testing.T) {
 		s, err := ExportECSPodStatus(pod.StatusStarting)
@@ -171,13 +211,13 @@ func TestExportECSPodStatus(t *testing.T) {
 	})
 }
 
-func TestExportPodResources(t *testing.T) {
+func TestExportECSPodResources(t *testing.T) {
 	t.Run("SetsNoFields", func(t *testing.T) {
-		assert.Zero(t, ExportPodResources(pod.ResourceInfo{}))
+		assert.Zero(t, ExportECSPodResources(pod.ResourceInfo{}))
 	})
 	t.Run("SetsTaskID", func(t *testing.T) {
 		id := "task_id"
-		r := ExportPodResources(pod.ResourceInfo{
+		r := ExportECSPodResources(pod.ResourceInfo{
 			ExternalID: id,
 		})
 		assert.Equal(t, id, utility.FromStringPtr(r.TaskID))
@@ -187,7 +227,7 @@ func TestExportPodResources(t *testing.T) {
 	})
 	t.Run("SetsCluster", func(t *testing.T) {
 		cluster := "cluster"
-		r := ExportPodResources(pod.ResourceInfo{
+		r := ExportECSPodResources(pod.ResourceInfo{
 			Cluster: cluster,
 		})
 		assert.Equal(t, cluster, utility.FromStringPtr(r.Cluster))
@@ -197,7 +237,7 @@ func TestExportPodResources(t *testing.T) {
 	})
 	t.Run("SetsTaskDefinitionID", func(t *testing.T) {
 		id := "task_def_id"
-		r := ExportPodResources(pod.ResourceInfo{
+		r := ExportECSPodResources(pod.ResourceInfo{
 			DefinitionID: id,
 		})
 		require.NotZero(t, r.TaskDefinition)
@@ -213,7 +253,7 @@ func TestExportPodResources(t *testing.T) {
 			Name:       "container_name",
 			SecretIDs:  []string{"secret0", "secret1"},
 		}
-		r := ExportPodResources(pod.ResourceInfo{
+		r := ExportECSPodResources(pod.ResourceInfo{
 			Containers: []pod.ContainerResourceInfo{c},
 		})
 
@@ -229,23 +269,23 @@ func TestExportPodResources(t *testing.T) {
 	})
 }
 
-func TestImportPodResources(t *testing.T) {
+func TestImportECSPodResources(t *testing.T) {
 	t.Run("SucceedsWithEmptyInput", func(t *testing.T) {
-		assert.Zero(t, ImportPodResources(*cocoa.NewECSPodResources()))
+		assert.Zero(t, ImportECSPodResources(*cocoa.NewECSPodResources()))
 	})
 	t.Run("SucceedsWithTaskID", func(t *testing.T) {
 		id := "ecs_task_id"
-		res := ImportPodResources(*cocoa.NewECSPodResources().SetTaskID(id))
+		res := ImportECSPodResources(*cocoa.NewECSPodResources().SetTaskID(id))
 		assert.Equal(t, res.ExternalID, id)
 	})
 	t.Run("SucceedsWithCluster", func(t *testing.T) {
 		cluster := "cluster"
-		res := ImportPodResources(*cocoa.NewECSPodResources().SetCluster(cluster))
+		res := ImportECSPodResources(*cocoa.NewECSPodResources().SetCluster(cluster))
 		assert.Equal(t, cluster, res.Cluster)
 	})
 	t.Run("SucceedsWithTaskDefinition", func(t *testing.T) {
 		id := "task_definition_id"
-		res := ImportPodResources(*cocoa.NewECSPodResources().SetTaskDefinition(
+		res := ImportECSPodResources(*cocoa.NewECSPodResources().SetTaskDefinition(
 			*cocoa.NewECSTaskDefinition().
 				SetID(id)))
 		assert.Equal(t, res.DefinitionID, id)
@@ -257,7 +297,7 @@ func TestImportPodResources(t *testing.T) {
 			AddSecrets(*cocoa.NewContainerSecret().
 				SetName("secret_name").
 				SetValue("secret_value"))
-		res := ImportPodResources(*cocoa.NewECSPodResources().AddContainers(c))
+		res := ImportECSPodResources(*cocoa.NewECSPodResources().AddContainers(c))
 		require.Len(t, res.Containers, 1)
 		assert.Equal(t, utility.FromStringPtr(c.ContainerID), res.Containers[0].ExternalID)
 		assert.Equal(t, utility.FromStringPtr(c.Name), res.Containers[0].Name)
@@ -310,7 +350,7 @@ func TestExportECSContainerStatusInfo(t *testing.T) {
 	})
 }
 
-func TestExportPodCreationOptions(t *testing.T) {
+func TestExportECSPodCreationOptions(t *testing.T) {
 	validPod := func() *pod.Pod {
 		return &pod.Pod{
 			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
@@ -360,7 +400,7 @@ func TestExportPodCreationOptions(t *testing.T) {
 	t.Run("Succeeds", func(t *testing.T) {
 		settings := validSettings()
 		p := validPod()
-		opts, err := ExportPodCreationOptions(settings, p)
+		opts, err := ExportECSPodCreationOptions(settings, p)
 		require.NoError(t, err)
 		require.NotZero(t, opts)
 		require.Equal(t, settings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(opts.TaskRole))
@@ -398,14 +438,14 @@ func TestExportPodCreationOptions(t *testing.T) {
 	t.Run("FailsWithNoECSConfig", func(t *testing.T) {
 		settings := validSettings()
 		settings.Providers.AWS.Pod.ECS = evergreen.ECSConfig{}
-		opts, err := ExportPodCreationOptions(settings, validPod())
+		opts, err := ExportECSPodCreationOptions(settings, validPod())
 		require.NotZero(t, err)
 		require.Zero(t, opts)
 	})
 	t.Run("FailsWithNoClusters", func(t *testing.T) {
 		settings := validSettings()
 		settings.Providers.AWS.Pod.ECS.Clusters = nil
-		opts, err := ExportPodCreationOptions(settings, &pod.Pod{})
+		opts, err := ExportECSPodCreationOptions(settings, &pod.Pod{})
 		assert.Error(t, err)
 		assert.Zero(t, opts)
 	})

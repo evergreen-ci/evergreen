@@ -193,7 +193,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j.ecsPod = ecsPod
 
 			res := j.ecsPod.Resources()
-			j.pod.Resources = cloud.ImportPodResources(res)
+			j.pod.Resources = cloud.ImportECSPodResources(res)
 
 			tCase(ctx, t, j)
 		})

@@ -34,15 +34,15 @@ func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, e
 	return ecs.NewBasicECSPodCreator(c, v)
 }
 
-// ExportPod exports the pod DB model to its equivalent cocoa.ECSPod backed by
-// the given ECS client and secret vault.
-func ExportPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, error) {
+// ExportECSPod exports the pod DB model to its equivalent cocoa.ECSPod backed
+// by the given ECS client and secret vault.
+func ExportECSPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, error) {
 	stat, err := ExportECSPodStatusInfo(p)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod status info")
 	}
 
-	res := ExportPodResources(p.Resources)
+	res := ExportECSPodResources(p.Resources)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod resources")
 	}
@@ -99,9 +99,9 @@ func ExportECSPodStatus(s pod.Status) (cocoa.ECSStatus, error) {
 	}
 }
 
-// ExportPodResources exports the ECS pod resource information into the
+// ExportECSPodResources exports the ECS pod resource information into the
 // equivalent cocoa.ECSPodResources.
-func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
+func ExportECSPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 	res := cocoa.NewECSPodResources()
 
 	for _, container := range info.Containers {
@@ -126,9 +126,9 @@ func ExportPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 	return *res
 }
 
-// ImportPodResources imports the ECS pod resource information into the
+// ImportECSPodResources imports the ECS pod resource information into the
 // equivalent pod.ResourceInfo.
-func ImportPodResources(res cocoa.ECSPodResources) pod.ResourceInfo {
+func ImportECSPodResources(res cocoa.ECSPodResources) pod.ResourceInfo {
 	var containerResources []pod.ContainerResourceInfo
 	for _, c := range res.Containers {
 		var secretIDs []string
@@ -177,9 +177,32 @@ func ExportECSContainerResources(info pod.ContainerResourceInfo) cocoa.ECSContai
 // agent in a pod.
 const agentContainerName = "evg-agent"
 
-// ExportPodContainerDef exports the ECS pod container definition into the
+// ExportECSPodCreationOptions exports the ECS pod resources into
+// cocoa.ECSPodExecutionOptions.
+func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSPodCreationOptions, error) {
+	ecsConf := settings.Providers.AWS.Pod.ECS
+	execOpts, err := exportECSPodExecutionOptions(ecsConf, p.TaskContainerCreationOpts.OS)
+	if err != nil {
+		return nil, errors.Wrap(err, "exporting pod execution options")
+	}
+
+	containerDef, err := exportECSPodContainerDef(settings, p)
+	if err != nil {
+		return nil, errors.Wrap(err, "exporting pod container definition")
+	}
+
+	return cocoa.NewECSPodCreationOptions().
+		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", p.ID}, "-")).
+		SetTaskRole(ecsConf.TaskRole).
+		SetExecutionRole(ecsConf.ExecutionRole).
+		SetNetworkMode(cocoa.NetworkModeAWSVPC).
+		SetExecutionOptions(*execOpts).
+		AddContainerDefinitions(*containerDef), nil
+}
+
+// exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
-func ExportPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSContainerDefinition, error) {
+func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSContainerDefinition, error) {
 	script, err := agentScript(settings, p)
 	if err != nil {
 		return nil, errors.Wrap(err, "building agent script")
@@ -195,9 +218,9 @@ func ExportPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECS
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(2285)), nil
 }
 
-// ExportPodExecutionOptions exports the ECS configuration into
+// exportECSPodExecutionOptions exports the ECS configuration into
 // cocoa.ECSPodExecutionOptions.
-func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*cocoa.ECSPodExecutionOptions, error) {
+func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*cocoa.ECSPodExecutionOptions, error) {
 	opts := cocoa.NewECSPodExecutionOptions()
 
 	if len(ecsConfig.AWSVPC.Subnets) != 0 || len(ecsConfig.AWSVPC.SecurityGroups) != 0 {
@@ -213,29 +236,6 @@ func ExportPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*co
 	}
 
 	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(podOS))
-}
-
-// ExportPodCreationOptions exports the ECS pod resources into
-// cocoa.ECSPodExecutionOptions.
-func ExportPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSPodCreationOptions, error) {
-	ecsConf := settings.Providers.AWS.Pod.ECS
-	execOpts, err := ExportPodExecutionOptions(ecsConf, p.TaskContainerCreationOpts.OS)
-	if err != nil {
-		return nil, errors.Wrap(err, "exporting pod execution options")
-	}
-
-	containerDef, err := ExportPodContainerDef(settings, p)
-	if err != nil {
-		return nil, errors.Wrap(err, "exporting pod container definition")
-	}
-
-	return cocoa.NewECSPodCreationOptions().
-		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", p.ID}, "-")).
-		SetTaskRole(ecsConf.TaskRole).
-		SetExecutionRole(ecsConf.ExecutionRole).
-		SetNetworkMode(cocoa.NetworkModeAWSVPC).
-		SetExecutionOptions(*execOpts).
-		AddContainerDefinitions(*containerDef), nil
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.
