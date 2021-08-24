@@ -40,6 +40,9 @@ const (
 	StatusStarting Status = "starting"
 	// StatusRunning indicates that the pod's containers are running.
 	StatusRunning Status = "running"
+	// StatusDecommissioned indicates that the pod is currently running but will
+	// be terminated shortly.
+	StatusDecommissioned Status = "decommissioned"
 	// StatusTerminated indicates that all of the pod's containers and
 	// associated resources have been deleted.
 	StatusTerminated Status = "terminated"

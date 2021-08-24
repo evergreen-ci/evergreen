@@ -81,6 +81,10 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		if j.ecsClient != nil {
 			j.AddError(j.ecsClient.Close(ctx))
 		}
+
+		if j.pod != nil && j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned), "updating pod status to decommissioned after pod failed to start"))
+		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)

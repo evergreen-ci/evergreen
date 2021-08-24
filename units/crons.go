@@ -1273,7 +1273,7 @@ func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		pods, err := pod.FindByStaleStarting()
+		pods, err := pod.FindByNeedsTermination()
 		if err != nil {
 			return errors.Wrap(err, "finding pods that have been stuck starting for too long")
 		}
