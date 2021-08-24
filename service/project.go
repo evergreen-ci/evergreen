@@ -548,7 +548,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef.Id = id // TODO: what
+	projectRef.Id = id
 	projectRef.Identifier = responseRef.Identifier
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
@@ -807,10 +807,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
-	if projectWithId.Id != "" {
-		newProject.Id = projectWithId.Id
-	}
-
+	newProject.Id = projectWithId.Id
 	err = newProject.Add(dbUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
