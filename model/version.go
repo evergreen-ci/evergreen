@@ -373,7 +373,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func GetMostRecentMainlineCommit(projectId string) (*Version, error) {
+func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
@@ -388,6 +388,44 @@ func GetMostRecentMainlineCommit(projectId string) (*Version, error) {
 	}
 
 	return &res[0], nil
+}
+
+// GetPreviousPageCommit returns the first mainline commit that appears limit activated versions after the specified commit
+func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*int, error) {
+	// First check if we are already looking at the most recent commit.
+	version, err := getMostRecentMainlineCommit(projectId)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if version.RevisionOrderNumber < order+1 {
+		return nil, nil
+	}
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		VersionActivatedKey:           true,
+		VersionRevisionOrderNumberKey: bson.M{"$gt": order},
+	}
+	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: 1}}, {"$limit": limit}}
+	res := []Version{}
+
+	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+		return nil, errors.Wrapf(err, "error aggregating versions")
+	}
+
+	// If there are no newer mainline commits, return nil to indicate that we are already on the first page.
+	if len(res) == 0 {
+		return nil, nil
+	}
+	// If the previous page doesn't contain enough active commits to populate the project health view, return 0
+	// this means the previous page contains the latest commits, When 0 is passed to GetMainlineCommitVersionsWithOptions it will return the latest commits
+	if len(res) < limit {
+		return utility.ToIntPtr(0), nil
+	}
+
+	return &res[len(res)-1].RevisionOrderNumber, nil
 }
 
 type MainlineCommitVersionOptions struct {

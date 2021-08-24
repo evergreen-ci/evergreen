@@ -2847,21 +2847,22 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	var mainlineCommits MainlineCommits
 	activatedVersionCount := 0
 
-	mostRecentVersion, err := model.GetMostRecentMainlineCommit(projectId)
+	// We only want to return the PrevPageOrderNumber if a user is not on the first page
+	if options.SkipOrderNumber != nil {
+		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(projectId, utility.FromIntPtr(options.SkipOrderNumber), limit)
 
-	if err != nil {
-		// This shouldn't realy happen, but if it does, we should return an error and log it
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":   "Error getting most recent version",
-			"projectId": projectId,
-		}))
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting most recent mainline commit: %s", err.Error()))
-	}
+		if err != nil {
+			// This shouldn't realy happen, but if it does, we should return an error and log it
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":   "Error getting most recent version",
+				"projectId": projectId,
+			}))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting most recent mainline commit: %s", err.Error()))
+		}
 
-	// If a commit is the most recent version, we return nil for PrevPageOrderNumber since there aren't any other newer versions
-	if mostRecentVersion.RevisionOrderNumber != versions[0].RevisionOrderNumber {
-		// PrevPageOrderNumber is the order number of the first commit on the screen + the amount of commits on the previous page
-		mainlineCommits.PrevPageOrderNumber = utility.ToIntPtr(versions[0].RevisionOrderNumber + limit)
+		if prevPageCommit != nil {
+			mainlineCommits.PrevPageOrderNumber = prevPageCommit
+		}
 	}
 
 	for _, v := range versions {
@@ -2890,8 +2891,8 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			mainlineCommitVersion.Version = &apiVersion
 
 		} else {
-			// If a version is not activated we roll up all the unactivated versions that are sequentially near each other
-			// into a single MainlineCommitVersion and then append it to our returned list
+			// If a version is not activated we roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
+			// and then append it to our returned list.
 			// If we have any versions already we should check the most recent one first otherwise create a new one
 			if len(mainlineCommits.Versions) > 0 {
 				lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
