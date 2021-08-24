@@ -308,8 +308,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	allAuthorizedTeams := utility.UniqueStrings(append(h.originalProject.GitTagAuthorizedTeams, h.newProjectRef.GitTagAuthorizedTeams...))
 	h.newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
-	// if the project ref doesn't use the repo, then this will just be the same as newProjectRef
-	// used to verify that if something is set to nil in the request, we properly validate using the merged project ref
+	// If the project ref doesn't use the repo, then this will just be the same as newProjectRef.
+	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
 	mergedProjectRef, err := dbModel.GetProjectRefMergedWithRepo(*h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error merging project ref"))

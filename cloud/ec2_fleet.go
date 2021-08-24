@@ -463,7 +463,14 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
-	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
+	settings := *m.settings
+	// Use the latest service flags instead of those cached in the environment.
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting service flags")
+	}
+	settings.ServiceFlags = *flags
+	userData, err := makeUserData(ctx, m.settings, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not make user data")
 	}

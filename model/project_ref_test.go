@@ -515,8 +515,8 @@ func TestDetachFromRepo(t *testing.T) {
 
 func TestDefaultRepoBySection(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, id string){
-		ProjectRefGeneralSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefGeneralSection, "me"))
+		ProjectPageGeneralSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGeneralSection, "me"))
 
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
@@ -528,8 +528,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.TaskSync.ConfigEnabled)
 			assert.Nil(t, pRefFromDb.FilesIgnoredFromCache)
 		},
-		ProjectRefAccessSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefAccessSection, "me"))
+		ProjectPageAccessSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageAccessSection, "me"))
 
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
@@ -538,8 +538,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.Restricted)
 			assert.Nil(t, pRefFromDb.Admins)
 		},
-		ProjectRefVariablesSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefVariablesSection, "me"))
+		ProjectPageVariablesSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageVariablesSection, "me"))
 
 			varsFromDb, err := FindOneProjectVars(id)
 			assert.NoError(t, err)
@@ -549,11 +549,11 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, varsFromDb.RestrictedVars)
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
-		ProjectRefGithubAndCQSection: func(t *testing.T, id string) {
+		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefGithubAndCQSection, "me"))
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubAndCQSection, "me"))
 
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
@@ -569,19 +569,19 @@ func TestDefaultRepoBySection(t *testing.T) {
 				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
 			}
 		},
-		ProjectRefNotificationsSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefNotificationsSection, "me"))
+		ProjectPageNotificationsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageNotificationsSection, "me"))
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
 		},
-		ProjectRefPatchAliasSection: func(t *testing.T, id string) {
+		ProjectPagePatchAliasSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefPatchAliasSection, "me"))
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePatchAliasSection, "me"))
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
@@ -595,23 +595,23 @@ func TestDefaultRepoBySection(t *testing.T) {
 				assert.Contains(t, evergreen.InternalAliases, a.Alias)
 			}
 		},
-		ProjectRefTriggersSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefTriggersSection, "me"))
+		ProjectPageTriggersSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageTriggersSection, "me"))
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.Triggers)
 		},
-		ProjectRefWorkstationsSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefWorkstationsSection, "me"))
+		ProjectPageWorkstationsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageWorkstationsSection, "me"))
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.GitClone)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.SetupCommands)
 		},
-		ProjectRefPeriodicBuildsSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectRefPeriodicBuildsSection, "me"))
+		ProjectPagePeriodicBuildsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePeriodicBuildsSection, "me"))
 			pRefFromDb, err := FindOneProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)

@@ -23,7 +23,7 @@ import (
 func TestMakeUserData(t *testing.T) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host){
 		"ContainsCommandsToStartHostProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			userData, err := makeUserData(ctx, env, h, "", false)
+			userData, err := makeUserData(ctx, env.Settings(), h, "", false)
 			require.NoError(t, err)
 
 			opts, err := h.GenerateFetchProvisioningScriptUserData(env.Settings())
@@ -31,21 +31,21 @@ func TestMakeUserData(t *testing.T) {
 			assert.Contains(t, userData, opts.Content)
 		},
 		"PassesWithoutCustomUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			userData, err := makeUserData(ctx, env, h, "", false)
+			userData, err := makeUserData(ctx, env.Settings(), h, "", false)
 			require.NoError(t, err)
 			assert.NotEmpty(t, userData)
 		},
 		"PassesWithoutCustomUserDataWithPersistOnWindows": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.Arch = evergreen.ArchWindowsAmd64
 			h.Distro.BootstrapSettings.ServiceUser = "user"
-			userData, err := makeUserData(ctx, env, h, "", false)
+			userData, err := makeUserData(ctx, env.Settings(), h, "", false)
 			require.NoError(t, err)
 			assert.NotEmpty(t, userData)
 			assert.Contains(t, userData, persistTag)
 		},
 		"PassesWithCustomUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			customUserData := "#!/bin/bash\necho foo"
-			userData, err := makeUserData(ctx, env, h, customUserData, false)
+			userData, err := makeUserData(ctx, env.Settings(), h, customUserData, false)
 			require.NoError(t, err)
 
 			cmd, err := h.CurlCommandWithDefaultRetry(env.Settings())
@@ -55,7 +55,7 @@ func TestMakeUserData(t *testing.T) {
 		"ReturnsUserDataUnmodifiedIfNotProvisioningWithUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			customUserData := "#!/bin/bash\necho foo"
-			userData, err := makeUserData(ctx, env, h, customUserData, false)
+			userData, err := makeUserData(ctx, env.Settings(), h, customUserData, false)
 			require.NoError(t, err)
 			assert.Equal(t, customUserData, userData)
 		},
@@ -64,14 +64,14 @@ func TestMakeUserData(t *testing.T) {
 			h.Distro.BootstrapSettings.ServiceUser = "user"
 			h.Distro.Arch = evergreen.ArchWindowsAmd64
 			customUserData := "<powershell>\necho foo\n</powershell>"
-			userData, err := makeUserData(ctx, env, h, customUserData, false)
+			userData, err := makeUserData(ctx, env.Settings(), h, customUserData, false)
 			require.NoError(t, err)
 			assert.Contains(t, userData, customUserData)
 			assert.Contains(t, userData, persistTag)
 		},
 		"MergesUserDataPartsIntoOne": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			customUserData := "#!/bin/bash\necho foo"
-			userData, err := makeUserData(ctx, env, h, customUserData, true)
+			userData, err := makeUserData(ctx, env.Settings(), h, customUserData, true)
 			require.NoError(t, err)
 
 			cmd, err := h.CurlCommandWithDefaultRetry(env.Settings())
@@ -86,7 +86,7 @@ func TestMakeUserData(t *testing.T) {
 			h.Distro.Arch = evergreen.ArchWindowsAmd64
 			h.Distro.BootstrapSettings.ServiceUser = "user"
 			customUserData := "<powershell>\necho foo\n</powershell>\n<persist>true</persist>"
-			userData, err := makeUserData(ctx, env, h, customUserData, true)
+			userData, err := makeUserData(ctx, env.Settings(), h, customUserData, true)
 			require.NoError(t, err)
 
 			assert.Contains(t, userData, persistTag)

@@ -110,7 +110,7 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 
 // should be called in the resolver
 func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
-	originalAliases []model.ProjectAlias, section model.ProjectRefSection) (bool, error) {
+	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
 	aliasesIdMap := map[string]bool{}
 	aliasesToUpdate := []restModel.APIProjectAlias{}
 
@@ -139,13 +139,13 @@ func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAli
 	return true, catcher.Resolve()
 }
 
-func shouldSkipAliasForSection(section model.ProjectRefSection, alias string) bool {
+func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) bool {
 	// if we're updating internal aliases, skip non-internal aliases
-	if section == model.ProjectRefGithubAndCQSection && !utility.StringSliceContains(evergreen.InternalAliases, alias) {
+	if section == model.ProjectPageGithubAndCQSection && !utility.StringSliceContains(evergreen.InternalAliases, alias) {
 		return true
 	}
 	// if we're updating patch aliases, skip internal aliases
-	if section == model.ProjectRefPatchAliasSection && utility.StringSliceContains(evergreen.InternalAliases, alias) {
+	if section == model.ProjectPagePatchAliasSection && utility.StringSliceContains(evergreen.InternalAliases, alias) {
 		return true
 	}
 	return false
@@ -184,7 +184,7 @@ func (d *MockAliasConnector) UpdateProjectAliases(projectId string, aliases []re
 }
 
 func (pc *MockAliasConnector) UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
-	originalAliases []model.ProjectAlias, section model.ProjectRefSection) (bool, error) {
+	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
 	return false, nil
 }
 
