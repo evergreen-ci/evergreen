@@ -447,7 +447,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
 		}
 		if p.IsParent() {
-			if err = p.SetChildPatches(sessCtx); err != nil {
+			if err = p.SetChildPatches(); err != nil {
 				return nil, errors.Wrapf(err, "error attaching child patches '%s'", patchVersion.Id)
 			}
 		}

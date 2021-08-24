@@ -366,20 +366,21 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	// create a separate context from the one the callar has so that the caller
 	// can't interrupt the db operations here
 	newCxt := context.Background()
+
+	projectRef, err := model.FindOneProjectRef(project.Identifier)
+	if err != nil {
+		return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
+	}
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", project.Identifier), http.StatusInternalServerError, "", ""
+	}
+
 	if p.Version != "" {
 		p.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
-		projectRef, err := model.FindOneProjectRef(project.Identifier)
-		if err != nil {
-			return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
-		}
-		if projectRef == nil {
-			return errors.Errorf("project '%s' not found", project.Identifier), http.StatusInternalServerError, "", ""
-		}
-
 		// First add new tasks to existing builds, if necessary
 		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {
@@ -408,10 +409,6 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
 		}
 
-		projectRef, err := model.FindOneProjectRef(project.Identifier)
-		if err != nil {
-			return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
-		}
 		if err := units.ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), patchTriggerAliases); err != nil {
 			return errors.Wrap(err, "Error processing patch trigger aliases"), http.StatusInternalServerError, "", ""
 		}

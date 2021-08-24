@@ -579,15 +579,14 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 }
 
 // SetChildPatches appends the IDs of downstream patches to the db
-func (p *Patch) SetChildPatches(ctx context.Context) error {
+func (p *Patch) SetChildPatches() error {
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
+	return UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{
-			"$push": bson.M{triggersKey: bson.M{"$each": p.Triggers.ChildPatches}},
+			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.ChildPatches}},
 		},
 	)
-	return err
 }
 
 // SetActivation sets the patch to the desired activation state without

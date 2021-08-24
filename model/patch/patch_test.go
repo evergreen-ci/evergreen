@@ -1,7 +1,6 @@
 package patch
 
 import (
-	"context"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -897,7 +896,6 @@ func TestSetDownstreamParameters(t *testing.T) {
 }
 
 func TestSetChildPatches(t *testing.T) {
-	ctx := context.Background()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -914,7 +912,7 @@ func TestSetChildPatches(t *testing.T) {
 		"id_2",
 	}
 
-	assert.NoError(p.SetChildPatches(ctx))
+	assert.NoError(p.SetChildPatches())
 
 	dbPatch, err := FindOne(ById(p.Id))
 	assert.NoError(err)
