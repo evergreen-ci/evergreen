@@ -172,7 +172,7 @@ func TestPodTerminationJob(t *testing.T) {
 					SetName(name).
 					SetSecretOptions(*cocoa.NewSecretOptions().
 						SetName(name).
-						SetValue(val).
+						SetNewValue(val).
 						SetOwned(true)))
 			}
 
@@ -182,7 +182,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
 
-			ecsPod, err := pc.CreatePod(ctx, cocoa.NewECSPodCreationOptions().
+			ecsPod, err := pc.CreatePod(ctx, *cocoa.NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 				SetCPU(p.TaskContainerCreationOpts.CPU).

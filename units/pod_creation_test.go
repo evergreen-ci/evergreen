@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/cocoa"
@@ -47,11 +48,21 @@ func TestPodCreationJob(t *testing.T) {
 			require.Len(t, res.Containers[0].Secrets, 2)
 			assert.Len(t, cocoaMock.GlobalSecretCache, 2)
 			for _, secret := range res.Containers[0].Secrets {
-				id := utility.FromStringPtr(secret.Name)
+				id := utility.FromStringPtr(secret.ID)
 				assert.Contains(t, j.pod.Resources.Containers[0].SecretIDs, id)
+
 				val, err := j.vault.GetValue(ctx, id)
 				require.NoError(t, err)
-				assert.Equal(t, utility.FromStringPtr(secret.Value), val)
+
+				var found bool
+				for k, v := range j.pod.TaskContainerCreationOpts.EnvSecrets {
+					if strings.Contains(utility.FromStringPtr(secret.Name), k) {
+						assert.Equal(t, v, val)
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "could not find secret '%s'", secret.Name)
 			}
 
 			dbPod, err := pod.FindOneByID(j.PodID)

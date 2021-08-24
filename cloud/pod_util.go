@@ -37,12 +37,12 @@ func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, e
 // ExportECSPod exports the pod DB model to its equivalent cocoa.ECSPod backed
 // by the given ECS client and secret vault.
 func ExportECSPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, error) {
-	stat, err := ExportECSPodStatusInfo(p)
+	stat, err := exportECSPodStatusInfo(p)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod status info")
 	}
 
-	res := ExportECSPodResources(p.Resources)
+	res := exportECSPodResources(p.Resources)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod resources")
 	}
@@ -56,10 +56,10 @@ func ExportECSPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, e
 	return ecs.NewBasicECSPod(opts)
 }
 
-// ExportECSPodStatusInfo exports the pod's status information to its equivalent
+// exportECSPodStatusInfo exports the pod's status information to its equivalent
 // cocoa.ECSPodStatusInfo.
-func ExportECSPodStatusInfo(p *pod.Pod) (*cocoa.ECSPodStatusInfo, error) {
-	ps, err := ExportECSPodStatus(p.Status)
+func exportECSPodStatusInfo(p *pod.Pod) (*cocoa.ECSPodStatusInfo, error) {
+	ps, err := exportECSPodStatus(p.Status)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod status")
 	}
@@ -67,24 +67,24 @@ func ExportECSPodStatusInfo(p *pod.Pod) (*cocoa.ECSPodStatusInfo, error) {
 	status := cocoa.NewECSPodStatusInfo().SetStatus(ps)
 
 	for _, container := range p.Resources.Containers {
-		status.AddContainers(ExportECSContainerStatusInfo(container))
+		status.AddContainers(exportECSContainerStatusInfo(container))
 	}
 
 	return status, nil
 }
 
-// ExportECSContainerStatusInfo exports the container's resource and status
+// exportECSContainerStatusInfo exports the container's resource and status
 // information into its equivalent cocoa.ECSContainerStatusInfo. The status is
 // not currently tracked for containers, so it is set to unknown.
-func ExportECSContainerStatusInfo(info pod.ContainerResourceInfo) cocoa.ECSContainerStatusInfo {
+func exportECSContainerStatusInfo(info pod.ContainerResourceInfo) cocoa.ECSContainerStatusInfo {
 	return *cocoa.NewECSContainerStatusInfo().
 		SetName(info.Name).
 		SetContainerID(info.ExternalID).
 		SetStatus(cocoa.StatusUnknown)
 }
 
-// ExportECSStatus exports the pod status to the equivalent cocoa.ECSStatus.
-func ExportECSPodStatus(s pod.Status) (cocoa.ECSStatus, error) {
+// exportECSStatus exports the pod status to the equivalent cocoa.ECSStatus.
+func exportECSPodStatus(s pod.Status) (cocoa.ECSStatus, error) {
 	switch s {
 	case pod.StatusInitializing:
 		return cocoa.StatusUnknown, errors.Errorf("a pod that is initializing does not exist in ECS yet")
@@ -99,13 +99,13 @@ func ExportECSPodStatus(s pod.Status) (cocoa.ECSStatus, error) {
 	}
 }
 
-// ExportECSPodResources exports the ECS pod resource information into the
+// exportECSPodResources exports the ECS pod resource information into the
 // equivalent cocoa.ECSPodResources.
-func ExportECSPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
+func exportECSPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 	res := cocoa.NewECSPodResources()
 
 	for _, container := range info.Containers {
-		res.AddContainers(ExportECSContainerResources(container))
+		res.AddContainers(exportECSContainerResources(container))
 	}
 
 	if info.ExternalID != "" {
@@ -133,7 +133,7 @@ func ImportECSPodResources(res cocoa.ECSPodResources) pod.ResourceInfo {
 	for _, c := range res.Containers {
 		var secretIDs []string
 		for _, secret := range c.Secrets {
-			secretIDs = append(secretIDs, utility.FromStringPtr(secret.Name))
+			secretIDs = append(secretIDs, utility.FromStringPtr(secret.ID))
 		}
 		containerResources = append(containerResources, pod.ContainerResourceInfo{
 			ExternalID: utility.FromStringPtr(c.ContainerID),
@@ -156,16 +156,16 @@ func ImportECSPodResources(res cocoa.ECSPodResources) pod.ResourceInfo {
 
 }
 
-// ExportECSContainerResources exports the ECS container resource information
+// exportECSContainerResources exports the ECS container resource information
 // into the equivalent cocoa.ECSContainerResources.
-func ExportECSContainerResources(info pod.ContainerResourceInfo) cocoa.ECSContainerResources {
+func exportECSContainerResources(info pod.ContainerResourceInfo) cocoa.ECSContainerResources {
 	res := cocoa.NewECSContainerResources().
 		SetContainerID(info.ExternalID).
 		SetName(info.Name)
 
 	for _, id := range info.SecretIDs {
 		s := cocoa.NewContainerSecret().
-			SetName(id).
+			SetID(id).
 			SetOwned(true)
 		res.AddSecrets(*s)
 	}
@@ -195,13 +195,18 @@ func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*coc
 		return nil, errors.Wrap(err, "exporting pod container definition")
 	}
 
-	return cocoa.NewECSPodCreationOptions().
+	opts := cocoa.NewECSPodCreationOptions().
 		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", p.ID}, "-")).
 		SetTaskRole(ecsConf.TaskRole).
 		SetExecutionRole(ecsConf.ExecutionRole).
-		SetNetworkMode(cocoa.NetworkModeAWSVPC).
 		SetExecutionOptions(*execOpts).
-		AddContainerDefinitions(*containerDef), nil
+		AddContainerDefinitions(*containerDef)
+
+	if len(ecsConf.AWSVPC.Subnets) != 0 || len(ecsConf.AWSVPC.SecurityGroups) != 0 {
+		opts.SetNetworkMode(cocoa.NetworkModeAWSVPC)
+	}
+
+	return opts, nil
 }
 
 // exportECSPodContainerDef exports the ECS pod container definition into the
