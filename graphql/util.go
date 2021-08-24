@@ -409,6 +409,8 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
 		}
 
+		// Process additional patch trigger aliases added via UI.
+		// Child patches created with the CLI --trigger-alias flag go through a separate flow, so ensure that new child patches are also created before the parent is finalized.
 		if err := units.ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), patchTriggerAliases); err != nil {
 			return errors.Wrap(err, "Error processing patch trigger aliases"), http.StatusInternalServerError, "", ""
 		}
