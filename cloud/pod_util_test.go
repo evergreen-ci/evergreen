@@ -143,46 +143,6 @@ func TestExportECSPod(t *testing.T) {
 	}
 }
 
-// func TestExportECSPodContainerDef(t *testing.T) {
-//     validPod := func() pod.Pod {
-//         return pod.Pod{
-//             ID: "pod_id",
-//             TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-//                 Image:      "image",
-//                 MemoryMB:   128,
-//                 CPU:        256,
-//                 WorkingDir: "/working_dir",
-//                 EnvVars: map[string]string{
-//                     "ENV_VAR": "env_value",
-//                 },
-//                 EnvSecrets: map[string]string{
-//                     "SECRET_VAR": "secret_value",
-//                 },
-//             },
-//         }
-//     }
-//     validSettings := func() evergreen.Settings {
-//         return evergreen.Settings{
-//             Providers: evergreen.CloudProviders{
-//                 AWS: evergreen.AWSConfig{
-//                     Pod: evergreen.AWSPodConfig{
-//                         SecretsManager: evergreen.SecretsManagerConfig{
-//                             SecretPrefix: "secret_prefix/",
-//                         },
-//                     },
-//                 },
-//             },
-//         }
-//     }
-//     t.Run("Succeeds", func(t *testing.T) {
-//         p := validPod()
-//         settings := validSettings()
-//         def, err := exportECSPodContainerDef(&settings, &p)
-//         require.NoError(t, err)
-//         // kim: TODO: continue testing
-//     })
-// }
-
 func TestExportECSPodStatus(t *testing.T) {
 	t.Run("SucceedsWithStartingStatus", func(t *testing.T) {
 		s, err := ExportECSPodStatus(pod.StatusStarting)
@@ -405,29 +365,36 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		require.NotZero(t, opts)
 		require.Equal(t, settings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(opts.TaskRole))
 		require.Equal(t, settings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(opts.ExecutionRole))
+		require.NotZero(t, opts.NetworkMode)
+		assert.Equal(t, cocoa.NetworkModeAWSVPC, *opts.NetworkMode)
 
 		require.NotZero(t, opts.ExecutionOpts)
 		require.Equal(t, settings.Providers.AWS.Pod.ECS.Clusters[0].Name, utility.FromStringPtr(opts.ExecutionOpts.Cluster))
+		require.NotZero(t, opts.ExecutionOpts.AWSVPCOpts)
+		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.Subnets, opts.ExecutionOpts.AWSVPCOpts.Subnets)
+		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, opts.ExecutionOpts.AWSVPCOpts.SecurityGroups)
 
 		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
 		assert.Contains(t, utility.FromStringPtr(opts.Name), p.ID)
 
 		require.Len(t, opts.ContainerDefinitions, 1)
-		require.Equal(t, p.TaskContainerCreationOpts.Image, utility.FromStringPtr(opts.ContainerDefinitions[0].Image))
-		require.Equal(t, p.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(opts.ContainerDefinitions[0].MemoryMB))
-		require.Equal(t, p.TaskContainerCreationOpts.CPU, utility.FromIntPtr(opts.ContainerDefinitions[0].CPU))
-		require.Equal(t, p.TaskContainerCreationOpts.WorkingDir, utility.FromStringPtr(opts.ContainerDefinitions[0].WorkingDir))
+		cDef := opts.ContainerDefinitions[0]
+		require.Equal(t, p.TaskContainerCreationOpts.Image, utility.FromStringPtr(cDef.Image))
+		require.Equal(t, p.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(cDef.MemoryMB))
+		require.Equal(t, p.TaskContainerCreationOpts.CPU, utility.FromIntPtr(cDef.CPU))
+		require.Equal(t, p.TaskContainerCreationOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
+		require.Len(t, cDef.PortMappings, 1)
+		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
 		require.Len(t, opts.ContainerDefinitions[0].EnvVars, 2)
-		for _, envVar := range opts.ContainerDefinitions[0].EnvVars {
+		for _, envVar := range cDef.EnvVars {
 			if envVar.SecretOpts != nil {
 				name := utility.FromStringPtr(envVar.Name)
 				assert.Equal(t, "s1", name)
-				assert.Equal(t, p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.SecretOpts.Value))
+				assert.Equal(t, p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.SecretOpts.NewValue))
 				secretRef := utility.FromStringPtr(envVar.SecretOpts.Name)
 				assert.True(t, strings.HasPrefix(secretRef, settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
 				assert.Contains(t, secretRef, p.ID)
 				assert.Contains(t, secretRef, name)
-				assert.False(t, utility.FromBoolPtr(envVar.SecretOpts.Exists))
 				assert.True(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
 			} else {
 				assert.Equal(t, "name", utility.FromStringPtr(envVar.Name))

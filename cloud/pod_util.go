@@ -173,9 +173,13 @@ func ExportECSContainerResources(info pod.ContainerResourceInfo) cocoa.ECSContai
 	return *res
 }
 
-// agentContainerName is the standard name for the container that's running the
-// agent in a pod.
-const agentContainerName = "evg-agent"
+const (
+	// agentContainerName is the standard name for the container that's running
+	// the agent in a pod.
+	agentContainerName = "evg-agent"
+	// agentPort is the standard port that the agent runs on.
+	agentPort = 2285
+)
 
 // ExportECSPodCreationOptions exports the ECS pod resources into
 // cocoa.ECSPodExecutionOptions.
@@ -215,7 +219,7 @@ func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.
 		SetWorkingDir(p.TaskContainerCreationOpts.WorkingDir).
 		SetCommand(script).
 		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, p)).
-		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(2285)), nil
+		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort)), nil
 }
 
 // exportECSPodExecutionOptions exports the ECS configuration into
@@ -265,8 +269,7 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, p *pod.Pod) []cocoa
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetSecretOptions(
 			*cocoa.NewSecretOptions().
 				SetName(secretName).
-				SetValue(v).
-				SetExists(false).
+				SetNewValue(v).
 				SetOwned(true)))
 	}
 
