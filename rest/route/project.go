@@ -557,12 +557,12 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	p, err := h.sc.FindProjectById(h.projectName, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectName))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project '%s'", h.projectName))
 	}
 	if p != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot create project with id '%s'", h.projectName),
+			Message:    fmt.Sprintf("cannot create project with identifier '%s'", h.projectName),
 		})
 	}
 

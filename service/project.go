@@ -548,7 +548,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef.Id = id
+	projectRef.Id = id // TODO: what
 	projectRef.Identifier = responseRef.Identifier
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
@@ -785,9 +785,9 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 	_ = MustHaveProjectContext(r)
 
-	id := gimlet.GetVars(r)["project_id"]
+	identifier := gimlet.GetVars(r)["project_id"]
 
-	projectRef, err := model.FindOneProjectRef(id)
+	projectRef, err := model.FindOneProjectRef(identifier)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -796,8 +796,20 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Project already exists", http.StatusBadRequest)
 		return
 	}
+	newProject := model.ProjectRef{Identifier: identifier}
 
-	newProject := model.ProjectRef{Identifier: id}
+	// the immutable ID may have optionally been passed in
+	projectWithId := struct {
+		Id string `json:"id"`
+	}{}
+
+	if err = utility.ReadJSON(util.NewRequestReader(r), &projectWithId); err != nil {
+		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
+		return
+	}
+	if projectWithId.Id != "" {
+		newProject.Id = projectWithId.Id
+	}
 
 	err = newProject.Add(dbUser)
 	if err != nil {
@@ -820,8 +832,8 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := dbUser.DisplayName()
-	if err = model.LogProjectAdded(id, username); err != nil {
-		grip.Infof("Could not log new project %s", id)
+	if err = model.LogProjectAdded(identifier, username); err != nil {
+		grip.Infof("Could not log new project %s", identifier)
 	}
 
 	allProjects, err := uis.filterViewableProjects(dbUser)
@@ -835,7 +847,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		Available   bool
 		ProjectId   string
 		AllProjects []model.ProjectRef
-	}{true, id, allProjects}
+	}{true, identifier, allProjects}
 
 	gimlet.WriteJSON(w, data)
 }
