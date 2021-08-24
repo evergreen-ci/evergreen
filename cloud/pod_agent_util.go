@@ -77,11 +77,6 @@ func clientName(p *pod.Pod) string {
 
 // downloadAgentCommands returns the commands to download the agent.
 func downloadAgentCommands(settings *evergreen.Settings, p *pod.Pod) (string, error) {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return "", errors.Wrap(err, "getting service flags")
-	}
-
 	const (
 		curlDefaultNumRetries = 10
 		curlDefaultMaxSecs    = 100
@@ -89,9 +84,9 @@ func downloadAgentCommands(settings *evergreen.Settings, p *pod.Pod) (string, er
 	retryArgs := curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
 
 	var curlCmd string
-	if !flags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
-		// Attempt to download the agent from S3, but fall back to downloading
-		// from the app server if it fails.
+	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
+		// Attempt to download the agent from S3, but fall back to downloading from
+		// the app server if it fails.
 		curlCmd = fmt.Sprintf("(curl -LO '%s' %s || curl -LO '%s' %s)", s3ClientURL(settings, p), retryArgs, clientURL(settings, p), retryArgs)
 	} else {
 		curlCmd = fmt.Sprintf("curl -LO '%s' %s", clientURL(settings, p), retryArgs)
