@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFindByStaleStarting(t *testing.T) {
+func TestFindByNeedsTermination(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"ReturnsEmptyForNoMatches": func(t *testing.T) {
-			pods, err := FindByStaleStarting()
+			pods, err := FindByNeedsTermination()
 			assert.NoError(t, err)
 			assert.Empty(t, pods)
 		},
@@ -43,7 +43,34 @@ func TestFindByStaleStarting(t *testing.T) {
 			}
 			require.NoError(t, startingPod.Insert())
 
-			pods, err := FindByStaleStarting()
+			pods, err := FindByNeedsTermination()
+			require.NoError(t, err)
+			require.Len(t, pods, 1)
+			assert.Equal(t, stalePod.ID, pods[0].ID)
+		},
+		"ReturnsMatchingDecommissionedPod": func(t *testing.T) {
+			decommissionedPod := Pod{
+				ID:     "pod_id",
+				Status: StatusDecommissioned,
+			}
+			require.NoError(t, decommissionedPod.Insert())
+
+			pods, err := FindByNeedsTermination()
+			require.NoError(t, err)
+			require.Len(t, pods, 1)
+			assert.Equal(t, decommissionedPod.ID, pods[0].ID)
+		},
+		"ReturnsMatchingStaleInitializingPod": func(t *testing.T) {
+			stalePod := Pod{
+				ID:     "pod_id",
+				Status: StatusInitializing,
+				TimeInfo: TimeInfo{
+					Initializing: time.Now().Add(-time.Hour),
+				},
+			}
+			require.NoError(t, stalePod.Insert())
+
+			pods, err := FindByNeedsTermination()
 			require.NoError(t, err)
 			require.Len(t, pods, 1)
 			assert.Equal(t, stalePod.ID, pods[0].ID)

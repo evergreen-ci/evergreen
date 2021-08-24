@@ -84,17 +84,31 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-// FindByStaleStarting finds all pods running tasks that have been stuck in
-// the starting state for an extended period of time.
-func FindByStaleStarting() ([]Pod, error) {
-	startingCutoff := time.Now().Add(-15 * time.Minute)
+// FindByNeedsTermination finds all pods running agents that need to be
+// terminated, which includes:
+// * Pods that have been provisioning for too long.
+// * Pods that are decommissioned.
+func FindByNeedsTermination() ([]Pod, error) {
+	staleCutoff := time.Now().Add(-15 * time.Minute)
 	return Find(bson.M{
-		bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey): bson.M{"$lte": startingCutoff},
-		StatusKey: StatusStarting,
+		"$or": []bson.M{
+			{
+				StatusKey: StatusDecommissioned,
+			},
+			{
+				bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey): bson.M{"$lte": staleCutoff},
+				StatusKey: StatusStarting,
+			},
+			{
+				StatusKey: StatusInitializing,
+				bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoInitializingKey): bson.M{"$lte": staleCutoff},
+			},
+		},
 	})
 }
 
-// FindByInitializing find all pods that are initializing but have not started any containers.
+// FindByInitializing find all pods that are initializing but have not started
+// any containers.
 func FindByInitializing() ([]Pod, error) {
 	return Find(bson.M{
 		StatusKey: StatusInitializing,
