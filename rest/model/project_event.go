@@ -78,7 +78,7 @@ func (e *APIProjectEvent) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for APIProjectEvent")
 }
 
-func DbProjectSettingsToRestModel(settings model.ProjectSettingsEvent) (APIProjectSettings, error) {
+func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSettings, error) {
 	apiProjectRef := APIProjectRef{}
 	if err := apiProjectRef.BuildFromService(settings.ProjectRef); err != nil {
 		return APIProjectSettings{}, err

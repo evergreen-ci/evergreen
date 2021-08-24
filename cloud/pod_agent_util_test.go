@@ -18,6 +18,7 @@ func TestAgentScript(t *testing.T) {
 			ApiUrl:            "www.test.com",
 			ClientBinariesDir: "clients",
 		}
+
 		t.Run("Linux", func(t *testing.T) {
 			p := &pod.Pod{
 				ID: "id",
@@ -33,7 +34,7 @@ func TestAgentScript(t *testing.T) {
 			require.NotZero(t, cmd)
 
 			expected := []string{
-				"CMD-SHELL",
+				"bash", "-c",
 				"curl -LO 'www.test.com/clients/linux_amd64/evergreen' --retry 10 --retry-max-time 100 && " +
 					"chmod +x evergreen && " +
 					"./evergreen agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
@@ -55,7 +56,7 @@ func TestAgentScript(t *testing.T) {
 			require.NotZero(t, cmd)
 
 			expected := []string{
-				"CMD-SHELL",
+				"bash", "-c",
 				"curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 && " +
 					"chmod +x evergreen.exe && " +
 					"./evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
@@ -85,7 +86,7 @@ func TestAgentScript(t *testing.T) {
 			require.NotZero(t, cmd)
 
 			expected := []string{
-				"CMD-SHELL",
+				"bash", "-c",
 				fmt.Sprintf("(curl -LO 'https://foo.com/%s/linux_amd64/evergreen' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/linux_amd64/evergreen' --retry 10 --retry-max-time 100) && "+
 					"chmod +x evergreen && "+
 					"./evergreen agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
@@ -106,7 +107,7 @@ func TestAgentScript(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, cmd)
 			expected := []string{
-				"CMD-SHELL",
+				"bash", "-c",
 				fmt.Sprintf("(curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100) && "+
 					"chmod +x evergreen.exe && "+
 					"./evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),

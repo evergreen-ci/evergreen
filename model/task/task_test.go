@@ -2294,6 +2294,11 @@ func TestDisplayStatus(t *testing.T) {
 				Unattainable: true,
 				Status:       "success",
 			},
+			{
+				TaskId:       "t8",
+				Unattainable: false,
+				Status:       "success",
+			},
 		},
 	}
 	assert.NoError(t, t10.Insert())

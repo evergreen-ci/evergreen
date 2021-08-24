@@ -13,7 +13,7 @@ import (
 // agentScript returns the script to provision and run the agent in the pod's
 // container.
 func agentScript(settings *evergreen.Settings, p *pod.Pod) ([]string, error) {
-	curlCmd, err := downloadAgentCommands(settings, p)
+	downloadCmd, err := downloadAgentCommands(settings, p)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -21,8 +21,8 @@ func agentScript(settings *evergreen.Settings, p *pod.Pod) ([]string, error) {
 	agentCmd := strings.Join(agentCommand(settings, p), " ")
 
 	return []string{
-		"CMD-SHELL",
-		strings.Join([]string{curlCmd, fmt.Sprintf("chmod +x %s", clientName(p)), agentCmd}, " && "),
+		"bash", "-c",
+		strings.Join([]string{downloadCmd, fmt.Sprintf("chmod +x %s", clientName(p)), agentCmd}, " && "),
 	}, nil
 }
 

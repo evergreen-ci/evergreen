@@ -312,6 +312,10 @@ type Connector interface {
 	CopyProjectAliases(string, string) error
 	// UpdateProjectAliases upserts/deletes aliases for the given project
 	UpdateProjectAliases(string, []restModel.APIProjectAlias) error
+	// UpdateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
+	// upserts any current aliases, and deletes any aliases that existed previously but not anymore (only
+	// considers the aliases that are relevant for the section).
+	UpdateAliasesForSection(string, []restModel.APIProjectAlias, []model.ProjectAlias, model.ProjectRefSection) (bool, error)
 	// HasMatchingGitTagAliasAndRemotePath returns true if the project has aliases defined that match the given tag, and
 	// returns the remote path if applicable
 	HasMatchingGitTagAliasAndRemotePath(string, string) (bool, string, error)
@@ -328,8 +332,10 @@ type Connector interface {
 	// GeneratePoll checks to see if a `generate.tasks` job has finished.
 	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, []string, error)
 
-	// SaveSubscriptions saves a set of notification subscriptions
-	SaveSubscriptions(string, []restModel.APISubscription) error
+	// SaveSubscriptions, given an owner, a list of current subscriptions, a list of previous subscriptions, and an isProject boolean,
+	// upserts the given set of API subscriptions (if the owner is a project type, verify that all current subscriptions have
+	// the right owner and owner type) and deletes any subscriptions that existed previously but not anymore.
+	SaveSubscriptions(string, []restModel.APISubscription, bool) error
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
 	DeleteSubscriptions(string, []string) error
@@ -375,8 +381,8 @@ type Connector interface {
 	// GetDockerStatus returns the status of the given docker container
 	GetDockerStatus(context.Context, string, *host.Host, *evergreen.Settings) (*cloud.ContainerStatus, error)
 
-	//GetProjectSettingsEvent returns the ProjectSettingsEvents of the given identifier and ProjectRef
-	GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
+	//GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
+	GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error)
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)
