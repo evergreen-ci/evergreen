@@ -47,6 +47,7 @@ var (
 	ParserProjectCreateTimeKey             = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
 	ParserProjectTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ParserProject{}, "TaskAnnotationSettings")
 	ParserProjectBuildBaronSettingsKey     = bsonutil.MustHaveTag(ParserProject{}, "BuildBaronSettings")
+	ParserProjectPerfEnabledKey            = bsonutil.MustHaveTag(ParserProject{}, "PerfEnabled")
 )
 
 // ParserProjectFindOneById returns the parser project for the version

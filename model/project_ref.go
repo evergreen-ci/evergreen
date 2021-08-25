@@ -105,7 +105,9 @@ type ProjectRef struct {
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
+	// Plugin settings
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_project,omitempty" json:"build_baron_project,omitempty" yaml:"build_baron_project,omitempty"`
+	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -235,6 +237,7 @@ var (
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey  = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey      = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
+	projectRefPerfEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
