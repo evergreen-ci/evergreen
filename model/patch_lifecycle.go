@@ -121,12 +121,13 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 
 	project := &Project{}
 	opts := GetProjectOpts{
-		Ref:   projectRef,
-		Token: githubOauthToken,
+		Ref:          projectRef,
+		Token:        githubOauthToken,
+		ReadFileFrom: ReadFromPatch,
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err = LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
+		if _, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -146,6 +147,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	if p.IsPRMergePatch() {
 		hash = p.GithubPatchData.MergeCommitSHA
 	}
+	opts.Revision = hash
 
 	path := projectRef.RemotePath
 	if p.Path != "" && !p.IsGithubPRPatch() && !p.IsCommitQueuePatch() {
@@ -280,7 +282,26 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	opts := GetProjectOpts{}
+	projectRef, err := FindOneProjectRef(p.Project)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if projectRef == nil {
+		return nil, errors.Errorf("project '%s' doesn't exist", p.Project)
+	}
+	hash := p.Githash
+	if p.IsGithubPRPatch() {
+		hash = p.GithubPatchData.HeadHash
+	}
+	if p.IsPRMergePatch() {
+		hash = p.GithubPatchData.MergeCommitSHA
+	}
+	opts := GetProjectOpts{
+		Ref:          projectRef,
+		Token:        githubOauthToken,
+		ReadFileFrom: ReadFromPatch,
+	}
+	opts.Revision = hash
 	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
@@ -292,14 +313,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem resolving distro alias table for patch")
-	}
-
-	projectRef, err := FindOneProjectRef(p.Project)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("project '%s' doesn't exist", p.Project)
 	}
 
 	githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
