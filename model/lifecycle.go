@@ -604,7 +604,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
 type BuildCreateArgs struct {
 	Project             Project                 // project to create the build for
-	ProjectIdentifier   string                  // verify we're using the readable project identifier to create new IDs
+	ProjectIdentifier   string                  // the readable project identifier, used to create new IDs
 	Version             Version                 // the version the build belong to
 	TaskIDs             TaskIdConfig            // pre-generated IDs for the tasks to be created
 	BuildName           string                  // name of the buildvariant
