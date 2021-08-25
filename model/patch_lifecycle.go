@@ -385,16 +385,17 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:        *project,
-			Version:        *patchVersion,
-			TaskIDs:        taskIds,
-			BuildName:      vt.Variant,
-			ActivateBuild:  true,
-			TaskNames:      taskNames,
-			DisplayNames:   displayNames,
-			DistroAliases:  distroAliases,
-			TaskCreateTime: createTime,
-			SyncAtEndOpts:  p.SyncAtEndOpts,
+			Project:           *project,
+			Version:           *patchVersion,
+			TaskIDs:           taskIds,
+			BuildName:         vt.Variant,
+			ActivateBuild:     true,
+			TaskNames:         taskNames,
+			DisplayNames:      displayNames,
+			DistroAliases:     distroAliases,
+			TaskCreateTime:    createTime,
+			SyncAtEndOpts:     p.SyncAtEndOpts,
+			ProjectIdentifier: projectRef.Identifier,
 		}
 		var build *build.Build
 		var tasks task.Tasks
