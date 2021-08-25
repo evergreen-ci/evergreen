@@ -1389,7 +1389,7 @@ mciModule.directive("adminNewProject", function () {
         '<div class="col-lg-12">' +
           "Optionally enter immutable project ID " +
           '<div class="muted small">' +
-            "(Used by Evergreen internally. Defaults to a random hash.)" +
+            "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason. Cannot be changed!)" +
           '</div>' +
           '<input type="text" id="project-name" placeholder="immutable project ID" ng-model="newProject.id">' +
         '</div>' +
