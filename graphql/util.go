@@ -1309,3 +1309,21 @@ func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions r
 	}
 	return nil
 }
+
+func setVersionActivationStatus(sc data.Connector, version *model.Version) error {
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
+	}
+	opts := data.TaskFilterOptions{
+		Sorts: defaultSort,
+	}
+	tasks, _, err := sc.FindTasksByVersion(version.Id, opts)
+	if err != nil {
+		return errors.Wrapf(err, "error getting tasks for version %s", version.Id)
+	}
+	if !task.AnyActiveTasks(tasks) {
+		return errors.Wrapf(version.SetNotActivated(), "Error updating version activated status for `%s`", version.Id)
+	} else {
+		return errors.Wrapf(version.SetActivated(), "Error updating version activated status for `%s`", version.Id)
+	}
+}

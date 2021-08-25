@@ -1335,7 +1335,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			}))
 		}
 
-		if cedarBaseTestResults != nil && len(cedarBaseTestResults) > 0 {
+		if len(cedarBaseTestResults) > 0 {
 			for _, t := range cedarBaseTestResults {
 				baseTestStatusMap[t.TestName] = t.Status
 				baseTestStatusMap[t.DisplayTestName] = t.Status
@@ -1372,7 +1372,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	var totalTestCount int
 	var filteredTestCount int
 
-	if cedarTestResults != nil && len(cedarTestResults) > 0 {
+	if len(cedarTestResults) > 0 {
 		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
 			GroupID:          groupIdParam,
 			Limit:            limitParam,
@@ -2859,6 +2859,25 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	})
 	var mainlineCommits MainlineCommits
 	activatedVersionCount := 0
+
+	// We only want to return the PrevPageOrderNumber if a user is not on the first page
+	if options.SkipOrderNumber != nil {
+		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(projectId, utility.FromIntPtr(options.SkipOrderNumber), limit)
+
+		if err != nil {
+			// This shouldn't really happen, but if it does, we should return an error and log it
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":    "Error getting most recent version",
+				"project_id": projectId,
+			}))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting most recent mainline commit: %s", err.Error()))
+		}
+
+		if prevPageCommit != nil {
+			mainlineCommits.PrevPageOrderNumber = prevPageCommit
+		}
+	}
+
 	for _, v := range versions {
 		if activatedVersionCount == limit {
 			break
@@ -2869,42 +2888,24 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service: %s", err.Error()))
 		}
 
-		// If we try to access a version that does not have the Activated flag we must manually verify it
-		// After we verify if a version is activated we cache that field so subsequent queries are faster.
+		// If the version was created before we started caching activation status we must manually verify it and cache that value.
 		if v.Activated == nil {
-			defaultSort := []task.TasksSortOrder{
-				{Key: task.DisplayNameKey, Order: 1},
-			}
-			opts := data.TaskFilterOptions{
-				Sorts: defaultSort,
-			}
-			tasks, _, err := r.sc.FindTasksByVersion(v.Id, opts)
+			err = setVersionActivationStatus(r.sc, &v)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", v.Id, err.Error()))
-			}
-			if !task.AnyActiveTasks(tasks) {
-				err = v.SetNotActivated()
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating version activated status for %s, %s", v.Id, err.Error()))
-				}
-			} else {
-				err = v.SetActivated()
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating version activated status for %s, %s", v.Id, err.Error()))
-				}
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting version activation status: %s", err.Error()))
 			}
 		}
 		mainlineCommitVersion := MainlineCommitVersion{}
 
 		// If a version is activated we append it directly to our returned list of mainlineCommits
-		// If a version is not activated we roll up all the unactivated versions that are sequentially near each other
-		// into a single MainlineCommitVersion and then append it to our returned list
 		if utility.FromBoolPtr(v.Activated) {
 			activatedVersionCount++
-			mainlineCommits.NextPageOrderNumber = &v.RevisionOrderNumber
+			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
 			mainlineCommitVersion.Version = &apiVersion
 
 		} else {
+			// If a version is not activated we roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
+			// and then append it to our returned list.
 			// If we have any versions already we should check the most recent one first otherwise create a new one
 			if len(mainlineCommits.Versions) > 0 {
 				lastMainlineCommit := mainlineCommits.Versions[len(mainlineCommits.Versions)-1]
@@ -2923,7 +2924,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 		}
 
-		// Only add a mainlineCommit if a new one was added and its not a modified existing RolledUpVersion
+		// Only add a mainlineCommit if a new one was added and it's not a modified existing RolledUpVersion
 		if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
 			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
 		}
