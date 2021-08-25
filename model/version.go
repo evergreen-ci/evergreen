@@ -396,12 +396,13 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 // GetPreviousPageCommitOrderNumber returns the first mainline commit that is LIMIT activated versions more recent than the specified commit
 func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*int, error) {
 	// First check if we are already looking at the most recent commit.
-	version, err := getMostRecentMainlineCommit(projectId)
+	mostRecentCommit, err := getMostRecentMainlineCommit(projectId)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	// Add +1 to the ORDER number to check if we are already looking at the newest commit since it checks for commits that are greater but not equal to the specified ORDER number
-	if version.RevisionOrderNumber < order+1 {
+	// Check that the ORDER number we want to check is less the the ORDER number of the most recent commit.
+	// So we don't need to check for newer commits than the most recent commit.
+	if mostRecentCommit.RevisionOrderNumber <= order {
 		return nil, nil
 	}
 	match := bson.M{
