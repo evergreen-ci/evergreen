@@ -4,9 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -214,32 +212,17 @@ func (p *Pod) UpdateStatus(s Status) error {
 		return nil
 	}
 
-	byIDAndStatus := ByID(p.ID)
-	byIDAndStatus[StatusKey] = p.Status
-
-	updated := utility.BSONTime(time.Now())
-	setFields := bson.M{StatusKey: s}
-	switch s {
-	case StatusInitializing:
-		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoInitializingKey)] = updated
-	case StatusStarting:
-		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey)] = updated
+	ts := utility.BSONTime(time.Now())
+	if err := UpdateOneStatus(p.ID, p.Status, s, ts); err != nil {
+		return errors.Wrap(err, "updating status")
 	}
-
-	if err := UpdateOne(byIDAndStatus, bson.M{
-		"$set": setFields,
-	}); err != nil {
-		return err
-	}
-
-	event.LogPodStatusChanged(p.ID, string(p.Status), string(s))
 
 	p.Status = s
 	switch s {
 	case StatusInitializing:
-		p.TimeInfo.Initializing = updated
+		p.TimeInfo.Initializing = ts
 	case StatusStarting:
-		p.TimeInfo.Starting = updated
+		p.TimeInfo.Starting = ts
 	}
 
 	return nil

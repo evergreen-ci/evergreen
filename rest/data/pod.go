@@ -3,9 +3,11 @@ package data
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -36,7 +38,7 @@ func (c *DBPodConnector) CreatePod(p model.APICreatePod) (*model.APICreatePodRes
 
 // CheckPodSecret checks for a pod with a matching ID and secret in the
 // database. It returns an error if the secret does not match the one assigned
-// for the given pod ID.
+// to the pod.
 func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 	p, err := pod.FindOneByID(id)
 	if err != nil {
@@ -60,8 +62,8 @@ func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 	return nil
 }
 
-// FindPodByID finds a pod by the given ID. It returns an error if the pod
-// cannot be found.
+// FindPodByID finds a pod by the given ID. It returns a nil result if no such
+// pod is found.
 func (c *DBPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 	p, err := pod.FindOneByID(id)
 	if err != nil {
@@ -71,10 +73,7 @@ func (c *DBPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 		}
 	}
 	if p == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "pod does not exist",
-		}
+		return nil, nil
 	}
 	var apiPod model.APIPod
 	if err := apiPod.BuildFromService(p); err != nil {
@@ -84,6 +83,51 @@ func (c *DBPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 		}
 	}
 	return &apiPod, nil
+}
+
+// FindPodByExternalID finds a pod by its external identifier. It returns a nil
+// result if no such pod is found.
+func (c *DBPodConnector) FindPodByExternalID(id string) (*model.APIPod, error) {
+	p, err := pod.FindOneByExternalID(id)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "finding pod by ID").Error(),
+		}
+	}
+	if p == nil {
+		return nil, nil
+	}
+
+	var apiPod model.APIPod
+	if err := apiPod.BuildFromService(p); err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "building pod from service model").Error(),
+		}
+	}
+	return &apiPod, nil
+}
+
+// UpdatePodStatus updates the pod status from the current status to the updated
+// one.
+func (c *DBPodConnector) UpdatePodStatus(id string, apiCurrent, apiUpdated restModel.APIPodStatus) error {
+	current, err := apiCurrent.ToService()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "converting current status to service model").Error(),
+		}
+	}
+	updated, err := apiUpdated.ToService()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "converting current status to service model").Error(),
+		}
+	}
+
+	return pod.UpdateOneStatus(id, *current, *updated, utility.BSONTime(time.Now()))
 }
 
 // MockPodConnector implements the pod-related methods from the connector via an
@@ -117,6 +161,80 @@ func (c *MockPodConnector) CheckPodSecret(id, secret string) error {
 		}
 	}
 	return errors.New("pod does not exist")
+}
+
+// FindPodByID finds a matching pod by ID in the cache.
+func (c *MockPodConnector) FindPodByID(id string) (*model.APIPod, error) {
+	p, err := c.findPodByID(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding pod")
+	}
+
+	var apiPod model.APIPod
+	if err := apiPod.BuildFromService(p); err != nil {
+		return nil, errors.Wrap(err, "building pod from service model")
+	}
+
+	return &apiPod, nil
+}
+
+// findPodByID finds a cached pod by ID and returns a pointer to it.
+func (c *MockPodConnector) findPodByID(id string) (*pod.Pod, error) {
+	for i, p := range c.CachedPods {
+		if id == p.ID {
+			return &c.CachedPods[i], nil
+		}
+	}
+	return nil, nil
+}
+
+// FindPodByExternalID finds a matching pod by its external identifier in the
+// cache.
+func (c *MockPodConnector) FindPodByExternalID(id string) (*model.APIPod, error) {
+	for _, p := range c.CachedPods {
+		if id == p.Resources.ExternalID {
+			var apiPod model.APIPod
+			if err := apiPod.BuildFromService(&p); err != nil {
+				return nil, errors.Wrap(err, "building pod from service model")
+			}
+			return &apiPod, nil
+		}
+	}
+	return nil, nil
+}
+
+// UpdatePodStatus finds a matching pod by ID in the cache and updates its
+// status, along with any relevant metadata information.
+func (c *MockPodConnector) UpdatePodStatus(id string, apiCurrent, apiUpdated model.APIPodStatus) error {
+	p, err := c.findPodByID(id)
+	if err != nil {
+		return errors.Wrap(err, "finding pod")
+	}
+
+	current, err := apiCurrent.ToService()
+	if err != nil {
+		return errors.Wrap(err, "converting current status to service model")
+	}
+
+	if p.Status != *current {
+		return errors.New("current pod status does not match stored status")
+	}
+
+	updated, err := apiUpdated.ToService()
+	if err != nil {
+		return errors.Wrap(err, "converting updated status to service model")
+	}
+
+	p.Status = *updated
+
+	switch *updated {
+	case pod.StatusInitializing:
+		p.TimeInfo.Initializing = utility.BSONTime(time.Now())
+	case pod.StatusStarting:
+		p.TimeInfo.Starting = utility.BSONTime(time.Now())
+	}
+
+	return nil
 }
 
 // translatePod translates a pod creation request into its data model.
@@ -154,18 +272,4 @@ func addAgentPodSettings(p *pod.Pod) {
 		p.TaskContainerCreationOpts.EnvVars = map[string]string{}
 	}
 	p.TaskContainerCreationOpts.EnvVars["POD_ID"] = p.ID
-}
-
-// FindPodByID checks the cache for a matching pod by ID.
-func (c *MockPodConnector) FindPodByID(id string) (*model.APIPod, error) {
-	for _, p := range c.CachedPods {
-		if id == p.ID {
-			var apiPod model.APIPod
-			if err := apiPod.BuildFromService(&p); err != nil {
-				return nil, errors.Wrap(err, "building pod from service model")
-			}
-			return &apiPod, nil
-		}
-	}
-	return nil, errors.New("pod does not exist")
 }
