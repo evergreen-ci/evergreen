@@ -604,6 +604,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
 type BuildCreateArgs struct {
 	Project             Project                 // project to create the build for
+	ProjectIdentifier   string                  // verify we're using the readable project identifier to create new IDs
 	Version             Version                 // the version the build belong to
 	TaskIDs             TaskIdConfig            // pre-generated IDs for the tasks to be created
 	BuildName           string                  // name of the buildvariant
@@ -648,7 +649,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 
 	// create a new build id
 	buildId := fmt.Sprintf("%s_%s_%s_%s",
-		args.Project.Identifier,
+		args.ProjectIdentifier,
 		args.BuildName,
 		rev,
 		args.Version.CreateTime.Format(build.IdTimeLayout))
@@ -1499,17 +1500,18 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !activationInfo.variantHasSpecificActivation(pair.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:        *p,
-			Version:        *v,
-			TaskIDs:        taskIdTables,
-			BuildName:      pair.Variant,
-			ActivateBuild:  activateVariant,
-			TaskNames:      taskNames,
-			DisplayNames:   displayNames,
-			ActivationInfo: activationInfo,
-			GeneratedBy:    generatedBy,
-			TaskCreateTime: createTime,
-			SyncAtEndOpts:  syncAtEndOpts,
+			Project:           *p,
+			Version:           *v,
+			TaskIDs:           taskIdTables,
+			BuildName:         pair.Variant,
+			ActivateBuild:     activateVariant,
+			TaskNames:         taskNames,
+			DisplayNames:      displayNames,
+			ActivationInfo:    activationInfo,
+			GeneratedBy:       generatedBy,
+			TaskCreateTime:    createTime,
+			SyncAtEndOpts:     syncAtEndOpts,
+			ProjectIdentifier: projectRef.Identifier,
 		}
 
 		grip.Info(message.Fields{
