@@ -1320,13 +1320,8 @@ func setVersionActivationStatus(sc data.Connector, version *model.Version) error
 		return errors.Wrapf(err, "error getting tasks for version %s", version.Id)
 	}
 	if !task.AnyActiveTasks(tasks) {
-		if err = version.SetNotActivated(); err != nil {
-			return errors.Wrapf(err, fmt.Sprintf("Error updating version activated status for `%s`", version.Id))
-		}
+		return errors.Wrapf(version.SetNotActivated(), "Error updating version activated status for `%s`", version.Id)
 	} else {
-		if err = version.SetActivated(); err != nil {
-			return errors.Wrapf(err, fmt.Sprintf("Error updating version activated status for `%s`", version.Id))
-		}
+		return errors.Wrapf(version.SetActivated(), "Error updating version activated status for `%s`", version.Id)
 	}
-	return nil
 }

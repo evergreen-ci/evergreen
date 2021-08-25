@@ -387,16 +387,20 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 		return nil, errors.Wrapf(err, "error aggregating versions")
 	}
 
+	if len(res) == 0 {
+		return nil, errors.Errorf("no mainline commit found for project '%v'", projectId)
+	}
 	return &res[0], nil
 }
 
-// GetPreviousPageCommit returns the first mainline commit that appears limit activated versions after the specified commit
+// GetPreviousPageCommitOrderNumber returns the first mainline commit that is LIMIT activated versions more recent than the specified commit
 func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*int, error) {
 	// First check if we are already looking at the most recent commit.
 	version, err := getMostRecentMainlineCommit(projectId)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	// Add +1 to the ORDER number to check if we are already looking at the newest commit since it checks for commits that are greater but not equal to the specified ORDER number
 	if version.RevisionOrderNumber < order+1 {
 		return nil, nil
 	}
@@ -408,7 +412,10 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*
 		VersionActivatedKey:           true,
 		VersionRevisionOrderNumberKey: bson.M{"$gt": order},
 	}
-	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: 1}}, {"$limit": limit}}
+
+	// We want to get the commits that are newer than the specified ORDER number, then take only the LIMIT newer activated versions then that ORDER number.
+	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: 1}}, {"$limit": limit}, {"$project": bson.M{"_id": 0, VersionRevisionOrderNumberKey: 1}}}
+
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
@@ -419,12 +426,13 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*
 	if len(res) == 0 {
 		return nil, nil
 	}
-	// If the previous page doesn't contain enough active commits to populate the project health view, return 0
-	// this means the previous page contains the latest commits, When 0 is passed to GetMainlineCommitVersionsWithOptions it will return the latest commits
+	// If the previous page does not contain enough active commits to populate the project health view we return 0 to indicate that the previous page has the latest commits.
+	// GetMainlineCommitVersionsWithOptions returns the latest commits when 0 is passed in as the order number.
 	if len(res) < limit {
 		return utility.ToIntPtr(0), nil
 	}
 
+	// Return the
 	return &res[len(res)-1].RevisionOrderNumber, nil
 }
 

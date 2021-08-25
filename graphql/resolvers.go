@@ -2854,8 +2854,8 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		if err != nil {
 			// This shouldn't really happen, but if it does, we should return an error and log it
 			grip.Warning(message.WrapError(err, message.Fields{
-				"message":   "Error getting most recent version",
-				"projectId": projectId,
+				"message":    "Error getting most recent version",
+				"project_id": projectId,
 			}))
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting most recent mainline commit: %s", err.Error()))
 		}
