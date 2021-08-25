@@ -2852,7 +2852,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(projectId, utility.FromIntPtr(options.SkipOrderNumber), limit)
 
 		if err != nil {
-			// This shouldn't realy happen, but if it does, we should return an error and log it
+			// This shouldn't really happen, but if it does, we should return an error and log it
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message":   "Error getting most recent version",
 				"projectId": projectId,
