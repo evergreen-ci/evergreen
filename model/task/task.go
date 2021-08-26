@@ -3255,6 +3255,20 @@ func (t *Task) SetNumDependents() error {
 	}, update)
 }
 
+func DisplayTaskIdToExecTasks(displayTaskId string, execTasksToUpdate []string) error {
+	if len(execTasksToUpdate) == 0 {
+		return nil
+	}
+	_, err := UpdateAll(bson.M{
+		IdKey: bson.M{"$in": execTasksToUpdate},
+	},
+		bson.M{"$set": bson.M{
+			DisplayTaskIdKey: displayTaskId,
+		}},
+	)
+	return err
+}
+
 func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, displayTaskActivated bool) error {
 	if len(execTasks) == 0 {
 		return nil
