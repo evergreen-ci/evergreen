@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -32,7 +33,8 @@ const (
 	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
 
-	ecsTaskStateChangeType = "ECS Task State Change"
+	ecsTaskStateChangeType              = "ECS Task State Change"
+	ecsContainerInstanceStateChangeType = "ECS Container Instance State Change"
 )
 
 type baseSNS struct {
@@ -75,6 +77,29 @@ func (sns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
+func (sns *baseSNS) handleSNSConfirmation() (handled bool) {
+	// Subscription/Unsubscription is a rare action that we will handle manually
+	// and will be logged to splunk given the logging level.
+	switch sns.messageType {
+	case messageTypeSubscriptionConfirmation:
+		grip.Alert(message.Fields{
+			"message":       "got AWS SNS subscription confirmation. Visit subscribe_url to confirm",
+			"subscribe_url": sns.payload.SubscribeURL,
+			"topic_arn":     sns.payload.TopicArn,
+		})
+		return true
+	case messageTypeUnsubscribeConfirmation:
+		grip.Alert(message.Fields{
+			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
+			"unsubscribe_url": sns.payload.UnsubscribeURL,
+			"topic_arn":       sns.payload.TopicArn,
+		})
+		return true
+	default:
+		return false
+	}
+}
+
 type ec2SNS struct {
 	baseSNS
 }
@@ -92,21 +117,11 @@ func (sns *ec2SNS) Factory() gimlet.RouteHandler {
 }
 
 func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
-	// Subscription/Unsubscription is a rare action that we will handle manually
-	// and will be logged to splunk given the logging level.
+	if sns.handleSNSConfirmation() {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
 	switch sns.messageType {
-	case messageTypeSubscriptionConfirmation:
-		grip.Alert(message.Fields{
-			"message":       "got AWS SNS subscription confirmation. Visit subscribe_url to confirm",
-			"subscribe_url": sns.payload.SubscribeURL,
-			"topic_arn":     sns.payload.TopicArn,
-		})
-	case messageTypeUnsubscribeConfirmation:
-		grip.Alert(message.Fields{
-			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
-			"unsubscribe_url": sns.payload.UnsubscribeURL,
-			"topic_arn":       sns.payload.TopicArn,
-		})
 	case messageTypeNotification:
 		if err := sns.handleNotification(ctx); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -115,6 +130,7 @@ func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
 			}))
 			return gimlet.NewJSONResponse(err)
 		}
+		return gimlet.NewJSONResponse(struct{}{})
 	default:
 		grip.Error(message.Fields{
 			"message":         "got an unknown message type",
@@ -125,8 +141,6 @@ func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
 		})
 		return gimlet.NewTextErrorResponse(fmt.Sprintf("message type '%s' is not recognized", sns.messageType))
 	}
-
-	return gimlet.NewJSONResponse(struct{}{})
 }
 
 type ec2EventBridgeNotification struct {
@@ -319,8 +333,9 @@ type ecsEventBridgeNotification struct {
 }
 
 type ecsEventDetail struct {
-	TaskARN    string `json:"taskArn"`
-	LastStatus string `json:"lastStatus"`
+	TaskARN       string `json:"taskArn"`
+	LastStatus    string `json:"lastStatus"`
+	StoppedReason string `json:"stoppedReason"`
 }
 
 func makeECSSNS(sc data.Connector, env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
@@ -336,52 +351,123 @@ func (sns *ecsSNS) Factory() gimlet.RouteHandler {
 }
 
 func (sns *ecsSNS) Run(ctx context.Context) gimlet.Responder {
-	// Subscription/Unsubscription is a rare action that we will handle manually
-	// and will be logged to splunk given the logging level.
+	if sns.handleSNSConfirmation() {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
 	switch sns.messageType {
-	case messageTypeSubscriptionConfirmation:
-		grip.Alert(message.Fields{
-			"message":       "got AWS SNS subscription confirmation. Visit subscribe_url to confirm",
-			"subscribe_url": sns.payload.SubscribeURL,
-			"topic_arn":     sns.payload.TopicArn,
-		})
-	case messageTypeUnsubscribeConfirmation:
-		grip.Alert(message.Fields{
-			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
-			"unsubscribe_url": sns.payload.UnsubscribeURL,
-			"topic_arn":       sns.payload.TopicArn,
-		})
 	case messageTypeNotification:
-		// TODO (EVG-14811): handle SNS notification for ECS task state change
-		// and remove this debug log.
-		grip.Info(message.Fields{
-			"message":      "received ECS SNS notification",
-			"message_id":   sns.payload.MessageId,
-			"message_type": sns.payload.Type,
-			"topic":        sns.payload.TopicArn,
-		})
+		notification := ecsEventBridgeNotification{}
+		if err := json.Unmarshal([]byte(sns.payload.Message), &notification); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling notification"))
+		}
+
+		if err := sns.handleNotification(ctx, notification); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "could not handle SNS notification",
+				"notification": sns.payload.Message,
+				"route":        "/hooks/aws/ecs",
+			}))
+			return gimlet.NewJSONResponse(err)
+		}
+
+		return gimlet.NewJSONResponse(struct{}{})
 	default:
 		grip.Error(message.Fields{
-			"message":         "got an unknown message type",
+			"message":         "received an unknown message type",
 			"type":            sns.messageType,
 			"payload_subject": sns.payload.Subject,
 			"payload_message": sns.payload.Message,
 			"payload_topic":   sns.payload.TopicArn,
+			"route":           "/hooks/aws/ecs",
 		})
 		return gimlet.NewTextErrorResponse(fmt.Sprintf("message type '%s' is not recognized", sns.messageType))
 	}
-
-	return gimlet.NewJSONResponse(struct{}{})
 }
 
-// TODO (EVG-14811): handle SNS notification for ECS task state change.
-func (sns *ecsSNS) handleNotification(ctx context.Context) error {
-	notification := &ecsEventBridgeNotification{}
-	if err := json.Unmarshal([]byte(sns.payload.Message), notification); err != nil {
+func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEventBridgeNotification) error {
+	switch notification.DetailType {
+	case ecsTaskStateChangeType:
+		p, err := sns.sc.FindPodByExternalID(notification.Detail.TaskARN)
+		if err != nil {
+			return err
+		}
+		if p == nil {
+			grip.Info(message.Fields{
+				"message":  "found unexpected ECS task that did not match any known pod",
+				"task_arn": notification.Detail.TaskARN,
+				"route":    "/hooks/aws/ecs",
+			})
+			return nil
+		}
+
+		switch notification.Detail.LastStatus {
+		case "PROVISIONING", "PENDING", "ACTIVATING", "RUNNING":
+			// No-op because the pod is not considered running until the agent
+			// contacts the app server.
+			return nil
+		case "DEACTIVATING", "STOPPING", "DEPROVISIONING":
+			// No-op because the pod is preparing to stop but is not yet
+			// stopped.
+			return nil
+		case "STOPPED":
+			reason := notification.Detail.StoppedReason
+			if reason == "" {
+				reason = "stopped due to unknown reason"
+			}
+			return sns.handleStoppedPod(ctx, p, fmt.Sprintf("SNS notification: %s", reason))
+		default:
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("unrecognized status '%s'", notification.Detail.LastStatus),
+			}
+		}
+	case ecsContainerInstanceStateChangeType:
+		// TODO (EVG-15333): remove this no-op once the event rule excludes
+		// container instance state changes.
+		return nil
+	default:
+		grip.Error(message.Fields{
+			"message":         "received an unknown notification detail type",
+			"message_type":    sns.messageType,
+			"detail_type":     notification.DetailType,
+			"payload_subject": sns.payload.Subject,
+			"payload_message": sns.payload.Message,
+			"payload_topic":   sns.payload.TopicArn,
+			"route":           "/hooks/aws/ecs",
+		})
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "unmarshalling notification").Error(),
+			Message:    fmt.Sprintf("unknown detail type '%s'", notification.DetailType),
 		}
 	}
+}
+
+// handleStoppedPod handles an SNS notification that a pod has been stopped in
+// ECS.
+func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason string) error {
+	if p.Status == nil {
+		return errors.New("cannot handle stopped pod if current status is unknown")
+	}
+
+	status := *p.Status
+	if status == model.PodStatusDecommissioned || status == model.PodStatusTerminated {
+		return nil
+	}
+	id := utility.FromStringPtr(p.ID)
+
+	if err := sns.sc.UpdatePodStatus(id, status, model.PodStatusDecommissioned); err != nil {
+		return err
+	}
+
+	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewPodTerminationJob(id, reason, utility.RoundPartOfMinute(0))); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not enqueue job to terminate pod from SNS notification",
+			"pod_id":     id,
+			"pod_status": status,
+			"route":      "/hooks/aws/ecs",
+		}))
+	}
+
 	return nil
 }
