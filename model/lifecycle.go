@@ -706,7 +706,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
 	for _, taskP := range tasksForBuild {
-		if taskP.DisplayTask != nil {
+		if taskP.IsPartOfDisplay() {
 			continue // don't add execution parts of display tasks to the UI cache
 		}
 		tasks = append(tasks, *taskP)
