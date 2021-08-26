@@ -899,7 +899,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 
 		// update existing exec tasks
-		grip.Error(message.WrapError(task.DisplayTaskIdToExecTasks(id, execTasksThatNeedParentId), message.Fields{
+		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(id, execTasksThatNeedParentId), message.Fields{
 			"message":              "problem adding display task ID to exec tasks",
 			"exec_tasks_to_update": execTasksThatNeedParentId,
 			"display_task_id":      id,

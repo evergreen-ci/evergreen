@@ -3255,7 +3255,7 @@ func (t *Task) SetNumDependents() error {
 	}, update)
 }
 
-func DisplayTaskIdToExecTasks(displayTaskId string, execTasksToUpdate []string) error {
+func AddDisplayTaskIdToExecTasks(displayTaskId string, execTasksToUpdate []string) error {
 	if len(execTasksToUpdate) == 0 {
 		return nil
 	}
