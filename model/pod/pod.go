@@ -205,13 +205,8 @@ func (p *Pod) Remove() error {
 	)
 }
 
-// UpdateStatus updates the pod status. If the new status is identical to the
-// current one, this is a no-op.
+// UpdateStatus updates the pod status.
 func (p *Pod) UpdateStatus(s Status) error {
-	if p.Status == s {
-		return nil
-	}
-
 	ts := utility.BSONTime(time.Now())
 	if err := UpdateOneStatus(p.ID, p.Status, s, ts); err != nil {
 		return errors.Wrap(err, "updating status")

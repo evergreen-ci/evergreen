@@ -223,7 +223,22 @@ func TestUpdateOneStatus(t *testing.T) {
 	}
 
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
+		"NoopsWithIdenticalStatus": func(t *testing.T, p Pod) {
+			p.Status = StatusInitializing
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateStatus(p.Status))
+			assert.Equal(t, StatusInitializing, p.Status)
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, p.Status, dbPod.Status)
+			assert.Zero(t, dbPod.TimeInfo.Initializing)
+		},
 		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
 			updated := StatusInitializing
 			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now()))
 
@@ -234,6 +249,8 @@ func TestUpdateOneStatus(t *testing.T) {
 			checkEventLog(t, p)
 		},
 		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
 			updated := StatusStarting
 			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now()))
 
@@ -244,9 +261,13 @@ func TestUpdateOneStatus(t *testing.T) {
 			checkEventLog(t, p)
 		},
 		"FailsWithMismatchedCurrentStatus": func(t *testing.T, p Pod) {
-			assert.Error(t, UpdateOneStatus(p.ID, StatusTerminated, StatusTerminated, time.Now()))
+			require.NoError(t, p.Insert())
+
+			assert.Error(t, UpdateOneStatus(p.ID, StatusInitializing, StatusTerminated, time.Now()))
 		},
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
 			updated := StatusTerminated
 			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now()))
 
@@ -258,6 +279,8 @@ func TestUpdateOneStatus(t *testing.T) {
 			checkEventLog(t, p)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
 			assert.Error(t, UpdateOneStatus("nonexistent", StatusStarting, StatusRunning, time.Now()))
 		},
 	} {
@@ -271,7 +294,6 @@ func TestUpdateOneStatus(t *testing.T) {
 				ID:     "id",
 				Status: StatusRunning,
 			}
-			require.NoError(t, p.Insert())
 
 			tCase(t, p)
 		})

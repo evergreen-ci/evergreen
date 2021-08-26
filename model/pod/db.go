@@ -128,9 +128,14 @@ func FindOneByExternalID(id string) (*Pod, error) {
 }
 
 // UpdateOneStatus updates a pod's status by ID along with any relevant metadata
-// information about the status update. If the current status does not match the
+// information about the status update. If the current status is identical to
+// the updated one, this will no-op. If the current status does not match the
 // stored status, this will error.
 func UpdateOneStatus(id string, current, updated Status, ts time.Time) error {
+	if current == updated {
+		return nil
+	}
+
 	byIDAndStatus := ByID(id)
 	byIDAndStatus[StatusKey] = current
 
