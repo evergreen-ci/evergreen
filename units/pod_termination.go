@@ -96,7 +96,7 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 			"termination_attempt_reason": j.Reason,
 			"job":                        j.ID(),
 		})
-	case pod.StatusStarting, pod.StatusRunning:
+	case pod.StatusStarting, pod.StatusRunning, pod.StatusDecommissioned:
 		// TODO (EVG-15034): ensure deletion is idempotent.
 		if err := j.ecsPod.Delete(ctx); err != nil {
 			j.AddError(errors.Wrap(err, "deleting pod resources"))
@@ -110,6 +110,14 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 			"job":                        j.ID(),
 		})
 		return
+	default:
+		grip.Error(message.Fields{
+			"message":                    "could not terminate pod with unrecognized status",
+			"pod":                        j.PodID,
+			"status":                     j.pod.Status,
+			"termination_attempt_reason": j.Reason,
+			"job":                        j.ID(),
+		})
 	}
 
 	if err := j.pod.UpdateStatus(pod.StatusTerminated); err != nil {
