@@ -402,7 +402,6 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 			return nil
 		}
 
-		// TODO (EVG-15336): turn ECS task states into constants.
 		switch notification.Detail.LastStatus {
 		case ecs.TaskStatusProvisioning, ecs.TaskStatusPending, ecs.TaskStatusActivating, ecs.TaskStatusRunning:
 			// No-op because the pod is not considered running until the agent
