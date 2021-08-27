@@ -28,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 )
 
 type TaskVariantPairs struct {
@@ -175,16 +176,33 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 
 	// apply remote configuration patch if needed
 	if !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(path) {
+		opts.ReadFileFrom = ReadFromPatchDiff
+		opts.RemotePath = path
+		opts.Revision = hash
+		opts.PatchOpts = &PatchOpts{
+			patch: p,
+			env:   env,
+		}
 		projectFileBytes, err = MakePatchedConfig(ctx, env, p, path, string(projectFileBytes))
 		if err != nil {
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	if _, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project); err != nil {
+	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 
-	return project, string(projectFileBytes), nil
+	// MashalBSON() does not decode into byte properly
+	yml, err := pp.MarshalYAML()
+	if err != nil {
+		return nil, "", errors.Wrapf(err, "Could not marshal parser project into yaml")
+	}
+	out, err := yaml.Marshal(yml)
+	if err != nil {
+		return nil, "", errors.Wrapf(err, "Could not marshal parser project yaml into string")
+	}
+	return project, string(out), nil
 }
 
 // MakePatchedConfig takes in the path to a remote configuration a stringified version

@@ -592,17 +592,24 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 }
 
 const (
-	ReadfromGithub = "github"
-	ReadFromLocal  = "local"
-	ReadFromPatch  = "patch"
+	ReadfromGithub    = "github"
+	ReadFromLocal     = "local"
+	ReadFromPatch     = "patch"
+	ReadFromPatchDiff = "patch_diff"
 )
 
 type GetProjectOpts struct {
 	Ref          *ProjectRef
+	PatchOpts    *PatchOpts
 	RemotePath   string
 	Revision     string
 	Token        string
 	ReadFileFrom string
+}
+
+type PatchOpts struct {
+	patch *patch.Patch
+	env   evergreen.Environment
 }
 
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
@@ -627,6 +634,16 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
 		}
 		return fileContents, nil
+	case ReadFromPatchDiff:
+		originalConfig, err := GetFileFromPatchDiff(ctx, opts)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not fetch remote configuration file")
+		}
+		fileContents, err := MakePatchedConfig(ctx, opts.PatchOpts.env, opts.PatchOpts.patch, opts.RemotePath, originalConfig)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not patch remote configuration file")
+		}
+		return fileContents, nil
 	default:
 		if opts.Token == "" {
 			conf, err := evergreen.GetConfig()
@@ -649,6 +666,35 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	}
+}
+
+func GetFileFromPatchDiff(ctx context.Context, opts GetProjectOpts) (string, error) {
+	if opts.PatchOpts == nil {
+		return "", errors.New("patch not passed in")
+	}
+	if opts.Ref == nil {
+		return "", errors.New("project not passed in")
+	}
+	var projectFileBytes []byte
+	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner,
+		opts.Ref.Repo, opts.RemotePath, opts.Revision)
+	if err != nil {
+		// if the project file doesn't exist, but our patch includes a project file,
+		// we try to apply the diff and proceed.
+		if !(opts.PatchOpts.patch.ConfigChanged(opts.RemotePath) && thirdparty.IsFileNotFound(err)) {
+			// return an error if the github error is network/auth-related or we aren't patching the config
+			return "", errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", opts.Ref.Owner,
+				opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		}
+	} else {
+		// we successfully got the project file in base64, so we decode it
+		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
+		if err != nil {
+			return "", errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", opts.Ref.Owner,
+				opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		}
+	}
+	return string(projectFileBytes), nil
 }
 
 func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
