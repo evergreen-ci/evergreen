@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -401,17 +402,16 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 			return nil
 		}
 
-		// TODO (EVG-15336): turn ECS task states into constants.
 		switch notification.Detail.LastStatus {
-		case "PROVISIONING", "PENDING", "ACTIVATING", "RUNNING":
+		case ecs.TaskStatusProvisioning, ecs.TaskStatusPending, ecs.TaskStatusActivating, ecs.TaskStatusRunning:
 			// No-op because the pod is not considered running until the agent
 			// contacts the app server.
 			return nil
-		case "DEACTIVATING", "STOPPING", "DEPROVISIONING":
+		case ecs.TaskStatusDeactivating, ecs.TaskStatusStopping, ecs.TaskStatusDeprovisioning:
 			// No-op because the pod is preparing to stop but is not yet
 			// stopped.
 			return nil
-		case "STOPPED":
+		case ecs.TaskStatusStopped:
 			reason := notification.Detail.StoppedReason
 			if reason == "" {
 				reason = "stopped due to unknown reason"
