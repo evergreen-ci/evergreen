@@ -3109,10 +3109,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 					return nil, err
 				}
 				if p == nil {
-					return nil, gimlet.ErrorResponse{
-						StatusCode: http.StatusNotFound,
-						Message:    fmt.Sprintf("patch with id %s not found", cp),
-					}
+					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
 				}
 				if p.Version != "" {
 					//only return the error if the version is activated (and we therefore expect it to be there)
