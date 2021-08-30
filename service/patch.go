@@ -93,12 +93,12 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 	if curUser == nil {
 		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("Not authorized to schedule patch"))
 	}
-	patchUpdateReq := graphql.PatchVariantsTasksRequest{}
-	if err := utility.ReadJSON(util.NewRequestReader(r), &patchUpdateReq); err != nil {
+	patchUpdateReq := graphql.PatchUpdate{}
+	if err := utility.ReadJSON(util.NewRequestReader(r), &patchUpdateReq.VariantsTasks); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 
-	err, status, successMessage, versionId := graphql.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq, nil, nil)
+	err, status, successMessage, versionId := graphql.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
 	if err != nil {
 		uis.LoggedError(w, r, status, err)
 		return
