@@ -3101,6 +3101,21 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 		for _, cp := range childPatchIds {
 			v, err := r.Query().Version(ctx, cp)
 			if err != nil {
+				//before erroring due to the version being nil or not found,
+				// fetch the child patch to see if it's activated
+				p, err := patch.FindOneId(cp)
+				if err != nil {
+					return nil, err
+				}
+				if p == nil {
+					return nil, gimlet.ErrorResponse{
+						StatusCode: http.StatusNotFound,
+						Message:    fmt.Sprintf("patch with id %s not found", cp),
+					}
+				}
+				if p.Version == "" {
+					return nil, nil
+				}
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch child version: %s ", err.Error()))
 			}
 			childVersions = append(childVersions, v)
