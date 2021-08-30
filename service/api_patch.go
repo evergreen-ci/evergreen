@@ -400,7 +400,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 
 		p.PatchedConfig = projectYaml
-		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken, nil)
+		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

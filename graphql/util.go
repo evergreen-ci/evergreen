@@ -415,9 +415,14 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if err != nil {
 			return errors.Wrap(err, "Error processing patch trigger aliases"), http.StatusInternalServerError, "", ""
 		}
+		if len(childPatchIds) > 0 {
+			if err = p.SetChildPatches(); err != nil {
+				return errors.Wrapf(err, "error attaching child patches '%s'", p.Id.Hex()), http.StatusInternalServerError, "", ""
+			}
+		}
 
 		requester := p.GetRequester()
-		ver, err := model.FinalizePatch(newCxt, p, requester, githubOauthToken, childPatchIds)
+		ver, err := model.FinalizePatch(newCxt, p, requester, githubOauthToken)
 		if err != nil {
 			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
 		}

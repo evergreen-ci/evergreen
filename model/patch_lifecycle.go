@@ -277,7 +277,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
-func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string, childPatchIds []string) (*Version, error) {
+func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
 	opts := GetProjectOpts{}
@@ -446,11 +446,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
 			return nil, errors.Wrapf(err, "error inserting tasks for version '%s'", patchVersion.Id)
 		}
-		if p.IsParent() && len(childPatchIds) > 0 {
-			if err = p.SetChildPatches(); err != nil {
-				return nil, errors.Wrapf(err, "error attaching child patches '%s'", patchVersion.Id)
-			}
-		}
 		if err = p.SetActivated(sessCtx, patchVersion.Id); err != nil {
 			return nil, errors.Wrapf(err, "error activating patch '%s'", patchVersion.Id)
 		}
@@ -493,7 +488,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 		if err != nil {
 			return errors.Errorf("error fetching child patch: %s", err)
 		}
-		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken, nil); err != nil {
+		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "Failed to finalize child patch document",
 				"source":        requester,

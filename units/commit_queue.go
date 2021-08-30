@@ -354,7 +354,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get project config", ""))
 	}
 
-	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken, nil)
+	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
 		j.dequeue(cq, nextItem)
@@ -421,7 +421,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken, nil)
+	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)

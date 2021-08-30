@@ -247,7 +247,7 @@ func finalizeChildPatch(sub *event.Subscription) error {
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
 
-	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester, ghToken, nil); err != nil {
+	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester, ghToken); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "Failed to finalize patch document",
 			"source":        target.Requester,
