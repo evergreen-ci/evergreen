@@ -3088,6 +3088,28 @@ func (r *versionResolver) Patch(ctx context.Context, v *restModel.APIVersion) (*
 	return apiPatch, nil
 }
 
+func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVersion) ([]*restModel.APIVersion, error) {
+	if !evergreen.IsPatchRequester(*v.Requester) {
+		return nil, nil
+	}
+	childPatchIds, err := r.sc.GetChildPatchIds(*v.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *v.Id, err.Error()))
+	}
+	if len(childPatchIds) > 0 {
+		childVersions := []*restModel.APIVersion{}
+		for _, cp := range childPatchIds {
+			v, err := r.Query().Version(ctx, cp)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch child version: %s ", err.Error()))
+			}
+			childVersions = append(childVersions, v)
+		}
+		return childVersions, nil
+	}
+	return nil, nil
+}
+
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
 	taskCount, err := task.Count(task.ByVersion(*obj.Id))
 	if err != nil {
