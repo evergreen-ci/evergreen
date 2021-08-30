@@ -30,6 +30,8 @@ const (
 	// this regex either matches against the exact 'test' string, or
 	// against the 'test' string at the end of some kind of filepath.
 	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
+
+	taskHistoryMaxTime = 90 * time.Second
 )
 
 type taskHistoryIterator struct {
@@ -334,7 +336,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	agg := database.C(task.Collection).Pipe(pipeline).MaxTime(time.Minute)
+	agg := database.C(task.Collection).Pipe(pipeline).MaxTime(taskHistoryMaxTime)
 	var aggregatedTasks []bson.M
 	if err = agg.All(&aggregatedTasks); err != nil {
 		return chunk, errors.WithStack(err)
@@ -392,7 +394,7 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCo
 			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
 		},
 	)
-	pipeline.MaxTime(time.Minute)
+	pipeline.MaxTime(taskHistoryMaxTime)
 
 	var names []string
 	res := bson.M{}
