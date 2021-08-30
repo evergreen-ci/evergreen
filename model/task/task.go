@@ -2106,8 +2106,8 @@ func (t *Task) populateNewTestResults() error {
 	if err != nil {
 		return errors.Wrap(err, "finding test results")
 	}
-	for _, result := range newTestResults {
-		t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&result))
+	for i := range newTestResults {
+		t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&newTestResults[i]))
 	}
 	t.testResultsPopulated = true
 
