@@ -3100,7 +3100,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 		childVersions := []*restModel.APIVersion{}
 		for _, cp := range childPatchIds {
 			// this calls the graphql Version query resolver
-			v, err := r.Query().Version(ctx, cp)
+			cv, err := r.Query().Version(ctx, cp)
 			if err != nil {
 				//before erroring due to the version being nil or not found,
 				// fetch the child patch to see if it's activated
@@ -3116,7 +3116,9 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch child version: %s ", err.Error()))
 				}
 			}
-			childVersions = append(childVersions, v)
+			if cv != nil {
+				childVersions = append(childVersions, cv)
+			}
 		}
 		return childVersions, nil
 	}
