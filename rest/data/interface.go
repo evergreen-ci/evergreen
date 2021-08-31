@@ -236,6 +236,8 @@ type Connector interface {
 	FindPatchesByProjectPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
+	// FindPatchById fetches the patch corresponding to the input patch ID.
+	GetChildPatchIds(string) ([]string, error)
 	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs
 	FindPatchesByIds([]string) ([]restModel.APIPatch, error)
 	// GetPatchRawPatches fetches the raw patches for a patch
