@@ -870,6 +870,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		execTasksThatNeedParentId := []string{}
 		execTaskIds := []string{}
 		displayTaskActivated := false
+		displayTaskAlreadyExists := !createAll && !utility.StringSliceContains(displayNames, dt.Name)
 
 		// get display task activations status and update exec tasks
 		for _, et := range dt.ExecTasks {
@@ -882,7 +883,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 					"available_tasks":             execTable,
 					"project":                     project.Identifier,
 					"display_task":                id,
-					"display_task_already_exists": true,
+					"display_task_already_exists": displayTaskAlreadyExists,
 				})
 				continue
 			}
@@ -907,7 +908,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			"build_id":             b.Id,
 		}))
 
-		displayTaskAlreadyExists := !createAll && !utility.StringSliceContains(displayNames, dt.Name)
 		// existing display task may need to be updated
 		if displayTaskAlreadyExists {
 			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds, displayTaskActivated), message.Fields{
