@@ -185,3 +185,5 @@ models:
     fields:
       status:
         resolver: true
+  TaskHistoryBuildVariantHeader:
+    model: github.com/evergreen-ci/evergreen/model/task.TaskHistoryBuildVariantHeader

@@ -2800,7 +2800,7 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
-func (r *queryResolver) BuildVariantHistory(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
+func (r *queryResolver) BuildVariantHistoryHeaders(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
 	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
@@ -2811,13 +2811,13 @@ func (r *queryResolver) BuildVariantHistory(ctx context.Context, projectId strin
 	return buildVariantTasks, nil
 }
 
-func (r *queryResolver) TaskHistory(ctx context.Context, projectId string, taskName string) ([]string, error) {
+func (r *queryResolver) TaskHistoryHeaders(ctx context.Context, projectId string, taskName string) ([]*task.TaskHistoryBuildVariantHeader, error) {
 	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(projectId, taskName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
 	}
 	if taskBuildVariants == nil {
-		return []string{}, nil
+		return nil, nil
 	}
 	return taskBuildVariants, nil
 
