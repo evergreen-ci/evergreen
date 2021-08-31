@@ -1,0 +1,11 @@
+{
+    "tests": [
+      {
+          "query_file": "buildVariantHistoryHeaders.graphql",
+          "result": {
+            "data": {"buildVariantHistoryHeaders":["dist", "test-agent", "test-graphql"]}
+          }
+        }
+    ]
+}
+  
