@@ -8,4 +8,4 @@ const (
 	MarkerInEvergreen = "IN_EVERGREEN"
 )
 
-var ErrPsTimeout = errors.New("ps timeout")
+var ErrPSTimeout = errors.New("ps timeout")

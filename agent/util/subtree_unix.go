@@ -182,7 +182,7 @@ func psWithArgs(ctx context.Context, args []string) ([]process, error) {
 		// If the context's deadline was exceeded we conclude the process blocked
 		// and was killed when the context was closed.
 		if psCtx.Err() == context.DeadlineExceeded {
-			return nil, ErrPsTimeout
+			return nil, ErrPSTimeout
 		}
 		return nil, errors.Wrap(err, "running ps")
 	}

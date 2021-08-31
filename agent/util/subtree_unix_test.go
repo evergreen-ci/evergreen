@@ -55,7 +55,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 
 	err := KillSpawnedProcs(expiredContext, "", "", grip.GetDefaultJournaler())
 	assert.Error(t, err)
-	assert.Equal(t, ErrPsTimeout, errors.Cause(err))
+	assert.Equal(t, ErrPSTimeout, errors.Cause(err))
 }
 
 func TestWaitForExit(t *testing.T) {
