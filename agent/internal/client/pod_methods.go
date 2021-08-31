@@ -116,7 +116,7 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 	return &nextTask, nil
 }
 
-// DisableHost signals to the app server that the post should be disabled.
+// DisableHost signals to the app server that the pod should be disabled.
 func (c *podCommunicator) DisableHost(ctx context.Context, hostID string, details apimodels.DisableInfo) error {
 	return errors.New("TODO: implement")
 }
