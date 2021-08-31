@@ -803,8 +803,13 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
-// FindUniqueBuildVariantNamesByTask returns  a list of unique build variants names for a given task name
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]string, error) {
+type TaskHistoryBuildVariantHeader struct {
+	BuildVariant string `bson:"build_variant"`
+	DisplayName  string `bson:"display_name"`
+}
+
+// FindUniqueBuildVariantNamesByTask returns  a list of unique build variants names and their display names for a given task name
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*TaskHistoryBuildVariantHeader, error) {
 	buildVariantsKey := "build_variants"
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -815,42 +820,37 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]str
 
 	group := bson.M{
 		"$group": bson.M{
-			"_id":            taskName,
+			"_id":            bson.M{BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey},
 			buildVariantsKey: bson.M{"$addToSet": "$" + BuildVariantKey},
 		},
 	}
-	unwindAndSort := []bson.M{
-		{
-			"$unwind": "$build_variants",
+
+	project := bson.M{
+		"$project": bson.M{
+			"_id":           0,
+			BuildVariantKey: bson.M{"$arrayElemAt": []interface{}{"$" + buildVariantsKey, 0}},
+			"display_name":  bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
 		},
-		{
-			"$sort": bson.M{
-				"build_variants": 1,
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id":            nil,
-				buildVariantsKey: bson.M{"$push": "$" + buildVariantsKey},
-			},
+	}
+	sort := bson.M{
+		"$sort": bson.M{
+			"display_name": 1,
 		},
 	}
 
+	pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	pipeline = append(pipeline, group)
-	pipeline = append(pipeline, unwindAndSort...)
+	pipeline = append(pipeline, project)
+	pipeline = append(pipeline, sort)
 
-	type taskBuildVariants struct {
-		BuildVariants []string `bson:"build_variants"`
-	}
-
-	result := []taskBuildVariants{}
+	result := []*TaskHistoryBuildVariantHeader{}
 	if err := Aggregate(pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "can't get build variant tasks")
 	}
 	if len(result) == 0 {
 		return nil, nil
 	}
-	return result[0].BuildVariants, nil
+	return result, nil
 }
 
 // FindTaskNamesByBuildVariant returns a list of unique task names for a given build variant
