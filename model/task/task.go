@@ -2106,20 +2106,8 @@ func (t *Task) populateNewTestResults() error {
 	if err != nil {
 		return errors.Wrap(err, "finding test results")
 	}
-	for _, result := range newTestResults {
-		t.LocalTestResults = append(t.LocalTestResults, TestResult{
-			Status:          result.Status,
-			TestFile:        result.TestFile,
-			DisplayTestName: result.DisplayTestName,
-			GroupID:         result.GroupID,
-			URL:             result.URL,
-			URLRaw:          result.URLRaw,
-			LogId:           result.LogID,
-			LineNum:         result.LineNum,
-			ExitCode:        result.ExitCode,
-			StartTime:       result.StartTime,
-			EndTime:         result.EndTime,
-		})
+	for i := range newTestResults {
+		t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&newTestResults[i]))
 	}
 	t.testResultsPopulated = true
 
@@ -3253,6 +3241,20 @@ func (t *Task) SetNumDependents() error {
 	return UpdateOne(bson.M{
 		IdKey: t.Id,
 	}, update)
+}
+
+func AddDisplayTaskIdToExecTasks(displayTaskId string, execTasksToUpdate []string) error {
+	if len(execTasksToUpdate) == 0 {
+		return nil
+	}
+	_, err := UpdateAll(bson.M{
+		IdKey: bson.M{"$in": execTasksToUpdate},
+	},
+		bson.M{"$set": bson.M{
+			DisplayTaskIdKey: displayTaskId,
+		}},
+	)
+	return err
 }
 
 func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, displayTaskActivated bool) error {

@@ -86,6 +86,25 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 	return &apiPatch, nil
 }
 
+// GetChildPatchIds queries the backing database for the child patch ids
+func (pc *DBPatchConnector) GetChildPatchIds(patchId string) ([]string, error) {
+	if err := validatePatchID(patchId); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	p, err := patch.FindOneId(patchId)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch with id %s not found", patchId),
+		}
+	}
+
+	return p.Triggers.ChildPatches, nil
+}
+
 func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.APIPatch, error) {
 	patchObjectIDs := []mgobson.ObjectId{}
 	for _, patchID := range patchIds {
@@ -376,6 +395,14 @@ func (pc *MockPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch
 	return nil, gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("patch with id %s not found", patchId),
+	}
+}
+
+// GetChildPatchIds is not implemented
+func (pc *MockPatchConnector) GetChildPatchIds(patchId string) ([]string, error) {
+	return nil, gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    "not implemented",
 	}
 }
 

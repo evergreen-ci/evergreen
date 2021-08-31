@@ -2524,6 +2524,40 @@ func TestAddParentDisplayTasks(t *testing.T) {
 	assert.Equal(t, dt2.Id, tasks[3].DisplayTask.Id)
 }
 
+func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	t1 := &Task{
+		Id:            "t1",
+		DisplayTaskId: utility.ToStringPtr(""),
+	}
+	t2 := &Task{
+		Id:            "t2",
+		DisplayTaskId: nil,
+	}
+	t3 := &Task{
+		Id:            "t3",
+		DisplayTaskId: utility.ToStringPtr(""),
+	}
+	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t3.Insert())
+
+	assert.NoError(t, AddDisplayTaskIdToExecTasks("dt", []string{t1.Id, t2.Id}))
+
+	var err error
+	t1, err = FindOneId(t1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, utility.FromStringPtr(t1.DisplayTaskId), "dt")
+
+	t2, err = FindOneId(t2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, utility.FromStringPtr(t2.DisplayTaskId), "dt")
+
+	t3, err = FindOneId(t3.Id)
+	assert.NoError(t, err)
+	assert.NotEqual(t, utility.FromStringPtr(t3.DisplayTaskId), "dt")
+}
+
 func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
 	dt1 := Task{

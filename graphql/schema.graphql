@@ -177,6 +177,7 @@ type Version {
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   isPatch: Boolean!
   patch: Patch
+  childVersions: [Version]
   taskCount: Int
   baseVersionID: String
   versionTiming: VersionTiming
