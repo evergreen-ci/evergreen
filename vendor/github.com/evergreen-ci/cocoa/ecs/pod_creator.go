@@ -339,11 +339,11 @@ func (pc *BasicECSPodCreator) translateECSStatus(status *string) cocoa.ECSStatus
 		return cocoa.StatusUnknown
 	}
 	switch *status {
-	case "PROVISIONING", "PENDING", "ACTIVATING":
+	case TaskStatusProvisioning, TaskStatusPending, TaskStatusActivating:
 		return cocoa.StatusStarting
-	case "RUNNING":
+	case TaskStatusRunning:
 		return cocoa.StatusRunning
-	case "DEACTIVATING", "STOPPING", "DEPROVISIONING":
+	case TaskStatusDeactivating, TaskStatusStopping, TaskStatusDeprovisioning, TaskStatusStopped:
 		return cocoa.StatusStopped
 	default:
 		return cocoa.StatusUnknown

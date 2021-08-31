@@ -132,10 +132,11 @@ func (p *APIPod) ToService() (*pod.Pod, error) {
 type APIPodStatus string
 
 const (
-	PodStatusInitializing APIPodStatus = "initializing"
-	PodStatusStarting     APIPodStatus = "starting"
-	PodStatusRunning      APIPodStatus = "running"
-	PodStatusTerminated   APIPodStatus = "terminated"
+	PodStatusInitializing   APIPodStatus = "initializing"
+	PodStatusStarting       APIPodStatus = "starting"
+	PodStatusRunning        APIPodStatus = "running"
+	PodStatusDecommissioned APIPodStatus = "decommissioned"
+	PodStatusTerminated     APIPodStatus = "terminated"
 )
 
 // BuildFromService converts a service-layer pod status into a REST API pod
@@ -149,6 +150,8 @@ func (s *APIPodStatus) BuildFromService(ps pod.Status) error {
 		converted = PodStatusStarting
 	case pod.StatusRunning:
 		converted = PodStatusRunning
+	case pod.StatusDecommissioned:
+		converted = PodStatusDecommissioned
 	case pod.StatusTerminated:
 		converted = PodStatusTerminated
 	default:
@@ -171,6 +174,8 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 		converted = pod.StatusStarting
 	case PodStatusRunning:
 		converted = pod.StatusRunning
+	case PodStatusDecommissioned:
+		converted = pod.StatusDecommissioned
 	case PodStatusTerminated:
 		converted = pod.StatusTerminated
 	default:

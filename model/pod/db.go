@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -44,6 +45,18 @@ var (
 	ContainerResourceInfoSecretIDsKey  = bsonutil.MustHaveTag(ContainerResourceInfo{}, "SecretIDs")
 )
 
+func ByID(id string) bson.M {
+	return bson.M{
+		IDKey: id,
+	}
+}
+
+func ByExternalID(id string) bson.M {
+	return bson.M{
+		bsonutil.GetDottedKeyName(ResourcesKey, ResourceInfoExternalIDKey): id,
+	}
+}
+
 // Find finds all pods matching the given query.
 func Find(q bson.M) ([]Pod, error) {
 	pods := []Pod{}
@@ -67,12 +80,6 @@ func FindOneByID(id string) (*Pod, error) {
 		return nil, errors.Wrapf(err, "finding pod '%s'", id)
 	}
 	return p, nil
-}
-
-func ByID(id string) bson.M {
-	return bson.M{
-		IDKey: id,
-	}
 }
 
 // UpdateOne updates one pod.
@@ -113,4 +120,40 @@ func FindByInitializing() ([]Pod, error) {
 	return Find(bson.M{
 		StatusKey: StatusInitializing,
 	})
+}
+
+// FindOneByExternalID finds a pod that has a matching external identifier.
+func FindOneByExternalID(id string) (*Pod, error) {
+	return FindOne(ByExternalID(id))
+}
+
+// UpdateOneStatus updates a pod's status by ID along with any relevant metadata
+// information about the status update. If the current status is identical to
+// the updated one, this will no-op. If the current status does not match the
+// stored status, this will error.
+func UpdateOneStatus(id string, current, updated Status, ts time.Time) error {
+	if current == updated {
+		return nil
+	}
+
+	byIDAndStatus := ByID(id)
+	byIDAndStatus[StatusKey] = current
+
+	setFields := bson.M{StatusKey: updated}
+	switch updated {
+	case StatusInitializing:
+		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoInitializingKey)] = ts
+	case StatusStarting:
+		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey)] = ts
+	}
+
+	if err := UpdateOne(byIDAndStatus, bson.M{
+		"$set": setFields,
+	}); err != nil {
+		return err
+	}
+
+	event.LogPodStatusChanged(id, string(current), string(updated))
+
+	return nil
 }

@@ -301,6 +301,10 @@ type Connector interface {
 	CreatePod(restModel.APICreatePod) (*restModel.APICreatePodResponse, error)
 	// FindPodByID finds a pod by the given ID.
 	FindPodByID(id string) (*restModel.APIPod, error)
+	// FindPodByExternalID finds a pod by the given external identifier.
+	FindPodByExternalID(id string) (*restModel.APIPod, error)
+	// UpdatePodStatus updates a pod's status by ID.
+	UpdatePodStatus(id string, current, updated restModel.APIPodStatus) error
 	// CheckPodSecret checks that the ID and secret match the server's
 	// stored credentials for the pod.
 	CheckPodSecret(id, secret string) error
