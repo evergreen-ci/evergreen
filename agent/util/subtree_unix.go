@@ -116,22 +116,26 @@ func commandInWorkingDir(command, workingDir string) bool {
 // waitForExit is a best-effort attempt to wait for processes to exit.
 // Any processes still running when the context is cancelled or when we run
 // out of attempts will have their pids included in the returned slice.
-func waitForExit(ctx context.Context, pids []int) ([]int, error) {
+func waitForExit(ctx context.Context, pidsToWait []int) ([]int, error) {
 	var unkilledPids []int
 	err := utility.Retry(
 		ctx,
 		func() (bool, error) {
 			unkilledPids = []int{}
-			processes, err := psProcesses(ctx, pids)
+			processes, err := psAllProcesses(ctx)
 			if err != nil {
 				return false, errors.Wrap(err, "listing processes still running")
 			}
 
 			for _, process := range processes {
-				unkilledPids = append(unkilledPids, process.pid)
+				for _, pid := range pidsToWait {
+					if process.pid == pid {
+						unkilledPids = append(unkilledPids, process.pid)
+					}
+				}
 			}
 			if len(unkilledPids) > 0 {
-				return true, errors.Errorf("'%d' of '%d' processes are still running", len(unkilledPids), len(pids))
+				return true, errors.Errorf("'%d' of '%d' processes are still running", len(unkilledPids), len(pidsToWait))
 			}
 
 			return false, nil
@@ -161,22 +165,10 @@ func psAllProcesses(ctx context.Context) ([]process, error) {
 		Each line of output has a format with the pid, command, and environment, e.g.:
 		1084 foo.sh PATH=/usr/bin/sbin TMPDIR=/tmp LOGNAME=xxx
 	*/
-	args := []string{"e", "-A", "-o", "pid=,command="}
-	return psWithArgs(ctx, args)
-}
-
-func psProcesses(ctx context.Context, pids []int) ([]process, error) {
-	args := []string{"-o", "pid=,command="}
-	for _, pid := range pids {
-		args = append(args, strconv.Itoa(pid))
-	}
-
-	return psWithArgs(ctx, args)
-}
-
-func psWithArgs(ctx context.Context, args []string) ([]process, error) {
 	psCtx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
+
+	args := []string{"e", "-A", "-o", "pid=,command="}
 	out, err := exec.CommandContext(psCtx, "ps", args...).CombinedOutput()
 	if err != nil {
 		// If the context's deadline was exceeded we conclude the process blocked

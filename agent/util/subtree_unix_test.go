@@ -96,7 +96,7 @@ func TestWaitForExit(t *testing.T) {
 			waitCtx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
 			pids, err := waitForExit(waitCtx, []int{longProcess.Process.Pid})
-			assert.NoError(t, err)
+			assert.Error(t, err)
 			require.Len(t, pids, 1)
 			assert.Equal(t, longProcess.Process.Pid, pids[0])
 		},
