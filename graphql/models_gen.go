@@ -126,9 +126,10 @@ type Manifest struct {
 }
 
 type PatchConfigure struct {
-	Description   string                `json:"description"`
-	VariantsTasks []*VariantTasks       `json:"variantsTasks"`
-	Parameters    []*model.APIParameter `json:"parameters"`
+	Description         string                `json:"description"`
+	VariantsTasks       []*VariantTasks       `json:"variantsTasks"`
+	Parameters          []*model.APIParameter `json:"parameters"`
+	PatchTriggerAliases []string              `json:"patchTriggerAliases"`
 }
 
 type PatchDuration struct {
