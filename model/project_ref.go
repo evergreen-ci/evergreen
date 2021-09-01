@@ -106,7 +106,7 @@ type ProjectRef struct {
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
 	// Plugin settings
-	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_project,omitempty" json:"build_baron_project,omitempty" yaml:"build_baron_project,omitempty"`
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
@@ -343,8 +343,6 @@ const (
 	ProjectPageWorkstationsSection   = "workstations"
 	ProjectPageTriggersSection       = "triggers"
 	ProjectPagePeriodicBuildsSection = "periodic-builds"
-	ProjectRefBuildBaronSection      = "build_baron"
-	ProjectRefTaskAnnotationsSection = "task_annotation"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -1505,9 +1503,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-
-	// todo: add casing on Build Baron and task annotation settings once EVG-15218 is complete
-
 	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},

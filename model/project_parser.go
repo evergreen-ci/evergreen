@@ -81,7 +81,7 @@ type ParserProject struct {
 	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime             time.Time                      `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
+	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
@@ -1246,7 +1246,7 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 
 // mergeUnique merges fields that are non-lists.
 // These fields can only be defined in one yaml.
-// These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout, task annotations, build baron]
+// These fields are: [stepback, batch time, pre error fails task, OOM tracker, display name, command type, callback/exec timeout, task annotations]
 func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 

@@ -2,10 +2,10 @@ package mock
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/evergreen-ci/utility"
 )
@@ -69,17 +69,22 @@ func (c *SecretsManagerClient) CreateSecret(ctx context.Context, in *secretsmana
 	}
 
 	if in.Name == nil {
-		return nil, errors.New("missing secret name")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "missing secret name", nil)
 	}
 	if in.SecretBinary != nil && in.SecretString != nil {
-		return nil, errors.New("cannot specify both secret binary and secret string")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "cannot specify both secret binary and secret string", nil)
 	}
 	if in.SecretBinary == nil && in.SecretString == nil {
-		return nil, errors.New("must specify either secret binary or secret string")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "must specify either secret binary or secret string", nil)
+	}
+
+	name := utility.FromStringPtr(in.Name)
+	if _, ok := GlobalSecretCache[name]; ok {
+		return nil, awserr.New(secretsmanager.ErrCodeResourceExistsException, "secret already exists", nil)
 	}
 
 	ts := time.Now()
-	GlobalSecretCache[*in.Name] = StoredSecret{
+	GlobalSecretCache[name] = StoredSecret{
 		BinaryValue: in.SecretBinary,
 		Created:     ts,
 		Accessed:    ts,
@@ -103,16 +108,16 @@ func (c *SecretsManagerClient) GetSecretValue(ctx context.Context, in *secretsma
 	}
 
 	if in.SecretId == nil {
-		return nil, errors.New("missing secret ID")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "missing secret ID", nil)
 	}
 
 	s, ok := GlobalSecretCache[*in.SecretId]
 	if !ok {
-		return nil, errors.New("secret not found")
+		return nil, awserr.New(secretsmanager.ErrCodeResourceNotFoundException, "secret not found", nil)
 	}
 
 	if s.IsDeleted {
-		return nil, errors.New("secret is deleted")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidRequestException, "secret is deleted", nil)
 	}
 
 	s.Accessed = time.Now()
@@ -139,12 +144,12 @@ func (c *SecretsManagerClient) DescribeSecret(ctx context.Context, in *secretsma
 	}
 
 	if in.SecretId == nil {
-		return nil, errors.New("missing secret ID")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "missing secret ID", nil)
 	}
 
 	s, ok := GlobalSecretCache[utility.FromStringPtr(in.SecretId)]
 	if !ok {
-		return nil, errors.New("secret not found")
+		return nil, awserr.New(secretsmanager.ErrCodeResourceNotFoundException, "secret not found", nil)
 	}
 
 	return &secretsmanager.DescribeSecretOutput{
@@ -168,18 +173,18 @@ func (c *SecretsManagerClient) UpdateSecretValue(ctx context.Context, in *secret
 	}
 
 	if in.SecretId == nil {
-		return nil, errors.New("missing secret ID")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "missing secret ID", nil)
 	}
 	if in.SecretBinary != nil && in.SecretString != nil {
-		return nil, errors.New("cannot specify both secret binary and secret string")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "cannot specify both secret binary and secret string", nil)
 	}
 	if in.SecretBinary == nil && in.SecretString == nil {
-		return nil, errors.New("must specify either secret binary or secret string")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "must specify either secret binary or secret string", nil)
 	}
 
 	s, ok := GlobalSecretCache[*in.SecretId]
 	if !ok {
-		return nil, errors.New("secret not found")
+		return nil, awserr.New(secretsmanager.ErrCodeResourceNotFoundException, "secret not found", nil)
 	}
 
 	if in.SecretBinary != nil {
@@ -212,16 +217,16 @@ func (c *SecretsManagerClient) DeleteSecret(ctx context.Context, in *secretsmana
 	}
 
 	if in.SecretId == nil {
-		return nil, errors.New("missing secret ID")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "missing secret ID", nil)
 	}
 
 	if utility.FromBoolPtr(in.ForceDeleteWithoutRecovery) && in.RecoveryWindowInDays != nil {
-		return nil, errors.New("cannot force delete without recovery and also schedule a recovery window")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "cannot force delete without recovery and also schedule a recovery window", nil)
 	}
 
 	window := int(utility.FromInt64Ptr(in.RecoveryWindowInDays))
 	if in.RecoveryWindowInDays != nil && (window < 7 || window > 30) {
-		return nil, errors.New("recovery window must be between 7 and 30 days")
+		return nil, awserr.New(secretsmanager.ErrCodeInvalidParameterException, "recovery window must be between 7 and 30 days", nil)
 	}
 	if window == 0 {
 		window = 30
@@ -229,7 +234,7 @@ func (c *SecretsManagerClient) DeleteSecret(ctx context.Context, in *secretsmana
 
 	s, ok := GlobalSecretCache[*in.SecretId]
 	if !utility.FromBoolPtr(in.ForceDeleteWithoutRecovery) && !ok {
-		return nil, errors.New("secret not found")
+		return nil, awserr.New(secretsmanager.ErrCodeResourceNotFoundException, "secret not found", nil)
 	}
 
 	ts := time.Now()

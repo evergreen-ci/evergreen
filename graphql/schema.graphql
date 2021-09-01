@@ -144,9 +144,11 @@ type Mutation {
 }
 
 # Array of activated and unactivated versions
-# nextPage represents the last activated order number returned
+# nextPageOrderNumber represents the last order number returned and is used for pagination
+# prevPageOrderNumber represents the order number of the previous page and is also used for pagination
 type MainlineCommits {
   nextPageOrderNumber: Int
+  prevPageOrderNumber: Int
   versions: [MainlineCommitVersion!]!
 }
 
@@ -175,6 +177,7 @@ type Version {
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   isPatch: Boolean!
   patch: Patch
+  childVersions: [Version]
   taskCount: Int
   baseVersionID: String
   versionTiming: VersionTiming
@@ -277,6 +280,7 @@ input PatchConfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
   parameters: [ParameterInput]
+  patchTriggerAliases: [String!]
 }
 input VariantTasks {
   variant: String!

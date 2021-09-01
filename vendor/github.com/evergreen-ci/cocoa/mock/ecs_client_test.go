@@ -22,8 +22,6 @@ import (
 func TestECSClient(t *testing.T) {
 	assert.Implements(t, (*cocoa.ECSClient)(nil), &ECSClient{})
 
-	GlobalECSService.Clusters[testutil.ECSClusterName()] = ECSCluster{}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -36,6 +34,8 @@ func TestECSClient(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, time.Second)
 			defer tcancel()
+
+			cleanupECSAndSecretsManagerCache()
 
 			tCase(tctx, t, c)
 		})

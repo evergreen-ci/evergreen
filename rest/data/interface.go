@@ -236,6 +236,8 @@ type Connector interface {
 	FindPatchesByProjectPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
+	// FindPatchById fetches the patch corresponding to the input patch ID.
+	GetChildPatchIds(string) ([]string, error)
 	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs
 	FindPatchesByIds([]string) ([]restModel.APIPatch, error)
 	// GetPatchRawPatches fetches the raw patches for a patch
@@ -301,6 +303,10 @@ type Connector interface {
 	CreatePod(restModel.APICreatePod) (*restModel.APICreatePodResponse, error)
 	// FindPodByID finds a pod by the given ID.
 	FindPodByID(id string) (*restModel.APIPod, error)
+	// FindPodByExternalID finds a pod by the given external identifier.
+	FindPodByExternalID(id string) (*restModel.APIPod, error)
+	// UpdatePodStatus updates a pod's status by ID.
+	UpdatePodStatus(id string, current, updated restModel.APIPodStatus) error
 	// CheckPodSecret checks that the ID and secret match the server's
 	// stored credentials for the pod.
 	CheckPodSecret(id, secret string) error

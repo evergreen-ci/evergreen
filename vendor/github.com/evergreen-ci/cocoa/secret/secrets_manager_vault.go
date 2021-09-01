@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/cocoa"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 )
 
@@ -24,7 +24,9 @@ func NewBasicSecretsManager(c cocoa.SecretsManagerClient) *BasicSecretsManager {
 	}
 }
 
-// CreateSecret creates a new secret.
+// CreateSecret creates a new secret. If the secret already exists, it will
+// return the secret ID without modifying the secret value. To update an
+// existing secret, see UpdateValue.
 func (m *BasicSecretsManager) CreateSecret(ctx context.Context, s cocoa.NamedSecret) (id string, err error) {
 	if err := s.Validate(); err != nil {
 		return "", errors.Wrap(err, "invalid secret")
@@ -34,10 +36,21 @@ func (m *BasicSecretsManager) CreateSecret(ctx context.Context, s cocoa.NamedSec
 		SecretString: s.Value,
 	})
 	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == secretsmanager.ErrCodeResourceExistsException {
+			// The secret already exists, so describe it to get the ARN.
+			describeOut, err := m.client.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: s.Name})
+			if err != nil {
+				return "", err
+			}
+			if describeOut == nil || describeOut.ARN == nil {
+				return "", errors.New("expected an ID for an existing secret, but none was returned from Secrets Manager")
+			}
+			return *describeOut.ARN, nil
+		}
 		return "", err
 	}
 	if out == nil || out.ARN == nil {
-		return "", errors.New("expected an ID, but nont was returned from Secrets Manager")
+		return "", errors.New("expected an ID, but none was returned from Secrets Manager")
 	}
 	return *out.ARN, nil
 }
@@ -60,8 +73,8 @@ func (m *BasicSecretsManager) GetValue(ctx context.Context, id string) (val stri
 
 // UpdateValue updates an existing secret's value.
 func (m *BasicSecretsManager) UpdateValue(ctx context.Context, s cocoa.NamedSecret) error {
-	if utility.FromStringPtr(s.Name) == "" {
-		return errors.New("must specify a non-empty id")
+	if err := s.Validate(); err != nil {
+		return errors.Wrap(err, "invalid secret")
 	}
 	_, err := m.client.UpdateSecretValue(ctx, &secretsmanager.UpdateSecretInput{
 		SecretId:     s.Name,

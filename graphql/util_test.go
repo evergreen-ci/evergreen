@@ -195,7 +195,7 @@ func TestAddDisplayTasksToPatchReq(t *testing.T) {
 				}},
 		},
 	}
-	req := PatchVariantsTasksRequest{
+	req := PatchUpdate{
 		VariantsTasks: []patch.VariantTasks{
 			{Variant: "bv", Tasks: []string{"t1", "dt1", "dt2"}},
 		},
