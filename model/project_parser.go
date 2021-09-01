@@ -566,19 +566,20 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
+	// return intermediateProject even if we run into issues to show merge progress
 	for _, path := range intermediateProject.Include {
 		opts.RemotePath = path.FileName
 		yaml, err := retrieveFile(ctx, opts)
 		if err != nil {
-			return nil, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, LoadProjectError)
 		}
 		add, err := createIntermediateProject(yaml)
 		if err != nil {
-			return nil, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, LoadProjectError)
 		}
 		err = intermediateProject.mergeMultipleProjectConfigs(add)
 		if err != nil {
-			return nil, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, LoadProjectError)
 		}
 	}
 	intermediateProject.Include = nil
