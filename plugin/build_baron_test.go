@@ -4,16 +4,25 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	testutil.Setup()
+}
 
 func TestBuildBaronPluginConfigure(t *testing.T) {
 	assert := assert.New(t)
 
 	bbPlugin := BuildBaronPlugin{}
 	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
@@ -22,12 +31,12 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj1": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj1": evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
-			"proj2": evergreen.BuildBaronProject{
+			"proj2": evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
@@ -36,8 +45,8 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject: "BFG",
 			},
 		},
@@ -45,8 +54,8 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
 		},
@@ -58,8 +67,8 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 
 	bbPlugin := BuildBaronPlugin{}
 	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -72,8 +81,8 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -84,8 +93,8 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 				BFSuggestionUsername: "user",
@@ -96,8 +105,8 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionTimeoutSecs: 10,
@@ -107,8 +116,8 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "://evergreen.mongodb.com",
@@ -119,8 +128,8 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -132,8 +141,8 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -144,8 +153,8 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{
-			"proj": evergreen.BuildBaronProject{
+		"Projects": map[string]evergreen.BuildBaronSettings{
+			"proj": evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",

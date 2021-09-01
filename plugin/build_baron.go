@@ -18,7 +18,7 @@ func init() {
 }
 
 type bbPluginOptions struct {
-	Projects map[string]evergreen.BuildBaronProject
+	Projects map[string]evergreen.BuildBaronSettings
 }
 
 type BuildBaronPlugin struct {
@@ -106,6 +106,7 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					if !ok {
 						return nil, nil
 					}
+					enabled := len(bbSettings.TicketSearchProjects) > 0
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil
@@ -127,18 +128,21 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	if flags.PluginAdminPageDisabled {
 		if version == "" {
 			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
-			if err != nil || lastGoodVersion == nil {
+			if err == nil && lastGoodVersion != nil {
+				version = lastGoodVersion.Id
+			}
+		}
+		var parserProject *model.ParserProject
+		if version != "" {
+			parserProject, err = model.ParserProjectFindOneById(version)
+			if err != nil {
 				return evergreen.WebHook{}, false
 			}
-			version = lastGoodVersion.Id
+			if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
+				webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
+			}
 		}
-		parserProject, err := model.ParserProjectFindOneById(version)
-		if err != nil {
-			return evergreen.WebHook{}, false
-		}
-		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
-			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
-		} else {
+		if parserProject == nil || parserProject.TaskAnnotationSettings == nil {
 			projectRef, err := model.FindMergedProjectRef(project)
 			if err != nil || projectRef == nil {
 				return evergreen.WebHook{}, false
@@ -146,7 +150,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
 		}
 	} else {
-		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
+		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project, "")
 		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
 	}
 	if webHook.Endpoint != "" {
@@ -156,7 +160,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	}
 }
 
-func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
+func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronSettings {
 	bbconf, ok := settings.Plugins["buildbaron"]
 	if !ok {
 		return nil
@@ -168,7 +172,7 @@ func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronPr
 		return nil
 	}
 
-	projects := map[string]evergreen.BuildBaronProject{}
+	projects := map[string]evergreen.BuildBaronSettings{}
 	err := mapstructure.Decode(projectConfig, &projects)
 	if err != nil {
 		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
