@@ -1,6 +1,0 @@
-{
-    taskHistoryHeaders(projectId:"evergreen", taskName:"test-agent"){
-        displayName
-        buildVariant
-    }
-}

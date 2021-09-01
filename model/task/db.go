@@ -803,13 +803,13 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
-type TaskHistoryBuildVariantHeader struct {
+type BuildVariantTuple struct {
 	BuildVariant string `bson:"build_variant"`
 	DisplayName  string `bson:"display_name"`
 }
 
 // FindUniqueBuildVariantNamesByTask returns  a list of unique build variants names and their display names for a given task name
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*TaskHistoryBuildVariantHeader, error) {
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*BuildVariantTuple, error) {
 	buildVariantsKey := "build_variants"
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -843,7 +843,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*Ta
 	pipeline = append(pipeline, project)
 	pipeline = append(pipeline, sort)
 
-	result := []*TaskHistoryBuildVariantHeader{}
+	result := []*BuildVariantTuple{}
 	if err := Aggregate(pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "can't get build variant tasks")
 	}

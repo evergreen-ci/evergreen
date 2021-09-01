@@ -1,3 +1,0 @@
-{
-    buildVariantHistory(projectId:"evergreen", buildVariant:"ubuntu1604")
-}

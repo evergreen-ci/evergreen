@@ -1,9 +1,9 @@
 {
     "tests": [
       {
-          "query_file": "taskHistoryHeaders.graphql",
+          "query_file": "buildVariantsForTaskName.graphql",
           "result": {
-            "data": {"taskHistoryHeaders":[
+            "data": {"buildVariantsForTaskName":[
                {"displayName": "OSX", "buildVariant": "osx" },
                {"displayName": "Ubuntu 16.04","buildVariant": "ubuntu1604"}
                ]}

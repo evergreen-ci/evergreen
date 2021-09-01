@@ -76,7 +76,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		assert.NoError(t, t4.Insert())
 		taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask("evergreen", "test-agent")
 		assert.NoError(t, err)
-		assert.Equal(t, []task.TaskHistoryBuildVariantHeader{
+		assert.Equal(t, []task.BuildVariantTuple{
 			{DisplayName: "OSX", BuildVariant: "osx"},
 			{DisplayName: "Ubuntu 16.04", BuildVariant: "ubuntu1604"},
 			{DisplayName: "Windows 64 bit", BuildVariant: "windows"},
@@ -147,7 +147,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		assert.NoError(t, t4.Insert())
 		taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask("evergreen", "test-agent")
 		assert.NoError(t, err)
-		assert.Equal(t, []task.TaskHistoryBuildVariantHeader{
+		assert.Equal(t, []task.BuildVariantTuple{
 			{
 				BuildVariant: "osx",
 				DisplayName:  "OSX",
