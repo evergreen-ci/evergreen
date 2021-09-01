@@ -50,12 +50,32 @@ func TestGetPIDsToKill(t *testing.T) {
 }
 
 func TestKillSpawnedProcs(t *testing.T) {
-	expiredContext, cancel := context.WithTimeout(context.Background(), -time.Second)
-	defer cancel()
+	ctx := context.Background()
+	for testName, test := range map[string]func(*testing.T){
+		"expired context": func(t *testing.T) {
+			expiredContext, cancel := context.WithTimeout(ctx, -time.Second)
+			defer cancel()
 
-	err := KillSpawnedProcs(expiredContext, "", "", grip.GetDefaultJournaler())
-	assert.Error(t, err)
-	assert.Equal(t, ErrPSTimeout, errors.Cause(err))
+			err := KillSpawnedProcs(expiredContext, "", "", grip.GetDefaultJournaler())
+			assert.Error(t, err)
+			assert.Equal(t, ErrPSTimeout, errors.Cause(err))
+		},
+		"cancelled context": func(t *testing.T) {
+			cancelledContext, cancel := context.WithCancel(ctx)
+			cancel()
+
+			err := KillSpawnedProcs(cancelledContext, "", "", grip.GetDefaultJournaler())
+			assert.Error(t, err)
+			assert.NotEqual(t, ErrPSTimeout, errors.Cause(err))
+		},
+		"not cancelled": func(t *testing.T) {
+			err := KillSpawnedProcs(ctx, "", "", grip.GetDefaultJournaler())
+			assert.NoError(t, err)
+		},
+	} {
+		t.Run(testName, test)
+	}
+
 }
 
 func TestWaitForExit(t *testing.T) {
@@ -86,19 +106,26 @@ func TestWaitForExit(t *testing.T) {
 }
 
 func TestParsePs(t *testing.T) {
-	psOutput := `
+	cases := make(map[string][]process)
+	cases[`
     1 /sbin/init
    1267 /lib/systemd/systemd --user LANG=C.UTF-8
-`
-	processes := parsePs(psOutput)
-	require.Len(t, processes, 2)
+`] = []process{
+		{pid: 1, command: "/sbin/init"},
+		{pid: 1267, command: "/lib/systemd/systemd", env: []string{"--user", "LANG=C.UTF-8"}},
+	}
 
-	assert.Equal(t, 1, processes[0].pid)
-	assert.Equal(t, "/sbin/init", processes[0].command)
+	cases[""] = []process{}
 
-	assert.Equal(t, 1267, processes[1].pid)
-	assert.Equal(t, "/lib/systemd/systemd", processes[1].command)
-	require.Len(t, processes[1].env, 2)
-	assert.Equal(t, processes[1].env[0], "--user")
-	assert.Equal(t, processes[1].env[1], "LANG=C.UTF-8")
+	cases[`
+    NaN /sbin/init
+`] = []process{}
+
+	cases["1 /sbin/init"] = []process{{pid: 1, command: "/sbin/init"}}
+
+	cases["1"] = []process{}
+
+	for psOutput, processes := range cases {
+		assert.Equal(t, processes, parsePs(psOutput))
+	}
 }
