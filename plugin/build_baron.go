@@ -132,13 +132,17 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 				version = lastGoodVersion.Id
 			}
 		}
-		parserProject, err := model.ParserProjectFindOneById(version)
-		if err != nil {
-			return evergreen.WebHook{}, false
+		var parserProject *model.ParserProject
+		if version != "" {
+			parserProject, err = model.ParserProjectFindOneById(version)
+			if err != nil {
+				return evergreen.WebHook{}, false
+			}
+			if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
+				webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
+			}
 		}
-		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
-			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
-		} else {
+		if parserProject == nil || parserProject.TaskAnnotationSettings == nil {
 			projectRef, err := model.FindMergedProjectRef(project)
 			if err != nil || projectRef == nil {
 				return evergreen.WebHook{}, false
@@ -192,12 +196,14 @@ func BbGetProject(settings *evergreen.Settings, projectId string, version string
 				version = lastGoodVersion.Id
 			}
 		}
-		parserProject, err := model.ParserProjectFindOneById(version)
-		if err != nil {
-			return evergreen.BuildBaronSettings{}, false
-		}
-		if parserProject != nil && parserProject.BuildBaronSettings != nil {
-			return *parserProject.BuildBaronSettings, true
+		if version != "" {
+			parserProject, err := model.ParserProjectFindOneById(version)
+			if err != nil {
+				return evergreen.BuildBaronSettings{}, false
+			}
+			if parserProject != nil && parserProject.BuildBaronSettings != nil {
+				return *parserProject.BuildBaronSettings, true
+			}
 		}
 		projectRef, err := model.FindMergedProjectRef(projectId)
 		if err != nil || projectRef == nil {
