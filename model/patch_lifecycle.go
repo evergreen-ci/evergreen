@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 )
 
 type TaskVariantPairs struct {
@@ -114,19 +114,14 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		return nil, "", errors.Errorf("Patch %v already finalized", p.Version)
 	}
 
-	projectRef, err := FindMergedProjectRef(p.Project)
-	if err != nil {
-		return nil, "", errors.WithStack(err)
-	}
-
 	project := &Project{}
-	opts := GetProjectOpts{
-		Ref:   projectRef,
-		Token: githubOauthToken,
+	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "Error fetching project opts for patch")
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err = LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
+		if _, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), *opts, p.Project, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -146,43 +141,37 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	if p.IsPRMergePatch() {
 		hash = p.GithubPatchData.MergeCommitSHA
 	}
+	opts.Revision = hash
 
 	path := projectRef.RemotePath
 	if p.Path != "" && !p.IsGithubPRPatch() && !p.IsCommitQueuePatch() {
 		path = p.Path
 	}
-
-	githubFile, err := thirdparty.GetGithubFile(ctx, githubOauthToken, projectRef.Owner,
-		projectRef.Repo, path, hash)
+	opts.RemotePath = path
+	opts.PatchOpts.env = env
+	projectFileBytes, err = getFileForPatchDiff(ctx, *opts)
 	if err != nil {
-		// if the project file doesn't exist, but our patch includes a project file,
-		// we try to apply the diff and proceed.
-		if !(p.ConfigChanged(path) && thirdparty.IsFileNotFound(err)) {
-			// return an error if the github error is network/auth-related or we aren't patching the config
-			return nil, "", errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", projectRef.Owner,
-				projectRef.Repo, path, hash)
-		}
-	} else {
-		// we successfully got the project file in base64, so we decode it
-		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
-		if err != nil {
-			return nil, "", errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", projectRef.Owner,
-				projectRef.Repo, path, hash)
-		}
+		return nil, "", errors.Wrapf(err, "could not fetch remote configuration file")
 	}
 
 	// apply remote configuration patch if needed
 	if !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(path) {
+		opts.ReadFileFrom = ReadFromPatchDiff
 		projectFileBytes, err = MakePatchedConfig(ctx, env, p, path, string(projectFileBytes))
 		if err != nil {
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	if _, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project); err != nil {
+	pp, err := LoadProjectInto(ctx, projectFileBytes, *opts, p.Project, project)
+	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 
-	return project, string(projectFileBytes), nil
+	out, err := yaml.Marshal(pp)
+	if err != nil {
+		return nil, "", errors.Wrapf(err, "Could not marshal parser project into yaml")
+	}
+	return project, string(out), nil
 }
 
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
@@ -280,8 +269,11 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	opts := GetProjectOpts{}
-	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project)
+	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error fetching project opts for patch")
+	}
+	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), *opts, p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -292,14 +284,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem resolving distro alias table for patch")
-	}
-
-	projectRef, err := FindOneProjectRef(p.Project)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("project '%s' doesn't exist", p.Project)
 	}
 
 	githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -469,6 +453,33 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	return patchVersion, nil
+}
+
+func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*ProjectRef, *GetProjectOpts, error) {
+	projectRef, err := FindMergedProjectRef(p.Project)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+	if projectRef == nil {
+		return nil, nil, errors.Errorf("project '%s' doesn't exist", p.Project)
+	}
+	hash := p.Githash
+	if p.IsGithubPRPatch() {
+		hash = p.GithubPatchData.HeadHash
+	}
+	if p.IsPRMergePatch() {
+		hash = p.GithubPatchData.MergeCommitSHA
+	}
+	opts := GetProjectOpts{
+		Ref:          projectRef,
+		Token:        githubOauthToken,
+		ReadFileFrom: ReadFromPatch,
+		Revision:     hash,
+		PatchOpts: &PatchOpts{
+			patch: p,
+		},
+	}
+	return projectRef, &opts, nil
 }
 
 func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string, githubOauthToken string) error {
