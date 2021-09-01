@@ -808,7 +808,7 @@ type BuildVariantTuple struct {
 	DisplayName  string `bson:"display_name"`
 }
 
-// FindUniqueBuildVariantNamesByTask returns  a list of unique build variants names and their display names for a given task name
+// FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name
 func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*BuildVariantTuple, error) {
 	buildVariantsKey := "build_variants"
 	pipeline := []bson.M{
