@@ -567,10 +567,13 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 	// return intermediateProject even if we run into issues to show merge progress
 	for _, path := range intermediateProject.Include {
 		opts.RemotePath = path.FileName
-		if opts.PatchOpts.patch != nil {
-			if opts.PatchOpts.patch.ConfigChanged(path.FileName) {
+		// read from the patch diff if a change has been made in any of the include files
+		if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
+			if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ConfigChanged(path.FileName) {
 				opts.ReadFileFrom = ReadFromPatchDiff
 			}
+		} else {
+			opts.ReadFileFrom = ReadFromPatch
 		}
 		yaml, err := retrieveFile(ctx, opts)
 		if err != nil {
@@ -629,18 +632,13 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	case ReadFromPatch:
-		configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner,
-			opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		fileContents, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
-		}
-		fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-		if err != nil {
-			return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
+			return nil, errors.Wrapf(err, "could not fetch remote configuration file")
 		}
 		return fileContents, nil
 	case ReadFromPatchDiff:
-		originalConfig, err := getFileFromPatchDiff(ctx, opts)
+		originalConfig, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not fetch remote configuration file")
 		}
@@ -673,7 +671,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 }
 
-func getFileFromPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
+func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.PatchOpts == nil {
 		return nil, errors.New("patch not passed in")
 	}

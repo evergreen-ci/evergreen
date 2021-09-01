@@ -149,7 +149,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	opts.RemotePath = path
 	opts.PatchOpts.env = env
-	projectFileBytes, err = getFileFromPatchDiff(ctx, *opts)
+	projectFileBytes, err = getFileForPatchDiff(ctx, *opts)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "could not fetch remote configuration file")
 	}
@@ -269,13 +269,6 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	projectRef, err := FindOneProjectRef(p.Project)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("project '%s' doesn't exist", p.Project)
-	}
 	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching project opts for patch")

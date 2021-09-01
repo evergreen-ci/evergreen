@@ -844,7 +844,7 @@ func getBuildStatus(buildTasks []task.Task) string {
 
 	// finished but failed
 	for _, t := range buildTasks {
-		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
+		if evergreen.IsFailedTaskStatus(t.Status) {
 			return evergreen.BuildFailed
 		}
 	}
