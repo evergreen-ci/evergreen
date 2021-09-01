@@ -284,6 +284,7 @@ input PatchConfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
   parameters: [ParameterInput]
+  patchTriggerAliases: [String!]
 }
 input VariantTasks {
   variant: String!

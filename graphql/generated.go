@@ -5471,6 +5471,7 @@ input PatchConfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
   parameters: [ParameterInput]
+  patchTriggerAliases: [String!]
 }
 input VariantTasks {
   variant: String!
@@ -27135,6 +27136,12 @@ func (ec *executionContext) unmarshalInputPatchConfigure(ctx context.Context, ob
 		case "parameters":
 			var err error
 			it.Parameters, err = ec.unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameter(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "patchTriggerAliases":
+			var err error
+			it.PatchTriggerAliases, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
