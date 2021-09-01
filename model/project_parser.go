@@ -571,9 +571,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 		if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
 			if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ConfigChanged(path.FileName) {
 				opts.ReadFileFrom = ReadFromPatchDiff
+			} else {
+				opts.ReadFileFrom = ReadFromPatch
 			}
-		} else {
-			opts.ReadFileFrom = ReadFromPatch
 		}
 		yaml, err := retrieveFile(ctx, opts)
 		if err != nil {
