@@ -34,8 +34,10 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 			}
 			catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, parent, reason))
 		}
+	} else {
+		catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, h, reason))
 	}
-	catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, h, reason))
+
 	return catcher.Resolve()
 }
 
