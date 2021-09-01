@@ -210,8 +210,10 @@ func TestBbGetProject(t *testing.T) {
 	}
 	assert.NoError(t, evergreen.SetServiceFlags(flags))
 
-	bbProj, _ := BbGetProject(env, testTask.Project, testTask.Version)
-	bbProj2, _ := BbGetProject(env, testTask2.Project, testTask2.Version)
+	bbProj, ok1 := BbGetProject(env, testTask.Project, testTask.Version)
+	bbProj2, ok2 := BbGetProject(env, testTask2.Project, testTask2.Version)
+	assert.True(t, ok1)
+	assert.True(t, ok2)
 	assert.Equal(t, bbProj.TicketCreateProject, "BFG")
 	assert.Equal(t, bbProj2.TicketCreateProject, "ABC")
 }

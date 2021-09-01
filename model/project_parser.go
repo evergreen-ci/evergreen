@@ -81,7 +81,7 @@ type ParserProject struct {
 	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime             time.Time                      `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_project,omitempty" bson:"build_baron_project,omitempty"`
+	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 

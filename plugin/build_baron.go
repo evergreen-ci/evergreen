@@ -107,9 +107,6 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 						return nil, nil
 					}
 					enabled := len(bbSettings.TicketSearchProjects) > 0
-					if !enabled {
-						enabled = len(bbSettings.TicketSearchProjects) > 0
-					}
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil
@@ -180,10 +177,9 @@ func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronSe
 	return projects
 }
 
-// BbGetProject build baron settings will be retrieved from either project or admin config depending on PluginAdminPageDisabled flag
-// Project parser config takes precedence, otherwise we fallback to project page settings
-// Version is needed to retrieve last good project config, if version is not available/empty when calling this function we must first retrieve it
-// Secondary boolean return value signifies if we were able to retrieve build baron config for error handling in places where this function is called.
+// BbGetProject retrieves build baron settings from project or admin config depending on PluginAdminPageDisabled flag.
+// Project parser config takes precedence, otherwise fallback to project page settings (found using version ID if given).
+// Returns build baron settings and ok if found.
 func BbGetProject(settings *evergreen.Settings, projectId string, version string) (evergreen.BuildBaronSettings, bool) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {

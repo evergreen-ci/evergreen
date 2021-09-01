@@ -105,7 +105,7 @@ type ProjectRef struct {
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
-	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_project,omitempty" json:"build_baron_project,omitempty" yaml:"build_baron_project,omitempty"`
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -340,8 +340,6 @@ const (
 	ProjectPageWorkstationsSection   = "workstations"
 	ProjectPageTriggersSection       = "triggers"
 	ProjectPagePeriodicBuildsSection = "periodic-builds"
-	ProjectRefBuildBaronSection      = "build_baron"
-	ProjectRefTaskAnnotationsSection = "task_annotation"
 )
 
 var adminPermissions = gimlet.Permissions{
