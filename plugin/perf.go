@@ -2,13 +2,13 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/utility"
 	"html/template"
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 )
 
