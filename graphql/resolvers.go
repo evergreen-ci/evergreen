@@ -2633,17 +2633,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 		return false, err
 	}
 	if flags.PluginAdminPageDisabled {
-		lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(*obj.ProjectId, -1)
-		if err == nil && lastGoodVersion != nil {
-			parserProject, err := model.ParserProjectFindOneById(lastGoodVersion.Id)
-			if err == nil && parserProject != nil && *parserProject.PerfEnabled {
-				return true, nil
-			}
-		}
-		project, err := model.FindMergedProjectRef(*obj.ProjectId)
-		if err == nil && project != nil && *project.PerfEnabled {
-			return true, nil
-		}
+		return plugin.IsPerfEnabledForProject(*obj.ProjectId), nil
 	} else {
 		var perfPlugin *plugin.PerfPlugin
 		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)
