@@ -825,10 +825,16 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*Bu
 		},
 	}
 
+	unwind := bson.M{
+		"$unwind": bson.M{
+			"path": "$" + buildVariantsKey,
+		},
+	}
+
 	project := bson.M{
 		"$project": bson.M{
 			"_id":           0,
-			BuildVariantKey: bson.M{"$arrayElemAt": []interface{}{"$" + buildVariantsKey, 0}},
+			BuildVariantKey: "$" + buildVariantsKey,
 			"display_name":  bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
 		},
 	}
@@ -840,6 +846,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*Bu
 
 	pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	pipeline = append(pipeline, group)
+	pipeline = append(pipeline, unwind)
 	pipeline = append(pipeline, project)
 	pipeline = append(pipeline, sort)
 
