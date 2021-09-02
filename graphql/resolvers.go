@@ -2633,7 +2633,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 		return false, err
 	}
 	if flags.PluginAdminPageDisabled {
-		return plugin.IsPerfEnabledForProject(*obj.ProjectId), nil
+		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
 	} else {
 		var perfPlugin *plugin.PerfPlugin
 		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)

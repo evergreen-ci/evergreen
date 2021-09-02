@@ -71,23 +71,8 @@ func isPerfEnabled(projectRef model.ProjectRef, projects []string) bool {
 		return false
 	}
 	if flags.PluginAdminPageDisabled {
-		return IsPerfEnabledForProject(projectRef.Id)
+		return model.IsPerfEnabledForProject(projectRef.Id)
 	} else {
 		return utility.StringSliceContains(projects, projectRef.Id) || utility.StringSliceContains(projects, projectRef.Identifier)
 	}
-}
-
-func IsPerfEnabledForProject(projectId string) bool {
-	lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(projectId, -1)
-	if err == nil && lastGoodVersion != nil {
-		parserProject, err := model.ParserProjectFindOneById(lastGoodVersion.Id)
-		if err == nil && parserProject != nil && utility.FromBoolPtr(parserProject.PerfEnabled) {
-			return true
-		}
-	}
-	project, err := model.FindMergedProjectRef(projectId)
-	if err == nil && project != nil {
-		return utility.FromBoolPtr(project.PerfEnabled)
-	}
-	return false
 }
