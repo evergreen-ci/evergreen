@@ -83,6 +83,7 @@ type ParserProject struct {
 	CreateTime             time.Time                      `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
+	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 
@@ -763,6 +764,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Loggers:                pp.Loggers,
 		TaskAnnotationSettings: pp.TaskAnnotationSettings,
 		BuildBaronSettings:     pp.BuildBaronSettings,
+		PerfEnabled:            utility.FromBoolPtr(pp.PerfEnabled),
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -1388,6 +1390,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		catcher.New("build baron settings can only be defined in one yaml")
 	} else if toMerge.BuildBaronSettings != nil {
 		pp.BuildBaronSettings = toMerge.BuildBaronSettings
+	}
+
+	if pp.PerfEnabled != nil && toMerge.PerfEnabled != nil {
+		catcher.New("perf settings can only be defined in one yaml")
+	} else if toMerge.PerfEnabled != nil {
+		pp.PerfEnabled = toMerge.PerfEnabled
 	}
 
 	return catcher.Resolve()
