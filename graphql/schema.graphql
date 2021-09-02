@@ -75,6 +75,7 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
   buildVariantHistory(projectId: String!, buildVariant: String!): [String!]
   taskHistory(projectId: String!, taskName: String!): [String!]
+  projectSettings(identifier: String!): ProjectSettings!
 }
 
 type Mutation {
@@ -511,6 +512,9 @@ type FileDiff {
 type PatchTriggerAlias {
   alias: String!
   childProject: String!
+  taskSpecifiers: [TaskSpecifier!]!
+  status: String!
+  parentAsModule: String!
 }
 
 type UserPatches {
@@ -791,15 +795,186 @@ type GroupedProjects {
   projects: [Project!]!
 }
 
+type ProjectSettings {
+  githubWebhooksEnabled: Boolean!
+  projectRef: Project
+  vars: ProjectVars
+  aliases: [ProjectAlias]
+  subscriptions: [ProjectSubscription]
+}
+
+type ProjectVars {
+  vars: StringMap
+#  privateVars: Map
+}
+
+type ProjectAlias {
+  id: String!
+  alias: String!
+  gitTag: String!
+  variant: String!
+  task: String!
+  remotePath: String!
+  variantTags: [String!]!
+  taskTags: [String!]!
+}
+
+type ProjectSubscription {
+  id: String!
+  resourceType: String!
+  trigger: String!
+  selectors: [Selector]!
+  regexSelectors: [Selector]!
+  subscriber: SubscriberWrapper
+  ownerType: String!
+  owner: String!
+  triggerData: StringMap
+ }
+
+type Selector {
+  type: String!
+  data: String!
+}
+
+type SubscriberWrapper {
+  type: String!
+  subscriber: Subscriber!
+
+}
+
+type Subscriber {
+  githubPRSubscriber: GithubPRSubscriber
+  githubCheckSubscriber: GithubCheckSubscriber
+  webhookSubscriber: WebhookSubscriber
+  jiraIssueSubscriber: JiraIssueSubscriber
+  jiraCommentSubscriber: String
+  emailSubscriber: String
+  slackSubscriber: String
+}
+
+type GithubPRSubscriber {
+  owner: String!
+  repo: String!
+  ref: String!
+  prNumber: Int
+}
+
+type GithubCheckSubscriber {
+  owner: String!
+  repo: String!
+  ref: String!
+}
+
+type JiraIssueSubscriber {
+  project: String!
+  issueType: String!
+}
+
+type WebhookSubscriber {
+  url: String!
+  secret: String!
+  headers: [WebhookHeader]!
+}
+
+type WebhookHeader {
+  key: String!
+  value: String!
+}
+
 type Project {
-  displayName: String!
   id: String!
   identifier: String!
-  isFavorite: Boolean!
+  displayName: String!
+  enabled: Boolean
+  private: Boolean
   owner: String!
-  patches(patchesInput: PatchesInput!): Patches!
   repo: String!
+  branch: String!
+  remotePath: String!
+  patchingDisabled: Boolean
+  repotrackerDisabled: Boolean
+  dispatchingDisabled: Boolean
+  prTestingEnabled: Boolean
+  githubChecksEnabled: Boolean
+  batchTime: Int
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  notifyOnBuildFailure: Boolean
+  triggers: [TriggerAlias]
+  patchTriggerAliases: [PatchTriggerAlias]
+  githubTriggerAliases: [String]
+  periodicBuilds: [PeriodicBuild]
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParams
+  admins: [String]
   spawnHostScriptPath: String!
+  tracksPushEvents: Boolean
+  taskSync: TaskSyncOptions
+  gitTagAuthorizedUsers: [String]
+  gitTagAuthorizedTeams: [String]
+  gitTagVersionsEnabled: Boolean
+
+  filesIgnoredFromCache: [String]
+  disabledStatsCache: Boolean
+  workstationConfig: WorkstationConfig
+
+  hidden: Boolean
+  useRepoSettings: Boolean!
+  repoRefId: String
+
+  isFavorite: Boolean!
+  patches(patchesInput: PatchesInput!): Patches!
+}
+
+type TriggerAlias {
+  project: String
+  level: String!
+  definitionID: String!
+  buildVariantRegex: String!
+  taskRegex: String!
+  status: String!
+  dateCutoff: Int!
+  configFile: String!
+  generateFile: String!
+  command: String!
+  alias: String!
+}
+
+
+type PeriodicBuild {
+  id: String!
+  configFile: String!
+  intervalHours: Int!
+  alias: String!
+  message: String!
+  nextRunTime: Time!
+}
+
+type CommitQueueParams {
+  enabled: Boolean!
+  mergeMethod: String!
+  message: String!
+}
+
+type TaskSyncOptions {
+  configEnabled: Boolean!
+  patchEnabled: Boolean!
+}
+
+type WorkstationConfig {
+  setupCommands: [WorkstationSetupCommand]
+  gitClone: Boolean!
+}
+
+type WorkstationSetupCommand {
+  Command: String!
+  Directory: String!
+}
+
+type TaskSpecifier {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
 }
 
 type File {

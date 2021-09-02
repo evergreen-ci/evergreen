@@ -96,11 +96,61 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
+  ProjectSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+    fields:
+      githubWebhooksEnabled:
+        resolver: true
+      vars:
+        resolver: true
+      aliases:
+        resolver: true
+      subscriptions:
+        resolver: true
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:
       patches:
         resolver: true
+  CommitQueueParams:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  PatchTriggerAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
+  TaskSpecifier:
+    model:  github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
+  TriggerAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
+  PeriodicBuild:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
+  TaskSyncOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
+  WorkstationConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
+  WorkstationSetupCommand:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationSetupCommand
+  ProjectVars:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
+  ProjectAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
+  ProjectSubscription:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
+  SubscriberWrapper:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+    fields:
+      subscriber:
+        resolver: true
+  GithubPRSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPRSubscriber
+  GithubCheckSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
+  WebhookSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookSubscriber
+  WebhookHeader:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookHeader
+  JiraIssueSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
+  Selector:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
     fields:
