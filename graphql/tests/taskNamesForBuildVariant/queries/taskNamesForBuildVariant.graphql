@@ -1,0 +1,3 @@
+{
+    taskNamesForBuildVariant(projectId:"evergreen", buildVariant:"ubuntu1604")
+}

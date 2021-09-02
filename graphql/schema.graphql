@@ -73,8 +73,8 @@ type Query {
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
-  buildVariantHistory(projectId: String!, buildVariant: String!): [String!]
-  taskHistory(projectId: String!, taskName: String!): [String!]
+  taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
+  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
 }
 
 type Mutation {
@@ -218,6 +218,10 @@ input MainlineCommitsOptions {
   skipOrderNumber: Int = 0
 }
 
+type BuildVariantTuple {
+  buildVariant: String!
+  displayName: String!
+}
 
 enum SpawnHostStatusActions {
   START

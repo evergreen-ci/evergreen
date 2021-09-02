@@ -1,0 +1,11 @@
+{
+    "tests": [
+      {
+          "query_file": "taskNamesForBuildVariant.graphql",
+          "result": {
+            "data": {"taskNamesForBuildVariant":["dist", "test-agent", "test-graphql"]}
+          }
+        }
+    ]
+}
+  
