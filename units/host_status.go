@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"strings"
 	"time"
 
@@ -186,6 +187,9 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 
 		catcher := grip.NewBasicCatcher()
+		if err := task.AddHostCreateDetails(h.StartedBy, h.Id, j.Error()); err != nil {
+			catcher.Wrap(err, "error adding host create error details")
+		}
 		catcher.Wrap(h.SetUnprovisioned(), "marking host as failed provisioning")
 		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, &h, true, "instance was found in stopped state")), "enqueueing job to terminate host")
 

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -137,9 +138,17 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			return false, errors.New("non-agent host is not already terminated and should not be terminated")
 		}
 
+		if err := task.AddHostCreateDetails(h.StartedBy, h.Id, ctx.Err()); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "error adding host create error details",
+				"cloud_status": cloudStatus.String(),
+				"host_id":      h.Id,
+				"task_id":      h.StartedBy,
+			}))
+		}
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 
-		err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, fmt.Sprintf("host was found in %s state", cloudStatus.String())))
+		err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, fmt.Sprintf("host was found in %s state", cloudStatus.String())))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "could not enqueue job to terminate externally-modified host",
 			"cloud_status": cloudStatus.String(),
