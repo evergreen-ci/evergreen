@@ -831,7 +831,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*Bu
 	groupByBuildVariant := bson.M{
 		"$group": bson.M{
 			"_id": bson.M{
-				"build_variant": "$" + BuildVariantKey,
+				BuildVariantKey: "$" + BuildVariantKey,
 			},
 			BuildIdKey: bson.M{
 				"$first": "$" + BuildIdKey,
@@ -841,7 +841,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*Bu
 
 	pipeline = append(pipeline, groupByBuildVariant)
 
-	// // reorganize the results to get the build variant names and a corresponding build id
+	// reorganize the results to get the build variant names and a corresponding build id
 	projectBuildId := bson.M{
 		"$project": bson.M{
 			"_id":           0,
