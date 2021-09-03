@@ -167,6 +167,10 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	opts := runCommandsOptions{isTaskCommands: true}
 	err := a.runCommands(ctx, tc, task.Commands, opts)
 	tc.logger.Execution().Infof("Finished running task commands in %v.", time.Since(start).String())
+	if conf.Task.Aborted {
+		tc.logger.Execution().Infof("Task finished with aborted status")
+		return nil
+	}
 	if err != nil {
 		tc.logger.Execution().Errorf("Task failed: %v", err)
 		return errors.New("task failed")
