@@ -134,6 +134,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 	}
 
+	UpdateBuildAndVersionStatusForTask(t)
 	return nil
 }
 
