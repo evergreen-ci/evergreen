@@ -188,7 +188,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 
 		catcher := grip.NewBasicCatcher()
 		if h.SpawnOptions.SpawnedByTask {
-			if err := task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, errors.New("host was externally terminated")); err != nil {
+			if err := task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated")); err != nil {
 				catcher.Wrap(err, "error adding host create error details")
 			}
 		}

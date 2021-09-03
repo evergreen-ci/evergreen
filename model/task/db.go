@@ -1406,13 +1406,14 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 	return err
 }
 
-func AddHostCreateDetails(taskId, hostId string, hostCreateError error) error {
+func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
 	}
 	err := UpdateOne(
 		bson.M{
-			IdKey: taskId,
+			IdKey:        taskId,
+			ExecutionKey: execution,
 		},
 		bson.M{"$push": bson.M{
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
