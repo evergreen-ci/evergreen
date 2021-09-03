@@ -744,7 +744,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 }
 
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
-	host, err := host.GetHostByIdWithTask(hostID)
+	host, err := host.GetHostByIdOrTagWithTask(hostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
 	}
@@ -1736,7 +1736,11 @@ func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSe
 }
 
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	events, count, err := event.FindPaginated(hostID, *hostTag, event.AllLogCollection, *limit, *page)
+	h, err := host.FindOneByIdOrTag(hostID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", hostID, err.Error()))
+	}
+	events, count, err := event.FindPaginated(h.Id, h.Tag, event.AllLogCollection, *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
 	}
