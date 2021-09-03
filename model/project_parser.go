@@ -82,7 +82,6 @@ type ParserProject struct {
 	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime             time.Time                      `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
@@ -569,14 +568,6 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 	// return intermediateProject even if we run into issues to show merge progress
 	for _, path := range intermediateProject.Include {
 		opts.RemotePath = path.FileName
-		// read from the patch diff if a change has been made in any of the include files
-		if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
-			if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ConfigChanged(path.FileName) {
-				opts.ReadFileFrom = ReadFromPatchDiff
-			} else {
-				opts.ReadFileFrom = ReadFromPatch
-			}
-		}
 		yaml, err := retrieveFile(ctx, opts)
 		if err != nil {
 			return intermediateProject, errors.Wrapf(err, LoadProjectError)
@@ -602,24 +593,17 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 }
 
 const (
-	ReadfromGithub    = "github"
-	ReadFromLocal     = "local"
-	ReadFromPatch     = "patch"
-	ReadFromPatchDiff = "patch_diff"
+	ReadfromGithub = "github"
+	ReadFromLocal  = "local"
+	ReadFromPatch  = "patch"
 )
 
 type GetProjectOpts struct {
 	Ref          *ProjectRef
-	PatchOpts    *PatchOpts
 	RemotePath   string
 	Revision     string
 	Token        string
 	ReadFileFrom string
-}
-
-type PatchOpts struct {
-	patch *patch.Patch
-	env   evergreen.Environment
 }
 
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
@@ -631,22 +615,6 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		fileContents, err := ioutil.ReadFile(opts.RemotePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading project config")
-		}
-		return fileContents, nil
-	case ReadFromPatch:
-		fileContents, err := getFileForPatchDiff(ctx, opts)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not fetch remote configuration file")
-		}
-		return fileContents, nil
-	case ReadFromPatchDiff:
-		originalConfig, err := getFileForPatchDiff(ctx, opts)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not fetch remote configuration file")
-		}
-		fileContents, err := MakePatchedConfig(ctx, opts.PatchOpts.env, opts.PatchOpts.patch, opts.RemotePath, string(originalConfig))
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not patch remote configuration file")
 		}
 		return fileContents, nil
 	default:
@@ -671,35 +639,6 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	}
-}
-
-func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
-	if opts.PatchOpts == nil {
-		return nil, errors.New("patch not passed in")
-	}
-	if opts.Ref == nil {
-		return nil, errors.New("project not passed in")
-	}
-	var projectFileBytes []byte
-	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner,
-		opts.Ref.Repo, opts.RemotePath, opts.Revision)
-	if err != nil {
-		// if the project file doesn't exist, but our patch includes a project file,
-		// we try to apply the diff and proceed.
-		if !(opts.PatchOpts.patch.ConfigChanged(opts.RemotePath) && thirdparty.IsFileNotFound(err)) {
-			// return an error if the github error is network/auth-related or we aren't patching the config
-			return nil, errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", opts.Ref.Owner,
-				opts.Ref.Repo, opts.RemotePath, opts.Revision)
-		}
-	} else {
-		// we successfully got the project file in base64, so we decode it
-		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", opts.Ref.Owner,
-				opts.Ref.Repo, opts.RemotePath, opts.Revision)
-		}
-	}
-	return projectFileBytes, nil
 }
 
 func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
@@ -763,7 +702,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		ExecTimeoutSecs:        utility.FromIntPtr(pp.ExecTimeoutSecs),
 		Loggers:                pp.Loggers,
 		TaskAnnotationSettings: pp.TaskAnnotationSettings,
-		BuildBaronSettings:     pp.BuildBaronSettings,
 		PerfEnabled:            utility.FromBoolPtr(pp.PerfEnabled),
 	}
 	catcher := grip.NewBasicCatcher()
@@ -1384,12 +1322,6 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		catcher.New("task annotation settings can only be defined in one yaml")
 	} else if toMerge.TaskAnnotationSettings != nil {
 		pp.TaskAnnotationSettings = toMerge.TaskAnnotationSettings
-	}
-
-	if pp.BuildBaronSettings != nil && toMerge.BuildBaronSettings != nil {
-		catcher.New("build baron settings can only be defined in one yaml")
-	} else if toMerge.BuildBaronSettings != nil {
-		pp.BuildBaronSettings = toMerge.BuildBaronSettings
 	}
 
 	if pp.PerfEnabled != nil && toMerge.PerfEnabled != nil {
