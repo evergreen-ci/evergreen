@@ -1,0 +1,186 @@
+{
+  "project_ref": [
+    {
+      "_id" : "1234",
+      "identifier" : "sandbox",
+      "display_name" : "Sandbox",
+      "enabled" : null,
+      "owner_name" : "evergreen-ci",
+      "repo_name" : "commit-queue-sandbox",
+      "branch_name" : "main",
+      "remote_path" : "evergreen.yml",
+      "patching_disabled" : false,
+      "pr_testing_enabled" : true,
+      "batch_time" : 2,
+      "deactivate_previous" : true,
+      "default_logger" : "buildlogger",
+      "triggers" : [ ],
+      "patch_trigger_aliases" : [
+        {
+          "alias" : "my_alias_sandbox",
+          "child_project" : "mci",
+          "task_specifiers" : [
+            {
+              "task_regex" : "test-util",
+              "variant_regex" : "^ubuntu1604$"
+            }
+          ]
+        }
+      ],
+      "commit_queue" : {
+        "enabled" : true,
+        "merge_method" : "squash",
+        "message" : "hmmm"
+      },
+      "admins" : [
+        "annie.black"
+      ],
+      "spawn_host_script_path" : "",
+      "tracks_push_events" : true,
+      "task_sync" : {
+        "config_enabled" : false,
+        "patch_enabled" : true
+      },
+      "git_tag_authorized_users" : [
+        "ablack12"
+      ],
+      "workstation_config" : {
+        "setup_commands" : null,
+        "git_clone" : false
+      },
+      "hidden" : false,
+      "use_repo_settings" : true,
+      "repo_ref_id" : "my_repo"
+    }
+  ],
+  "project_aliases": [
+    {
+      "_id" : { "$oid": "5ffe393097b1d3759dd3c1aa"},
+      "alias" : "__commit_queue",
+      "git_tag" : "",
+      "project_id" : "1234",
+      "remote_path" : "",
+      "tags" : [ ],
+      "task" : "unit_tests",
+      "variant" : "ubuntu1604",
+      "variant_tags" : null
+    },
+    {
+      "_id" : { "$oid": "5ffe393097b1d3759dd3c1ac"},
+      "alias" : "__git_tag",
+      "git_tag" : ".*",
+      "project_id" : "1234",
+      "remote_path" : "release.yml"
+    },
+    {
+      "_id" : { "$oid": "5ffe393097b1d3759dd3c1ab"},
+      "alias" : "test_alias",
+      "git_tag" : "",
+      "project_id" : "1234",
+      "remote_path" : "",
+      "tags" : ["git"],
+      "variant_tags" : ["tag"]
+    }
+  ],
+  "project_vars": [
+    {
+    "_id": "1234",
+    "vars": {"hello": "world", "foo":  "bar"},
+    "private_vars": {"hello":  true, "foo":  false}
+    }
+  ],
+  "subscriptions": [
+    {
+      "_id" : "61326406a620e4737f57003e",
+      "type" : "VERSION",
+      "trigger" : "outcome",
+      "selectors" : [
+        {
+          "type" : "project",
+          "data" : "613256a4a620e4737f570038"
+        },
+        {
+          "type" : "requester",
+          "data" : "gitter_request"
+        }
+      ],
+      "regex_selectors" : [ ],
+      "subscriber" : {
+        "type" : "slack",
+        "target" : "@me"
+      },
+      "owner" : "1234",
+      "owner_type" : "project",
+      "trigger_data" : {
+        "requester" : "gitter_request"
+      }
+    },
+    {
+      "_id" : "61326406a620e4737f57003f",
+      "selectors" : [
+        {
+          "type" : "project",
+          "data" : "1234"
+        },
+        {
+          "type" : "requester",
+          "data" : "patch_request"
+        }
+      ],
+      "regex_selectors" : [ ],
+      "subscriber" : {
+        "type" : "jira-issue",
+        "target" : {
+          "project" : "EVG",
+          "issue_type" : "1212"
+        }
+      },
+      "owner" : "1234",
+      "owner_type" : "project",
+      "trigger_data" : {
+        "requester" : "patch_request"
+      },
+      "type" : "VERSION",
+      "trigger" : "failure"
+    },
+    {
+      "_id" : "1234",
+      "regex_selectors" : [
+        {
+          "type" : "display-name",
+          "data" : "abc"
+        }
+      ],
+      "subscriber" : {
+        "type" : "evergreen-webhook",
+        "target" : {
+          "url" : "https://example.com",
+          "headers" : [
+            {
+              "key" : "key",
+              "value" : "val"
+            }
+          ]
+        }
+      },
+      "owner" : "1234",
+      "owner_type" : "project",
+      "trigger_data" : {
+        "task-duration-secs" : "10"
+      },
+      "type" : "TASK",
+      "trigger" : "exceeds-duration",
+      "selectors" : [
+        {
+          "type" : "project",
+          "data" : "613256a4a620e4737f570038"
+        },
+        {
+          "type" : "requester",
+          "data" : "gitter_request"
+        }
+      ]
+    }
+
+  ]
+}

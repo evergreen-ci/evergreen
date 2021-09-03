@@ -1,0 +1,242 @@
+{
+  "tests": [
+    {
+      "query_file": "project-settings-project.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "githubWebhooksEnabled": false,
+            "projectRef": {
+              "id": "1234",
+              "identifier": "sandbox",
+              "commitQueue": {
+                "enabled": true,
+                "mergeMethod": "squash"
+              },
+              "periodicBuilds": null,
+              "githubChecksEnabled": null,
+              "patchingDisabled": false,
+              "prTestingEnabled": true,
+              "batchTime": 2,
+              "gitTagAuthorizedUsers": [
+                "ablack12"
+              ],
+              "gitTagAuthorizedTeams": null,
+              "triggers": [],
+              "patchTriggerAliases" : [
+                {
+                  "alias" : "my_alias_sandbox",
+                  "childProject" : "mci",
+                  "taskSpecifiers": [
+                    {
+                      "taskRegex" : "test-util",
+                      "variantRegex" : "^ubuntu1604$"
+                    }
+                  ]
+                }
+              ],
+              "taskSync" : {
+                "configEnabled" : false,
+                "patchEnabled" : true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "project-settings-aliases.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "aliases": [
+              {
+                "id" : "5ffe393097b1d3759dd3c1aa",
+                "alias" : "__commit_queue",
+                "gitTag" : "",
+                "remotePath" : "",
+                "task" : "unit_tests",
+                "variant" : "ubuntu1604",
+                "variantTags" : [],
+                "taskTags": []
+              },
+              {
+                "id" : "5ffe393097b1d3759dd3c1ac",
+                "alias" : "__git_tag",
+                "gitTag" : ".*",
+                "variant": "",
+                "task": "",
+                "remotePath" : "release.yml",
+                "variantTags": [],
+                "taskTags": []
+              },
+              {
+                "id" : "5ffe393097b1d3759dd3c1ab",
+                "alias" : "test_alias",
+                "gitTag" : "",
+                "variant": "",
+                "task":"",
+                "remotePath" : "",
+                "taskTags" : ["git"],
+                "variantTags" : ["tag"]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "project-settings-vars.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "vars": {
+              "vars": {"hello": "world", "foo":  "bar"},
+              "privateVars": ["hello"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "project-settings-subscriptions.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "subscriptions": [
+              {
+                "id": "61326406a620e4737f57003e",
+                "resourceType": "VERSION",
+                "trigger": "outcome",
+                "selectors": [
+                  {
+                    "type": "project",
+                    "data": "613256a4a620e4737f570038"
+                  },
+                  {
+                    "type": "requester",
+                    "data": "gitter_request"
+                  }
+                ],
+                "regexSelectors": [],
+                "ownerType": "project",
+                "triggerData": {
+                  "requester": "gitter_request"
+                },
+                "subscriber": {
+                  "type": "slack",
+                  "subscriber": {
+                    "githubPRSubscriber": null,
+                    "githubCheckSubscriber": null,
+                    "webhookSubscriber": null,
+                    "jiraIssueSubscriber": null,
+                    "jiraCommentSubscriber": null,
+                    "emailSubscriber": null,
+                    "slackSubscriber": "@me"
+                  }
+                }
+              },
+              {
+                "id": "61326406a620e4737f57003f",
+                "resourceType": "VERSION",
+                "trigger": "failure",
+                "selectors": [
+                  {
+                    "type": "project",
+                    "data": "1234"
+                  },
+                  {
+                    "type": "requester",
+                    "data": "patch_request"
+                  }
+                ],
+                "regexSelectors": [],
+                "ownerType": "project",
+                "triggerData": {
+                  "requester": "patch_request"
+                },
+                "subscriber": {
+                  "type": "jira-issue",
+                  "subscriber": {
+                    "jiraIssueSubscriber": {
+                      "project": "EVG",
+                      "issueType": "1212"
+                    },
+                    "githubPRSubscriber": null,
+                    "githubCheckSubscriber": null,
+                    "webhookSubscriber": null,
+                    "jiraCommentSubscriber": null,
+                    "emailSubscriber": null,
+                    "slackSubscriber": null
+                  }
+                }
+              },
+              {
+                "id": "1234",
+                "resourceType": "TASK",
+                "trigger": "exceeds-duration",
+                "selectors": [
+                  {
+                    "type": "project",
+                    "data": "613256a4a620e4737f570038"
+                  },
+                  {
+                    "type": "requester",
+                    "data": "gitter_request"
+                  }
+                ],
+                "regexSelectors": [
+                  {
+                    "type": "display-name",
+                    "data": "abc"
+                  }
+                ],
+                "ownerType": "project",
+                "triggerData": {
+                  "task-duration-secs": "10"
+                },
+                "subscriber": {
+                  "type": "evergreen-webhook",
+                  "subscriber": {
+                    "webhookSubscriber": {
+                      "url": "https://example.com",
+                      "headers": [
+                        {
+                          "key": "key",
+                          "value": "val"
+                        }
+                      ]
+                    },
+                    "githubPRSubscriber": null,
+                    "githubCheckSubscriber": null,
+                    "jiraIssueSubscriber": null,
+                    "jiraCommentSubscriber": null,
+                    "emailSubscriber": null,
+                    "slackSubscriber": null
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "nonexistent.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "project/repo doesn't exist",
+            "path": [
+              "projectSettings"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
