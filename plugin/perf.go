@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 )
@@ -53,7 +55,7 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Position:  PageCenter,
 				PanelHTML: template.HTML(panelHTML),
 				DataFunc: func(context UIContext) (interface{}, error) {
-					enabled := utility.StringSliceContains(pp.Projects, context.ProjectRef.Id) || utility.StringSliceContains(pp.Projects, context.ProjectRef.Identifier)
+					enabled := isPerfEnabled(*context.ProjectRef, pp.Projects)
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{Enabled: enabled}, nil
@@ -61,4 +63,16 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 			},
 		},
 	}, nil
+}
+
+func isPerfEnabled(projectRef model.ProjectRef, projects []string) bool {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return false
+	}
+	if flags.PluginAdminPageDisabled {
+		return model.IsPerfEnabledForProject(projectRef.Id)
+	} else {
+		return utility.StringSliceContains(projects, projectRef.Id) || utility.StringSliceContains(projects, projectRef.Identifier)
+	}
 }

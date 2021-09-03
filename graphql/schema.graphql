@@ -73,8 +73,8 @@ type Query {
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
-  buildVariantHistory(projectId: String!, buildVariant: String!): [String!]
-  taskHistory(projectId: String!, taskName: String!): [String!]
+  taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
+  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
 }
 
@@ -178,6 +178,7 @@ type Version {
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   isPatch: Boolean!
   patch: Patch
+  childVersions: [Version]
   taskCount: Int
   baseVersionID: String
   versionTiming: VersionTiming
@@ -218,6 +219,10 @@ input MainlineCommitsOptions {
   skipOrderNumber: Int = 0
 }
 
+type BuildVariantTuple {
+  buildVariant: String!
+  displayName: String!
+}
 
 enum SpawnHostStatusActions {
   START
@@ -280,6 +285,7 @@ input PatchConfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
   parameters: [ParameterInput]
+  patchTriggerAliases: [String!]
 }
 input VariantTasks {
   variant: String!

@@ -101,9 +101,6 @@ func FilterByTaskIDAndExecution(taskID string, execution int) db.Q {
 	return db.Query(bson.M{
 		TaskIDKey:    taskID,
 		ExecutionKey: execution,
-	}).Project(bson.M{
-		TaskIDKey:    0,
-		ExecutionKey: 0,
 	})
 }
 

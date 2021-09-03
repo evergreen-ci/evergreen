@@ -2046,7 +2046,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
-	patchUpdateReq := PatchVariantsTasksRequest{}
+	patchUpdateReq := PatchUpdate{}
 	patchUpdateReq.BuildFromGqlInput(configure)
 	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
@@ -2056,7 +2056,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
-	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq, configure.Parameters)
+	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
 	}
@@ -2796,19 +2796,27 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	var perfPlugin *plugin.PerfPlugin
-	pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, err
 	}
-	if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
-		err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
+	if flags.PluginAdminPageDisabled {
+		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
+	} else {
+		var perfPlugin *plugin.PerfPlugin
+		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)
 		if err != nil {
 			return false, err
 		}
-		for _, projectName := range perfPlugin.Projects {
-			if projectName == pRef.Id || projectName == pRef.Identifier {
-				return true, nil
+		if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
+			err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
+			if err != nil {
+				return false, err
+			}
+			for _, projectName := range perfPlugin.Projects {
+				if projectName == pRef.Id || projectName == pRef.Identifier {
+					return true, nil
+				}
 			}
 		}
 	}
@@ -2968,7 +2976,7 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
-func (r *queryResolver) BuildVariantHistory(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
+func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
 	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
@@ -2979,13 +2987,13 @@ func (r *queryResolver) BuildVariantHistory(ctx context.Context, projectId strin
 	return buildVariantTasks, nil
 }
 
-func (r *queryResolver) TaskHistory(ctx context.Context, projectId string, taskName string) ([]string, error) {
+func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId string, taskName string) ([]*task.BuildVariantTuple, error) {
 	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(projectId, taskName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
 	}
 	if taskBuildVariants == nil {
-		return []string{}, nil
+		return nil, nil
 	}
 	return taskBuildVariants, nil
 
@@ -3254,6 +3262,43 @@ func (r *versionResolver) Patch(ctx context.Context, v *restModel.APIVersion) (*
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *v.Id, err.Error()))
 	}
 	return apiPatch, nil
+}
+
+func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVersion) ([]*restModel.APIVersion, error) {
+	if !evergreen.IsPatchRequester(*v.Requester) {
+		return nil, nil
+	}
+	childPatchIds, err := r.sc.GetChildPatchIds(*v.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *v.Id, err.Error()))
+	}
+	if len(childPatchIds) > 0 {
+		childVersions := []*restModel.APIVersion{}
+		for _, cp := range childPatchIds {
+			// this calls the graphql Version query resolver
+			cv, err := r.Query().Version(ctx, cp)
+			if err != nil {
+				//before erroring due to the version being nil or not found,
+				// fetch the child patch to see if it's activated
+				p, err := patch.FindOneId(cp)
+				if err != nil {
+					return nil, err
+				}
+				if p == nil {
+					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
+				}
+				if p.Version != "" {
+					//only return the error if the version is activated (and we therefore expect it to be there)
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch child version: %s ", err.Error()))
+				}
+			}
+			if cv != nil {
+				childVersions = append(childVersions, cv)
+			}
+		}
+		return childVersions, nil
+	}
+	return nil, nil
 }
 
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {

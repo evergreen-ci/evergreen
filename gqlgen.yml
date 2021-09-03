@@ -238,3 +238,5 @@ models:
     fields:
       status:
         resolver: true
+  BuildVariantTuple:
+    model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple

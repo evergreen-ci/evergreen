@@ -101,13 +101,17 @@ type ProjectRef struct {
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
-	// The following fields are used by Evergreen and are not discoverable.
-	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
+	// Plugin settings
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
+	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
 	RepoRefId       string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
+
+	// The following fields are used by Evergreen and are not discoverable.
+	// Hidden determines whether or not the project is discoverable/tracked in the UI
+	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 }
 
 type CommitQueueParams struct {
@@ -232,6 +236,8 @@ var (
 	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey  = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
+	projectRefBuildBaronSettingsKey      = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
+	projectRefPerfEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -1333,6 +1339,21 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	return &projectSettingsEvent, nil
 }
 
+func IsPerfEnabledForProject(projectId string) bool {
+	lastGoodVersion, err := FindVersionByLastKnownGoodConfig(projectId, -1)
+	if err == nil && lastGoodVersion != nil {
+		parserProject, err := ParserProjectFindOneById(lastGoodVersion.Id)
+		if err == nil && parserProject != nil && utility.FromBoolPtr(parserProject.PerfEnabled) {
+			return true
+		}
+	}
+	project, err := FindMergedProjectRef(projectId)
+	if err == nil && project != nil {
+		return utility.FromBoolPtr(project.PerfEnabled)
+	}
+	return false
+}
+
 func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
 	return db.Update(
 		ProjectRefCollection,
@@ -1508,6 +1529,9 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
+
+	// todo: add casing on Build Baron and task annotation settings once EVG-15218 is complete
+
 	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},

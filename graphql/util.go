@@ -311,7 +311,7 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
-func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
+func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchUpdate) (error, int, string, string) {
 	var err error
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
@@ -319,9 +319,9 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	}
 
 	// only modify parameters if the patch hasn't been finalized
-	if parametersModel != nil && p.Version == "" {
+	if patchUpdateReq.ParametersModel != nil && p.Version == "" {
 		var parameters []patch.Parameter
-		for _, param := range parametersModel {
+		for _, param := range patchUpdateReq.ParametersModel {
 			parameters = append(parameters, param.ToService())
 		}
 		if err = p.SetParameters(parameters); err != nil {
@@ -366,20 +366,21 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	// create a separate context from the one the callar has so that the caller
 	// can't interrupt the db operations here
 	newCxt := context.Background()
+
+	projectRef, err := model.FindOneProjectRef(project.Identifier)
+	if err != nil {
+		return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
+	}
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", project.Identifier), http.StatusInternalServerError, "", ""
+	}
+
 	if p.Version != "" {
 		p.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
-		projectRef, err := model.FindOneProjectRef(project.Identifier)
-		if err != nil {
-			return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
-		}
-		if projectRef == nil {
-			return errors.Errorf("project '%s' not found", project.Identifier), http.StatusInternalServerError, "", ""
-		}
-
 		// First add new tasks to existing builds, if necessary
 		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {
@@ -406,6 +407,18 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks())
 		if err != nil {
 			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
+		}
+
+		// Process additional patch trigger aliases added via UI.
+		// Child patches created with the CLI --trigger-alias flag go through a separate flow, so ensure that new child patches are also created before the parent is finalized.
+		childPatchIds, err := units.ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), patchUpdateReq.PatchTriggerAliases)
+		if err != nil {
+			return errors.Wrap(err, "Error processing patch trigger aliases"), http.StatusInternalServerError, "", ""
+		}
+		if len(childPatchIds) > 0 {
+			if err = p.SetChildPatches(); err != nil {
+				return errors.Wrapf(err, "error attaching child patches '%s'", p.Id.Hex()), http.StatusInternalServerError, "", ""
+			}
 		}
 
 		requester := p.GetRequester()
@@ -437,7 +450,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	}
 }
 
-func addDisplayTasksToPatchReq(req *PatchVariantsTasksRequest, p model.Project) {
+func addDisplayTasksToPatchReq(req *PatchUpdate, p model.Project) {
 	for i, vt := range req.VariantsTasks {
 		bv := p.FindBuildVariant(vt.Variant)
 		if bv == nil {
@@ -539,14 +552,18 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 	return &patchProject, nil
 }
 
-type PatchVariantsTasksRequest struct {
-	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
-	Description   string               `json:"description"`
+type PatchUpdate struct {
+	Description         string                    `json:"description"`
+	ParametersModel     []*restModel.APIParameter `json:"parameters_model,omitempty"`
+	PatchTriggerAliases []string                  `json:"patch_trigger_aliases,omitempty"`
+	VariantsTasks       []patch.VariantTasks      `json:"variants_tasks,omitempty"`
 }
 
-// BuildFromGqlInput takes a PatchConfigure gql type and returns a PatchVariantsTasksRequest type
-func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchConfigure) {
+// BuildFromGqlInput takes a PatchConfigure gql type and returns a PatchUpdate type
+func (p *PatchUpdate) BuildFromGqlInput(r PatchConfigure) {
 	p.Description = r.Description
+	p.PatchTriggerAliases = r.PatchTriggerAliases
+	p.ParametersModel = r.Parameters
 	for _, vt := range r.VariantsTasks {
 		variantTasks := patch.VariantTasks{
 			Variant: vt.Variant,
