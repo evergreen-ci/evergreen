@@ -138,7 +138,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			return false, errors.New("non-agent host is not already terminated and should not be terminated")
 		}
 		if h.RunningTask != "" {
-			if err := task.AddHostCreateDetails(h.RunningTask, h.Id, errors.New("error adding host create error details")); err != nil {
+			if err := task.AddHostCreateDetails(h.RunningTask, h.Id, errors.New("host was externally terminated")); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":      "error adding host create error details",
 					"cloud_status": cloudStatus.String(),
