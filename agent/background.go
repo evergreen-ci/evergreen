@@ -60,7 +60,7 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error
 	abort, err := a.comm.Heartbeat(ctx, tc.task)
 	if abort {
 		grip.Info("Task aborted")
-		return evergreen.TaskFailed, nil
+		return evergreen.TaskUnscheduled, nil
 	}
 	if err != nil {
 		if errors.Cause(err) == client.HTTPConflictError {
