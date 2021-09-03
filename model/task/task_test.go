@@ -1717,10 +1717,10 @@ func TestGetTimeSpent(t *testing.T) {
 
 func TestAddHostCreateDetails(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	task := Task{Id: "t1"}
+	task := Task{Id: "t1", Execution: 0}
 	assert.NoError(t, task.Insert())
 	errToSave := errors.Wrapf(errors.New("InsufficientCapacityError"), "error trying to start host")
-	assert.NoError(t, AddHostCreateDetails(task.Id, "h1", errToSave))
+	assert.NoError(t, AddHostCreateDetails(task.Id, "h1", 0, errToSave))
 	dbTask, err := FindOneId(task.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbTask)
@@ -1728,7 +1728,7 @@ func TestAddHostCreateDetails(t *testing.T) {
 	assert.Equal(t, dbTask.HostCreateDetails[0].HostId, "h1")
 	assert.Contains(t, dbTask.HostCreateDetails[0].Error, "InsufficientCapacityError")
 
-	assert.NoError(t, AddHostCreateDetails(task.Id, "h2", errToSave))
+	assert.NoError(t, AddHostCreateDetails(task.Id, "h2", 0, errToSave))
 	dbTask, err = FindOneId(task.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbTask)
