@@ -50,8 +50,7 @@ func (s *hookSuite) TestFind() {
 	s.TestInsert()
 
 	hook, err := FindGithubHook("", "")
-	s.Error(err)
-	s.Equal("Owner and repository must not be empty strings", err.Error())
+	s.NoError(err)
 	s.Nil(hook)
 
 	hook, err = FindGithubHook("evergreen-ci", "")

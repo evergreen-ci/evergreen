@@ -340,7 +340,7 @@ func (r *projectSettingsResolver) Aliases(ctx context.Context, a *restModel.APIP
 		apiAlias := restModel.APIProjectAlias{}
 		if err = apiAlias.BuildFromService(alias); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectAlias %s from service: %s",
-				alias.ID.Hex(), err.Error()))
+				alias.Alias, err.Error()))
 		}
 		res = append(res, &apiAlias)
 	}
@@ -417,7 +417,7 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, a *restModel
 	case event.SlackSubscriberType:
 		res.SlackSubscriber = a.Target.(*string)
 	case event.EnqueuePatchSubscriberType:
-		// do nothing
+		// We don't store information in target for this case, so do nothing.
 	default:
 		return nil, errors.Errorf("unknown subscriber type: '%s'", subscriberType)
 	}
@@ -935,13 +935,13 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 }
 
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
-	// first, check project collection
 	res := &restModel.APIProjectSettings{}
 	projectRef, err := model.FindOneProjectRef(identifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
 	if projectRef == nil {
+		// If the project ref doesn't exist for the identifier, we may be looking for a repo, so check that collection.
 		repoRef, err := model.FindOneRepoRef(identifier)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
@@ -1225,11 +1225,6 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 
 	return &Patches{Patches: patchPointers, FilteredPatchCount: *count}, nil
 }
-
-//
-//func (r *projectResolver) CommitQueue(ctx context.Context, obj *restModel.APIProjectRef) ([]*restModel.APICommitQueueParams, error) {
-//	return nil, nil
-//}
 
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
 	usr := MustHaveUser(ctx)
