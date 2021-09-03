@@ -130,6 +130,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationSetupCommand
   ProjectVars:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
+    fields:
+      privateVars:
+        resolver: true
   ProjectAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
   ProjectSubscription:

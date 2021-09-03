@@ -46,6 +46,7 @@ type ResolverRoot interface {
 	Patch() PatchResolver
 	Project() ProjectResolver
 	ProjectSettings() ProjectSettingsResolver
+	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
 	SubscriberWrapper() SubscriberWrapperResolver
 	Task() TaskResolver
@@ -576,7 +577,6 @@ type ComplexityRoot struct {
 
 	ProjectSubscription struct {
 		ID             func(childComplexity int) int
-		Owner          func(childComplexity int) int
 		OwnerType      func(childComplexity int) int
 		RegexSelectors func(childComplexity int) int
 		ResourceType   func(childComplexity int) int
@@ -587,7 +587,8 @@ type ComplexityRoot struct {
 	}
 
 	ProjectVars struct {
-		Vars func(childComplexity int) int
+		PrivateVars func(childComplexity int) int
+		Vars        func(childComplexity int) int
 	}
 
 	PublicKey struct {
@@ -680,14 +681,13 @@ type ComplexityRoot struct {
 	}
 
 	Subscriber struct {
-		EmailSubscriber        func(childComplexity int) int
-		EnqueuePatchSubscriber func(childComplexity int) int
-		GithubCheckSubscriber  func(childComplexity int) int
-		GithubPRSubscriber     func(childComplexity int) int
-		JiraCommentSubscriber  func(childComplexity int) int
-		JiraIssueSubscriber    func(childComplexity int) int
-		SlackSubscriber        func(childComplexity int) int
-		WebhookSubscriber      func(childComplexity int) int
+		EmailSubscriber       func(childComplexity int) int
+		GithubCheckSubscriber func(childComplexity int) int
+		GithubPRSubscriber    func(childComplexity int) int
+		JiraCommentSubscriber func(childComplexity int) int
+		JiraIssueSubscriber   func(childComplexity int) int
+		SlackSubscriber       func(childComplexity int) int
+		WebhookSubscriber     func(childComplexity int) int
 	}
 
 	SubscriberWrapper struct {
@@ -1099,6 +1099,9 @@ type ProjectSettingsResolver interface {
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
+}
+type ProjectVarsResolver interface {
+	PrivateVars(ctx context.Context, obj *model.APIProjectVars) ([]*string, error)
 }
 type QueryResolver interface {
 	UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error)
@@ -1555,21 +1558,21 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.CommitQueueItem.Version(childComplexity), true
 
-	case "CommitQueueParams.Enabled":
+	case "CommitQueueParams.enabled":
 		if e.complexity.CommitQueueParams.Enabled == nil {
 			break
 		}
 
 		return e.complexity.CommitQueueParams.Enabled(childComplexity), true
 
-	case "CommitQueueParams.MergeMethod":
+	case "CommitQueueParams.mergeMethod":
 		if e.complexity.CommitQueueParams.MergeMethod == nil {
 			break
 		}
 
 		return e.complexity.CommitQueueParams.MergeMethod(childComplexity), true
 
-	case "CommitQueueParams.Message":
+	case "CommitQueueParams.message":
 		if e.complexity.CommitQueueParams.Message == nil {
 			break
 		}
@@ -3758,13 +3761,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSubscription.ID(childComplexity), true
 
-	case "ProjectSubscription.owner":
-		if e.complexity.ProjectSubscription.Owner == nil {
-			break
-		}
-
-		return e.complexity.ProjectSubscription.Owner(childComplexity), true
-
 	case "ProjectSubscription.ownerType":
 		if e.complexity.ProjectSubscription.OwnerType == nil {
 			break
@@ -3813,6 +3809,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectSubscription.TriggerData(childComplexity), true
+
+	case "ProjectVars.privateVars":
+		if e.complexity.ProjectVars.PrivateVars == nil {
+			break
+		}
+
+		return e.complexity.ProjectVars.PrivateVars(childComplexity), true
 
 	case "ProjectVars.vars":
 		if e.complexity.ProjectVars.Vars == nil {
@@ -4381,13 +4384,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Subscriber.EmailSubscriber(childComplexity), true
-
-	case "Subscriber.enqueuePatchSubscriber":
-		if e.complexity.Subscriber.EnqueuePatchSubscriber == nil {
-			break
-		}
-
-		return e.complexity.Subscriber.EnqueuePatchSubscriber(childComplexity), true
 
 	case "Subscriber.githubCheckSubscriber":
 		if e.complexity.Subscriber.GithubCheckSubscriber == nil {
@@ -6648,9 +6644,9 @@ type FileDiff {
 type PatchTriggerAlias {
   alias: String!
   childProject: String!
-  taskSpecifiers: [TaskSpecifier!]!
-  status: String!
-  parentAsModule: String!
+  taskSpecifiers: [TaskSpecifier]
+  status: String
+  parentAsModule: String
 }
 
 type UserPatches {
@@ -6941,7 +6937,7 @@ type ProjectSettings {
 
 type ProjectVars {
   vars: StringMap
-#  privateVars: Map
+  privateVars: [String]
 }
 
 type ProjectAlias {
@@ -6963,7 +6959,6 @@ type ProjectSubscription {
   regexSelectors: [Selector]!
   subscriber: SubscriberWrapper
   ownerType: String!
-  owner: String!
   triggerData: StringMap
  }
 
@@ -6986,7 +6981,6 @@ type Subscriber {
   jiraCommentSubscriber: String
   emailSubscriber: String
   slackSubscriber: String
-  enqueuePatchSubscriber: String
 }
 
 type GithubPRSubscriber {
@@ -7088,9 +7082,9 @@ type PeriodicBuild {
 }
 
 type CommitQueueParams {
-  Enabled: Boolean!
-  MergeMethod: String!
-  Message: String!
+  enabled: Boolean
+  mergeMethod: String
+  message: String
 }
 
 type TaskSyncOptions {
@@ -7105,7 +7099,7 @@ type WorkstationConfig {
 
 type WorkstationSetupCommand {
   Command: String!
-  Directory: String!
+  Directory: String
 }
 
 type TaskSpecifier {
@@ -10299,7 +10293,7 @@ func (ec *executionContext) _CommitQueueItem_modules(ctx context.Context, field 
 	return ec.marshalOModule2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIModuleᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _CommitQueueParams_Enabled(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommitQueueParams_enabled(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10323,17 +10317,14 @@ func (ec *executionContext) _CommitQueueParams_Enabled(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _CommitQueueParams_MergeMethod(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommitQueueParams_mergeMethod(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10357,17 +10348,14 @@ func (ec *executionContext) _CommitQueueParams_MergeMethod(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _CommitQueueParams_Message(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommitQueueParams_message(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -10391,14 +10379,11 @@ func (ec *executionContext) _CommitQueueParams_Message(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Dependency_name(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
@@ -17882,14 +17867,11 @@ func (ec *executionContext) _PatchTriggerAlias_taskSpecifiers(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.([]model.APITaskSpecifier)
 	fc.Result = res
-	return ec.marshalNTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx, field.Selections, res)
+	return ec.marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTriggerAlias_status(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
@@ -17916,14 +17898,11 @@ func (ec *executionContext) _PatchTriggerAlias_status(ctx context.Context, field
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTriggerAlias_parentAsModule(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
@@ -17950,14 +17929,11 @@ func (ec *executionContext) _PatchTriggerAlias_parentAsModule(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patches_patches(ctx context.Context, field graphql.CollectedField, obj *Patches) (ret graphql.Marshaler) {
@@ -20248,40 +20224,6 @@ func (ec *executionContext) _ProjectSubscription_ownerType(ctx context.Context, 
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ProjectSubscription_owner(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "ProjectSubscription",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Owner, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _ProjectSubscription_triggerData(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -20342,6 +20284,37 @@ func (ec *executionContext) _ProjectVars_vars(ctx context.Context, field graphql
 	res := resTmp.(map[string]string)
 	fc.Result = res
 	return ec.marshalOStringMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ProjectVars_privateVars(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectVars) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ProjectVars",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectVars().PrivateVars(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PublicKey_name(ctx context.Context, field graphql.CollectedField, obj *model.APIPubKey) (ret graphql.Marshaler) {
@@ -22848,37 +22821,6 @@ func (ec *executionContext) _Subscriber_slackSubscriber(ctx context.Context, fie
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.SlackSubscriber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Subscriber_enqueuePatchSubscriber(ctx context.Context, field graphql.CollectedField, obj *Subscriber) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Subscriber",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.EnqueuePatchSubscriber, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -30491,14 +30433,11 @@ func (ec *executionContext) _WorkstationSetupCommand_Directory(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -32869,21 +32808,12 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("CommitQueueParams")
-		case "Enabled":
-			out.Values[i] = ec._CommitQueueParams_Enabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "MergeMethod":
-			out.Values[i] = ec._CommitQueueParams_MergeMethod(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "Message":
-			out.Values[i] = ec._CommitQueueParams_Message(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
+		case "enabled":
+			out.Values[i] = ec._CommitQueueParams_enabled(ctx, field, obj)
+		case "mergeMethod":
+			out.Values[i] = ec._CommitQueueParams_mergeMethod(ctx, field, obj)
+		case "message":
+			out.Values[i] = ec._CommitQueueParams_message(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -34784,19 +34714,10 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			}
 		case "taskSpecifiers":
 			out.Values[i] = ec._PatchTriggerAlias_taskSpecifiers(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "status":
 			out.Values[i] = ec._PatchTriggerAlias_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "parentAsModule":
 			out.Values[i] = ec._PatchTriggerAlias_parentAsModule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -35256,11 +35177,6 @@ func (ec *executionContext) _ProjectSubscription(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "owner":
-			out.Values[i] = ec._ProjectSubscription_owner(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "triggerData":
 			out.Values[i] = ec._ProjectSubscription_triggerData(ctx, field, obj)
 		default:
@@ -35287,6 +35203,17 @@ func (ec *executionContext) _ProjectVars(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = graphql.MarshalString("ProjectVars")
 		case "vars":
 			out.Values[i] = ec._ProjectVars_vars(ctx, field, obj)
+		case "privateVars":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectVars_privateVars(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -36118,8 +36045,6 @@ func (ec *executionContext) _Subscriber(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._Subscriber_emailSubscriber(ctx, field, obj)
 		case "slackSubscriber":
 			out.Values[i] = ec._Subscriber_slackSubscriber(ctx, field, obj)
-		case "enqueuePatchSubscriber":
-			out.Values[i] = ec._Subscriber_enqueuePatchSubscriber(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -38095,9 +38020,6 @@ func (ec *executionContext) _WorkstationSetupCommand(ctx context.Context, sel as
 			}
 		case "Directory":
 			out.Values[i] = ec._WorkstationSetupCommand_Directory(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -40267,47 +40189,6 @@ func (ec *executionContext) marshalNTaskSortCategory2githubᚗcomᚋevergreenᚑ
 	return v
 }
 
-func (ec *executionContext) marshalNTaskSpecifier2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, sel ast.SelectionSet, v model.APITaskSpecifier) graphql.Marshaler {
-	return ec._TaskSpecifier(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APITaskSpecifier) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNTaskSpecifier2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
 func (ec *executionContext) marshalNTaskTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResult(ctx context.Context, sel ast.SelectionSet, v TaskTestResult) graphql.Marshaler {
 	return ec._TaskTestResult(ctx, sel, &v)
 }
@@ -42292,6 +42173,50 @@ func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑci�
 
 func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {
 	return ec._TaskInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOTaskSpecifier2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, sel ast.SelectionSet, v model.APITaskSpecifier) graphql.Marshaler {
+	return ec._TaskSpecifier(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, sel ast.SelectionSet, v []model.APITaskSpecifier) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOTaskSpecifier2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalOTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, sel ast.SelectionSet, v model.APITaskSyncOptions) graphql.Marshaler {

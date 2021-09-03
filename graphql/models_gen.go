@@ -227,14 +227,13 @@ type StatusCount struct {
 }
 
 type Subscriber struct {
-	GithubPRSubscriber     *model.APIGithubPRSubscriber    `json:"githubPRSubscriber"`
-	GithubCheckSubscriber  *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber"`
-	WebhookSubscriber      *model.APIWebhookSubscriber     `json:"webhookSubscriber"`
-	JiraIssueSubscriber    *model.APIJIRAIssueSubscriber   `json:"jiraIssueSubscriber"`
-	JiraCommentSubscriber  *string                         `json:"jiraCommentSubscriber"`
-	EmailSubscriber        *string                         `json:"emailSubscriber"`
-	SlackSubscriber        *string                         `json:"slackSubscriber"`
-	EnqueuePatchSubscriber *string                         `json:"enqueuePatchSubscriber"`
+	GithubPRSubscriber    *model.APIGithubPRSubscriber    `json:"githubPRSubscriber"`
+	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber"`
+	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber"`
+	JiraIssueSubscriber   *model.APIJIRAIssueSubscriber   `json:"jiraIssueSubscriber"`
+	JiraCommentSubscriber *string                         `json:"jiraCommentSubscriber"`
+	EmailSubscriber       *string                         `json:"emailSubscriber"`
+	SlackSubscriber       *string                         `json:"slackSubscriber"`
 }
 
 type TaskFiles struct {

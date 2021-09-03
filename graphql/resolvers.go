@@ -87,6 +87,10 @@ func (r *Resolver) IssueLink() IssueLinkResolver {
 	return &issueLinkResolver{r}
 }
 
+func (r *Resolver) ProjectVars() ProjectVarsResolver {
+	return &projectVarsResolver{r}
+}
+
 type hostResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type taskQueueItemResolver struct{ *Resolver }
@@ -97,6 +101,7 @@ type annotationResolver struct{ *Resolver }
 type issueLinkResolver struct{ *Resolver }
 type projectSettingsResolver struct{ *Resolver }
 type subscriberWrapperResolver struct{ *Resolver }
+type projectVarsResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -305,7 +310,7 @@ func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProje
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, a *restModel.APIProjectSettings) (bool, error) {
 	hook, err := model.FindGithubHook(utility.FromStringPtr(a.ProjectRef.Owner), utility.FromStringPtr(a.ProjectRef.Repo))
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Database error finding github hook for project '%s': %s", a.ProjectRef.Id, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Database error finding github hook for project '%s': %s", *a.ProjectRef.Id, err.Error()))
 	}
 	return hook != nil, nil
 }
@@ -313,10 +318,10 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, a *
 func (r *projectSettingsResolver) Vars(ctx context.Context, a *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
 	vars, err := model.FindOneProjectVars(utility.FromStringPtr(a.ProjectRef.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", a.ProjectRef.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", *a.ProjectRef.Id, err.Error()))
 	}
 	if vars == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("vars for '%s' don't exist", a.ProjectRef.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("vars for '%s' don't exist", *a.ProjectRef.Id))
 	}
 	res := &restModel.APIProjectVars{}
 	if err = res.BuildFromService(vars); err != nil {
@@ -342,6 +347,16 @@ func (r *projectSettingsResolver) Aliases(ctx context.Context, a *restModel.APIP
 	return res, nil
 }
 
+func (r *projectVarsResolver) PrivateVars(ctx context.Context, a *restModel.APIProjectVars) ([]*string, error) {
+	res := []*string{}
+	for privateAlias, isPrivate := range a.PrivateVars {
+		if isPrivate {
+			res = append(res, utility.ToStringPtr(privateAlias))
+		}
+	}
+	return res, nil
+}
+
 func (r *projectSettingsResolver) Subscriptions(ctx context.Context, a *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
 	subscriptions, err := event.FindSubscriptionsByOwner(utility.FromStringPtr(a.ProjectRef.Id), event.OwnerTypeProject)
 	if err != nil {
@@ -362,40 +377,35 @@ func (r *projectSettingsResolver) Subscriptions(ctx context.Context, a *restMode
 
 func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, a *restModel.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
-	var ok bool
 	subscriberType := utility.FromStringPtr(a.Type)
 
 	switch subscriberType {
 	case event.GithubPullRequestSubscriberType:
-		sub := &restModel.APIGithubPRSubscriber{}
-		err := sub.BuildFromService(a.Target)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
+		sub := restModel.APIGithubPRSubscriber{}
+		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem converting %s subscriber: %s",
 				event.GithubPullRequestSubscriberType, err.Error()))
 		}
-		res.GithubPRSubscriber = sub
+		res.GithubPRSubscriber = &sub
 	case event.GithubCheckSubscriberType:
-		sub := &restModel.APIGithubCheckSubscriber{}
-		err := sub.BuildFromService(a.Target)
-		if err != nil {
+		sub := restModel.APIGithubCheckSubscriber{}
+		if err := mapstructure.Decode(a.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
 				event.GithubCheckSubscriberType, err.Error()))
 		}
-		res.GithubCheckSubscriber = sub
+		res.GithubCheckSubscriber = &sub
 
 	case event.EvergreenWebhookSubscriberType:
-		sub := &restModel.APIGithubCheckSubscriber{}
-		err := sub.BuildFromService(a.Target)
-		if err != nil {
+		sub := restModel.APIWebhookSubscriber{}
+		if err := mapstructure.Decode(a.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
-				event.GithubCheckSubscriberType, err.Error()))
+				event.EvergreenWebhookSubscriberType, err.Error()))
 		}
-		res.GithubCheckSubscriber = sub
+		res.WebhookSubscriber = &sub
 
 	case event.JIRAIssueSubscriberType:
 		sub := &restModel.APIJIRAIssueSubscriber{}
-		err := sub.BuildFromService(a.Target)
-		if err != nil {
+		if err := mapstructure.Decode(a.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
 				event.JIRAIssueSubscriberType, err.Error()))
 		}
@@ -409,10 +419,10 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, a *restModel
 	case event.EnqueuePatchSubscriberType:
 		// do nothing
 	default:
-		return nil, errors.Errorf("unknown subscriber type: '%s'", a.Type)
+		return nil, errors.Errorf("unknown subscriber type: '%s'", subscriberType)
 	}
 
-	return nil, nil
+	return res, nil
 }
 
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {

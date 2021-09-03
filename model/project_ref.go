@@ -668,10 +668,6 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 	return pRef, nil
 }
 
-func FindOneProjectOrRepo(identifier string) (*ProjectRef, error) {
-
-}
-
 // GetProjectRefMergedWithRepo merges the project with the repo that matches it, if one exists.
 // Otherwise, it will return the project as given.
 func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
