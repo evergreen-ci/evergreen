@@ -117,7 +117,7 @@ models:
   PatchTriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   TaskSpecifier:
-    model:  github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
   TriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   PeriodicBuild:
