@@ -281,7 +281,7 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 	return RestartVersions(versionId, []*TaskToRestart{&toRestart}, abortInProgress, caller)
 }
 
-// RestartVersions restarts completed tasks associated with a set of versionId.
+// RestartVersion restarts completed tasks associated with a versionId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
