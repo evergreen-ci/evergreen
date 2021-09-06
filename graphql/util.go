@@ -674,13 +674,13 @@ type VersionModifications struct {
 	Active   bool                      `json:"active"`
 	Abort    bool                      `json:"abort"`
 	Priority int64                     `json:"priority"`
-	TaskIds  []string                  `json:"task_ids"`
+	TaskIds  []*model.TaskToRestart    `json:"task_ids"`
 }
 
 func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
 	switch modifications.Action {
 	case Restart:
-		if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
+		if err := model.RestartVersions(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 		}
 	case SetActive:

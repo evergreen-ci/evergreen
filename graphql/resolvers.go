@@ -1994,14 +1994,14 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	return scheduledTasks, nil
 }
 
-func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
+func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []*model.TaskToRestart) (*string, error) {
 	if len(taskIds) == 0 {
 		return nil, InputValidationError.Send(ctx, "`taskIds` array is empty. You must provide at least one task id")
 	}
 	modifications := VersionModifications{
 		Action:  Restart,
 		Abort:   abort,
-		TaskIds: taskIds,
+		TaskIds: taskIds, //change this to be able to take in the new type
 	}
 	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {

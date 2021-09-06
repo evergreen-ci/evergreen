@@ -83,7 +83,7 @@ type Mutation {
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [TaskToRestart!]!): String
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
@@ -142,6 +142,12 @@ type Mutation {
   bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
 }
+
+input TaskToRestart {
+  patchId: String
+  taskIds: [String!]!
+}
+
 
 # Array of activated and unactivated versions
 # nextPageOrderNumber represents the last order number returned and is used for pagination

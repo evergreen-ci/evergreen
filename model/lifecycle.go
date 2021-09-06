@@ -48,6 +48,11 @@ type RestartResults struct {
 	ItemsErrored   []string
 }
 
+type TaskToRestart struct {
+	PatchID *string  `json:"patchId"`
+	TaskIds []string `json:"taskIds"`
+}
+
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
@@ -271,10 +276,12 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 	for _, task := range tasks {
 		taskIds = append(taskIds, task.Id)
 	}
-	return RestartVersion(versionId, taskIds, abortInProgress, caller)
+
+	toRestart := TaskToRestart{PatchID: &versionId, TaskIds: taskIds}
+	return RestartVersions(versionId, []*TaskToRestart{&toRestart}, abortInProgress, caller)
 }
 
-// RestartVersion restarts completed tasks associated with a given versionId.
+// RestartVersions restarts completed tasks associated with a set of versionId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
@@ -373,6 +380,18 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		return errors.Wrap(err, "unable to find version")
 	}
 	return errors.Wrap(version.UpdateStatus(evergreen.VersionStarted), "unable to change version status")
+
+}
+
+// RestartVersions restarts completed tasks associated with a set of versionId.
+// If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
+func RestartVersions(versionId string, taskIds []*TaskToRestart, abortInProgress bool, caller string) error {
+	catcher := grip.NewBasicCatcher()
+	for _, t := range taskIds {
+		err := RestartVersion(*t.PatchID, t.TaskIds, abortInProgress, caller)
+		catcher.Add(errors.Wrapf(err, "error restarting tasks for version '%s'", *t.PatchID))
+	}
+	return errors.Wrap(catcher.Resolve(), "error restarting tasks")
 }
 
 // RestartBuild restarts completed tasks associated with a given buildId.

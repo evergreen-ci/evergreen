@@ -15,6 +15,8 @@ resolver:
 models:
   Build:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
+  TaskToRestart:
+    model: github.com/evergreen-ci/evergreen/model.TaskToRestart
   SubscriptionInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   SelectorInput:
