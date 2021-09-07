@@ -48,7 +48,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	queue := env.RemoteQueue()
-	bbProject, ok := plugin.BbGetProject(settings, t.Project, t.Version)
+	bbProject, ok := plugin.BbGetProject(settings, t.Project)
 	if !ok {
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
@@ -184,7 +184,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 		return nil, bbConfig, err
 	}
 	settings := evergreen.GetEnvironment().Settings()
-	bbProj, ok := plugin.BbGetProject(settings, t.Project, t.Version)
+	bbProj, ok := plugin.BbGetProject(settings, t.Project)
 	if !ok {
 		// build baron project not found, meaning it's not configured for
 		// either regular build baron or for a custom ticket filing webhook
@@ -272,7 +272,7 @@ type MultiSourceSuggest struct {
 }
 
 type JiraSuggest struct {
-	BbProj      evergreen.BuildBaronSettings
+	BbProj      evergreen.BuildBaronProject
 	JiraHandler thirdparty.JiraHandler
 }
 
