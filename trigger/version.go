@@ -194,6 +194,9 @@ func (t *versionTriggers) versionGithubCheckOutcome(sub *event.Subscription) (*n
 
 func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification.Notification, error) {
 	versionTasks, err := task.FindAll(task.ByVersion(t.version.Id))
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting tasks in version")
+	}
 	skipNotification := false
 	// If the only failures in the version come from aborted tasks then we skip sending a notification
 	for _, versionTask := range versionTasks {
