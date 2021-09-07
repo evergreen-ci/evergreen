@@ -467,7 +467,7 @@ func (s *AgentSuite) TestAbort() {
 	defer cancel()
 	_, err := s.a.runTask(ctx, s.tc)
 	s.NoError(err)
-	s.Equal(evergreen.TaskUnscheduled, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	shouldFind := map[string]bool{
 		"initial task setup":              false,
 		"Running post-task commands":      false,
