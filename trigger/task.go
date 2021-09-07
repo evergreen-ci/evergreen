@@ -26,6 +26,7 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskFinished, makeTaskTriggers)
+	registry.registerEventHandler(event.ResourceTypeTask, event.TaskBlocked, makeTaskTriggers)
 }
 
 const (
@@ -34,6 +35,7 @@ const (
 	triggerTaskRegressionByTest              = "regression-by-test"
 	triggerBuildBreak                        = "build-break"
 	keyFailureType                           = "failure-type"
+	triggerTaskFailedOrBlocked               = "task-failed-or-blocked"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -52,6 +54,7 @@ func makeTaskTriggers() eventHandler {
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
 		triggerBuildBreak:                        t.buildBreak,
+		triggerTaskFailedOrBlocked:               t.taskFailedOrBlocked,
 	}
 
 	return t
@@ -81,12 +84,12 @@ func taskFinishedTwoOrMoreDaysAgo(taskID string, sub *event.Subscription) (bool,
 	if renotify == "" || err != nil || !found {
 		renotifyInterval = 48
 	}
-	t, err := task.FindOneNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
+	t, err := task.FindOne(task.ById(taskID).WithFields(task.FinishTimeKey))
 	if err != nil {
 		return false, errors.Wrapf(err, "error finding task '%s'", taskID)
 	}
 	if t == nil {
-		t, err = task.FindOneOldNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
+		t, err = task.FindOneOld(task.ById(taskID).WithFields(task.FinishTimeKey))
 		if err != nil {
 			return false, errors.Wrapf(err, "error finding old task '%s'", taskID)
 		}
@@ -473,6 +476,21 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 	return t.generate(sub, "", "")
 }
 
+func (t *taskTriggers) taskFailedOrBlocked(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
+	// pass in past tense override so that the message reads "has been blocked" rather than building on status
+	if t.task.Blocked() {
+		return t.generate(sub, "been blocked", "")
+
+	}
+
+	// check if it's failed instead
+	return t.taskFailure(sub)
+}
+
 func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notification.Notification, error) {
 	if t.task.DisplayOnly {
 		return nil, nil
@@ -794,12 +812,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	if t.task.DisplayOnly {
-		results, err := t.task.GetTestResultsForDisplayTask()
-		if err != nil {
-			return nil, errors.Wrapf(err, "can't get test results for display task")
-		}
-		t.task.LocalTestResults = results
+	if err := t.task.PopulateTestResults(); err != nil {
+		return nil, errors.Wrap(err, "populating test results for task")
 	}
 
 	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
@@ -814,25 +828,16 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	catcher := grip.NewBasicCatcher()
-	previousCompleteTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
 		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}
 	if previousCompleteTask != nil {
-		if previousCompleteTask.DisplayOnly {
-			var results []task.TestResult
-			results, err = previousCompleteTask.GetTestResultsForDisplayTask()
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get test results for previous display task '%s'", previousCompleteTask.Id)
-			}
-			t.oldTestResults = mapTestResultsByTestFile(results)
-		} else {
-			if err = previousCompleteTask.MergeNewTestResults(); err != nil {
-				return nil, errors.Wrapf(err, "can't get test results for previous task '%s'", previousCompleteTask.Id)
-			}
-			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
+		if err = previousCompleteTask.PopulateTestResults(); err != nil {
+			return nil, errors.Wrapf(err, "populating test results for previous task '%s'", previousCompleteTask.Id)
 		}
+		t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
 	}
 
 	testsToAlert := []task.TestResult{}
@@ -952,7 +957,10 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		TaskDisplayName: t.DisplayName,
 	}
 	if t.IsPartOfDisplay() {
-		data.TaskDisplayName = t.DisplayTask.DisplayName
+		dt, _ := t.GetDisplayTask()
+		if dt != nil {
+			data.TaskDisplayName = dt.DisplayName
+		}
 	}
 
 	builder := jiraBuilder{

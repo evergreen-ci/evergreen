@@ -105,6 +105,7 @@ type MainlineCommitVersion struct {
 
 type MainlineCommits struct {
 	NextPageOrderNumber *int                     `json:"nextPageOrderNumber"`
+	PrevPageOrderNumber *int                     `json:"prevPageOrderNumber"`
 	Versions            []*MainlineCommitVersion `json:"versions"`
 }
 
@@ -114,10 +115,21 @@ type MainlineCommitsOptions struct {
 	SkipOrderNumber *int   `json:"skipOrderNumber"`
 }
 
+type Manifest struct {
+	ID              string                 `json:"id"`
+	Revision        string                 `json:"revision"`
+	Project         string                 `json:"project"`
+	Branch          string                 `json:"branch"`
+	IsBase          bool                   `json:"isBase"`
+	ModuleOverrides map[string]string      `json:"moduleOverrides"`
+	Modules         map[string]interface{} `json:"modules"`
+}
+
 type PatchConfigure struct {
-	Description   string                `json:"description"`
-	VariantsTasks []*VariantTasks       `json:"variantsTasks"`
-	Parameters    []*model.APIParameter `json:"parameters"`
+	Description         string                `json:"description"`
+	VariantsTasks       []*VariantTasks       `json:"variantsTasks"`
+	Parameters          []*model.APIParameter `json:"parameters"`
+	PatchTriggerAliases []string              `json:"patchTriggerAliases"`
 }
 
 type PatchDuration struct {
@@ -144,6 +156,11 @@ type PatchTime struct {
 	Started     *string `json:"started"`
 	Finished    *string `json:"finished"`
 	SubmittedAt string  `json:"submittedAt"`
+}
+
+type PatchTriggerAlias struct {
+	Alias        string `json:"alias"`
+	ChildProject string `json:"childProject"`
 }
 
 type Patches struct {

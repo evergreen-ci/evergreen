@@ -43,7 +43,13 @@ func TestInsertAndFindOneByID(t *testing.T) {
 					ExternalID:   "external_id",
 					DefinitionID: "definition_id",
 					Cluster:      "cluster",
-					SecretIDs:    []string{"secret0", "secret1"},
+					Containers: []ContainerResourceInfo{
+						{
+							ExternalID: "container_id",
+							Name:       "container_name",
+							SecretIDs:  []string{"secret0", "secret1"},
+						},
+					},
 				},
 			}
 			require.NoError(t, p.Insert())
@@ -210,4 +216,105 @@ func TestUpdateStatus(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestUpdateResources(t *testing.T) {
+	checkResources := func(t *testing.T, p Pod) {
+		dbPod, err := FindOneByID(p.ID)
+		require.NoError(t, err)
+		require.NotZero(t, dbPod)
+		assert.Equal(t, p.Resources, dbPod.Resources)
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T, p Pod){
+		"SucceedsForEmptyResources": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, p.UpdateResources(p.Resources))
+			checkResources(t, p)
+		},
+		"SuccessWithCluster": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			info := ResourceInfo{
+				Cluster: "cluster",
+			}
+			require.NoError(t, p.UpdateResources(info))
+			assert.Equal(t, "cluster", p.Resources.Cluster)
+
+			checkResources(t, p)
+		},
+		"SuccessWithExternalID": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			info := ResourceInfo{
+				ExternalID: "external",
+			}
+			require.NoError(t, p.UpdateResources(info))
+			assert.Equal(t, "external", p.Resources.ExternalID)
+
+			checkResources(t, p)
+		},
+		"SuccessWithDefinitionID": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			info := ResourceInfo{
+				DefinitionID: "definition",
+			}
+			require.NoError(t, p.UpdateResources(info))
+			assert.Equal(t, "definition", p.Resources.DefinitionID)
+
+			checkResources(t, p)
+		},
+		"SuccessWithContainers": func(t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+
+			containerInfo := ContainerResourceInfo{
+				ExternalID: "container_id",
+				Name:       "container_name",
+				SecretIDs:  []string{"secret"},
+			}
+			info := ResourceInfo{
+				Containers: []ContainerResourceInfo{containerInfo},
+			}
+			require.NoError(t, p.UpdateResources(info))
+			require.Len(t, p.Resources.Containers, 1)
+			assert.Equal(t, containerInfo.ExternalID, p.Resources.Containers[0].ExternalID)
+			assert.Equal(t, containerInfo.Name, p.Resources.Containers[0].Name)
+			assert.Equal(t, containerInfo.SecretIDs, p.Resources.Containers[0].SecretIDs)
+
+			checkResources(t, p)
+		},
+		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
+			assert.Error(t, p.UpdateResources(ResourceInfo{}))
+
+			dbPod, err := FindOneByID(p.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPod)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			defer func() {
+				assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			}()
+			tCase(t, Pod{
+				ID:     "id",
+				Status: StatusRunning,
+				Resources: ResourceInfo{
+					ExternalID:   utility.RandomString(),
+					DefinitionID: utility.RandomString(),
+					Cluster:      utility.RandomString(),
+					Containers: []ContainerResourceInfo{
+						{
+							ExternalID: utility.RandomString(),
+							Name:       utility.RandomString(),
+							SecretIDs:  []string{utility.RandomString()},
+						},
+					},
+				},
+			})
+		})
+	}
+
 }

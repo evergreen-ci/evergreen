@@ -235,6 +235,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Aborted:                 v.Aborted,
 			CanSync:                 v.CanSync,
 			MustHaveResults:         v.MustHaveResults,
+			ParentTaskId:            utility.FromStringPtr(v.DisplayTaskId),
 			SyncAtEndOpts: APISyncAtEndOptions{
 				Enabled:  v.SyncAtEndOpts.Enabled,
 				Statuses: v.SyncAtEndOpts.Statuses,
@@ -256,6 +257,9 @@ func (at *APITask) BuildFromService(t interface{}) error {
 
 		if v.ParentPatchID != "" {
 			at.Version = utility.ToStringPtr(v.ParentPatchID)
+			if v.ParentPatchNumber != 0 {
+				at.Order = v.ParentPatchNumber
+			}
 		}
 
 		if err := at.Details.BuildFromService(v.Details); err != nil {

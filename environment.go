@@ -632,15 +632,15 @@ func (e *envState) initSenders(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 	for name, s := range e.senders {
 		catcher.Add(s.SetLevel(levelInfo))
+		tempName := name
 		catcher.Add(s.SetErrorHandler(func(err error, m message.Composer) {
 			if err == nil {
 				return
 			}
-
 			grip.Error(message.WrapError(err, message.Fields{
 				"notification":        m.String(),
 				"message_type":        fmt.Sprintf("%T", m),
-				"notification_target": name.String(),
+				"notification_target": tempName.String(),
 				"event":               m,
 			}))
 		}))
@@ -854,18 +854,6 @@ func (e *envState) SaveConfig() error {
 						return errors.Wrap(err, "problem decoding buildbaron projects")
 					}
 					plugin[fieldName] = projects
-				}
-			}
-		}
-		if pluginName == "dashboard" {
-			for fieldName, field := range plugin {
-				if fieldName == "branches" {
-					var branches map[string][]string
-					err := mapstructure.Decode(field, &branches)
-					if err != nil {
-						return errors.Wrap(err, "problem decoding dashboard branches")
-					}
-					plugin[fieldName] = branches
 				}
 			}
 		}

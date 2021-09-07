@@ -129,7 +129,7 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		if err := UpdateDisplayTask(t.DisplayTask); err != nil {
+		if err := UpdateDisplayTaskForTask(t); err != nil {
 			return errors.Wrap(err, "problem updating display task")
 		}
 	}
@@ -153,7 +153,7 @@ func SetActiveStateById(id, user string, active bool) error {
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
 func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task) error {
 	// find the task first
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -198,7 +198,7 @@ func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 
 // reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
 func resetTask(taskId, caller string, logIDs bool) error {
-	t, err := task.FindOneNoMerge(task.ById(taskId))
+	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -223,7 +223,7 @@ func resetTask(taskId, caller string, logIDs bool) error {
 
 // TryResetTask resets a task
 func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) error {
-	t, err := task.FindOneNoMerge(task.ById(taskId))
+	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -247,7 +247,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			if detail != nil {
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
-						execTask, err = task.FindOne(task.ById(etId))
+						execTask, err = task.FindOneId(etId)
 						if err != nil {
 							return errors.Wrap(err, "error finding execution task")
 						}
@@ -272,7 +272,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			if t.DisplayOnly {
 				execTasks := map[string]string{}
 				for _, et := range t.ExecutionTasks {
-					execTask, err = task.FindOne(task.ById(et))
+					execTask, err = task.FindOneId(et)
 					if err != nil {
 						continue
 					}
@@ -311,7 +311,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 }
 
 func AbortTask(taskId, caller string) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return err
 	}
@@ -396,7 +396,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 // otherwise. Note that the setting is obtained from the top-level
 // project, if not explicitly set on the task.
 func getStepback(taskId string) (bool, error) {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return false, errors.Wrapf(err, "problem finding task %s", taskId)
 	}
@@ -520,10 +520,14 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
 	if t.IsPartOfDisplay() {
-		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
+		if err = UpdateDisplayTaskForTask(t); err != nil {
 			return errors.Wrap(err, "problem updating display task")
 		}
-		if err = checkResetDisplayTask(t.DisplayTask); err != nil {
+		dt, err := t.GetDisplayTask()
+		if err != nil {
+			return errors.Wrap(err, "error getting display task")
+		}
+		if err = checkResetDisplayTask(dt); err != nil {
 			return errors.Wrap(err, "can't check display task reset")
 		}
 	} else {
@@ -537,6 +541,10 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	// activate/deactivate other task if this is not a patch request's task
 	if !evergreen.IsPatchRequester(t.Requester) {
 		if t.IsPartOfDisplay() {
+			_, err = t.GetDisplayTask()
+			if err != nil {
+				return errors.Wrap(err, "error getting display task")
+			}
 			err = evalStepback(t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
 		} else {
 			err = evalStepback(t, caller, status, deactivatePrevious)
@@ -575,7 +583,7 @@ func UpdateBlockedDependencies(t *task.Task) error {
 	}
 
 	for _, dependentTask := range dependentTasks {
-		if err = dependentTask.MarkUnattainableDependency(t, true); err != nil {
+		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
 			return errors.Wrap(err, "error marking dependency unattainable")
 		}
 		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
@@ -601,7 +609,7 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error
 	}
 
 	for _, blockedTask := range blockedTasks {
-		if err = blockedTask.MarkUnattainableDependency(t, false); err != nil {
+		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
 			return errors.Wrap(err, "error marking dependency attainable")
 		}
 		if err = UpdateUnblockedDependencies(&blockedTask, logIDs, caller); err != nil {
@@ -1091,7 +1099,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		return UpdateDisplayTask(t.DisplayTask)
+		return UpdateDisplayTaskForTask(t)
 	}
 
 	return nil
@@ -1106,7 +1114,7 @@ func MarkTaskUndispatched(t *task.Task) error {
 	event.LogTaskUndispatched(t.Id, t.Execution, t.HostId)
 
 	if t.IsPartOfDisplay() {
-		return UpdateDisplayTask(t.DisplayTask)
+		return UpdateDisplayTaskForTask(t)
 	}
 
 	return nil
@@ -1122,7 +1130,7 @@ func MarkTaskDispatched(t *task.Task, h *host.Host) error {
 	event.LogTaskDispatched(t.Id, t.Execution, h.Id)
 
 	if t.IsPartOfDisplay() {
-		return UpdateDisplayTask(t.DisplayTask)
+		return UpdateDisplayTaskForTask(t)
 	}
 
 	return nil
@@ -1217,7 +1225,11 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	idsToRestart := []string{}
 	for _, t := range tasksToRestart {
 		if t.IsPartOfDisplay() {
-			displayTasksToCheck[t.DisplayTask.Id] = *t.DisplayTask
+			dt, err := t.GetDisplayTask()
+			if err != nil {
+				return results, errors.Wrapf(err, "error getting display task")
+			}
+			displayTasksToCheck[t.DisplayTask.Id] = *dt
 		} else if t.DisplayOnly {
 			displayTasksToCheck[t.Id] = t
 		} else if t.IsPartOfSingleHostTaskGroup() {
@@ -1278,7 +1290,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return nil
 	}
 
-	t, err := task.FindOne(task.ById(h.RunningTask))
+	t, err := task.FindOneId(h.RunningTask)
 	if err != nil {
 		return errors.Wrapf(err, "database error clearing task '%s' from host '%s'",
 			t.Id, h.Id)
@@ -1317,7 +1329,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
 				var execTask *task.Task
-				execTask, err = task.FindOne(task.ById(etID))
+				execTask, err = task.FindOneId(etID)
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
 				}
@@ -1333,23 +1345,35 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		if err = t.DisplayTask.SetResetWhenFinished(); err != nil {
+		dt, err := t.GetDisplayTask()
+		if err != nil {
+			return errors.Wrap(err, "error getting display task")
+		}
+		if err = dt.SetResetWhenFinished(); err != nil {
 			return errors.Wrap(err, "can't mark display task for reset")
 		}
-		return errors.Wrap(checkResetDisplayTask(t.DisplayTask), "can't check display task reset")
+		return errors.Wrap(checkResetDisplayTask(dt), "can't check display task reset")
 	}
 
 	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.MonitorPackage, &t.Details), "problem resetting task")
 }
 
-func UpdateDisplayTask(t *task.Task) error {
-	if !t.DisplayOnly {
-		return fmt.Errorf("%s is not a display task", t.Id)
+// UpdateDisplayTaskForTask updates the status of the given execution task's display task
+func UpdateDisplayTaskForTask(t *task.Task) error {
+	if !t.IsPartOfDisplay() {
+		return errors.Errorf("%s is not an execution task", t.Id)
+	}
+	dt, err := t.GetDisplayTask()
+	if err != nil {
+		return errors.Wrapf(err, "error getting display task for task")
+	}
+	if !dt.DisplayOnly {
+		return errors.Errorf("%s is not a display task", dt.Id)
 	}
 
 	var timeTaken time.Duration
 	var statusTask task.Task
-	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+	execTasks, err := task.Find(task.ByIds(dt.ExecutionTasks))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
@@ -1360,7 +1384,10 @@ func UpdateDisplayTask(t *task.Task) error {
 	for _, execTask := range execTasks {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
-			t.Activated = true
+			dt.Activated = true
+			if utility.IsZeroTime(dt.ActivatedTime) {
+				dt.ActivatedTime = time.Now()
+			}
 		}
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
@@ -1391,10 +1418,11 @@ func UpdateDisplayTask(t *task.Task) error {
 	}
 
 	update := bson.M{
-		task.StatusKey:    statusTask.Status,
-		task.ActivatedKey: t.Activated,
-		task.TimeTakenKey: timeTaken,
-		task.DetailsKey:   statusTask.Details,
+		task.StatusKey:        statusTask.Status,
+		task.ActivatedKey:     dt.Activated,
+		task.ActivatedTimeKey: dt.ActivatedTime,
+		task.TimeTakenKey:     timeTaken,
+		task.DetailsKey:       statusTask.Details,
 	}
 
 	if startTime != time.Unix(1<<62, 0) {
@@ -1405,7 +1433,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	}
 
 	// refresh task status from db in case of race
-	taskWithStatus, err := task.FindOneNoMerge(task.ById(t.Id).WithFields(task.StatusKey))
+	taskWithStatus, err := task.FindOne(task.ById(dt.Id).WithFields(task.StatusKey))
 	if err != nil {
 		return errors.Wrap(err, "error refreshing task status from db")
 	}
@@ -1415,7 +1443,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	wasFinished := taskWithStatus.IsFinished()
 	err = task.UpdateOne(
 		bson.M{
-			task.IdKey: t.Id,
+			task.IdKey: dt.Id,
 		},
 		bson.M{
 			"$set": update,
@@ -1423,11 +1451,11 @@ func UpdateDisplayTask(t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "error updating display task")
 	}
-	t.Status = statusTask.Status
-	t.Details = statusTask.Details
-	t.TimeTaken = timeTaken
-	if !wasFinished && t.IsFinished() {
-		event.LogTaskFinished(t.Id, t.Execution, "", t.ResultStatus())
+	dt.Status = statusTask.Status
+	dt.Details = statusTask.Details
+	dt.TimeTaken = timeTaken
+	if !wasFinished && dt.IsFinished() {
+		event.LogTaskFinished(dt.Id, dt.Execution, "", dt.ResultStatus())
 	}
 	return nil
 }

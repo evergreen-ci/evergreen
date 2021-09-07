@@ -73,7 +73,10 @@ type Query {
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
+  taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
+  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
 }
+
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
@@ -141,9 +144,11 @@ type Mutation {
 }
 
 # Array of activated and unactivated versions
-# nextPage represents the last activated order number returned
+# nextPageOrderNumber represents the last order number returned and is used for pagination
+# prevPageOrderNumber represents the order number of the previous page and is also used for pagination
 type MainlineCommits {
   nextPageOrderNumber: Int
+  prevPageOrderNumber: Int
   versions: [MainlineCommitVersion!]!
 }
 
@@ -172,10 +177,24 @@ type Version {
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   isPatch: Boolean!
   patch: Patch
+  childVersions: [Version]
   taskCount: Int
   baseVersionID: String
   versionTiming: VersionTiming
   parameters: [Parameter!]!
+  taskStatuses: [String!]!
+  baseTaskStatuses: [String!]!
+  manifest: Manifest
+}
+
+type Manifest {
+  id: String!
+  revision: String!
+  project: String!
+  branch: String!
+  isBase: Boolean!
+  moduleOverrides: StringMap
+  modules: Map
 }
 
 type VersionTiming {
@@ -198,6 +217,12 @@ input MainlineCommitsOptions {
   limit: Int = 7
   skipOrderNumber: Int = 0
 }
+
+type BuildVariantTuple {
+  buildVariant: String!
+  displayName: String!
+}
+
 enum SpawnHostStatusActions {
   START
   STOP
@@ -259,6 +284,7 @@ input PatchConfigure {
   description: String!
   variantsTasks: [VariantTasks!]!
   parameters: [ParameterInput]
+  patchTriggerAliases: [String!]
 }
 input VariantTasks {
   variant: String!
@@ -488,6 +514,11 @@ type FileDiff {
   description: String!
 }
 
+type PatchTriggerAlias {
+  alias: String!
+  childProject: String!
+}
+
 type UserPatches {
   patches: [Patch!]!
   filteredPatchCount: Int!
@@ -528,6 +559,7 @@ type Patch {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
+  patchTriggerAliases: [PatchTriggerAlias!]!
 }
 
 type Build {
@@ -734,7 +766,7 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
-  patchMetadata: PatchMetadata!
+  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int
   project: Project
@@ -751,7 +783,8 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   totalTestCount: Int!
-  version: String!
+  version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
+  versionMetadata: Version!
 }
 
 type BaseTaskInfo {
@@ -1040,3 +1073,4 @@ type Source {
 scalar Time
 scalar Duration
 scalar StringMap
+scalar Map

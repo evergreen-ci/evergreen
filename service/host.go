@@ -74,7 +74,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 	}
 	runningTask := &task.Task{}
 	if h.RunningTask != "" {
-		runningTask, err = task.FindOne(task.ById(h.RunningTask))
+		runningTask, err = task.FindOneId(h.RunningTask)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

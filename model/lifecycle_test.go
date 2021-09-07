@@ -877,13 +877,15 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if a non-empty list of TasksWithBatchTime is passed in, only the specified tasks should be activated", func() {
 			batchTimeTasks := []string{"taskA", "taskB"}
 			args := BuildCreateArgs{
-				Project:            *project,
-				Version:            *v,
-				TaskIDs:            table,
-				BuildName:          buildVar1.Name,
-				ActivateBuild:      true,
-				TaskNames:          []string{"taskA", "taskB", "taskC", "taskD"}, // excluding display tasks
-				TasksWithBatchTime: batchTimeTasks,
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       table,
+				BuildName:     buildVar1.Name,
+				ActivateBuild: true,
+				TaskNames:     []string{"taskA", "taskB", "taskC", "taskD"}, // excluding display tasks
+				ActivationInfo: specificActivationInfo{activationTasks: map[string][]string{
+					buildVar1.Name: batchTimeTasks},
+				},
 			}
 			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
@@ -1324,7 +1326,9 @@ func TestCreateTaskGroup(t *testing.T) {
     - name: example_task_3
   `
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(projYml), "test", proj)
+	ctx := context.Background()
+	opts := GetProjectOpts{}
+	_, err := LoadProjectInto(ctx, []byte(projYml), opts, "test", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	v := &Version{
@@ -1956,7 +1960,7 @@ func resetTaskData() error {
 	if err := displayTask.Insert(); err != nil {
 		return err
 	}
-	if err := UpdateDisplayTask(displayTask); err != nil {
+	if err := UpdateDisplayTaskForTask(task5); err != nil {
 		return err
 	}
 	return nil

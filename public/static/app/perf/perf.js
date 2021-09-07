@@ -12,7 +12,7 @@ const findIndex = function (list, predicate) {
 };
 
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $filter, ChangePointsService,
+  $scope, $window, $http, $location, $filter, ChangePointsService, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, $sce,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings,
   TestSample, CANARY_EXCLUSION_REGEX, ApiTaskdata,
   loadBuildFailures, loadChangePoints, loadTrendData,
@@ -41,7 +41,6 @@ $http.get(templateUrl).success(function(template) {
   $scope.trendResults = [];
   $scope.jiraHost = $window.jiraHost
   $scope.threadsToSelect = {};
-
   $scope.isGraphHidden = function (k) {
     return $scope.hiddenGraphs[k] == true
   }
@@ -180,10 +179,11 @@ $http.get(templateUrl).success(function(template) {
   }
 
   // needed to do Math.abs in the template code.
-  $scope.user = $window.user
+  $scope.user = $window.user;
   $scope.Math = $window.Math;
   $scope.conf = $window.plugins["perf"];
   $scope.task = $window.task_data;
+  $scope.newTrendChartsUi = $sce.trustAsResourceUrl(PERFORMANCE_ANALYSIS_AND_TRIAGE_API.UI + "/task/" + ($scope.task ? $scope.task.id : null) + "/performanceData");
   $scope.tablemode = 'maxthroughput';
   $scope.threadLevelsRadio = {
     options: [{

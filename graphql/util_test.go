@@ -46,6 +46,12 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 			GroupID:  "llama",
 		},
 	}
+	baseTestStatusMap := map[string]string{
+		"A test": "Pass",
+		"B test": "Fail",
+		"C test": "Pass",
+		"D test": "Fail",
+	}
 
 	for _, test := range []struct {
 		name            string
@@ -147,17 +153,30 @@ func TestFilterSortAndPaginateCedarTestResults(t *testing.T) {
 			expectedResults: testResults[3:],
 			expectedCount:   4,
 		},
+		{
+			name:    "SortByBaseStatus",
+			sortBy:  "base_status",
+			sortDir: 1,
+			expectedResults: []apimodels.CedarTestResult{
+				testResults[1],
+				testResults[3],
+				testResults[0],
+				testResults[2],
+			},
+			expectedCount: 4,
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			results, count := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
-				GroupID:     test.groupId,
-				Limit:       test.limitParam,
-				Page:        test.pageParam,
-				SortBy:      test.sortBy,
-				SortDir:     test.sortDir,
-				Statuses:    test.statuses,
-				TestName:    test.testName,
-				TestResults: testResults,
+				GroupID:          test.groupId,
+				Limit:            test.limitParam,
+				Page:             test.pageParam,
+				SortBy:           test.sortBy,
+				SortDir:          test.sortDir,
+				Statuses:         test.statuses,
+				TestName:         test.testName,
+				TestResults:      testResults,
+				BaseTestStatuses: baseTestStatusMap,
 			})
 			assert.Equal(t, test.expectedResults, results)
 			assert.Equal(t, test.expectedCount, count)
@@ -176,7 +195,7 @@ func TestAddDisplayTasksToPatchReq(t *testing.T) {
 				}},
 		},
 	}
-	req := PatchVariantsTasksRequest{
+	req := PatchUpdate{
 		VariantsTasks: []patch.VariantTasks{
 			{Variant: "bv", Tasks: []string{"t1", "dt1", "dt2"}},
 		},

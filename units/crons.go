@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
@@ -750,7 +751,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			hosts[i], hosts[j] = hosts[j], hosts[i]
 		}
 
-		// refersh HostInit
+		// refresh HostInit
 		if err := env.Settings().HostInit.Get(env); err != nil {
 			return errors.Wrap(err, "problem getting global config")
 		}
@@ -1250,6 +1251,37 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(queue.Put(ctx, NewTestResultsCleanupJob(utility.RoundPartOfMinute(2))))
 		catcher.Add(queue.Put(ctx, NewTestLogsCleanupJob(utility.RoundPartOfMinute(2))))
 
+		return catcher.Resolve()
+	}
+}
+
+func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "error fetching initializing pods")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing job to create pod %s", p.ID)
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByNeedsTermination()
+		if err != nil {
+			return errors.Wrap(err, "finding pods that have been stuck starting for too long")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodTerminationJob(p.ID, "pod has been stuck starting for too long", utility.RoundPartOfMinute(0))), "pod '%s'", p.ID)
+		}
 		return catcher.Resolve()
 	}
 }

@@ -16,8 +16,8 @@ const (
 	username  = "me"
 )
 
-func getMockProjectSettings() model.ProjectSettingsEvent {
-	return model.ProjectSettingsEvent{
+func getMockProjectSettings() model.ProjectSettings {
+	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
 			Enabled: utility.TruePtr(),

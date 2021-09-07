@@ -162,7 +162,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}
@@ -306,7 +306,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}
@@ -388,7 +388,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}); err != nil {
+		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}

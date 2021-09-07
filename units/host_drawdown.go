@@ -60,12 +60,13 @@ func makeHostDrawdownJob() *hostDrawdownJob {
 	return j
 }
 
-func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, id string) amboy.Job {
+func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, ts string) amboy.Job {
 	j := makeHostDrawdownJob()
 	j.DrawdownInfo = drawdownInfo
 	j.env = env
-	j.SetID(fmt.Sprintf("%s.%s", hostDrawdownJobName, id))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostDrawdownJobName, id)})
+	jobID := fmt.Sprintf("%s.%s.%s", hostDrawdownJobName, drawdownInfo.DistroID, ts)
+	j.SetID(jobID)
+	j.SetScopes([]string{jobID})
 	return j
 }
 
@@ -108,6 +109,8 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		"id":                   j.ID(),
 		"job_type":             hostDrawdownJobName,
 		"distro_id":            j.DrawdownInfo.DistroID,
+		"new_cap_target":       j.DrawdownInfo.NewCapTarget,
+		"existing_host_count":  existingHostCount,
 		"num_idle_hosts":       len(idleHosts),
 		"num_terminated_hosts": j.Terminated,
 		"terminated_hosts":     j.TerminatedHosts,

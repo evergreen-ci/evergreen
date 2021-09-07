@@ -136,10 +136,21 @@ func (c *AWSPodConfig) Validate() error {
 type ECSConfig struct {
 	// TaskDefinitionPrefix is the prefix for the task definition families.
 	TaskDefinitionPrefix string `bson:"task_definition_prefix,omitempty" json:"task_definition_prefix,omitempty" yaml:"task_definition_prefix,omitempty"`
-	TaskRole             string `bson:"task_role,omitempty" json:"task_role,omitempty" yaml:"task_role,omitempty"`
-	ExecutionRole        string `bson:"execution_role,omitempty" json:"execution_role,omitempty" yaml:"execution_role,omitempty"`
+	// TaskRole is the IAM role that ECS tasks can assume to make AWS requests.
+	TaskRole string `bson:"task_role,omitempty" json:"task_role,omitempty" yaml:"task_role,omitempty"`
+	// ExecutionRole is the IAM role that ECS container instances can assume to
+	// make AWS requests.
+	ExecutionRole string `bson:"execution_role,omitempty" json:"execution_role,omitempty" yaml:"execution_role,omitempty"`
+	// AWSVPC specifies configuration when ECS tasks use AWSVPC networking.
+	AWSVPC AWSVPCConfig `bson:"awsvpc,omitempty" json:"awsvpc,omitempty" yaml:"awsvpc,omitempty"`
 	// Clusters specify the configuration of each particular ECS cluster.
 	Clusters []ECSClusterConfig `bson:"clusters,omitempty" json:"clusters,omitempty" yaml:"clusters,omitempty"`
+}
+
+// AWSVPCConfig represents configuration when using AWSVPC networking in ECS.
+type AWSVPCConfig struct {
+	Subnets        []string `bson:"subnets,omitempty" json:"subnets,omitempty" yaml:"subnets,omitempty"`
+	SecurityGroups []string `bson:"security_groups,omitempty" json:"security_groups,omitempty" yaml:"security_groups,omitempty"`
 }
 
 // Validate checks that the required ECS configuration options are given.

@@ -43,6 +43,7 @@ func TestDBUtils(t *testing.T) {
 				bson.M{},
 				NoProjection,
 				NoSort,
+				NoHint,
 				out,
 			)
 			So(err, ShouldBeNil)
@@ -124,6 +125,7 @@ func TestDBUtils(t *testing.T) {
 				bson.M{},
 				NoProjection,
 				NoSort,
+				NoHint,
 				out,
 			)
 			So(err, ShouldBeNil)
@@ -170,6 +172,7 @@ func TestDBUtils(t *testing.T) {
 				bson.M{},
 				NoProjection,
 				NoSort,
+				NoHint,
 				out,
 			)
 			So(err, ShouldBeNil)
@@ -229,6 +232,7 @@ func TestDBUtils(t *testing.T) {
 				[]string{"-field_one"},
 				1,
 				1,
+				NoHint,
 				&out,
 			)
 			So(err, ShouldBeNil)
@@ -280,6 +284,7 @@ func TestDBUtils(t *testing.T) {
 				},
 				NoProjection,
 				NoSort,
+				NoHint,
 				out,
 			)
 			So(err, ShouldBeNil)
@@ -337,6 +342,7 @@ func TestDBUtils(t *testing.T) {
 				NoSort,
 				NoSkip,
 				NoLimit,
+				NoHint,
 				&out,
 			)
 			So(err, ShouldBeNil)
@@ -372,6 +378,7 @@ func TestDBUtils(t *testing.T) {
 					bson.M{},
 					NoProjection,
 					NoSort,
+					NoHint,
 					out,
 				)
 				So(err, ShouldBeNil)
@@ -408,6 +415,7 @@ func TestDBUtils(t *testing.T) {
 					bson.M{},
 					NoProjection,
 					NoSort,
+					NoHint,
 					out,
 				)
 				So(err, ShouldBeNil)

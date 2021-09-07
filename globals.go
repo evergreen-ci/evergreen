@@ -12,6 +12,7 @@ import (
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
+	ParentPatchUser = "parent_patch"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
@@ -252,7 +253,8 @@ const (
 
 	DefaultShutdownWaitSeconds = 10
 
-	RetryGenerateTasksError = "error saving config in `generate.tasks`"
+	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
+	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 )
 
 var InternalAliases []string = []string{
@@ -345,8 +347,11 @@ const (
 )
 
 const (
+	// CredentialsCollection is the collection containing TLS credentials to
+	// connect to a Jasper service running on a host.
 	CredentialsCollection = "credentials"
-	CAName                = "evergreen"
+	// CAName is the name of the root CA for the TLS credentials.
+	CAName = "evergreen"
 )
 
 // cloud provider related constants

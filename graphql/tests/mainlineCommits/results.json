@@ -236,6 +236,7 @@
                         "version": {
                            "id": "evergreen_version5",
                            "author": "mohamed.khelif",
+                           "order": 5,
                            "buildVariants": [
                               {
                                  "variant": "enterprise-ubuntu1604-64",
@@ -252,7 +253,9 @@
                         },
                         "rolledUpVersions": null
                      }
-                  ]
+                  ],
+                  "nextPageOrderNumber": 5,
+                  "prevPageOrderNumber": null
                },
                "page2": {
                   "versions": [
@@ -261,11 +264,13 @@
                         "rolledUpVersions": [
                            {
                               "id": "evergreen_version4",
-                              "activated": false
+                              "activated": false,
+                              "order": 4
                            },
                            {
                               "id": "evergreen_version3",
-                              "activated": false
+                              "activated": false,
+                              "order": 3
                            }
                         ]
                      },
@@ -273,6 +278,7 @@
                         "version": {
                            "id": "evergreen_version2",
                            "author": "mohamed.khelif",
+                           "order": 2,
                            "buildVariants": [
                               {
                                  "variant": "enterprise-ubuntu1604-64",
@@ -294,7 +300,36 @@
                         },
                         "rolledUpVersions": null
                      }
-                  ]
+                  ],
+                  "nextPageOrderNumber": 2,
+                  "prevPageOrderNumber": null
+               },
+               "prevPage": {
+                  "versions": [
+                     {
+                        "version": {
+                           "id": "evergreen_version5",
+                           "author": "mohamed.khelif",
+                           "order": 5,
+                           "buildVariants": [
+                              {
+                                 "variant": "enterprise-ubuntu1604-64",
+                                 "displayName": "Ubuntu 16.04",
+                                 "tasks": [
+                                    {
+                                       "id": "task_5",
+                                       "displayName": "Some Other Task",
+                                       "status": "success"
+                                    }
+                                 ]
+                              }
+                           ]
+                        },
+                        "rolledUpVersions": null
+                     }
+                  ],
+                  "nextPageOrderNumber": 5,
+                  "prevPageOrderNumber": null
                }
             }
          }

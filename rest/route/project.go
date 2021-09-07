@@ -290,9 +290,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	before, err := h.sc.GetProjectSettingsEvent(h.newProjectRef)
+	before, err := h.sc.GetProjectSettings(h.newProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent before update for project'%s'", h.project))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings before update for project'%s'", h.project))
 	}
 
 	adminsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteAdmins)
@@ -308,8 +308,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	allAuthorizedTeams := utility.UniqueStrings(append(h.originalProject.GitTagAuthorizedTeams, h.newProjectRef.GitTagAuthorizedTeams...))
 	h.newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
-	// if the project ref doesn't use the repo, then this will just be the same as newProjectRef
-	// used to verify that if something is set to nil in the request, we properly validate using the merged project ref
+	// If the project ref doesn't use the repo, then this will just be the same as newProjectRef.
+	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
 	mergedProjectRef, err := dbModel.GetProjectRefMergedWithRepo(*h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error merging project ref"))
@@ -466,7 +466,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		h.apiNewProjectRef.Subscriptions[i].OwnerType = utility.ToStringPtr(string(event.OwnerTypeProject))
 		h.apiNewProjectRef.Subscriptions[i].Owner = utility.ToStringPtr(h.project)
 	}
-	if err = h.sc.SaveSubscriptions(h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions); err != nil {
+	// Don't use Save to delete subscriptions, since we aren't checking the
+	// delete subscriptions list against the inputted list of subscriptions.
+	if err = h.sc.SaveSubscriptions(h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions, true); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.project))
 	}
 
@@ -478,9 +480,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.project))
 	}
 
-	after, err := h.sc.GetProjectSettingsEvent(h.newProjectRef)
+	after, err := h.sc.GetProjectSettings(h.newProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettingsEvent after update for project '%s'", h.project))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings after update for project '%s'", h.project))
 	}
 	if err = dbModel.LogProjectModified(h.newProjectRef.Id, h.user.Username(), before, after); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error logging project modification for project '%s'", h.project))
@@ -555,12 +557,12 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	p, err := h.sc.FindProjectById(h.projectName, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectName))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project '%s'", h.projectName))
 	}
 	if p != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot create project with id '%s'", h.projectName),
+			Message:    fmt.Sprintf("cannot create project with identifier '%s'", h.projectName),
 		})
 	}
 

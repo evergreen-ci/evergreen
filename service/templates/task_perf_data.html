@@ -195,6 +195,14 @@
     }
   </style>
   <div class="panel perf-panel" ng-if="conf.enabled && !!perfSample">
+    <iframe
+            width="100%"
+            height="1000px"
+            src="[[newTrendChartsUi]]"
+            title="Task Performance Data"
+    ></iframe>
+  </div>
+  <div class="panel perf-panel" ng-if="conf.enabled && !!perfSample">
     <div class="pull-right text-right">
       <div ng-show="!!perfTagData.tag"><i class="fa fa-tag"></i>&nbsp;Tagged as&nbsp;<div class="label label-primary">[[perfTagData.tag]]</div><i class="fa fa-times" ng-click="deleteTag()"></i></div>
       <div ng-show="!perfTagData.tag">

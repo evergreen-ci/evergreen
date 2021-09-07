@@ -90,7 +90,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	}
 	var setupScriptPath string
 	if len(r.FormValue("task_id")) > 0 {
-		spawnTask, err = task.FindOne(task.ById(r.FormValue("task_id")))
+		spawnTask, err = task.FindOneId(r.FormValue("task_id"))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error finding task '%s'", r.FormValue("task_id")))
@@ -297,7 +297,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if putParams.UseTaskConfig {
-		t, err := task.FindOneNoMerge(task.ById(putParams.Task))
+		t, err := task.FindOne(task.ById(putParams.Task))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error finding task"))
 			return

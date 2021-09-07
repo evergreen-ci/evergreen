@@ -578,6 +578,17 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 	return err
 }
 
+// SetChildPatches appends the IDs of downstream patches to the db
+func (p *Patch) SetChildPatches() error {
+	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.ChildPatches}},
+		},
+	)
+}
+
 // SetActivation sets the patch to the desired activation state without
 // modifying the activation status of the possibly corresponding version.
 func (p *Patch) SetActivation(activated bool) error {
@@ -724,23 +735,23 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	return childrenOrSiblings, parentPatch, nil
 }
 
-func (p *Patch) SetParametersFromParent() error {
+func (p *Patch) SetParametersFromParent() (*Patch, error) {
 	parentPatchId := p.Triggers.ParentPatch
 	parentPatch, err := FindOneId(parentPatchId)
 	if err != nil {
-		return errors.Wrap(err, "can't get parent patch")
+		return nil, errors.Wrap(err, "can't get parent patch")
 	}
 	if parentPatch == nil {
-		return errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+		return nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
 	}
 
 	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
 		err = p.SetParameters(downstreamParams)
 		if err != nil {
-			return errors.Wrap(err, "error setting parameters")
+			return nil, errors.Wrap(err, "error setting parameters")
 		}
 	}
-	return nil
+	return parentPatch, nil
 }
 
 func (p *Patch) GetRequester() string {

@@ -268,7 +268,7 @@ type APIWorkstationSetupCommand struct {
 
 func (c *APIWorkstationConfig) ToService() (interface{}, error) {
 	res := model.WorkstationConfig{}
-	res.GitClone = c.GitClone
+	res.GitClone = utility.ToBoolPtr(c.GitClone)
 	for _, apiCmd := range c.SetupCommands {
 		cmd := model.WorkstationSetupCommand{}
 		cmd.Command = utility.FromStringPtr(apiCmd.Command)
@@ -287,7 +287,7 @@ func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 		config = *h.(*model.WorkstationConfig)
 	}
 
-	c.GitClone = config.GitClone
+	c.GitClone = utility.FromBoolPtr(config.GitClone)
 	for _, cmd := range config.SetupCommands {
 		apiCmd := APIWorkstationSetupCommand{}
 		apiCmd.Command = utility.ToStringPtr(cmd.Command)

@@ -12,18 +12,18 @@ import (
 
 // BasicECSPod represents a pod that is backed by AWS ECS.
 type BasicECSPod struct {
-	client    cocoa.ECSClient
-	vault     cocoa.Vault
-	resources cocoa.ECSPodResources
-	status    cocoa.ECSPodStatus
+	client     cocoa.ECSClient
+	vault      cocoa.Vault
+	resources  cocoa.ECSPodResources
+	statusInfo cocoa.ECSPodStatusInfo
 }
 
 // BasicECSPodOptions are options to create a basic ECS pod.
 type BasicECSPodOptions struct {
-	Client    cocoa.ECSClient
-	Vault     cocoa.Vault
-	Resources *cocoa.ECSPodResources
-	Status    *cocoa.ECSPodStatus
+	Client     cocoa.ECSClient
+	Vault      cocoa.Vault
+	Resources  *cocoa.ECSPodResources
+	StatusInfo *cocoa.ECSPodStatusInfo
 }
 
 // NewBasicECSPodOptions returns new uninitialized options to create a basic ECS
@@ -50,9 +50,9 @@ func (o *BasicECSPodOptions) SetResources(res cocoa.ECSPodResources) *BasicECSPo
 	return o
 }
 
-// SetStatus sets the current status for the pod.
-func (o *BasicECSPodOptions) SetStatus(s cocoa.ECSPodStatus) *BasicECSPodOptions {
-	o.Status = &s
+// SetStatusInfo sets the current status for the pod.
+func (o *BasicECSPodOptions) SetStatusInfo(s cocoa.ECSPodStatusInfo) *BasicECSPodOptions {
+	o.StatusInfo = &s
 	return o
 }
 
@@ -60,12 +60,15 @@ func (o *BasicECSPodOptions) SetStatus(s cocoa.ECSPodStatus) *BasicECSPodOptions
 func (o *BasicECSPodOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(o.Client == nil, "must specify a client")
-	catcher.NewWhen(o.Resources == nil, "must specify at least one underlying resource being used by the pod")
-	catcher.NewWhen(o.Resources != nil && o.Resources.TaskID == nil, "must specify task ID")
-	if o.Status != nil {
-		catcher.Add(o.Status.Validate())
+	if o.Resources != nil {
+		catcher.Wrap(o.Resources.Validate(), "invalid resources")
 	} else {
-		catcher.New("must specify a status")
+		catcher.New("missing pod resources")
+	}
+	if o.StatusInfo != nil {
+		catcher.Add(o.StatusInfo.Validate())
+	} else {
+		catcher.New("must specify status information")
 	}
 	return catcher.Resolve()
 }
@@ -93,8 +96,8 @@ func MergeECSPodOptions(opts ...*BasicECSPodOptions) BasicECSPodOptions {
 			merged.Resources = opt.Resources
 		}
 
-		if opt.Status != nil {
-			merged.Status = opt.Status
+		if opt.StatusInfo != nil {
+			merged.StatusInfo = opt.StatusInfo
 		}
 	}
 
@@ -108,64 +111,80 @@ func NewBasicECSPod(opts ...*BasicECSPodOptions) (*BasicECSPod, error) {
 		return nil, errors.Wrap(err, "invalid options")
 	}
 	return &BasicECSPod{
-		client:    merged.Client,
-		vault:     merged.Vault,
-		resources: *merged.Resources,
-		status:    *merged.Status,
+		client:     merged.Client,
+		vault:      merged.Vault,
+		resources:  *merged.Resources,
+		statusInfo: *merged.StatusInfo,
 	}, nil
 }
 
-// Info returns information about the current state of the pod.
-func (p *BasicECSPod) Info(ctx context.Context) (*cocoa.ECSPodInfo, error) {
-	return &cocoa.ECSPodInfo{
-		Status:    p.status,
-		Resources: p.resources,
-	}, nil
+// Resources returns information about the resources used by the pod.
+func (p *BasicECSPod) Resources() cocoa.ECSPodResources {
+	return p.resources
+}
+
+// StatusInfo returns the cached status information for the pod.
+func (p *BasicECSPod) StatusInfo() cocoa.ECSPodStatusInfo {
+	return p.statusInfo
 }
 
 // Stop stops the running pod without cleaning up any of its underlying
 // resources.
 func (p *BasicECSPod) Stop(ctx context.Context) error {
-	if p.status != cocoa.StatusRunning {
-		return errors.Errorf("pod can only be stopped when status is '%s', but current status is '%s'", cocoa.StatusRunning, p.status)
+	switch p.statusInfo.Status {
+	case cocoa.StatusStopped, cocoa.StatusDeleted:
+		return nil
 	}
 
-	stopTask := &ecs.StopTaskInput{}
+	var stopTask ecs.StopTaskInput
 	stopTask.SetCluster(utility.FromStringPtr(p.resources.Cluster)).SetTask(utility.FromStringPtr(p.resources.TaskID))
 
-	if _, err := p.client.StopTask(ctx, stopTask); err != nil {
+	if _, err := p.client.StopTask(ctx, &stopTask); err != nil {
 		return errors.Wrap(err, "stopping pod")
 	}
 
-	p.status = cocoa.StatusStopped
+	p.statusInfo.Status = cocoa.StatusStopped
+	for i := range p.statusInfo.Containers {
+		p.statusInfo.Containers[i].Status = cocoa.StatusStopped
+	}
 
 	return nil
 }
 
 // Delete deletes the pod and its owned resources.
 func (p *BasicECSPod) Delete(ctx context.Context) error {
-	if err := p.Stop(ctx); err != nil {
-		return errors.Wrap(err, "stopping pod")
-	}
+	catcher := grip.NewBasicCatcher()
+
+	catcher.Wrap(p.Stop(ctx), "stopping pod")
 
 	if utility.FromBoolPtr(p.resources.TaskDefinition.Owned) {
-		deregisterDef := ecs.DeregisterTaskDefinitionInput{}
+		var deregisterDef ecs.DeregisterTaskDefinitionInput
 		deregisterDef.SetTaskDefinition(utility.FromStringPtr(p.resources.TaskDefinition.ID))
 
 		if _, err := p.client.DeregisterTaskDefinition(ctx, &deregisterDef); err != nil {
-			return errors.Wrap(err, "deregistering task definition")
+			catcher.Wrap(err, "deregistering task definition")
 		}
 	}
 
-	for _, secret := range p.resources.Secrets {
-		if utility.FromBoolPtr(secret.Owned) {
-			if err := p.vault.DeleteSecret(ctx, utility.FromStringPtr(secret.Name)); err != nil {
-				return errors.Wrap(err, "deleting secret")
+	for _, c := range p.resources.Containers {
+		for _, s := range c.Secrets {
+			if !utility.FromBoolPtr(s.Owned) {
+				continue
 			}
+
+			id := utility.FromStringPtr(s.ID)
+			catcher.Wrapf(p.vault.DeleteSecret(ctx, id), "deleting secret '%s' for container '%s'", id, utility.FromStringPtr(c.Name))
 		}
 	}
 
-	p.status = cocoa.StatusDeleted
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+
+	p.statusInfo.Status = cocoa.StatusDeleted
+	for i := range p.statusInfo.Containers {
+		p.statusInfo.Containers[i].Status = cocoa.StatusDeleted
+	}
 
 	return nil
 }

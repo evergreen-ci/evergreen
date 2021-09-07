@@ -319,7 +319,7 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 		return nil, errors.Errorf("no patch found for id '%s'", existingPatchID)
 	}
 
-	newPatch, err := model.MakeMergePatchFromExisting(existingPatch, commitMessage)
+	newPatch, err := model.MakeMergePatchFromExisting(ctx, existingPatch, commitMessage)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create new patch")
 	}

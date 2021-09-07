@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/evergreen-ci/utility"
 )
@@ -26,6 +27,7 @@ type ECSTaskDefinition struct {
 	Tags          map[string]string
 	Status        *string
 	Registered    *time.Time
+	Deregistered  *time.Time
 }
 
 func newECSTaskDefinition(def *ecs.RegisterTaskDefinitionInput, rev int) ECSTaskDefinition {
@@ -74,6 +76,7 @@ func (d *ECSTaskDefinition) export() *ecs.TaskDefinition {
 		Status:               d.Status,
 		ContainerDefinitions: containerDefs,
 		RegisteredAt:         d.Registered,
+		DeregisteredAt:       d.Deregistered,
 	}
 }
 
@@ -144,7 +147,7 @@ func newECSTask(in *ecs.RunTaskInput, taskDef ECSTaskDefinition) ECSTask {
 		ARN:         utility.ToStringPtr(id.String()),
 		Cluster:     in.Cluster,
 		ExecEnabled: in.EnableExecuteCommand,
-		Status:      utility.ToStringPtr(ecs.DesiredStatusRunning),
+		Status:      utility.ToStringPtr(ecs.DesiredStatusPending),
 		GoalStatus:  utility.ToStringPtr(ecs.DesiredStatusRunning),
 		Created:     utility.ToTimePtr(time.Now()),
 		TaskDef:     taskDef,
@@ -184,12 +187,14 @@ func (t *ECSTask) export() *ecs.Task {
 
 // ECSContainer represents a mock running ECS container within a task.
 type ECSContainer struct {
-	ARN      *string
-	TaskARN  *string
-	Name     *string
-	Image    *string
-	CPU      *int64
-	MemoryMB *int64
+	ARN        *string
+	TaskARN    *string
+	Name       *string
+	Image      *string
+	CPU        *int64
+	MemoryMB   *int64
+	Status     *string
+	GoalStatus *string
 }
 
 func newECSContainer(def ECSContainerDefinition, task ECSTask) ECSContainer {
@@ -204,12 +209,14 @@ func newECSContainer(def ECSContainerDefinition, task ECSTask) ECSContainer {
 	}
 
 	return ECSContainer{
-		ARN:      utility.ToStringPtr(id.String()),
-		TaskARN:  task.ARN,
-		Name:     def.Name,
-		Image:    def.Image,
-		CPU:      def.CPU,
-		MemoryMB: def.MemoryMB,
+		ARN:        utility.ToStringPtr(id.String()),
+		TaskARN:    task.ARN,
+		Name:       def.Name,
+		Image:      def.Image,
+		CPU:        def.CPU,
+		MemoryMB:   def.MemoryMB,
+		Status:     utility.ToStringPtr(ecs.DesiredStatusPending),
+		GoalStatus: utility.ToStringPtr(ecs.DesiredStatusRunning),
 	}
 }
 
@@ -219,6 +226,7 @@ func (c *ECSContainer) export() *ecs.Container {
 		TaskArn:      c.TaskARN,
 		Name:         c.Name,
 		Image:        c.Image,
+		LastStatus:   c.Status,
 	}
 
 	if c.CPU != nil {
@@ -317,30 +325,125 @@ func init() {
 	}
 }
 
+// getLatestTaskDefinition is the same as getTaskDefinition, but it can also
+// interpret the identifier as just a family name if it's neither an ARN or a
+// family and revision. If it matches a family name, the latest active revision
+// is returned.
+func (s *ECSService) getLatestTaskDefinition(id string) (*ECSTaskDefinition, error) {
+	if def, err := s.getTaskDefinition(id); err == nil {
+		return def, nil
+	}
+
+	// Use the latest active revision in the family if no revision is given.
+	family := id
+	revisions, ok := GlobalECSService.TaskDefs[family]
+	if !ok {
+		return nil, errors.New("task definition family not found")
+	}
+
+	for i := len(revisions) - 1; i >= 0; i-- {
+		if utility.FromStringPtr(revisions[i].Status) == ecs.TaskDefinitionStatusActive {
+			return &revisions[i], nil
+		}
+	}
+
+	return nil, errors.New("task definition family has no active revisions")
+}
+
+// getTaskDefinition gets a task definition by the identifier. The identifier is
+// either the task definition's ARN or its family and revision.
+func (s *ECSService) getTaskDefinition(id string) (*ECSTaskDefinition, error) {
+	if arn.IsARN(id) {
+		family, revNum, found := s.taskDefIndexFromARN(id)
+		if !found {
+			return nil, errors.New("task definition not found")
+		}
+		return &GlobalECSService.TaskDefs[family][revNum-1], nil
+	}
+
+	family, revNum, err := parseFamilyAndRevision(id)
+	if err == nil {
+		revisions, ok := GlobalECSService.TaskDefs[family]
+		if !ok {
+			return nil, errors.New("task definition family not found")
+		}
+		if revNum > len(revisions) {
+			return nil, errors.New("task definition revision not found")
+		}
+
+		return &revisions[revNum-1], nil
+	}
+
+	return nil, errors.New("task definition not found")
+}
+
+// parseFamilyAndRevision parses a task definition in the format
+// "family:revision".
+func parseFamilyAndRevision(taskDef string) (family string, revNum int, err error) {
+	partition := strings.LastIndex(taskDef, ":")
+	if partition == -1 {
+		return "", -1, errors.New("task definition is not in family:revision format")
+	}
+
+	family = taskDef[:partition]
+
+	revNum, err = strconv.Atoi(taskDef[partition+1:])
+	if err != nil {
+		return "", -1, errors.Wrap(err, "parsing revision")
+	}
+	if revNum <= 0 {
+		return "", -1, errors.New("revision cannot be less than 1")
+	}
+
+	return family, revNum, nil
+}
+
+func (s *ECSService) taskDefIndexFromARN(arn string) (family string, revNum int, found bool) {
+	for family, revisions := range GlobalECSService.TaskDefs {
+		for revIdx, def := range revisions {
+			if utility.FromStringPtr(def.ARN) == arn {
+				return family, revIdx + 1, true
+			}
+		}
+	}
+	return "", -1, false
+}
+
 // ECSClient provides a mock implementation of a cocoa.ECSClient. This makes
 // it possible to introspect on inputs to the client and control the client's
 // output. It provides some default implementations where possible.
 type ECSClient struct {
 	RegisterTaskDefinitionInput  *ecs.RegisterTaskDefinitionInput
 	RegisterTaskDefinitionOutput *ecs.RegisterTaskDefinitionOutput
+	RegisterTaskDefinitionError  error
 
-	DeregisterTaskDefinitionInput  *ecs.DeregisterTaskDefinitionInput
-	DeregisterTaskDefinitionOutput *ecs.DeregisterTaskDefinitionOutput
+	DescribeTaskDefinitionInput  *ecs.DescribeTaskDefinitionInput
+	DescribeTaskDefinitionOutput *ecs.DescribeTaskDefinitionOutput
+	DescribeTaskDefinitionError  error
 
 	ListTaskDefinitionsInput  *ecs.ListTaskDefinitionsInput
 	ListTaskDefinitionsOutput *ecs.ListTaskDefinitionsOutput
+	ListTaskDefinitionsError  error
+
+	DeregisterTaskDefinitionInput  *ecs.DeregisterTaskDefinitionInput
+	DeregisterTaskDefinitionOutput *ecs.DeregisterTaskDefinitionOutput
+	DeregisterTaskDefinitionError  error
 
 	RunTaskInput  *ecs.RunTaskInput
 	RunTaskOutput *ecs.RunTaskOutput
+	RunTaskError  error
 
 	DescribeTasksInput  *ecs.DescribeTasksInput
 	DescribeTasksOutput *ecs.DescribeTasksOutput
+	DescribeTasksError  error
 
 	ListTasksInput  *ecs.ListTasksInput
 	ListTasksOutput *ecs.ListTasksOutput
+	ListTasksError  error
 
 	StopTaskInput  *ecs.StopTaskInput
 	StopTaskOutput *ecs.StopTaskOutput
+	StopTaskError  error
 
 	CloseError error
 }
@@ -351,12 +454,12 @@ type ECSClient struct {
 func (c *ECSClient) RegisterTaskDefinition(ctx context.Context, in *ecs.RegisterTaskDefinitionInput) (*ecs.RegisterTaskDefinitionOutput, error) {
 	c.RegisterTaskDefinitionInput = in
 
-	if c.RegisterTaskDefinitionOutput != nil {
-		return c.RegisterTaskDefinitionOutput, nil
+	if c.RegisterTaskDefinitionOutput != nil || c.RegisterTaskDefinitionError != nil {
+		return c.RegisterTaskDefinitionOutput, c.RegisterTaskDefinitionError
 	}
 
 	if in.Family == nil {
-		return nil, errors.New("missing family")
+		return nil, awserr.New(ecs.ErrCodeInvalidParameterException, "missing family", nil)
 	}
 
 	revisions := GlobalECSService.TaskDefs[utility.FromStringPtr(in.Family)]
@@ -372,83 +475,26 @@ func (c *ECSClient) RegisterTaskDefinition(ctx context.Context, in *ecs.Register
 	}, nil
 }
 
-// DeregisterTaskDefinition saves the input and deletes an existing mock task
-// definition. The mock output can be customized. By default, it will delete a
-// cached task definition if it exists.
-func (c *ECSClient) DeregisterTaskDefinition(ctx context.Context, in *ecs.DeregisterTaskDefinitionInput) (*ecs.DeregisterTaskDefinitionOutput, error) {
-	c.DeregisterTaskDefinitionInput = in
+// DescribeTaskDefinition saves the input and returns information about the
+// matching task definition. The mock output can be customized. By default, it
+// will return the task definition information if it exists.
+func (c *ECSClient) DescribeTaskDefinition(ctx context.Context, in *ecs.DescribeTaskDefinitionInput) (*ecs.DescribeTaskDefinitionOutput, error) {
+	c.DescribeTaskDefinitionInput = in
 
-	if c.DeregisterTaskDefinitionOutput != nil {
-		return c.DeregisterTaskDefinitionOutput, nil
-	}
-
-	if in.TaskDefinition == nil {
-		return nil, errors.New("missing task definition")
+	if c.DescribeTaskDefinitionOutput != nil || c.DescribeTaskDefinitionError != nil {
+		return c.DescribeTaskDefinitionOutput, c.DescribeTaskDefinitionError
 	}
 
 	id := utility.FromStringPtr(in.TaskDefinition)
 
-	if arn.IsARN(id) {
-		family, revNum, found := taskDefIndexFromARN(id)
-		if !found {
-			return nil, errors.New("task definition not found")
-		}
-		taskDef := GlobalECSService.TaskDefs[family][revNum-1]
-		taskDef.Status = utility.ToStringPtr(ecs.TaskDefinitionStatusInactive)
-		GlobalECSService.TaskDefs[family][revNum-1] = taskDef
-
-		return &ecs.DeregisterTaskDefinitionOutput{
-			TaskDefinition: taskDef.export(),
-		}, nil
-	}
-
-	family, revNum, err := parseFamilyAndRevision(id)
+	def, err := GlobalECSService.getLatestTaskDefinition(id)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid task definition")
+		return nil, awserr.New(ecs.ErrCodeResourceNotFoundException, "task definition not found", err)
 	}
 
-	revisions, ok := GlobalECSService.TaskDefs[family]
-	if !ok {
-		return nil, errors.New("family not found")
-	}
-	if len(revisions) < revNum {
-		return nil, errors.New("revision not found")
-	}
-
-	taskDef := revisions[revNum-1]
-	taskDef.Status = utility.ToStringPtr(ecs.TaskDefinitionStatusInactive)
-	GlobalECSService.TaskDefs[family][revNum-1] = taskDef
-
-	return &ecs.DeregisterTaskDefinitionOutput{
-		TaskDefinition: taskDef.export(),
+	return &ecs.DescribeTaskDefinitionOutput{
+		TaskDefinition: def.export(),
 	}, nil
-}
-
-func parseFamilyAndRevision(taskDef string) (family string, revNum int, err error) {
-	partition := strings.LastIndex(taskDef, ":")
-	if partition == -1 {
-		return "", -1, errors.New("task definition is not in family:revision format")
-	}
-
-	family = taskDef[:partition]
-
-	revNum, err = strconv.Atoi(taskDef[partition+1:])
-	if err != nil {
-		return "", -1, errors.Wrap(err, "parsing revision")
-	}
-
-	return family, revNum, nil
-}
-
-func taskDefIndexFromARN(arn string) (family string, revNum int, found bool) {
-	for family, revisions := range GlobalECSService.TaskDefs {
-		for revIdx, def := range revisions {
-			if utility.FromStringPtr(def.ARN) == arn {
-				return family, revIdx + 1, true
-			}
-		}
-	}
-	return "", -1, false
 }
 
 // ListTaskDefinitions saves the input and lists all matching task definitions.
@@ -457,8 +503,8 @@ func taskDefIndexFromARN(arn string) (family string, revNum int, found bool) {
 func (c *ECSClient) ListTaskDefinitions(ctx context.Context, in *ecs.ListTaskDefinitionsInput) (*ecs.ListTaskDefinitionsOutput, error) {
 	c.ListTaskDefinitionsInput = in
 
-	if c.ListTaskDefinitionsOutput != nil {
-		return c.ListTaskDefinitionsOutput, nil
+	if c.ListTaskDefinitionsOutput != nil || c.ListTaskDefinitionsError != nil {
+		return c.ListTaskDefinitionsOutput, c.ListTaskDefinitionsError
 	}
 
 	var arns []*string
@@ -480,67 +526,64 @@ func (c *ECSClient) ListTaskDefinitions(ctx context.Context, in *ecs.ListTaskDef
 	}, nil
 }
 
+// DeregisterTaskDefinition saves the input and deletes an existing mock task
+// definition. The mock output can be customized. By default, it will delete a
+// cached task definition if it exists.
+func (c *ECSClient) DeregisterTaskDefinition(ctx context.Context, in *ecs.DeregisterTaskDefinitionInput) (*ecs.DeregisterTaskDefinitionOutput, error) {
+	c.DeregisterTaskDefinitionInput = in
+
+	if c.DeregisterTaskDefinitionOutput != nil || c.DeregisterTaskDefinitionError != nil {
+		return c.DeregisterTaskDefinitionOutput, c.DeregisterTaskDefinitionError
+	}
+
+	if in.TaskDefinition == nil {
+		return nil, awserr.New(ecs.ErrCodeInvalidParameterException, "missing task definition", nil)
+	}
+
+	id := utility.FromStringPtr(in.TaskDefinition)
+
+	def, err := GlobalECSService.getTaskDefinition(id)
+	if err != nil {
+		return nil, awserr.New(ecs.ErrCodeResourceNotFoundException, "task definition not found", err)
+	}
+
+	def.Status = utility.ToStringPtr(ecs.TaskDefinitionStatusInactive)
+	def.Deregistered = utility.ToTimePtr(time.Now())
+	GlobalECSService.TaskDefs[utility.FromStringPtr(def.Family)][utility.FromInt64Ptr(def.Revision)-1] = *def
+
+	return &ecs.DeregisterTaskDefinitionOutput{
+		TaskDefinition: def.export(),
+	}, nil
+}
+
 // RunTask saves the input options and returns the mock result of running a task
 // definition. The mock output can be customized. By default, it will create
 // mock output based on the input.
 func (c *ECSClient) RunTask(ctx context.Context, in *ecs.RunTaskInput) (*ecs.RunTaskOutput, error) {
 	c.RunTaskInput = in
 
-	if c.RunTaskOutput != nil {
-		return c.RunTaskOutput, nil
+	if c.RunTaskOutput != nil || c.RunTaskError != nil {
+		return c.RunTaskOutput, c.RunTaskError
 	}
 
 	if in.TaskDefinition == nil {
-		return nil, errors.New("missing task definition")
+		return nil, awserr.New(ecs.ErrCodeInvalidParameterException, "missing task definition", nil)
 	}
 
 	clusterName := c.getOrDefaultCluster(in.Cluster)
 	cluster, ok := GlobalECSService.Clusters[clusterName]
 	if !ok {
-		return nil, errors.New("cluster not found")
+		return nil, awserr.New(ecs.ErrCodeResourceNotFoundException, "cluster not found", nil)
 	}
 
 	taskDefID := utility.FromStringPtr(in.TaskDefinition)
 
-	if arn.IsARN(taskDefID) {
-		family, revNum, found := taskDefIndexFromARN(taskDefID)
-		if !found {
-			return nil, errors.New("task definition not found")
-		}
-		taskDef := GlobalECSService.TaskDefs[family][revNum-1]
-		task := newECSTask(in, taskDef)
-
-		cluster[utility.FromStringPtr(task.ARN)] = task
-
-		return &ecs.RunTaskOutput{
-			Tasks: []*ecs.Task{task.export()},
-		}, nil
+	def, err := GlobalECSService.getLatestTaskDefinition(taskDefID)
+	if err != nil {
+		return nil, awserr.New(ecs.ErrCodeResourceNotFoundException, "task definition not found", err)
 	}
 
-	var taskDef ECSTaskDefinition
-	family, revNum, err := parseFamilyAndRevision(taskDefID)
-	if err == nil {
-		revisions, ok := GlobalECSService.TaskDefs[family]
-		if !ok {
-			return nil, errors.New("task definition family not found")
-		}
-		if len(revisions) < revNum {
-			return nil, errors.New("task definition revision not found")
-		}
-
-		taskDef = revisions[revNum-1]
-	} else {
-		// Use the latest revision if none is specified.
-		family = taskDefID
-		revisions, ok := GlobalECSService.TaskDefs[family]
-		if !ok {
-			return nil, errors.New("task definition family not found")
-		}
-
-		taskDef = revisions[len(revisions)-1]
-	}
-
-	task := newECSTask(in, taskDef)
+	task := newECSTask(in, *def)
 
 	cluster[utility.FromStringPtr(task.ARN)] = task
 
@@ -562,13 +605,13 @@ func (c *ECSClient) getOrDefaultCluster(name *string) string {
 func (c *ECSClient) DescribeTasks(ctx context.Context, in *ecs.DescribeTasksInput) (*ecs.DescribeTasksOutput, error) {
 	c.DescribeTasksInput = in
 
-	if c.DescribeTasksOutput != nil {
-		return c.DescribeTasksOutput, nil
+	if c.DescribeTasksOutput != nil || c.DescribeTasksError != nil {
+		return c.DescribeTasksOutput, c.DescribeTasksError
 	}
 
 	cluster, ok := GlobalECSService.Clusters[c.getOrDefaultCluster(in.Cluster)]
 	if !ok {
-		return nil, errors.New("cluster not found")
+		return nil, awserr.New(ecs.ErrCodeResourceNotFoundException, "cluster not found", nil)
 	}
 
 	ids := utility.FromStringPtrSlice(in.Tasks)
@@ -600,13 +643,13 @@ func (c *ECSClient) DescribeTasks(ctx context.Context, in *ecs.DescribeTasksInpu
 func (c *ECSClient) ListTasks(ctx context.Context, in *ecs.ListTasksInput) (*ecs.ListTasksOutput, error) {
 	c.ListTasksInput = in
 
-	if c.ListTasksOutput != nil {
-		return c.ListTasksOutput, nil
+	if c.ListTasksOutput != nil || c.ListTasksError != nil {
+		return c.ListTasksOutput, c.ListTasksError
 	}
 
 	cluster, ok := GlobalECSService.Clusters[c.getOrDefaultCluster(in.Cluster)]
 	if !ok {
-		return nil, errors.New("cluster not found")
+		return nil, awserr.New(ecs.ErrCodeResourceNotFoundException, "cluster not found", nil)
 	}
 
 	var arns []string
@@ -633,18 +676,18 @@ func (c *ECSClient) ListTasks(ctx context.Context, in *ecs.ListTasksInput) (*ecs
 func (c *ECSClient) StopTask(ctx context.Context, in *ecs.StopTaskInput) (*ecs.StopTaskOutput, error) {
 	c.StopTaskInput = in
 
-	if c.StopTaskOutput != nil {
-		return c.StopTaskOutput, nil
+	if c.StopTaskOutput != nil || c.StopTaskError != nil {
+		return c.StopTaskOutput, c.StopTaskError
 	}
 
 	cluster, ok := GlobalECSService.Clusters[c.getOrDefaultCluster(in.Cluster)]
 	if !ok {
-		return nil, errors.New("cluster not found")
+		return nil, awserr.New(ecs.ErrCodeResourceNotFoundException, "cluster not found", nil)
 	}
 
 	task, ok := cluster[utility.FromStringPtr(in.Task)]
 	if !ok {
-		return nil, errors.New("task not found")
+		return nil, awserr.New(ecs.ErrCodeResourceNotFoundException, "task not found", nil)
 	}
 
 	task.Status = utility.ToStringPtr(ecs.DesiredStatusStopped)

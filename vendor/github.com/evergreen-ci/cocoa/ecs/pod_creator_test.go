@@ -62,9 +62,11 @@ func TestBasicECSPodCreator(t *testing.T) {
 
 			c, err := NewBasicECSClient(*awsOpts)
 			require.NoError(t, err)
-			defer c.Close(ctx)
+			defer func() {
+				assert.NoError(t, c.Close(ctx))
+			}()
 
-			secretsClient, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
+			smc, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
 				Creds:  credentials.NewEnvCredentials(),
 				Region: aws.String(testutil.AWSRegion()),
 				Role:   aws.String(testutil.AWSRole()),
@@ -75,9 +77,11 @@ func TestBasicECSPodCreator(t *testing.T) {
 			})
 			require.NoError(t, err)
 			require.NotNil(t, c)
-			defer secretsClient.Close(ctx)
+			defer func() {
+				assert.NoError(t, smc.Close(tctx))
+			}()
 
-			m := secret.NewBasicSecretsManager(secretsClient)
+			m := secret.NewBasicSecretsManager(smc)
 			require.NotNil(t, m)
 
 			tCase(tctx, t, c, m)
@@ -107,7 +111,9 @@ func TestECSPodCreator(t *testing.T) {
 
 			c, err := NewBasicECSClient(*awsOpts)
 			require.NoError(t, err)
-			defer c.Close(tctx)
+			defer func() {
+				assert.NoError(t, c.Close(ctx))
+			}()
 
 			podCreator, err := NewBasicECSPodCreator(c, nil)
 			require.NoError(t, err)
@@ -134,7 +140,7 @@ func TestECSPodCreator(t *testing.T) {
 			require.NoError(t, err)
 			defer c.Close(tctx)
 
-			secretsClient, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
+			smc, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
 				Creds:  credentials.NewEnvCredentials(),
 				Region: aws.String(testutil.AWSRegion()),
 				Role:   aws.String(testutil.AWSRole()),
@@ -144,9 +150,11 @@ func TestECSPodCreator(t *testing.T) {
 				HTTPClient: hc,
 			})
 			require.NoError(t, err)
-			defer secretsClient.Close(tctx)
+			defer func() {
+				assert.NoError(t, smc.Close(tctx))
+			}()
 
-			m := secret.NewBasicSecretsManager(secretsClient)
+			m := secret.NewBasicSecretsManager(smc)
 			require.NotNil(t, m)
 
 			podCreator, err := NewBasicECSPodCreator(c, m)
