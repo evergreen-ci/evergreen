@@ -469,8 +469,8 @@ func (s *AgentSuite) TestAbort() {
 	s.NoError(err)
 	s.Equal(evergreen.TaskUnscheduled, s.mockCommunicator.EndTaskResult.Detail.Status)
 	shouldFind := map[string]bool{
-		"initial task setup":                    false,
-		"Sending final status as: undispatched": false,
+		"initial task setup":                   false,
+		"Sending final status as: unscheduled": false,
 	}
 	s.Require().NoError(s.tc.logger.Close())
 	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
