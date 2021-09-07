@@ -204,7 +204,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting failed tasks in version")
 	}
-	if abortedTasks == failedTasks {
+	if abortedTasks > 0 && abortedTasks == failedTasks {
 		return nil, nil
 	}
 
