@@ -134,7 +134,10 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 	}
 
-	UpdateBuildAndVersionStatusForTask(t)
+	err := UpdateBuildAndVersionStatusForTask(t)
+	if err != nil {
+		return errors.Wrap(err, "problem updating build and version status for task")
+	}
 	return nil
 }
 
