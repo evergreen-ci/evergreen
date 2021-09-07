@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -184,7 +185,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return err
 	}
 	if err != nil {
-		return errors.Wrap(err, "error saving config in `generate.tasks`")
+		return errors.Wrap(err, evergreen.SaveGenerateTasksError)
 	}
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
@@ -277,14 +278,17 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"job":           j.ID(),
 		"version":       t.Version,
 	}))
-	grip.ErrorWhen(!shouldNoop, message.WrapError(err, message.Fields{
-		"message":       "generate.tasks finished with errors",
-		"operation":     "generate.tasks",
-		"duration_secs": time.Since(start).Seconds(),
-		"task":          t.Id,
-		"job":           j.ID(),
-		"version":       t.Version,
-	}))
+	if err != nil && !shouldNoop {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "generate.tasks finished with errors",
+			"operation":     "generate.tasks",
+			"duration_secs": time.Since(start).Seconds(),
+			"task":          t.Id,
+			"job":           j.ID(),
+			"version":       t.Version,
+			"is_save_error": strings.Contains(err.Error(), evergreen.SaveGenerateTasksError),
+		}))
+	}
 
 	if err != nil && !shouldNoop {
 		j.AddError(err)

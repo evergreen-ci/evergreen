@@ -144,6 +144,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settings.Notify.SMTP.AdminEmail))
+	s.EqualValues(testSettings.PodInit.S3BaseURL, settings.PodInit.S3BaseURL)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settings.Providers.AWS.EC2Keys))
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settings.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.Providers.GCE.ClientEmail, settings.Providers.GCE.ClientEmail)
@@ -152,6 +153,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settings.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settings.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settings.ServiceFlags.HostInitDisabled)
+	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settings.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settings.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
@@ -176,17 +178,17 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	// test that invalid container pools errors
 	badSettingsTwo := testutil.MockConfig()
 	badSettingsTwo.ContainerPools.Pools = []evergreen.ContainerPool{
-		evergreen.ContainerPool{
+		{
 			Distro:        "valid-distro",
 			Id:            "test-pool-1",
 			MaxContainers: 100,
 		},
-		evergreen.ContainerPool{
+		{
 			Distro:        "invalid-distro",
 			Id:            "test-pool-2",
 			MaxContainers: 100,
 		},
-		evergreen.ContainerPool{
+		{
 			Distro:        "missing-distro",
 			Id:            "test-pool-3",
 			MaxContainers: 100,
@@ -404,7 +406,13 @@ func TestRestartVersionsRoute(t *testing.T) {
 func TestAdminEventRoute(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection), "Error clearing collections")
+	require.NoError(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection, distro.Collection), "Error clearing collections")
+
+	// required by test to have a valid distro in the collection
+	d1 := &distro.Distro{
+		Id: "valid-distro",
+	}
+	require.NoError(d1.Insert())
 
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()

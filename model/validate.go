@@ -32,7 +32,7 @@ func ValidateTask(taskId string, checkSecret bool, r *http.Request) (*task.Task,
 	if taskId == "" {
 		return nil, http.StatusBadRequest, errors.New("missing task id")
 	}
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}

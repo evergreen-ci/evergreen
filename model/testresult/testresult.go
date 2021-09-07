@@ -74,11 +74,12 @@ var (
 	TaskIDKey          = bsonutil.MustHaveTag(TestResult{}, "TaskID")
 	ExecutionKey       = bsonutil.MustHaveTag(TestResult{}, "Execution")
 
-	ProjectKey              = bsonutil.MustHaveTag(TestResult{}, "Project")
-	BuildVariantKey         = bsonutil.MustHaveTag(TestResult{}, "BuildVariant")
-	DistroIdKey             = bsonutil.MustHaveTag(TestResult{}, "DistroId")
-	RequesterKey            = bsonutil.MustHaveTag(TestResult{}, "Requester")
-	DisplayNameKey          = bsonutil.MustHaveTag(TestResult{}, "DisplayName")
+	ProjectKey      = bsonutil.MustHaveTag(TestResult{}, "Project")
+	BuildVariantKey = bsonutil.MustHaveTag(TestResult{}, "BuildVariant")
+	DistroIdKey     = bsonutil.MustHaveTag(TestResult{}, "DistroId")
+	RequesterKey    = bsonutil.MustHaveTag(TestResult{}, "Requester")
+	DisplayNameKey  = bsonutil.MustHaveTag(TestResult{}, "DisplayName")
+
 	ExecutionDisplayNameKey = bsonutil.MustHaveTag(TestResult{}, "ExecutionDisplayName")
 	TaskCreateTimeKey       = bsonutil.MustHaveTag(TestResult{}, "TaskCreateTime")
 )
@@ -100,9 +101,6 @@ func FilterByTaskIDAndExecution(taskID string, execution int) db.Q {
 	return db.Query(bson.M{
 		TaskIDKey:    taskID,
 		ExecutionKey: execution,
-	}).Project(bson.M{
-		TaskIDKey:    0,
-		ExecutionKey: 0,
 	})
 }
 
@@ -195,15 +193,37 @@ func TestResultCount(taskIds []string, testName string, statuses []string, execu
 	return Count(q)
 }
 
-// TestResultsFilterSortPaginate is a query for returning test results to the taskTests GQL Query.
-func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses []string, sortBy string, sortDir, page, limit, execution int) ([]TestResult, error) {
+// TestResultsFilterSortPaginateOpts contains filtering, sorting and pagination options for TestResults.
+type TestResultsFilterSortPaginateOpts struct {
+	Execution int
+	GroupID   string
+	Limit     int
+	Page      int
+	SortBy    string
+	SortDir   int
+	Statuses  []string
+	// TaskIDs is the only required option.
+	TaskIDs  []string
+	TestID   string
+	TestName string
+}
+
+// TestResultsFilterSortPaginate is a query for returning test results from supplied TaskIDs.
+func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]TestResult, error) {
 	tests := []TestResult{}
 	match := bson.M{
-		TaskIDKey:    bson.M{"$in": taskIds},
-		ExecutionKey: execution,
+		TaskIDKey:    bson.M{"$in": opts.TaskIDs},
+		ExecutionKey: opts.Execution,
 	}
-	if len(statuses) > 0 {
-		match[StatusKey] = bson.M{"$in": statuses}
+	if len(opts.Statuses) > 0 {
+		match[StatusKey] = bson.M{"$in": opts.Statuses}
+	}
+	if opts.GroupID != "" {
+		match[GroupIDKey] = opts.GroupID
+	}
+
+	if opts.TestID != "" {
+		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(opts.TestID)}
 	}
 
 	pipeline := []bson.M{
@@ -212,45 +232,49 @@ func TestResultsFilterSortPaginate(taskIds []string, testName string, statuses [
 
 	project := bson.M{
 		"duration":         bson.M{"$subtract": []string{"$" + EndTimeKey, "$" + StartTimeKey}},
-		TestFileKey:        1,
 		DisplayTestNameKey: 1,
-		GroupIDKey:         1,
-		TaskIDKey:          1,
 		EndTimeKey:         1,
+		ExitCodeKey:        1,
+		GroupIDKey:         1,
+		LineNumKey:         1,
+		LogIDKey:           1,
 		StartTimeKey:       1,
 		StatusKey:          1,
-		URLRawKey:          1,
+		TaskIDKey:          1,
+		TestFileKey:        1,
 		URLKey:             1,
-		LogIDKey:           1,
-		LineNumKey:         1,
-		ExitCodeKey:        1,
+		URLRawKey:          1,
 	}
 
 	pipeline = append(pipeline, bson.M{"$project": project})
 
-	if len(testName) > 0 {
-		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": testName, "$options": "i"}}}
+	if opts.TestName != "" {
+		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": opts.TestName, "$options": "i"}}}
 		pipeline = append(pipeline, matchTestName)
 	}
 
 	sort := bson.D{}
-	if sortBy != "" {
-		sort = append(sort, primitive.E{Key: sortBy, Value: sortDir})
+	if opts.SortBy != "" {
+		sort = append(sort, primitive.E{Key: opts.SortBy, Value: opts.SortDir})
+	} else if opts.Limit > 0 { // Don't sort TaskID if unlimited EVG-13965.
+		sort = append(sort, primitive.E{Key: TaskIDKey, Value: 1})
 	}
+
 	sort = append(sort, primitive.E{Key: "_id", Value: 1})
 	pipeline = append(pipeline, bson.M{"$sort": sort})
 
-	if page > 0 {
-		pipeline = append(pipeline, bson.M{"$skip": page * limit})
+	if opts.Page > 0 {
+		pipeline = append(pipeline, bson.M{"$skip": opts.Page * opts.Limit})
 	}
 
-	if limit > 0 {
-		pipeline = append(pipeline, bson.M{"$limit": limit})
+	if opts.Limit > 0 {
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 	}
 	err := db.Aggregate(Collection, pipeline, &tests)
 	if err != nil {
 		return nil, err
 	}
+
 	return tests, nil
 }
 

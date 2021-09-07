@@ -12,6 +12,7 @@ import (
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
+	ParentPatchUser = "parent_patch"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
@@ -115,6 +116,7 @@ const (
 	PatchStarted     = "started"
 	PatchSucceeded   = "succeeded"
 	PatchFailed      = "failed"
+	PatchAborted     = "aborted" // This is a display status only and not a real patch status
 	PatchAllOutcomes = "*"
 
 	PushLogPushing = "pushing"
@@ -239,22 +241,20 @@ const (
 	MergeTaskName    = "merge-patch"
 	MergeTaskGroup   = "merge-task-group"
 
-	MaxTeardownGroupTimeoutSecs = 30 * 60
-
 	DefaultJasperPort = 2385
 
 	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	VSCodePort = 2021
 
-	// can flip this when regions are configured
-	UseSpawnHostRegions = false
-
 	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the
 	// end of a patch.
 	DefaultTaskSyncAtEndTimeout = time.Hour
 
 	DefaultShutdownWaitSeconds = 10
+
+	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
+	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 )
 
 var InternalAliases []string = []string{
@@ -320,7 +320,7 @@ func VersionStatusToPatchStatus(versionStatus string) (string, error) {
 	case VersionSucceeded:
 		return PatchSucceeded, nil
 	default:
-		return "", errors.New("unknown version status")
+		return "", errors.Errorf("unknown version status: %s", versionStatus)
 	}
 }
 
@@ -337,6 +337,8 @@ const (
 	TaskSecretHeader    = "Task-Secret"
 	HostHeader          = "Host-Id"
 	HostSecretHeader    = "Host-Secret"
+	PodHeader           = "Pod-Id"
+	PodSecretHeader     = "Pod-Secret"
 	ContentTypeHeader   = "Content-Type"
 	ContentTypeValue    = "application/json"
 	ContentLengthHeader = "Content-Length"
@@ -345,8 +347,11 @@ const (
 )
 
 const (
+	// CredentialsCollection is the collection containing TLS credentials to
+	// connect to a Jasper service running on a host.
 	CredentialsCollection = "credentials"
-	CAName                = "evergreen"
+	// CAName is the name of the root CA for the TLS credentials.
+	CAName = "evergreen"
 )
 
 // cloud provider related constants
@@ -948,3 +953,19 @@ const (
 	LogTypeTask   = "task_log"
 	LogTypeSystem = "system_log"
 )
+
+type ECSClusterPlatform string
+
+const (
+	ECSClusterPlatformLinux   = "linux"
+	ECSClusterPlatformWindows = "windows"
+)
+
+func (p ECSClusterPlatform) Validate() error {
+	switch p {
+	case ECSClusterPlatformLinux, ECSClusterPlatformWindows:
+		return nil
+	default:
+		return errors.Errorf("unrecognized ECS cluster platform '%s'", p)
+	}
+}

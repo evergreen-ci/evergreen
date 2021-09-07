@@ -82,6 +82,9 @@ func (c *ApplicationInsights) CreateApplicationRequest(input *CreateApplicationI
 //   * TagsAlreadyExistException
 //   Tags are already registered for the specified application ARN.
 //
+//   * AccessDeniedException
+//   User does not have permissions to perform this action.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/application-insights-2018-11-25/CreateApplication
 func (c *ApplicationInsights) CreateApplication(input *CreateApplicationInput) (*CreateApplicationOutput, error) {
 	req, out := c.CreateApplicationRequest(input)
@@ -2707,20 +2710,86 @@ func (c *ApplicationInsights) UpdateLogPatternWithContext(ctx aws.Context, input
 	return out, req.Send()
 }
 
+// User does not have permissions to perform this action.
+type AccessDeniedException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"Message" type:"string"`
+}
+
+// String returns the string representation
+func (s AccessDeniedException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AccessDeniedException) GoString() string {
+	return s.String()
+}
+
+func newErrorAccessDeniedException(v protocol.ResponseMetadata) error {
+	return &AccessDeniedException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *AccessDeniedException) Code() string {
+	return "AccessDeniedException"
+}
+
+// Message returns the exception's message.
+func (s *AccessDeniedException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *AccessDeniedException) OrigErr() error {
+	return nil
+}
+
+func (s *AccessDeniedException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *AccessDeniedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *AccessDeniedException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
 // Describes a standalone resource or similarly grouped resources that the application
 // is made up of.
 type ApplicationComponent struct {
 	_ struct{} `type:"structure"`
 
 	// The name of the component.
-	ComponentName *string `type:"string"`
+	ComponentName *string `min:"1" type:"string"`
+
+	// If logging is supported for the resource type, indicates whether the component
+	// has configured logs to be monitored.
+	ComponentRemarks *string `type:"string"`
+
+	// Workloads detected in the application component.
+	DetectedWorkload map[string]map[string]*string `type:"map"`
 
 	// Indicates whether the application component is monitored.
 	Monitor *bool `type:"boolean"`
 
+	// The operating system of the component.
+	OsType *string `type:"string" enum:"OsType"`
+
 	// The resource type. Supported resource types include EC2 instances, Auto Scaling
 	// group, Classic ELB, Application ELB, and SQS Queue.
-	ResourceType *string `type:"string"`
+	ResourceType *string `min:"1" type:"string"`
 
 	// The stack tier of the application component.
 	Tier *string `min:"1" type:"string" enum:"Tier"`
@@ -2742,9 +2811,27 @@ func (s *ApplicationComponent) SetComponentName(v string) *ApplicationComponent 
 	return s
 }
 
+// SetComponentRemarks sets the ComponentRemarks field's value.
+func (s *ApplicationComponent) SetComponentRemarks(v string) *ApplicationComponent {
+	s.ComponentRemarks = &v
+	return s
+}
+
+// SetDetectedWorkload sets the DetectedWorkload field's value.
+func (s *ApplicationComponent) SetDetectedWorkload(v map[string]map[string]*string) *ApplicationComponent {
+	s.DetectedWorkload = v
+	return s
+}
+
 // SetMonitor sets the Monitor field's value.
 func (s *ApplicationComponent) SetMonitor(v bool) *ApplicationComponent {
 	s.Monitor = &v
+	return s
+}
+
+// SetOsType sets the OsType field's value.
+func (s *ApplicationComponent) SetOsType(v string) *ApplicationComponent {
+	s.OsType = &v
 	return s
 }
 
@@ -2763,6 +2850,11 @@ func (s *ApplicationComponent) SetTier(v string) *ApplicationComponent {
 // Describes the status of the application.
 type ApplicationInfo struct {
 	_ struct{} `type:"structure"`
+
+	// Indicates whether Application Insights can listen to CloudWatch events for
+	// the application resources, such as instance terminated, failed deployment,
+	// and others.
+	CWEMonitorEnabled *bool `type:"boolean"`
 
 	// The lifecycle of the application.
 	LifeCycle *string `type:"string"`
@@ -2797,6 +2889,12 @@ func (s ApplicationInfo) GoString() string {
 	return s.String()
 }
 
+// SetCWEMonitorEnabled sets the CWEMonitorEnabled field's value.
+func (s *ApplicationInfo) SetCWEMonitorEnabled(v bool) *ApplicationInfo {
+	s.CWEMonitorEnabled = &v
+	return s
+}
+
 // SetLifeCycle sets the LifeCycle field's value.
 func (s *ApplicationInfo) SetLifeCycle(v string) *ApplicationInfo {
 	s.LifeCycle = &v
@@ -2829,8 +2927,8 @@ func (s *ApplicationInfo) SetResourceGroupName(v string) *ApplicationInfo {
 
 // The request is not understood by the server.
 type BadRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -2847,17 +2945,17 @@ func (s BadRequestException) GoString() string {
 
 func newErrorBadRequestException(v protocol.ResponseMetadata) error {
 	return &BadRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s BadRequestException) Code() string {
+func (s *BadRequestException) Code() string {
 	return "BadRequestException"
 }
 
 // Message returns the exception's message.
-func (s BadRequestException) Message() string {
+func (s *BadRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2865,22 +2963,22 @@ func (s BadRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s BadRequestException) OrigErr() error {
+func (s *BadRequestException) OrigErr() error {
 	return nil
 }
 
-func (s BadRequestException) Error() string {
+func (s *BadRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s BadRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *BadRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s BadRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *BadRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The event information.
@@ -2957,6 +3055,11 @@ func (s *ConfigurationEvent) SetMonitoredResourceARN(v string) *ConfigurationEve
 type CreateApplicationInput struct {
 	_ struct{} `type:"structure"`
 
+	// Indicates whether Application Insights can listen to CloudWatch events for
+	// the application resources, such as instance terminated, failed deployment,
+	// and others.
+	CWEMonitorEnabled *bool `type:"boolean"`
+
 	// When set to true, creates opsItems for any problems detected on an application.
 	OpsCenterEnabled *bool `type:"boolean"`
 
@@ -3014,6 +3117,12 @@ func (s *CreateApplicationInput) Validate() error {
 	return nil
 }
 
+// SetCWEMonitorEnabled sets the CWEMonitorEnabled field's value.
+func (s *CreateApplicationInput) SetCWEMonitorEnabled(v bool) *CreateApplicationInput {
+	s.CWEMonitorEnabled = &v
+	return s
+}
+
 // SetOpsCenterEnabled sets the OpsCenterEnabled field's value.
 func (s *CreateApplicationInput) SetOpsCenterEnabled(v bool) *CreateApplicationInput {
 	s.OpsCenterEnabled = &v
@@ -3067,7 +3176,7 @@ type CreateComponentInput struct {
 	// The name of the component.
 	//
 	// ComponentName is a required field
-	ComponentName *string `type:"string" required:"true"`
+	ComponentName *string `min:"1" type:"string" required:"true"`
 
 	// The name of the resource group.
 	//
@@ -3095,6 +3204,9 @@ func (s *CreateComponentInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "CreateComponentInput"}
 	if s.ComponentName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ComponentName"))
+	}
+	if s.ComponentName != nil && len(*s.ComponentName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComponentName", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -3147,7 +3259,8 @@ func (s CreateComponentOutput) GoString() string {
 type CreateLogPatternInput struct {
 	_ struct{} `type:"structure"`
 
-	// The log pattern.
+	// The log pattern. The pattern must be DFA compatible. Patterns that utilize
+	// forward lookahead or backreference constructions are not supported.
 	//
 	// Pattern is a required field
 	Pattern *string `min:"1" type:"string" required:"true"`
@@ -3162,7 +3275,14 @@ type CreateLogPatternInput struct {
 	// PatternSetName is a required field
 	PatternSetName *string `min:"1" type:"string" required:"true"`
 
-	// Rank of the log pattern.
+	// Rank of the log pattern. Must be a value between 1 and 1,000,000. The patterns
+	// are sorted by rank, so we recommend that you set your highest priority patterns
+	// with the lowest rank. A pattern of rank 1 will be the first to get matched
+	// to a log line. A pattern of rank 1,000,000 will be last to get matched. When
+	// you configure custom log patterns from the console, a Low severity pattern
+	// translates to a 750,000 rank. A Medium severity pattern translates to a 500,000
+	// rank. And a High severity pattern translates to a 250,000 rank. Rank values
+	// less than 1 or greater than 1,000,000 are reserved for AWS-provided patterns.
 	//
 	// Rank is a required field
 	Rank *int64 `type:"integer" required:"true"`
@@ -3343,7 +3463,7 @@ type DeleteComponentInput struct {
 	// The name of the component.
 	//
 	// ComponentName is a required field
-	ComponentName *string `type:"string" required:"true"`
+	ComponentName *string `min:"1" type:"string" required:"true"`
 
 	// The name of the resource group.
 	//
@@ -3366,6 +3486,9 @@ func (s *DeleteComponentInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "DeleteComponentInput"}
 	if s.ComponentName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ComponentName"))
+	}
+	if s.ComponentName != nil && len(*s.ComponentName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComponentName", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -3565,7 +3688,7 @@ type DescribeComponentConfigurationInput struct {
 	// The name of the component.
 	//
 	// ComponentName is a required field
-	ComponentName *string `type:"string" required:"true"`
+	ComponentName *string `min:"1" type:"string" required:"true"`
 
 	// The name of the resource group.
 	//
@@ -3588,6 +3711,9 @@ func (s *DescribeComponentConfigurationInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "DescribeComponentConfigurationInput"}
 	if s.ComponentName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ComponentName"))
+	}
+	if s.ComponentName != nil && len(*s.ComponentName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComponentName", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -3663,7 +3789,7 @@ type DescribeComponentConfigurationRecommendationInput struct {
 	// The name of the component.
 	//
 	// ComponentName is a required field
-	ComponentName *string `type:"string" required:"true"`
+	ComponentName *string `min:"1" type:"string" required:"true"`
 
 	// The name of the resource group.
 	//
@@ -3692,6 +3818,9 @@ func (s *DescribeComponentConfigurationRecommendationInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "DescribeComponentConfigurationRecommendationInput"}
 	if s.ComponentName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ComponentName"))
+	}
+	if s.ComponentName != nil && len(*s.ComponentName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComponentName", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -3760,7 +3889,7 @@ type DescribeComponentInput struct {
 	// The name of the component.
 	//
 	// ComponentName is a required field
-	ComponentName *string `type:"string" required:"true"`
+	ComponentName *string `min:"1" type:"string" required:"true"`
 
 	// The name of the resource group.
 	//
@@ -3783,6 +3912,9 @@ func (s *DescribeComponentInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "DescribeComponentInput"}
 	if s.ComponentName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ComponentName"))
+	}
+	if s.ComponentName != nil && len(*s.ComponentName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComponentName", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -4143,8 +4275,8 @@ func (s *DescribeProblemOutput) SetProblem(v *Problem) *DescribeProblemOutput {
 
 // The server encountered an internal error and is unable to complete the request.
 type InternalServerException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -4161,17 +4293,17 @@ func (s InternalServerException) GoString() string {
 
 func newErrorInternalServerException(v protocol.ResponseMetadata) error {
 	return &InternalServerException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerException) Code() string {
+func (s *InternalServerException) Code() string {
 	return "InternalServerException"
 }
 
 // Message returns the exception's message.
-func (s InternalServerException) Message() string {
+func (s *InternalServerException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4179,22 +4311,22 @@ func (s InternalServerException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerException) OrigErr() error {
+func (s *InternalServerException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerException) Error() string {
+func (s *InternalServerException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListApplicationsInput struct {
@@ -4205,7 +4337,7 @@ type ListApplicationsInput struct {
 	MaxResults *int64 `min:"1" type:"integer"`
 
 	// The token to request the next page of results.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -4223,6 +4355,9 @@ func (s *ListApplicationsInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListApplicationsInput"}
 	if s.MaxResults != nil && *s.MaxResults < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4251,7 +4386,7 @@ type ListApplicationsOutput struct {
 
 	// The token used to retrieve the next page of results. This value is null when
 	// there are no more results to return.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -4284,7 +4419,7 @@ type ListComponentsInput struct {
 	MaxResults *int64 `min:"1" type:"integer"`
 
 	// The token to request the next page of results.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 
 	// The name of the resource group.
 	//
@@ -4307,6 +4442,9 @@ func (s *ListComponentsInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListComponentsInput"}
 	if s.MaxResults != nil && *s.MaxResults < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -4346,7 +4484,7 @@ type ListComponentsOutput struct {
 	ApplicationComponentList []*ApplicationComponent `type:"list"`
 
 	// The token to request the next page of results.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -4394,7 +4532,7 @@ type ListConfigurationHistoryInput struct {
 	// parameter. Pagination continues from the end of the previous results that
 	// returned the NextToken value. This value is null when there are no more results
 	// to return.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 
 	// Resource group to which the application belongs.
 	ResourceGroupName *string `min:"1" type:"string"`
@@ -4418,6 +4556,9 @@ func (s *ListConfigurationHistoryInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListConfigurationHistoryInput"}
 	if s.MaxResults != nil && *s.MaxResults < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
 	}
 	if s.ResourceGroupName != nil && len(*s.ResourceGroupName) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("ResourceGroupName", 1))
@@ -4475,7 +4616,7 @@ type ListConfigurationHistoryOutput struct {
 	// When the results of a ListConfigurationHistory request exceed MaxResults,
 	// this value can be used to retrieve the next page of results. This value is
 	// null when there are no more results to return.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 }
 
 // String returns the string representation
@@ -4508,7 +4649,7 @@ type ListLogPatternSetsInput struct {
 	MaxResults *int64 `min:"1" type:"integer"`
 
 	// The token to request the next page of results.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 
 	// The name of the resource group.
 	//
@@ -4531,6 +4672,9 @@ func (s *ListLogPatternSetsInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListLogPatternSetsInput"}
 	if s.MaxResults != nil && *s.MaxResults < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -4571,7 +4715,7 @@ type ListLogPatternSetsOutput struct {
 
 	// The token used to retrieve the next page of results. This value is null when
 	// there are no more results to return.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 
 	// The name of the resource group.
 	ResourceGroupName *string `min:"1" type:"string"`
@@ -4613,7 +4757,7 @@ type ListLogPatternsInput struct {
 	MaxResults *int64 `min:"1" type:"integer"`
 
 	// The token to request the next page of results.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 
 	// The name of the log pattern set.
 	PatternSetName *string `min:"1" type:"string"`
@@ -4639,6 +4783,9 @@ func (s *ListLogPatternsInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListLogPatternsInput"}
 	if s.MaxResults != nil && *s.MaxResults < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
 	}
 	if s.PatternSetName != nil && len(*s.PatternSetName) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("PatternSetName", 1))
@@ -4688,7 +4835,7 @@ type ListLogPatternsOutput struct {
 
 	// The token used to retrieve the next page of results. This value is null when
 	// there are no more results to return.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 
 	// The name of the resource group.
 	ResourceGroupName *string `min:"1" type:"string"`
@@ -4734,7 +4881,7 @@ type ListProblemsInput struct {
 	MaxResults *int64 `min:"1" type:"integer"`
 
 	// The token to request the next page of results.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 
 	// The name of the resource group.
 	ResourceGroupName *string `min:"1" type:"string"`
@@ -4759,6 +4906,9 @@ func (s *ListProblemsInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListProblemsInput"}
 	if s.MaxResults != nil && *s.MaxResults < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
+	if s.NextToken != nil && len(*s.NextToken) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
 	}
 	if s.ResourceGroupName != nil && len(*s.ResourceGroupName) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("ResourceGroupName", 1))
@@ -4805,7 +4955,7 @@ type ListProblemsOutput struct {
 
 	// The token used to retrieve the next page of results. This value is null when
 	// there are no more results to return.
-	NextToken *string `type:"string"`
+	NextToken *string `min:"1" type:"string"`
 
 	// The list of problems.
 	ProblemList []*Problem `type:"list"`
@@ -4904,21 +5054,30 @@ func (s *ListTagsForResourceOutput) SetTags(v []*Tag) *ListTagsForResourceOutput
 type LogPattern struct {
 	_ struct{} `type:"structure"`
 
-	// A regular expression that defines the log pattern. A log pattern can contains
-	// at many as 50 characters, and it cannot be empty.
+	// A regular expression that defines the log pattern. A log pattern can contain
+	// as many as 50 characters, and it cannot be empty. The pattern must be DFA
+	// compatible. Patterns that utilize forward lookahead or backreference constructions
+	// are not supported.
 	Pattern *string `min:"1" type:"string"`
 
-	// The name of the log pattern. A log pattern name can contains at many as 50
+	// The name of the log pattern. A log pattern name can contain as many as 50
 	// characters, and it cannot be empty. The characters can be Unicode letters,
-	// digits or one of the following symbols: period, dash, underscore.
+	// digits, or one of the following symbols: period, dash, underscore.
 	PatternName *string `min:"1" type:"string"`
 
-	// The name of the log pattern. A log pattern name can contains at many as 30
+	// The name of the log pattern. A log pattern name can contain as many as 30
 	// characters, and it cannot be empty. The characters can be Unicode letters,
-	// digits or one of the following symbols: period, dash, underscore.
+	// digits, or one of the following symbols: period, dash, underscore.
 	PatternSetName *string `min:"1" type:"string"`
 
-	// Rank of the log pattern.
+	// Rank of the log pattern. Must be a value between 1 and 1,000,000. The patterns
+	// are sorted by rank, so we recommend that you set your highest priority patterns
+	// with the lowest rank. A pattern of rank 1 will be the first to get matched
+	// to a log line. A pattern of rank 1,000,000 will be last to get matched. When
+	// you configure custom log patterns from the console, a Low severity pattern
+	// translates to a 750,000 rank. A Medium severity pattern translates to a 500,000
+	// rank. And a High severity pattern translates to a 250,000 rank. Rank values
+	// less than 1 or greater than 1,000,000 are reserved for AWS-provided patterns.
 	Rank *int64 `type:"integer"`
 }
 
@@ -4960,8 +5119,66 @@ func (s *LogPattern) SetRank(v int64) *LogPattern {
 type Observation struct {
 	_ struct{} `type:"structure"`
 
+	// The detail type of the CloudWatch Event-based observation, for example, EC2
+	// Instance State-change Notification.
+	CloudWatchEventDetailType *string `type:"string"`
+
+	// The ID of the CloudWatch Event-based observation related to the detected
+	// problem.
+	CloudWatchEventId *string `type:"string"`
+
+	// The source of the CloudWatch Event.
+	CloudWatchEventSource *string `type:"string" enum:"CloudWatchEventSource"`
+
+	// The CodeDeploy application to which the deployment belongs.
+	CodeDeployApplication *string `type:"string"`
+
+	// The deployment group to which the CodeDeploy deployment belongs.
+	CodeDeployDeploymentGroup *string `type:"string"`
+
+	// The deployment ID of the CodeDeploy-based observation related to the detected
+	// problem.
+	CodeDeployDeploymentId *string `type:"string"`
+
+	// The instance group to which the CodeDeploy instance belongs.
+	CodeDeployInstanceGroupId *string `type:"string"`
+
+	// The status of the CodeDeploy deployment, for example SUCCESS or FAILURE.
+	CodeDeployState *string `type:"string"`
+
+	// The cause of an EBS CloudWatch event.
+	EbsCause *string `type:"string"`
+
+	// The type of EBS CloudWatch event, such as createVolume, deleteVolume or attachVolume.
+	EbsEvent *string `type:"string"`
+
+	// The request ID of an EBS CloudWatch event.
+	EbsRequestId *string `type:"string"`
+
+	// The result of an EBS CloudWatch event, such as failed or succeeded.
+	EbsResult *string `type:"string"`
+
+	// The state of the instance, such as STOPPING or TERMINATING.
+	Ec2State *string `type:"string"`
+
 	// The time when the observation ended, in epoch seconds.
 	EndTime *time.Time `type:"timestamp"`
+
+	// The Amazon Resource Name (ARN) of the AWS Health Event-based observation.
+	HealthEventArn *string `type:"string"`
+
+	// The description of the AWS Health event provided by the service, such as
+	// Amazon EC2.
+	HealthEventDescription *string `type:"string"`
+
+	// The category of the AWS Health event, such as issue.
+	HealthEventTypeCategory *string `type:"string"`
+
+	// The type of the AWS Health event, for example, AWS_EC2_POWER_CONNECTIVITY_ISSUE.
+	HealthEventTypeCode *string `type:"string"`
+
+	// The service to which the AWS Health Event belongs, such as EC2.
+	HealthService *string `type:"string"`
 
 	// The ID of the observation type.
 	Id *string `min:"38" type:"string"`
@@ -4985,6 +5202,15 @@ type Observation struct {
 	// The namespace of the observation metric.
 	MetricNamespace *string `type:"string"`
 
+	// The category of an RDS event.
+	RdsEventCategories *string `type:"string"`
+
+	// The message of an RDS event.
+	RdsEventMessage *string `type:"string"`
+
+	// The name of the S3 CloudWatch Event-based observation.
+	S3EventName *string `type:"string"`
+
 	// The source resource ARN of the observation.
 	SourceARN *string `type:"string"`
 
@@ -4994,11 +5220,44 @@ type Observation struct {
 	// The time when the observation was first detected, in epoch seconds.
 	StartTime *time.Time `type:"timestamp"`
 
+	// The Amazon Resource Name (ARN) of the step function-based observation.
+	StatesArn *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) of the step function execution-based observation.
+	StatesExecutionArn *string `type:"string"`
+
+	// The input to the step function-based observation.
+	StatesInput *string `type:"string"`
+
+	// The status of the step function-related observation.
+	StatesStatus *string `type:"string"`
+
 	// The unit of the source observation metric.
 	Unit *string `type:"string"`
 
 	// The value of the source observation metric.
 	Value *float64 `type:"double"`
+
+	// The X-Ray request error percentage for this node.
+	XRayErrorPercent *int64 `type:"integer"`
+
+	// The X-Ray request fault percentage for this node.
+	XRayFaultPercent *int64 `type:"integer"`
+
+	// The name of the X-Ray node.
+	XRayNodeName *string `type:"string"`
+
+	// The type of the X-Ray node.
+	XRayNodeType *string `type:"string"`
+
+	// The X-Ray node request average latency for this node.
+	XRayRequestAverageLatency *int64 `type:"long"`
+
+	// The X-Ray request count for this node.
+	XRayRequestCount *int64 `type:"integer"`
+
+	// The X-Ray request throttle percentage for this node.
+	XRayThrottlePercent *int64 `type:"integer"`
 }
 
 // String returns the string representation
@@ -5011,9 +5270,117 @@ func (s Observation) GoString() string {
 	return s.String()
 }
 
+// SetCloudWatchEventDetailType sets the CloudWatchEventDetailType field's value.
+func (s *Observation) SetCloudWatchEventDetailType(v string) *Observation {
+	s.CloudWatchEventDetailType = &v
+	return s
+}
+
+// SetCloudWatchEventId sets the CloudWatchEventId field's value.
+func (s *Observation) SetCloudWatchEventId(v string) *Observation {
+	s.CloudWatchEventId = &v
+	return s
+}
+
+// SetCloudWatchEventSource sets the CloudWatchEventSource field's value.
+func (s *Observation) SetCloudWatchEventSource(v string) *Observation {
+	s.CloudWatchEventSource = &v
+	return s
+}
+
+// SetCodeDeployApplication sets the CodeDeployApplication field's value.
+func (s *Observation) SetCodeDeployApplication(v string) *Observation {
+	s.CodeDeployApplication = &v
+	return s
+}
+
+// SetCodeDeployDeploymentGroup sets the CodeDeployDeploymentGroup field's value.
+func (s *Observation) SetCodeDeployDeploymentGroup(v string) *Observation {
+	s.CodeDeployDeploymentGroup = &v
+	return s
+}
+
+// SetCodeDeployDeploymentId sets the CodeDeployDeploymentId field's value.
+func (s *Observation) SetCodeDeployDeploymentId(v string) *Observation {
+	s.CodeDeployDeploymentId = &v
+	return s
+}
+
+// SetCodeDeployInstanceGroupId sets the CodeDeployInstanceGroupId field's value.
+func (s *Observation) SetCodeDeployInstanceGroupId(v string) *Observation {
+	s.CodeDeployInstanceGroupId = &v
+	return s
+}
+
+// SetCodeDeployState sets the CodeDeployState field's value.
+func (s *Observation) SetCodeDeployState(v string) *Observation {
+	s.CodeDeployState = &v
+	return s
+}
+
+// SetEbsCause sets the EbsCause field's value.
+func (s *Observation) SetEbsCause(v string) *Observation {
+	s.EbsCause = &v
+	return s
+}
+
+// SetEbsEvent sets the EbsEvent field's value.
+func (s *Observation) SetEbsEvent(v string) *Observation {
+	s.EbsEvent = &v
+	return s
+}
+
+// SetEbsRequestId sets the EbsRequestId field's value.
+func (s *Observation) SetEbsRequestId(v string) *Observation {
+	s.EbsRequestId = &v
+	return s
+}
+
+// SetEbsResult sets the EbsResult field's value.
+func (s *Observation) SetEbsResult(v string) *Observation {
+	s.EbsResult = &v
+	return s
+}
+
+// SetEc2State sets the Ec2State field's value.
+func (s *Observation) SetEc2State(v string) *Observation {
+	s.Ec2State = &v
+	return s
+}
+
 // SetEndTime sets the EndTime field's value.
 func (s *Observation) SetEndTime(v time.Time) *Observation {
 	s.EndTime = &v
+	return s
+}
+
+// SetHealthEventArn sets the HealthEventArn field's value.
+func (s *Observation) SetHealthEventArn(v string) *Observation {
+	s.HealthEventArn = &v
+	return s
+}
+
+// SetHealthEventDescription sets the HealthEventDescription field's value.
+func (s *Observation) SetHealthEventDescription(v string) *Observation {
+	s.HealthEventDescription = &v
+	return s
+}
+
+// SetHealthEventTypeCategory sets the HealthEventTypeCategory field's value.
+func (s *Observation) SetHealthEventTypeCategory(v string) *Observation {
+	s.HealthEventTypeCategory = &v
+	return s
+}
+
+// SetHealthEventTypeCode sets the HealthEventTypeCode field's value.
+func (s *Observation) SetHealthEventTypeCode(v string) *Observation {
+	s.HealthEventTypeCode = &v
+	return s
+}
+
+// SetHealthService sets the HealthService field's value.
+func (s *Observation) SetHealthService(v string) *Observation {
+	s.HealthService = &v
 	return s
 }
 
@@ -5059,6 +5426,24 @@ func (s *Observation) SetMetricNamespace(v string) *Observation {
 	return s
 }
 
+// SetRdsEventCategories sets the RdsEventCategories field's value.
+func (s *Observation) SetRdsEventCategories(v string) *Observation {
+	s.RdsEventCategories = &v
+	return s
+}
+
+// SetRdsEventMessage sets the RdsEventMessage field's value.
+func (s *Observation) SetRdsEventMessage(v string) *Observation {
+	s.RdsEventMessage = &v
+	return s
+}
+
+// SetS3EventName sets the S3EventName field's value.
+func (s *Observation) SetS3EventName(v string) *Observation {
+	s.S3EventName = &v
+	return s
+}
+
 // SetSourceARN sets the SourceARN field's value.
 func (s *Observation) SetSourceARN(v string) *Observation {
 	s.SourceARN = &v
@@ -5077,6 +5462,30 @@ func (s *Observation) SetStartTime(v time.Time) *Observation {
 	return s
 }
 
+// SetStatesArn sets the StatesArn field's value.
+func (s *Observation) SetStatesArn(v string) *Observation {
+	s.StatesArn = &v
+	return s
+}
+
+// SetStatesExecutionArn sets the StatesExecutionArn field's value.
+func (s *Observation) SetStatesExecutionArn(v string) *Observation {
+	s.StatesExecutionArn = &v
+	return s
+}
+
+// SetStatesInput sets the StatesInput field's value.
+func (s *Observation) SetStatesInput(v string) *Observation {
+	s.StatesInput = &v
+	return s
+}
+
+// SetStatesStatus sets the StatesStatus field's value.
+func (s *Observation) SetStatesStatus(v string) *Observation {
+	s.StatesStatus = &v
+	return s
+}
+
 // SetUnit sets the Unit field's value.
 func (s *Observation) SetUnit(v string) *Observation {
 	s.Unit = &v
@@ -5086,6 +5495,48 @@ func (s *Observation) SetUnit(v string) *Observation {
 // SetValue sets the Value field's value.
 func (s *Observation) SetValue(v float64) *Observation {
 	s.Value = &v
+	return s
+}
+
+// SetXRayErrorPercent sets the XRayErrorPercent field's value.
+func (s *Observation) SetXRayErrorPercent(v int64) *Observation {
+	s.XRayErrorPercent = &v
+	return s
+}
+
+// SetXRayFaultPercent sets the XRayFaultPercent field's value.
+func (s *Observation) SetXRayFaultPercent(v int64) *Observation {
+	s.XRayFaultPercent = &v
+	return s
+}
+
+// SetXRayNodeName sets the XRayNodeName field's value.
+func (s *Observation) SetXRayNodeName(v string) *Observation {
+	s.XRayNodeName = &v
+	return s
+}
+
+// SetXRayNodeType sets the XRayNodeType field's value.
+func (s *Observation) SetXRayNodeType(v string) *Observation {
+	s.XRayNodeType = &v
+	return s
+}
+
+// SetXRayRequestAverageLatency sets the XRayRequestAverageLatency field's value.
+func (s *Observation) SetXRayRequestAverageLatency(v int64) *Observation {
+	s.XRayRequestAverageLatency = &v
+	return s
+}
+
+// SetXRayRequestCount sets the XRayRequestCount field's value.
+func (s *Observation) SetXRayRequestCount(v int64) *Observation {
+	s.XRayRequestCount = &v
+	return s
+}
+
+// SetXRayThrottlePercent sets the XRayThrottlePercent field's value.
+func (s *Observation) SetXRayThrottlePercent(v int64) *Observation {
+	s.XRayThrottlePercent = &v
 	return s
 }
 
@@ -5220,8 +5671,8 @@ func (s *RelatedObservations) SetObservationList(v []*Observation) *RelatedObser
 
 // The resource is already created or in use.
 type ResourceInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -5238,17 +5689,17 @@ func (s ResourceInUseException) GoString() string {
 
 func newErrorResourceInUseException(v protocol.ResponseMetadata) error {
 	return &ResourceInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceInUseException) Code() string {
+func (s *ResourceInUseException) Code() string {
 	return "ResourceInUseException"
 }
 
 // Message returns the exception's message.
-func (s ResourceInUseException) Message() string {
+func (s *ResourceInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5256,28 +5707,28 @@ func (s ResourceInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceInUseException) OrigErr() error {
+func (s *ResourceInUseException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceInUseException) Error() string {
+func (s *ResourceInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The resource does not exist in the customer account.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -5294,17 +5745,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5312,22 +5763,22 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object that defines the tags associated with an application. A tag is
@@ -5494,8 +5945,8 @@ func (s TagResourceOutput) GoString() string {
 
 // Tags are already registered for the specified application ARN.
 type TagsAlreadyExistException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -5512,17 +5963,17 @@ func (s TagsAlreadyExistException) GoString() string {
 
 func newErrorTagsAlreadyExistException(v protocol.ResponseMetadata) error {
 	return &TagsAlreadyExistException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TagsAlreadyExistException) Code() string {
+func (s *TagsAlreadyExistException) Code() string {
 	return "TagsAlreadyExistException"
 }
 
 // Message returns the exception's message.
-func (s TagsAlreadyExistException) Message() string {
+func (s *TagsAlreadyExistException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5530,29 +5981,29 @@ func (s TagsAlreadyExistException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TagsAlreadyExistException) OrigErr() error {
+func (s *TagsAlreadyExistException) OrigErr() error {
 	return nil
 }
 
-func (s TagsAlreadyExistException) Error() string {
+func (s *TagsAlreadyExistException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TagsAlreadyExistException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TagsAlreadyExistException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TagsAlreadyExistException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TagsAlreadyExistException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The number of the provided tags is beyond the limit, or the number of total
 // tags you are trying to attach to the specified resource exceeds the limit.
 type TooManyTagsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 
@@ -5572,17 +6023,17 @@ func (s TooManyTagsException) GoString() string {
 
 func newErrorTooManyTagsException(v protocol.ResponseMetadata) error {
 	return &TooManyTagsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyTagsException) Code() string {
+func (s *TooManyTagsException) Code() string {
 	return "TooManyTagsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyTagsException) Message() string {
+func (s *TooManyTagsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5590,22 +6041,22 @@ func (s TooManyTagsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyTagsException) OrigErr() error {
+func (s *TooManyTagsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyTagsException) Error() string {
+func (s *TooManyTagsException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyTagsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyTagsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyTagsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyTagsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UntagResourceInput struct {
@@ -5685,6 +6136,11 @@ func (s UntagResourceOutput) GoString() string {
 type UpdateApplicationInput struct {
 	_ struct{} `type:"structure"`
 
+	// Indicates whether Application Insights can listen to CloudWatch events for
+	// the application resources, such as instance terminated, failed deployment,
+	// and others.
+	CWEMonitorEnabled *bool `type:"boolean"`
+
 	// When set to true, creates opsItems for any problems detected on an application.
 	OpsCenterEnabled *bool `type:"boolean"`
 
@@ -5728,6 +6184,12 @@ func (s *UpdateApplicationInput) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetCWEMonitorEnabled sets the CWEMonitorEnabled field's value.
+func (s *UpdateApplicationInput) SetCWEMonitorEnabled(v bool) *UpdateApplicationInput {
+	s.CWEMonitorEnabled = &v
+	return s
 }
 
 // SetOpsCenterEnabled sets the OpsCenterEnabled field's value.
@@ -5791,7 +6253,7 @@ type UpdateComponentConfigurationInput struct {
 	// The name of the component.
 	//
 	// ComponentName is a required field
-	ComponentName *string `type:"string" required:"true"`
+	ComponentName *string `min:"1" type:"string" required:"true"`
 
 	// Indicates whether the application component is monitored.
 	Monitor *bool `type:"boolean"`
@@ -5824,6 +6286,9 @@ func (s *UpdateComponentConfigurationInput) Validate() error {
 	}
 	if s.ComponentName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ComponentName"))
+	}
+	if s.ComponentName != nil && len(*s.ComponentName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComponentName", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -5891,10 +6356,10 @@ type UpdateComponentInput struct {
 	// The name of the component.
 	//
 	// ComponentName is a required field
-	ComponentName *string `type:"string" required:"true"`
+	ComponentName *string `min:"1" type:"string" required:"true"`
 
 	// The new name of the component.
-	NewComponentName *string `type:"string"`
+	NewComponentName *string `min:"1" type:"string"`
 
 	// The name of the resource group.
 	//
@@ -5920,6 +6385,12 @@ func (s *UpdateComponentInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "UpdateComponentInput"}
 	if s.ComponentName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ComponentName"))
+	}
+	if s.ComponentName != nil && len(*s.ComponentName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ComponentName", 1))
+	}
+	if s.NewComponentName != nil && len(*s.NewComponentName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("NewComponentName", 1))
 	}
 	if s.ResourceGroupName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ResourceGroupName"))
@@ -5975,7 +6446,8 @@ func (s UpdateComponentOutput) GoString() string {
 type UpdateLogPatternInput struct {
 	_ struct{} `type:"structure"`
 
-	// The log pattern.
+	// The log pattern. The pattern must be DFA compatible. Patterns that utilize
+	// forward lookahead or backreference constructions are not supported.
 	Pattern *string `min:"1" type:"string"`
 
 	// The name of the log pattern.
@@ -5988,7 +6460,14 @@ type UpdateLogPatternInput struct {
 	// PatternSetName is a required field
 	PatternSetName *string `min:"1" type:"string" required:"true"`
 
-	// Rank of the log pattern.
+	// Rank of the log pattern. Must be a value between 1 and 1,000,000. The patterns
+	// are sorted by rank, so we recommend that you set your highest priority patterns
+	// with the lowest rank. A pattern of rank 1 will be the first to get matched
+	// to a log line. A pattern of rank 1,000,000 will be last to get matched. When
+	// you configure custom log patterns from the console, a Low severity pattern
+	// translates to a 750,000 rank. A Medium severity pattern translates to a 500,000
+	// rank. And a High severity pattern translates to a 250,000 rank. Rank values
+	// less than 1 or greater than 1,000,000 are reserved for AWS-provided patterns.
 	Rank *int64 `type:"integer"`
 
 	// The name of the resource group.
@@ -6102,8 +6581,8 @@ func (s *UpdateLogPatternOutput) SetResourceGroupName(v string) *UpdateLogPatter
 
 // The parameter is not valid.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 }
@@ -6120,17 +6599,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6138,27 +6617,54 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+const (
+	// CloudWatchEventSourceEc2 is a CloudWatchEventSource enum value
+	CloudWatchEventSourceEc2 = "EC2"
+
+	// CloudWatchEventSourceCodeDeploy is a CloudWatchEventSource enum value
+	CloudWatchEventSourceCodeDeploy = "CODE_DEPLOY"
+
+	// CloudWatchEventSourceHealth is a CloudWatchEventSource enum value
+	CloudWatchEventSourceHealth = "HEALTH"
+
+	// CloudWatchEventSourceRds is a CloudWatchEventSource enum value
+	CloudWatchEventSourceRds = "RDS"
+)
+
+// CloudWatchEventSource_Values returns all elements of the CloudWatchEventSource enum
+func CloudWatchEventSource_Values() []string {
+	return []string{
+		CloudWatchEventSourceEc2,
+		CloudWatchEventSourceCodeDeploy,
+		CloudWatchEventSourceHealth,
+		CloudWatchEventSourceRds,
+	}
 }
 
 const (
 	// ConfigurationEventResourceTypeCloudwatchAlarm is a ConfigurationEventResourceType enum value
 	ConfigurationEventResourceTypeCloudwatchAlarm = "CLOUDWATCH_ALARM"
+
+	// ConfigurationEventResourceTypeCloudwatchLog is a ConfigurationEventResourceType enum value
+	ConfigurationEventResourceTypeCloudwatchLog = "CLOUDWATCH_LOG"
 
 	// ConfigurationEventResourceTypeCloudformation is a ConfigurationEventResourceType enum value
 	ConfigurationEventResourceTypeCloudformation = "CLOUDFORMATION"
@@ -6166,6 +6672,16 @@ const (
 	// ConfigurationEventResourceTypeSsmAssociation is a ConfigurationEventResourceType enum value
 	ConfigurationEventResourceTypeSsmAssociation = "SSM_ASSOCIATION"
 )
+
+// ConfigurationEventResourceType_Values returns all elements of the ConfigurationEventResourceType enum
+func ConfigurationEventResourceType_Values() []string {
+	return []string{
+		ConfigurationEventResourceTypeCloudwatchAlarm,
+		ConfigurationEventResourceTypeCloudwatchLog,
+		ConfigurationEventResourceTypeCloudformation,
+		ConfigurationEventResourceTypeSsmAssociation,
+	}
+}
 
 const (
 	// ConfigurationEventStatusInfo is a ConfigurationEventStatus enum value
@@ -6178,10 +6694,26 @@ const (
 	ConfigurationEventStatusError = "ERROR"
 )
 
+// ConfigurationEventStatus_Values returns all elements of the ConfigurationEventStatus enum
+func ConfigurationEventStatus_Values() []string {
+	return []string{
+		ConfigurationEventStatusInfo,
+		ConfigurationEventStatusWarn,
+		ConfigurationEventStatusError,
+	}
+}
+
 const (
 	// FeedbackKeyInsightsFeedback is a FeedbackKey enum value
 	FeedbackKeyInsightsFeedback = "INSIGHTS_FEEDBACK"
 )
+
+// FeedbackKey_Values returns all elements of the FeedbackKey enum
+func FeedbackKey_Values() []string {
+	return []string{
+		FeedbackKeyInsightsFeedback,
+	}
+}
 
 const (
 	// FeedbackValueNotSpecified is a FeedbackValue enum value
@@ -6194,6 +6726,15 @@ const (
 	FeedbackValueNotUseful = "NOT_USEFUL"
 )
 
+// FeedbackValue_Values returns all elements of the FeedbackValue enum
+func FeedbackValue_Values() []string {
+	return []string{
+		FeedbackValueNotSpecified,
+		FeedbackValueUseful,
+		FeedbackValueNotUseful,
+	}
+}
+
 const (
 	// LogFilterError is a LogFilter enum value
 	LogFilterError = "ERROR"
@@ -6204,6 +6745,31 @@ const (
 	// LogFilterInfo is a LogFilter enum value
 	LogFilterInfo = "INFO"
 )
+
+// LogFilter_Values returns all elements of the LogFilter enum
+func LogFilter_Values() []string {
+	return []string{
+		LogFilterError,
+		LogFilterWarn,
+		LogFilterInfo,
+	}
+}
+
+const (
+	// OsTypeWindows is a OsType enum value
+	OsTypeWindows = "WINDOWS"
+
+	// OsTypeLinux is a OsType enum value
+	OsTypeLinux = "LINUX"
+)
+
+// OsType_Values returns all elements of the OsType enum
+func OsType_Values() []string {
+	return []string{
+		OsTypeWindows,
+		OsTypeLinux,
+	}
+}
 
 const (
 	// SeverityLevelLow is a SeverityLevel enum value
@@ -6216,6 +6782,15 @@ const (
 	SeverityLevelHigh = "High"
 )
 
+// SeverityLevel_Values returns all elements of the SeverityLevel enum
+func SeverityLevel_Values() []string {
+	return []string{
+		SeverityLevelLow,
+		SeverityLevelMedium,
+		SeverityLevelHigh,
+	}
+}
+
 const (
 	// StatusIgnore is a Status enum value
 	StatusIgnore = "IGNORE"
@@ -6227,7 +6802,19 @@ const (
 	StatusPending = "PENDING"
 )
 
+// Status_Values returns all elements of the Status enum
+func Status_Values() []string {
+	return []string{
+		StatusIgnore,
+		StatusResolved,
+		StatusPending,
+	}
+}
+
 const (
+	// TierCustom is a Tier enum value
+	TierCustom = "CUSTOM"
+
 	// TierDefault is a Tier enum value
 	TierDefault = "DEFAULT"
 
@@ -6237,9 +6824,45 @@ const (
 	// TierDotNetWorker is a Tier enum value
 	TierDotNetWorker = "DOT_NET_WORKER"
 
+	// TierDotNetWebTier is a Tier enum value
+	TierDotNetWebTier = "DOT_NET_WEB_TIER"
+
 	// TierDotNetWeb is a Tier enum value
 	TierDotNetWeb = "DOT_NET_WEB"
 
 	// TierSqlServer is a Tier enum value
 	TierSqlServer = "SQL_SERVER"
+
+	// TierSqlServerAlwaysonAvailabilityGroup is a Tier enum value
+	TierSqlServerAlwaysonAvailabilityGroup = "SQL_SERVER_ALWAYSON_AVAILABILITY_GROUP"
+
+	// TierMysql is a Tier enum value
+	TierMysql = "MYSQL"
+
+	// TierPostgresql is a Tier enum value
+	TierPostgresql = "POSTGRESQL"
+
+	// TierJavaJmx is a Tier enum value
+	TierJavaJmx = "JAVA_JMX"
+
+	// TierOracle is a Tier enum value
+	TierOracle = "ORACLE"
 )
+
+// Tier_Values returns all elements of the Tier enum
+func Tier_Values() []string {
+	return []string{
+		TierCustom,
+		TierDefault,
+		TierDotNetCore,
+		TierDotNetWorker,
+		TierDotNetWebTier,
+		TierDotNetWeb,
+		TierSqlServer,
+		TierSqlServerAlwaysonAvailabilityGroup,
+		TierMysql,
+		TierPostgresql,
+		TierJavaJmx,
+		TierOracle,
+	}
+}

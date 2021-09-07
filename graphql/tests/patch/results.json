@@ -19,8 +19,8 @@
             "id": "5e4ff3abe3c3317e352062e1",
             "childPatches": [
               {
-                "project": "evergreen",
-                "patchID": "5e4ff3abe3c3317e352062e4"
+                "id": "5e4ff3abe3c3317e352062e4",
+                "projectID": "evergreen"
               }
             ]
           }
@@ -257,6 +257,18 @@
         "data": {
           "patch": {
             "status": "aborted"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch-trigger-aliases.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "patchTriggerAliases": [
+              { "alias": "__commit_queue", "childProject": "child"}
+            ]
           }
         }
       }

@@ -138,7 +138,7 @@ func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTime
 			if h.RunningTask == "" {
 				estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: 0})
 			} else {
-				t, err := task.FindOneNoMerge(task.ById(h.RunningTask))
+				t, err := task.FindOne(task.ById(h.RunningTask))
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "retrieving tasks for task start estimation simulator",

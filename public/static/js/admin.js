@@ -16,6 +16,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.restartLavender = true;
     $scope.ValidThemes = ["announcement", "information", "warning", "important"];
     $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "allow_service_users", "github"];
+    $scope.validECSPlatforms = ["linux", "windows"];
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
@@ -242,6 +243,198 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return subnet && subnet.az && subnet.subnet_id;
   }
 
+  $scope.addAWSVPCSubnet = function () {
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {
+          "pod": {
+            "ecs": {
+              "awsvpc": {
+                "subnets": []
+              }
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws == null) {
+      $scope.Settings.providers.aws = {
+        "pod": {
+          "ecs": {
+            "awsvpc": {
+              "subnets": []
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod == null) {
+      $scope.Settings.providers.aws.pod = {
+        "ecs": {
+          "awsvpc": {
+            "subnets": []
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs == null) {
+      $scope.Settings.providers.aws.pod.ecs = {
+        "awsvpc": {
+          "subnets": []
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs.awsvpc == null) {
+      $scope.Settings.providers.aws.pod.ecs.awsvpc = {
+        "subnets": []
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs.awsvpc.subnets == null) {
+      $scope.Settings.providers.aws.pod.ecs.awsvpc.subnets = [];
+    }
+
+    if (!$scope.validAWSVPCSubnet($scope.new_awsvpc_subnet)) {
+      $scope.invalidAWSVPCSubnet = "Subnet ID cannot be empty.";
+      return
+    }
+
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.subnets.push($scope.new_awsvpc_subnet);
+    $scope.new_awsvpc_subnet = "";
+    $scope.invalidAWSVPCSubnet = "";
+  }
+
+  $scope.validAWSVPCSubnet = function (subnet) {
+    return subnet;
+  }
+
+  $scope.deleteAWSVPCSubnet = function (index) {
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.subnets.split(index, 1);
+  }
+
+  $scope.addAWSVPCSecurityGroup = function () {
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {
+          "pod": {
+            "ecs": {
+              "awsvpc": {
+                "security_groups": []
+              }
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws == null) {
+      $scope.Settings.providers.aws = {
+        "pod": {
+          "ecs": {
+            "awsvpc": {
+              "security_groups": []
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod == null) {
+      $scope.Settings.providers.aws.pod = {
+        "ecs": {
+          "awsvpc": {
+            "security_groups": []
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs == null) {
+      $scope.Settings.providers.aws.pod.ecs = {
+        "awsvpc": {
+          "security_groups": []
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs.awsvpc == null) {
+      $scope.Settings.providers.aws.pod.ecs.awsvpc = {
+        "security_groups": []
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups == null) {
+      $scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups = [];
+    }
+
+    if (!$scope.validAWSVPCSecurityGroup($scope.new_awsvpc_security_group)) {
+      $scope.invalidAWSVPCSecurityGroup = "Security group cannot be empty.";
+      return
+    }
+
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups.push($scope.new_awsvpc_security_group);
+    $scope.new_awsvpc_security_group = "";
+    $scope.invalidAWSVPCSecurityGroup = "";
+  }
+
+  $scope.validAWSVPCSecurityGroup = function (sg) {
+    return sg;
+  }
+
+  $scope.deleteAWSVPCSecurityGroup = function (index) {
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups.split(index, 1);
+  }
+
+  $scope.addECSCluster = function () {
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {
+          "pod": {
+            "ecs": {
+              "clusters": []
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws == null) {
+      $scope.Settings.providers.aws = {
+        "pod": {
+          "ecs": {
+            "clusters": []
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod == null) {
+      $scope.Settings.providers.aws.pod = {
+        "ecs": {
+          "clusters": []
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs == null) {
+      $scope.Settings.providers.aws.pod.ecs = {
+        "clusters": []
+      };
+    }
+
+    if ($scope.Settings.providers.aws.pod.ecs.clusters == null) {
+      $scope.Settings.providers.aws.pod.ecs.clusters = [];
+    }
+
+    if (!$scope.validECSCluster($scope.new_ecs_cluster)) {
+      $scope.invalidECSCluster = "ECS cluster name and platform are required.";
+      return
+    }
+
+    $scope.Settings.providers.aws.pod.ecs.clusters.push($scope.new_ecs_cluster);
+    $scope.new_ecs_cluster = {};
+    $scope.invalidECSCluster = "";
+  }
+
+  $scope.validECSCluster = function (item) {
+    return item && item.name && item.platform;
+  }
+
+  $scope.deleteECSCluster = function (index) {
+    $scope.Settings.providers.aws.pod.ecs.clusters.splice(index, 1);
+  }
+
   $scope.clearAllUserTokens = function () {
     if (!confirm("This will log out all users from all existing sessions. Continue?"))
       return
@@ -442,6 +635,41 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.invalidAuth = function (kind) {
     return ($scope.validAuthKinds.indexOf(kind) < 0);
+  }
+
+  $scope.addOktaScope = function () {
+    if ($scope.Settings.auth === null || $scope.Settings.auth === undefined) {
+      $scope.Settings.auth = {
+        "okta": {
+          "scopes": []
+        }
+      };
+    }
+    if ($scope.Settings.auth.okta === null || $scope.Settings.auth.okta === undefined) {
+      $scope.Settings.auth.okta = {
+        "scopes": []
+      };
+    }
+    if ($scope.Settings.auth.okta.scopes === null || $scope.Settings.auth.okta.scopes === undefined) {
+      $scope.Settings.auth.okta.scopes = [];
+    }
+
+    if (!$scope.validOktaScope($scope.new_okta_scope)) {
+      $scope.invalidScope = "Scope cannot be empty.";
+      return
+    }
+
+    $scope.Settings.auth.okta.scopes.push($scope.new_okta_scope);
+    $scope.new_okta_scope = "";
+    $scope.invalidOktaScope = "";
+  }
+
+  $scope.deleteOktaScope = function (index) {
+    $scope.Settings.auth.okta.scopes.splice(index, 1);
+  }
+
+  $scope.validOktaScope = function (scope) {
+    return scope;
   }
 
   $scope.addExpansion = function (chip) {

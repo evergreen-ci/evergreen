@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -79,6 +78,104 @@ func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 		}
 	}
 	return nil
+}
+
+// SaveProjectSettingsForSection passes in the existing state of the project page, but saves only the pieces
+// related to the specified section. This handles project ref, webhooks, auth, and project variables.
+// If isRepo is set, uses RepoRef related functions and the RepoRef collection as opposed to the ProjectRef.
+func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
+	section model.ProjectPageSection, isRepo bool, userId string) error {
+	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end
+	before, err := model.GetProjectSettingsById(projectId, isRepo)
+	if err != nil {
+		return errors.Wrap(err, "error getting before project settings event")
+	}
+	v, err := changes.ProjectRef.ToService()
+	if err != nil {
+		return errors.Wrap(err, "error converting project ref")
+	}
+	newProjectRef := v.(*model.ProjectRef)
+	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as newProjectRef.
+	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
+	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
+	if err != nil {
+		return errors.Wrapf(err, "error merging project ref")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	modified := false
+	switch section {
+	// aliases and notifications use a different connector and should be handled separated
+	case model.ProjectPageGeneralSection:
+		// check if webhook is enabled if the owner/repo has changed
+		if mergedProjectRef.Owner != before.ProjectRef.Owner || mergedProjectRef.Repo != before.ProjectRef.Repo {
+			_, err = pc.EnableWebhooks(ctx, mergedProjectRef)
+			if err != nil {
+				return errors.Wrapf(err, "Error enabling webhooks for project '%s'", projectId)
+			}
+		}
+		modified = true
+	case model.ProjectPageAccessSection:
+		// For any admins that are only in the original settings, remove access.
+		// For any admins that are only in the updated settings, give them access.
+		adminsToDelete, adminsToAdd := utility.StringSliceSymmetricDifference(before.ProjectRef.Admins, mergedProjectRef.Admins)
+		makeRestricted := !before.ProjectRef.IsRestricted() && mergedProjectRef.IsRestricted()
+		makeUnrestricted := before.ProjectRef.IsRestricted() && !mergedProjectRef.IsRestricted()
+		if isRepo {
+			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
+			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
+			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+				return errors.Wrap(err, "error updating repo admin roles")
+			}
+			branchProjects, err := model.FindMergedProjectRefsForRepo(repoRef)
+			if err != nil {
+				return errors.Wrapf(err, "error finding branch projects for repo")
+			}
+			modified = true
+			if makeRestricted {
+				catcher.Wrap(repoRef.MakeRestricted(branchProjects), "error making repo restricted")
+			}
+			if makeUnrestricted {
+				catcher.Wrap(repoRef.MakeUnrestricted(branchProjects), "error making repo unrestricted")
+			}
+		} else {
+			if err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+				return errors.Wrap(err, "error updating project admin roles")
+			}
+			modified = true
+			if makeRestricted {
+				catcher.Wrap(before.ProjectRef.MakeRestricted(), "error making branch restricted")
+			}
+			if makeUnrestricted {
+				catcher.Wrap(before.ProjectRef.MakeUnrestricted(), "error making branch unrestricted")
+			}
+		}
+
+	case model.ProjectPageVariablesSection:
+		// Remove any variables that only exist in the original settings.
+		toDelete := []string{}
+		for key, _ := range before.Vars.Vars {
+			if _, ok := changes.Vars.Vars[key]; !ok {
+				toDelete = append(toDelete, key)
+			}
+		}
+		changes.Vars.VarsToDelete = toDelete
+		if err = pc.UpdateProjectVars(projectId, &changes.Vars, false); err != nil { // destructively modifies vars
+			return errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
+		}
+		modified = true
+	}
+
+	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
+	if err != nil {
+		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
+	}
+
+	if modified || modifiedProjectRef {
+		catcher.Add(model.GetAndLogProjectModified(projectId, userId, isRepo, before))
+	}
+
+	return errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
 }
 
 func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (*model.Project, *model.ParserProject, error) {
@@ -259,6 +356,55 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
+	catcher := grip.NewBasicCatcher()
+	matchingProjects, err := model.GetVarsByValue(toReplace)
+	if err != nil {
+		catcher.Wrap(err, "failed to fetch projects with matching value")
+	}
+	if matchingProjects == nil {
+		catcher.New("no projects with matching value found")
+	}
+	changes := map[string]string{}
+	for _, project := range matchingProjects {
+		for key, val := range project.Vars {
+			if val == toReplace {
+				if !dryRun {
+					originalVars := make(map[string]string)
+					for k, v := range project.Vars {
+						originalVars[k] = v
+					}
+					before := model.ProjectSettings{
+						Vars: model.ProjectVars{
+							Id:   project.Id,
+							Vars: originalVars,
+						},
+					}
+
+					project.Vars[key] = replacement
+					_, err = project.Upsert()
+					if err != nil {
+						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+					}
+
+					after := model.ProjectSettings{
+						Vars: model.ProjectVars{
+							Id:   project.Id,
+							Vars: project.Vars,
+						},
+					}
+
+					if err = model.LogProjectModified(project.Id, username, &before, &after); err != nil {
+						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
+					}
+				}
+				changes[project.Id] = key
+			}
+		}
+	}
+	return changes, catcher.Resolve()
+}
+
 func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
 	vars, err := model.FindOneProjectVars(oldProjectId)
 	if err != nil {
@@ -313,34 +459,8 @@ func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo s
 	return model.FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
-func (pc *DBProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
-	hook, err := model.FindGithubHook(p.Owner, p.Repo)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Id)
-	}
-	projectVars, err := model.FindOneProjectVars(p.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Id)
-	}
-	if projectVars == nil {
-		projectVars = &model.ProjectVars{}
-	}
-	projectAliases, err := model.FindAliasesForProject(p.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Id)
-	}
-	subscriptions, err := event.FindSubscriptionsByOwner(p.Id, event.OwnerTypeProject)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Id)
-	}
-	projectSettingsEvent := model.ProjectSettingsEvent{
-		ProjectRef:         *p,
-		GitHubHooksEnabled: hook != nil,
-		Vars:               *projectVars,
-		Aliases:            projectAliases,
-		Subscriptions:      subscriptions,
-	}
-	return &projectSettingsEvent, nil
+func (pc *DBProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
+	return model.GetProjectSettings(p)
 }
 
 func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
@@ -455,6 +575,11 @@ func (pc *MockProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 	return nil
 }
 
+func (pc *MockProjectConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
+	section model.ProjectPageSection, isRepo bool, userId string) error {
+	return nil
+}
+
 func (pc *MockProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
 	return nil
 }
@@ -474,7 +599,12 @@ tasks:
 - name: t1
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(config), pRef.Id, p)
+	opts := model.GetProjectOpts{
+		Ref:        &pRef,
+		RemotePath: file,
+		Token:      token,
+	}
+	pp, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)
 	return p, pp, err
 }
 
@@ -568,6 +698,21 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
+	changes := map[string]string{}
+	for _, cachedVars := range pc.CachedVars {
+		for key, val := range cachedVars.Vars {
+			if toReplace == val {
+				if !dryRun {
+					cachedVars.Vars[key] = replacement
+				}
+				changes[cachedVars.Id] = key
+			}
+		}
+	}
+	return changes, nil
+}
+
 func (pc *MockProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
 	newVars := model.ProjectVars{Id: newProjectId}
 	for _, v := range pc.CachedVars {
@@ -621,11 +766,11 @@ func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string
 	return nil
 }
 
-func (pc *MockProjectConnector) GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error) {
+func (pc *MockProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
 	if len(p.Owner) == 0 || len(p.Repo) == 0 {
 		return nil, errors.New("Owner and repository must not be empty strings")
 	}
-	return &model.ProjectSettingsEvent{}, nil
+	return &model.ProjectSettings{}, nil
 }
 
 func (pc *MockProjectConnector) GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error) {

@@ -1528,7 +1528,11 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context, hostI
 	}
 	r.Header.Add(evergreen.HostHeader, hostID)
 	r.Header.Add(evergreen.HostSecretHeader, hostSecret)
-	resp, err := utility.RetryRequest(ctx, r, c.maxAttempts, c.timeoutStart, c.timeoutMax)
+	resp, err := utility.RetryRequest(ctx, r, utility.RetryOptions{
+		MaxAttempts: c.maxAttempts,
+		MinDelay:    c.timeoutStart,
+		MaxDelay:    c.timeoutMax,
+	})
 	if err != nil {
 		return nil, utility.RespErrorf(resp, "making request")
 	}

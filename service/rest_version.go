@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,19 +10,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/thirdparty"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const NumRecentVersions = 10
@@ -364,7 +364,9 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 	}
 	if pp == nil || pp.ConfigUpdateNumber < srcVersion.ConfigUpdateNumber {
 		p := &model.Project{}
-		pp, err = model.LoadProjectInto([]byte(srcVersion.Config), srcVersion.Identifier, p)
+		ctx := context.Background()
+		opts := model.GetProjectOpts{}
+		pp, err = model.LoadProjectInto(ctx, []byte(srcVersion.Config), opts, srcVersion.Identifier, p)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem reading project from version"})
 			return

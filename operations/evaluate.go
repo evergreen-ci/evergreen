@@ -1,13 +1,14 @@
 package operations
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 func Evaluate() cli.Command {
@@ -40,7 +41,11 @@ func Evaluate() cli.Command {
 			}
 
 			p := &model.Project{}
-			_, err = model.LoadProjectInto(configBytes, "", p)
+			ctx := context.Background()
+			opts := model.GetProjectOpts{
+				ReadFileFrom: model.ReadFromLocal,
+			}
+			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
 				return errors.Wrap(err, "error loading project")
 			}

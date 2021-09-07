@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
@@ -94,6 +94,10 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "problem parsing JSON")
 	}
 	if err = comm.GenerateTasks(ctx, td, post); err != nil {
+		if strings.Contains(err.Error(), evergreen.TasksAlreadyGeneratedError) {
+			logger.Task().Info("Tasks have already been generated, nooping.")
+			return nil
+		}
 		return errors.Wrap(err, "Problem posting task data")
 	}
 
@@ -103,13 +107,20 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		pollRetryMaxDelay = 15 * time.Second
 	)
 
-	var generateStatus *apimodels.GeneratePollResponse
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			generateStatus, err = comm.GenerateTasksPoll(ctx, td)
+			generateStatus, err := comm.GenerateTasksPoll(ctx, td)
 			if err != nil {
 				return true, err
+			}
+			if len(generateStatus.Errors) > 0 {
+				fullErr := errors.New(strings.Join(generateStatus.Errors, ", "))
+				// if the error isn't related to saving the generated task, log it but still retry in case of race condition
+				if !strings.Contains(fullErr.Error(), evergreen.SaveGenerateTasksError) {
+					logger.Task().Infof("Problem polling for generate tasks job, retrying (%s)", fullErr)
+				}
+				return true, fullErr
 			}
 			if generateStatus.Finished {
 				return false, nil
@@ -122,9 +133,6 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		})
 	if err != nil {
 		return errors.WithMessage(err, "problem polling for generate tasks job")
-	}
-	if len(generateStatus.Errors) > 0 {
-		return errors.New(strings.Join(generateStatus.Errors, ", "))
 	}
 	return nil
 }

@@ -61,40 +61,31 @@ func (a *TestArtifact) Convert(ctx context.Context) error {
 		return errors.New("cannot convert non existent file")
 	}
 
-	converted := false
 	switch {
 	case a.ConvertBSON2FTDC:
-		converted = true
 		fn, err := a.bsonToFTDC(ctx, a.LocalFile)
 		if err != nil {
 			return errors.Wrap(err, "problem converting file")
 		}
 		a.LocalFile = fn
 	case a.ConvertJSON2FTDC:
-		converted = true
 		fn, err := a.jsonToFTDC(ctx, a.LocalFile)
 		if err != nil {
 			return errors.Wrap(err, "problem converting file")
 		}
 		a.LocalFile = fn
 	case a.ConvertCSV2FTDC:
-		converted = true
 		fn, err := a.csvToFTDC(ctx, a.LocalFile)
 		if err != nil {
 			return errors.Wrap(err, "problem converting file")
 		}
 		a.LocalFile = fn
 	case a.ConvertGzip:
-		converted = true
 		fn, err := a.gzip(a.LocalFile)
 		if err != nil {
 			return errors.Wrap(err, "problem writing file")
 		}
 		a.LocalFile = fn
-	}
-
-	if !converted {
-		grip.Warning("no conversion took place")
 	}
 
 	return nil

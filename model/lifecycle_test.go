@@ -67,7 +67,7 @@ func TestTaskSetPriority(t *testing.T) {
 			So(task.Insert(), ShouldBeNil)
 		}
 
-		b0 := build.Build{Id: "b0", Tasks: []build.TaskCache{{Id: tasks[0].Id}}}
+		b0 := build.Build{Id: "b0"}
 		require.NoError(t, b0.Insert())
 
 		Convey("setting its priority should update it and all dependencies in the database", func() {
@@ -113,10 +113,6 @@ func TestTaskSetPriority(t *testing.T) {
 			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
 			So(tasks[0].Activated, ShouldEqual, true)
 			So(SetTaskPriority(tasks[0], -1, "user"), ShouldBeNil)
-
-			b0, err := build.FindOneId("b0")
-			So(err, ShouldBeNil)
-			So(b0.Tasks[0].Activated, ShouldBeFalse)
 
 			t, err := task.FindOne(task.ById("one"))
 			So(err, ShouldBeNil)
@@ -206,21 +202,7 @@ func TestBuildRestart(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection),
 				"Error clearing test collection")
-			b := &build.Build{
-				Id: "build",
-				Tasks: []build.TaskCache{
-					{
-						Id:        "task1",
-						Status:    evergreen.TaskSucceeded,
-						Activated: true,
-					},
-					{
-						Id:        "task2",
-						Status:    evergreen.TaskDispatched,
-						Activated: true,
-					},
-				},
-			}
+			b := &build.Build{Id: "build"}
 			So(b.Insert(), ShouldBeNil)
 
 			taskOne := &task.Task{
@@ -247,10 +229,6 @@ func TestBuildRestart(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.Activated, ShouldEqual, true)
-			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskDispatched)
-			So(b.Tasks[0].Activated, ShouldEqual, true)
-			So(b.Tasks[1].Activated, ShouldEqual, true)
 			taskOne, err = task.FindOne(task.ById("task1"))
 			So(err, ShouldBeNil)
 			So(taskOne.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -264,31 +242,7 @@ func TestBuildRestart(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(build.Collection),
 				"Error clearing test collection")
-			b := &build.Build{
-				Id: "build",
-				Tasks: []build.TaskCache{
-					{
-						Id:        "task1",
-						Status:    evergreen.TaskSucceeded,
-						Activated: true,
-					},
-					{
-						Id:        "task2",
-						Status:    evergreen.TaskDispatched,
-						Activated: true,
-					},
-					{
-						Id:        "task3",
-						Status:    evergreen.TaskDispatched,
-						Activated: true,
-					},
-					{
-						Id:        "task4",
-						Status:    evergreen.TaskDispatched,
-						Activated: true,
-					},
-				},
-			}
+			b := &build.Build{Id: "build"}
 			So(b.Insert(), ShouldBeNil)
 
 			taskThree := &task.Task{
@@ -315,11 +269,6 @@ func TestBuildRestart(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
-			So(b.Activated, ShouldEqual, true)
-			So(b.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskDispatched)
-			So(b.Tasks[2].Activated, ShouldEqual, true)
-			So(b.Tasks[3].Activated, ShouldEqual, true)
 			taskThree, err = task.FindOne(task.ById("task3"))
 			So(err, ShouldBeNil)
 			So(taskThree.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -559,59 +508,6 @@ func TestBuildSetActivated(t *testing.T) {
 				So(len(activatedTasks), ShouldEqual, 5)
 			})
 
-			Convey("all of the undispatched task caches within the build"+
-				" should be updated, both in memory and in the"+
-				" database", func() {
-
-				b := &build.Build{
-					Id:           "build",
-					Activated:    true,
-					BuildVariant: "foo",
-					Tasks: []build.TaskCache{
-						{
-							Id:        "tc1",
-							Status:    evergreen.TaskUndispatched,
-							Activated: true,
-						},
-						{
-							Id:        "tc2",
-							Status:    evergreen.TaskDispatched,
-							Activated: true,
-						},
-						{
-							Id:        "tc3",
-							Status:    evergreen.TaskUndispatched,
-							Activated: true,
-						},
-						{
-							Id:        "tc4",
-							Status:    evergreen.TaskUndispatched,
-							Activated: true,
-						},
-					},
-				}
-				So(b.Insert(), ShouldBeNil)
-
-				t1 := &task.Task{Id: "tc1", DisplayName: "tc1", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
-				t2 := &task.Task{Id: "tc2", DisplayName: "tc2", BuildId: b.Id, Status: evergreen.TaskDispatched, Activated: true}
-				t3 := &task.Task{Id: "tc3", DisplayName: "tc3", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
-				t4 := &task.Task{Id: "tc4", DisplayName: "tc4", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: "anotherUser"}
-				So(t1.Insert(), ShouldBeNil)
-				So(t2.Insert(), ShouldBeNil)
-				So(t3.Insert(), ShouldBeNil)
-				So(t4.Insert(), ShouldBeNil)
-
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
-				// refresh from the database and check again
-				b, err := build.FindOne(build.ById(b.Id))
-				So(err, ShouldBeNil)
-				So(b.Activated, ShouldBeFalse)
-				So(b.Tasks[0].Activated, ShouldBeFalse)
-				So(b.Tasks[1].Activated, ShouldBeTrue)
-				So(b.Tasks[2].Activated, ShouldBeFalse)
-				So(b.Tasks[3].Activated, ShouldBeTrue)
-			})
-
 			Convey("if a build is activated by a user it should not be able to be deactivated by evergreen", func() {
 				user := "differentUser"
 
@@ -818,7 +714,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		So(alias.Upsert(), ShouldBeNil)
 		mustHaveResults := true
 		parserProject := &ParserProject{
-			Identifier: "projectId",
+			Identifier: utility.ToStringPtr("projectId"),
 			Tasks: []parserTask{
 				{
 					Name:      "taskA",
@@ -981,13 +877,15 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if a non-empty list of TasksWithBatchTime is passed in, only the specified tasks should be activated", func() {
 			batchTimeTasks := []string{"taskA", "taskB"}
 			args := BuildCreateArgs{
-				Project:            *project,
-				Version:            *v,
-				TaskIDs:            table,
-				BuildName:          buildVar1.Name,
-				ActivateBuild:      true,
-				TaskNames:          []string{"taskA", "taskB", "taskC", "taskD"}, // excluding display tasks
-				TasksWithBatchTime: batchTimeTasks,
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       table,
+				BuildName:     buildVar1.Name,
+				ActivateBuild: true,
+				TaskNames:     []string{"taskA", "taskB", "taskC", "taskD"}, // excluding display tasks
+				ActivationInfo: specificActivationInfo{activationTasks: map[string][]string{
+					buildVar1.Name: batchTimeTasks},
+				},
 			}
 			build, tasks, err := CreateBuildFromVersionNoInsert(args)
 			So(err, ShouldBeNil)
@@ -1057,22 +955,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 			// make sure the task caches are correct.  they should also appear
 			// in the same order that they appear in the project file
-			So(build.Tasks[0].Id, ShouldNotEqual, "")
-			So(build.Tasks[0].DisplayName, ShouldEqual, "taskA")
-			So(build.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(build.Tasks[1].Id, ShouldNotEqual, "")
-			So(build.Tasks[1].DisplayName, ShouldEqual, "taskB")
-			So(build.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(build.Tasks[2].Id, ShouldNotEqual, "")
-			So(build.Tasks[2].DisplayName, ShouldEqual, "taskC")
-			So(build.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(build.Tasks[3].Id, ShouldNotEqual, "")
-			So(build.Tasks[3].DisplayName, ShouldEqual, "taskE")
-			So(build.Tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(build.Tasks[0].Id, ShouldContainSubstring, "taskA")
+			So(build.Tasks[1].Id, ShouldContainSubstring, "taskB")
+			So(build.Tasks[2].Id, ShouldContainSubstring, "taskC")
+			So(build.Tasks[3].Id, ShouldContainSubstring, "taskE")
 		})
 
 		Convey("a task cache should not contain execution tasks that are part of a display task", func() {
-
 			args := BuildCreateArgs{
 				Project:       *project,
 				Version:       *v,
@@ -1087,12 +976,8 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(len(build.Tasks), ShouldEqual, 2)
 
 			// make sure the task caches are correct
-			So(build.Tasks[0].Id, ShouldNotEqual, "")
-			So(build.Tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
-			So(build.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(build.Tasks[1].Id, ShouldNotEqual, "")
-			So(build.Tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
-			So(build.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(build.Tasks[0].Id, ShouldContainSubstring, buildVar1.DisplayTasks[0].Name)
+			So(build.Tasks[1].Id, ShouldContainSubstring, buildVar1.DisplayTasks[1].Name)
 
 			// check the display tasks too
 			So(len(tasks), ShouldEqual, 6)
@@ -1102,7 +987,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
 			So(tasks[1].DisplayOnly, ShouldBeTrue)
 		})
-
 		Convey("all of the tasks created should have the dependencies"+
 			"and priorities specified in the project", func() {
 
@@ -1442,7 +1326,9 @@ func TestCreateTaskGroup(t *testing.T) {
     - name: example_task_3
   `
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(projYml), "test", proj)
+	ctx := context.Background()
+	opts := GetProjectOpts{}
+	_, err := LoadProjectInto(ctx, []byte(projYml), opts, "test", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	v := &Version{
@@ -1951,12 +1837,6 @@ func TestDisplayTaskRestart(t *testing.T) {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
 	}
-	b, err := build.FindOne(build.ById("build3"))
-	assert.NoError(err)
-	assert.NotNil(b)
-	for _, dbTask := range b.Tasks {
-		assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
-	}
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
@@ -1987,45 +1867,14 @@ func resetTaskData() error {
 	build1 := &build.Build{
 		Id:      "build1",
 		Version: v.Id,
-		Tasks: []build.TaskCache{
-			{
-				Id:        "task1",
-				Status:    evergreen.TaskSucceeded,
-				Activated: true,
-			},
-			{
-				Id:        "task2",
-				Status:    evergreen.TaskDispatched,
-				Activated: true,
-			},
-		},
 	}
 	build2 := &build.Build{
 		Id:      "build2",
 		Version: v.Id,
-		Tasks: []build.TaskCache{
-			{
-				Id:        "task3",
-				Status:    evergreen.TaskSucceeded,
-				Activated: true,
-			},
-			{
-				Id:        "task4",
-				Status:    evergreen.TaskFailed,
-				Activated: true,
-			},
-		},
 	}
 	build3 := &build.Build{
 		Id:      "build3",
 		Version: v.Id,
-		Tasks: []build.TaskCache{
-			{
-				Id:        "displayTask",
-				Status:    evergreen.TaskFailed,
-				Activated: true,
-			},
-		},
 	}
 	if err := build1.Insert(); err != nil {
 		return err
@@ -2111,7 +1960,7 @@ func resetTaskData() error {
 	if err := displayTask.Insert(); err != nil {
 		return err
 	}
-	if err := UpdateDisplayTask(displayTask); err != nil {
+	if err := UpdateDisplayTaskForTask(task5); err != nil {
 		return err
 	}
 	return nil
@@ -2175,12 +2024,7 @@ func TestMarkAsDispatched(t *testing.T) {
 			BuildId: buildId,
 		}
 
-		b = &build.Build{
-			Id: buildId,
-			Tasks: []build.TaskCache{
-				{Id: taskId},
-			},
-		}
+		b = &build.Build{Id: buildId}
 
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection), "Error clearing test collections")
 

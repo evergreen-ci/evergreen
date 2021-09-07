@@ -37,7 +37,9 @@ type Host struct {
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
 	Provider        string        `bson:"host_type" json:"host_type"`
-	IP              string        `bson:"ip_address" json:"ip_address"`
+	// IP holds the ipv6 address when applicable
+	IP   string `bson:"ip_address" json:"ip_address"`
+	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -330,6 +332,7 @@ type HostModifyOptions struct {
 	DetachVolume       string
 	SubscriptionType   string
 	NewName            string
+	AddKey             string
 }
 
 type SpawnHostUsage struct {
@@ -1464,6 +1467,7 @@ func (h *Host) CacheHostData() error {
 				StartTimeKey: h.StartTime,
 				VolumesKey:   h.Volumes,
 				DNSKey:       h.Host,
+				IPv4Key:      h.IPv4,
 			},
 		},
 	)
@@ -1660,7 +1664,10 @@ func FindHostsToTerminate() ([]Host, error) {
 			},
 		},
 	}
-	hosts, err := Find(db.Query(query))
+
+	// In some cases, the query planner will choose a very slow plan for this
+	// query. The hint guarantees that the query will use the host status index.
+	hosts, err := Find(db.Query(query).Hint(StatusIndex))
 
 	if adb.ResultsNotFound(err) {
 		return []Host{}, nil
@@ -1671,6 +1678,18 @@ func FindHostsToTerminate() ([]Host, error) {
 	}
 
 	return hosts, nil
+}
+
+// StatusIndex is the index that is prefixed with the host status.
+var StatusIndex = bson.D{
+	{
+		Key:   StatusKey,
+		Value: 1,
+	},
+	{
+		Key:   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey),
+		Value: 1,
+	},
 }
 
 func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
@@ -2561,10 +2580,14 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
-func GetHostByIdWithTask(hostID string) (*Host, error) {
+func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{IdKey: hostID},
+			"$match": bson.M{
+				"$or": []bson.M{
+					{TagKey: hostID},
+					{IdKey: hostID},
+				}},
 		},
 		{
 			"$lookup": bson.M{

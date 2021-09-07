@@ -7,9 +7,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen/graphql"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -164,7 +165,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 
 	if execution != "" && h.fetchAllExecutions == true {
 		return gimlet.ErrorResponse{
-			Message:    "fetchAllExecutions=true cannot be combined with execution={task_execution}",
+			Message:    "fetchAllExecutions=true cannot be combined with execution={execution}",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -246,21 +247,10 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.taskId = gimlet.GetVars(r)["task_id"]
+	taskExecutionsAsString := r.URL.Query().Get("execution")
 	if h.taskId == "" {
 		return gimlet.ErrorResponse{
 			Message:    "task ID cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	// check if the task exists
-	t, err := task.FindOne(task.ById(h.taskId))
-	if err != nil {
-		return errors.Wrap(err, "error finding task")
-	}
-	if t == nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -271,6 +261,48 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if taskExecutionsAsString != "" {
+		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    "cannot convert execution to integer value",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+
+		if h.annotation.TaskExecution == nil {
+			h.annotation.TaskExecution = &taskExecution
+		} else if *h.annotation.TaskExecution != taskExecution {
+			return gimlet.ErrorResponse{
+				Message:    "Task execution must equal the task execution specified in the annotation",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	} else if h.annotation.TaskExecution == nil {
+		return gimlet.ErrorResponse{
+			Message:    "task execution must be specified in the url or request body",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// check if the task exists
+	t, err := task.FindByIdExecution(h.taskId, h.annotation.TaskExecution)
+	if err != nil {
+		return errors.Wrap(err, "error finding task")
+	}
+	if t == nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	if !evergreen.IsFailedTaskStatus(t.Status) {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -289,10 +321,6 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 		}
 	}
 
-	// set TaskExecution to the latest execution
-	if h.annotation.TaskExecution == nil {
-		h.annotation.TaskExecution = &t.Execution
-	}
 	if h.annotation.TaskId == nil {
 		taskId := h.taskId
 		h.annotation.TaskId = &taskId
@@ -376,7 +404,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	h.execution = execution
 
 	// check if the task exists
-	t, err := task.FindOne(task.ById(h.taskId))
+	t, err := task.FindOneId(h.taskId)
 	if err != nil {
 		return errors.Wrap(err, "error finding task")
 	}
@@ -388,7 +416,8 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	}
 	// if there is no custom webhook configured, return an error because the
 	// purpose of this endpoint is to store the ticket created by the web-hook
-	if !graphql.IsWebhookConfigured(t) {
+	_, ok := plugin.IsWebhookConfigured(t.Project, t.Version)
+	if !ok {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("there is no webhook configured for '%s'", t.Project),
 			StatusCode: http.StatusBadRequest,

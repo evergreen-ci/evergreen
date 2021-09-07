@@ -910,6 +910,90 @@ func (c *CodePipeline) EnableStageTransitionWithContext(ctx aws.Context, input *
 	return out, req.Send()
 }
 
+const opGetActionType = "GetActionType"
+
+// GetActionTypeRequest generates a "aws/request.Request" representing the
+// client's request for the GetActionType operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetActionType for more information on using the GetActionType
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetActionTypeRequest method.
+//    req, resp := client.GetActionTypeRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codepipeline-2015-07-09/GetActionType
+func (c *CodePipeline) GetActionTypeRequest(input *GetActionTypeInput) (req *request.Request, output *GetActionTypeOutput) {
+	op := &request.Operation{
+		Name:       opGetActionType,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &GetActionTypeInput{}
+	}
+
+	output = &GetActionTypeOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetActionType API operation for AWS CodePipeline.
+//
+// Returns information about an action type created for an external provider,
+// where the action is to be used by customers of the external provider. The
+// action can be created with any supported integration model.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS CodePipeline's
+// API operation GetActionType for usage and error information.
+//
+// Returned Error Types:
+//   * ActionTypeNotFoundException
+//   The specified action type cannot be found.
+//
+//   * ValidationException
+//   The validation was specified in an invalid format.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codepipeline-2015-07-09/GetActionType
+func (c *CodePipeline) GetActionType(input *GetActionTypeInput) (*GetActionTypeOutput, error) {
+	req, out := c.GetActionTypeRequest(input)
+	return out, req.Send()
+}
+
+// GetActionTypeWithContext is the same as GetActionType with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetActionType for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CodePipeline) GetActionTypeWithContext(ctx aws.Context, input *GetActionTypeInput, opts ...request.Option) (*GetActionTypeOutput, error) {
+	req, out := c.GetActionTypeRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opGetJobDetails = "GetJobDetails"
 
 // GetJobDetailsRequest generates a "aws/request.Request" representing the
@@ -1820,7 +1904,7 @@ func (c *CodePipeline) ListPipelinesRequest(input *ListPipelinesInput) (req *req
 		Paginator: &request.Paginator{
 			InputTokens:     []string{"nextToken"},
 			OutputTokens:    []string{"nextToken"},
-			LimitToken:      "",
+			LimitToken:      "maxResults",
 			TruncationToken: "",
 		},
 	}
@@ -3186,6 +3270,10 @@ func (c *CodePipeline) RetryStageExecutionRequest(input *RetryStageExecutionInpu
 //   * ValidationException
 //   The validation was specified in an invalid format.
 //
+//   * ConflictException
+//   Your request cannot be handled because the pipeline is busy handling ongoing
+//   activities. Try again later.
+//
 //   * PipelineNotFoundException
 //   The pipeline was specified in an invalid format or cannot be found.
 //
@@ -3280,6 +3368,10 @@ func (c *CodePipeline) StartPipelineExecutionRequest(input *StartPipelineExecuti
 //   * ValidationException
 //   The validation was specified in an invalid format.
 //
+//   * ConflictException
+//   Your request cannot be handled because the pipeline is busy handling ongoing
+//   activities. Try again later.
+//
 //   * PipelineNotFoundException
 //   The pipeline was specified in an invalid format or cannot be found.
 //
@@ -3366,6 +3458,10 @@ func (c *CodePipeline) StopPipelineExecutionRequest(input *StopPipelineExecution
 // Returned Error Types:
 //   * ValidationException
 //   The validation was specified in an invalid format.
+//
+//   * ConflictException
+//   Your request cannot be handled because the pipeline is busy handling ongoing
+//   activities. Try again later.
 //
 //   * PipelineNotFoundException
 //   The pipeline was specified in an invalid format or cannot be found.
@@ -3591,6 +3687,95 @@ func (c *CodePipeline) UntagResourceWithContext(ctx aws.Context, input *UntagRes
 	return out, req.Send()
 }
 
+const opUpdateActionType = "UpdateActionType"
+
+// UpdateActionTypeRequest generates a "aws/request.Request" representing the
+// client's request for the UpdateActionType operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UpdateActionType for more information on using the UpdateActionType
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UpdateActionTypeRequest method.
+//    req, resp := client.UpdateActionTypeRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codepipeline-2015-07-09/UpdateActionType
+func (c *CodePipeline) UpdateActionTypeRequest(input *UpdateActionTypeInput) (req *request.Request, output *UpdateActionTypeOutput) {
+	op := &request.Operation{
+		Name:       opUpdateActionType,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &UpdateActionTypeInput{}
+	}
+
+	output = &UpdateActionTypeOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// UpdateActionType API operation for AWS CodePipeline.
+//
+// Updates an action type that was created with any supported integration model,
+// where the action type is to be used by customers of the action type provider.
+// Use a JSON file with the action definition and UpdateActionType to provide
+// the full structure.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS CodePipeline's
+// API operation UpdateActionType for usage and error information.
+//
+// Returned Error Types:
+//   * RequestFailedException
+//   The request failed because of an unknown error, exception, or failure.
+//
+//   * ValidationException
+//   The validation was specified in an invalid format.
+//
+//   * ActionTypeNotFoundException
+//   The specified action type cannot be found.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codepipeline-2015-07-09/UpdateActionType
+func (c *CodePipeline) UpdateActionType(input *UpdateActionTypeInput) (*UpdateActionTypeOutput, error) {
+	req, out := c.UpdateActionTypeRequest(input)
+	return out, req.Send()
+}
+
+// UpdateActionTypeWithContext is the same as UpdateActionType with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UpdateActionType for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CodePipeline) UpdateActionTypeWithContext(ctx aws.Context, input *UpdateActionTypeInput, opts ...request.Option) (*UpdateActionTypeOutput, error) {
+	req, out := c.UpdateActionTypeRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opUpdatePipeline = "UpdatePipeline"
 
 // UpdatePipelineRequest generates a "aws/request.Request" representing the
@@ -3699,17 +3884,17 @@ type AWSSessionCredentials struct {
 	// The access key for the session.
 	//
 	// AccessKeyId is a required field
-	AccessKeyId *string `locationName:"accessKeyId" type:"string" required:"true"`
+	AccessKeyId *string `locationName:"accessKeyId" type:"string" required:"true" sensitive:"true"`
 
 	// The secret access key for the session.
 	//
 	// SecretAccessKey is a required field
-	SecretAccessKey *string `locationName:"secretAccessKey" type:"string" required:"true"`
+	SecretAccessKey *string `locationName:"secretAccessKey" type:"string" required:"true" sensitive:"true"`
 
 	// The token for the session.
 	//
 	// SessionToken is a required field
-	SessionToken *string `locationName:"sessionToken" type:"string" required:"true"`
+	SessionToken *string `locationName:"sessionToken" type:"string" required:"true" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -4285,6 +4470,13 @@ func (s *ActionDeclaration) SetRunOrder(v int64) *ActionDeclaration {
 type ActionExecution struct {
 	_ struct{} `type:"structure"`
 
+	// ID of the workflow action execution in the current stage. Use the GetPipelineState
+	// action to retrieve the current action execution details of the current stage.
+	//
+	// For older executions, this field might be empty. The action execution ID
+	// is available for executions run on or after March 2020.
+	ActionExecutionId *string `locationName:"actionExecutionId" type:"string"`
+
 	// The details of an error returned by a URL external to AWS.
 	ErrorDetails *ErrorDetails `locationName:"errorDetails" type:"structure"`
 
@@ -4326,6 +4518,12 @@ func (s ActionExecution) String() string {
 // GoString returns the string representation
 func (s ActionExecution) GoString() string {
 	return s.String()
+}
+
+// SetActionExecutionId sets the ActionExecutionId field's value.
+func (s *ActionExecution) SetActionExecutionId(v string) *ActionExecution {
+	s.ActionExecutionId = &v
+	return s
 }
 
 // SetErrorDetails sets the ErrorDetails field's value.
@@ -4684,8 +4882,8 @@ func (s *ActionExecutionResult) SetExternalExecutionUrl(v string) *ActionExecuti
 
 // The specified action cannot be found.
 type ActionNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -4702,17 +4900,17 @@ func (s ActionNotFoundException) GoString() string {
 
 func newErrorActionNotFoundException(v protocol.ResponseMetadata) error {
 	return &ActionNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ActionNotFoundException) Code() string {
+func (s *ActionNotFoundException) Code() string {
 	return "ActionNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ActionNotFoundException) Message() string {
+func (s *ActionNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -4720,22 +4918,22 @@ func (s ActionNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ActionNotFoundException) OrigErr() error {
+func (s *ActionNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ActionNotFoundException) Error() string {
+func (s *ActionNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ActionNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ActionNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ActionNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ActionNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about the version (or revision) of an action.
@@ -4942,6 +5140,325 @@ func (s *ActionType) SetSettings(v *ActionTypeSettings) *ActionType {
 	return s
 }
 
+// Information about parameters for artifacts associated with the action type,
+// such as the minimum and maximum artifacts allowed.
+type ActionTypeArtifactDetails struct {
+	_ struct{} `type:"structure"`
+
+	// The maximum number of artifacts that can be used with the actiontype. For
+	// example, you should specify a minimum and maximum of zero input artifacts
+	// for an action type with a category of source.
+	//
+	// MaximumCount is a required field
+	MaximumCount *int64 `locationName:"maximumCount" type:"integer" required:"true"`
+
+	// The minimum number of artifacts that can be used with the action type. For
+	// example, you should specify a minimum and maximum of zero input artifacts
+	// for an action type with a category of source.
+	//
+	// MinimumCount is a required field
+	MinimumCount *int64 `locationName:"minimumCount" type:"integer" required:"true"`
+}
+
+// String returns the string representation
+func (s ActionTypeArtifactDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActionTypeArtifactDetails) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActionTypeArtifactDetails) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActionTypeArtifactDetails"}
+	if s.MaximumCount == nil {
+		invalidParams.Add(request.NewErrParamRequired("MaximumCount"))
+	}
+	if s.MinimumCount == nil {
+		invalidParams.Add(request.NewErrParamRequired("MinimumCount"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetMaximumCount sets the MaximumCount field's value.
+func (s *ActionTypeArtifactDetails) SetMaximumCount(v int64) *ActionTypeArtifactDetails {
+	s.MaximumCount = &v
+	return s
+}
+
+// SetMinimumCount sets the MinimumCount field's value.
+func (s *ActionTypeArtifactDetails) SetMinimumCount(v int64) *ActionTypeArtifactDetails {
+	s.MinimumCount = &v
+	return s
+}
+
+// The parameters for the action type definition that are provided when the
+// action type is created or updated.
+type ActionTypeDeclaration struct {
+	_ struct{} `type:"structure"`
+
+	// The description for the action type to be updated.
+	Description *string `locationName:"description" min:"1" type:"string"`
+
+	// Information about the executor for an action type that was created with any
+	// supported integration model.
+	//
+	// Executor is a required field
+	Executor *ActionTypeExecutor `locationName:"executor" type:"structure" required:"true"`
+
+	// The action category, owner, provider, and version of the action type to be
+	// updated.
+	//
+	// Id is a required field
+	Id *ActionTypeIdentifier `locationName:"id" type:"structure" required:"true"`
+
+	// Details for the artifacts, such as application files, to be worked on by
+	// the action. For example, the minimum and maximum number of input artifacts
+	// allowed.
+	//
+	// InputArtifactDetails is a required field
+	InputArtifactDetails *ActionTypeArtifactDetails `locationName:"inputArtifactDetails" type:"structure" required:"true"`
+
+	// Details for the output artifacts, such as a built application, that are the
+	// result of the action. For example, the minimum and maximum number of output
+	// artifacts allowed.
+	//
+	// OutputArtifactDetails is a required field
+	OutputArtifactDetails *ActionTypeArtifactDetails `locationName:"outputArtifactDetails" type:"structure" required:"true"`
+
+	// Details identifying the accounts with permissions to use the action type.
+	Permissions *ActionTypePermissions `locationName:"permissions" type:"structure"`
+
+	// The properties of the action type to be updated.
+	Properties []*ActionTypeProperty `locationName:"properties" type:"list"`
+
+	// The links associated with the action type to be updated.
+	Urls *ActionTypeUrls `locationName:"urls" type:"structure"`
+}
+
+// String returns the string representation
+func (s ActionTypeDeclaration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActionTypeDeclaration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActionTypeDeclaration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActionTypeDeclaration"}
+	if s.Description != nil && len(*s.Description) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Description", 1))
+	}
+	if s.Executor == nil {
+		invalidParams.Add(request.NewErrParamRequired("Executor"))
+	}
+	if s.Id == nil {
+		invalidParams.Add(request.NewErrParamRequired("Id"))
+	}
+	if s.InputArtifactDetails == nil {
+		invalidParams.Add(request.NewErrParamRequired("InputArtifactDetails"))
+	}
+	if s.OutputArtifactDetails == nil {
+		invalidParams.Add(request.NewErrParamRequired("OutputArtifactDetails"))
+	}
+	if s.Executor != nil {
+		if err := s.Executor.Validate(); err != nil {
+			invalidParams.AddNested("Executor", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.Id != nil {
+		if err := s.Id.Validate(); err != nil {
+			invalidParams.AddNested("Id", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.InputArtifactDetails != nil {
+		if err := s.InputArtifactDetails.Validate(); err != nil {
+			invalidParams.AddNested("InputArtifactDetails", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.OutputArtifactDetails != nil {
+		if err := s.OutputArtifactDetails.Validate(); err != nil {
+			invalidParams.AddNested("OutputArtifactDetails", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.Permissions != nil {
+		if err := s.Permissions.Validate(); err != nil {
+			invalidParams.AddNested("Permissions", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.Properties != nil {
+		for i, v := range s.Properties {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Properties", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.Urls != nil {
+		if err := s.Urls.Validate(); err != nil {
+			invalidParams.AddNested("Urls", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDescription sets the Description field's value.
+func (s *ActionTypeDeclaration) SetDescription(v string) *ActionTypeDeclaration {
+	s.Description = &v
+	return s
+}
+
+// SetExecutor sets the Executor field's value.
+func (s *ActionTypeDeclaration) SetExecutor(v *ActionTypeExecutor) *ActionTypeDeclaration {
+	s.Executor = v
+	return s
+}
+
+// SetId sets the Id field's value.
+func (s *ActionTypeDeclaration) SetId(v *ActionTypeIdentifier) *ActionTypeDeclaration {
+	s.Id = v
+	return s
+}
+
+// SetInputArtifactDetails sets the InputArtifactDetails field's value.
+func (s *ActionTypeDeclaration) SetInputArtifactDetails(v *ActionTypeArtifactDetails) *ActionTypeDeclaration {
+	s.InputArtifactDetails = v
+	return s
+}
+
+// SetOutputArtifactDetails sets the OutputArtifactDetails field's value.
+func (s *ActionTypeDeclaration) SetOutputArtifactDetails(v *ActionTypeArtifactDetails) *ActionTypeDeclaration {
+	s.OutputArtifactDetails = v
+	return s
+}
+
+// SetPermissions sets the Permissions field's value.
+func (s *ActionTypeDeclaration) SetPermissions(v *ActionTypePermissions) *ActionTypeDeclaration {
+	s.Permissions = v
+	return s
+}
+
+// SetProperties sets the Properties field's value.
+func (s *ActionTypeDeclaration) SetProperties(v []*ActionTypeProperty) *ActionTypeDeclaration {
+	s.Properties = v
+	return s
+}
+
+// SetUrls sets the Urls field's value.
+func (s *ActionTypeDeclaration) SetUrls(v *ActionTypeUrls) *ActionTypeDeclaration {
+	s.Urls = v
+	return s
+}
+
+// The action engine, or executor, for an action type created for a provider,
+// where the action is to be used by customers of the provider. The action engine
+// is associated with the model used to create and update the action, such as
+// the Lambda integration model.
+type ActionTypeExecutor struct {
+	_ struct{} `type:"structure"`
+
+	// The action configuration properties for the action type. These properties
+	// are specified in the action definition when the action type is created.
+	//
+	// Configuration is a required field
+	Configuration *ExecutorConfiguration `locationName:"configuration" type:"structure" required:"true"`
+
+	// The timeout in seconds for the job. An action execution can have multiple
+	// jobs. This is the timeout for a single job, not the entire action execution.
+	JobTimeout *int64 `locationName:"jobTimeout" min:"60" type:"integer"`
+
+	// The policy statement that specifies the permissions in the CodePipeline customer’s
+	// account that are needed to successfully run an action.
+	//
+	// To grant permission to another account, specify the account ID as the Principal,
+	// a domain-style identifier defined by the service, for example codepipeline.amazonaws.com.
+	//
+	// The size of the passed JSON policy document cannot exceed 2048 characters.
+	PolicyStatementsTemplate *string `locationName:"policyStatementsTemplate" min:"1" type:"string"`
+
+	// The integration model used to create and update the action type, Lambda or
+	// JobWorker.
+	//
+	// Type is a required field
+	Type *string `locationName:"type" type:"string" required:"true" enum:"ExecutorType"`
+}
+
+// String returns the string representation
+func (s ActionTypeExecutor) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActionTypeExecutor) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActionTypeExecutor) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActionTypeExecutor"}
+	if s.Configuration == nil {
+		invalidParams.Add(request.NewErrParamRequired("Configuration"))
+	}
+	if s.JobTimeout != nil && *s.JobTimeout < 60 {
+		invalidParams.Add(request.NewErrParamMinValue("JobTimeout", 60))
+	}
+	if s.PolicyStatementsTemplate != nil && len(*s.PolicyStatementsTemplate) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("PolicyStatementsTemplate", 1))
+	}
+	if s.Type == nil {
+		invalidParams.Add(request.NewErrParamRequired("Type"))
+	}
+	if s.Configuration != nil {
+		if err := s.Configuration.Validate(); err != nil {
+			invalidParams.AddNested("Configuration", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConfiguration sets the Configuration field's value.
+func (s *ActionTypeExecutor) SetConfiguration(v *ExecutorConfiguration) *ActionTypeExecutor {
+	s.Configuration = v
+	return s
+}
+
+// SetJobTimeout sets the JobTimeout field's value.
+func (s *ActionTypeExecutor) SetJobTimeout(v int64) *ActionTypeExecutor {
+	s.JobTimeout = &v
+	return s
+}
+
+// SetPolicyStatementsTemplate sets the PolicyStatementsTemplate field's value.
+func (s *ActionTypeExecutor) SetPolicyStatementsTemplate(v string) *ActionTypeExecutor {
+	s.PolicyStatementsTemplate = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *ActionTypeExecutor) SetType(v string) *ActionTypeExecutor {
+	s.Type = &v
+	return s
+}
+
 // Represents information about an action type.
 type ActionTypeId struct {
 	_ struct{} `type:"structure"`
@@ -4950,10 +5467,25 @@ type ActionTypeId struct {
 	// the provider type for the action. Valid categories are limited to one of
 	// the following values.
 	//
+	//    * Source
+	//
+	//    * Build
+	//
+	//    * Test
+	//
+	//    * Deploy
+	//
+	//    * Invoke
+	//
+	//    * Approval
+	//
 	// Category is a required field
 	Category *string `locationName:"category" type:"string" required:"true" enum:"ActionCategory"`
 
-	// The creator of the action being called.
+	// The creator of the action being called. There are three valid values for
+	// the Owner field in the action category section within your pipeline structure:
+	// AWS, ThirdParty, and Custom. For more information, see Valid Action Types
+	// and Providers in CodePipeline (https://docs.aws.amazon.com/codepipeline/latest/userguide/reference-pipeline-structure.html#actions-valid-providers).
 	//
 	// Owner is a required field
 	Owner *string `locationName:"owner" type:"string" required:"true" enum:"ActionOwner"`
@@ -5035,10 +5567,110 @@ func (s *ActionTypeId) SetVersion(v string) *ActionTypeId {
 	return s
 }
 
+// Specifies the category, owner, provider, and version of the action type.
+type ActionTypeIdentifier struct {
+	_ struct{} `type:"structure"`
+
+	// Defines what kind of action can be taken in the stage, one of the following:
+	//
+	//    * Source
+	//
+	//    * Build
+	//
+	//    * Test
+	//
+	//    * Deploy
+	//
+	//    * Approval
+	//
+	//    * Invoke
+	//
+	// Category is a required field
+	Category *string `locationName:"category" type:"string" required:"true" enum:"ActionCategory"`
+
+	// The creator of the action type being called: AWS or ThirdParty.
+	//
+	// Owner is a required field
+	Owner *string `locationName:"owner" type:"string" required:"true"`
+
+	// The provider of the action type being called. The provider name is supplied
+	// when the action type is created.
+	//
+	// Provider is a required field
+	Provider *string `locationName:"provider" min:"1" type:"string" required:"true"`
+
+	// A string that describes the action type version.
+	//
+	// Version is a required field
+	Version *string `locationName:"version" min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ActionTypeIdentifier) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActionTypeIdentifier) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActionTypeIdentifier) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActionTypeIdentifier"}
+	if s.Category == nil {
+		invalidParams.Add(request.NewErrParamRequired("Category"))
+	}
+	if s.Owner == nil {
+		invalidParams.Add(request.NewErrParamRequired("Owner"))
+	}
+	if s.Provider == nil {
+		invalidParams.Add(request.NewErrParamRequired("Provider"))
+	}
+	if s.Provider != nil && len(*s.Provider) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Provider", 1))
+	}
+	if s.Version == nil {
+		invalidParams.Add(request.NewErrParamRequired("Version"))
+	}
+	if s.Version != nil && len(*s.Version) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Version", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCategory sets the Category field's value.
+func (s *ActionTypeIdentifier) SetCategory(v string) *ActionTypeIdentifier {
+	s.Category = &v
+	return s
+}
+
+// SetOwner sets the Owner field's value.
+func (s *ActionTypeIdentifier) SetOwner(v string) *ActionTypeIdentifier {
+	s.Owner = &v
+	return s
+}
+
+// SetProvider sets the Provider field's value.
+func (s *ActionTypeIdentifier) SetProvider(v string) *ActionTypeIdentifier {
+	s.Provider = &v
+	return s
+}
+
+// SetVersion sets the Version field's value.
+func (s *ActionTypeIdentifier) SetVersion(v string) *ActionTypeIdentifier {
+	s.Version = &v
+	return s
+}
+
 // The specified action type cannot be found.
 type ActionTypeNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5055,17 +5687,17 @@ func (s ActionTypeNotFoundException) GoString() string {
 
 func newErrorActionTypeNotFoundException(v protocol.ResponseMetadata) error {
 	return &ActionTypeNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ActionTypeNotFoundException) Code() string {
+func (s *ActionTypeNotFoundException) Code() string {
 	return "ActionTypeNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ActionTypeNotFoundException) Message() string {
+func (s *ActionTypeNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5073,22 +5705,174 @@ func (s ActionTypeNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ActionTypeNotFoundException) OrigErr() error {
+func (s *ActionTypeNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ActionTypeNotFoundException) Error() string {
+func (s *ActionTypeNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ActionTypeNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ActionTypeNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ActionTypeNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ActionTypeNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// Details identifying the users with permissions to use the action type.
+type ActionTypePermissions struct {
+	_ struct{} `type:"structure"`
+
+	// A list of AWS account IDs with access to use the action type in their pipelines.
+	//
+	// AllowedAccounts is a required field
+	AllowedAccounts []*string `locationName:"allowedAccounts" min:"1" type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s ActionTypePermissions) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActionTypePermissions) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActionTypePermissions) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActionTypePermissions"}
+	if s.AllowedAccounts == nil {
+		invalidParams.Add(request.NewErrParamRequired("AllowedAccounts"))
+	}
+	if s.AllowedAccounts != nil && len(s.AllowedAccounts) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AllowedAccounts", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAllowedAccounts sets the AllowedAccounts field's value.
+func (s *ActionTypePermissions) SetAllowedAccounts(v []*string) *ActionTypePermissions {
+	s.AllowedAccounts = v
+	return s
+}
+
+// Represents information about each property specified in the action configuration,
+// such as the description and key name that display for the customer using
+// the action type.
+type ActionTypeProperty struct {
+	_ struct{} `type:"structure"`
+
+	// The description of the property that is displayed to users.
+	Description *string `locationName:"description" min:"1" type:"string"`
+
+	// Whether the configuration property is a key.
+	//
+	// Key is a required field
+	Key *bool `locationName:"key" type:"boolean" required:"true"`
+
+	// The property name that is displayed to users.
+	//
+	// Name is a required field
+	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
+
+	// Whether to omit the field value entered by the customer in the log. If true,
+	// the value is not saved in CloudTrail logs for the action execution.
+	//
+	// NoEcho is a required field
+	NoEcho *bool `locationName:"noEcho" type:"boolean" required:"true"`
+
+	// Whether the configuration property is an optional value.
+	//
+	// Optional is a required field
+	Optional *bool `locationName:"optional" type:"boolean" required:"true"`
+
+	// Indicates that the property is used with polling. An action type can have
+	// up to one queryable property. If it has one, that property must be both required
+	// and not secret.
+	Queryable *bool `locationName:"queryable" type:"boolean"`
+}
+
+// String returns the string representation
+func (s ActionTypeProperty) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActionTypeProperty) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActionTypeProperty) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActionTypeProperty"}
+	if s.Description != nil && len(*s.Description) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Description", 1))
+	}
+	if s.Key == nil {
+		invalidParams.Add(request.NewErrParamRequired("Key"))
+	}
+	if s.Name == nil {
+		invalidParams.Add(request.NewErrParamRequired("Name"))
+	}
+	if s.Name != nil && len(*s.Name) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
+	}
+	if s.NoEcho == nil {
+		invalidParams.Add(request.NewErrParamRequired("NoEcho"))
+	}
+	if s.Optional == nil {
+		invalidParams.Add(request.NewErrParamRequired("Optional"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDescription sets the Description field's value.
+func (s *ActionTypeProperty) SetDescription(v string) *ActionTypeProperty {
+	s.Description = &v
+	return s
+}
+
+// SetKey sets the Key field's value.
+func (s *ActionTypeProperty) SetKey(v bool) *ActionTypeProperty {
+	s.Key = &v
+	return s
+}
+
+// SetName sets the Name field's value.
+func (s *ActionTypeProperty) SetName(v string) *ActionTypeProperty {
+	s.Name = &v
+	return s
+}
+
+// SetNoEcho sets the NoEcho field's value.
+func (s *ActionTypeProperty) SetNoEcho(v bool) *ActionTypeProperty {
+	s.NoEcho = &v
+	return s
+}
+
+// SetOptional sets the Optional field's value.
+func (s *ActionTypeProperty) SetOptional(v bool) *ActionTypeProperty {
+	s.Optional = &v
+	return s
+}
+
+// SetQueryable sets the Queryable field's value.
+func (s *ActionTypeProperty) SetQueryable(v bool) *ActionTypeProperty {
+	s.Queryable = &v
+	return s
 }
 
 // Returns information about the settings for an action type.
@@ -5174,10 +5958,92 @@ func (s *ActionTypeSettings) SetThirdPartyConfigurationUrl(v string) *ActionType
 	return s
 }
 
+// Returns information about URLs for web pages that display to customers as
+// links on the pipeline view, such as an external configuration page for the
+// action type.
+type ActionTypeUrls struct {
+	_ struct{} `type:"structure"`
+
+	// The URL returned to the CodePipeline console that contains a link to the
+	// page where customers can configure the external action.
+	ConfigurationUrl *string `locationName:"configurationUrl" min:"1" type:"string"`
+
+	// The URL returned to the CodePipeline console that provides a deep link to
+	// the resources of the external system, such as a status page. This link is
+	// provided as part of the action display in the pipeline.
+	EntityUrlTemplate *string `locationName:"entityUrlTemplate" min:"1" type:"string"`
+
+	// The link to an execution page for the action type in progress. For example,
+	// for a CodeDeploy action, this link is shown on the pipeline view page in
+	// the CodePipeline console, and it links to a CodeDeploy status page.
+	ExecutionUrlTemplate *string `locationName:"executionUrlTemplate" min:"1" type:"string"`
+
+	// The URL returned to the CodePipeline console that contains a link to the
+	// page where customers can update or change the configuration of the external
+	// action.
+	RevisionUrlTemplate *string `locationName:"revisionUrlTemplate" min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ActionTypeUrls) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ActionTypeUrls) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ActionTypeUrls) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ActionTypeUrls"}
+	if s.ConfigurationUrl != nil && len(*s.ConfigurationUrl) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ConfigurationUrl", 1))
+	}
+	if s.EntityUrlTemplate != nil && len(*s.EntityUrlTemplate) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("EntityUrlTemplate", 1))
+	}
+	if s.ExecutionUrlTemplate != nil && len(*s.ExecutionUrlTemplate) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ExecutionUrlTemplate", 1))
+	}
+	if s.RevisionUrlTemplate != nil && len(*s.RevisionUrlTemplate) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("RevisionUrlTemplate", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConfigurationUrl sets the ConfigurationUrl field's value.
+func (s *ActionTypeUrls) SetConfigurationUrl(v string) *ActionTypeUrls {
+	s.ConfigurationUrl = &v
+	return s
+}
+
+// SetEntityUrlTemplate sets the EntityUrlTemplate field's value.
+func (s *ActionTypeUrls) SetEntityUrlTemplate(v string) *ActionTypeUrls {
+	s.EntityUrlTemplate = &v
+	return s
+}
+
+// SetExecutionUrlTemplate sets the ExecutionUrlTemplate field's value.
+func (s *ActionTypeUrls) SetExecutionUrlTemplate(v string) *ActionTypeUrls {
+	s.ExecutionUrlTemplate = &v
+	return s
+}
+
+// SetRevisionUrlTemplate sets the RevisionUrlTemplate field's value.
+func (s *ActionTypeUrls) SetRevisionUrlTemplate(v string) *ActionTypeUrls {
+	s.RevisionUrlTemplate = &v
+	return s
+}
+
 // The approval action has already been approved or rejected.
 type ApprovalAlreadyCompletedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -5194,17 +6060,17 @@ func (s ApprovalAlreadyCompletedException) GoString() string {
 
 func newErrorApprovalAlreadyCompletedException(v protocol.ResponseMetadata) error {
 	return &ApprovalAlreadyCompletedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ApprovalAlreadyCompletedException) Code() string {
+func (s *ApprovalAlreadyCompletedException) Code() string {
 	return "ApprovalAlreadyCompletedException"
 }
 
 // Message returns the exception's message.
-func (s ApprovalAlreadyCompletedException) Message() string {
+func (s *ApprovalAlreadyCompletedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5212,22 +6078,22 @@ func (s ApprovalAlreadyCompletedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ApprovalAlreadyCompletedException) OrigErr() error {
+func (s *ApprovalAlreadyCompletedException) OrigErr() error {
 	return nil
 }
 
-func (s ApprovalAlreadyCompletedException) Error() string {
+func (s *ApprovalAlreadyCompletedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ApprovalAlreadyCompletedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ApprovalAlreadyCompletedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ApprovalAlreadyCompletedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ApprovalAlreadyCompletedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about the result of an approval request.
@@ -5661,8 +6527,8 @@ func (s *BlockerDeclaration) SetType(v string) *BlockerDeclaration {
 
 // Unable to modify the tag due to a simultaneous update request.
 type ConcurrentModificationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" min:"1" type:"string"`
 }
@@ -5679,17 +6545,17 @@ func (s ConcurrentModificationException) GoString() string {
 
 func newErrorConcurrentModificationException(v protocol.ResponseMetadata) error {
 	return &ConcurrentModificationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ConcurrentModificationException) Code() string {
+func (s *ConcurrentModificationException) Code() string {
 	return "ConcurrentModificationException"
 }
 
 // Message returns the exception's message.
-func (s ConcurrentModificationException) Message() string {
+func (s *ConcurrentModificationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -5697,22 +6563,79 @@ func (s ConcurrentModificationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ConcurrentModificationException) OrigErr() error {
+func (s *ConcurrentModificationException) OrigErr() error {
 	return nil
 }
 
-func (s ConcurrentModificationException) Error() string {
+func (s *ConcurrentModificationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ConcurrentModificationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ConcurrentModificationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ConcurrentModificationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ConcurrentModificationException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// Your request cannot be handled because the pipeline is busy handling ongoing
+// activities. Try again later.
+type ConflictException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"message" min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ConflictException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ConflictException) GoString() string {
+	return s.String()
+}
+
+func newErrorConflictException(v protocol.ResponseMetadata) error {
+	return &ConflictException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *ConflictException) Code() string {
+	return "ConflictException"
+}
+
+// Message returns the exception's message.
+func (s *ConflictException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *ConflictException) OrigErr() error {
+	return nil
+}
+
+func (s *ConflictException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *ConflictException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *ConflictException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the input of a CreateCustomActionType operation.
@@ -5720,9 +6643,6 @@ type CreateCustomActionTypeInput struct {
 	_ struct{} `type:"structure"`
 
 	// The category of the custom action, such as a build action or a test action.
-	//
-	// Although Source and Approval are listed as valid values, they are not currently
-	// functional. These values are reserved for future use.
 	//
 	// Category is a required field
 	Category *string `locationName:"category" type:"string" required:"true" enum:"ActionCategory"`
@@ -6465,8 +7385,8 @@ func (s DisableStageTransitionOutput) GoString() string {
 // out of sequence tasks. If you already chose to stop and abandon, you cannot
 // make that request again.
 type DuplicatedStopRequestException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" min:"1" type:"string"`
 }
@@ -6483,17 +7403,17 @@ func (s DuplicatedStopRequestException) GoString() string {
 
 func newErrorDuplicatedStopRequestException(v protocol.ResponseMetadata) error {
 	return &DuplicatedStopRequestException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s DuplicatedStopRequestException) Code() string {
+func (s *DuplicatedStopRequestException) Code() string {
 	return "DuplicatedStopRequestException"
 }
 
 // Message returns the exception's message.
-func (s DuplicatedStopRequestException) Message() string {
+func (s *DuplicatedStopRequestException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -6501,22 +7421,22 @@ func (s DuplicatedStopRequestException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s DuplicatedStopRequestException) OrigErr() error {
+func (s *DuplicatedStopRequestException) OrigErr() error {
 	return nil
 }
 
-func (s DuplicatedStopRequestException) Error() string {
+func (s *DuplicatedStopRequestException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s DuplicatedStopRequestException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *DuplicatedStopRequestException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s DuplicatedStopRequestException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *DuplicatedStopRequestException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the input of an EnableStageTransition action.
@@ -6803,6 +7723,61 @@ func (s *ExecutionTrigger) SetTriggerType(v string) *ExecutionTrigger {
 	return s
 }
 
+// The action engine, or executor, related to the supported integration model
+// used to create and update the action type. The available executor types are
+// Lambda and JobWorker.
+type ExecutorConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// Details about the JobWorker executor of the action type.
+	JobWorkerExecutorConfiguration *JobWorkerExecutorConfiguration `locationName:"jobWorkerExecutorConfiguration" type:"structure"`
+
+	// Details about the Lambda executor of the action type.
+	LambdaExecutorConfiguration *LambdaExecutorConfiguration `locationName:"lambdaExecutorConfiguration" type:"structure"`
+}
+
+// String returns the string representation
+func (s ExecutorConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ExecutorConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ExecutorConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ExecutorConfiguration"}
+	if s.JobWorkerExecutorConfiguration != nil {
+		if err := s.JobWorkerExecutorConfiguration.Validate(); err != nil {
+			invalidParams.AddNested("JobWorkerExecutorConfiguration", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.LambdaExecutorConfiguration != nil {
+		if err := s.LambdaExecutorConfiguration.Validate(); err != nil {
+			invalidParams.AddNested("LambdaExecutorConfiguration", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobWorkerExecutorConfiguration sets the JobWorkerExecutorConfiguration field's value.
+func (s *ExecutorConfiguration) SetJobWorkerExecutorConfiguration(v *JobWorkerExecutorConfiguration) *ExecutorConfiguration {
+	s.JobWorkerExecutorConfiguration = v
+	return s
+}
+
+// SetLambdaExecutorConfiguration sets the LambdaExecutorConfiguration field's value.
+func (s *ExecutorConfiguration) SetLambdaExecutorConfiguration(v *LambdaExecutorConfiguration) *ExecutorConfiguration {
+	s.LambdaExecutorConfiguration = v
+	return s
+}
+
 // Represents information about failure details.
 type FailureDetails struct {
 	_ struct{} `type:"structure"`
@@ -6868,6 +7843,131 @@ func (s *FailureDetails) SetMessage(v string) *FailureDetails {
 // SetType sets the Type field's value.
 func (s *FailureDetails) SetType(v string) *FailureDetails {
 	s.Type = &v
+	return s
+}
+
+type GetActionTypeInput struct {
+	_ struct{} `type:"structure"`
+
+	// Defines what kind of action can be taken in the stage. The following are
+	// the valid values:
+	//
+	//    * Source
+	//
+	//    * Build
+	//
+	//    * Test
+	//
+	//    * Deploy
+	//
+	//    * Approval
+	//
+	//    * Invoke
+	//
+	// Category is a required field
+	Category *string `locationName:"category" type:"string" required:"true" enum:"ActionCategory"`
+
+	// The creator of an action type that was created with any supported integration
+	// model. There are two valid values: AWS and ThirdParty.
+	//
+	// Owner is a required field
+	Owner *string `locationName:"owner" type:"string" required:"true"`
+
+	// The provider of the action type being called. The provider name is specified
+	// when the action type is created.
+	//
+	// Provider is a required field
+	Provider *string `locationName:"provider" min:"1" type:"string" required:"true"`
+
+	// A string that describes the action type version.
+	//
+	// Version is a required field
+	Version *string `locationName:"version" min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s GetActionTypeInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetActionTypeInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GetActionTypeInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GetActionTypeInput"}
+	if s.Category == nil {
+		invalidParams.Add(request.NewErrParamRequired("Category"))
+	}
+	if s.Owner == nil {
+		invalidParams.Add(request.NewErrParamRequired("Owner"))
+	}
+	if s.Provider == nil {
+		invalidParams.Add(request.NewErrParamRequired("Provider"))
+	}
+	if s.Provider != nil && len(*s.Provider) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Provider", 1))
+	}
+	if s.Version == nil {
+		invalidParams.Add(request.NewErrParamRequired("Version"))
+	}
+	if s.Version != nil && len(*s.Version) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Version", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCategory sets the Category field's value.
+func (s *GetActionTypeInput) SetCategory(v string) *GetActionTypeInput {
+	s.Category = &v
+	return s
+}
+
+// SetOwner sets the Owner field's value.
+func (s *GetActionTypeInput) SetOwner(v string) *GetActionTypeInput {
+	s.Owner = &v
+	return s
+}
+
+// SetProvider sets the Provider field's value.
+func (s *GetActionTypeInput) SetProvider(v string) *GetActionTypeInput {
+	s.Provider = &v
+	return s
+}
+
+// SetVersion sets the Version field's value.
+func (s *GetActionTypeInput) SetVersion(v string) *GetActionTypeInput {
+	s.Version = &v
+	return s
+}
+
+type GetActionTypeOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The action type information for the requested action type, such as the action
+	// type ID.
+	ActionType *ActionTypeDeclaration `locationName:"actionType" type:"structure"`
+}
+
+// String returns the string representation
+func (s GetActionTypeOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetActionTypeOutput) GoString() string {
+	return s.String()
+}
+
+// SetActionType sets the ActionType field's value.
+func (s *GetActionTypeOutput) SetActionType(v *ActionTypeDeclaration) *GetActionTypeOutput {
+	s.ActionType = v
 	return s
 }
 
@@ -7347,8 +8447,8 @@ func (s *InputArtifact) SetName(v string) *InputArtifact {
 
 // The action declaration was specified in an invalid format.
 type InvalidActionDeclarationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7365,17 +8465,17 @@ func (s InvalidActionDeclarationException) GoString() string {
 
 func newErrorInvalidActionDeclarationException(v protocol.ResponseMetadata) error {
 	return &InvalidActionDeclarationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidActionDeclarationException) Code() string {
+func (s *InvalidActionDeclarationException) Code() string {
 	return "InvalidActionDeclarationException"
 }
 
 // Message returns the exception's message.
-func (s InvalidActionDeclarationException) Message() string {
+func (s *InvalidActionDeclarationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7383,28 +8483,28 @@ func (s InvalidActionDeclarationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidActionDeclarationException) OrigErr() error {
+func (s *InvalidActionDeclarationException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidActionDeclarationException) Error() string {
+func (s *InvalidActionDeclarationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidActionDeclarationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidActionDeclarationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidActionDeclarationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidActionDeclarationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The approval request already received a response or has expired.
 type InvalidApprovalTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7421,17 +8521,17 @@ func (s InvalidApprovalTokenException) GoString() string {
 
 func newErrorInvalidApprovalTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidApprovalTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidApprovalTokenException) Code() string {
+func (s *InvalidApprovalTokenException) Code() string {
 	return "InvalidApprovalTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidApprovalTokenException) Message() string {
+func (s *InvalidApprovalTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7439,28 +8539,28 @@ func (s InvalidApprovalTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidApprovalTokenException) OrigErr() error {
+func (s *InvalidApprovalTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidApprovalTokenException) Error() string {
+func (s *InvalidApprovalTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidApprovalTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidApprovalTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidApprovalTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidApprovalTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified resource ARN is invalid.
 type InvalidArnException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" min:"1" type:"string"`
 }
@@ -7477,17 +8577,17 @@ func (s InvalidArnException) GoString() string {
 
 func newErrorInvalidArnException(v protocol.ResponseMetadata) error {
 	return &InvalidArnException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidArnException) Code() string {
+func (s *InvalidArnException) Code() string {
 	return "InvalidArnException"
 }
 
 // Message returns the exception's message.
-func (s InvalidArnException) Message() string {
+func (s *InvalidArnException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7495,28 +8595,28 @@ func (s InvalidArnException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidArnException) OrigErr() error {
+func (s *InvalidArnException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidArnException) Error() string {
+func (s *InvalidArnException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidArnException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidArnException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidArnException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidArnException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Reserved for future use.
 type InvalidBlockerDeclarationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7533,17 +8633,17 @@ func (s InvalidBlockerDeclarationException) GoString() string {
 
 func newErrorInvalidBlockerDeclarationException(v protocol.ResponseMetadata) error {
 	return &InvalidBlockerDeclarationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidBlockerDeclarationException) Code() string {
+func (s *InvalidBlockerDeclarationException) Code() string {
 	return "InvalidBlockerDeclarationException"
 }
 
 // Message returns the exception's message.
-func (s InvalidBlockerDeclarationException) Message() string {
+func (s *InvalidBlockerDeclarationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7551,28 +8651,28 @@ func (s InvalidBlockerDeclarationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidBlockerDeclarationException) OrigErr() error {
+func (s *InvalidBlockerDeclarationException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidBlockerDeclarationException) Error() string {
+func (s *InvalidBlockerDeclarationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidBlockerDeclarationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidBlockerDeclarationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidBlockerDeclarationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidBlockerDeclarationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The client token was specified in an invalid format
 type InvalidClientTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7589,17 +8689,17 @@ func (s InvalidClientTokenException) GoString() string {
 
 func newErrorInvalidClientTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidClientTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidClientTokenException) Code() string {
+func (s *InvalidClientTokenException) Code() string {
 	return "InvalidClientTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidClientTokenException) Message() string {
+func (s *InvalidClientTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7607,28 +8707,28 @@ func (s InvalidClientTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidClientTokenException) OrigErr() error {
+func (s *InvalidClientTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidClientTokenException) Error() string {
+func (s *InvalidClientTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidClientTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidClientTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidClientTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidClientTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The job was specified in an invalid format or cannot be found.
 type InvalidJobException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7645,17 +8745,17 @@ func (s InvalidJobException) GoString() string {
 
 func newErrorInvalidJobException(v protocol.ResponseMetadata) error {
 	return &InvalidJobException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidJobException) Code() string {
+func (s *InvalidJobException) Code() string {
 	return "InvalidJobException"
 }
 
 // Message returns the exception's message.
-func (s InvalidJobException) Message() string {
+func (s *InvalidJobException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7663,28 +8763,28 @@ func (s InvalidJobException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidJobException) OrigErr() error {
+func (s *InvalidJobException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidJobException) Error() string {
+func (s *InvalidJobException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidJobException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidJobException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidJobException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidJobException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The job state was specified in an invalid format.
 type InvalidJobStateException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7701,17 +8801,17 @@ func (s InvalidJobStateException) GoString() string {
 
 func newErrorInvalidJobStateException(v protocol.ResponseMetadata) error {
 	return &InvalidJobStateException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidJobStateException) Code() string {
+func (s *InvalidJobStateException) Code() string {
 	return "InvalidJobStateException"
 }
 
 // Message returns the exception's message.
-func (s InvalidJobStateException) Message() string {
+func (s *InvalidJobStateException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7719,29 +8819,29 @@ func (s InvalidJobStateException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidJobStateException) OrigErr() error {
+func (s *InvalidJobStateException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidJobStateException) Error() string {
+func (s *InvalidJobStateException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidJobStateException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidJobStateException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidJobStateException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidJobStateException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The next token was specified in an invalid format. Make sure that the next
 // token you provide is the token returned by a previous call.
 type InvalidNextTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7758,17 +8858,17 @@ func (s InvalidNextTokenException) GoString() string {
 
 func newErrorInvalidNextTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidNextTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidNextTokenException) Code() string {
+func (s *InvalidNextTokenException) Code() string {
 	return "InvalidNextTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidNextTokenException) Message() string {
+func (s *InvalidNextTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7776,28 +8876,28 @@ func (s InvalidNextTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidNextTokenException) OrigErr() error {
+func (s *InvalidNextTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidNextTokenException) Error() string {
+func (s *InvalidNextTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidNextTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidNextTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidNextTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidNextTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The nonce was specified in an invalid format.
 type InvalidNonceException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7814,17 +8914,17 @@ func (s InvalidNonceException) GoString() string {
 
 func newErrorInvalidNonceException(v protocol.ResponseMetadata) error {
 	return &InvalidNonceException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidNonceException) Code() string {
+func (s *InvalidNonceException) Code() string {
 	return "InvalidNonceException"
 }
 
 // Message returns the exception's message.
-func (s InvalidNonceException) Message() string {
+func (s *InvalidNonceException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7832,28 +8932,28 @@ func (s InvalidNonceException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidNonceException) OrigErr() error {
+func (s *InvalidNonceException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidNonceException) Error() string {
+func (s *InvalidNonceException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidNonceException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidNonceException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidNonceException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidNonceException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The stage declaration was specified in an invalid format.
 type InvalidStageDeclarationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7870,17 +8970,17 @@ func (s InvalidStageDeclarationException) GoString() string {
 
 func newErrorInvalidStageDeclarationException(v protocol.ResponseMetadata) error {
 	return &InvalidStageDeclarationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidStageDeclarationException) Code() string {
+func (s *InvalidStageDeclarationException) Code() string {
 	return "InvalidStageDeclarationException"
 }
 
 // Message returns the exception's message.
-func (s InvalidStageDeclarationException) Message() string {
+func (s *InvalidStageDeclarationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7888,28 +8988,28 @@ func (s InvalidStageDeclarationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidStageDeclarationException) OrigErr() error {
+func (s *InvalidStageDeclarationException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidStageDeclarationException) Error() string {
+func (s *InvalidStageDeclarationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidStageDeclarationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidStageDeclarationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidStageDeclarationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidStageDeclarationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The structure was specified in an invalid format.
 type InvalidStructureException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -7926,17 +9026,17 @@ func (s InvalidStructureException) GoString() string {
 
 func newErrorInvalidStructureException(v protocol.ResponseMetadata) error {
 	return &InvalidStructureException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidStructureException) Code() string {
+func (s *InvalidStructureException) Code() string {
 	return "InvalidStructureException"
 }
 
 // Message returns the exception's message.
-func (s InvalidStructureException) Message() string {
+func (s *InvalidStructureException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -7944,28 +9044,28 @@ func (s InvalidStructureException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidStructureException) OrigErr() error {
+func (s *InvalidStructureException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidStructureException) Error() string {
+func (s *InvalidStructureException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidStructureException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidStructureException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidStructureException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidStructureException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified resource tags are invalid.
 type InvalidTagsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" min:"1" type:"string"`
 }
@@ -7982,17 +9082,17 @@ func (s InvalidTagsException) GoString() string {
 
 func newErrorInvalidTagsException(v protocol.ResponseMetadata) error {
 	return &InvalidTagsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidTagsException) Code() string {
+func (s *InvalidTagsException) Code() string {
 	return "InvalidTagsException"
 }
 
 // Message returns the exception's message.
-func (s InvalidTagsException) Message() string {
+func (s *InvalidTagsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8000,28 +9100,28 @@ func (s InvalidTagsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidTagsException) OrigErr() error {
+func (s *InvalidTagsException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidTagsException) Error() string {
+func (s *InvalidTagsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidTagsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidTagsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidTagsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidTagsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified authentication type is in an invalid format.
 type InvalidWebhookAuthenticationParametersException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8038,17 +9138,17 @@ func (s InvalidWebhookAuthenticationParametersException) GoString() string {
 
 func newErrorInvalidWebhookAuthenticationParametersException(v protocol.ResponseMetadata) error {
 	return &InvalidWebhookAuthenticationParametersException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidWebhookAuthenticationParametersException) Code() string {
+func (s *InvalidWebhookAuthenticationParametersException) Code() string {
 	return "InvalidWebhookAuthenticationParametersException"
 }
 
 // Message returns the exception's message.
-func (s InvalidWebhookAuthenticationParametersException) Message() string {
+func (s *InvalidWebhookAuthenticationParametersException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8056,28 +9156,28 @@ func (s InvalidWebhookAuthenticationParametersException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidWebhookAuthenticationParametersException) OrigErr() error {
+func (s *InvalidWebhookAuthenticationParametersException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidWebhookAuthenticationParametersException) Error() string {
+func (s *InvalidWebhookAuthenticationParametersException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidWebhookAuthenticationParametersException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidWebhookAuthenticationParametersException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidWebhookAuthenticationParametersException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidWebhookAuthenticationParametersException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified event filter rule is in an invalid format.
 type InvalidWebhookFilterPatternException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8094,17 +9194,17 @@ func (s InvalidWebhookFilterPatternException) GoString() string {
 
 func newErrorInvalidWebhookFilterPatternException(v protocol.ResponseMetadata) error {
 	return &InvalidWebhookFilterPatternException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidWebhookFilterPatternException) Code() string {
+func (s *InvalidWebhookFilterPatternException) Code() string {
 	return "InvalidWebhookFilterPatternException"
 }
 
 // Message returns the exception's message.
-func (s InvalidWebhookFilterPatternException) Message() string {
+func (s *InvalidWebhookFilterPatternException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8112,22 +9212,22 @@ func (s InvalidWebhookFilterPatternException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidWebhookFilterPatternException) OrigErr() error {
+func (s *InvalidWebhookFilterPatternException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidWebhookFilterPatternException) Error() string {
+func (s *InvalidWebhookFilterPatternException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidWebhookFilterPatternException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidWebhookFilterPatternException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidWebhookFilterPatternException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidWebhookFilterPatternException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about a job.
@@ -8323,8 +9423,8 @@ func (s *JobDetails) SetId(v string) *JobDetails {
 
 // The job was specified in an invalid format or cannot be found.
 type JobNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8341,17 +9441,17 @@ func (s JobNotFoundException) GoString() string {
 
 func newErrorJobNotFoundException(v protocol.ResponseMetadata) error {
 	return &JobNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s JobNotFoundException) Code() string {
+func (s *JobNotFoundException) Code() string {
 	return "JobNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s JobNotFoundException) Message() string {
+func (s *JobNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8359,29 +9459,123 @@ func (s JobNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s JobNotFoundException) OrigErr() error {
+func (s *JobNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s JobNotFoundException) Error() string {
+func (s *JobNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s JobNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *JobNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s JobNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *JobNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// Details about the polling configuration for the JobWorker action engine,
+// or executor.
+type JobWorkerExecutorConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// The accounts in which the job worker is configured and might poll for jobs
+	// as part of the action execution.
+	PollingAccounts []*string `locationName:"pollingAccounts" min:"1" type:"list"`
+
+	// The service Principals in which the job worker is configured and might poll
+	// for jobs as part of the action execution.
+	PollingServicePrincipals []*string `locationName:"pollingServicePrincipals" min:"1" type:"list"`
+}
+
+// String returns the string representation
+func (s JobWorkerExecutorConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s JobWorkerExecutorConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *JobWorkerExecutorConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "JobWorkerExecutorConfiguration"}
+	if s.PollingAccounts != nil && len(s.PollingAccounts) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("PollingAccounts", 1))
+	}
+	if s.PollingServicePrincipals != nil && len(s.PollingServicePrincipals) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("PollingServicePrincipals", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetPollingAccounts sets the PollingAccounts field's value.
+func (s *JobWorkerExecutorConfiguration) SetPollingAccounts(v []*string) *JobWorkerExecutorConfiguration {
+	s.PollingAccounts = v
+	return s
+}
+
+// SetPollingServicePrincipals sets the PollingServicePrincipals field's value.
+func (s *JobWorkerExecutorConfiguration) SetPollingServicePrincipals(v []*string) *JobWorkerExecutorConfiguration {
+	s.PollingServicePrincipals = v
+	return s
+}
+
+// Details about the configuration for the Lambda action engine, or executor.
+type LambdaExecutorConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the Lambda function used by the action engine.
+	//
+	// LambdaFunctionArn is a required field
+	LambdaFunctionArn *string `locationName:"lambdaFunctionArn" min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s LambdaExecutorConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s LambdaExecutorConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *LambdaExecutorConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "LambdaExecutorConfiguration"}
+	if s.LambdaFunctionArn == nil {
+		invalidParams.Add(request.NewErrParamRequired("LambdaFunctionArn"))
+	}
+	if s.LambdaFunctionArn != nil && len(*s.LambdaFunctionArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("LambdaFunctionArn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetLambdaFunctionArn sets the LambdaFunctionArn field's value.
+func (s *LambdaExecutorConfiguration) SetLambdaFunctionArn(v string) *LambdaExecutorConfiguration {
+	s.LambdaFunctionArn = &v
+	return s
 }
 
 // The number of pipelines associated with the AWS account has exceeded the
 // limit allowed for the account.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8398,17 +9592,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8416,22 +9610,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListActionExecutionsInput struct {
@@ -8559,6 +9753,9 @@ type ListActionTypesInput struct {
 	// An identifier that was returned from the previous list action types call,
 	// which can be used to return the next set of action types in the list.
 	NextToken *string `locationName:"nextToken" min:"1" type:"string"`
+
+	// The Region to filter on for the list of action types.
+	RegionFilter *string `locationName:"regionFilter" min:"4" type:"string"`
 }
 
 // String returns the string representation
@@ -8577,6 +9774,9 @@ func (s *ListActionTypesInput) Validate() error {
 	if s.NextToken != nil && len(*s.NextToken) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
 	}
+	if s.RegionFilter != nil && len(*s.RegionFilter) < 4 {
+		invalidParams.Add(request.NewErrParamMinLen("RegionFilter", 4))
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -8593,6 +9793,12 @@ func (s *ListActionTypesInput) SetActionOwnerFilter(v string) *ListActionTypesIn
 // SetNextToken sets the NextToken field's value.
 func (s *ListActionTypesInput) SetNextToken(v string) *ListActionTypesInput {
 	s.NextToken = &v
+	return s
+}
+
+// SetRegionFilter sets the RegionFilter field's value.
+func (s *ListActionTypesInput) SetRegionFilter(v string) *ListActionTypesInput {
+	s.RegionFilter = &v
 	return s
 }
 
@@ -8742,6 +9948,11 @@ func (s *ListPipelineExecutionsOutput) SetPipelineExecutionSummaries(v []*Pipeli
 type ListPipelinesInput struct {
 	_ struct{} `type:"structure"`
 
+	// The maximum number of pipelines to return in a single call. To retrieve the
+	// remaining pipelines, make another call with the returned nextToken value.
+	// The minimum value you can specify is 1. The maximum accepted value is 1000.
+	MaxResults *int64 `locationName:"maxResults" min:"1" type:"integer"`
+
 	// An identifier that was returned from the previous list pipelines call. It
 	// can be used to return the next set of pipelines in the list.
 	NextToken *string `locationName:"nextToken" min:"1" type:"string"`
@@ -8760,6 +9971,9 @@ func (s ListPipelinesInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *ListPipelinesInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListPipelinesInput"}
+	if s.MaxResults != nil && *s.MaxResults < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxResults", 1))
+	}
 	if s.NextToken != nil && len(*s.NextToken) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("NextToken", 1))
 	}
@@ -8768,6 +9982,12 @@ func (s *ListPipelinesInput) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetMaxResults sets the MaxResults field's value.
+func (s *ListPipelinesInput) SetMaxResults(v int64) *ListPipelinesInput {
+	s.MaxResults = &v
+	return s
 }
 
 // SetNextToken sets the NextToken field's value.
@@ -9086,8 +10306,8 @@ func (s *ListWebhooksOutput) SetWebhooks(v []*ListWebhookItem) *ListWebhooksOutp
 // The stage has failed in a later run of the pipeline and the pipelineExecutionId
 // associated with the request is out of date.
 type NotLatestPipelineExecutionException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -9104,17 +10324,17 @@ func (s NotLatestPipelineExecutionException) GoString() string {
 
 func newErrorNotLatestPipelineExecutionException(v protocol.ResponseMetadata) error {
 	return &NotLatestPipelineExecutionException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotLatestPipelineExecutionException) Code() string {
+func (s *NotLatestPipelineExecutionException) Code() string {
 	return "NotLatestPipelineExecutionException"
 }
 
 // Message returns the exception's message.
-func (s NotLatestPipelineExecutionException) Message() string {
+func (s *NotLatestPipelineExecutionException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9122,22 +10342,22 @@ func (s NotLatestPipelineExecutionException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotLatestPipelineExecutionException) OrigErr() error {
+func (s *NotLatestPipelineExecutionException) OrigErr() error {
 	return nil
 }
 
-func (s NotLatestPipelineExecutionException) Error() string {
+func (s *NotLatestPipelineExecutionException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotLatestPipelineExecutionException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotLatestPipelineExecutionException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotLatestPipelineExecutionException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotLatestPipelineExecutionException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about the output of an action.
@@ -9192,8 +10412,8 @@ func (s *OutputArtifact) SetName(v string) *OutputArtifact {
 
 // Exceeded the total size limit for all variables in the pipeline.
 type OutputVariablesSizeExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" min:"1" type:"string"`
 }
@@ -9210,17 +10430,17 @@ func (s OutputVariablesSizeExceededException) GoString() string {
 
 func newErrorOutputVariablesSizeExceededException(v protocol.ResponseMetadata) error {
 	return &OutputVariablesSizeExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s OutputVariablesSizeExceededException) Code() string {
+func (s *OutputVariablesSizeExceededException) Code() string {
 	return "OutputVariablesSizeExceededException"
 }
 
 // Message returns the exception's message.
-func (s OutputVariablesSizeExceededException) Message() string {
+func (s *OutputVariablesSizeExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9228,22 +10448,22 @@ func (s OutputVariablesSizeExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s OutputVariablesSizeExceededException) OrigErr() error {
+func (s *OutputVariablesSizeExceededException) OrigErr() error {
 	return nil
 }
 
-func (s OutputVariablesSizeExceededException) Error() string {
+func (s *OutputVariablesSizeExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s OutputVariablesSizeExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *OutputVariablesSizeExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s OutputVariablesSizeExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *OutputVariablesSizeExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about a pipeline to a job worker.
@@ -9332,7 +10552,7 @@ type PipelineDeclaration struct {
 	// you must use artifactStores.
 	ArtifactStores map[string]*ArtifactStore `locationName:"artifactStores" type:"map"`
 
-	// The name of the action to be performed.
+	// The name of the pipeline.
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
@@ -9468,6 +10688,9 @@ type PipelineExecution struct {
 
 	// The status of the pipeline execution.
 	//
+	//    * Cancelled: The pipeline’s definition was updated before the pipeline
+	//    execution could be completed.
+	//
 	//    * InProgress: The pipeline execution is currently running.
 	//
 	//    * Stopped: The pipeline execution was manually stopped. For more information,
@@ -9487,6 +10710,9 @@ type PipelineExecution struct {
 	//
 	//    * Failed: The pipeline execution was not completed successfully.
 	Status *string `locationName:"status" type:"string" enum:"PipelineExecutionStatus"`
+
+	// A summary that contains a description of the pipeline execution status.
+	StatusSummary *string `locationName:"statusSummary" type:"string"`
 }
 
 // String returns the string representation
@@ -9529,11 +10755,17 @@ func (s *PipelineExecution) SetStatus(v string) *PipelineExecution {
 	return s
 }
 
+// SetStatusSummary sets the StatusSummary field's value.
+func (s *PipelineExecution) SetStatusSummary(v string) *PipelineExecution {
+	s.StatusSummary = &v
+	return s
+}
+
 // The pipeline execution was specified in an invalid format or cannot be found,
 // or an execution ID does not belong to the specified pipeline.
 type PipelineExecutionNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -9550,17 +10782,17 @@ func (s PipelineExecutionNotFoundException) GoString() string {
 
 func newErrorPipelineExecutionNotFoundException(v protocol.ResponseMetadata) error {
 	return &PipelineExecutionNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s PipelineExecutionNotFoundException) Code() string {
+func (s *PipelineExecutionNotFoundException) Code() string {
 	return "PipelineExecutionNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s PipelineExecutionNotFoundException) Message() string {
+func (s *PipelineExecutionNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9568,29 +10800,29 @@ func (s PipelineExecutionNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s PipelineExecutionNotFoundException) OrigErr() error {
+func (s *PipelineExecutionNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s PipelineExecutionNotFoundException) Error() string {
+func (s *PipelineExecutionNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s PipelineExecutionNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *PipelineExecutionNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s PipelineExecutionNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *PipelineExecutionNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Unable to stop the pipeline execution. The execution might already be in
 // a Stopped state, or it might no longer be in progress.
 type PipelineExecutionNotStoppableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" min:"1" type:"string"`
 }
@@ -9607,17 +10839,17 @@ func (s PipelineExecutionNotStoppableException) GoString() string {
 
 func newErrorPipelineExecutionNotStoppableException(v protocol.ResponseMetadata) error {
 	return &PipelineExecutionNotStoppableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s PipelineExecutionNotStoppableException) Code() string {
+func (s *PipelineExecutionNotStoppableException) Code() string {
 	return "PipelineExecutionNotStoppableException"
 }
 
 // Message returns the exception's message.
-func (s PipelineExecutionNotStoppableException) Message() string {
+func (s *PipelineExecutionNotStoppableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9625,22 +10857,22 @@ func (s PipelineExecutionNotStoppableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s PipelineExecutionNotStoppableException) OrigErr() error {
+func (s *PipelineExecutionNotStoppableException) OrigErr() error {
 	return nil
 }
 
-func (s PipelineExecutionNotStoppableException) Error() string {
+func (s *PipelineExecutionNotStoppableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s PipelineExecutionNotStoppableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *PipelineExecutionNotStoppableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s PipelineExecutionNotStoppableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *PipelineExecutionNotStoppableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Summary information about a pipeline execution.
@@ -9786,8 +11018,8 @@ func (s *PipelineMetadata) SetUpdated(v time.Time) *PipelineMetadata {
 
 // The specified pipeline name is already in use.
 type PipelineNameInUseException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -9804,17 +11036,17 @@ func (s PipelineNameInUseException) GoString() string {
 
 func newErrorPipelineNameInUseException(v protocol.ResponseMetadata) error {
 	return &PipelineNameInUseException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s PipelineNameInUseException) Code() string {
+func (s *PipelineNameInUseException) Code() string {
 	return "PipelineNameInUseException"
 }
 
 // Message returns the exception's message.
-func (s PipelineNameInUseException) Message() string {
+func (s *PipelineNameInUseException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9822,28 +11054,28 @@ func (s PipelineNameInUseException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s PipelineNameInUseException) OrigErr() error {
+func (s *PipelineNameInUseException) OrigErr() error {
 	return nil
 }
 
-func (s PipelineNameInUseException) Error() string {
+func (s *PipelineNameInUseException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s PipelineNameInUseException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *PipelineNameInUseException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s PipelineNameInUseException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *PipelineNameInUseException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The pipeline was specified in an invalid format or cannot be found.
 type PipelineNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -9860,17 +11092,17 @@ func (s PipelineNotFoundException) GoString() string {
 
 func newErrorPipelineNotFoundException(v protocol.ResponseMetadata) error {
 	return &PipelineNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s PipelineNotFoundException) Code() string {
+func (s *PipelineNotFoundException) Code() string {
 	return "PipelineNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s PipelineNotFoundException) Message() string {
+func (s *PipelineNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9878,22 +11110,22 @@ func (s PipelineNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s PipelineNotFoundException) OrigErr() error {
+func (s *PipelineNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s PipelineNotFoundException) Error() string {
+func (s *PipelineNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s PipelineNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *PipelineNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s PipelineNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *PipelineNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Returns a summary of a pipeline.
@@ -9949,8 +11181,8 @@ func (s *PipelineSummary) SetVersion(v int64) *PipelineSummary {
 
 // The pipeline version was specified in an invalid format or cannot be found.
 type PipelineVersionNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -9967,17 +11199,17 @@ func (s PipelineVersionNotFoundException) GoString() string {
 
 func newErrorPipelineVersionNotFoundException(v protocol.ResponseMetadata) error {
 	return &PipelineVersionNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s PipelineVersionNotFoundException) Code() string {
+func (s *PipelineVersionNotFoundException) Code() string {
 	return "PipelineVersionNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s PipelineVersionNotFoundException) Message() string {
+func (s *PipelineVersionNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9985,22 +11217,22 @@ func (s PipelineVersionNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s PipelineVersionNotFoundException) OrigErr() error {
+func (s *PipelineVersionNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s PipelineVersionNotFoundException) Error() string {
+func (s *PipelineVersionNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s PipelineVersionNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *PipelineVersionNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s PipelineVersionNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *PipelineVersionNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the input of a PollForJobs action.
@@ -10978,10 +12210,66 @@ func (s RegisterWebhookWithThirdPartyOutput) GoString() string {
 	return s.String()
 }
 
+// The request failed because of an unknown error, exception, or failure.
+type RequestFailedException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"message" min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s RequestFailedException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RequestFailedException) GoString() string {
+	return s.String()
+}
+
+func newErrorRequestFailedException(v protocol.ResponseMetadata) error {
+	return &RequestFailedException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *RequestFailedException) Code() string {
+	return "RequestFailedException"
+}
+
+// Message returns the exception's message.
+func (s *RequestFailedException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *RequestFailedException) OrigErr() error {
+	return nil
+}
+
+func (s *RequestFailedException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *RequestFailedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *RequestFailedException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
 // The resource was specified in an invalid format.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -10998,17 +12286,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -11016,22 +12304,22 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the input of a RetryStageExecution action.
@@ -11399,6 +12687,9 @@ type StageExecution struct {
 	// The status of the stage, or for a completed stage, the last status of the
 	// stage.
 	//
+	// A status of cancelled means that the pipeline’s definition was updated
+	// before the stage execution could be completed.
+	//
 	// Status is a required field
 	Status *string `locationName:"status" type:"string" required:"true" enum:"StageExecutionStatus"`
 }
@@ -11427,8 +12718,8 @@ func (s *StageExecution) SetStatus(v string) *StageExecution {
 
 // The stage was specified in an invalid format or cannot be found.
 type StageNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -11445,17 +12736,17 @@ func (s StageNotFoundException) GoString() string {
 
 func newErrorStageNotFoundException(v protocol.ResponseMetadata) error {
 	return &StageNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s StageNotFoundException) Code() string {
+func (s *StageNotFoundException) Code() string {
 	return "StageNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s StageNotFoundException) Message() string {
+func (s *StageNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -11463,29 +12754,29 @@ func (s StageNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s StageNotFoundException) OrigErr() error {
+func (s *StageNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s StageNotFoundException) Error() string {
+func (s *StageNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s StageNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *StageNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s StageNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *StageNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Unable to retry. The pipeline structure or stage state might have changed
 // while actions awaited retry, or the stage contains no failed actions.
 type StageNotRetryableException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -11502,17 +12793,17 @@ func (s StageNotRetryableException) GoString() string {
 
 func newErrorStageNotRetryableException(v protocol.ResponseMetadata) error {
 	return &StageNotRetryableException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s StageNotRetryableException) Code() string {
+func (s *StageNotRetryableException) Code() string {
 	return "StageNotRetryableException"
 }
 
 // Message returns the exception's message.
-func (s StageNotRetryableException) Message() string {
+func (s *StageNotRetryableException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -11520,22 +12811,22 @@ func (s StageNotRetryableException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s StageNotRetryableException) OrigErr() error {
+func (s *StageNotRetryableException) OrigErr() error {
 	return nil
 }
 
-func (s StageNotRetryableException) Error() string {
+func (s *StageNotRetryableException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s StageNotRetryableException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *StageNotRetryableException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s StageNotRetryableException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *StageNotRetryableException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about the state of the stage.
@@ -11544,6 +12835,9 @@ type StageState struct {
 
 	// The state of the stage.
 	ActionStates []*ActionState `locationName:"actionStates" type:"list"`
+
+	// Represents information about the run of a stage.
+	InboundExecution *StageExecution `locationName:"inboundExecution" type:"structure"`
 
 	// The state of the inbound transition, which is either enabled or disabled.
 	InboundTransitionState *TransitionState `locationName:"inboundTransitionState" type:"structure"`
@@ -11569,6 +12863,12 @@ func (s StageState) GoString() string {
 // SetActionStates sets the ActionStates field's value.
 func (s *StageState) SetActionStates(v []*ActionState) *StageState {
 	s.ActionStates = v
+	return s
+}
+
+// SetInboundExecution sets the InboundExecution field's value.
+func (s *StageState) SetInboundExecution(v *StageExecution) *StageState {
+	s.InboundExecution = v
 	return s
 }
 
@@ -12106,8 +13406,8 @@ func (s *ThirdPartyJobDetails) SetNonce(v string) *ThirdPartyJobDetails {
 
 // The tags limit for a resource has been exceeded.
 type TooManyTagsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" min:"1" type:"string"`
 }
@@ -12124,17 +13424,17 @@ func (s TooManyTagsException) GoString() string {
 
 func newErrorTooManyTagsException(v protocol.ResponseMetadata) error {
 	return &TooManyTagsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyTagsException) Code() string {
+func (s *TooManyTagsException) Code() string {
 	return "TooManyTagsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyTagsException) Message() string {
+func (s *TooManyTagsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12142,22 +13442,22 @@ func (s TooManyTagsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyTagsException) OrigErr() error {
+func (s *TooManyTagsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyTagsException) Error() string {
+func (s *TooManyTagsException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyTagsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyTagsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyTagsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyTagsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about the state of transitions between one stage and
@@ -12279,6 +13579,63 @@ func (s UntagResourceOutput) GoString() string {
 	return s.String()
 }
 
+type UpdateActionTypeInput struct {
+	_ struct{} `type:"structure"`
+
+	// The action type definition for the action type to be updated.
+	//
+	// ActionType is a required field
+	ActionType *ActionTypeDeclaration `locationName:"actionType" type:"structure" required:"true"`
+}
+
+// String returns the string representation
+func (s UpdateActionTypeInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdateActionTypeInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UpdateActionTypeInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UpdateActionTypeInput"}
+	if s.ActionType == nil {
+		invalidParams.Add(request.NewErrParamRequired("ActionType"))
+	}
+	if s.ActionType != nil {
+		if err := s.ActionType.Validate(); err != nil {
+			invalidParams.AddNested("ActionType", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetActionType sets the ActionType field's value.
+func (s *UpdateActionTypeInput) SetActionType(v *ActionTypeDeclaration) *UpdateActionTypeInput {
+	s.ActionType = v
+	return s
+}
+
+type UpdateActionTypeOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s UpdateActionTypeOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdateActionTypeOutput) GoString() string {
+	return s.String()
+}
+
 // Represents the input of an UpdatePipeline action.
 type UpdatePipelineInput struct {
 	_ struct{} `type:"structure"`
@@ -12349,8 +13706,8 @@ func (s *UpdatePipelineOutput) SetPipeline(v *PipelineDeclaration) *UpdatePipeli
 
 // The validation was specified in an invalid format.
 type ValidationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -12367,17 +13724,17 @@ func (s ValidationException) GoString() string {
 
 func newErrorValidationException(v protocol.ResponseMetadata) error {
 	return &ValidationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ValidationException) Code() string {
+func (s *ValidationException) Code() string {
 	return "ValidationException"
 }
 
 // Message returns the exception's message.
-func (s ValidationException) Message() string {
+func (s *ValidationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12385,22 +13742,22 @@ func (s ValidationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ValidationException) OrigErr() error {
+func (s *ValidationException) OrigErr() error {
 	return nil
 }
 
-func (s ValidationException) Error() string {
+func (s *ValidationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ValidationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ValidationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The authentication applied to incoming webhook trigger requests.
@@ -12673,8 +14030,8 @@ func (s *WebhookFilterRule) SetMatchEquals(v string) *WebhookFilterRule {
 
 // The specified webhook was entered in an invalid format or cannot be found.
 type WebhookNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -12691,17 +14048,17 @@ func (s WebhookNotFoundException) GoString() string {
 
 func newErrorWebhookNotFoundException(v protocol.ResponseMetadata) error {
 	return &WebhookNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s WebhookNotFoundException) Code() string {
+func (s *WebhookNotFoundException) Code() string {
 	return "WebhookNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s WebhookNotFoundException) Message() string {
+func (s *WebhookNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12709,22 +14066,22 @@ func (s WebhookNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s WebhookNotFoundException) OrigErr() error {
+func (s *WebhookNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s WebhookNotFoundException) Error() string {
+func (s *WebhookNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s WebhookNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *WebhookNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s WebhookNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *WebhookNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -12747,6 +14104,18 @@ const (
 	ActionCategoryApproval = "Approval"
 )
 
+// ActionCategory_Values returns all elements of the ActionCategory enum
+func ActionCategory_Values() []string {
+	return []string{
+		ActionCategorySource,
+		ActionCategoryBuild,
+		ActionCategoryDeploy,
+		ActionCategoryTest,
+		ActionCategoryInvoke,
+		ActionCategoryApproval,
+	}
+}
+
 const (
 	// ActionConfigurationPropertyTypeString is a ActionConfigurationPropertyType enum value
 	ActionConfigurationPropertyTypeString = "String"
@@ -12757,6 +14126,15 @@ const (
 	// ActionConfigurationPropertyTypeBoolean is a ActionConfigurationPropertyType enum value
 	ActionConfigurationPropertyTypeBoolean = "Boolean"
 )
+
+// ActionConfigurationPropertyType_Values returns all elements of the ActionConfigurationPropertyType enum
+func ActionConfigurationPropertyType_Values() []string {
+	return []string{
+		ActionConfigurationPropertyTypeString,
+		ActionConfigurationPropertyTypeNumber,
+		ActionConfigurationPropertyTypeBoolean,
+	}
+}
 
 const (
 	// ActionExecutionStatusInProgress is a ActionExecutionStatus enum value
@@ -12772,6 +14150,16 @@ const (
 	ActionExecutionStatusFailed = "Failed"
 )
 
+// ActionExecutionStatus_Values returns all elements of the ActionExecutionStatus enum
+func ActionExecutionStatus_Values() []string {
+	return []string{
+		ActionExecutionStatusInProgress,
+		ActionExecutionStatusAbandoned,
+		ActionExecutionStatusSucceeded,
+		ActionExecutionStatusFailed,
+	}
+}
+
 const (
 	// ActionOwnerAws is a ActionOwner enum value
 	ActionOwnerAws = "AWS"
@@ -12783,6 +14171,15 @@ const (
 	ActionOwnerCustom = "Custom"
 )
 
+// ActionOwner_Values returns all elements of the ActionOwner enum
+func ActionOwner_Values() []string {
+	return []string{
+		ActionOwnerAws,
+		ActionOwnerThirdParty,
+		ActionOwnerCustom,
+	}
+}
+
 const (
 	// ApprovalStatusApproved is a ApprovalStatus enum value
 	ApprovalStatusApproved = "Approved"
@@ -12791,25 +14188,77 @@ const (
 	ApprovalStatusRejected = "Rejected"
 )
 
+// ApprovalStatus_Values returns all elements of the ApprovalStatus enum
+func ApprovalStatus_Values() []string {
+	return []string{
+		ApprovalStatusApproved,
+		ApprovalStatusRejected,
+	}
+}
+
 const (
 	// ArtifactLocationTypeS3 is a ArtifactLocationType enum value
 	ArtifactLocationTypeS3 = "S3"
 )
+
+// ArtifactLocationType_Values returns all elements of the ArtifactLocationType enum
+func ArtifactLocationType_Values() []string {
+	return []string{
+		ArtifactLocationTypeS3,
+	}
+}
 
 const (
 	// ArtifactStoreTypeS3 is a ArtifactStoreType enum value
 	ArtifactStoreTypeS3 = "S3"
 )
 
+// ArtifactStoreType_Values returns all elements of the ArtifactStoreType enum
+func ArtifactStoreType_Values() []string {
+	return []string{
+		ArtifactStoreTypeS3,
+	}
+}
+
 const (
 	// BlockerTypeSchedule is a BlockerType enum value
 	BlockerTypeSchedule = "Schedule"
 )
 
+// BlockerType_Values returns all elements of the BlockerType enum
+func BlockerType_Values() []string {
+	return []string{
+		BlockerTypeSchedule,
+	}
+}
+
 const (
 	// EncryptionKeyTypeKms is a EncryptionKeyType enum value
 	EncryptionKeyTypeKms = "KMS"
 )
+
+// EncryptionKeyType_Values returns all elements of the EncryptionKeyType enum
+func EncryptionKeyType_Values() []string {
+	return []string{
+		EncryptionKeyTypeKms,
+	}
+}
+
+const (
+	// ExecutorTypeJobWorker is a ExecutorType enum value
+	ExecutorTypeJobWorker = "JobWorker"
+
+	// ExecutorTypeLambda is a ExecutorType enum value
+	ExecutorTypeLambda = "Lambda"
+)
+
+// ExecutorType_Values returns all elements of the ExecutorType enum
+func ExecutorType_Values() []string {
+	return []string{
+		ExecutorTypeJobWorker,
+		ExecutorTypeLambda,
+	}
+}
 
 const (
 	// FailureTypeJobFailed is a FailureType enum value
@@ -12830,6 +14279,18 @@ const (
 	// FailureTypeSystemUnavailable is a FailureType enum value
 	FailureTypeSystemUnavailable = "SystemUnavailable"
 )
+
+// FailureType_Values returns all elements of the FailureType enum
+func FailureType_Values() []string {
+	return []string{
+		FailureTypeJobFailed,
+		FailureTypeConfigurationError,
+		FailureTypePermissionError,
+		FailureTypeRevisionOutOfSync,
+		FailureTypeRevisionUnavailable,
+		FailureTypeSystemUnavailable,
+	}
+}
 
 const (
 	// JobStatusCreated is a JobStatus enum value
@@ -12854,7 +14315,23 @@ const (
 	JobStatusFailed = "Failed"
 )
 
+// JobStatus_Values returns all elements of the JobStatus enum
+func JobStatus_Values() []string {
+	return []string{
+		JobStatusCreated,
+		JobStatusQueued,
+		JobStatusDispatched,
+		JobStatusInProgress,
+		JobStatusTimedOut,
+		JobStatusSucceeded,
+		JobStatusFailed,
+	}
+}
+
 const (
+	// PipelineExecutionStatusCancelled is a PipelineExecutionStatus enum value
+	PipelineExecutionStatusCancelled = "Cancelled"
+
 	// PipelineExecutionStatusInProgress is a PipelineExecutionStatus enum value
 	PipelineExecutionStatusInProgress = "InProgress"
 
@@ -12874,7 +14351,23 @@ const (
 	PipelineExecutionStatusFailed = "Failed"
 )
 
+// PipelineExecutionStatus_Values returns all elements of the PipelineExecutionStatus enum
+func PipelineExecutionStatus_Values() []string {
+	return []string{
+		PipelineExecutionStatusCancelled,
+		PipelineExecutionStatusInProgress,
+		PipelineExecutionStatusStopped,
+		PipelineExecutionStatusStopping,
+		PipelineExecutionStatusSucceeded,
+		PipelineExecutionStatusSuperseded,
+		PipelineExecutionStatusFailed,
+	}
+}
+
 const (
+	// StageExecutionStatusCancelled is a StageExecutionStatus enum value
+	StageExecutionStatusCancelled = "Cancelled"
+
 	// StageExecutionStatusInProgress is a StageExecutionStatus enum value
 	StageExecutionStatusInProgress = "InProgress"
 
@@ -12891,10 +14384,29 @@ const (
 	StageExecutionStatusSucceeded = "Succeeded"
 )
 
+// StageExecutionStatus_Values returns all elements of the StageExecutionStatus enum
+func StageExecutionStatus_Values() []string {
+	return []string{
+		StageExecutionStatusCancelled,
+		StageExecutionStatusInProgress,
+		StageExecutionStatusFailed,
+		StageExecutionStatusStopped,
+		StageExecutionStatusStopping,
+		StageExecutionStatusSucceeded,
+	}
+}
+
 const (
 	// StageRetryModeFailedActions is a StageRetryMode enum value
 	StageRetryModeFailedActions = "FAILED_ACTIONS"
 )
+
+// StageRetryMode_Values returns all elements of the StageRetryMode enum
+func StageRetryMode_Values() []string {
+	return []string{
+		StageRetryModeFailedActions,
+	}
+}
 
 const (
 	// StageTransitionTypeInbound is a StageTransitionType enum value
@@ -12903,6 +14415,14 @@ const (
 	// StageTransitionTypeOutbound is a StageTransitionType enum value
 	StageTransitionTypeOutbound = "Outbound"
 )
+
+// StageTransitionType_Values returns all elements of the StageTransitionType enum
+func StageTransitionType_Values() []string {
+	return []string{
+		StageTransitionTypeInbound,
+		StageTransitionTypeOutbound,
+	}
+}
 
 const (
 	// TriggerTypeCreatePipeline is a TriggerType enum value
@@ -12924,6 +14444,18 @@ const (
 	TriggerTypePutActionRevision = "PutActionRevision"
 )
 
+// TriggerType_Values returns all elements of the TriggerType enum
+func TriggerType_Values() []string {
+	return []string{
+		TriggerTypeCreatePipeline,
+		TriggerTypeStartPipelineExecution,
+		TriggerTypePollForSourceChanges,
+		TriggerTypeWebhook,
+		TriggerTypeCloudWatchEvent,
+		TriggerTypePutActionRevision,
+	}
+}
+
 const (
 	// WebhookAuthenticationTypeGithubHmac is a WebhookAuthenticationType enum value
 	WebhookAuthenticationTypeGithubHmac = "GITHUB_HMAC"
@@ -12934,3 +14466,12 @@ const (
 	// WebhookAuthenticationTypeUnauthenticated is a WebhookAuthenticationType enum value
 	WebhookAuthenticationTypeUnauthenticated = "UNAUTHENTICATED"
 )
+
+// WebhookAuthenticationType_Values returns all elements of the WebhookAuthenticationType enum
+func WebhookAuthenticationType_Values() []string {
+	return []string{
+		WebhookAuthenticationTypeGithubHmac,
+		WebhookAuthenticationTypeIp,
+		WebhookAuthenticationTypeUnauthenticated,
+	}
+}

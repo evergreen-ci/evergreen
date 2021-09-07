@@ -78,7 +78,8 @@ func (c *DynamoDBStreams) DescribeStreamRequest(input *DescribeStreamInput) (req
 //
 // Returned Error Types:
 //   * ResourceNotFoundException
-//   The operation tried to access a nonexistent stream.
+//   The operation tried to access a nonexistent table or index. The resource
+//   might not be specified correctly, or its status might not be ACTIVE.
 //
 //   * InternalServerError
 //   An error occurred on the server side.
@@ -170,15 +171,22 @@ func (c *DynamoDBStreams) GetRecordsRequest(input *GetRecordsInput) (req *reques
 //
 // Returned Error Types:
 //   * ResourceNotFoundException
-//   The operation tried to access a nonexistent stream.
+//   The operation tried to access a nonexistent table or index. The resource
+//   might not be specified correctly, or its status might not be ACTIVE.
 //
 //   * LimitExceededException
-//   Your request rate is too high. The AWS SDKs for DynamoDB automatically retry
-//   requests that receive this exception. Your request is eventually successful,
-//   unless your retry queue is too large to finish. Reduce the frequency of requests
-//   and use exponential backoff. For more information, go to Error Retries and
-//   Exponential Backoff (http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html#APIRetries)
-//   in the Amazon DynamoDB Developer Guide.
+//   There is no limit to the number of daily on-demand backups that can be taken.
+//
+//   Up to 50 simultaneous table operations are allowed per account. These operations
+//   include CreateTable, UpdateTable, DeleteTable,UpdateTimeToLive, RestoreTableFromBackup,
+//   and RestoreTableToPointInTime.
+//
+//   The only exception is when you are creating a table with one or more secondary
+//   indexes. You can have up to 25 such requests running at a time; however,
+//   if the table or index specifications are complex, DynamoDB might temporarily
+//   reduce the number of concurrent operations.
+//
+//   There is a soft account quota of 256 tables.
 //
 //   * InternalServerError
 //   An error occurred on the server side.
@@ -283,7 +291,8 @@ func (c *DynamoDBStreams) GetShardIteratorRequest(input *GetShardIteratorInput) 
 //
 // Returned Error Types:
 //   * ResourceNotFoundException
-//   The operation tried to access a nonexistent stream.
+//   The operation tried to access a nonexistent table or index. The resource
+//   might not be specified correctly, or its status might not be ACTIVE.
 //
 //   * InternalServerError
 //   An error occurred on the server side.
@@ -383,7 +392,8 @@ func (c *DynamoDBStreams) ListStreamsRequest(input *ListStreamsInput) (req *requ
 //
 // Returned Error Types:
 //   * ResourceNotFoundException
-//   The operation tried to access a nonexistent stream.
+//   The operation tried to access a nonexistent table or index. The resource
+//   might not be specified correctly, or its status might not be ACTIVE.
 //
 //   * InternalServerError
 //   An error occurred on the server side.
@@ -508,8 +518,8 @@ func (s *DescribeStreamOutput) SetStreamDescription(v *StreamDescription) *Descr
 // records. A shard iterator expires 15 minutes after it is retrieved using
 // the GetShardIterator action.
 type ExpiredIteratorException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The provided iterator exceeds the maximum age allowed.
 	Message_ *string `locationName:"message" type:"string"`
@@ -527,17 +537,17 @@ func (s ExpiredIteratorException) GoString() string {
 
 func newErrorExpiredIteratorException(v protocol.ResponseMetadata) error {
 	return &ExpiredIteratorException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ExpiredIteratorException) Code() string {
+func (s *ExpiredIteratorException) Code() string {
 	return "ExpiredIteratorException"
 }
 
 // Message returns the exception's message.
-func (s ExpiredIteratorException) Message() string {
+func (s *ExpiredIteratorException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -545,22 +555,22 @@ func (s ExpiredIteratorException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ExpiredIteratorException) OrigErr() error {
+func (s *ExpiredIteratorException) OrigErr() error {
 	return nil
 }
 
-func (s ExpiredIteratorException) Error() string {
+func (s *ExpiredIteratorException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ExpiredIteratorException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ExpiredIteratorException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ExpiredIteratorException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ExpiredIteratorException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the input of a GetRecords operation.
@@ -817,8 +827,8 @@ func (s *Identity) SetType(v string) *Identity {
 
 // An error occurred on the server side.
 type InternalServerError struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The server encountered an internal error trying to fulfill the request.
 	Message_ *string `locationName:"message" type:"string"`
@@ -836,17 +846,17 @@ func (s InternalServerError) GoString() string {
 
 func newErrorInternalServerError(v protocol.ResponseMetadata) error {
 	return &InternalServerError{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServerError) Code() string {
+func (s *InternalServerError) Code() string {
 	return "InternalServerError"
 }
 
 // Message returns the exception's message.
-func (s InternalServerError) Message() string {
+func (s *InternalServerError) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -854,33 +864,39 @@ func (s InternalServerError) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServerError) OrigErr() error {
+func (s *InternalServerError) OrigErr() error {
 	return nil
 }
 
-func (s InternalServerError) Error() string {
+func (s *InternalServerError) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServerError) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServerError) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServerError) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServerError) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
-// Your request rate is too high. The AWS SDKs for DynamoDB automatically retry
-// requests that receive this exception. Your request is eventually successful,
-// unless your retry queue is too large to finish. Reduce the frequency of requests
-// and use exponential backoff. For more information, go to Error Retries and
-// Exponential Backoff (http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html#APIRetries)
-// in the Amazon DynamoDB Developer Guide.
+// There is no limit to the number of daily on-demand backups that can be taken.
+//
+// Up to 50 simultaneous table operations are allowed per account. These operations
+// include CreateTable, UpdateTable, DeleteTable,UpdateTimeToLive, RestoreTableFromBackup,
+// and RestoreTableToPointInTime.
+//
+// The only exception is when you are creating a table with one or more secondary
+// indexes. You can have up to 25 such requests running at a time; however,
+// if the table or index specifications are complex, DynamoDB might temporarily
+// reduce the number of concurrent operations.
+//
+// There is a soft account quota of 256 tables.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// Too many operations for a given subscriber.
 	Message_ *string `locationName:"message" type:"string"`
@@ -898,17 +914,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -916,22 +932,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the input of a ListStreams operation.
@@ -1137,10 +1153,11 @@ func (s *Record) SetUserIdentity(v *Identity) *Record {
 	return s
 }
 
-// The operation tried to access a nonexistent stream.
+// The operation tried to access a nonexistent table or index. The resource
+// might not be specified correctly, or its status might not be ACTIVE.
 type ResourceNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The resource which is being requested does not exist.
 	Message_ *string `locationName:"message" type:"string"`
@@ -1158,17 +1175,17 @@ func (s ResourceNotFoundException) GoString() string {
 
 func newErrorResourceNotFoundException(v protocol.ResponseMetadata) error {
 	return &ResourceNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ResourceNotFoundException) Code() string {
+func (s *ResourceNotFoundException) Code() string {
 	return "ResourceNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s ResourceNotFoundException) Message() string {
+func (s *ResourceNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1176,22 +1193,22 @@ func (s ResourceNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ResourceNotFoundException) OrigErr() error {
+func (s *ResourceNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s ResourceNotFoundException) Error() string {
+func (s *ResourceNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ResourceNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ResourceNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ResourceNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ResourceNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The beginning and ending sequence numbers for the stream records contained
@@ -1199,10 +1216,12 @@ func (s ResourceNotFoundException) RequestID() string {
 type SequenceNumberRange struct {
 	_ struct{} `type:"structure"`
 
-	// The last sequence number.
+	// The last sequence number for the stream records contained within a shard.
+	// String contains numeric characters only.
 	EndingSequenceNumber *string `min:"21" type:"string"`
 
-	// The first sequence number.
+	// The first sequence number for the stream records contained within a shard.
+	// String contains numeric characters only.
 	StartingSequenceNumber *string `min:"21" type:"string"`
 }
 
@@ -1561,8 +1580,8 @@ func (s *StreamRecord) SetStreamViewType(v string) *StreamRecord {
 //    request, a stream record in the shard exceeds the 24 hour period and is
 //    trimmed. This causes the iterator to access a record that no longer exists.
 type TrimmedDataAccessException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// "The data you are trying to access has been trimmed.
 	Message_ *string `locationName:"message" type:"string"`
@@ -1580,17 +1599,17 @@ func (s TrimmedDataAccessException) GoString() string {
 
 func newErrorTrimmedDataAccessException(v protocol.ResponseMetadata) error {
 	return &TrimmedDataAccessException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TrimmedDataAccessException) Code() string {
+func (s *TrimmedDataAccessException) Code() string {
 	return "TrimmedDataAccessException"
 }
 
 // Message returns the exception's message.
-func (s TrimmedDataAccessException) Message() string {
+func (s *TrimmedDataAccessException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1598,22 +1617,22 @@ func (s TrimmedDataAccessException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TrimmedDataAccessException) OrigErr() error {
+func (s *TrimmedDataAccessException) OrigErr() error {
 	return nil
 }
 
-func (s TrimmedDataAccessException) Error() string {
+func (s *TrimmedDataAccessException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TrimmedDataAccessException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TrimmedDataAccessException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TrimmedDataAccessException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TrimmedDataAccessException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 const (
@@ -1623,6 +1642,14 @@ const (
 	// KeyTypeRange is a KeyType enum value
 	KeyTypeRange = "RANGE"
 )
+
+// KeyType_Values returns all elements of the KeyType enum
+func KeyType_Values() []string {
+	return []string{
+		KeyTypeHash,
+		KeyTypeRange,
+	}
+}
 
 const (
 	// OperationTypeInsert is a OperationType enum value
@@ -1634,6 +1661,15 @@ const (
 	// OperationTypeRemove is a OperationType enum value
 	OperationTypeRemove = "REMOVE"
 )
+
+// OperationType_Values returns all elements of the OperationType enum
+func OperationType_Values() []string {
+	return []string{
+		OperationTypeInsert,
+		OperationTypeModify,
+		OperationTypeRemove,
+	}
+}
 
 const (
 	// ShardIteratorTypeTrimHorizon is a ShardIteratorType enum value
@@ -1649,6 +1685,16 @@ const (
 	ShardIteratorTypeAfterSequenceNumber = "AFTER_SEQUENCE_NUMBER"
 )
 
+// ShardIteratorType_Values returns all elements of the ShardIteratorType enum
+func ShardIteratorType_Values() []string {
+	return []string{
+		ShardIteratorTypeTrimHorizon,
+		ShardIteratorTypeLatest,
+		ShardIteratorTypeAtSequenceNumber,
+		ShardIteratorTypeAfterSequenceNumber,
+	}
+}
+
 const (
 	// StreamStatusEnabling is a StreamStatus enum value
 	StreamStatusEnabling = "ENABLING"
@@ -1663,6 +1709,16 @@ const (
 	StreamStatusDisabled = "DISABLED"
 )
 
+// StreamStatus_Values returns all elements of the StreamStatus enum
+func StreamStatus_Values() []string {
+	return []string{
+		StreamStatusEnabling,
+		StreamStatusEnabled,
+		StreamStatusDisabling,
+		StreamStatusDisabled,
+	}
+}
+
 const (
 	// StreamViewTypeNewImage is a StreamViewType enum value
 	StreamViewTypeNewImage = "NEW_IMAGE"
@@ -1676,3 +1732,13 @@ const (
 	// StreamViewTypeKeysOnly is a StreamViewType enum value
 	StreamViewTypeKeysOnly = "KEYS_ONLY"
 )
+
+// StreamViewType_Values returns all elements of the StreamViewType enum
+func StreamViewType_Values() []string {
+	return []string{
+		StreamViewTypeNewImage,
+		StreamViewTypeOldImage,
+		StreamViewTypeNewAndOldImages,
+		StreamViewTypeKeysOnly,
+	}
+}

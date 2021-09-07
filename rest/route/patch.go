@@ -219,13 +219,6 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	if len(patches) == 0 {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "no patches found",
-			StatusCode: http.StatusNotFound,
-		})
-	}
-
 	resp := gimlet.NewResponseBuilder()
 	if err = resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
@@ -313,13 +306,6 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	patches, err := p.sc.FindPatchesByProject(p.projectId, p.key, p.limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
-	}
-
-	if len(patches) == 0 {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "no patches found",
-			StatusCode: http.StatusNotFound,
-		})
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -571,11 +557,11 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find project from version"))
 		}
 	}
-	variantTasks := graphql.PatchVariantsTasksRequest{
+	patchUpdateReq := graphql.PatchUpdate{
 		Description: p.variantTasks.Description,
 	}
-	if variantTasks.Description == "" && dbVersion != nil {
-		variantTasks.Description = dbVersion.Message
+	if patchUpdateReq.Description == "" && dbVersion != nil {
+		patchUpdateReq.Description = dbVersion.Message
 	}
 	for _, v := range p.variantTasks.Variants {
 		variantToSchedule := patch.VariantTasks{Variant: v.Id}
@@ -598,9 +584,9 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 				}
 			}
 		}
-		variantTasks.VariantsTasks = append(variantTasks.VariantsTasks, variantToSchedule)
+		patchUpdateReq.VariantsTasks = append(patchUpdateReq.VariantsTasks, variantToSchedule)
 	}
-	err, code, msg, versionId := graphql.SchedulePatch(p.patchId, dbVersion, variantTasks, nil)
+	err, code, msg, versionId := graphql.SchedulePatch(ctx, p.patchId, dbVersion, patchUpdateReq)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to schedule patch"))
 	}

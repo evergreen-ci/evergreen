@@ -52,6 +52,8 @@ imports:
     version: b4936e06046bbecbb94cae9c18127ebe510a2cb9
   - name: gopkg.in/yaml.v2
     version: 7649d4548cb53a614db133b2a8ac1f31859dda8c
+  - name: gopkg.in/yaml.v3
+    version: 496545a6307b2a7d7a710fd516e5e16e8ab62dbc
   - name: gopkg.in/mgo.v2
     version: 60f23985327354fe2d4dde32ba05598bb047a114
   - name: github.com/gophercloud/gophercloud
@@ -78,7 +80,7 @@ imports:
   - name: github.com/go-ini/ini
     version: 6e4869b434bd001f6983749881c7ead3545887d8
   - name: github.com/aws/aws-sdk-go
-    version: bf58031807a077119bb7e2d93535a08fd353652d
+    version: v1.38.54
 
   - name: github.com/mholt/archiver
     version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
@@ -122,8 +124,10 @@ imports:
     version: d883a62b49faf8279c9209d28db88858a103177e
   - name: github.com/mongodb/amboy
     version: 43815750c2f1d63d1f1de803a8a684ca79ac82d6
+  - name: github.com/evergreen-ci/cocoa
+    version: 9633061a7220b184e7bc8908dba9a3da021637e4
   - name: github.com/evergreen-ci/gimlet
-    version: ca35738ff88824eab0bbbe7950a81b30b6bfde9e
+    version: 3aa4522aad2fa8ad15755e00441b597d6d54cc5e
   - name: github.com/evergreen-ci/shrub
     version: 005df8abf87f20331677ecfaa19744efb99eb80b
   - name: github.com/evergreen-ci/pail
@@ -133,11 +137,11 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 6760875fa58e0fa5518c992582efa6d807960d6c
   - name: github.com/evergreen-ci/timber
-    version: 50903dc055ac01bf2ad83fd11538476fbdf895e8
+    version: 8d7d3c4e579ba6f82733ecbddb3d433023e71833
   - name: github.com/evergreen-ci/poplar
-    version: 098cea7cb6dc183c69a96c882da4e370858c0aa3
+    version: b7f63602780c1918f467faba6a04037d533c2fd2
   - name: github.com/evergreen-ci/juniper
-    version: 5073cb7711610abd618fb98fb65cada479f7efe6
+    version: 0fd21a88954c06e128edc4fb26e30bb79e6e207d
 
   - name: github.com/evergreen-ci/certdepot
     version: 2ef4a0af44a3f102d27d5d703fef66f722ca5693
@@ -170,7 +174,7 @@ imports:
   - name: github.com/evergreen-ci/birch
     version: 9279ecfa890703259ea90af5d1c1fac4e9869bb2
   - name: github.com/mongodb/anser
-    version: c65a2d95b0615d79b53ef467c2f836a576972857
+    version: 8f3e5cdbbb8779fdb021c9ffcd9cd514d6688464
   - name: github.com/mongodb/ftdc
     version: fd0bfc553fcbcdfdb56f202df39992382971c3a1
 
@@ -190,7 +194,7 @@ imports:
   - name: github.com/robfig/cron
     version: 70971dc81bab3671fde85647b0a1367929f92be8
   - name: github.com/evergreen-ci/utility
-    version: 9a40a71c1784193533247813b8361f534fe4101b
+    version: 8a88f29180ba74476c65e36075bc372013e3ac05
 
   - name: github.com/robbiet480/go.sns
     version: ca087b49e1da69fa4f163521cc98b1eaf7b66ffd

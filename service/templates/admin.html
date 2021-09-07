@@ -61,6 +61,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('alerts')">Alerts</li>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
 						<li class="link" ng-click="scrollTo('hostinit')">Hostinit</li>
+						<li class="link" ng-click="scrollTo('pod_init')">Pod init</li>
 						<li class="link" ng-click="scrollTo('scheduler')">Scheduler</li>
 						<li class="link" ng-click="scrollTo('repotracker')">Repotracker</li>
 						<div>Web</div>
@@ -148,6 +149,17 @@ Admin Settings
 												<td colspan="2">
 													<md-radio-group
 														data-ng-model="Settings.service_flags.host_init_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Create and provision pods</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.pod_init_disabled"
 														layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
@@ -432,6 +444,17 @@ Admin Settings
 													</md-radio-group>
 												</td>
 											</tr>
+											<tr>
+												<td>Use admin-level config for plugin settings</td>
+												<td colspan="2">
+													<md-radio-group
+															data-ng-model="Settings.service_flags.plugin_admin_page_disabled"
+															layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
 										</tbody>
 									</table>
 
@@ -588,6 +611,26 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
+							<md-card flex=50 id="pod_init">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Pod init</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('pod_init')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>S3 Download Base URL</label>
+										<input type="text" ng-model="Settings.pod_init.s3_base_url">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+
+						</section>
+
+						<section layout="row" flex>
 
 							<md-card flex=50 id="scheduler">
 								<md-card-title>
@@ -680,7 +723,12 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Generate Task Factor (0 to 100 inclusive)</label>
 										<input type="number" step="1" min="0" max="100"
-											   ng-model="Settings.scheduler.generate_task_factor">
+												 ng-model="Settings.scheduler.generate_task_factor">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Stepback Task Factor (0 to 100 inclusive)</label>
+										<input type="number" step="1" min="0" max="100"
+												 ng-model="Settings.scheduler.stepback_task_factor">
 									</md-input-container>
 									<md-input-container class="control" style="width:170px;">
 										<md-checkbox ng-model="Settings.scheduler.group_versions">
@@ -689,10 +737,6 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-
-						</section>
-
-						<section layout="row" flex>
 
 							<md-card flex=50 id="repotracker" style="max-width:49%">
 								<md-card-title>
@@ -939,6 +983,42 @@ Admin Settings
 										<label>Issuer</label>
 										<input type="text" ng-model="Settings.auth.okta.issuer">
 									</md-input-container>
+									<md-card style="margin-bottom:20px;">
+										<md-card-title>
+											<md-card-title-text>
+												<span>Scopes</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="okta-scopes-list" class="form-group"
+												ng-repeat="(index, scope) in Settings.auth.okta.scopes">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="scope" placeholder="Scope Name">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteOktaScope(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_okta_scope" placeholder="Scope Name">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="!validOktaScope(new_okta_scope)" type="button"
+														style="float: left" ng-click="addOktaScope()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidOktaScope ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
 									<md-input-container class="control" style="width:45%;">
 										<label>User Group</label>
 										<input type="text" ng-model="Settings.auth.okta.user_group">
@@ -1588,24 +1668,171 @@ Admin Settings
 										<label>Task Read-Only S3 Bucket</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync_read.bucket">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
+									<br />
 									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Instance Types</label>
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types"
 											ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%; margin-left:50px">
 										<label>Allowed Regions</label>
 										<textarea ng-model="Settings.providers.aws.allowed_regions" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Pod Role</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.role">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Pod Region</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.region">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Pod Secrets Manager Secret Prefix</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.secrets_manager.secret_prefix">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Pod ECS Task Definition Prefix</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_definition_prefix">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Pod ECS Task Role</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_role">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Pod ECS Execution Role</label>
+										<input type="text" ng-model="Settings.providers.aws.pod.ecs.execution_role">
+									</md-input-container>
+                  <md-card-title>
+                    <md-card-title-text>
+                      <span>Pod ECS AWSVPC Subnets</span>
+                    </md-card-title-text>
+                  </md-card-title>
+                  <md-card-content>
+                    <div id="ecs-subnets" class="form-group"
+                      ng-repeat="(index, subnet) in Settings.providers.aws.pod.ecs.awsvpc.subnets">
+                      <section layout="row" flex>
+                        <md-input-container class="control" flex=50>
+                          <input class="control" type="text" ng-model="subnet"
+                            placeholder="Subnet ID">
+                        </md-input-container>
+                        <div style="margin-top: 1%;">
+                          <button class="btn btn-default btn-danger" type="button"
+                            style="float: left" ng-click="deleteAWSVPCSubnet(index)">
+                            <i class="fa fa-trash"></i>
+                          </button>
+                        </div>
+                      </section>
+                    </div>
+                    <section layout="row" flex>
+                      <md-input-container class="control" flex=50>
+                        <input class="control" type="text" ng-model="new_awsvpc_subnet"
+                          placeholder="Subnet ID">
+                      </md-input-container>
+                      <div style="margin-top: 1%;">
+                        <button class="plus-button btn btn-primary"
+                          ng-disabled="!validAWSVPCSubnet(new_awsvpc_subnet)" type="button"
+                          style="float: left" ng-click="addAWSVPCSubnet()">
+                          <i class="fa fa-plus"></i>
+                        </button>
+                        <label class="control">[[ invalidAWSVPCSubnet ]]</label>
+                      </div>
+                    </section>
+                  </md-card-content>
+
+                  <md-card-title>
+                    <md-card-title-text>
+                      <span>Pod ECS AWSVPC Security Groups</span>
+                    </md-card-title-text>
+                  </md-card-title>
+                  <md-card-content>
+                    <div id="ecs-security-groups" class="form-group"
+                      ng-repeat="(index, sg) in Settings.providers.aws.pod.ecs.awsvpc.security_groups">
+                      <section layout="row" flex>
+                        <md-input-container class="control" flex=50>
+                          <input class="control" type="text" ng-model="sg"
+                            placeholder="Security Group ID">
+                        </md-input-container>
+                        <div style="margin-top: 1%;">
+                          <button class="btn btn-default btn-danger" type="button"
+                            style="float: left" ng-click="deleteAWSVPCSecurityGroup(index)">
+                            <i class="fa fa-trash"></i>
+                          </button>
+                        </div>
+                      </section>
+                    </div>
+                    <section layout="row" flex>
+                      <md-input-container class="control" flex=50>
+                        <input class="control" type="text" ng-model="new_awsvpc_security_group"
+                          placeholder="Security Group ID">
+                      </md-input-container>
+                      <div style="margin-top: 1%;">
+                        <button class="plus-button btn btn-primary"
+                          ng-disabled="!validAWSVPCSecurityGroup(new_awsvpc_security_group)" type="button"
+                          style="float: left" ng-click="addAWSVPCSecurityGroup()">
+                          <i class="fa fa-plus"></i>
+                        </button>
+                        <label class="control">[[ invalidAWSVPCSecurityGroup ]]</label>
+                      </div>
+                    </section>
+                  </md-card-content>
+
+									<md-card>
+										<md-card-title>
+											<md-card-title-text>
+												<span>Pod ECS Clusters</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="ecs-clusters" class="form-group" ng-repeat="(index, cluster) in Settings.providers.aws.pod.ecs.clusters">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="cluster.name" placeholder="Name">
+													</md-input-container>
+													<br />
+													<md-input-container class="control" flex=25>
+														<md-select ng-model="cluster.platform" placeholder="Platform">
+															<md-option ng-repeat="platform in validECSPlatforms" value="[[platform]]">[[platform]]</md-option>
+														</md-select>
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteECSCluster(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_ecs_cluster.name"
+														placeholder="Name">
+												</md-input-container>
+												<br />
+												<md-input-container class="control" flex=25>
+													<md-select ng-model="new_ecs_cluster.platform" placeholder="Platform">
+														<md-option ng-repeat="platform in validECSPlatforms" value="[[platform]]">[[platform]]</md-option>
+													</md-select>
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="!validECSCluster(new_ecs_cluster)" type="button"
+														style="float: left" ng-click="addECSCluster()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidECSCluster ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
 								</md-card-content>
 							</md-card>
 
@@ -1775,7 +2002,7 @@ Admin Settings
 										<label>Log path</label>
 										<input type="text" ng-model="Settings.log_path">
 									</md-input-container>
-								        <md-input-container class="control" style="width:45%;">
+										<md-input-container class="control" style="width:45%;">
 										<label>Shutdown Wait(seconds)</label>
 										<input type="number" ng-model="Settings.shutdown_wait_seconds">
 									</md-input-container>

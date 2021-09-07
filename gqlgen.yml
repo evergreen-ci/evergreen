@@ -182,3 +182,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
   Version:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
+    fields:
+      status:
+        resolver: true
+  BuildVariantTuple:
+    model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple

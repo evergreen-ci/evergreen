@@ -28,6 +28,7 @@ func TestListHostsForTask(t *testing.T) {
 			Id:     "1",
 			Host:   "1.com",
 			IP:     "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47",
+			IPv4:   "12.34.56.78",
 			Status: evergreen.HostRunning,
 			SpawnOptions: host.SpawnOptions{
 				TaskID: "task_1",
@@ -88,6 +89,7 @@ func TestListHostsForTask(t *testing.T) {
 	assert.Equal("4.com", found[0].Host)
 	assert.Equal("1.com", found[1].Host)
 	assert.Equal("abcd:1234:459c:2d00:cfe4:843b:1d60:8e47", found[1].IP)
+	assert.Equal("12.34.56.78", found[1].IPv4)
 }
 
 func TestCreateHostsFromTask(t *testing.T) {
@@ -308,7 +310,7 @@ buildvariants:
 			assert.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
 			assert.NotEmpty(t, ec2Settings.KeyName)
 			assert.InDelta(t, time.Now().Add(evergreen.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
-			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
+			require.Len(t, ec2Settings.SecurityGroupIDs, 2)
 			assert.Equal(t, "sg-distro", ec2Settings.SecurityGroupIDs[0]) // if not overridden, stick with ec2 security group
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 		}

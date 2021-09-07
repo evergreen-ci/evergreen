@@ -94,3 +94,14 @@ func CoalesceString(in ...string) string {
 func CoalesceStrings(inArray []string, inStrs ...string) string {
 	return CoalesceString(CoalesceString(inArray...), CoalesceString(inStrs...))
 }
+
+// StringContainsSliceRegex determines if a string matches a regex in a slice
+func StringContainsSliceRegex(slice []string, item string) bool {
+	for _, sliceItem := range slice {
+		matched, err := regexp.MatchString(sliceItem, item)
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
+}

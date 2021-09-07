@@ -26,7 +26,7 @@ import (
 //    // myFunc uses an SDK service client to make a request to
 //    // AWS Elemental MediaPackage VOD.
 //    func myFunc(svc mediapackagevodiface.MediaPackageVodAPI) bool {
-//        // Make svc.CreateAsset request
+//        // Make svc.ConfigureLogs request
 //    }
 //
 //    func main() {
@@ -42,7 +42,7 @@ import (
 //    type mockMediaPackageVodClient struct {
 //        mediapackagevodiface.MediaPackageVodAPI
 //    }
-//    func (m *mockMediaPackageVodClient) CreateAsset(input *mediapackagevod.CreateAssetInput) (*mediapackagevod.CreateAssetOutput, error) {
+//    func (m *mockMediaPackageVodClient) ConfigureLogs(input *mediapackagevod.ConfigureLogsInput) (*mediapackagevod.ConfigureLogsOutput, error) {
 //        // mock response/functionality
 //    }
 //
@@ -60,6 +60,10 @@ import (
 // and waiters. Its suggested to use the pattern above for testing, or using
 // tooling to generate mocks to satisfy the interfaces.
 type MediaPackageVodAPI interface {
+	ConfigureLogs(*mediapackagevod.ConfigureLogsInput) (*mediapackagevod.ConfigureLogsOutput, error)
+	ConfigureLogsWithContext(aws.Context, *mediapackagevod.ConfigureLogsInput, ...request.Option) (*mediapackagevod.ConfigureLogsOutput, error)
+	ConfigureLogsRequest(*mediapackagevod.ConfigureLogsInput) (*request.Request, *mediapackagevod.ConfigureLogsOutput)
+
 	CreateAsset(*mediapackagevod.CreateAssetInput) (*mediapackagevod.CreateAssetOutput, error)
 	CreateAssetWithContext(aws.Context, *mediapackagevod.CreateAssetInput, ...request.Option) (*mediapackagevod.CreateAssetOutput, error)
 	CreateAssetRequest(*mediapackagevod.CreateAssetInput) (*request.Request, *mediapackagevod.CreateAssetOutput)
@@ -116,6 +120,22 @@ type MediaPackageVodAPI interface {
 
 	ListPackagingGroupsPages(*mediapackagevod.ListPackagingGroupsInput, func(*mediapackagevod.ListPackagingGroupsOutput, bool) bool) error
 	ListPackagingGroupsPagesWithContext(aws.Context, *mediapackagevod.ListPackagingGroupsInput, func(*mediapackagevod.ListPackagingGroupsOutput, bool) bool, ...request.Option) error
+
+	ListTagsForResource(*mediapackagevod.ListTagsForResourceInput) (*mediapackagevod.ListTagsForResourceOutput, error)
+	ListTagsForResourceWithContext(aws.Context, *mediapackagevod.ListTagsForResourceInput, ...request.Option) (*mediapackagevod.ListTagsForResourceOutput, error)
+	ListTagsForResourceRequest(*mediapackagevod.ListTagsForResourceInput) (*request.Request, *mediapackagevod.ListTagsForResourceOutput)
+
+	TagResource(*mediapackagevod.TagResourceInput) (*mediapackagevod.TagResourceOutput, error)
+	TagResourceWithContext(aws.Context, *mediapackagevod.TagResourceInput, ...request.Option) (*mediapackagevod.TagResourceOutput, error)
+	TagResourceRequest(*mediapackagevod.TagResourceInput) (*request.Request, *mediapackagevod.TagResourceOutput)
+
+	UntagResource(*mediapackagevod.UntagResourceInput) (*mediapackagevod.UntagResourceOutput, error)
+	UntagResourceWithContext(aws.Context, *mediapackagevod.UntagResourceInput, ...request.Option) (*mediapackagevod.UntagResourceOutput, error)
+	UntagResourceRequest(*mediapackagevod.UntagResourceInput) (*request.Request, *mediapackagevod.UntagResourceOutput)
+
+	UpdatePackagingGroup(*mediapackagevod.UpdatePackagingGroupInput) (*mediapackagevod.UpdatePackagingGroupOutput, error)
+	UpdatePackagingGroupWithContext(aws.Context, *mediapackagevod.UpdatePackagingGroupInput, ...request.Option) (*mediapackagevod.UpdatePackagingGroupOutput, error)
+	UpdatePackagingGroupRequest(*mediapackagevod.UpdatePackagingGroupInput) (*request.Request, *mediapackagevod.UpdatePackagingGroupOutput)
 }
 
 var _ MediaPackageVodAPI = (*mediapackagevod.MediaPackageVod)(nil)

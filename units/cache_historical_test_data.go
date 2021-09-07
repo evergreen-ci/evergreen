@@ -224,7 +224,10 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 			c.catcher.Add(err)
 		})
 		if err != nil {
-			return timingInfo
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":    "error iterating over hourly stats",
+				"project_id": c.ProjectID,
+			}))
 		}
 	}
 
@@ -236,7 +239,10 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 			c.catcher.Add(err)
 		})
 		if err != nil {
-			return timingInfo
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":    "serror iterating over daily stats",
+				"project_id": c.ProjectID,
+			}))
 		}
 	}
 

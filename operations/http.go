@@ -295,7 +295,8 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := model.LoadProjectInto(yamlBytes, "", ref); err != nil {
+	opts := model.GetProjectOpts{}
+	if _, err := model.LoadProjectInto(resp.Request.Context(), yamlBytes, opts, "", ref); err != nil {
 		return nil, err
 	}
 	return ref, nil
@@ -526,6 +527,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	data := struct {
 		Description       string             `json:"desc"`
 		Project           string             `json:"project"`
+		Path              string             `json:"path"`
 		PatchBytes        []byte             `json:"patch_bytes"`
 		Githash           string             `json:"githash"`
 		Alias             string             `json:"alias"`
@@ -544,6 +546,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	}{
 		Description:       incomingPatch.description,
 		Project:           incomingPatch.projectName,
+		Path:              incomingPatch.path,
 		PatchBytes:        []byte(incomingPatch.patchData),
 		Githash:           incomingPatch.base,
 		Alias:             incomingPatch.alias,

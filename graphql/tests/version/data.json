@@ -1,0 +1,403 @@
+{
+  "versions": [
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "create_time": {
+        "$date": "2020-02-21T15:13:48.801Z"
+      },
+      "start_time": {
+        "$date": "2020-02-21T15:15:38.261Z"
+      },
+      "finish_time": {
+        "$date": "2020-02-21T15:29:54.869Z"
+      },
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "author": "brian.samek",
+      "author_email": "",
+      "message": "'evergreen-ci/evergreen' pull request #3186 by bsamek: EVG-7425 Don't send ShouldExit to unprovisioned hosts (https://github.com/evergreen-ci/evergreen/pull/3186)",
+      "status": "failed",
+      "order": 2567,
+      "config_number": 1,
+      "ignored": false,
+      "owner_name": "",
+      "repo_name": "",
+      "branch_name": "main",
+      "repo_kind": "",
+      "build_variants_status": [
+        {
+          "build_variant": "ubuntu1604",
+          "activated": true,
+          "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+        },
+        {
+          "build_variant": "lint",
+          "activated": true,
+          "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+        }
+      ],
+      "builds": [
+        "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+        "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      ],
+      "identifier": "evergreen",
+      "remote": false,
+      "remote_path": "",
+      "r": "github_pull_request",
+      "author_id": "brian.samek"
+    },
+    {
+      "_id": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "create_time": {
+        "$date": "2020-02-20T20:37:06Z"
+      },
+      "start_time": {
+        "$date": "2020-02-22T01:40:41.991Z"
+      },
+      "finish_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "author": "Trey Granderson",
+      "author_email": "trey.granderson@mongodb.com",
+      "message": "EVG-7343: timeTaken and makespan fields on Patch type (#3166)\n\n* EVG-7327: query for patch by id\r\n\r\n* EVG-7343: add makespan and timetaken to patch schema type\r\n\r\n* generated\r\n\r\n* remove patch dates type\r\n\r\n* add back time fields\r\n\r\n* change time field to duration\r\n\r\n* update tests\r\n\r\n* put time fields back on Patch type\r\n\r\n* revert time fields\r\n\r\n* update tests\r\n\r\n* import time in util\r\n\r\n* fix util imports\r\n\r\n* change patch id to $oid\r\n\r\n* change $oid field to numbers\r\n\r\n* remove dashes from $oid field\r\n\r\n* more fixes\r\n\r\n* omg\r\n\r\n* use correct patch id in query\r\n\r\n* add create time to test patch\r\n\r\n* add to patch\r\n\r\n* idek at this point\r\n\r\n* fix duration query\r\n\r\n* add right version id to tasks\r\n\r\n* use duration.String()\r\n\r\n* remove unusued imports in util\r\n\r\n* change json keys of tasks\r\n\r\n* use $date in task date fields\r\n\r\n* round by seconds\r\n\r\n* update test results\r\n\r\n* merge merge merge\r\n\r\n* fix leftover conflict\r\n\r\n* duration times of 0 are null\r\n\r\n* convert durations to string before inspecting",
+      "status": "started",
+      "order": 1354,
+      "config_number": 1,
+      "ignored": false,
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "branch_name": "main",
+      "repo_kind": "github",
+      "build_variants_status": [
+        {
+          "build_variant": "linux-docker",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-20T20:37:12.925Z"
+          },
+          "build_id": "evergreen_linux_docker_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "coverage",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-20T20:37:12.925Z"
+          },
+          "build_id": "evergreen_coverage_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "lint",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-20T20:37:12.925Z"
+          },
+          "build_id": "evergreen_lint_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "osx",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-21T02:50:12.919Z"
+          },
+          "build_id": "evergreen_osx_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "rhel71-power8",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-21T02:50:12.919Z"
+          },
+          "build_id": "evergreen_rhel71_power8_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "rhel72-s390x",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-21T02:50:12.919Z"
+          },
+          "build_id": "evergreen_rhel72_s390x_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "race-detector",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-20T20:37:12.925Z"
+          },
+          "build_id": "evergreen_race_detector_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "ubuntu1604",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-20T20:37:12.925Z"
+          },
+          "build_id": "evergreen_ubuntu1604_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "ubuntu1604-docker",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-20T20:37:12.925Z"
+          },
+          "build_id": "evergreen_ubuntu1604_docker_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "ubuntu1604-arm64",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-21T02:50:12.919Z"
+          },
+          "build_id": "evergreen_ubuntu1604_arm64_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        },
+        {
+          "build_variant": "windows",
+          "activated": true,
+          "activate_at": {
+            "$date": "2020-02-20T20:37:12.925Z"
+          },
+          "build_id": "evergreen_windows_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+        }
+      ],
+      "builds": [
+        "evergreen_linux_docker_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_coverage_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_lint_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_osx_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_rhel71_power8_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_rhel72_s390x_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_race_detector_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_ubuntu1604_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_ubuntu1604_docker_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_ubuntu1604_arm64_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",
+        "evergreen_windows_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06"
+      ],
+      "identifier": "evergreen",
+      "remote": false,
+      "remote_path": "self-tests.yml",
+      "r": "gitter_request",
+      "author_id": "trey.granderson"
+    },
+    {"_id":"spruce_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d","create_time":{"$date":{"$numberLong":"1608660785000"}},"start_time":{"$date":{"$numberLong":"1608660866659"}},"finish_time":{"$date":{"$numberLong":"1608664451646"}},"gitspec":"e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d","author":"Chaya Malik","author_email":"chaya.malik@mongodb.com","message":"EVG-13168 Display Issues and Suspected Issues (#560)","status":"success","order":{"$numberInt":"655"},"config":"","config_number":{"$numberInt":"0"},"ignored":false,"owner_name":"evergreen-ci","repo_name":"spruce","branch_name":"master","repo_kind":"github","build_variants_status":[{"build_variant":"ubuntu1604","build_id":"spruce_ubuntu1604_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d_20_12_22_18_13_05","activated":true,"activate_at":{"$date":{"$numberLong":"1608660788454"}}}],"builds":["spruce_ubuntu1604_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d_20_12_22_18_13_05"],"identifier":"spruce","remote":false,"remote_path":".evergreen.yml","r":"gitter_request","author_id":"chaya.malik"}
+  ],
+  "tasks": [
+    {
+      "_id": "1",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "r": "github_pull_request",
+      "status": "success"
+    },
+    {
+      "_id": "2",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-cloud",
+      "r": "github_pull_request",
+      "status": "failed"
+    },
+    {
+      "_id": "XYZ",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "silver",
+      "r": "github_pull_request",
+      "status": "setup-failed"
+    },
+    {
+      "_id": "X",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "gold",
+      "r": "github_pull_request",
+      "status": "undispatched"
+    },
+    {
+      "_id": "3",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "windows",
+      "display_name": "lint",
+      "r": "github_pull_request",
+      "status": "success"
+    },
+    {
+      "_id": "4",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "windows",
+      "display_name": "compile",
+      "r": "github_pull_request",
+      "status": "failed"
+    },
+    {
+      "_id": "base-task-1",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-thirdparty-docker",
+      "r": "github_pull_request",
+      "status": "success"
+    },
+    {
+      "_id": "base-task-2",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "display_name": "test-cloud",
+      "r": "github_pull_request",
+      "status": "failed"
+    },
+    {
+      "_id": "base-task-3",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "windows",
+      "display_name": "lint",
+      "r": "github_pull_request",
+      "status": "success"
+    },
+    {
+      "_id": "base-task-4",
+      "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "windows",
+      "display_name": "compile",
+      "r": "github_pull_request",
+      "status": "success"
+    }
+  ],
+  "patches": [
+    {
+      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "desc": "'evergreen-ci/spruce' pull request #27 by tgrander: Refactor App + Use Context for global state (https://github.com/evergreen-ci/spruce/pull/27)",
+      "branch": "spruce",
+      "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+      "patch_number": 20,
+      "author": "trey.granderson",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "status": "failed",
+      "create_time": { "$date": "2019-11-18T18:53:15Z" },
+      "start_time": { "$date": "2019-11-18T18:54:15.734Z" },
+      "finish_time": { "$date": "2019-11-18T18:57:15.053Z" },
+      "build_variants": ["ubuntu1804"],
+      "tasks": ["compile", "test", "lint", "coverage"],
+      "variants_tasks": [
+        {
+          "variant": "ubuntu1804",
+          "tasks": ["lint", "coverage", "compile", "test"],
+          "displaytasks": []
+        }
+      ],
+      "patches": [
+        {
+          "name": "",
+          "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+          "patch_set": {
+            "patch_file_id": "5dd2e89cd1fe07048e43bb9e_3b53f9b61226491cd31113c773d66e351957ed29",
+            "summary": [
+              { "filename": "package.json", "additions": 2, "deletions": 0 },
+              {
+                "filename": "src/components/Navbar.tsx",
+                "additions": 70,
+                "deletions": 0
+              },
+              {
+                "filename": "src/components/app/App.tsx",
+                "additions": 78,
+                "deletions": 289
+              },
+              {
+                "filename": "src/components/navbar/DevMenu.tsx",
+                "additions": 62,
+                "deletions": 0
+              },
+              {
+                "filename": "src/components/navbar/PluginsMenu.tsx",
+                "additions": 42,
+                "deletions": 0
+              },
+              {
+                "filename": "src/context/ContextProvider.tsx",
+                "additions": 11,
+                "deletions": 0
+              },
+              {
+                "filename": "src/context/apiClient.tsx",
+                "additions": 70,
+                "deletions": 0
+              },
+              {
+                "filename": "src/context/user.tsx",
+                "additions": 33,
+                "deletions": 0
+              },
+              {
+                "filename": "src/utils/isDevelopment.ts",
+                "additions": 1,
+                "deletions": 0
+              },
+              { "filename": "tslint.json", "additions": 1, "deletions": 0 }
+            ]
+          },
+          "message": ""
+        }
+      ],
+      "activated": true,
+      "patched_config": "stepback: true\ncommand_type: test\nignore:\n - \"*.md\"\n - \".github/*\"\n\nfunctions:\n get-project:\n command: git.get_project\n type: setup\n params:\n directory: spruce\n\n npm-install:\n command: subprocess.exec\n type: setup\n params:\n working_dir: spruce\n binary: npm\n args: [install]\n\n npm-test:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [test, --, -u, --reporters=default, --reporters=jest-junit]\n env:\n CI: \"true\"\n\n npm-lint:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, lint]\n\n npm-build:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, build]\n\n npm-build:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, build]\n\n npm-coverage:\n command: subprocess.exec\n params:\n working_dir: spruce\n binary: npm\n args: [run, coverage]\n\n attach-results:\n command: attach.xunit_results\n params:\n files:\n - \"./spruce/junit.xml\"\n\ntasks:\n - name: compile\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-build\n - func: npm-build\n - name: test\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-test\n - func: attach-results\n - name: lint\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-lint\n - name: coverage\n commands:\n - func: get-project\n - func: npm-install\n - func: npm-coverage\n\nbuildvariants:\n - name: ubuntu1804\n display_name: Ubuntu 18.04\n run_on:\n - ubuntu1804-test\n tasks:\n - name: compile\n - name: test\n - name: lint\n - name: coverage\n",
+      "alias": "__github",
+      "github_patch_data": {
+        "pr_number": 27,
+        "base_owner": "evergreen-ci",
+        "base_repo": "spruce",
+        "base_branch": "main",
+        "head_owner": "evergreen-ci",
+        "head_repo": "spruce",
+        "head_hash": "2b37dacf86f9d4d1545faaba37c7c5693202e645",
+        "author": "tgrander",
+        "author_uid": 15262143,
+        "merge_commit_sha": ""
+      }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "logkeeper",
+      "identifier": "logkeeper"
+    },
+    {
+      "_id": "sys-perf",
+      "identifier": "sys-perf"
+    }
+  ],
+  "manifest": [
+    {
+      "_id":"spruce_e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d",
+      "revision":"e0e5f60e32e6dfeb02ff0ea8d6ea5473d49eaa9d",
+      "project":"spruce",
+      "branch":"master",
+      "modules": {
+        "evergreen":{
+          "branch":"master",
+          "repo":"evergreen",
+          "revision":"08d8cc896f586d8a23edf9bab940d6f2d3e70ffa",
+          "owner":"evergreen-ci",
+          "url":"https://api.github.com/repos/evergreen-ci/evergreen/commits/08d8cc896f586d8a23edf9bab940d6f2d3e70ffa"
+          }
+        },
+      "is_base":true
+    }
+  ]
+}

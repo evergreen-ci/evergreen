@@ -1274,8 +1274,12 @@ func (c *MTurk) GetAccountBalanceRequest(input *GetAccountBalanceInput) (req *re
 
 // GetAccountBalance API operation for Amazon Mechanical Turk.
 //
-// The GetAccountBalance operation retrieves the amount of money in your Amazon
-// Mechanical Turk account.
+// The GetAccountBalance operation retrieves the Prepaid HITs balance in your
+// Amazon Mechanical Turk account if you are a Prepaid Requester. Alternatively,
+// this operation will retrieve the remaining available AWS Billing usage if
+// you have enabled AWS Billing. Note: If you have enabled AWS Billing and still
+// have a remaining Prepaid HITs balance, this balance can be viewed on the
+// My Account page in the Requester console.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -8636,8 +8640,8 @@ func (s RejectQualificationRequestOutput) GoString() string {
 
 // Your request is invalid.
 type RequestError struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 
@@ -8656,17 +8660,17 @@ func (s RequestError) GoString() string {
 
 func newErrorRequestError(v protocol.ResponseMetadata) error {
 	return &RequestError{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s RequestError) Code() string {
+func (s *RequestError) Code() string {
 	return "RequestError"
 }
 
 // Message returns the exception's message.
-func (s RequestError) Message() string {
+func (s *RequestError) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8674,22 +8678,22 @@ func (s RequestError) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s RequestError) OrigErr() error {
+func (s *RequestError) OrigErr() error {
 	return nil
 }
 
-func (s RequestError) Error() string {
+func (s *RequestError) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s RequestError) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *RequestError) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s RequestError) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *RequestError) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Both the AssignmentReviewReport and the HITReviewReport elements contains
@@ -9142,8 +9146,8 @@ func (s SendTestEventNotificationOutput) GoString() string {
 // Amazon Mechanical Turk is temporarily unable to process your request. Try
 // your call again.
 type ServiceFault struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"Message" type:"string"`
 
@@ -9162,17 +9166,17 @@ func (s ServiceFault) GoString() string {
 
 func newErrorServiceFault(v protocol.ResponseMetadata) error {
 	return &ServiceFault{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceFault) Code() string {
+func (s *ServiceFault) Code() string {
 	return "ServiceFault"
 }
 
 // Message returns the exception's message.
-func (s ServiceFault) Message() string {
+func (s *ServiceFault) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -9180,22 +9184,22 @@ func (s ServiceFault) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceFault) OrigErr() error {
+func (s *ServiceFault) OrigErr() error {
 	return nil
 }
 
-func (s ServiceFault) Error() string {
+func (s *ServiceFault) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceFault) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceFault) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceFault) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceFault) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type UpdateExpirationForHITInput struct {
@@ -9691,6 +9695,15 @@ const (
 	AssignmentStatusRejected = "Rejected"
 )
 
+// AssignmentStatus_Values returns all elements of the AssignmentStatus enum
+func AssignmentStatus_Values() []string {
+	return []string{
+		AssignmentStatusSubmitted,
+		AssignmentStatusApproved,
+		AssignmentStatusRejected,
+	}
+}
+
 const (
 	// ComparatorLessThan is a Comparator enum value
 	ComparatorLessThan = "LessThan"
@@ -9722,6 +9735,22 @@ const (
 	// ComparatorNotIn is a Comparator enum value
 	ComparatorNotIn = "NotIn"
 )
+
+// Comparator_Values returns all elements of the Comparator enum
+func Comparator_Values() []string {
+	return []string{
+		ComparatorLessThan,
+		ComparatorLessThanOrEqualTo,
+		ComparatorGreaterThan,
+		ComparatorGreaterThanOrEqualTo,
+		ComparatorEqualTo,
+		ComparatorNotEqualTo,
+		ComparatorExists,
+		ComparatorDoesNotExist,
+		ComparatorIn,
+		ComparatorNotIn,
+	}
+}
 
 const (
 	// EventTypeAssignmentAccepted is a EventType enum value
@@ -9761,6 +9790,24 @@ const (
 	EventTypePing = "Ping"
 )
 
+// EventType_Values returns all elements of the EventType enum
+func EventType_Values() []string {
+	return []string{
+		EventTypeAssignmentAccepted,
+		EventTypeAssignmentAbandoned,
+		EventTypeAssignmentReturned,
+		EventTypeAssignmentSubmitted,
+		EventTypeAssignmentRejected,
+		EventTypeAssignmentApproved,
+		EventTypeHitcreated,
+		EventTypeHitexpired,
+		EventTypeHitreviewable,
+		EventTypeHitextended,
+		EventTypeHitdisposed,
+		EventTypePing,
+	}
+}
+
 const (
 	// HITAccessActionsAccept is a HITAccessActions enum value
 	HITAccessActionsAccept = "Accept"
@@ -9771,6 +9818,15 @@ const (
 	// HITAccessActionsDiscoverPreviewAndAccept is a HITAccessActions enum value
 	HITAccessActionsDiscoverPreviewAndAccept = "DiscoverPreviewAndAccept"
 )
+
+// HITAccessActions_Values returns all elements of the HITAccessActions enum
+func HITAccessActions_Values() []string {
+	return []string{
+		HITAccessActionsAccept,
+		HITAccessActionsPreviewAndAccept,
+		HITAccessActionsDiscoverPreviewAndAccept,
+	}
+}
 
 const (
 	// HITReviewStatusNotReviewed is a HITReviewStatus enum value
@@ -9785,6 +9841,16 @@ const (
 	// HITReviewStatusReviewedInappropriate is a HITReviewStatus enum value
 	HITReviewStatusReviewedInappropriate = "ReviewedInappropriate"
 )
+
+// HITReviewStatus_Values returns all elements of the HITReviewStatus enum
+func HITReviewStatus_Values() []string {
+	return []string{
+		HITReviewStatusNotReviewed,
+		HITReviewStatusMarkedForReview,
+		HITReviewStatusReviewedAppropriate,
+		HITReviewStatusReviewedInappropriate,
+	}
+}
 
 const (
 	// HITStatusAssignable is a HITStatus enum value
@@ -9803,6 +9869,17 @@ const (
 	HITStatusDisposed = "Disposed"
 )
 
+// HITStatus_Values returns all elements of the HITStatus enum
+func HITStatus_Values() []string {
+	return []string{
+		HITStatusAssignable,
+		HITStatusUnassignable,
+		HITStatusReviewable,
+		HITStatusReviewing,
+		HITStatusDisposed,
+	}
+}
+
 const (
 	// NotificationTransportEmail is a NotificationTransport enum value
 	NotificationTransportEmail = "Email"
@@ -9814,6 +9891,15 @@ const (
 	NotificationTransportSns = "SNS"
 )
 
+// NotificationTransport_Values returns all elements of the NotificationTransport enum
+func NotificationTransport_Values() []string {
+	return []string{
+		NotificationTransportEmail,
+		NotificationTransportSqs,
+		NotificationTransportSns,
+	}
+}
+
 const (
 	// NotifyWorkersFailureCodeSoftFailure is a NotifyWorkersFailureCode enum value
 	NotifyWorkersFailureCodeSoftFailure = "SoftFailure"
@@ -9821,6 +9907,14 @@ const (
 	// NotifyWorkersFailureCodeHardFailure is a NotifyWorkersFailureCode enum value
 	NotifyWorkersFailureCodeHardFailure = "HardFailure"
 )
+
+// NotifyWorkersFailureCode_Values returns all elements of the NotifyWorkersFailureCode enum
+func NotifyWorkersFailureCode_Values() []string {
+	return []string{
+		NotifyWorkersFailureCodeSoftFailure,
+		NotifyWorkersFailureCodeHardFailure,
+	}
+}
 
 const (
 	// QualificationStatusGranted is a QualificationStatus enum value
@@ -9830,6 +9924,14 @@ const (
 	QualificationStatusRevoked = "Revoked"
 )
 
+// QualificationStatus_Values returns all elements of the QualificationStatus enum
+func QualificationStatus_Values() []string {
+	return []string{
+		QualificationStatusGranted,
+		QualificationStatusRevoked,
+	}
+}
+
 const (
 	// QualificationTypeStatusActive is a QualificationTypeStatus enum value
 	QualificationTypeStatusActive = "Active"
@@ -9837,6 +9939,14 @@ const (
 	// QualificationTypeStatusInactive is a QualificationTypeStatus enum value
 	QualificationTypeStatusInactive = "Inactive"
 )
+
+// QualificationTypeStatus_Values returns all elements of the QualificationTypeStatus enum
+func QualificationTypeStatus_Values() []string {
+	return []string{
+		QualificationTypeStatusActive,
+		QualificationTypeStatusInactive,
+	}
+}
 
 const (
 	// ReviewActionStatusIntended is a ReviewActionStatus enum value
@@ -9852,6 +9962,16 @@ const (
 	ReviewActionStatusCancelled = "Cancelled"
 )
 
+// ReviewActionStatus_Values returns all elements of the ReviewActionStatus enum
+func ReviewActionStatus_Values() []string {
+	return []string{
+		ReviewActionStatusIntended,
+		ReviewActionStatusSucceeded,
+		ReviewActionStatusFailed,
+		ReviewActionStatusCancelled,
+	}
+}
+
 const (
 	// ReviewPolicyLevelAssignment is a ReviewPolicyLevel enum value
 	ReviewPolicyLevelAssignment = "Assignment"
@@ -9860,6 +9980,14 @@ const (
 	ReviewPolicyLevelHit = "HIT"
 )
 
+// ReviewPolicyLevel_Values returns all elements of the ReviewPolicyLevel enum
+func ReviewPolicyLevel_Values() []string {
+	return []string{
+		ReviewPolicyLevelAssignment,
+		ReviewPolicyLevelHit,
+	}
+}
+
 const (
 	// ReviewableHITStatusReviewable is a ReviewableHITStatus enum value
 	ReviewableHITStatusReviewable = "Reviewable"
@@ -9867,3 +9995,11 @@ const (
 	// ReviewableHITStatusReviewing is a ReviewableHITStatus enum value
 	ReviewableHITStatusReviewing = "Reviewing"
 )
+
+// ReviewableHITStatus_Values returns all elements of the ReviewableHITStatus enum
+func ReviewableHITStatus_Values() []string {
+	return []string{
+		ReviewableHITStatusReviewable,
+		ReviewableHITStatusReviewing,
+	}
+}

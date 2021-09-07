@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -1221,6 +1221,43 @@ func TestLoggerConfigValidate(t *testing.T) {
 		System: []LogOpts{{Type: SplunkLogSender}},
 	}
 	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
+}
+
+func TestLoggerMerge(t *testing.T) {
+	assert := assert.New(t)
+
+	var config1 *LoggerConfig
+	config2 := &LoggerConfig{
+		Agent:  []LogOpts{{Type: LogkeeperLogSender}},
+		System: []LogOpts{{Type: LogkeeperLogSender}},
+		Task:   []LogOpts{{Type: LogkeeperLogSender}},
+	}
+
+	assert.Nil(mergeAllLogs(config1, config1))
+
+	merged := mergeAllLogs(config1, config2)
+	assert.NotNil(merged)
+	assert.Equal(len(merged.Agent), 1)
+	assert.Equal(len(merged.System), 1)
+	assert.Equal(len(merged.Task), 1)
+
+	merged = mergeAllLogs(config2, config1)
+	assert.NotNil(merged)
+	assert.Equal(len(merged.Agent), 1)
+	assert.Equal(len(merged.System), 1)
+	assert.Equal(len(merged.Task), 1)
+
+	config1 = &LoggerConfig{
+		Agent:  []LogOpts{{LogDirectory: "a"}},
+		System: []LogOpts{{LogDirectory: "a"}},
+		Task:   []LogOpts{{LogDirectory: "a"}},
+	}
+
+	merged = mergeAllLogs(config2, config1)
+	assert.NotNil(merged)
+	assert.Equal(len(merged.Agent), 2)
+	assert.Equal(len(merged.System), 2)
+	assert.Equal(len(merged.Task), 2)
 }
 
 func TestInjectTaskGroupInfo(t *testing.T) {

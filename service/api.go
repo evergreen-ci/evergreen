@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -25,7 +26,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -204,7 +204,7 @@ func (as *APIServer) GetParserProject(w http.ResponseWriter, r *http.Request) {
 	// handle legacy
 	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
 		pp = &model.ParserProject{}
-		if err = yaml.Unmarshal([]byte(v.Config), pp); err != nil {
+		if err = util.UnmarshalYAMLWithFallback([]byte(v.Config), pp); err != nil {
 			http.Error(w, "invalid version config", http.StatusNotFound)
 			return
 		}
@@ -550,8 +550,10 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	project := &model.Project{}
+	ctx := context.Background()
+	opts := model.GetProjectOpts{}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(input.ProjectYaml, "", project); err != nil {
+	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return

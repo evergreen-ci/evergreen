@@ -85,7 +85,7 @@ func TestDeleteTestLogsWithLimit(t *testing.T) {
 	})
 	t.Run("Parallel", func(t *testing.T) {
 		require.NoError(t, db.Clear(TestLogCollection))
-		for i := 0; i < 10000; i++ {
+		for i := 0; i < 1000; i++ {
 			if i%2 == 0 {
 				require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex()}))
 			} else {
@@ -94,14 +94,14 @@ func TestDeleteTestLogsWithLimit(t *testing.T) {
 		}
 		num, err := db.Count(TestLogCollection, bson.M{})
 		require.NoError(t, err)
-		assert.Equal(t, 10000, num)
+		assert.Equal(t, 1000, num)
 
 		var wg sync.WaitGroup
-		for i := 0; i < 100; i++ {
+		for i := 0; i < 10; i++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, delErr := DeleteTestLogsWithLimit(ctx, env, time.Now(), 1000)
+				_, delErr := DeleteTestLogsWithLimit(ctx, env, time.Now(), 100)
 				require.NoError(t, delErr)
 			}()
 		}
@@ -109,6 +109,6 @@ func TestDeleteTestLogsWithLimit(t *testing.T) {
 
 		num, err = db.Count(TestLogCollection, bson.M{})
 		require.NoError(t, err)
-		assert.Equal(t, 5000, num)
+		assert.Equal(t, 500, num)
 	})
 }

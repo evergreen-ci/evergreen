@@ -512,6 +512,12 @@ func (c *DeviceFarm) CreateTestGridProjectRequest(input *CreateTestGridProjectIn
 // API operation CreateTestGridProject for usage and error information.
 //
 // Returned Error Types:
+//   * ArgumentException
+//   An invalid argument was specified.
+//
+//   * LimitExceededException
+//   A limit was exceeded.
+//
 //   * InternalServiceException
 //   An internal exception was raised in the service. Contact aws-devicefarm-support@amazon.com
 //   (mailto:aws-devicefarm-support@amazon.com) if you see this error.
@@ -7705,6 +7711,9 @@ func (c *DeviceFarm) UpdateTestGridProjectRequest(input *UpdateTestGridProjectIn
 //   * ArgumentException
 //   An invalid argument was specified.
 //
+//   * LimitExceededException
+//   A limit was exceeded.
+//
 //   * InternalServiceException
 //   An internal exception was raised in the service. Contact aws-devicefarm-support@amazon.com
 //   (mailto:aws-devicefarm-support@amazon.com) if you see this error.
@@ -8007,8 +8016,8 @@ func (s *AccountSettings) SetUnmeteredRemoteAccessDevices(v map[string]*int64) *
 
 // An invalid argument was specified.
 type ArgumentException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// Any additional information about the exception.
 	Message_ *string `locationName:"message" type:"string"`
@@ -8026,17 +8035,17 @@ func (s ArgumentException) GoString() string {
 
 func newErrorArgumentException(v protocol.ResponseMetadata) error {
 	return &ArgumentException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ArgumentException) Code() string {
+func (s *ArgumentException) Code() string {
 	return "ArgumentException"
 }
 
 // Message returns the exception's message.
-func (s ArgumentException) Message() string {
+func (s *ArgumentException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8044,22 +8053,22 @@ func (s ArgumentException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ArgumentException) OrigErr() error {
+func (s *ArgumentException) OrigErr() error {
 	return nil
 }
 
-func (s ArgumentException) Error() string {
+func (s *ArgumentException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ArgumentException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ArgumentException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ArgumentException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ArgumentException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the output of a test. Examples of artifacts include logs and screenshots.
@@ -8228,8 +8237,8 @@ func (s *CPU) SetFrequency(v string) *CPU {
 
 // The requested object could not be deleted.
 type CannotDeleteException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -8246,17 +8255,17 @@ func (s CannotDeleteException) GoString() string {
 
 func newErrorCannotDeleteException(v protocol.ResponseMetadata) error {
 	return &CannotDeleteException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s CannotDeleteException) Code() string {
+func (s *CannotDeleteException) Code() string {
 	return "CannotDeleteException"
 }
 
 // Message returns the exception's message.
-func (s CannotDeleteException) Message() string {
+func (s *CannotDeleteException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -8264,22 +8273,22 @@ func (s CannotDeleteException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s CannotDeleteException) OrigErr() error {
+func (s *CannotDeleteException) OrigErr() error {
 	return nil
 }
 
-func (s CannotDeleteException) Error() string {
+func (s *CannotDeleteException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s CannotDeleteException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *CannotDeleteException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s CannotDeleteException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *CannotDeleteException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents entity counters.
@@ -9081,6 +9090,9 @@ type CreateTestGridProjectInput struct {
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
+
+	// The VPC security groups and subnets that are attached to a project.
+	VpcConfig *TestGridVpcConfig `locationName:"vpcConfig" type:"structure"`
 }
 
 // String returns the string representation
@@ -9105,6 +9117,11 @@ func (s *CreateTestGridProjectInput) Validate() error {
 	if s.Name != nil && len(*s.Name) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
 	}
+	if s.VpcConfig != nil {
+		if err := s.VpcConfig.Validate(); err != nil {
+			invalidParams.AddNested("VpcConfig", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -9121,6 +9138,12 @@ func (s *CreateTestGridProjectInput) SetDescription(v string) *CreateTestGridPro
 // SetName sets the Name field's value.
 func (s *CreateTestGridProjectInput) SetName(v string) *CreateTestGridProjectInput {
 	s.Name = &v
+	return s
+}
+
+// SetVpcConfig sets the VpcConfig field's value.
+func (s *CreateTestGridProjectInput) SetVpcConfig(v *TestGridVpcConfig) *CreateTestGridProjectInput {
+	s.VpcConfig = v
 	return s
 }
 
@@ -9214,7 +9237,7 @@ type CreateTestGridUrlOutput struct {
 
 	// A signed URL, expiring in CreateTestGridUrlRequest$expiresInSeconds seconds,
 	// to be passed to a RemoteWebDriver.
-	Url *string `locationName:"url" type:"string"`
+	Url *string `locationName:"url" type:"string" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -10389,11 +10412,15 @@ type DeviceFilter struct {
 	// The fleet type. Valid values are PUBLIC or PRIVATE.
 	//
 	// Supported operators: EQUALS
-	Attribute *string `locationName:"attribute" type:"string" enum:"DeviceFilterAttribute"`
+	//
+	// Attribute is a required field
+	Attribute *string `locationName:"attribute" type:"string" required:"true" enum:"DeviceFilterAttribute"`
 
 	// Specifies how Device Farm compares the filter's attribute to the value. See
 	// the attribute descriptions.
-	Operator *string `locationName:"operator" type:"string" enum:"RuleOperator"`
+	//
+	// Operator is a required field
+	Operator *string `locationName:"operator" type:"string" required:"true" enum:"RuleOperator"`
 
 	// An array of one or more filter values used in a device filter.
 	//
@@ -10414,7 +10441,9 @@ type DeviceFilter struct {
 	//    * The FORM_FACTOR attribute can be set to PHONE or TABLET.
 	//
 	//    * The FLEET_TYPE attribute can be set to PUBLIC or PRIVATE.
-	Values []*string `locationName:"values" type:"list"`
+	//
+	// Values is a required field
+	Values []*string `locationName:"values" type:"list" required:"true"`
 }
 
 // String returns the string representation
@@ -10425,6 +10454,25 @@ func (s DeviceFilter) String() string {
 // GoString returns the string representation
 func (s DeviceFilter) GoString() string {
 	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeviceFilter) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeviceFilter"}
+	if s.Attribute == nil {
+		invalidParams.Add(request.NewErrParamRequired("Attribute"))
+	}
+	if s.Operator == nil {
+		invalidParams.Add(request.NewErrParamRequired("Operator"))
+	}
+	if s.Values == nil {
+		invalidParams.Add(request.NewErrParamRequired("Values"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
 }
 
 // SetAttribute sets the Attribute field's value.
@@ -10752,6 +10800,16 @@ func (s *DeviceSelectionConfiguration) Validate() error {
 	}
 	if s.MaxDevices == nil {
 		invalidParams.Add(request.NewErrParamRequired("MaxDevices"))
+	}
+	if s.Filters != nil {
+		for i, v := range s.Filters {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Filters", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 
 	if invalidParams.Len() > 0 {
@@ -12177,8 +12235,8 @@ func (s *GetVPCEConfigurationOutput) SetVpceConfiguration(v *VPCEConfiguration) 
 
 // An entity with the same name already exists.
 type IdempotencyException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// Any additional information about the exception.
 	Message_ *string `locationName:"message" type:"string"`
@@ -12196,17 +12254,17 @@ func (s IdempotencyException) GoString() string {
 
 func newErrorIdempotencyException(v protocol.ResponseMetadata) error {
 	return &IdempotencyException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s IdempotencyException) Code() string {
+func (s *IdempotencyException) Code() string {
 	return "IdempotencyException"
 }
 
 // Message returns the exception's message.
-func (s IdempotencyException) Message() string {
+func (s *IdempotencyException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12214,22 +12272,22 @@ func (s IdempotencyException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s IdempotencyException) OrigErr() error {
+func (s *IdempotencyException) OrigErr() error {
 	return nil
 }
 
-func (s IdempotencyException) Error() string {
+func (s *IdempotencyException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s IdempotencyException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *IdempotencyException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s IdempotencyException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *IdempotencyException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about incompatibility.
@@ -12442,8 +12500,8 @@ func (s *InstanceProfile) SetRebootAfterUse(v bool) *InstanceProfile {
 // An internal exception was raised in the service. Contact aws-devicefarm-support@amazon.com
 // (mailto:aws-devicefarm-support@amazon.com) if you see this error.
 type InternalServiceException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -12460,17 +12518,17 @@ func (s InternalServiceException) GoString() string {
 
 func newErrorInternalServiceException(v protocol.ResponseMetadata) error {
 	return &InternalServiceException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InternalServiceException) Code() string {
+func (s *InternalServiceException) Code() string {
 	return "InternalServiceException"
 }
 
 // Message returns the exception's message.
-func (s InternalServiceException) Message() string {
+func (s *InternalServiceException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12478,29 +12536,29 @@ func (s InternalServiceException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InternalServiceException) OrigErr() error {
+func (s *InternalServiceException) OrigErr() error {
 	return nil
 }
 
-func (s InternalServiceException) Error() string {
+func (s *InternalServiceException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InternalServiceException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InternalServiceException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InternalServiceException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InternalServiceException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // There was an error with the update request, or you do not have sufficient
 // permissions to update this VPC endpoint configuration.
 type InvalidOperationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -12517,17 +12575,17 @@ func (s InvalidOperationException) GoString() string {
 
 func newErrorInvalidOperationException(v protocol.ResponseMetadata) error {
 	return &InvalidOperationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidOperationException) Code() string {
+func (s *InvalidOperationException) Code() string {
 	return "InvalidOperationException"
 }
 
 // Message returns the exception's message.
-func (s InvalidOperationException) Message() string {
+func (s *InvalidOperationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12535,22 +12593,22 @@ func (s InvalidOperationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidOperationException) OrigErr() error {
+func (s *InvalidOperationException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidOperationException) Error() string {
+func (s *InvalidOperationException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidOperationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidOperationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidOperationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidOperationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents a device.
@@ -12781,8 +12839,8 @@ func (s *Job) SetVideoEndpoint(v string) *Job {
 
 // A limit was exceeded.
 type LimitExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// Any additional information about the exception.
 	Message_ *string `locationName:"message" type:"string"`
@@ -12800,17 +12858,17 @@ func (s LimitExceededException) GoString() string {
 
 func newErrorLimitExceededException(v protocol.ResponseMetadata) error {
 	return &LimitExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LimitExceededException) Code() string {
+func (s *LimitExceededException) Code() string {
 	return "LimitExceededException"
 }
 
 // Message returns the exception's message.
-func (s LimitExceededException) Message() string {
+func (s *LimitExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -12818,22 +12876,22 @@ func (s LimitExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LimitExceededException) OrigErr() error {
+func (s *LimitExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LimitExceededException) Error() string {
+func (s *LimitExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LimitExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LimitExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LimitExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LimitExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents a request to the list artifacts operation.
@@ -13198,6 +13256,16 @@ func (s *ListDevicesInput) Validate() error {
 	}
 	if s.NextToken != nil && len(*s.NextToken) < 4 {
 		invalidParams.Add(request.NewErrParamMinLen("NextToken", 4))
+	}
+	if s.Filters != nil {
+		for i, v := range s.Filters {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Filters", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 
 	if invalidParams.Len() > 0 {
@@ -15349,8 +15417,8 @@ func (s *NetworkProfile) SetUplinkLossPercent(v int64) *NetworkProfile {
 // Exception gets thrown when a user is not eligible to perform the specified
 // transaction.
 type NotEligibleException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// The HTTP response code of a Not Eligible exception.
 	Message_ *string `locationName:"message" type:"string"`
@@ -15368,17 +15436,17 @@ func (s NotEligibleException) GoString() string {
 
 func newErrorNotEligibleException(v protocol.ResponseMetadata) error {
 	return &NotEligibleException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotEligibleException) Code() string {
+func (s *NotEligibleException) Code() string {
 	return "NotEligibleException"
 }
 
 // Message returns the exception's message.
-func (s NotEligibleException) Message() string {
+func (s *NotEligibleException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15386,28 +15454,28 @@ func (s NotEligibleException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotEligibleException) OrigErr() error {
+func (s *NotEligibleException) OrigErr() error {
 	return nil
 }
 
-func (s NotEligibleException) Error() string {
+func (s *NotEligibleException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotEligibleException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotEligibleException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotEligibleException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotEligibleException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified entity was not found.
 type NotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// Any additional information about the exception.
 	Message_ *string `locationName:"message" type:"string"`
@@ -15425,17 +15493,17 @@ func (s NotFoundException) GoString() string {
 
 func newErrorNotFoundException(v protocol.ResponseMetadata) error {
 	return &NotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s NotFoundException) Code() string {
+func (s *NotFoundException) Code() string {
 	return "NotFoundException"
 }
 
 // Message returns the exception's message.
-func (s NotFoundException) Message() string {
+func (s *NotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -15443,22 +15511,22 @@ func (s NotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s NotFoundException) OrigErr() error {
+func (s *NotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s NotFoundException) Error() string {
+func (s *NotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s NotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *NotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s NotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *NotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents the metadata of a device offering.
@@ -15850,13 +15918,17 @@ type PurchaseOfferingInput struct {
 	_ struct{} `type:"structure"`
 
 	// The ID of the offering.
-	OfferingId *string `locationName:"offeringId" min:"32" type:"string"`
+	//
+	// OfferingId is a required field
+	OfferingId *string `locationName:"offeringId" min:"32" type:"string" required:"true"`
 
 	// The ID of the offering promotion to be applied to the purchase.
 	OfferingPromotionId *string `locationName:"offeringPromotionId" min:"4" type:"string"`
 
 	// The number of device slots to purchase in an offering request.
-	Quantity *int64 `locationName:"quantity" type:"integer"`
+	//
+	// Quantity is a required field
+	Quantity *int64 `locationName:"quantity" type:"integer" required:"true"`
 }
 
 // String returns the string representation
@@ -15872,11 +15944,17 @@ func (s PurchaseOfferingInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *PurchaseOfferingInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "PurchaseOfferingInput"}
+	if s.OfferingId == nil {
+		invalidParams.Add(request.NewErrParamRequired("OfferingId"))
+	}
 	if s.OfferingId != nil && len(*s.OfferingId) < 32 {
 		invalidParams.Add(request.NewErrParamMinLen("OfferingId", 32))
 	}
 	if s.OfferingPromotionId != nil && len(*s.OfferingPromotionId) < 4 {
 		invalidParams.Add(request.NewErrParamMinLen("OfferingPromotionId", 4))
+	}
+	if s.Quantity == nil {
+		invalidParams.Add(request.NewErrParamRequired("Quantity"))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -16286,10 +16364,14 @@ type RenewOfferingInput struct {
 	_ struct{} `type:"structure"`
 
 	// The ID of a request to renew an offering.
-	OfferingId *string `locationName:"offeringId" min:"32" type:"string"`
+	//
+	// OfferingId is a required field
+	OfferingId *string `locationName:"offeringId" min:"32" type:"string" required:"true"`
 
 	// The quantity requested in an offering renewal.
-	Quantity *int64 `locationName:"quantity" type:"integer"`
+	//
+	// Quantity is a required field
+	Quantity *int64 `locationName:"quantity" type:"integer" required:"true"`
 }
 
 // String returns the string representation
@@ -16305,8 +16387,14 @@ func (s RenewOfferingInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *RenewOfferingInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "RenewOfferingInput"}
+	if s.OfferingId == nil {
+		invalidParams.Add(request.NewErrParamRequired("OfferingId"))
+	}
 	if s.OfferingId != nil && len(*s.OfferingId) < 32 {
 		invalidParams.Add(request.NewErrParamMinLen("OfferingId", 32))
+	}
+	if s.Quantity == nil {
+		invalidParams.Add(request.NewErrParamRequired("Quantity"))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -17457,8 +17545,8 @@ func (s *ScheduleRunTest) SetType(v string) *ScheduleRunTest {
 
 // There was a problem with the service account.
 type ServiceAccountException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// Any additional information about the exception.
 	Message_ *string `locationName:"message" type:"string"`
@@ -17476,17 +17564,17 @@ func (s ServiceAccountException) GoString() string {
 
 func newErrorServiceAccountException(v protocol.ResponseMetadata) error {
 	return &ServiceAccountException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceAccountException) Code() string {
+func (s *ServiceAccountException) Code() string {
 	return "ServiceAccountException"
 }
 
 // Message returns the exception's message.
-func (s ServiceAccountException) Message() string {
+func (s *ServiceAccountException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -17494,22 +17582,22 @@ func (s ServiceAccountException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceAccountException) OrigErr() error {
+func (s *ServiceAccountException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceAccountException) Error() string {
+func (s *ServiceAccountException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceAccountException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceAccountException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceAccountException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceAccountException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type StopJobInput struct {
@@ -17963,8 +18051,8 @@ func (s *Tag) SetValue(v string) *Tag {
 
 // The operation was not successful. Try again.
 type TagOperationException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -17983,17 +18071,17 @@ func (s TagOperationException) GoString() string {
 
 func newErrorTagOperationException(v protocol.ResponseMetadata) error {
 	return &TagOperationException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TagOperationException) Code() string {
+func (s *TagOperationException) Code() string {
 	return "TagOperationException"
 }
 
 // Message returns the exception's message.
-func (s TagOperationException) Message() string {
+func (s *TagOperationException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18001,29 +18089,29 @@ func (s TagOperationException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TagOperationException) OrigErr() error {
+func (s *TagOperationException) OrigErr() error {
 	return nil
 }
 
-func (s TagOperationException) Error() string {
+func (s *TagOperationException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TagOperationException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TagOperationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TagOperationException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TagOperationException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The request doesn't comply with the AWS Identity and Access Management (IAM)
 // tag policy. Correct your request and then retry it.
 type TagPolicyException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -18042,17 +18130,17 @@ func (s TagPolicyException) GoString() string {
 
 func newErrorTagPolicyException(v protocol.ResponseMetadata) error {
 	return &TagPolicyException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TagPolicyException) Code() string {
+func (s *TagPolicyException) Code() string {
 	return "TagPolicyException"
 }
 
 // Message returns the exception's message.
-func (s TagPolicyException) Message() string {
+func (s *TagPolicyException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18060,22 +18148,22 @@ func (s TagPolicyException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TagPolicyException) OrigErr() error {
+func (s *TagPolicyException) OrigErr() error {
 	return nil
 }
 
-func (s TagPolicyException) Error() string {
+func (s *TagPolicyException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TagPolicyException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TagPolicyException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TagPolicyException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TagPolicyException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type TagResourceInput struct {
@@ -18366,6 +18454,9 @@ type TestGridProject struct {
 
 	// A human-readable name for the project.
 	Name *string `locationName:"name" type:"string"`
+
+	// The VPC security groups and subnets that are attached to a project.
+	VpcConfig *TestGridVpcConfig `locationName:"vpcConfig" type:"structure"`
 }
 
 // String returns the string representation
@@ -18399,6 +18490,12 @@ func (s *TestGridProject) SetDescription(v string) *TestGridProject {
 // SetName sets the Name field's value.
 func (s *TestGridProject) SetName(v string) *TestGridProject {
 	s.Name = &v
+	return s
+}
+
+// SetVpcConfig sets the VpcConfig field's value.
+func (s *TestGridProject) SetVpcConfig(v *TestGridVpcConfig) *TestGridProject {
+	s.VpcConfig = v
 	return s
 }
 
@@ -18547,7 +18644,7 @@ type TestGridSessionArtifact struct {
 	Type *string `locationName:"type" type:"string" enum:"TestGridSessionArtifactType"`
 
 	// A semi-stable URL to the content of the object.
-	Url *string `locationName:"url" type:"string"`
+	Url *string `locationName:"url" type:"string" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -18578,11 +18675,87 @@ func (s *TestGridSessionArtifact) SetUrl(v string) *TestGridSessionArtifact {
 	return s
 }
 
+// The VPC security groups and subnets that are attached to a project.
+type TestGridVpcConfig struct {
+	_ struct{} `type:"structure"`
+
+	// A list of VPC security group IDs in your Amazon VPC.
+	//
+	// SecurityGroupIds is a required field
+	SecurityGroupIds []*string `locationName:"securityGroupIds" min:"1" type:"list" required:"true"`
+
+	// A list of VPC subnet IDs in your Amazon VPC.
+	//
+	// SubnetIds is a required field
+	SubnetIds []*string `locationName:"subnetIds" min:"1" type:"list" required:"true"`
+
+	// The ID of the Amazon VPC.
+	//
+	// VpcId is a required field
+	VpcId *string `locationName:"vpcId" min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s TestGridVpcConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s TestGridVpcConfig) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *TestGridVpcConfig) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "TestGridVpcConfig"}
+	if s.SecurityGroupIds == nil {
+		invalidParams.Add(request.NewErrParamRequired("SecurityGroupIds"))
+	}
+	if s.SecurityGroupIds != nil && len(s.SecurityGroupIds) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("SecurityGroupIds", 1))
+	}
+	if s.SubnetIds == nil {
+		invalidParams.Add(request.NewErrParamRequired("SubnetIds"))
+	}
+	if s.SubnetIds != nil && len(s.SubnetIds) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("SubnetIds", 1))
+	}
+	if s.VpcId == nil {
+		invalidParams.Add(request.NewErrParamRequired("VpcId"))
+	}
+	if s.VpcId != nil && len(*s.VpcId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VpcId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetSecurityGroupIds sets the SecurityGroupIds field's value.
+func (s *TestGridVpcConfig) SetSecurityGroupIds(v []*string) *TestGridVpcConfig {
+	s.SecurityGroupIds = v
+	return s
+}
+
+// SetSubnetIds sets the SubnetIds field's value.
+func (s *TestGridVpcConfig) SetSubnetIds(v []*string) *TestGridVpcConfig {
+	s.SubnetIds = v
+	return s
+}
+
+// SetVpcId sets the VpcId field's value.
+func (s *TestGridVpcConfig) SetVpcId(v string) *TestGridVpcConfig {
+	s.VpcId = &v
+	return s
+}
+
 // The list of tags on the repository is over the limit. The maximum number
 // of tags that can be applied to a repository is 50.
 type TooManyTagsException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 
@@ -18601,17 +18774,17 @@ func (s TooManyTagsException) GoString() string {
 
 func newErrorTooManyTagsException(v protocol.ResponseMetadata) error {
 	return &TooManyTagsException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TooManyTagsException) Code() string {
+func (s *TooManyTagsException) Code() string {
 	return "TooManyTagsException"
 }
 
 // Message returns the exception's message.
-func (s TooManyTagsException) Message() string {
+func (s *TooManyTagsException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -18619,22 +18792,22 @@ func (s TooManyTagsException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TooManyTagsException) OrigErr() error {
+func (s *TooManyTagsException) OrigErr() error {
 	return nil
 }
 
-func (s TooManyTagsException) Error() string {
+func (s *TooManyTagsException) Error() string {
 	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TooManyTagsException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TooManyTagsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TooManyTagsException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TooManyTagsException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Represents information about free trial device minutes for an AWS account.
@@ -19370,6 +19543,9 @@ type UpdateTestGridProjectInput struct {
 	//
 	// ProjectArn is a required field
 	ProjectArn *string `locationName:"projectArn" min:"32" type:"string" required:"true"`
+
+	// The VPC security groups and subnets that are attached to a project.
+	VpcConfig *TestGridVpcConfig `locationName:"vpcConfig" type:"structure"`
 }
 
 // String returns the string representation
@@ -19397,6 +19573,11 @@ func (s *UpdateTestGridProjectInput) Validate() error {
 	if s.ProjectArn != nil && len(*s.ProjectArn) < 32 {
 		invalidParams.Add(request.NewErrParamMinLen("ProjectArn", 32))
 	}
+	if s.VpcConfig != nil {
+		if err := s.VpcConfig.Validate(); err != nil {
+			invalidParams.AddNested("VpcConfig", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -19419,6 +19600,12 @@ func (s *UpdateTestGridProjectInput) SetName(v string) *UpdateTestGridProjectInp
 // SetProjectArn sets the ProjectArn field's value.
 func (s *UpdateTestGridProjectInput) SetProjectArn(v string) *UpdateTestGridProjectInput {
 	s.ProjectArn = &v
+	return s
+}
+
+// SetVpcConfig sets the VpcConfig field's value.
+func (s *UpdateTestGridProjectInput) SetVpcConfig(v *TestGridVpcConfig) *UpdateTestGridProjectInput {
+	s.VpcConfig = v
 	return s
 }
 
@@ -19756,7 +19943,7 @@ type Upload struct {
 	Type *string `locationName:"type" type:"string" enum:"UploadType"`
 
 	// The presigned Amazon S3 URL that was used to store a file using a PUT request.
-	Url *string `locationName:"url" type:"string"`
+	Url *string `locationName:"url" type:"string" sensitive:"true"`
 }
 
 // String returns the string representation
@@ -19903,6 +20090,15 @@ const (
 	ArtifactCategoryLog = "LOG"
 )
 
+// ArtifactCategory_Values returns all elements of the ArtifactCategory enum
+func ArtifactCategory_Values() []string {
+	return []string{
+		ArtifactCategoryScreenshot,
+		ArtifactCategoryFile,
+		ArtifactCategoryLog,
+	}
+}
+
 const (
 	// ArtifactTypeUnknown is a ArtifactType enum value
 	ArtifactTypeUnknown = "UNKNOWN"
@@ -19989,6 +20185,40 @@ const (
 	ArtifactTypeTestspecOutput = "TESTSPEC_OUTPUT"
 )
 
+// ArtifactType_Values returns all elements of the ArtifactType enum
+func ArtifactType_Values() []string {
+	return []string{
+		ArtifactTypeUnknown,
+		ArtifactTypeScreenshot,
+		ArtifactTypeDeviceLog,
+		ArtifactTypeMessageLog,
+		ArtifactTypeVideoLog,
+		ArtifactTypeResultLog,
+		ArtifactTypeServiceLog,
+		ArtifactTypeWebkitLog,
+		ArtifactTypeInstrumentationOutput,
+		ArtifactTypeExerciserMonkeyOutput,
+		ArtifactTypeCalabashJsonOutput,
+		ArtifactTypeCalabashPrettyOutput,
+		ArtifactTypeCalabashStandardOutput,
+		ArtifactTypeCalabashJavaXmlOutput,
+		ArtifactTypeAutomationOutput,
+		ArtifactTypeAppiumServerOutput,
+		ArtifactTypeAppiumJavaOutput,
+		ArtifactTypeAppiumJavaXmlOutput,
+		ArtifactTypeAppiumPythonOutput,
+		ArtifactTypeAppiumPythonXmlOutput,
+		ArtifactTypeExplorerEventLog,
+		ArtifactTypeExplorerSummaryLog,
+		ArtifactTypeApplicationCrashReport,
+		ArtifactTypeXctestLog,
+		ArtifactTypeVideo,
+		ArtifactTypeCustomerArtifact,
+		ArtifactTypeCustomerArtifactLog,
+		ArtifactTypeTestspecOutput,
+	}
+}
+
 const (
 	// BillingMethodMetered is a BillingMethod enum value
 	BillingMethodMetered = "METERED"
@@ -19997,10 +20227,25 @@ const (
 	BillingMethodUnmetered = "UNMETERED"
 )
 
+// BillingMethod_Values returns all elements of the BillingMethod enum
+func BillingMethod_Values() []string {
+	return []string{
+		BillingMethodMetered,
+		BillingMethodUnmetered,
+	}
+}
+
 const (
 	// CurrencyCodeUsd is a CurrencyCode enum value
 	CurrencyCodeUsd = "USD"
 )
+
+// CurrencyCode_Values returns all elements of the CurrencyCode enum
+func CurrencyCode_Values() []string {
+	return []string{
+		CurrencyCodeUsd,
+	}
+}
 
 const (
 	// DeviceAttributeArn is a DeviceAttribute enum value
@@ -20043,6 +20288,25 @@ const (
 	DeviceAttributeAvailability = "AVAILABILITY"
 )
 
+// DeviceAttribute_Values returns all elements of the DeviceAttribute enum
+func DeviceAttribute_Values() []string {
+	return []string{
+		DeviceAttributeArn,
+		DeviceAttributePlatform,
+		DeviceAttributeFormFactor,
+		DeviceAttributeManufacturer,
+		DeviceAttributeRemoteAccessEnabled,
+		DeviceAttributeRemoteDebugEnabled,
+		DeviceAttributeAppiumVersion,
+		DeviceAttributeInstanceArn,
+		DeviceAttributeInstanceLabels,
+		DeviceAttributeFleetType,
+		DeviceAttributeOsVersion,
+		DeviceAttributeModel,
+		DeviceAttributeAvailability,
+	}
+}
+
 const (
 	// DeviceAvailabilityTemporaryNotAvailable is a DeviceAvailability enum value
 	DeviceAvailabilityTemporaryNotAvailable = "TEMPORARY_NOT_AVAILABLE"
@@ -20056,6 +20320,16 @@ const (
 	// DeviceAvailabilityHighlyAvailable is a DeviceAvailability enum value
 	DeviceAvailabilityHighlyAvailable = "HIGHLY_AVAILABLE"
 )
+
+// DeviceAvailability_Values returns all elements of the DeviceAvailability enum
+func DeviceAvailability_Values() []string {
+	return []string{
+		DeviceAvailabilityTemporaryNotAvailable,
+		DeviceAvailabilityBusy,
+		DeviceAvailabilityAvailable,
+		DeviceAvailabilityHighlyAvailable,
+	}
+}
 
 const (
 	// DeviceFilterAttributeArn is a DeviceFilterAttribute enum value
@@ -20095,6 +20369,24 @@ const (
 	DeviceFilterAttributeFleetType = "FLEET_TYPE"
 )
 
+// DeviceFilterAttribute_Values returns all elements of the DeviceFilterAttribute enum
+func DeviceFilterAttribute_Values() []string {
+	return []string{
+		DeviceFilterAttributeArn,
+		DeviceFilterAttributePlatform,
+		DeviceFilterAttributeOsVersion,
+		DeviceFilterAttributeModel,
+		DeviceFilterAttributeAvailability,
+		DeviceFilterAttributeFormFactor,
+		DeviceFilterAttributeManufacturer,
+		DeviceFilterAttributeRemoteAccessEnabled,
+		DeviceFilterAttributeRemoteDebugEnabled,
+		DeviceFilterAttributeInstanceArn,
+		DeviceFilterAttributeInstanceLabels,
+		DeviceFilterAttributeFleetType,
+	}
+}
+
 const (
 	// DeviceFormFactorPhone is a DeviceFormFactor enum value
 	DeviceFormFactorPhone = "PHONE"
@@ -20102,6 +20394,14 @@ const (
 	// DeviceFormFactorTablet is a DeviceFormFactor enum value
 	DeviceFormFactorTablet = "TABLET"
 )
+
+// DeviceFormFactor_Values returns all elements of the DeviceFormFactor enum
+func DeviceFormFactor_Values() []string {
+	return []string{
+		DeviceFormFactorPhone,
+		DeviceFormFactorTablet,
+	}
+}
 
 const (
 	// DevicePlatformAndroid is a DevicePlatform enum value
@@ -20111,6 +20411,14 @@ const (
 	DevicePlatformIos = "IOS"
 )
 
+// DevicePlatform_Values returns all elements of the DevicePlatform enum
+func DevicePlatform_Values() []string {
+	return []string{
+		DevicePlatformAndroid,
+		DevicePlatformIos,
+	}
+}
+
 const (
 	// DevicePoolTypeCurated is a DevicePoolType enum value
 	DevicePoolTypeCurated = "CURATED"
@@ -20118,6 +20426,14 @@ const (
 	// DevicePoolTypePrivate is a DevicePoolType enum value
 	DevicePoolTypePrivate = "PRIVATE"
 )
+
+// DevicePoolType_Values returns all elements of the DevicePoolType enum
+func DevicePoolType_Values() []string {
+	return []string{
+		DevicePoolTypeCurated,
+		DevicePoolTypePrivate,
+	}
+}
 
 const (
 	// ExecutionResultPending is a ExecutionResult enum value
@@ -20142,6 +20458,19 @@ const (
 	ExecutionResultStopped = "STOPPED"
 )
 
+// ExecutionResult_Values returns all elements of the ExecutionResult enum
+func ExecutionResult_Values() []string {
+	return []string{
+		ExecutionResultPending,
+		ExecutionResultPassed,
+		ExecutionResultWarned,
+		ExecutionResultFailed,
+		ExecutionResultSkipped,
+		ExecutionResultErrored,
+		ExecutionResultStopped,
+	}
+}
+
 const (
 	// ExecutionResultCodeParsingFailed is a ExecutionResultCode enum value
 	ExecutionResultCodeParsingFailed = "PARSING_FAILED"
@@ -20149,6 +20478,14 @@ const (
 	// ExecutionResultCodeVpcEndpointSetupFailed is a ExecutionResultCode enum value
 	ExecutionResultCodeVpcEndpointSetupFailed = "VPC_ENDPOINT_SETUP_FAILED"
 )
+
+// ExecutionResultCode_Values returns all elements of the ExecutionResultCode enum
+func ExecutionResultCode_Values() []string {
+	return []string{
+		ExecutionResultCodeParsingFailed,
+		ExecutionResultCodeVpcEndpointSetupFailed,
+	}
+}
 
 const (
 	// ExecutionStatusPending is a ExecutionStatus enum value
@@ -20179,6 +20516,21 @@ const (
 	ExecutionStatusStopping = "STOPPING"
 )
 
+// ExecutionStatus_Values returns all elements of the ExecutionStatus enum
+func ExecutionStatus_Values() []string {
+	return []string{
+		ExecutionStatusPending,
+		ExecutionStatusPendingConcurrency,
+		ExecutionStatusPendingDevice,
+		ExecutionStatusProcessing,
+		ExecutionStatusScheduling,
+		ExecutionStatusPreparing,
+		ExecutionStatusRunning,
+		ExecutionStatusCompleted,
+		ExecutionStatusStopping,
+	}
+}
+
 const (
 	// InstanceStatusInUse is a InstanceStatus enum value
 	InstanceStatusInUse = "IN_USE"
@@ -20193,6 +20545,16 @@ const (
 	InstanceStatusNotAvailable = "NOT_AVAILABLE"
 )
 
+// InstanceStatus_Values returns all elements of the InstanceStatus enum
+func InstanceStatus_Values() []string {
+	return []string{
+		InstanceStatusInUse,
+		InstanceStatusPreparing,
+		InstanceStatusAvailable,
+		InstanceStatusNotAvailable,
+	}
+}
+
 const (
 	// InteractionModeInteractive is a InteractionMode enum value
 	InteractionModeInteractive = "INTERACTIVE"
@@ -20204,6 +20566,15 @@ const (
 	InteractionModeVideoOnly = "VIDEO_ONLY"
 )
 
+// InteractionMode_Values returns all elements of the InteractionMode enum
+func InteractionMode_Values() []string {
+	return []string{
+		InteractionModeInteractive,
+		InteractionModeNoVideo,
+		InteractionModeVideoOnly,
+	}
+}
+
 const (
 	// NetworkProfileTypeCurated is a NetworkProfileType enum value
 	NetworkProfileTypeCurated = "CURATED"
@@ -20211,6 +20582,14 @@ const (
 	// NetworkProfileTypePrivate is a NetworkProfileType enum value
 	NetworkProfileTypePrivate = "PRIVATE"
 )
+
+// NetworkProfileType_Values returns all elements of the NetworkProfileType enum
+func NetworkProfileType_Values() []string {
+	return []string{
+		NetworkProfileTypeCurated,
+		NetworkProfileTypePrivate,
+	}
+}
 
 const (
 	// OfferingTransactionTypePurchase is a OfferingTransactionType enum value
@@ -20223,15 +20602,38 @@ const (
 	OfferingTransactionTypeSystem = "SYSTEM"
 )
 
+// OfferingTransactionType_Values returns all elements of the OfferingTransactionType enum
+func OfferingTransactionType_Values() []string {
+	return []string{
+		OfferingTransactionTypePurchase,
+		OfferingTransactionTypeRenew,
+		OfferingTransactionTypeSystem,
+	}
+}
+
 const (
 	// OfferingTypeRecurring is a OfferingType enum value
 	OfferingTypeRecurring = "RECURRING"
 )
 
+// OfferingType_Values returns all elements of the OfferingType enum
+func OfferingType_Values() []string {
+	return []string{
+		OfferingTypeRecurring,
+	}
+}
+
 const (
 	// RecurringChargeFrequencyMonthly is a RecurringChargeFrequency enum value
 	RecurringChargeFrequencyMonthly = "MONTHLY"
 )
+
+// RecurringChargeFrequency_Values returns all elements of the RecurringChargeFrequency enum
+func RecurringChargeFrequency_Values() []string {
+	return []string{
+		RecurringChargeFrequencyMonthly,
+	}
+}
 
 const (
 	// RuleOperatorEquals is a RuleOperator enum value
@@ -20258,6 +20660,20 @@ const (
 	// RuleOperatorContains is a RuleOperator enum value
 	RuleOperatorContains = "CONTAINS"
 )
+
+// RuleOperator_Values returns all elements of the RuleOperator enum
+func RuleOperator_Values() []string {
+	return []string{
+		RuleOperatorEquals,
+		RuleOperatorLessThan,
+		RuleOperatorLessThanOrEquals,
+		RuleOperatorGreaterThan,
+		RuleOperatorGreaterThanOrEquals,
+		RuleOperatorIn,
+		RuleOperatorNotIn,
+		RuleOperatorContains,
+	}
+}
 
 const (
 	// SampleTypeCpu is a SampleType enum value
@@ -20312,6 +20728,29 @@ const (
 	SampleTypeOpenglMaxDrawtime = "OPENGL_MAX_DRAWTIME"
 )
 
+// SampleType_Values returns all elements of the SampleType enum
+func SampleType_Values() []string {
+	return []string{
+		SampleTypeCpu,
+		SampleTypeMemory,
+		SampleTypeThreads,
+		SampleTypeRxRate,
+		SampleTypeTxRate,
+		SampleTypeRx,
+		SampleTypeTx,
+		SampleTypeNativeFrames,
+		SampleTypeNativeFps,
+		SampleTypeNativeMinDrawtime,
+		SampleTypeNativeAvgDrawtime,
+		SampleTypeNativeMaxDrawtime,
+		SampleTypeOpenglFrames,
+		SampleTypeOpenglFps,
+		SampleTypeOpenglMinDrawtime,
+		SampleTypeOpenglAvgDrawtime,
+		SampleTypeOpenglMaxDrawtime,
+	}
+}
+
 const (
 	// TestGridSessionArtifactCategoryVideo is a TestGridSessionArtifactCategory enum value
 	TestGridSessionArtifactCategoryVideo = "VIDEO"
@@ -20319,6 +20758,14 @@ const (
 	// TestGridSessionArtifactCategoryLog is a TestGridSessionArtifactCategory enum value
 	TestGridSessionArtifactCategoryLog = "LOG"
 )
+
+// TestGridSessionArtifactCategory_Values returns all elements of the TestGridSessionArtifactCategory enum
+func TestGridSessionArtifactCategory_Values() []string {
+	return []string{
+		TestGridSessionArtifactCategoryVideo,
+		TestGridSessionArtifactCategoryLog,
+	}
+}
 
 const (
 	// TestGridSessionArtifactTypeUnknown is a TestGridSessionArtifactType enum value
@@ -20331,6 +20778,15 @@ const (
 	TestGridSessionArtifactTypeSeleniumLog = "SELENIUM_LOG"
 )
 
+// TestGridSessionArtifactType_Values returns all elements of the TestGridSessionArtifactType enum
+func TestGridSessionArtifactType_Values() []string {
+	return []string{
+		TestGridSessionArtifactTypeUnknown,
+		TestGridSessionArtifactTypeVideo,
+		TestGridSessionArtifactTypeSeleniumLog,
+	}
+}
+
 const (
 	// TestGridSessionStatusActive is a TestGridSessionStatus enum value
 	TestGridSessionStatusActive = "ACTIVE"
@@ -20341,6 +20797,15 @@ const (
 	// TestGridSessionStatusErrored is a TestGridSessionStatus enum value
 	TestGridSessionStatusErrored = "ERRORED"
 )
+
+// TestGridSessionStatus_Values returns all elements of the TestGridSessionStatus enum
+func TestGridSessionStatus_Values() []string {
+	return []string{
+		TestGridSessionStatusActive,
+		TestGridSessionStatusClosed,
+		TestGridSessionStatusErrored,
+	}
+}
 
 const (
 	// TestTypeBuiltinFuzz is a TestType enum value
@@ -20407,6 +20872,33 @@ const (
 	TestTypeRemoteAccessReplay = "REMOTE_ACCESS_REPLAY"
 )
 
+// TestType_Values returns all elements of the TestType enum
+func TestType_Values() []string {
+	return []string{
+		TestTypeBuiltinFuzz,
+		TestTypeBuiltinExplorer,
+		TestTypeWebPerformanceProfile,
+		TestTypeAppiumJavaJunit,
+		TestTypeAppiumJavaTestng,
+		TestTypeAppiumPython,
+		TestTypeAppiumNode,
+		TestTypeAppiumRuby,
+		TestTypeAppiumWebJavaJunit,
+		TestTypeAppiumWebJavaTestng,
+		TestTypeAppiumWebPython,
+		TestTypeAppiumWebNode,
+		TestTypeAppiumWebRuby,
+		TestTypeCalabash,
+		TestTypeInstrumentation,
+		TestTypeUiautomation,
+		TestTypeUiautomator,
+		TestTypeXctest,
+		TestTypeXctestUi,
+		TestTypeRemoteAccessRecord,
+		TestTypeRemoteAccessReplay,
+	}
+}
+
 const (
 	// UploadCategoryCurated is a UploadCategory enum value
 	UploadCategoryCurated = "CURATED"
@@ -20414,6 +20906,14 @@ const (
 	// UploadCategoryPrivate is a UploadCategory enum value
 	UploadCategoryPrivate = "PRIVATE"
 )
+
+// UploadCategory_Values returns all elements of the UploadCategory enum
+func UploadCategory_Values() []string {
+	return []string{
+		UploadCategoryCurated,
+		UploadCategoryPrivate,
+	}
+}
 
 const (
 	// UploadStatusInitialized is a UploadStatus enum value
@@ -20428,6 +20928,16 @@ const (
 	// UploadStatusFailed is a UploadStatus enum value
 	UploadStatusFailed = "FAILED"
 )
+
+// UploadStatus_Values returns all elements of the UploadStatus enum
+func UploadStatus_Values() []string {
+	return []string{
+		UploadStatusInitialized,
+		UploadStatusProcessing,
+		UploadStatusSucceeded,
+		UploadStatusFailed,
+	}
+}
 
 const (
 	// UploadTypeAndroidApp is a UploadType enum value
@@ -20526,3 +21036,41 @@ const (
 	// UploadTypeXctestUiTestSpec is a UploadType enum value
 	UploadTypeXctestUiTestSpec = "XCTEST_UI_TEST_SPEC"
 )
+
+// UploadType_Values returns all elements of the UploadType enum
+func UploadType_Values() []string {
+	return []string{
+		UploadTypeAndroidApp,
+		UploadTypeIosApp,
+		UploadTypeWebApp,
+		UploadTypeExternalData,
+		UploadTypeAppiumJavaJunitTestPackage,
+		UploadTypeAppiumJavaTestngTestPackage,
+		UploadTypeAppiumPythonTestPackage,
+		UploadTypeAppiumNodeTestPackage,
+		UploadTypeAppiumRubyTestPackage,
+		UploadTypeAppiumWebJavaJunitTestPackage,
+		UploadTypeAppiumWebJavaTestngTestPackage,
+		UploadTypeAppiumWebPythonTestPackage,
+		UploadTypeAppiumWebNodeTestPackage,
+		UploadTypeAppiumWebRubyTestPackage,
+		UploadTypeCalabashTestPackage,
+		UploadTypeInstrumentationTestPackage,
+		UploadTypeUiautomationTestPackage,
+		UploadTypeUiautomatorTestPackage,
+		UploadTypeXctestTestPackage,
+		UploadTypeXctestUiTestPackage,
+		UploadTypeAppiumJavaJunitTestSpec,
+		UploadTypeAppiumJavaTestngTestSpec,
+		UploadTypeAppiumPythonTestSpec,
+		UploadTypeAppiumNodeTestSpec,
+		UploadTypeAppiumRubyTestSpec,
+		UploadTypeAppiumWebJavaJunitTestSpec,
+		UploadTypeAppiumWebJavaTestngTestSpec,
+		UploadTypeAppiumWebPythonTestSpec,
+		UploadTypeAppiumWebNodeTestSpec,
+		UploadTypeAppiumWebRubyTestSpec,
+		UploadTypeInstrumentationTestSpec,
+		UploadTypeXctestUiTestSpec,
+	}
+}

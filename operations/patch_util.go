@@ -56,6 +56,7 @@ type localDiff struct {
 
 type patchParams struct {
 	Project           string
+	Path              string
 	Alias             string
 	Variants          []string
 	Tasks             []string
@@ -84,6 +85,7 @@ type patchSubmission struct {
 	description       string
 	base              string
 	alias             string
+	path              string
 	variants          []string
 	tasks             []string
 	syncBuildVariants []string
@@ -117,6 +119,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		triggerAliases:    p.TriggerAliases,
 		gitMetadata:       diffData.gitMetadata,
 		reuseDefinition:   p.ReuseDefinition,
+		path:              p.Path,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
@@ -347,19 +350,10 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 	return nil
 }
 
+//Option to set default parameters no longer supported to prevent unwanted parameters from persisting within future patches
 func (p *patchParams) loadParameters(conf *ClientSettings) error {
-	defaultParameters := conf.FindDefaultParameters(p.Project)
-	if len(p.Parameters) != 0 {
-		if len(defaultParameters) == 0 && !p.SkipConfirm &&
-			confirm(fmt.Sprintf("Set %v as the default parameters for project '%v'?",
-				p.Parameters, p.Project), false) {
-			conf.SetDefaultParameters(p.Project, p.Parameters)
-			if err := conf.Write(""); err != nil {
-				return err
-			}
-		}
-	} else {
-		p.Parameters = defaultParameters
+	if len(p.Parameters) == 0 {
+		p.Parameters = conf.FindDefaultParameters(p.Project)
 	}
 	return nil
 }

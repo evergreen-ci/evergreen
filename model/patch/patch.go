@@ -19,6 +19,8 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -138,6 +140,7 @@ type GitMetadata struct {
 type Patch struct {
 	Id              mgobson.ObjectId       `bson:"_id,omitempty"`
 	Description     string                 `bson:"desc"`
+	Path            string                 `bson:"path,omitempty"`
 	Project         string                 `bson:"branch"`
 	Githash         string                 `bson:"githash"`
 	PatchNumber     int                    `bson:"patch_number"`
@@ -575,6 +578,17 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 	return err
 }
 
+// SetChildPatches appends the IDs of downstream patches to the db
+func (p *Patch) SetChildPatches() error {
+	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.ChildPatches}},
+		},
+	)
+}
+
 // SetActivation sets the patch to the desired activation state without
 // modifying the activation status of the possibly corresponding version.
 func (p *Patch) SetActivation(activated bool) error {
@@ -721,23 +735,23 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	return childrenOrSiblings, parentPatch, nil
 }
 
-func (p *Patch) SetParametersFromParent() error {
+func (p *Patch) SetParametersFromParent() (*Patch, error) {
 	parentPatchId := p.Triggers.ParentPatch
 	parentPatch, err := FindOneId(parentPatchId)
 	if err != nil {
-		return errors.Wrap(err, "can't get parent patch")
+		return nil, errors.Wrap(err, "can't get parent patch")
 	}
 	if parentPatch == nil {
-		return errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+		return nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
 	}
 
 	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
 		err = p.SetParameters(downstreamParams)
 		if err != nil {
-			return errors.Wrap(err, "error setting parameters")
+			return nil, errors.Wrap(err, "error setting parameters")
 		}
 	}
-	return nil
+	return parentPatch, nil
 }
 
 func (p *Patch) GetRequester() string {
@@ -971,4 +985,44 @@ func (p PatchesByCreateTime) Less(i, j int) bool {
 
 func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
+}
+
+// GetCollectiveStatus answers the question of what the patch status should be
+// when the patch status and the status of it's children are different
+func GetCollectiveStatus(statuses []string) string {
+	hasCreated := false
+	hasFailure := false
+	hasSuccess := false
+
+	for _, s := range statuses {
+		switch s {
+		case evergreen.PatchStarted:
+			return evergreen.PatchStarted
+		case evergreen.PatchCreated:
+			hasCreated = true
+		case evergreen.PatchFailed:
+			hasFailure = true
+		case evergreen.PatchSucceeded:
+			hasSuccess = true
+		}
+	}
+
+	if !(hasCreated || hasFailure || hasSuccess) {
+		grip.Critical(message.Fields{
+			"message":  "An unknown patch status was found",
+			"cause":    "Programmer error: new statuses should be added to patch.getCollectiveStatus().",
+			"statuses": statuses,
+		})
+	}
+
+	if hasCreated && (hasFailure || hasSuccess) {
+		return evergreen.PatchStarted
+	} else if hasCreated {
+		return evergreen.PatchCreated
+	} else if hasFailure {
+		return evergreen.PatchFailed
+	} else if hasSuccess {
+		return evergreen.PatchSucceeded
+	}
+	return evergreen.PatchCreated
 }

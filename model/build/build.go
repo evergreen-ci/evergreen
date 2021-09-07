@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	adb "github.com/mongodb/anser/db"
@@ -18,17 +17,9 @@ import (
 // IdTimeLayout is used time time.Time.Format() to produce timestamps for our ids.
 const IdTimeLayout = "06_01_02_15_04_05"
 
-// TaskCache represents some duped information about tasks,
-// mainly for ui purposes.
+// TaskCache references the id of a task in the build
 type TaskCache struct {
-	Id            string                  `bson:"id" json:"id"`
-	DisplayName   string                  `bson:"d" json:"display_name"`
-	Status        string                  `bson:"s" json:"status"`
-	StatusDetails apimodels.TaskEndDetail `bson:"ed" json:"task_end_details"`
-	StartTime     time.Time               `bson:"st" json:"start_time"`
-	TimeTaken     time.Duration           `bson:"tt" json:"time_taken"`
-	Activated     bool                    `bson:"a" json:"activated"`
-	Blocked       bool                    `bson:"b" json:"blocked"`
+	Id string `bson:"id" json:"id"`
 }
 
 // Build represents a set of tasks on one variant of a Project
@@ -67,8 +58,9 @@ type Build struct {
 	// patch request
 	Requester string `bson:"r" json:"r,omitempty"`
 
-	// builds that are part of a child patch will store the id of the parent patch
-	ParentPatchID string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
+	// builds that are part of a child patch will store the id and number of the parent patch
+	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
+	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -178,6 +170,15 @@ func (b *Build) UpdateStatus(status string) error {
 	)
 }
 
+// SetTasksCache updates one build with the given id
+// to contain the given task caches.
+func SetTasksCache(buildId string, tasks []TaskCache) error {
+	return UpdateOne(
+		bson.M{IdKey: buildId},
+		bson.M{"$set": bson.M{TasksKey: tasks}},
+	)
+}
+
 func (b *Build) UpdateGithubCheckStatus(status string) error {
 	if b.GithubCheckStatus == status {
 		return nil
@@ -247,49 +248,19 @@ func (b *Build) MarkFinished(status string, finishTime time.Time) error {
 	)
 }
 
+func (b *Build) GetTimeSpent() (time.Duration, time.Duration, error) {
+	tasks, err := task.FindAllFirstExecution(task.ByBuildId(b.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "can't get tasks")
+	}
+
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+	return timeTaken, makespan, nil
+}
+
 // Insert writes the b to the db.
 func (b *Build) Insert() error {
 	return db.Insert(Collection, b)
-}
-
-func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
-	if err := SetCachedTaskFinished(b.Id, taskID, status, detail, timeTaken); err != nil {
-		return err
-	}
-	for i := range b.Tasks {
-		if b.Tasks[i].Id != taskID {
-			continue
-		}
-
-		b.Tasks[i].Status = status
-		b.Tasks[i].TimeTaken = timeTaken
-		b.Tasks[i].StatusDetails = *detail
-		break
-	}
-	return nil
-}
-
-func (b *Build) UpdateCachedTasks(tasks []task.Task) error {
-	cache := b.Tasks
-cacheLoop:
-	for i, cacheTask := range b.Tasks {
-		for _, realTask := range tasks {
-			if cacheTask.Id == realTask.Id {
-				cache[i].Id = realTask.Id
-				cache[i].Status = realTask.Status
-				cache[i].TimeTaken = realTask.TimeTaken
-				cache[i].StatusDetails = realTask.Details
-				cache[i].Blocked = realTask.Blocked()
-				continue cacheLoop
-			}
-		}
-	}
-	err := SetTasksCache(b.Id, cache)
-	if err != nil {
-		return errors.Wrap(err, "unable to update task cache")
-	}
-	b.Tasks = cache
-	return nil
 }
 
 func (b *Build) IsPatchBuild() bool {

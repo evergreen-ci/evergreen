@@ -113,9 +113,16 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
+	settings := *j.env.Settings()
+	// Use the latest service flags instead of those cached in the environment.
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
+		return
+	}
+	settings.ServiceFlags = *flags
 
-	j.AddError(j.setupHost(ctx, settings))
+	j.AddError(j.setupHost(ctx, &settings))
 }
 
 func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {
@@ -159,23 +166,23 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 			j.AddError(errors.Wrap(j.host.DeleteJasperCredentials(ctx, j.env), "deleting Jasper credentials after failed provision attempt"))
 		}
 
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":         "provisioning host encountered error",
-			"job":             j.ID(),
-			"distro":          j.host.Distro.Id,
-			"host_id":         j.host.Id,
-			"current_attempt": j.RetryInfo().CurrentAttempt,
-		}))
-
 		if j.canRetryProvisioning() {
-			grip.Info(message.Fields{
+			grip.Info(message.WrapError(err, message.Fields{
 				"current_attempt": j.RetryInfo().CurrentAttempt,
 				"host_id":         j.host.Id,
+				"distro":          j.host.Distro.Id,
 				"job":             j.ID(),
 				"message":         "retrying provisioning",
-			})
+			}))
 			j.AddRetryableError(err)
 		} else {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":         "provisioning host encountered error",
+				"job":             j.ID(),
+				"distro":          j.host.Distro.Id,
+				"host_id":         j.host.Id,
+				"current_attempt": j.RetryInfo().CurrentAttempt,
+			}))
 			j.AddError(err)
 		}
 		return nil

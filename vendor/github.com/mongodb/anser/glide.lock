@@ -4,11 +4,11 @@ imports:
   - name: github.com/evergreen-ci/birch
     version: 3a26bb67719ad6a9e7daed059abd5d018586f3cd
   - name: github.com/mongodb/amboy
-    version: e5548953650b5d4cc7b6d7aba4cb1b2771e35342
+    version: bb7e6e41366c4046bf983e897f357f6cb14c5bfc
   - name: github.com/mongodb/ftdc
     version: 2f5079c0c690a9e54e62d01a91bde33113a4048a
   - name: github.com/mongodb/grip
-    version: ee248dc036226d9f87dc1ed28d22e5796960ff91
+    version: dfee190b28366aa88b31c2386cf97ec1af7bde6b
   - name: github.com/pkg/errors
     version: 856c240a51a2bf8fb8269ea7f3f9b046aadde36e
   - name: github.com/satori/go.uuid

@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
 type RequestTestSuite struct {
 	suite.Suite
-	evergreenREST *communicatorImpl
+	evergreenREST baseCommunicator
 }
 
 func TestRequestTestSuite(t *testing.T) {
@@ -19,13 +20,13 @@ func TestRequestTestSuite(t *testing.T) {
 }
 
 func (s *RequestTestSuite) SetupTest() {
-	s.evergreenREST = &communicatorImpl{
-		hostID:       "hostID",
-		hostSecret:   "hostSecret",
-		maxAttempts:  10,
-		timeoutStart: time.Second * 2,
-		timeoutMax:   time.Minute * 10,
-		serverURL:    "url",
+	s.evergreenREST = baseCommunicator{
+		retry: utility.RetryOptions{
+			MaxAttempts: 10,
+			MinDelay:    time.Second * 2,
+			MaxDelay:    time.Minute * 10,
+		},
+		serverURL: "url",
 	}
 }
 
@@ -34,8 +35,8 @@ func (s *RequestTestSuite) TestNewRequest() {
 	s.NoError(err)
 	s.Equal("task1", r.Header.Get(evergreen.TaskHeader))
 	s.Equal("taskSecret", r.Header.Get(evergreen.TaskSecretHeader))
-	s.Equal(s.evergreenREST.hostID, r.Header.Get(evergreen.HostHeader))
-	s.Equal(s.evergreenREST.hostSecret, r.Header.Get(evergreen.HostSecretHeader))
+	s.Equal(s.evergreenREST.reqHeaders[evergreen.HostHeader], r.Header.Get(evergreen.HostHeader))
+	s.Equal(s.evergreenREST.reqHeaders[evergreen.HostSecretHeader], r.Header.Get(evergreen.HostSecretHeader))
 	s.Equal(evergreen.ContentTypeValue, r.Header.Get(evergreen.ContentTypeHeader))
 }
 

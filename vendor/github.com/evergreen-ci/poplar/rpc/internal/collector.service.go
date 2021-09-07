@@ -2,6 +2,7 @@ package internal
 
 import (
 	"container/heap"
+	"container/list"
 	"context"
 	"io"
 	"sync"
@@ -33,14 +34,21 @@ func (s *collectorService) CreateCollector(ctx context.Context, opts *CreateOpti
 }
 
 func (s *collectorService) CloseCollector(ctx context.Context, id *PoplarID) (*PoplarResponse, error) {
-	err := s.registry.Close(id.Name)
+	catcher := grip.NewBasicCatcher()
 
-	grip.Error(message.WrapError(err, message.Fields{
+	for _, group := range s.coordinator.groups {
+		for streamID := range group.streams {
+			catcher.Add(group.closeStream(streamID))
+		}
+	}
+	catcher.Add(s.registry.Close(id.Name))
+
+	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"message":  "problem closing recorder",
 		"recorder": id.Name,
 	}))
 
-	return &PoplarResponse{Name: id.Name, Status: err == nil}, nil
+	return &PoplarResponse{Name: id.Name, Status: !catcher.HasErrors()}, nil
 }
 
 func (s *collectorService) SendEvent(ctx context.Context, event *EventMetrics) (*PoplarResponse, error) {
@@ -78,6 +86,11 @@ func (s *collectorService) StreamEvents(srv PoplarEventCollector_StreamEventsSer
 	for {
 		event, err := srv.Recv()
 		if err == io.EOF {
+			if group != nil {
+				if err = group.closeStream(streamID); err != nil {
+					return status.Errorf(codes.Internal, "problem persisting argument %s", err.Error())
+				}
+			}
 			return srv.SendAndClose(&PoplarResponse{
 				Name:   eventName,
 				Status: true,
@@ -88,6 +101,7 @@ func (s *collectorService) StreamEvents(srv PoplarEventCollector_StreamEventsSer
 				Status: false,
 			})
 		}
+
 		if group == nil {
 			if event.Name == "" {
 				return status.Error(codes.InvalidArgument, "registries must be named")
@@ -98,7 +112,6 @@ func (s *collectorService) StreamEvents(srv PoplarEventCollector_StreamEventsSer
 			if err != nil {
 				return status.Error(codes.FailedPrecondition, errors.Wrap(err, "failed to get stream").Error())
 			}
-			defer group.removeStream(streamID)
 		}
 
 		if event.Name != eventName {
@@ -131,9 +144,16 @@ type streamsCoordinator struct {
 type streamGroup struct {
 	collector        events.Collector
 	availableStreams []string
-	streams          map[string]chan error
+	streams          map[string]*stream
 	eventHeap        *PerformanceHeap
 	mu               sync.Mutex
+}
+
+// stream represents a single stream in a stream group.
+type stream struct {
+	inHeap bool
+	closed bool
+	buffer *list.List
 }
 
 // addStream adds a new stream to the group for the given collector. If the
@@ -153,7 +173,7 @@ func (sc *streamsCoordinator) addStream(name string, registry *poplar.RecorderRe
 		group = &streamGroup{
 			collector:        collector,
 			availableStreams: []string{},
-			streams:          map[string]chan error{},
+			streams:          map[string]*stream{},
 			eventHeap:        &PerformanceHeap{},
 		}
 		heap.Init(group.eventHeap)
@@ -164,7 +184,7 @@ func (sc *streamsCoordinator) addStream(name string, registry *poplar.RecorderRe
 	defer group.mu.Unlock()
 
 	id := utility.RandomString()
-	group.streams[id] = make(chan error)
+	group.streams[id] = &stream{buffer: list.New()}
 	group.availableStreams = append(group.availableStreams, id)
 
 	return nil
@@ -181,6 +201,9 @@ func (sc *streamsCoordinator) getStream(name string) (string, *streamGroup, erro
 		return "", nil, errors.Errorf("no group for '%s'", name)
 	}
 
+	group.mu.Lock()
+	defer group.mu.Unlock()
+
 	if len(group.availableStreams) == 0 {
 		return "", nil, errors.New("must register first")
 	}
@@ -190,54 +213,83 @@ func (sc *streamsCoordinator) getStream(name string) (string, *streamGroup, erro
 	return id, group, nil
 }
 
-// addEvent writes the given event to the collector from the given stream. If
-// the stream does not exist an error is returned. Note that this function
-// blocks until all streams in the group have an entry in the heap, at which
-// point the timestamp can be guaranteed.
+// addEvent writes the given event to the stream's buffer and then calls flush.
+// If the stream does not exist or is already closed an error is returned.
 func (sg *streamGroup) addEvent(ctx context.Context, id string, event *events.Performance) error {
-	sg.mu.Lock()
-
-	errChan, ok := sg.streams[id]
-	if !ok {
-		sg.mu.Unlock()
-		return errors.Errorf("stream %s does not exist in this stream group", id)
-	}
-
-	sg.eventHeap.SafePush(&performanceHeapItem{errChan: errChan, event: event})
-	if sg.eventHeap.Len() >= len(sg.streams) {
-		item := sg.eventHeap.SafePop()
-		go sg.sendError(item)
-	}
-
-	sg.mu.Unlock()
-	select {
-	case <-ctx.Done():
-		return errors.Wrap(ctx.Err(), "context canceled while adding event")
-	case err := <-errChan:
-		return err
-	}
-}
-
-// sendError writes the next item from the heap to the collector and sends the
-// error, if any, to the corresponding error channel.
-func (sg *streamGroup) sendError(item *performanceHeapItem) {
-	if item != nil {
-		item.errChan <- sg.collector.AddEvent(item.event)
-	}
-}
-
-// removeStream removes the given stream from the stream group. If the
-// underlying min heap is full, it will pop the heap and write the item to the
-// collector.
-func (sg *streamGroup) removeStream(id string) {
 	sg.mu.Lock()
 	defer sg.mu.Unlock()
 
-	delete(sg.streams, id)
-	if sg.eventHeap.Len() >= len(sg.streams) {
-		item := sg.eventHeap.SafePop()
-		go sg.sendError(item)
+	stream, ok := sg.streams[id]
+	if !ok {
+		return errors.Errorf("stream '%s' does not exist in this stream group", id)
 	}
+	if stream.closed {
+		return errors.Errorf("stream '%s' already closed", id)
+	}
+
+	if stream.inHeap {
+		stream.buffer.PushBack(event)
+		return nil
+	}
+	sg.eventHeap.SafePush(&performanceHeapItem{id: id, event: event})
+	stream.inHeap = true
+
+	return errors.Wrap(sg.flush(), "problem flushing to collector")
+}
+
+// closeStream marks the given stream as closed. Once all the items in the
+// stream's buffer have been written to the collector, the stream will be
+// removed from the stream.
+func (sg *streamGroup) closeStream(id string) error {
+	sg.mu.Lock()
+	defer sg.mu.Unlock()
+
+	stream, ok := sg.streams[id]
+	if !ok {
+		return nil
+	}
+	stream.closed = true
+	if stream.buffer.Len() == 0 {
+		delete(sg.streams, id)
+	}
+
+	return errors.Wrap(sg.flush(), "problem flushing to collector")
+}
+
+// flush attempts to flush all the streams' buffers to the collector. Each time
+// an event is flushed, the next event from the corresponding stream is added
+// to the min heap. This stops flushing once there are less events in the heap
+// than streams in the group. Note that this function is not thread safe.
+func (sg *streamGroup) flush() error {
+	for sg.eventHeap.Len() >= len(sg.streams) {
+		item := sg.eventHeap.SafePop()
+		if item == nil {
+			break
+		}
+
+		stream, ok := sg.streams[item.id]
+		if ok {
+			if stream.closed && stream.buffer.Len() == 0 {
+				// Remove closed stream with empty buffer.
+				delete(sg.streams, item.id)
+			} else {
+				stream.inHeap = false
+			}
+			if event := stream.buffer.Front(); event != nil {
+				// Get next event from stream's buffer and add
+				// it to the min heap.
+				sg.eventHeap.SafePush(&performanceHeapItem{id: item.id, event: event.Value.(*events.Performance)})
+				stream.inHeap = true
+				stream.buffer.Remove(event)
+			}
+		}
+
+		if err := sg.collector.AddEvent(item.event); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // PerformanceHeap is a min heap of ftdc/events.Performance objects.
@@ -246,8 +298,8 @@ type PerformanceHeap struct {
 }
 
 type performanceHeapItem struct {
-	errChan chan error
-	event   *events.Performance
+	id    string
+	event *events.Performance
 }
 
 // Len returns the size of the heap.

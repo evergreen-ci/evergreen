@@ -977,7 +977,7 @@ type DeleteLexiconInput struct {
 	// The name of the lexicon to delete. Must be an existing lexicon in the region.
 	//
 	// Name is a required field
-	Name *string `location:"uri" locationName:"LexiconName" type:"string" required:"true" sensitive:"true"`
+	Name *string `location:"uri" locationName:"LexiconName" type:"string" required:"true"`
 }
 
 // String returns the string representation
@@ -1121,8 +1121,8 @@ func (s *DescribeVoicesOutput) SetVoices(v []*Voice) *DescribeVoicesOutput {
 // a new voice that is compatible with the engine or change the engine and restart
 // the operation.
 type EngineNotSupportedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1139,17 +1139,17 @@ func (s EngineNotSupportedException) GoString() string {
 
 func newErrorEngineNotSupportedException(v protocol.ResponseMetadata) error {
 	return &EngineNotSupportedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s EngineNotSupportedException) Code() string {
+func (s *EngineNotSupportedException) Code() string {
 	return "EngineNotSupportedException"
 }
 
 // Message returns the exception's message.
-func (s EngineNotSupportedException) Message() string {
+func (s *EngineNotSupportedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1157,22 +1157,22 @@ func (s EngineNotSupportedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s EngineNotSupportedException) OrigErr() error {
+func (s *EngineNotSupportedException) OrigErr() error {
 	return nil
 }
 
-func (s EngineNotSupportedException) Error() string {
+func (s *EngineNotSupportedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s EngineNotSupportedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *EngineNotSupportedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s EngineNotSupportedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *EngineNotSupportedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type GetLexiconInput struct {
@@ -1181,7 +1181,7 @@ type GetLexiconInput struct {
 	// Name of the lexicon.
 	//
 	// Name is a required field
-	Name *string `location:"uri" locationName:"LexiconName" type:"string" required:"true" sensitive:"true"`
+	Name *string `location:"uri" locationName:"LexiconName" type:"string" required:"true"`
 }
 
 // String returns the string representation
@@ -1318,8 +1318,8 @@ func (s *GetSpeechSynthesisTaskOutput) SetSynthesisTask(v *SynthesisTask) *GetSp
 // Amazon Polly can't find the specified lexicon. Verify that the lexicon's
 // name is spelled correctly, and then try again.
 type InvalidLexiconException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1336,17 +1336,17 @@ func (s InvalidLexiconException) GoString() string {
 
 func newErrorInvalidLexiconException(v protocol.ResponseMetadata) error {
 	return &InvalidLexiconException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidLexiconException) Code() string {
+func (s *InvalidLexiconException) Code() string {
 	return "InvalidLexiconException"
 }
 
 // Message returns the exception's message.
-func (s InvalidLexiconException) Message() string {
+func (s *InvalidLexiconException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1354,29 +1354,29 @@ func (s InvalidLexiconException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidLexiconException) OrigErr() error {
+func (s *InvalidLexiconException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidLexiconException) Error() string {
+func (s *InvalidLexiconException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidLexiconException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidLexiconException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidLexiconException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidLexiconException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The NextToken is invalid. Verify that it's spelled correctly, and then try
 // again.
 type InvalidNextTokenException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1393,17 +1393,17 @@ func (s InvalidNextTokenException) GoString() string {
 
 func newErrorInvalidNextTokenException(v protocol.ResponseMetadata) error {
 	return &InvalidNextTokenException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidNextTokenException) Code() string {
+func (s *InvalidNextTokenException) Code() string {
 	return "InvalidNextTokenException"
 }
 
 // Message returns the exception's message.
-func (s InvalidNextTokenException) Message() string {
+func (s *InvalidNextTokenException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1411,29 +1411,29 @@ func (s InvalidNextTokenException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidNextTokenException) OrigErr() error {
+func (s *InvalidNextTokenException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidNextTokenException) Error() string {
+func (s *InvalidNextTokenException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidNextTokenException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidNextTokenException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidNextTokenException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidNextTokenException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided Amazon S3 bucket name is invalid. Please check your input with
 // S3 bucket naming requirements and try again.
 type InvalidS3BucketException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1450,17 +1450,17 @@ func (s InvalidS3BucketException) GoString() string {
 
 func newErrorInvalidS3BucketException(v protocol.ResponseMetadata) error {
 	return &InvalidS3BucketException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidS3BucketException) Code() string {
+func (s *InvalidS3BucketException) Code() string {
 	return "InvalidS3BucketException"
 }
 
 // Message returns the exception's message.
-func (s InvalidS3BucketException) Message() string {
+func (s *InvalidS3BucketException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1468,29 +1468,29 @@ func (s InvalidS3BucketException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidS3BucketException) OrigErr() error {
+func (s *InvalidS3BucketException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidS3BucketException) Error() string {
+func (s *InvalidS3BucketException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidS3BucketException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidS3BucketException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidS3BucketException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidS3BucketException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided Amazon S3 key prefix is invalid. Please provide a valid S3 object
 // key name.
 type InvalidS3KeyException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1507,17 +1507,17 @@ func (s InvalidS3KeyException) GoString() string {
 
 func newErrorInvalidS3KeyException(v protocol.ResponseMetadata) error {
 	return &InvalidS3KeyException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidS3KeyException) Code() string {
+func (s *InvalidS3KeyException) Code() string {
 	return "InvalidS3KeyException"
 }
 
 // Message returns the exception's message.
-func (s InvalidS3KeyException) Message() string {
+func (s *InvalidS3KeyException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1525,28 +1525,28 @@ func (s InvalidS3KeyException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidS3KeyException) OrigErr() error {
+func (s *InvalidS3KeyException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidS3KeyException) Error() string {
+func (s *InvalidS3KeyException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidS3KeyException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidS3KeyException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidS3KeyException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidS3KeyException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The specified sample rate is not valid.
 type InvalidSampleRateException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1563,17 +1563,17 @@ func (s InvalidSampleRateException) GoString() string {
 
 func newErrorInvalidSampleRateException(v protocol.ResponseMetadata) error {
 	return &InvalidSampleRateException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidSampleRateException) Code() string {
+func (s *InvalidSampleRateException) Code() string {
 	return "InvalidSampleRateException"
 }
 
 // Message returns the exception's message.
-func (s InvalidSampleRateException) Message() string {
+func (s *InvalidSampleRateException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1581,29 +1581,29 @@ func (s InvalidSampleRateException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidSampleRateException) OrigErr() error {
+func (s *InvalidSampleRateException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidSampleRateException) Error() string {
+func (s *InvalidSampleRateException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidSampleRateException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidSampleRateException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidSampleRateException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidSampleRateException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided SNS topic ARN is invalid. Please provide a valid SNS topic ARN
 // and try again.
 type InvalidSnsTopicArnException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1620,17 +1620,17 @@ func (s InvalidSnsTopicArnException) GoString() string {
 
 func newErrorInvalidSnsTopicArnException(v protocol.ResponseMetadata) error {
 	return &InvalidSnsTopicArnException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidSnsTopicArnException) Code() string {
+func (s *InvalidSnsTopicArnException) Code() string {
 	return "InvalidSnsTopicArnException"
 }
 
 // Message returns the exception's message.
-func (s InvalidSnsTopicArnException) Message() string {
+func (s *InvalidSnsTopicArnException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1638,29 +1638,29 @@ func (s InvalidSnsTopicArnException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidSnsTopicArnException) OrigErr() error {
+func (s *InvalidSnsTopicArnException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidSnsTopicArnException) Error() string {
+func (s *InvalidSnsTopicArnException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidSnsTopicArnException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidSnsTopicArnException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidSnsTopicArnException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidSnsTopicArnException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The SSML you provided is invalid. Verify the SSML syntax, spelling of tags
 // and values, and then try again.
 type InvalidSsmlException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1677,17 +1677,17 @@ func (s InvalidSsmlException) GoString() string {
 
 func newErrorInvalidSsmlException(v protocol.ResponseMetadata) error {
 	return &InvalidSsmlException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidSsmlException) Code() string {
+func (s *InvalidSsmlException) Code() string {
 	return "InvalidSsmlException"
 }
 
 // Message returns the exception's message.
-func (s InvalidSsmlException) Message() string {
+func (s *InvalidSsmlException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1695,29 +1695,29 @@ func (s InvalidSsmlException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidSsmlException) OrigErr() error {
+func (s *InvalidSsmlException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidSsmlException) Error() string {
+func (s *InvalidSsmlException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidSsmlException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidSsmlException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidSsmlException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidSsmlException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The provided Task ID is not valid. Please provide a valid Task ID and try
 // again.
 type InvalidTaskIdException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1734,17 +1734,17 @@ func (s InvalidTaskIdException) GoString() string {
 
 func newErrorInvalidTaskIdException(v protocol.ResponseMetadata) error {
 	return &InvalidTaskIdException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s InvalidTaskIdException) Code() string {
+func (s *InvalidTaskIdException) Code() string {
 	return "InvalidTaskIdException"
 }
 
 // Message returns the exception's message.
-func (s InvalidTaskIdException) Message() string {
+func (s *InvalidTaskIdException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1752,29 +1752,29 @@ func (s InvalidTaskIdException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s InvalidTaskIdException) OrigErr() error {
+func (s *InvalidTaskIdException) OrigErr() error {
 	return nil
 }
 
-func (s InvalidTaskIdException) Error() string {
+func (s *InvalidTaskIdException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s InvalidTaskIdException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *InvalidTaskIdException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s InvalidTaskIdException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *InvalidTaskIdException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The language specified is not currently supported by Amazon Polly in this
 // capacity.
 type LanguageNotSupportedException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1791,17 +1791,17 @@ func (s LanguageNotSupportedException) GoString() string {
 
 func newErrorLanguageNotSupportedException(v protocol.ResponseMetadata) error {
 	return &LanguageNotSupportedException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LanguageNotSupportedException) Code() string {
+func (s *LanguageNotSupportedException) Code() string {
 	return "LanguageNotSupportedException"
 }
 
 // Message returns the exception's message.
-func (s LanguageNotSupportedException) Message() string {
+func (s *LanguageNotSupportedException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -1809,22 +1809,22 @@ func (s LanguageNotSupportedException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LanguageNotSupportedException) OrigErr() error {
+func (s *LanguageNotSupportedException) OrigErr() error {
 	return nil
 }
 
-func (s LanguageNotSupportedException) Error() string {
+func (s *LanguageNotSupportedException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LanguageNotSupportedException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LanguageNotSupportedException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LanguageNotSupportedException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LanguageNotSupportedException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Provides lexicon name and lexicon content in string format. For more information,
@@ -1834,10 +1834,10 @@ type Lexicon struct {
 
 	// Lexicon content in string format. The content of a lexicon must be in PLS
 	// format.
-	Content *string `type:"string"`
+	Content *string `type:"string" sensitive:"true"`
 
 	// Name of the lexicon.
-	Name *string `type:"string" sensitive:"true"`
+	Name *string `type:"string"`
 }
 
 // String returns the string representation
@@ -1942,7 +1942,7 @@ type LexiconDescription struct {
 	Attributes *LexiconAttributes `type:"structure"`
 
 	// Name of the lexicon.
-	Name *string `type:"string" sensitive:"true"`
+	Name *string `type:"string"`
 }
 
 // String returns the string representation
@@ -1974,8 +1974,8 @@ func (s *LexiconDescription) SetName(v string) *LexiconDescription {
 // Verify that the lexicon exists, is in the region (see ListLexicons) and that
 // you spelled its name is spelled correctly. Then try again.
 type LexiconNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -1992,17 +1992,17 @@ func (s LexiconNotFoundException) GoString() string {
 
 func newErrorLexiconNotFoundException(v protocol.ResponseMetadata) error {
 	return &LexiconNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LexiconNotFoundException) Code() string {
+func (s *LexiconNotFoundException) Code() string {
 	return "LexiconNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s LexiconNotFoundException) Message() string {
+func (s *LexiconNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2010,28 +2010,28 @@ func (s LexiconNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LexiconNotFoundException) OrigErr() error {
+func (s *LexiconNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s LexiconNotFoundException) Error() string {
+func (s *LexiconNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LexiconNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LexiconNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LexiconNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LexiconNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The maximum size of the specified lexicon would be exceeded by this operation.
 type LexiconSizeExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2048,17 +2048,17 @@ func (s LexiconSizeExceededException) GoString() string {
 
 func newErrorLexiconSizeExceededException(v protocol.ResponseMetadata) error {
 	return &LexiconSizeExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s LexiconSizeExceededException) Code() string {
+func (s *LexiconSizeExceededException) Code() string {
 	return "LexiconSizeExceededException"
 }
 
 // Message returns the exception's message.
-func (s LexiconSizeExceededException) Message() string {
+func (s *LexiconSizeExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2066,22 +2066,22 @@ func (s LexiconSizeExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s LexiconSizeExceededException) OrigErr() error {
+func (s *LexiconSizeExceededException) OrigErr() error {
 	return nil
 }
 
-func (s LexiconSizeExceededException) Error() string {
+func (s *LexiconSizeExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s LexiconSizeExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *LexiconSizeExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s LexiconSizeExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *LexiconSizeExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type ListLexiconsInput struct {
@@ -2234,8 +2234,8 @@ func (s *ListSpeechSynthesisTasksOutput) SetSynthesisTasks(v []*SynthesisTask) *
 // Speech marks are not supported for the OutputFormat selected. Speech marks
 // are only available for content in json format.
 type MarksNotSupportedForFormatException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2252,17 +2252,17 @@ func (s MarksNotSupportedForFormatException) GoString() string {
 
 func newErrorMarksNotSupportedForFormatException(v protocol.ResponseMetadata) error {
 	return &MarksNotSupportedForFormatException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MarksNotSupportedForFormatException) Code() string {
+func (s *MarksNotSupportedForFormatException) Code() string {
 	return "MarksNotSupportedForFormatException"
 }
 
 // Message returns the exception's message.
-func (s MarksNotSupportedForFormatException) Message() string {
+func (s *MarksNotSupportedForFormatException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2270,28 +2270,28 @@ func (s MarksNotSupportedForFormatException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MarksNotSupportedForFormatException) OrigErr() error {
+func (s *MarksNotSupportedForFormatException) OrigErr() error {
 	return nil
 }
 
-func (s MarksNotSupportedForFormatException) Error() string {
+func (s *MarksNotSupportedForFormatException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MarksNotSupportedForFormatException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MarksNotSupportedForFormatException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MarksNotSupportedForFormatException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MarksNotSupportedForFormatException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The maximum size of the lexeme would be exceeded by this operation.
 type MaxLexemeLengthExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2308,17 +2308,17 @@ func (s MaxLexemeLengthExceededException) GoString() string {
 
 func newErrorMaxLexemeLengthExceededException(v protocol.ResponseMetadata) error {
 	return &MaxLexemeLengthExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxLexemeLengthExceededException) Code() string {
+func (s *MaxLexemeLengthExceededException) Code() string {
 	return "MaxLexemeLengthExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxLexemeLengthExceededException) Message() string {
+func (s *MaxLexemeLengthExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2326,28 +2326,28 @@ func (s MaxLexemeLengthExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxLexemeLengthExceededException) OrigErr() error {
+func (s *MaxLexemeLengthExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxLexemeLengthExceededException) Error() string {
+func (s *MaxLexemeLengthExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxLexemeLengthExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxLexemeLengthExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxLexemeLengthExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxLexemeLengthExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The maximum number of lexicons would be exceeded by this operation.
 type MaxLexiconsNumberExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2364,17 +2364,17 @@ func (s MaxLexiconsNumberExceededException) GoString() string {
 
 func newErrorMaxLexiconsNumberExceededException(v protocol.ResponseMetadata) error {
 	return &MaxLexiconsNumberExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s MaxLexiconsNumberExceededException) Code() string {
+func (s *MaxLexiconsNumberExceededException) Code() string {
 	return "MaxLexiconsNumberExceededException"
 }
 
 // Message returns the exception's message.
-func (s MaxLexiconsNumberExceededException) Message() string {
+func (s *MaxLexiconsNumberExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2382,22 +2382,22 @@ func (s MaxLexiconsNumberExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s MaxLexiconsNumberExceededException) OrigErr() error {
+func (s *MaxLexiconsNumberExceededException) OrigErr() error {
 	return nil
 }
 
-func (s MaxLexiconsNumberExceededException) Error() string {
+func (s *MaxLexiconsNumberExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s MaxLexiconsNumberExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *MaxLexiconsNumberExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s MaxLexiconsNumberExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *MaxLexiconsNumberExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type PutLexiconInput struct {
@@ -2406,14 +2406,14 @@ type PutLexiconInput struct {
 	// Content of the PLS lexicon as string data.
 	//
 	// Content is a required field
-	Content *string `type:"string" required:"true"`
+	Content *string `type:"string" required:"true" sensitive:"true"`
 
 	// Name of the lexicon. The name must follow the regular express format [0-9A-Za-z]{1,20}.
 	// That is, the name is a case-sensitive alphanumeric string up to 20 characters
 	// long.
 	//
 	// Name is a required field
-	Name *string `location:"uri" locationName:"LexiconName" type:"string" required:"true" sensitive:"true"`
+	Name *string `location:"uri" locationName:"LexiconName" type:"string" required:"true"`
 }
 
 // String returns the string representation
@@ -2473,8 +2473,8 @@ func (s PutLexiconOutput) GoString() string {
 
 // An unknown condition has caused a service failure.
 type ServiceFailureException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2491,17 +2491,17 @@ func (s ServiceFailureException) GoString() string {
 
 func newErrorServiceFailureException(v protocol.ResponseMetadata) error {
 	return &ServiceFailureException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s ServiceFailureException) Code() string {
+func (s *ServiceFailureException) Code() string {
 	return "ServiceFailureException"
 }
 
 // Message returns the exception's message.
-func (s ServiceFailureException) Message() string {
+func (s *ServiceFailureException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2509,28 +2509,28 @@ func (s ServiceFailureException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s ServiceFailureException) OrigErr() error {
+func (s *ServiceFailureException) OrigErr() error {
 	return nil
 }
 
-func (s ServiceFailureException) Error() string {
+func (s *ServiceFailureException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s ServiceFailureException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *ServiceFailureException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s ServiceFailureException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *ServiceFailureException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // SSML speech marks are not supported for plain text-type input.
 type SsmlMarksNotSupportedForTextTypeException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2547,17 +2547,17 @@ func (s SsmlMarksNotSupportedForTextTypeException) GoString() string {
 
 func newErrorSsmlMarksNotSupportedForTextTypeException(v protocol.ResponseMetadata) error {
 	return &SsmlMarksNotSupportedForTextTypeException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s SsmlMarksNotSupportedForTextTypeException) Code() string {
+func (s *SsmlMarksNotSupportedForTextTypeException) Code() string {
 	return "SsmlMarksNotSupportedForTextTypeException"
 }
 
 // Message returns the exception's message.
-func (s SsmlMarksNotSupportedForTextTypeException) Message() string {
+func (s *SsmlMarksNotSupportedForTextTypeException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2565,22 +2565,22 @@ func (s SsmlMarksNotSupportedForTextTypeException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s SsmlMarksNotSupportedForTextTypeException) OrigErr() error {
+func (s *SsmlMarksNotSupportedForTextTypeException) OrigErr() error {
 	return nil
 }
 
-func (s SsmlMarksNotSupportedForTextTypeException) Error() string {
+func (s *SsmlMarksNotSupportedForTextTypeException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s SsmlMarksNotSupportedForTextTypeException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *SsmlMarksNotSupportedForTextTypeException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s SsmlMarksNotSupportedForTextTypeException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *SsmlMarksNotSupportedForTextTypeException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type StartSpeechSynthesisTaskInput struct {
@@ -2955,8 +2955,8 @@ func (s *SynthesisTask) SetVoiceId(v string) *SynthesisTask {
 
 // The Speech Synthesis task with requested Task ID cannot be found.
 type SynthesisTaskNotFoundException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -2973,17 +2973,17 @@ func (s SynthesisTaskNotFoundException) GoString() string {
 
 func newErrorSynthesisTaskNotFoundException(v protocol.ResponseMetadata) error {
 	return &SynthesisTaskNotFoundException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s SynthesisTaskNotFoundException) Code() string {
+func (s *SynthesisTaskNotFoundException) Code() string {
 	return "SynthesisTaskNotFoundException"
 }
 
 // Message returns the exception's message.
-func (s SynthesisTaskNotFoundException) Message() string {
+func (s *SynthesisTaskNotFoundException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -2991,30 +2991,49 @@ func (s SynthesisTaskNotFoundException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s SynthesisTaskNotFoundException) OrigErr() error {
+func (s *SynthesisTaskNotFoundException) OrigErr() error {
 	return nil
 }
 
-func (s SynthesisTaskNotFoundException) Error() string {
+func (s *SynthesisTaskNotFoundException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s SynthesisTaskNotFoundException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *SynthesisTaskNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s SynthesisTaskNotFoundException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *SynthesisTaskNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 type SynthesizeSpeechInput struct {
 	_ struct{} `type:"structure"`
 
 	// Specifies the engine (standard or neural) for Amazon Polly to use when processing
-	// input text for speech synthesis. Using a voice that is not supported for
-	// the engine selected will result in an error.
+	// input text for speech synthesis. For information on Amazon Polly voices and
+	// which voices are available in standard-only, NTTS-only, and both standard
+	// and NTTS formats, see Available Voices (https://docs.aws.amazon.com/polly/latest/dg/voicelist.html).
+	//
+	// NTTS-only voices
+	//
+	// When using NTTS-only voices such as Kevin (en-US), this parameter is required
+	// and must be set to neural. If the engine is not specified, or is set to standard,
+	// this will result in an error.
+	//
+	// Type: String
+	//
+	// Valid Values: standard | neural
+	//
+	// Required: Yes
+	//
+	// Standard voices
+	//
+	// For standard voices, this is not required; the engine parameter defaults
+	// to standard. If the engine is not specified, or is set to standard and an
+	// NTTS-only voice is selected, this will result in an error.
 	Engine *string `type:"string" enum:"Engine"`
 
 	// Optional language code for the Synthesize Speech request. This is only necessary
@@ -3216,8 +3235,8 @@ func (s *SynthesizeSpeechOutput) SetRequestCharacters(v int64) *SynthesizeSpeech
 // API, the maximum is 200,000 characters, of which no more than 100,000 can
 // be billed characters. SSML tags are not counted as billed characters.
 type TextLengthExceededException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3234,17 +3253,17 @@ func (s TextLengthExceededException) GoString() string {
 
 func newErrorTextLengthExceededException(v protocol.ResponseMetadata) error {
 	return &TextLengthExceededException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s TextLengthExceededException) Code() string {
+func (s *TextLengthExceededException) Code() string {
 	return "TextLengthExceededException"
 }
 
 // Message returns the exception's message.
-func (s TextLengthExceededException) Message() string {
+func (s *TextLengthExceededException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3252,29 +3271,29 @@ func (s TextLengthExceededException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s TextLengthExceededException) OrigErr() error {
+func (s *TextLengthExceededException) OrigErr() error {
 	return nil
 }
 
-func (s TextLengthExceededException) Error() string {
+func (s *TextLengthExceededException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s TextLengthExceededException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *TextLengthExceededException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s TextLengthExceededException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *TextLengthExceededException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The alphabet specified by the lexicon is not a supported alphabet. Valid
 // values are x-sampa and ipa.
 type UnsupportedPlsAlphabetException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3291,17 +3310,17 @@ func (s UnsupportedPlsAlphabetException) GoString() string {
 
 func newErrorUnsupportedPlsAlphabetException(v protocol.ResponseMetadata) error {
 	return &UnsupportedPlsAlphabetException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnsupportedPlsAlphabetException) Code() string {
+func (s *UnsupportedPlsAlphabetException) Code() string {
 	return "UnsupportedPlsAlphabetException"
 }
 
 // Message returns the exception's message.
-func (s UnsupportedPlsAlphabetException) Message() string {
+func (s *UnsupportedPlsAlphabetException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3309,29 +3328,29 @@ func (s UnsupportedPlsAlphabetException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnsupportedPlsAlphabetException) OrigErr() error {
+func (s *UnsupportedPlsAlphabetException) OrigErr() error {
 	return nil
 }
 
-func (s UnsupportedPlsAlphabetException) Error() string {
+func (s *UnsupportedPlsAlphabetException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnsupportedPlsAlphabetException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnsupportedPlsAlphabetException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnsupportedPlsAlphabetException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnsupportedPlsAlphabetException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // The language specified in the lexicon is unsupported. For a list of supported
 // languages, see Lexicon Attributes (https://docs.aws.amazon.com/polly/latest/dg/API_LexiconAttributes.html).
 type UnsupportedPlsLanguageException struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	Message_ *string `locationName:"message" type:"string"`
 }
@@ -3348,17 +3367,17 @@ func (s UnsupportedPlsLanguageException) GoString() string {
 
 func newErrorUnsupportedPlsLanguageException(v protocol.ResponseMetadata) error {
 	return &UnsupportedPlsLanguageException{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s UnsupportedPlsLanguageException) Code() string {
+func (s *UnsupportedPlsLanguageException) Code() string {
 	return "UnsupportedPlsLanguageException"
 }
 
 // Message returns the exception's message.
-func (s UnsupportedPlsLanguageException) Message() string {
+func (s *UnsupportedPlsLanguageException) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -3366,22 +3385,22 @@ func (s UnsupportedPlsLanguageException) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s UnsupportedPlsLanguageException) OrigErr() error {
+func (s *UnsupportedPlsLanguageException) OrigErr() error {
 	return nil
 }
 
-func (s UnsupportedPlsLanguageException) Error() string {
+func (s *UnsupportedPlsLanguageException) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s UnsupportedPlsLanguageException) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *UnsupportedPlsLanguageException) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s UnsupportedPlsLanguageException) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *UnsupportedPlsLanguageException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Description of the voice.
@@ -3478,6 +3497,14 @@ const (
 	EngineNeural = "neural"
 )
 
+// Engine_Values returns all elements of the Engine enum
+func Engine_Values() []string {
+	return []string{
+		EngineStandard,
+		EngineNeural,
+	}
+}
+
 const (
 	// GenderFemale is a Gender enum value
 	GenderFemale = "Female"
@@ -3485,6 +3512,14 @@ const (
 	// GenderMale is a Gender enum value
 	GenderMale = "Male"
 )
+
+// Gender_Values returns all elements of the Gender enum
+func Gender_Values() []string {
+	return []string{
+		GenderFemale,
+		GenderMale,
+	}
+}
 
 const (
 	// LanguageCodeArb is a LanguageCode enum value
@@ -3575,6 +3610,41 @@ const (
 	LanguageCodeTrTr = "tr-TR"
 )
 
+// LanguageCode_Values returns all elements of the LanguageCode enum
+func LanguageCode_Values() []string {
+	return []string{
+		LanguageCodeArb,
+		LanguageCodeCmnCn,
+		LanguageCodeCyGb,
+		LanguageCodeDaDk,
+		LanguageCodeDeDe,
+		LanguageCodeEnAu,
+		LanguageCodeEnGb,
+		LanguageCodeEnGbWls,
+		LanguageCodeEnIn,
+		LanguageCodeEnUs,
+		LanguageCodeEsEs,
+		LanguageCodeEsMx,
+		LanguageCodeEsUs,
+		LanguageCodeFrCa,
+		LanguageCodeFrFr,
+		LanguageCodeIsIs,
+		LanguageCodeItIt,
+		LanguageCodeJaJp,
+		LanguageCodeHiIn,
+		LanguageCodeKoKr,
+		LanguageCodeNbNo,
+		LanguageCodeNlNl,
+		LanguageCodePlPl,
+		LanguageCodePtBr,
+		LanguageCodePtPt,
+		LanguageCodeRoRo,
+		LanguageCodeRuRu,
+		LanguageCodeSvSe,
+		LanguageCodeTrTr,
+	}
+}
+
 const (
 	// OutputFormatJson is a OutputFormat enum value
 	OutputFormatJson = "json"
@@ -3588,6 +3658,16 @@ const (
 	// OutputFormatPcm is a OutputFormat enum value
 	OutputFormatPcm = "pcm"
 )
+
+// OutputFormat_Values returns all elements of the OutputFormat enum
+func OutputFormat_Values() []string {
+	return []string{
+		OutputFormatJson,
+		OutputFormatMp3,
+		OutputFormatOggVorbis,
+		OutputFormatPcm,
+	}
+}
 
 const (
 	// SpeechMarkTypeSentence is a SpeechMarkType enum value
@@ -3603,6 +3683,16 @@ const (
 	SpeechMarkTypeWord = "word"
 )
 
+// SpeechMarkType_Values returns all elements of the SpeechMarkType enum
+func SpeechMarkType_Values() []string {
+	return []string{
+		SpeechMarkTypeSentence,
+		SpeechMarkTypeSsml,
+		SpeechMarkTypeViseme,
+		SpeechMarkTypeWord,
+	}
+}
+
 const (
 	// TaskStatusScheduled is a TaskStatus enum value
 	TaskStatusScheduled = "scheduled"
@@ -3617,6 +3707,16 @@ const (
 	TaskStatusFailed = "failed"
 )
 
+// TaskStatus_Values returns all elements of the TaskStatus enum
+func TaskStatus_Values() []string {
+	return []string{
+		TaskStatusScheduled,
+		TaskStatusInProgress,
+		TaskStatusCompleted,
+		TaskStatusFailed,
+	}
+}
+
 const (
 	// TextTypeSsml is a TextType enum value
 	TextTypeSsml = "ssml"
@@ -3624,6 +3724,14 @@ const (
 	// TextTypeText is a TextType enum value
 	TextTypeText = "text"
 )
+
+// TextType_Values returns all elements of the TextType enum
+func TextType_Values() []string {
+	return []string{
+		TextTypeSsml,
+		TextTypeText,
+	}
+}
 
 const (
 	// VoiceIdAditi is a VoiceId enum value
@@ -3677,6 +3785,9 @@ const (
 	// VoiceIdFiliz is a VoiceId enum value
 	VoiceIdFiliz = "Filiz"
 
+	// VoiceIdGabrielle is a VoiceId enum value
+	VoiceIdGabrielle = "Gabrielle"
+
 	// VoiceIdGeraint is a VoiceId enum value
 	VoiceIdGeraint = "Geraint"
 
@@ -3715,6 +3826,9 @@ const (
 
 	// VoiceIdKendra is a VoiceId enum value
 	VoiceIdKendra = "Kendra"
+
+	// VoiceIdKevin is a VoiceId enum value
+	VoiceIdKevin = "Kevin"
 
 	// VoiceIdKimberly is a VoiceId enum value
 	VoiceIdKimberly = "Kimberly"
@@ -3767,6 +3881,9 @@ const (
 	// VoiceIdNicole is a VoiceId enum value
 	VoiceIdNicole = "Nicole"
 
+	// VoiceIdOlivia is a VoiceId enum value
+	VoiceIdOlivia = "Olivia"
+
 	// VoiceIdPenelope is a VoiceId enum value
 	VoiceIdPenelope = "Penelope"
 
@@ -3806,3 +3923,72 @@ const (
 	// VoiceIdZhiyu is a VoiceId enum value
 	VoiceIdZhiyu = "Zhiyu"
 )
+
+// VoiceId_Values returns all elements of the VoiceId enum
+func VoiceId_Values() []string {
+	return []string{
+		VoiceIdAditi,
+		VoiceIdAmy,
+		VoiceIdAstrid,
+		VoiceIdBianca,
+		VoiceIdBrian,
+		VoiceIdCamila,
+		VoiceIdCarla,
+		VoiceIdCarmen,
+		VoiceIdCeline,
+		VoiceIdChantal,
+		VoiceIdConchita,
+		VoiceIdCristiano,
+		VoiceIdDora,
+		VoiceIdEmma,
+		VoiceIdEnrique,
+		VoiceIdEwa,
+		VoiceIdFiliz,
+		VoiceIdGabrielle,
+		VoiceIdGeraint,
+		VoiceIdGiorgio,
+		VoiceIdGwyneth,
+		VoiceIdHans,
+		VoiceIdInes,
+		VoiceIdIvy,
+		VoiceIdJacek,
+		VoiceIdJan,
+		VoiceIdJoanna,
+		VoiceIdJoey,
+		VoiceIdJustin,
+		VoiceIdKarl,
+		VoiceIdKendra,
+		VoiceIdKevin,
+		VoiceIdKimberly,
+		VoiceIdLea,
+		VoiceIdLiv,
+		VoiceIdLotte,
+		VoiceIdLucia,
+		VoiceIdLupe,
+		VoiceIdMads,
+		VoiceIdMaja,
+		VoiceIdMarlene,
+		VoiceIdMathieu,
+		VoiceIdMatthew,
+		VoiceIdMaxim,
+		VoiceIdMia,
+		VoiceIdMiguel,
+		VoiceIdMizuki,
+		VoiceIdNaja,
+		VoiceIdNicole,
+		VoiceIdOlivia,
+		VoiceIdPenelope,
+		VoiceIdRaveena,
+		VoiceIdRicardo,
+		VoiceIdRuben,
+		VoiceIdRussell,
+		VoiceIdSalli,
+		VoiceIdSeoyeon,
+		VoiceIdTakumi,
+		VoiceIdTatyana,
+		VoiceIdVicki,
+		VoiceIdVitoria,
+		VoiceIdZeina,
+		VoiceIdZhiyu,
+	}
+}

@@ -316,6 +316,39 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
+type podAuthMiddleware struct {
+	sc data.Connector
+}
+
+// NewPodAuthMiddleware returns a middleware that verifies the request's pod ID
+// and secret.
+func NewPodAuthMiddleware(sc data.Connector) gimlet.Middleware {
+	return &podAuthMiddleware{sc: sc}
+}
+
+func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	id := gimlet.GetVars(r)["pod_id"]
+	if id == "" {
+		if id = r.Header.Get(evergreen.PodHeader); id == "" {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod ID")))
+			return
+		}
+	}
+
+	secret := r.Header.Get(evergreen.PodSecretHeader)
+	if secret == "" {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod secret")))
+		return
+	}
+
+	if err := m.sc.CheckPodSecret(id, secret); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		return
+	}
+
+	next(rw, r)
+}
+
 func NewTaskAuthMiddleware(sc data.Connector) gimlet.Middleware {
 	return &TaskAuthMiddleware{
 		sc: sc,
@@ -766,15 +799,21 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		requester := r.Header.Get("Origin")
+		grip.Debug(message.Fields{
+			"op":              "addCORSHeaders",
+			"requester":       requester,
+			"allowed_origins": allowedOrigins,
+			"adding_headers":  utility.StringSliceContains(allowedOrigins, requester),
+			"settings_is_nil": evergreen.GetEnvironment().Settings() == nil,
+		})
 		if len(allowedOrigins) > 0 {
-			requester := r.Header.Get("Origin")
-
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
-
-			if utility.StringSliceContains(allowedOrigins, requester) {
+			if util.StringContainsSliceRegex(allowedOrigins, requester) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
+				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 			}
 		}

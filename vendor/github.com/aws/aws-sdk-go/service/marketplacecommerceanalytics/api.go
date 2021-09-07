@@ -191,8 +191,8 @@ func (c *MarketplaceCommerceAnalytics) StartSupportDataExportWithContext(ctx aws
 
 // This exception is thrown when an internal service error occurs.
 type Exception struct {
-	_            struct{} `type:"structure"`
-	respMetadata protocol.ResponseMetadata
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
 
 	// This message describes details of the error.
 	Message_ *string `locationName:"message" type:"string"`
@@ -210,17 +210,17 @@ func (s Exception) GoString() string {
 
 func newErrorException(v protocol.ResponseMetadata) error {
 	return &Exception{
-		respMetadata: v,
+		RespMetadata: v,
 	}
 }
 
 // Code returns the exception type name.
-func (s Exception) Code() string {
+func (s *Exception) Code() string {
 	return "MarketplaceCommerceAnalyticsException"
 }
 
 // Message returns the exception's message.
-func (s Exception) Message() string {
+func (s *Exception) Message() string {
 	if s.Message_ != nil {
 		return *s.Message_
 	}
@@ -228,22 +228,22 @@ func (s Exception) Message() string {
 }
 
 // OrigErr always returns nil, satisfies awserr.Error interface.
-func (s Exception) OrigErr() error {
+func (s *Exception) OrigErr() error {
 	return nil
 }
 
-func (s Exception) Error() string {
+func (s *Exception) Error() string {
 	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
 }
 
 // Status code returns the HTTP status code for the request's response error.
-func (s Exception) StatusCode() int {
-	return s.respMetadata.StatusCode
+func (s *Exception) StatusCode() int {
+	return s.RespMetadata.StatusCode
 }
 
 // RequestID returns the service's response RequestID for request.
-func (s Exception) RequestID() string {
-	return s.respMetadata.RequestID
+func (s *Exception) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // Container for the parameters to the GenerateDataSet operation.
@@ -257,10 +257,12 @@ type GenerateDataSetInput struct {
 	CustomerDefinedValues map[string]*string `locationName:"customerDefinedValues" min:"1" type:"map"`
 
 	// The date a data set was published. For daily data sets, provide a date with
-	// day-level granularity for the desired day. For weekly data sets, provide
-	// a date with day-level granularity within the desired week (the day value
-	// will be ignored). For monthly data sets, provide a date with month-level
-	// granularity for the desired month (the day value will be ignored).
+	// day-level granularity for the desired day. For monthly data sets except those
+	// with prefix disbursed_amount, provide a date with month-level granularity
+	// for the desired month (the day value will be ignored). For data sets with
+	// prefix disbursed_amount, provide a date with day-level granularity for the
+	// desired day. For these data sets we will look backwards in time over the
+	// range of 31 days until the first data set is found (the latest one).
 	//
 	// DataSetPublicationDate is a required field
 	DataSetPublicationDate *time.Time `locationName:"dataSetPublicationDate" type:"timestamp" required:"true"`
@@ -333,6 +335,18 @@ type GenerateDataSetInput struct {
 	//
 	//    * us_sales_and_use_tax_records From 2017-09-15 to present: Available monthly
 	//    on the 15th day of the month by 24:00 UTC.
+	//
+	//    * disbursed_amount_by_product_with_uncollected_funds This data set is
+	//    deprecated. Download related reports from AMMP instead!
+	//
+	//    * customer_profile_by_industry This data set is deprecated. Download related
+	//    reports from AMMP instead!
+	//
+	//    * customer_profile_by_revenue This data set is deprecated. Download related
+	//    reports from AMMP instead!
+	//
+	//    * customer_profile_by_geography This data set is deprecated. Download
+	//    related reports from AMMP instead!
 	//
 	// DataSetType is a required field
 	DataSetType *string `locationName:"dataSetType" min:"1" type:"string" required:"true" enum:"DataSetType"`
@@ -733,6 +747,37 @@ const (
 	DataSetTypeUsSalesAndUseTaxRecords = "us_sales_and_use_tax_records"
 )
 
+// DataSetType_Values returns all elements of the DataSetType enum
+func DataSetType_Values() []string {
+	return []string{
+		DataSetTypeCustomerSubscriberHourlyMonthlySubscriptions,
+		DataSetTypeCustomerSubscriberAnnualSubscriptions,
+		DataSetTypeDailyBusinessUsageByInstanceType,
+		DataSetTypeDailyBusinessFees,
+		DataSetTypeDailyBusinessFreeTrialConversions,
+		DataSetTypeDailyBusinessNewInstances,
+		DataSetTypeDailyBusinessNewProductSubscribers,
+		DataSetTypeDailyBusinessCanceledProductSubscribers,
+		DataSetTypeMonthlyRevenueBillingAndRevenueData,
+		DataSetTypeMonthlyRevenueAnnualSubscriptions,
+		DataSetTypeMonthlyRevenueFieldDemonstrationUsage,
+		DataSetTypeMonthlyRevenueFlexiblePaymentSchedule,
+		DataSetTypeDisbursedAmountByProduct,
+		DataSetTypeDisbursedAmountByProductWithUncollectedFunds,
+		DataSetTypeDisbursedAmountByInstanceHours,
+		DataSetTypeDisbursedAmountByCustomerGeo,
+		DataSetTypeDisbursedAmountByAgeOfUncollectedFunds,
+		DataSetTypeDisbursedAmountByAgeOfDisbursedFunds,
+		DataSetTypeDisbursedAmountByAgeOfPastDueFunds,
+		DataSetTypeDisbursedAmountByUncollectedFundsBreakdown,
+		DataSetTypeCustomerProfileByIndustry,
+		DataSetTypeCustomerProfileByRevenue,
+		DataSetTypeCustomerProfileByGeography,
+		DataSetTypeSalesCompensationBilledRevenue,
+		DataSetTypeUsSalesAndUseTaxRecords,
+	}
+}
+
 const (
 	// SupportDataSetTypeCustomerSupportContactsData is a SupportDataSetType enum value
 	SupportDataSetTypeCustomerSupportContactsData = "customer_support_contacts_data"
@@ -740,3 +785,11 @@ const (
 	// SupportDataSetTypeTestCustomerSupportContactsData is a SupportDataSetType enum value
 	SupportDataSetTypeTestCustomerSupportContactsData = "test_customer_support_contacts_data"
 )
+
+// SupportDataSetType_Values returns all elements of the SupportDataSetType enum
+func SupportDataSetType_Values() []string {
+	return []string{
+		SupportDataSetTypeCustomerSupportContactsData,
+		SupportDataSetTypeTestCustomerSupportContactsData,
+	}
+}

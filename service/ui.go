@@ -37,12 +37,11 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	umconf             gimlet.UserMiddlewareConfiguration
-	Settings           evergreen.Settings
-	CookieStore        *sessions.CookieStore
-	clientConfig       *evergreen.ClientConfig
-	jiraHandler        thirdparty.JiraHandler
-	buildBaronProjects map[string]evergreen.BuildBaronProject
+	umconf       gimlet.UserMiddlewareConfiguration
+	Settings     evergreen.Settings
+	CookieStore  *sessions.CookieStore
+	clientConfig *evergreen.ClientConfig
+	jiraHandler  thirdparty.JiraHandler
 
 	hostCache map[string]hostCacheItem
 
@@ -89,16 +88,15 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 	}
 
 	uis := &UIServer{
-		Settings:           *settings,
-		env:                env,
-		queue:              queue,
-		Home:               home,
-		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
-		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
-		buildBaronProjects: graphql.BbGetConfig(settings),
-		render:             gimlet.NewHTMLRenderer(ropts),
-		renderText:         gimlet.NewTextRenderer(ropts),
-		jiraHandler:        thirdparty.NewJiraHandler(*settings.Jira.Export()),
+		Settings:     *settings,
+		env:          env,
+		queue:        queue,
+		Home:         home,
+		clientConfig: evergreen.GetEnvironment().ClientConfig(),
+		CookieStore:  sessions.NewCookieStore([]byte(settings.Ui.Secret)),
+		render:       gimlet.NewHTMLRenderer(ropts),
+		renderText:   gimlet.NewTextRenderer(ropts),
+		jiraHandler:  thirdparty.NewJiraHandler(*settings.Jira.Export()),
 		umconf: gimlet.UserMiddlewareConfiguration{
 			HeaderKeyName:  evergreen.APIKeyHeader,
 			HeaderUserName: evergreen.APIUserHeader,
@@ -322,8 +320,12 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/perf-bb/{_}/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.signalProcessingPage).Get()
 
 	// Test Logs
-	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 	app.AddRoute("/test_log/{log_id}").Wrap(needsContext, allowsCORS).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
+	// TODO: We are keeping this route temporarily for backwards
+	// compatibility. Please use
+	// `/test_log/{task_id}/{task_execution}?test_name={test_name}`.
+	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 
 	// Build page
 	app.AddRoute("/build/{build_id}").Wrap(needsContext, viewTasks).Handler(uis.buildPage).Get()
@@ -440,7 +442,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Plugin routes
 	app.PrefixRoute("/plugin").Route("/manifest/get/{project_id}/{revision}").Wrap(needsLogin, viewTasks).Handler(uis.GetManifest).Get()
-	app.PrefixRoute("/plugin").Route("/dashboard/tasks/project/{project_id}/version/{version_id}").Wrap(needsLogin, viewTasks).Handler(perfDashGetTasksForVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version").Handler(perfGetVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version/{version_id}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTasksForVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version/latest/{project_id}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTasksForLatestVersion).Get()

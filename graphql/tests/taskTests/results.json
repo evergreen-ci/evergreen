@@ -68,6 +68,184 @@
           }
         }
       }
+    },
+    {
+      "query_file": "groupId.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "execution": 0,
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+                "groupID": "llama"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "display_task.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "sortByStartTime.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "startTime": "2020-02-21T10:15:51-05:00",
+                "id": "356534666634326434653838666165613761393066306166"
+              },
+              {
+                "startTime": "2020-02-21T10:15:52-05:00",
+                "id": "356534666634326434653838666165613761393066306165"
+              },
+              {
+                "startTime": "2020-02-21T10:15:53-05:00",
+                "id": "356534666634326434653838666165613761393066306636"
+              },
+              {
+                "startTime": "2020-02-21T10:15:54-05:00",
+                "id": "356534666634326434653838666165613761393066306233"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306239"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306261"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306265"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306266"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306364"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306432"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306435"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306464"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306530"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306536"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306565"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306663"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066306666"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066313039"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066313132"
+              },
+              {
+                "startTime": "2020-02-21T10:15:56-05:00",
+                "id": "356534666634326434653838666165613761393066313165"
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

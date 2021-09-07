@@ -58,15 +58,17 @@ type DisplayTask struct {
 }
 
 type EditSpawnHostInput struct {
-	HostID              string      `json:"hostId"`
-	DisplayName         *string     `json:"displayName"`
-	Expiration          *time.Time  `json:"expiration"`
-	NoExpiration        *bool       `json:"noExpiration"`
-	InstanceType        *string     `json:"instanceType"`
-	AddedInstanceTags   []*host.Tag `json:"addedInstanceTags"`
-	DeletedInstanceTags []*host.Tag `json:"deletedInstanceTags"`
-	Volume              *string     `json:"volume"`
-	ServicePassword     *string     `json:"servicePassword"`
+	HostID              string          `json:"hostId"`
+	DisplayName         *string         `json:"displayName"`
+	Expiration          *time.Time      `json:"expiration"`
+	NoExpiration        *bool           `json:"noExpiration"`
+	InstanceType        *string         `json:"instanceType"`
+	AddedInstanceTags   []*host.Tag     `json:"addedInstanceTags"`
+	DeletedInstanceTags []*host.Tag     `json:"deletedInstanceTags"`
+	Volume              *string         `json:"volume"`
+	ServicePassword     *string         `json:"servicePassword"`
+	PublicKey           *PublicKeyInput `json:"publicKey"`
+	SavePublicKey       *bool           `json:"savePublicKey"`
 }
 
 type GroupedBuildVariant struct {
@@ -103,6 +105,7 @@ type MainlineCommitVersion struct {
 
 type MainlineCommits struct {
 	NextPageOrderNumber *int                     `json:"nextPageOrderNumber"`
+	PrevPageOrderNumber *int                     `json:"prevPageOrderNumber"`
 	Versions            []*MainlineCommitVersion `json:"versions"`
 }
 
@@ -112,10 +115,21 @@ type MainlineCommitsOptions struct {
 	SkipOrderNumber *int   `json:"skipOrderNumber"`
 }
 
+type Manifest struct {
+	ID              string                 `json:"id"`
+	Revision        string                 `json:"revision"`
+	Project         string                 `json:"project"`
+	Branch          string                 `json:"branch"`
+	IsBase          bool                   `json:"isBase"`
+	ModuleOverrides map[string]string      `json:"moduleOverrides"`
+	Modules         map[string]interface{} `json:"modules"`
+}
+
 type PatchConfigure struct {
-	Description   string                `json:"description"`
-	VariantsTasks []*VariantTasks       `json:"variantsTasks"`
-	Parameters    []*model.APIParameter `json:"parameters"`
+	Description         string                `json:"description"`
+	VariantsTasks       []*VariantTasks       `json:"variantsTasks"`
+	Parameters          []*model.APIParameter `json:"parameters"`
+	PatchTriggerAliases []string              `json:"patchTriggerAliases"`
 }
 
 type PatchDuration struct {
@@ -142,6 +156,11 @@ type PatchTime struct {
 	Started     *string `json:"started"`
 	Finished    *string `json:"finished"`
 	SubmittedAt string  `json:"submittedAt"`
+}
+
+type PatchTriggerAlias struct {
+	Alias        string `json:"alias"`
+	ChildProject string `json:"childProject"`
 }
 
 type Patches struct {
@@ -208,6 +227,11 @@ type SpawnVolumeInput struct {
 	Host             *string    `json:"host"`
 }
 
+type StatusCount struct {
+	Status string `json:"status"`
+	Count  int    `json:"count"`
+}
+
 type TaskFiles struct {
 	FileCount    int             `json:"fileCount"`
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
@@ -262,6 +286,11 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 	Tasks        []string       `json:"tasks"`
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
+}
+
+type VersionTiming struct {
+	Makespan  *model.APIDuration `json:"makespan"`
+	TimeTaken *model.APIDuration `json:"timeTaken"`
 }
 
 type VolumeHost struct {
@@ -583,6 +612,7 @@ type TestSortCategory string
 const (
 	TestSortCategoryBaseStatus TestSortCategory = "BASE_STATUS"
 	TestSortCategoryStatus     TestSortCategory = "STATUS"
+	TestSortCategoryStartTime  TestSortCategory = "START_TIME"
 	TestSortCategoryDuration   TestSortCategory = "DURATION"
 	TestSortCategoryTestName   TestSortCategory = "TEST_NAME"
 )
@@ -590,13 +620,14 @@ const (
 var AllTestSortCategory = []TestSortCategory{
 	TestSortCategoryBaseStatus,
 	TestSortCategoryStatus,
+	TestSortCategoryStartTime,
 	TestSortCategoryDuration,
 	TestSortCategoryTestName,
 }
 
 func (e TestSortCategory) IsValid() bool {
 	switch e {
-	case TestSortCategoryBaseStatus, TestSortCategoryStatus, TestSortCategoryDuration, TestSortCategoryTestName:
+	case TestSortCategoryBaseStatus, TestSortCategoryStatus, TestSortCategoryStartTime, TestSortCategoryDuration, TestSortCategoryTestName:
 		return true
 	}
 	return false

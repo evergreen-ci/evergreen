@@ -35,36 +35,62 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array
-func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResult, testName string, statuses []string, sortBy string, sortDir int, pageParam int, limitParam int) ([]apimodels.CedarTestResult, int) {
+type FilterSortAndPaginateCedarTestResultsOpts struct {
+	GroupID          string
+	Limit            int
+	Page             int
+	SortBy           string
+	SortDir          int
+	Statuses         []string
+	TestName         string
+	TestResults      []apimodels.CedarTestResult
+	BaseTestStatuses map[string]string
+}
+
+// FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array.
+func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestResultsOpts) ([]apimodels.CedarTestResult, int) {
 	var filteredAndSortedTestResults []apimodels.CedarTestResult
-	for _, testResult := range testResults {
+	for _, testResult := range opts.TestResults {
 		match := true
-		if testName != "" {
-			if testResult.DisplayTestName != "" && !strings.Contains(testResult.DisplayTestName, testName) {
+		if opts.TestName != "" {
+			if testResult.DisplayTestName != "" && !strings.Contains(testResult.DisplayTestName, opts.TestName) {
 				match = false
-			} else if testResult.DisplayTestName == "" && !strings.Contains(testResult.TestName, testName) {
+			} else if testResult.DisplayTestName == "" && !strings.Contains(testResult.TestName, opts.TestName) {
 				match = false
 			}
 		}
-		if len(statuses) > 0 && !utility.StringSliceContains(statuses, testResult.Status) {
+		if len(opts.Statuses) > 0 && !utility.StringSliceContains(opts.Statuses, testResult.Status) {
+			match = false
+		}
+		if opts.GroupID != "" && testResult.GroupID != opts.GroupID {
 			match = false
 		}
 		if match {
 			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)
 		}
 	}
-	if sortBy != "" {
-		switch sortBy {
+
+	if opts.SortBy != "" {
+		switch opts.SortBy {
+		case "start":
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+				if opts.SortDir == 1 {
+					return testResultI.Start.Before(testResultJ.Start)
+
+				}
+				return testResultI.Start.After(testResultJ.Start)
+			})
+			break
 		case "duration":
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
 				iDuration := testResultI.End.Sub(testResultI.Start)
 				jDuration := testResultJ.End.Sub(testResultJ.Start)
-				if sortDir == 1 {
+				if opts.SortDir == 1 {
 					return iDuration < jDuration
-
 				}
 				return iDuration > jDuration
 			})
@@ -73,31 +99,54 @@ func FilterSortAndPaginateCedarTestResults(testResults []apimodels.CedarTestResu
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if sortDir == 1 {
-					return testResultI.TestName < testResultJ.TestName
-
+				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
+					if opts.SortDir == 1 {
+						return testResultI.DisplayTestName < testResultJ.DisplayTestName
+					}
+					return testResultI.DisplayTestName > testResultJ.DisplayTestName
+				} else {
+					if opts.SortDir == 1 {
+						return testResultI.TestName < testResultJ.TestName
+					}
+					return testResultI.TestName > testResultJ.TestName
 				}
-				return testResultI.TestName > testResultJ.TestName
 			})
 			break
 		case testresult.StatusKey:
 			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
 				testResultI := filteredAndSortedTestResults[i]
 				testResultJ := filteredAndSortedTestResults[j]
-				if sortDir == 1 {
+				if opts.SortDir == 1 {
 					return testResultI.Status < testResultJ.Status
-
 				}
 				return testResultI.Status > testResultJ.Status
+			})
+			break
+		case "base_status":
+			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
+				testResultI := filteredAndSortedTestResults[i]
+				testResultJ := filteredAndSortedTestResults[j]
+
+				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
+					if opts.SortDir == 1 {
+						return opts.BaseTestStatuses[testResultI.DisplayTestName] < opts.BaseTestStatuses[testResultJ.DisplayTestName]
+					}
+					return opts.BaseTestStatuses[testResultI.DisplayTestName] > opts.BaseTestStatuses[testResultJ.DisplayTestName]
+				} else {
+					if opts.SortDir == 1 {
+						return opts.BaseTestStatuses[testResultI.TestName] < opts.BaseTestStatuses[testResultJ.TestName]
+					}
+					return opts.BaseTestStatuses[testResultI.TestName] > opts.BaseTestStatuses[testResultJ.TestName]
+				}
 			})
 			break
 		}
 	}
 	// Get filtered test count before applying any limits on it.
 	filteredTestCount := len(filteredAndSortedTestResults)
-	if limitParam != 0 {
-		offset := pageParam * limitParam
-		end := offset + limitParam
+	if opts.Limit != 0 {
+		offset := opts.Page * opts.Limit
+		end := offset + opts.Limit
 		if offset > filteredTestCount {
 			offset = filteredTestCount
 		}
@@ -262,7 +311,7 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code. In the case of
 // success, it also returns a success message and a version ID.
-func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchVariantsTasksRequest, parametersModel []*restModel.APIParameter) (error, int, string, string) {
+func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq PatchUpdate) (error, int, string, string) {
 	var err error
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
@@ -270,9 +319,9 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 	}
 
 	// only modify parameters if the patch hasn't been finalized
-	if parametersModel != nil && p.Version == "" {
+	if patchUpdateReq.ParametersModel != nil && p.Version == "" {
 		var parameters []patch.Parameter
-		for _, param := range parametersModel {
+		for _, param := range patchUpdateReq.ParametersModel {
 			parameters = append(parameters, param.ToService())
 		}
 		if err = p.SetParameters(parameters); err != nil {
@@ -286,7 +335,8 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if _, err = model.LoadProjectInto([]byte(p.PatchedConfig), p.Project, project); err != nil {
+	opts := model.GetProjectOpts{}
+	if _, err = model.LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
 		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
 	}
 
@@ -315,28 +365,29 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 
 	// create a separate context from the one the callar has so that the caller
 	// can't interrupt the db operations here
-	ctx := context.Background()
+	newCxt := context.Background()
+
+	projectRef, err := model.FindOneProjectRef(project.Identifier)
+	if err != nil {
+		return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
+	}
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", project.Identifier), http.StatusInternalServerError, "", ""
+	}
+
 	if p.Version != "" {
 		p.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
-		projectRef, err := model.FindOneProjectRef(project.Identifier)
-		if err != nil {
-			return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
-		}
-		if projectRef == nil {
-			return errors.Errorf("project '%s' not found", project.Identifier), http.StatusInternalServerError, "", ""
-		}
-
 		// First add new tasks to existing builds, if necessary
 		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating new tasks for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
 
-		err = model.AddNewBuildsForPatch(ctx, p, version, project, tasks, projectRef)
+		err = model.AddNewBuildsForPatch(newCxt, p, version, project, tasks, projectRef)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating new builds for version `%s`", version.Id), http.StatusInternalServerError, "", ""
 		}
@@ -358,8 +409,20 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 			return errors.Wrap(err, "Error setting patch variants and tasks"), http.StatusInternalServerError, "", ""
 		}
 
+		// Process additional patch trigger aliases added via UI.
+		// Child patches created with the CLI --trigger-alias flag go through a separate flow, so ensure that new child patches are also created before the parent is finalized.
+		childPatchIds, err := units.ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), patchUpdateReq.PatchTriggerAliases)
+		if err != nil {
+			return errors.Wrap(err, "Error processing patch trigger aliases"), http.StatusInternalServerError, "", ""
+		}
+		if len(childPatchIds) > 0 {
+			if err = p.SetChildPatches(); err != nil {
+				return errors.Wrapf(err, "error attaching child patches '%s'", p.Id.Hex()), http.StatusInternalServerError, "", ""
+			}
+		}
+
 		requester := p.GetRequester()
-		ver, err := model.FinalizePatch(ctx, p, requester, githubOauthToken)
+		ver, err := model.FinalizePatch(newCxt, p, requester, githubOauthToken)
 		if err != nil {
 			return errors.Wrap(err, "Error finalizing patch"), http.StatusInternalServerError, "", ""
 		}
@@ -378,7 +441,7 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 
 		if p.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
-			if err := evergreen.GetEnvironment().LocalQueue().Put(ctx, job); err != nil {
+			if err := evergreen.GetEnvironment().LocalQueue().Put(newCxt, job); err != nil {
 				return errors.Wrap(err, "Error adding github status update job to queue"), http.StatusInternalServerError, "", ""
 			}
 		}
@@ -387,7 +450,7 @@ func SchedulePatch(patchId string, version *model.Version, patchUpdateReq PatchV
 	}
 }
 
-func addDisplayTasksToPatchReq(req *PatchVariantsTasksRequest, p model.Project) {
+func addDisplayTasksToPatchReq(req *PatchUpdate, p model.Project) {
 	for i, vt := range req.VariantsTasks {
 		bv := p.FindBuildVariant(vt.Variant)
 		if bv == nil {
@@ -412,9 +475,10 @@ type VariantsAndTasksFromProject struct {
 	Project  model.Project
 }
 
-func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
+func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
-	if _, err := model.LoadProjectInto([]byte(patchedConfig), patchProject, project); err != nil {
+	opts := model.GetProjectOpts{}
+	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), opts, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
 	}
 
@@ -453,7 +517,7 @@ func GetVariantsAndTasksFromProject(patchedConfig string, patchProject string) (
 
 // GetPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
 func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	patchProjectVariantsAndTasks, err := GetVariantsAndTasksFromProject(*apiPatch.PatchedConfig, *apiPatch.ProjectId)
+	patchProjectVariantsAndTasks, err := GetVariantsAndTasksFromProject(ctx, *apiPatch.PatchedConfig, *apiPatch.ProjectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
 	}
@@ -488,14 +552,18 @@ func GetPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 	return &patchProject, nil
 }
 
-type PatchVariantsTasksRequest struct {
-	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
-	Description   string               `json:"description"`
+type PatchUpdate struct {
+	Description         string                    `json:"description"`
+	ParametersModel     []*restModel.APIParameter `json:"parameters_model,omitempty"`
+	PatchTriggerAliases []string                  `json:"patch_trigger_aliases,omitempty"`
+	VariantsTasks       []patch.VariantTasks      `json:"variants_tasks,omitempty"`
 }
 
-// BuildFromGqlInput takes a PatchConfigure gql type and returns a PatchVariantsTasksRequest type
-func (p *PatchVariantsTasksRequest) BuildFromGqlInput(r PatchConfigure) {
+// BuildFromGqlInput takes a PatchConfigure gql type and returns a PatchUpdate type
+func (p *PatchUpdate) BuildFromGqlInput(r PatchConfigure) {
 	p.Description = r.Description
+	p.PatchTriggerAliases = r.PatchTriggerAliases
+	p.ParametersModel = r.Parameters
 	for _, vt := range r.VariantsTasks {
 		variantTasks := patch.VariantTasks{
 			Variant: vt.Variant,
@@ -703,6 +771,42 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
+
+	if evergreen.IsPatchRequester(version.Requester) {
+		// restart is handled through graphql because we need the user to specify
+		// which downstream tasks they want to restart
+		if modifications.Action != Restart {
+			//do the same for child patches
+			p, err := patch.FindOneId(patchID)
+			if err != nil {
+				return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
+			}
+			if p == nil {
+				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found ", patchID))
+			}
+			if p.IsParent() {
+				for _, childPatchId := range p.Triggers.ChildPatches {
+					p, err := patch.FindOneId(childPatchId)
+					if err != nil {
+						return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding child patch %s: %s", childPatchId, err.Error()))
+					}
+					if p == nil {
+						return ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found ", childPatchId))
+					}
+					// only modify the child patch if it is finalized
+					if p.Version != "" {
+						err = ModifyVersionHandler(ctx, dataConnector, childPatchId, modifications)
+						if err != nil {
+							return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
+						}
+					}
+
+				}
+			}
+
+		}
+	}
+
 	return nil
 }
 
@@ -1221,4 +1325,22 @@ func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions r
 		}
 	}
 	return nil
+}
+
+func setVersionActivationStatus(sc data.Connector, version *model.Version) error {
+	defaultSort := []task.TasksSortOrder{
+		{Key: task.DisplayNameKey, Order: 1},
+	}
+	opts := data.TaskFilterOptions{
+		Sorts: defaultSort,
+	}
+	tasks, _, err := sc.FindTasksByVersion(version.Id, opts)
+	if err != nil {
+		return errors.Wrapf(err, "error getting tasks for version %s", version.Id)
+	}
+	if !task.AnyActiveTasks(tasks) {
+		return errors.Wrapf(version.SetNotActivated(), "Error updating version activated status for `%s`", version.Id)
+	} else {
+		return errors.Wrapf(version.SetActivated(), "Error updating version activated status for `%s`", version.Id)
+	}
 }

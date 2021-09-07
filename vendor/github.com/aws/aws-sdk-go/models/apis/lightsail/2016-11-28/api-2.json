@@ -30,6 +30,23 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "AttachCertificateToDistribution":{
+      "name":"AttachCertificateToDistribution",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"AttachCertificateToDistributionRequest"},
+      "output":{"shape":"AttachCertificateToDistributionResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
     "AttachDisk":{
       "name":"AttachDisk",
       "http":{
@@ -138,6 +155,22 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "CreateCertificate":{
+      "name":"CreateCertificate",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateCertificateRequest"},
+      "output":{"shape":"CreateCertificateResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
     "CreateCloudFormationStack":{
       "name":"CreateCloudFormationStack",
       "http":{
@@ -153,6 +186,71 @@
         {"shape":"OperationFailureException"},
         {"shape":"AccessDeniedException"},
         {"shape":"AccountSetupInProgressException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "CreateContactMethod":{
+      "name":"CreateContactMethod",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateContactMethodRequest"},
+      "output":{"shape":"CreateContactMethodResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "CreateContainerService":{
+      "name":"CreateContainerService",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateContainerServiceRequest"},
+      "output":{"shape":"CreateContainerServiceResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "CreateContainerServiceDeployment":{
+      "name":"CreateContainerServiceDeployment",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateContainerServiceDeploymentRequest"},
+      "output":{"shape":"CreateContainerServiceDeploymentResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "CreateContainerServiceRegistryLogin":{
+      "name":"CreateContainerServiceRegistryLogin",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateContainerServiceRegistryLoginRequest"},
+      "output":{"shape":"CreateContainerServiceRegistryLoginResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
         {"shape":"UnauthenticatedException"}
       ]
     },
@@ -207,6 +305,23 @@
         {"shape":"OperationFailureException"},
         {"shape":"AccessDeniedException"},
         {"shape":"AccountSetupInProgressException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "CreateDistribution":{
+      "name":"CreateDistribution",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"CreateDistributionRequest"},
+      "output":{"shape":"CreateDistributionResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
         {"shape":"UnauthenticatedException"}
       ]
     },
@@ -408,6 +523,23 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "DeleteAlarm":{
+      "name":"DeleteAlarm",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteAlarmRequest"},
+      "output":{"shape":"DeleteAlarmResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"UnauthenticatedException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"NotFoundException"}
+      ]
+    },
     "DeleteAutoSnapshot":{
       "name":"DeleteAutoSnapshot",
       "http":{
@@ -421,6 +553,71 @@
         {"shape":"InvalidInputException"},
         {"shape":"NotFoundException"},
         {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "DeleteCertificate":{
+      "name":"DeleteCertificate",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteCertificateRequest"},
+      "output":{"shape":"DeleteCertificateResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"NotFoundException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "DeleteContactMethod":{
+      "name":"DeleteContactMethod",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteContactMethodRequest"},
+      "output":{"shape":"DeleteContactMethodResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"UnauthenticatedException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"NotFoundException"}
+      ]
+    },
+    "DeleteContainerImage":{
+      "name":"DeleteContainerImage",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteContainerImageRequest"},
+      "output":{"shape":"DeleteContainerImageResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "DeleteContainerService":{
+      "name":"DeleteContainerService",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteContainerServiceRequest"},
+      "output":{"shape":"DeleteContainerServiceResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
         {"shape":"AccessDeniedException"},
         {"shape":"UnauthenticatedException"}
       ]
@@ -458,6 +655,23 @@
         {"shape":"OperationFailureException"},
         {"shape":"AccessDeniedException"},
         {"shape":"AccountSetupInProgressException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "DeleteDistribution":{
+      "name":"DeleteDistribution",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DeleteDistributionRequest"},
+      "output":{"shape":"DeleteDistributionResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
         {"shape":"UnauthenticatedException"}
       ]
     },
@@ -641,6 +855,23 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "DetachCertificateFromDistribution":{
+      "name":"DetachCertificateFromDistribution",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DetachCertificateFromDistributionRequest"},
+      "output":{"shape":"DetachCertificateFromDistributionResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
     "DetachDisk":{
       "name":"DetachDisk",
       "http":{
@@ -783,6 +1014,23 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "GetAlarms":{
+      "name":"GetAlarms",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetAlarmsRequest"},
+      "output":{"shape":"GetAlarmsResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"UnauthenticatedException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"NotFoundException"}
+      ]
+    },
     "GetAutoSnapshots":{
       "name":"GetAutoSnapshots",
       "http":{
@@ -836,6 +1084,22 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "GetCertificates":{
+      "name":"GetCertificates",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetCertificatesRequest"},
+      "output":{"shape":"GetCertificatesResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
     "GetCloudFormationStackRecords":{
       "name":"GetCloudFormationStackRecords",
       "http":{
@@ -851,6 +1115,133 @@
         {"shape":"OperationFailureException"},
         {"shape":"AccessDeniedException"},
         {"shape":"AccountSetupInProgressException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetContactMethods":{
+      "name":"GetContactMethods",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetContactMethodsRequest"},
+      "output":{"shape":"GetContactMethodsResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetContainerAPIMetadata":{
+      "name":"GetContainerAPIMetadata",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetContainerAPIMetadataRequest"},
+      "output":{"shape":"GetContainerAPIMetadataResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetContainerImages":{
+      "name":"GetContainerImages",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetContainerImagesRequest"},
+      "output":{"shape":"GetContainerImagesResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetContainerLog":{
+      "name":"GetContainerLog",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetContainerLogRequest"},
+      "output":{"shape":"GetContainerLogResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetContainerServiceDeployments":{
+      "name":"GetContainerServiceDeployments",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetContainerServiceDeploymentsRequest"},
+      "output":{"shape":"GetContainerServiceDeploymentsResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetContainerServiceMetricData":{
+      "name":"GetContainerServiceMetricData",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetContainerServiceMetricDataRequest"},
+      "output":{"shape":"GetContainerServiceMetricDataResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetContainerServicePowers":{
+      "name":"GetContainerServicePowers",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetContainerServicePowersRequest"},
+      "output":{"shape":"GetContainerServicePowersResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetContainerServices":{
+      "name":"GetContainerServices",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetContainerServicesRequest"},
+      "output":{"shape":"ContainerServicesListResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
         {"shape":"UnauthenticatedException"}
       ]
     },
@@ -923,6 +1314,74 @@
         {"shape":"OperationFailureException"},
         {"shape":"AccessDeniedException"},
         {"shape":"AccountSetupInProgressException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetDistributionBundles":{
+      "name":"GetDistributionBundles",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetDistributionBundlesRequest"},
+      "output":{"shape":"GetDistributionBundlesResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetDistributionLatestCacheReset":{
+      "name":"GetDistributionLatestCacheReset",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetDistributionLatestCacheResetRequest"},
+      "output":{"shape":"GetDistributionLatestCacheResetResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetDistributionMetricData":{
+      "name":"GetDistributionMetricData",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetDistributionMetricDataRequest"},
+      "output":{"shape":"GetDistributionMetricDataResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "GetDistributions":{
+      "name":"GetDistributions",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetDistributionsRequest"},
+      "output":{"shape":"GetDistributionsResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
         {"shape":"UnauthenticatedException"}
       ]
     },
@@ -1628,6 +2087,23 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "PutAlarm":{
+      "name":"PutAlarm",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"PutAlarmRequest"},
+      "output":{"shape":"PutAlarmResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"},
+        {"shape":"NotFoundException"}
+      ]
+    },
     "PutInstancePublicPorts":{
       "name":"PutInstancePublicPorts",
       "http":{
@@ -1682,6 +2158,22 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "RegisterContainerImage":{
+      "name":"RegisterContainerImage",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"RegisterContainerImageRequest"},
+      "output":{"shape":"RegisterContainerImageResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
     "ReleaseStaticIp":{
       "name":"ReleaseStaticIp",
       "http":{
@@ -1690,6 +2182,58 @@
       },
       "input":{"shape":"ReleaseStaticIpRequest"},
       "output":{"shape":"ReleaseStaticIpResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"AccountSetupInProgressException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "ResetDistributionCache":{
+      "name":"ResetDistributionCache",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ResetDistributionCacheRequest"},
+      "output":{"shape":"ResetDistributionCacheResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "SendContactMethodVerification":{
+      "name":"SendContactMethodVerification",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"SendContactMethodVerificationRequest"},
+      "output":{"shape":"SendContactMethodVerificationResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"UnauthenticatedException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"NotFoundException"}
+      ]
+    },
+    "SetIpAddressType":{
+      "name":"SetIpAddressType",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"SetIpAddressTypeRequest"},
+      "output":{"shape":"SetIpAddressTypeResult"},
       "errors":[
         {"shape":"ServiceException"},
         {"shape":"InvalidInputException"},
@@ -1790,6 +2334,23 @@
         {"shape":"UnauthenticatedException"}
       ]
     },
+    "TestAlarm":{
+      "name":"TestAlarm",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"TestAlarmRequest"},
+      "output":{"shape":"TestAlarmResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"UnauthenticatedException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"NotFoundException"}
+      ]
+    },
     "UnpeerVpc":{
       "name":"UnpeerVpc",
       "http":{
@@ -1823,6 +2384,56 @@
         {"shape":"OperationFailureException"},
         {"shape":"AccessDeniedException"},
         {"shape":"AccountSetupInProgressException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "UpdateContainerService":{
+      "name":"UpdateContainerService",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateContainerServiceRequest"},
+      "output":{"shape":"UpdateContainerServiceResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "UpdateDistribution":{
+      "name":"UpdateDistribution",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateDistributionRequest"},
+      "output":{"shape":"UpdateDistributionResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
+        {"shape":"UnauthenticatedException"}
+      ]
+    },
+    "UpdateDistributionBundle":{
+      "name":"UpdateDistributionBundle",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"UpdateDistributionBundleRequest"},
+      "output":{"shape":"UpdateDistributionBundleResult"},
+      "errors":[
+        {"shape":"ServiceException"},
+        {"shape":"InvalidInputException"},
+        {"shape":"NotFoundException"},
+        {"shape":"OperationFailureException"},
+        {"shape":"AccessDeniedException"},
         {"shape":"UnauthenticatedException"}
       ]
     },
@@ -1956,6 +2567,43 @@
       "type":"string",
       "enum":["AutoSnapshot"]
     },
+    "Alarm":{
+      "type":"structure",
+      "members":{
+        "name":{"shape":"ResourceName"},
+        "arn":{"shape":"NonEmptyString"},
+        "createdAt":{"shape":"IsoDate"},
+        "location":{"shape":"ResourceLocation"},
+        "resourceType":{"shape":"ResourceType"},
+        "supportCode":{"shape":"string"},
+        "monitoredResourceInfo":{"shape":"MonitoredResourceInfo"},
+        "comparisonOperator":{"shape":"ComparisonOperator"},
+        "evaluationPeriods":{"shape":"integer"},
+        "period":{"shape":"MetricPeriod"},
+        "threshold":{"shape":"double"},
+        "datapointsToAlarm":{"shape":"integer"},
+        "treatMissingData":{"shape":"TreatMissingData"},
+        "statistic":{"shape":"MetricStatistic"},
+        "metricName":{"shape":"MetricName"},
+        "state":{"shape":"AlarmState"},
+        "unit":{"shape":"MetricUnit"},
+        "contactProtocols":{"shape":"ContactProtocolsList"},
+        "notificationTriggers":{"shape":"NotificationTriggerList"},
+        "notificationEnabled":{"shape":"boolean"}
+      }
+    },
+    "AlarmState":{
+      "type":"string",
+      "enum":[
+        "OK",
+        "ALARM",
+        "INSUFFICIENT_DATA"
+      ]
+    },
+    "AlarmsList":{
+      "type":"list",
+      "member":{"shape":"Alarm"}
+    },
     "AllocateStaticIpRequest":{
       "type":"structure",
       "required":["staticIpName"],
@@ -1967,6 +2615,23 @@
       "type":"structure",
       "members":{
         "operations":{"shape":"OperationList"}
+      }
+    },
+    "AttachCertificateToDistributionRequest":{
+      "type":"structure",
+      "required":[
+        "distributionName",
+        "certificateName"
+      ],
+      "members":{
+        "distributionName":{"shape":"ResourceName"},
+        "certificateName":{"shape":"ResourceName"}
+      }
+    },
+    "AttachCertificateToDistributionResult":{
+      "type":"structure",
+      "members":{
+        "operation":{"shape":"Operation"}
       }
     },
     "AttachDiskRequest":{
@@ -2099,6 +2764,13 @@
       "member":{"shape":"AvailabilityZone"}
     },
     "Base64":{"type":"string"},
+    "BehaviorEnum":{
+      "type":"string",
+      "enum":[
+        "dont-cache",
+        "cache"
+      ]
+    },
     "Blueprint":{
       "type":"structure",
       "members":{
@@ -2146,6 +2818,93 @@
     "BundleList":{
       "type":"list",
       "member":{"shape":"Bundle"}
+    },
+    "CacheBehavior":{
+      "type":"structure",
+      "members":{
+        "behavior":{"shape":"BehaviorEnum"}
+      }
+    },
+    "CacheBehaviorList":{
+      "type":"list",
+      "member":{"shape":"CacheBehaviorPerPath"}
+    },
+    "CacheBehaviorPerPath":{
+      "type":"structure",
+      "members":{
+        "path":{"shape":"string"},
+        "behavior":{"shape":"BehaviorEnum"}
+      }
+    },
+    "CacheSettings":{
+      "type":"structure",
+      "members":{
+        "defaultTTL":{"shape":"long"},
+        "minimumTTL":{"shape":"long"},
+        "maximumTTL":{"shape":"long"},
+        "allowedHTTPMethods":{"shape":"NonEmptyString"},
+        "cachedHTTPMethods":{"shape":"NonEmptyString"},
+        "forwardedCookies":{"shape":"CookieObject"},
+        "forwardedHeaders":{"shape":"HeaderObject"},
+        "forwardedQueryStrings":{"shape":"QueryStringObject"}
+      }
+    },
+    "Certificate":{
+      "type":"structure",
+      "members":{
+        "arn":{"shape":"NonEmptyString"},
+        "name":{"shape":"CertificateName"},
+        "domainName":{"shape":"DomainName"},
+        "status":{"shape":"CertificateStatus"},
+        "serialNumber":{"shape":"SerialNumber"},
+        "subjectAlternativeNames":{"shape":"SubjectAlternativeNameList"},
+        "domainValidationRecords":{"shape":"DomainValidationRecordList"},
+        "requestFailureReason":{"shape":"RequestFailureReason"},
+        "inUseResourceCount":{"shape":"InUseResourceCount"},
+        "keyAlgorithm":{"shape":"KeyAlgorithm"},
+        "createdAt":{"shape":"IsoDate"},
+        "issuedAt":{"shape":"IsoDate"},
+        "issuerCA":{"shape":"IssuerCA"},
+        "notBefore":{"shape":"IsoDate"},
+        "notAfter":{"shape":"IsoDate"},
+        "eligibleToRenew":{"shape":"EligibleToRenew"},
+        "renewalSummary":{"shape":"RenewalSummary"},
+        "revokedAt":{"shape":"IsoDate"},
+        "revocationReason":{"shape":"RevocationReason"},
+        "tags":{"shape":"TagList"},
+        "supportCode":{"shape":"string"}
+      }
+    },
+    "CertificateName":{"type":"string"},
+    "CertificateStatus":{
+      "type":"string",
+      "enum":[
+        "PENDING_VALIDATION",
+        "ISSUED",
+        "INACTIVE",
+        "EXPIRED",
+        "VALIDATION_TIMED_OUT",
+        "REVOKED",
+        "FAILED"
+      ]
+    },
+    "CertificateStatusList":{
+      "type":"list",
+      "member":{"shape":"CertificateStatus"}
+    },
+    "CertificateSummary":{
+      "type":"structure",
+      "members":{
+        "certificateArn":{"shape":"NonEmptyString"},
+        "certificateName":{"shape":"CertificateName"},
+        "domainName":{"shape":"DomainName"},
+        "certificateDetail":{"shape":"Certificate"},
+        "tags":{"shape":"TagList"}
+      }
+    },
+    "CertificateSummaryList":{
+      "type":"list",
+      "member":{"shape":"CertificateSummary"}
     },
     "CloseInstancePublicPortsRequest":{
       "type":"structure",
@@ -2197,6 +2956,307 @@
       "type":"string",
       "enum":["ExportSnapshotRecord"]
     },
+    "ComparisonOperator":{
+      "type":"string",
+      "enum":[
+        "GreaterThanOrEqualToThreshold",
+        "GreaterThanThreshold",
+        "LessThanThreshold",
+        "LessThanOrEqualToThreshold"
+      ]
+    },
+    "ContactMethod":{
+      "type":"structure",
+      "members":{
+        "contactEndpoint":{"shape":"NonEmptyString"},
+        "status":{"shape":"ContactMethodStatus"},
+        "protocol":{"shape":"ContactProtocol"},
+        "name":{"shape":"ResourceName"},
+        "arn":{"shape":"NonEmptyString"},
+        "createdAt":{"shape":"IsoDate"},
+        "location":{"shape":"ResourceLocation"},
+        "resourceType":{"shape":"ResourceType"},
+        "supportCode":{"shape":"string"}
+      }
+    },
+    "ContactMethodStatus":{
+      "type":"string",
+      "enum":[
+        "PendingVerification",
+        "Valid",
+        "Invalid"
+      ]
+    },
+    "ContactMethodVerificationProtocol":{
+      "type":"string",
+      "enum":["Email"]
+    },
+    "ContactMethodsList":{
+      "type":"list",
+      "member":{"shape":"ContactMethod"}
+    },
+    "ContactProtocol":{
+      "type":"string",
+      "enum":[
+        "Email",
+        "SMS"
+      ]
+    },
+    "ContactProtocolsList":{
+      "type":"list",
+      "member":{"shape":"ContactProtocol"}
+    },
+    "Container":{
+      "type":"structure",
+      "members":{
+        "image":{"shape":"string"},
+        "command":{"shape":"StringList"},
+        "environment":{"shape":"Environment"},
+        "ports":{"shape":"PortMap"}
+      }
+    },
+    "ContainerImage":{
+      "type":"structure",
+      "members":{
+        "image":{"shape":"string"},
+        "digest":{"shape":"string"},
+        "createdAt":{"shape":"IsoDate"}
+      }
+    },
+    "ContainerImageList":{
+      "type":"list",
+      "member":{"shape":"ContainerImage"}
+    },
+    "ContainerLabel":{
+      "type":"string",
+      "max":53,
+      "min":1,
+      "pattern":"^[a-z0-9]{1,2}|[a-z0-9][a-z0-9-]+[a-z0-9]$"
+    },
+    "ContainerMap":{
+      "type":"map",
+      "key":{"shape":"ContainerName"},
+      "value":{"shape":"Container"}
+    },
+    "ContainerName":{
+      "type":"string",
+      "max":53,
+      "min":1,
+      "pattern":"^[a-z0-9]{1,2}|[a-z0-9][a-z0-9-]+[a-z0-9]$"
+    },
+    "ContainerService":{
+      "type":"structure",
+      "members":{
+        "containerServiceName":{"shape":"ContainerServiceName"},
+        "arn":{"shape":"NonEmptyString"},
+        "createdAt":{"shape":"IsoDate"},
+        "location":{"shape":"ResourceLocation"},
+        "resourceType":{"shape":"ResourceType"},
+        "tags":{"shape":"TagList"},
+        "power":{"shape":"ContainerServicePowerName"},
+        "powerId":{"shape":"string"},
+        "state":{"shape":"ContainerServiceState"},
+        "stateDetail":{"shape":"ContainerServiceStateDetail"},
+        "scale":{"shape":"ContainerServiceScale"},
+        "currentDeployment":{"shape":"ContainerServiceDeployment"},
+        "nextDeployment":{"shape":"ContainerServiceDeployment"},
+        "isDisabled":{"shape":"boolean"},
+        "principalArn":{"shape":"string"},
+        "privateDomainName":{"shape":"string"},
+        "publicDomainNames":{"shape":"ContainerServicePublicDomains"},
+        "url":{"shape":"string"}
+      }
+    },
+    "ContainerServiceDeployment":{
+      "type":"structure",
+      "members":{
+        "version":{"shape":"integer"},
+        "state":{"shape":"ContainerServiceDeploymentState"},
+        "containers":{"shape":"ContainerMap"},
+        "publicEndpoint":{"shape":"ContainerServiceEndpoint"},
+        "createdAt":{"shape":"IsoDate"}
+      }
+    },
+    "ContainerServiceDeploymentList":{
+      "type":"list",
+      "member":{"shape":"ContainerServiceDeployment"}
+    },
+    "ContainerServiceDeploymentRequest":{
+      "type":"structure",
+      "members":{
+        "containers":{"shape":"ContainerMap"},
+        "publicEndpoint":{"shape":"EndpointRequest"}
+      }
+    },
+    "ContainerServiceDeploymentState":{
+      "type":"string",
+      "enum":[
+        "ACTIVATING",
+        "ACTIVE",
+        "INACTIVE",
+        "FAILED"
+      ]
+    },
+    "ContainerServiceEndpoint":{
+      "type":"structure",
+      "members":{
+        "containerName":{"shape":"string"},
+        "containerPort":{"shape":"integer"},
+        "healthCheck":{"shape":"ContainerServiceHealthCheckConfig"}
+      }
+    },
+    "ContainerServiceHealthCheckConfig":{
+      "type":"structure",
+      "members":{
+        "healthyThreshold":{"shape":"integer"},
+        "unhealthyThreshold":{"shape":"integer"},
+        "timeoutSeconds":{"shape":"integer"},
+        "intervalSeconds":{"shape":"integer"},
+        "path":{"shape":"string"},
+        "successCodes":{"shape":"string"}
+      }
+    },
+    "ContainerServiceList":{
+      "type":"list",
+      "member":{"shape":"ContainerService"}
+    },
+    "ContainerServiceLogEvent":{
+      "type":"structure",
+      "members":{
+        "createdAt":{"shape":"IsoDate"},
+        "message":{"shape":"string"}
+      }
+    },
+    "ContainerServiceLogEventList":{
+      "type":"list",
+      "member":{"shape":"ContainerServiceLogEvent"}
+    },
+    "ContainerServiceMetadataEntry":{
+      "type":"map",
+      "key":{"shape":"string"},
+      "value":{"shape":"string"}
+    },
+    "ContainerServiceMetadataEntryList":{
+      "type":"list",
+      "member":{"shape":"ContainerServiceMetadataEntry"}
+    },
+    "ContainerServiceMetricName":{
+      "type":"string",
+      "enum":[
+        "CPUUtilization",
+        "MemoryUtilization"
+      ]
+    },
+    "ContainerServiceName":{
+      "type":"string",
+      "max":63,
+      "min":1,
+      "pattern":"^[a-z0-9]{1,2}|[a-z0-9][a-z0-9-]+[a-z0-9]$"
+    },
+    "ContainerServicePower":{
+      "type":"structure",
+      "members":{
+        "powerId":{"shape":"string"},
+        "price":{"shape":"float"},
+        "cpuCount":{"shape":"float"},
+        "ramSizeInGb":{"shape":"float"},
+        "name":{"shape":"string"},
+        "isActive":{"shape":"boolean"}
+      }
+    },
+    "ContainerServicePowerList":{
+      "type":"list",
+      "member":{"shape":"ContainerServicePower"}
+    },
+    "ContainerServicePowerName":{
+      "type":"string",
+      "enum":[
+        "nano",
+        "micro",
+        "small",
+        "medium",
+        "large",
+        "xlarge"
+      ]
+    },
+    "ContainerServiceProtocol":{
+      "type":"string",
+      "enum":[
+        "HTTP",
+        "HTTPS",
+        "TCP",
+        "UDP"
+      ]
+    },
+    "ContainerServicePublicDomains":{
+      "type":"map",
+      "key":{"shape":"string"},
+      "value":{"shape":"ContainerServicePublicDomainsList"}
+    },
+    "ContainerServicePublicDomainsList":{
+      "type":"list",
+      "member":{"shape":"string"}
+    },
+    "ContainerServiceRegistryLogin":{
+      "type":"structure",
+      "members":{
+        "username":{"shape":"string"},
+        "password":{"shape":"string"},
+        "expiresAt":{"shape":"IsoDate"},
+        "registry":{"shape":"string"}
+      }
+    },
+    "ContainerServiceScale":{
+      "type":"integer",
+      "max":20,
+      "min":1
+    },
+    "ContainerServiceState":{
+      "type":"string",
+      "enum":[
+        "PENDING",
+        "READY",
+        "RUNNING",
+        "UPDATING",
+        "DELETING",
+        "DISABLED",
+        "DEPLOYING"
+      ]
+    },
+    "ContainerServiceStateDetail":{
+      "type":"structure",
+      "members":{
+        "code":{"shape":"ContainerServiceStateDetailCode"},
+        "message":{"shape":"string"}
+      }
+    },
+    "ContainerServiceStateDetailCode":{
+      "type":"string",
+      "enum":[
+        "CREATING_SYSTEM_RESOURCES",
+        "CREATING_NETWORK_INFRASTRUCTURE",
+        "PROVISIONING_CERTIFICATE",
+        "PROVISIONING_SERVICE",
+        "CREATING_DEPLOYMENT",
+        "EVALUATING_HEALTH_CHECK",
+        "ACTIVATING_DEPLOYMENT",
+        "CERTIFICATE_LIMIT_EXCEEDED",
+        "UNKNOWN_ERROR"
+      ]
+    },
+    "ContainerServicesListResult":{
+      "type":"structure",
+      "members":{
+        "containerServices":{"shape":"ContainerServiceList"}
+      }
+    },
+    "CookieObject":{
+      "type":"structure",
+      "members":{
+        "option":{"shape":"ForwardValues"},
+        "cookiesAllowList":{"shape":"StringList"}
+      }
+    },
     "CopySnapshotRequest":{
       "type":"structure",
       "required":[
@@ -2218,6 +3278,26 @@
         "operations":{"shape":"OperationList"}
       }
     },
+    "CreateCertificateRequest":{
+      "type":"structure",
+      "required":[
+        "certificateName",
+        "domainName"
+      ],
+      "members":{
+        "certificateName":{"shape":"CertificateName"},
+        "domainName":{"shape":"DomainName"},
+        "subjectAlternativeNames":{"shape":"SubjectAlternativeNameList"},
+        "tags":{"shape":"TagList"}
+      }
+    },
+    "CreateCertificateResult":{
+      "type":"structure",
+      "members":{
+        "certificate":{"shape":"CertificateSummary"},
+        "operations":{"shape":"OperationList"}
+      }
+    },
     "CreateCloudFormationStackRequest":{
       "type":"structure",
       "required":["instances"],
@@ -2229,6 +3309,71 @@
       "type":"structure",
       "members":{
         "operations":{"shape":"OperationList"}
+      }
+    },
+    "CreateContactMethodRequest":{
+      "type":"structure",
+      "required":[
+        "protocol",
+        "contactEndpoint"
+      ],
+      "members":{
+        "protocol":{"shape":"ContactProtocol"},
+        "contactEndpoint":{"shape":"StringMax256"}
+      }
+    },
+    "CreateContactMethodResult":{
+      "type":"structure",
+      "members":{
+        "operations":{"shape":"OperationList"}
+      }
+    },
+    "CreateContainerServiceDeploymentRequest":{
+      "type":"structure",
+      "required":["serviceName"],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"},
+        "containers":{"shape":"ContainerMap"},
+        "publicEndpoint":{"shape":"EndpointRequest"}
+      }
+    },
+    "CreateContainerServiceDeploymentResult":{
+      "type":"structure",
+      "members":{
+        "containerService":{"shape":"ContainerService"}
+      }
+    },
+    "CreateContainerServiceRegistryLoginRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "CreateContainerServiceRegistryLoginResult":{
+      "type":"structure",
+      "members":{
+        "registryLogin":{"shape":"ContainerServiceRegistryLogin"}
+      }
+    },
+    "CreateContainerServiceRequest":{
+      "type":"structure",
+      "required":[
+        "serviceName",
+        "power",
+        "scale"
+      ],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"},
+        "power":{"shape":"ContainerServicePowerName"},
+        "scale":{"shape":"ContainerServiceScale"},
+        "tags":{"shape":"TagList"},
+        "publicDomainNames":{"shape":"ContainerServicePublicDomains"},
+        "deployment":{"shape":"ContainerServiceDeploymentRequest"}
+      }
+    },
+    "CreateContainerServiceResult":{
+      "type":"structure",
+      "members":{
+        "containerService":{"shape":"ContainerService"}
       }
     },
     "CreateDiskFromSnapshotRequest":{
@@ -2291,6 +3436,32 @@
       "type":"structure",
       "members":{
         "operations":{"shape":"OperationList"}
+      }
+    },
+    "CreateDistributionRequest":{
+      "type":"structure",
+      "required":[
+        "distributionName",
+        "origin",
+        "defaultCacheBehavior",
+        "bundleId"
+      ],
+      "members":{
+        "distributionName":{"shape":"ResourceName"},
+        "origin":{"shape":"InputOrigin"},
+        "defaultCacheBehavior":{"shape":"CacheBehavior"},
+        "cacheBehaviorSettings":{"shape":"CacheSettings"},
+        "cacheBehaviors":{"shape":"CacheBehaviorList"},
+        "bundleId":{"shape":"string"},
+        "ipAddressType":{"shape":"IpAddressType"},
+        "tags":{"shape":"TagList"}
+      }
+    },
+    "CreateDistributionResult":{
+      "type":"structure",
+      "members":{
+        "distribution":{"shape":"LightsailDistribution"},
+        "operation":{"shape":"Operation"}
       }
     },
     "CreateDomainEntryRequest":{
@@ -2359,6 +3530,7 @@
         "keyPairName":{"shape":"ResourceName"},
         "tags":{"shape":"TagList"},
         "addOns":{"shape":"AddOnRequestList"},
+        "ipAddressType":{"shape":"IpAddressType"},
         "sourceInstanceName":{"shape":"string"},
         "restoreDate":{"shape":"string"},
         "useLatestRestorableAutoSnapshot":{"shape":"boolean"}
@@ -2390,7 +3562,8 @@
         "userData":{"shape":"string"},
         "keyPairName":{"shape":"ResourceName"},
         "tags":{"shape":"TagList"},
-        "addOns":{"shape":"AddOnRequestList"}
+        "addOns":{"shape":"AddOnRequestList"},
+        "ipAddressType":{"shape":"IpAddressType"}
       }
     },
     "CreateInstancesResult":{
@@ -2429,7 +3602,8 @@
         "certificateName":{"shape":"ResourceName"},
         "certificateDomainName":{"shape":"DomainName"},
         "certificateAlternativeNames":{"shape":"DomainNameList"},
-        "tags":{"shape":"TagList"}
+        "tags":{"shape":"TagList"},
+        "ipAddressType":{"shape":"IpAddressType"}
       }
     },
     "CreateLoadBalancerResult":{
@@ -2527,6 +3701,19 @@
         "operations":{"shape":"OperationList"}
       }
     },
+    "DeleteAlarmRequest":{
+      "type":"structure",
+      "required":["alarmName"],
+      "members":{
+        "alarmName":{"shape":"ResourceName"}
+      }
+    },
+    "DeleteAlarmResult":{
+      "type":"structure",
+      "members":{
+        "operations":{"shape":"OperationList"}
+      }
+    },
     "DeleteAutoSnapshotRequest":{
       "type":"structure",
       "required":[
@@ -2542,6 +3729,60 @@
       "type":"structure",
       "members":{
         "operations":{"shape":"OperationList"}
+      }
+    },
+    "DeleteCertificateRequest":{
+      "type":"structure",
+      "required":["certificateName"],
+      "members":{
+        "certificateName":{"shape":"CertificateName"}
+      }
+    },
+    "DeleteCertificateResult":{
+      "type":"structure",
+      "members":{
+        "operations":{"shape":"OperationList"}
+      }
+    },
+    "DeleteContactMethodRequest":{
+      "type":"structure",
+      "required":["protocol"],
+      "members":{
+        "protocol":{"shape":"ContactProtocol"}
+      }
+    },
+    "DeleteContactMethodResult":{
+      "type":"structure",
+      "members":{
+        "operations":{"shape":"OperationList"}
+      }
+    },
+    "DeleteContainerImageRequest":{
+      "type":"structure",
+      "required":[
+        "serviceName",
+        "image"
+      ],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"},
+        "image":{"shape":"string"}
+      }
+    },
+    "DeleteContainerImageResult":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "DeleteContainerServiceRequest":{
+      "type":"structure",
+      "required":["serviceName"],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"}
+      }
+    },
+    "DeleteContainerServiceResult":{
+      "type":"structure",
+      "members":{
       }
     },
     "DeleteDiskRequest":{
@@ -2569,6 +3810,18 @@
       "type":"structure",
       "members":{
         "operations":{"shape":"OperationList"}
+      }
+    },
+    "DeleteDistributionRequest":{
+      "type":"structure",
+      "members":{
+        "distributionName":{"shape":"ResourceName"}
+      }
+    },
+    "DeleteDistributionResult":{
+      "type":"structure",
+      "members":{
+        "operation":{"shape":"Operation"}
       }
     },
     "DeleteDomainEntryRequest":{
@@ -2718,6 +3971,19 @@
       "members":{
         "id":{"shape":"NonEmptyString"},
         "service":{"shape":"NonEmptyString"}
+      }
+    },
+    "DetachCertificateFromDistributionRequest":{
+      "type":"structure",
+      "required":["distributionName"],
+      "members":{
+        "distributionName":{"shape":"ResourceName"}
+      }
+    },
+    "DetachCertificateFromDistributionResult":{
+      "type":"structure",
+      "members":{
+        "operation":{"shape":"Operation"}
       }
     },
     "DetachDiskRequest":{
@@ -2885,6 +4151,35 @@
         "unknown"
       ]
     },
+    "DistributionBundle":{
+      "type":"structure",
+      "members":{
+        "bundleId":{"shape":"string"},
+        "name":{"shape":"string"},
+        "price":{"shape":"float"},
+        "transferPerMonthInGb":{"shape":"integer"},
+        "isActive":{"shape":"boolean"}
+      }
+    },
+    "DistributionBundleList":{
+      "type":"list",
+      "member":{"shape":"DistributionBundle"}
+    },
+    "DistributionList":{
+      "type":"list",
+      "member":{"shape":"LightsailDistribution"}
+    },
+    "DistributionMetricName":{
+      "type":"string",
+      "enum":[
+        "Requests",
+        "BytesDownloaded",
+        "BytesUploaded",
+        "TotalErrorRate",
+        "Http4xxErrorRate",
+        "Http5xxErrorRate"
+      ]
+    },
     "Domain":{
       "type":"structure",
       "members":{
@@ -2932,6 +4227,17 @@
       "type":"list",
       "member":{"shape":"DomainName"}
     },
+    "DomainValidationRecord":{
+      "type":"structure",
+      "members":{
+        "domainName":{"shape":"DomainName"},
+        "resourceRecord":{"shape":"ResourceRecord"}
+      }
+    },
+    "DomainValidationRecordList":{
+      "type":"list",
+      "member":{"shape":"DomainValidationRecord"}
+    },
     "DownloadDefaultKeyPairRequest":{
       "type":"structure",
       "members":{
@@ -2944,6 +4250,7 @@
         "privateKeyBase64":{"shape":"Base64"}
       }
     },
+    "EligibleToRenew":{"type":"string"},
     "EnableAddOnRequest":{
       "type":"structure",
       "required":[
@@ -2960,6 +4267,23 @@
       "members":{
         "operations":{"shape":"OperationList"}
       }
+    },
+    "EndpointRequest":{
+      "type":"structure",
+      "required":[
+        "containerName",
+        "containerPort"
+      ],
+      "members":{
+        "containerName":{"shape":"string"},
+        "containerPort":{"shape":"integer"},
+        "healthCheck":{"shape":"ContainerServiceHealthCheckConfig"}
+      }
+    },
+    "Environment":{
+      "type":"map",
+      "key":{"shape":"string"},
+      "value":{"shape":"string"}
     },
     "ExportSnapshotRecord":{
       "type":"structure",
@@ -3011,6 +4335,14 @@
         "operations":{"shape":"OperationList"}
       }
     },
+    "ForwardValues":{
+      "type":"string",
+      "enum":[
+        "none",
+        "allow-list",
+        "all"
+      ]
+    },
     "GetActiveNamesRequest":{
       "type":"structure",
       "members":{
@@ -3021,6 +4353,21 @@
       "type":"structure",
       "members":{
         "activeNames":{"shape":"StringList"},
+        "nextPageToken":{"shape":"string"}
+      }
+    },
+    "GetAlarmsRequest":{
+      "type":"structure",
+      "members":{
+        "alarmName":{"shape":"ResourceName"},
+        "pageToken":{"shape":"string"},
+        "monitoredResourceName":{"shape":"ResourceName"}
+      }
+    },
+    "GetAlarmsResult":{
+      "type":"structure",
+      "members":{
+        "alarms":{"shape":"AlarmsList"},
         "nextPageToken":{"shape":"string"}
       }
     },
@@ -3067,6 +4414,20 @@
         "nextPageToken":{"shape":"string"}
       }
     },
+    "GetCertificatesRequest":{
+      "type":"structure",
+      "members":{
+        "certificateStatuses":{"shape":"CertificateStatusList"},
+        "includeCertificateDetails":{"shape":"IncludeCertificateDetails"},
+        "certificateName":{"shape":"CertificateName"}
+      }
+    },
+    "GetCertificatesResult":{
+      "type":"structure",
+      "members":{
+        "certificates":{"shape":"CertificateSummaryList"}
+      }
+    },
     "GetCloudFormationStackRecordsRequest":{
       "type":"structure",
       "members":{
@@ -3078,6 +4439,120 @@
       "members":{
         "cloudFormationStackRecords":{"shape":"CloudFormationStackRecordList"},
         "nextPageToken":{"shape":"string"}
+      }
+    },
+    "GetContactMethodsRequest":{
+      "type":"structure",
+      "members":{
+        "protocols":{"shape":"ContactProtocolsList"}
+      }
+    },
+    "GetContactMethodsResult":{
+      "type":"structure",
+      "members":{
+        "contactMethods":{"shape":"ContactMethodsList"}
+      }
+    },
+    "GetContainerAPIMetadataRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "GetContainerAPIMetadataResult":{
+      "type":"structure",
+      "members":{
+        "metadata":{"shape":"ContainerServiceMetadataEntryList"}
+      }
+    },
+    "GetContainerImagesRequest":{
+      "type":"structure",
+      "required":["serviceName"],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"}
+      }
+    },
+    "GetContainerImagesResult":{
+      "type":"structure",
+      "members":{
+        "containerImages":{"shape":"ContainerImageList"}
+      }
+    },
+    "GetContainerLogRequest":{
+      "type":"structure",
+      "required":[
+        "serviceName",
+        "containerName"
+      ],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"},
+        "containerName":{"shape":"string"},
+        "startTime":{"shape":"IsoDate"},
+        "endTime":{"shape":"IsoDate"},
+        "filterPattern":{"shape":"string"},
+        "pageToken":{"shape":"string"}
+      }
+    },
+    "GetContainerLogResult":{
+      "type":"structure",
+      "members":{
+        "logEvents":{"shape":"ContainerServiceLogEventList"},
+        "nextPageToken":{"shape":"string"}
+      }
+    },
+    "GetContainerServiceDeploymentsRequest":{
+      "type":"structure",
+      "required":["serviceName"],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"}
+      }
+    },
+    "GetContainerServiceDeploymentsResult":{
+      "type":"structure",
+      "members":{
+        "deployments":{"shape":"ContainerServiceDeploymentList"}
+      }
+    },
+    "GetContainerServiceMetricDataRequest":{
+      "type":"structure",
+      "required":[
+        "serviceName",
+        "metricName",
+        "startTime",
+        "endTime",
+        "period",
+        "statistics"
+      ],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"},
+        "metricName":{"shape":"ContainerServiceMetricName"},
+        "startTime":{"shape":"IsoDate"},
+        "endTime":{"shape":"IsoDate"},
+        "period":{"shape":"MetricPeriod"},
+        "statistics":{"shape":"MetricStatisticList"}
+      }
+    },
+    "GetContainerServiceMetricDataResult":{
+      "type":"structure",
+      "members":{
+        "metricName":{"shape":"ContainerServiceMetricName"},
+        "metricData":{"shape":"MetricDatapointList"}
+      }
+    },
+    "GetContainerServicePowersRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "GetContainerServicePowersResult":{
+      "type":"structure",
+      "members":{
+        "powers":{"shape":"ContainerServicePowerList"}
+      }
+    },
+    "GetContainerServicesRequest":{
+      "type":"structure",
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"}
       }
     },
     "GetDiskRequest":{
@@ -3129,6 +4604,72 @@
       "type":"structure",
       "members":{
         "disks":{"shape":"DiskList"},
+        "nextPageToken":{"shape":"string"}
+      }
+    },
+    "GetDistributionBundlesRequest":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "GetDistributionBundlesResult":{
+      "type":"structure",
+      "members":{
+        "bundles":{"shape":"DistributionBundleList"}
+      }
+    },
+    "GetDistributionLatestCacheResetRequest":{
+      "type":"structure",
+      "members":{
+        "distributionName":{"shape":"ResourceName"}
+      }
+    },
+    "GetDistributionLatestCacheResetResult":{
+      "type":"structure",
+      "members":{
+        "status":{"shape":"string"},
+        "createTime":{"shape":"IsoDate"}
+      }
+    },
+    "GetDistributionMetricDataRequest":{
+      "type":"structure",
+      "required":[
+        "distributionName",
+        "metricName",
+        "startTime",
+        "endTime",
+        "period",
+        "unit",
+        "statistics"
+      ],
+      "members":{
+        "distributionName":{"shape":"ResourceName"},
+        "metricName":{"shape":"DistributionMetricName"},
+        "startTime":{"shape":"timestamp"},
+        "endTime":{"shape":"timestamp"},
+        "period":{"shape":"MetricPeriod"},
+        "unit":{"shape":"MetricUnit"},
+        "statistics":{"shape":"MetricStatisticList"}
+      }
+    },
+    "GetDistributionMetricDataResult":{
+      "type":"structure",
+      "members":{
+        "metricName":{"shape":"DistributionMetricName"},
+        "metricData":{"shape":"MetricDatapointList"}
+      }
+    },
+    "GetDistributionsRequest":{
+      "type":"structure",
+      "members":{
+        "distributionName":{"shape":"ResourceName"},
+        "pageToken":{"shape":"string"}
+      }
+    },
+    "GetDistributionsResult":{
+      "type":"structure",
+      "members":{
+        "distributions":{"shape":"DistributionList"},
         "nextPageToken":{"shape":"string"}
       }
     },
@@ -3656,6 +5197,37 @@
         "nextPageToken":{"shape":"string"}
       }
     },
+    "HeaderEnum":{
+      "type":"string",
+      "enum":[
+        "Accept",
+        "Accept-Charset",
+        "Accept-Datetime",
+        "Accept-Encoding",
+        "Accept-Language",
+        "Authorization",
+        "CloudFront-Forwarded-Proto",
+        "CloudFront-Is-Desktop-Viewer",
+        "CloudFront-Is-Mobile-Viewer",
+        "CloudFront-Is-SmartTV-Viewer",
+        "CloudFront-Is-Tablet-Viewer",
+        "CloudFront-Viewer-Country",
+        "Host",
+        "Origin",
+        "Referer"
+      ]
+    },
+    "HeaderForwardList":{
+      "type":"list",
+      "member":{"shape":"HeaderEnum"}
+    },
+    "HeaderObject":{
+      "type":"structure",
+      "members":{
+        "option":{"shape":"ForwardValues"},
+        "headersAllowList":{"shape":"HeaderForwardList"}
+      }
+    },
     "HostKeyAttributes":{
       "type":"structure",
       "members":{
@@ -3689,6 +5261,16 @@
         "operation":{"shape":"Operation"}
       }
     },
+    "InUseResourceCount":{"type":"integer"},
+    "IncludeCertificateDetails":{"type":"boolean"},
+    "InputOrigin":{
+      "type":"structure",
+      "members":{
+        "name":{"shape":"ResourceName"},
+        "regionName":{"shape":"RegionName"},
+        "protocolPolicy":{"shape":"OriginProtocolPolicyEnum"}
+      }
+    },
     "Instance":{
       "type":"structure",
       "members":{
@@ -3706,7 +5288,8 @@
         "isStaticIp":{"shape":"boolean"},
         "privateIpAddress":{"shape":"IpAddress"},
         "publicIpAddress":{"shape":"IpAddress"},
-        "ipv6Address":{"shape":"IpV6Address"},
+        "ipv6Addresses":{"shape":"Ipv6AddressList"},
+        "ipAddressType":{"shape":"IpAddressType"},
         "hardware":{"shape":"InstanceHardware"},
         "networking":{"shape":"InstanceNetworking"},
         "state":{"shape":"InstanceState"},
@@ -3815,7 +5398,9 @@
         "NetworkOut",
         "StatusCheckFailed",
         "StatusCheckFailed_Instance",
-        "StatusCheckFailed_System"
+        "StatusCheckFailed_System",
+        "BurstCapacityTime",
+        "BurstCapacityPercentage"
       ]
     },
     "InstanceNetworking":{
@@ -3845,7 +5430,10 @@
         "accessFrom":{"shape":"string"},
         "accessType":{"shape":"PortAccessType"},
         "commonName":{"shape":"string"},
-        "accessDirection":{"shape":"AccessDirection"}
+        "accessDirection":{"shape":"AccessDirection"},
+        "cidrs":{"shape":"StringList"},
+        "ipv6Cidrs":{"shape":"StringList"},
+        "cidrListAliases":{"shape":"StringList"}
       }
     },
     "InstancePortInfoList":{
@@ -3858,7 +5446,10 @@
         "fromPort":{"shape":"Port"},
         "toPort":{"shape":"Port"},
         "protocol":{"shape":"NetworkProtocol"},
-        "state":{"shape":"PortState"}
+        "state":{"shape":"PortState"},
+        "cidrs":{"shape":"StringList"},
+        "ipv6Cidrs":{"shape":"StringList"},
+        "cidrListAliases":{"shape":"StringList"}
       }
     },
     "InstancePortStateList":{
@@ -3927,9 +5518,20 @@
       "type":"string",
       "pattern":"([0-9]{1,3}\\.){3}[0-9]{1,3}"
     },
-    "IpV6Address":{
+    "IpAddressType":{
+      "type":"string",
+      "enum":[
+        "dualstack",
+        "ipv4"
+      ]
+    },
+    "Ipv6Address":{
       "type":"string",
       "pattern":"([A-F0-9]{1,4}:){7}[A-F0-9]{1,4}"
+    },
+    "Ipv6AddressList":{
+      "type":"list",
+      "member":{"shape":"Ipv6Address"}
     },
     "IsVpcPeeredRequest":{
       "type":"structure",
@@ -3943,6 +5545,8 @@
       }
     },
     "IsoDate":{"type":"timestamp"},
+    "IssuerCA":{"type":"string"},
+    "KeyAlgorithm":{"type":"string"},
     "KeyPair":{
       "type":"structure",
       "members":{
@@ -3959,6 +5563,31 @@
     "KeyPairList":{
       "type":"list",
       "member":{"shape":"KeyPair"}
+    },
+    "LightsailDistribution":{
+      "type":"structure",
+      "members":{
+        "name":{"shape":"ResourceName"},
+        "arn":{"shape":"NonEmptyString"},
+        "supportCode":{"shape":"string"},
+        "createdAt":{"shape":"IsoDate"},
+        "location":{"shape":"ResourceLocation"},
+        "resourceType":{"shape":"ResourceType"},
+        "alternativeDomainNames":{"shape":"StringList"},
+        "status":{"shape":"string"},
+        "isEnabled":{"shape":"boolean"},
+        "domainName":{"shape":"string"},
+        "bundleId":{"shape":"string"},
+        "certificateName":{"shape":"ResourceName"},
+        "origin":{"shape":"Origin"},
+        "originPublicDNS":{"shape":"string"},
+        "defaultCacheBehavior":{"shape":"CacheBehavior"},
+        "cacheBehaviorSettings":{"shape":"CacheSettings"},
+        "cacheBehaviors":{"shape":"CacheBehaviorList"},
+        "ableToUpdateBundle":{"shape":"boolean"},
+        "ipAddressType":{"shape":"IpAddressType"},
+        "tags":{"shape":"TagList"}
+      }
     },
     "LoadBalancer":{
       "type":"structure",
@@ -3978,7 +5607,8 @@
         "instancePort":{"shape":"integer"},
         "instanceHealthSummary":{"shape":"InstanceHealthSummaryList"},
         "tlsCertificateSummaries":{"shape":"LoadBalancerTlsCertificateSummaryList"},
-        "configurationOptions":{"shape":"LoadBalancerConfigurationOptions"}
+        "configurationOptions":{"shape":"LoadBalancerConfigurationOptions"},
+        "ipAddressType":{"shape":"IpAddressType"}
       }
     },
     "LoadBalancerAttributeName":{
@@ -4191,6 +5821,36 @@
       "type":"list",
       "member":{"shape":"MetricDatapoint"}
     },
+    "MetricName":{
+      "type":"string",
+      "enum":[
+        "CPUUtilization",
+        "NetworkIn",
+        "NetworkOut",
+        "StatusCheckFailed",
+        "StatusCheckFailed_Instance",
+        "StatusCheckFailed_System",
+        "ClientTLSNegotiationErrorCount",
+        "HealthyHostCount",
+        "UnhealthyHostCount",
+        "HTTPCode_LB_4XX_Count",
+        "HTTPCode_LB_5XX_Count",
+        "HTTPCode_Instance_2XX_Count",
+        "HTTPCode_Instance_3XX_Count",
+        "HTTPCode_Instance_4XX_Count",
+        "HTTPCode_Instance_5XX_Count",
+        "InstanceResponseTime",
+        "RejectedConnectionCount",
+        "RequestCount",
+        "DatabaseConnections",
+        "DiskQueueDepth",
+        "FreeStorageSpace",
+        "NetworkReceiveThroughput",
+        "NetworkTransmitThroughput",
+        "BurstCapacityTime",
+        "BurstCapacityPercentage"
+      ]
+    },
     "MetricPeriod":{
       "type":"integer",
       "max":86400,
@@ -4242,6 +5902,14 @@
         "None"
       ]
     },
+    "MonitoredResourceInfo":{
+      "type":"structure",
+      "members":{
+        "arn":{"shape":"ResourceArn"},
+        "name":{"shape":"ResourceName"},
+        "resourceType":{"shape":"ResourceType"}
+      }
+    },
     "MonthlyTransfer":{
       "type":"structure",
       "members":{
@@ -4253,7 +5921,8 @@
       "enum":[
         "tcp",
         "all",
-        "udp"
+        "udp",
+        "icmp"
       ]
     },
     "NonEmptyString":{
@@ -4269,6 +5938,10 @@
         "tip":{"shape":"string"}
       },
       "exception":true
+    },
+    "NotificationTriggerList":{
+      "type":"list",
+      "member":{"shape":"AlarmState"}
     },
     "OpenInstancePublicPortsRequest":{
       "type":"structure",
@@ -4377,7 +6050,48 @@
         "RebootRelationalDatabase",
         "StopRelationalDatabase",
         "EnableAddOn",
-        "DisableAddOn"
+        "DisableAddOn",
+        "PutAlarm",
+        "GetAlarms",
+        "DeleteAlarm",
+        "TestAlarm",
+        "CreateContactMethod",
+        "GetContactMethods",
+        "SendContactMethodVerification",
+        "DeleteContactMethod",
+        "CreateDistribution",
+        "UpdateDistribution",
+        "DeleteDistribution",
+        "ResetDistributionCache",
+        "AttachCertificateToDistribution",
+        "DetachCertificateFromDistribution",
+        "UpdateDistributionBundle",
+        "SetIpAddressType",
+        "CreateCertificate",
+        "DeleteCertificate",
+        "CreateContainerService",
+        "UpdateContainerService",
+        "DeleteContainerService",
+        "CreateContainerServiceDeployment",
+        "CreateContainerServiceRegistryLogin",
+        "RegisterContainerImage",
+        "DeleteContainerImage"
+      ]
+    },
+    "Origin":{
+      "type":"structure",
+      "members":{
+        "name":{"shape":"ResourceName"},
+        "resourceType":{"shape":"ResourceType"},
+        "regionName":{"shape":"RegionName"},
+        "protocolPolicy":{"shape":"OriginProtocolPolicyEnum"}
+      }
+    },
+    "OriginProtocolPolicyEnum":{
+      "type":"string",
+      "enum":[
+        "http-only",
+        "https-only"
       ]
     },
     "PasswordData":{
@@ -4421,7 +6135,7 @@
     "Port":{
       "type":"integer",
       "max":65535,
-      "min":0
+      "min":-1
     },
     "PortAccessType":{
       "type":"string",
@@ -4435,7 +6149,10 @@
       "members":{
         "fromPort":{"shape":"Port"},
         "toPort":{"shape":"Port"},
-        "protocol":{"shape":"NetworkProtocol"}
+        "protocol":{"shape":"NetworkProtocol"},
+        "cidrs":{"shape":"StringList"},
+        "ipv6Cidrs":{"shape":"StringList"},
+        "cidrListAliases":{"shape":"StringList"}
       }
     },
     "PortInfoList":{
@@ -4455,12 +6172,47 @@
       "type":"list",
       "member":{"shape":"Port"}
     },
+    "PortMap":{
+      "type":"map",
+      "key":{"shape":"string"},
+      "value":{"shape":"ContainerServiceProtocol"}
+    },
     "PortState":{
       "type":"string",
       "enum":[
         "open",
         "closed"
       ]
+    },
+    "PutAlarmRequest":{
+      "type":"structure",
+      "required":[
+        "alarmName",
+        "metricName",
+        "monitoredResourceName",
+        "comparisonOperator",
+        "threshold",
+        "evaluationPeriods"
+      ],
+      "members":{
+        "alarmName":{"shape":"ResourceName"},
+        "metricName":{"shape":"MetricName"},
+        "monitoredResourceName":{"shape":"ResourceName"},
+        "comparisonOperator":{"shape":"ComparisonOperator"},
+        "threshold":{"shape":"double"},
+        "evaluationPeriods":{"shape":"integer"},
+        "datapointsToAlarm":{"shape":"integer"},
+        "treatMissingData":{"shape":"TreatMissingData"},
+        "contactProtocols":{"shape":"ContactProtocolsList"},
+        "notificationTriggers":{"shape":"NotificationTriggerList"},
+        "notificationEnabled":{"shape":"boolean"}
+      }
+    },
+    "PutAlarmResult":{
+      "type":"structure",
+      "members":{
+        "operations":{"shape":"OperationList"}
+      }
     },
     "PutInstancePublicPortsRequest":{
       "type":"structure",
@@ -4477,6 +6229,13 @@
       "type":"structure",
       "members":{
         "operation":{"shape":"Operation"}
+      }
+    },
+    "QueryStringObject":{
+      "type":"structure",
+      "members":{
+        "option":{"shape":"boolean"},
+        "queryStringsAllowList":{"shape":"StringList"}
       }
     },
     "RebootInstanceRequest":{
@@ -4546,6 +6305,25 @@
         "ap-northeast-1",
         "ap-northeast-2"
       ]
+    },
+    "RegisterContainerImageRequest":{
+      "type":"structure",
+      "required":[
+        "serviceName",
+        "label",
+        "digest"
+      ],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"},
+        "label":{"shape":"ContainerLabel"},
+        "digest":{"shape":"string"}
+      }
+    },
+    "RegisterContainerImageResult":{
+      "type":"structure",
+      "members":{
+        "containerImage":{"shape":"ContainerImage"}
+      }
     },
     "RelationalDatabase":{
       "type":"structure",
@@ -4720,6 +6498,40 @@
         "operations":{"shape":"OperationList"}
       }
     },
+    "RenewalStatus":{
+      "type":"string",
+      "enum":[
+        "PendingAutoRenewal",
+        "PendingValidation",
+        "Success",
+        "Failed"
+      ]
+    },
+    "RenewalStatusReason":{"type":"string"},
+    "RenewalSummary":{
+      "type":"structure",
+      "members":{
+        "domainValidationRecords":{"shape":"DomainValidationRecordList"},
+        "renewalStatus":{"shape":"RenewalStatus"},
+        "renewalStatusReason":{"shape":"RenewalStatusReason"},
+        "updatedAt":{"shape":"IsoDate"}
+      }
+    },
+    "RequestFailureReason":{"type":"string"},
+    "ResetDistributionCacheRequest":{
+      "type":"structure",
+      "members":{
+        "distributionName":{"shape":"ResourceName"}
+      }
+    },
+    "ResetDistributionCacheResult":{
+      "type":"structure",
+      "members":{
+        "status":{"shape":"string"},
+        "createTime":{"shape":"IsoDate"},
+        "operation":{"shape":"Operation"}
+      }
+    },
     "ResourceArn":{
       "type":"string",
       "pattern":"^arn:(aws[^:]*):([a-zA-Z0-9-]+):([a-z0-9-]+):([0-9]+):([a-zA-Z]+)/([a-zA-Z0-9-]+)$"
@@ -4739,9 +6551,18 @@
       "type":"list",
       "member":{"shape":"ResourceName"}
     },
+    "ResourceRecord":{
+      "type":"structure",
+      "members":{
+        "name":{"shape":"string"},
+        "type":{"shape":"string"},
+        "value":{"shape":"string"}
+      }
+    },
     "ResourceType":{
       "type":"string",
       "enum":[
+        "ContainerService",
         "Instance",
         "StaticIp",
         "KeyPair",
@@ -4755,13 +6576,32 @@
         "RelationalDatabase",
         "RelationalDatabaseSnapshot",
         "ExportSnapshotRecord",
-        "CloudFormationStackRecord"
+        "CloudFormationStackRecord",
+        "Alarm",
+        "ContactMethod",
+        "Distribution",
+        "Certificate"
       ]
+    },
+    "RevocationReason":{"type":"string"},
+    "SendContactMethodVerificationRequest":{
+      "type":"structure",
+      "required":["protocol"],
+      "members":{
+        "protocol":{"shape":"ContactMethodVerificationProtocol"}
+      }
+    },
+    "SendContactMethodVerificationResult":{
+      "type":"structure",
+      "members":{
+        "operations":{"shape":"OperationList"}
+      }
     },
     "SensitiveString":{
       "type":"string",
       "sensitive":true
     },
+    "SerialNumber":{"type":"string"},
     "ServiceException":{
       "type":"structure",
       "members":{
@@ -4772,6 +6612,25 @@
       },
       "exception":true,
       "fault":true
+    },
+    "SetIpAddressTypeRequest":{
+      "type":"structure",
+      "required":[
+        "resourceType",
+        "resourceName",
+        "ipAddressType"
+      ],
+      "members":{
+        "resourceType":{"shape":"ResourceType"},
+        "resourceName":{"shape":"ResourceName"},
+        "ipAddressType":{"shape":"IpAddressType"}
+      }
+    },
+    "SetIpAddressTypeResult":{
+      "type":"structure",
+      "members":{
+        "operations":{"shape":"OperationList"}
+      }
     },
     "StartInstanceRequest":{
       "type":"structure",
@@ -4854,6 +6713,10 @@
       "max":256,
       "min":1
     },
+    "SubjectAlternativeNameList":{
+      "type":"list",
+      "member":{"shape":"DomainName"}
+    },
     "Tag":{
       "type":"structure",
       "members":{
@@ -4889,9 +6752,35 @@
       }
     },
     "TagValue":{"type":"string"},
+    "TestAlarmRequest":{
+      "type":"structure",
+      "required":[
+        "alarmName",
+        "state"
+      ],
+      "members":{
+        "alarmName":{"shape":"ResourceName"},
+        "state":{"shape":"AlarmState"}
+      }
+    },
+    "TestAlarmResult":{
+      "type":"structure",
+      "members":{
+        "operations":{"shape":"OperationList"}
+      }
+    },
     "TimeOfDay":{
       "type":"string",
       "pattern":"^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "TreatMissingData":{
+      "type":"string",
+      "enum":[
+        "breaching",
+        "notBreaching",
+        "ignore",
+        "missing"
+      ]
     },
     "UnauthenticatedException":{
       "type":"structure",
@@ -4930,6 +6819,54 @@
       "type":"structure",
       "members":{
         "operations":{"shape":"OperationList"}
+      }
+    },
+    "UpdateContainerServiceRequest":{
+      "type":"structure",
+      "required":["serviceName"],
+      "members":{
+        "serviceName":{"shape":"ContainerServiceName"},
+        "power":{"shape":"ContainerServicePowerName"},
+        "scale":{"shape":"ContainerServiceScale"},
+        "isDisabled":{"shape":"boolean"},
+        "publicDomainNames":{"shape":"ContainerServicePublicDomains"}
+      }
+    },
+    "UpdateContainerServiceResult":{
+      "type":"structure",
+      "members":{
+        "containerService":{"shape":"ContainerService"}
+      }
+    },
+    "UpdateDistributionBundleRequest":{
+      "type":"structure",
+      "members":{
+        "distributionName":{"shape":"ResourceName"},
+        "bundleId":{"shape":"string"}
+      }
+    },
+    "UpdateDistributionBundleResult":{
+      "type":"structure",
+      "members":{
+        "operation":{"shape":"Operation"}
+      }
+    },
+    "UpdateDistributionRequest":{
+      "type":"structure",
+      "required":["distributionName"],
+      "members":{
+        "distributionName":{"shape":"ResourceName"},
+        "origin":{"shape":"InputOrigin"},
+        "defaultCacheBehavior":{"shape":"CacheBehavior"},
+        "cacheBehaviorSettings":{"shape":"CacheSettings"},
+        "cacheBehaviors":{"shape":"CacheBehaviorList"},
+        "isEnabled":{"shape":"boolean"}
+      }
+    },
+    "UpdateDistributionResult":{
+      "type":"structure",
+      "members":{
+        "operation":{"shape":"Operation"}
       }
     },
     "UpdateDomainEntryRequest":{
@@ -5011,6 +6948,7 @@
     "double":{"type":"double"},
     "float":{"type":"float"},
     "integer":{"type":"integer"},
+    "long":{"type":"long"},
     "string":{"type":"string"},
     "timestamp":{"type":"timestamp"}
   }

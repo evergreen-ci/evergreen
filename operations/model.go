@@ -16,7 +16,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 const localConfigPath = ".evergreen.local.yml"
@@ -284,22 +284,6 @@ func (s *ClientSettings) FindDefaultParameters(project string) []patch.Parameter
 		}
 	}
 	return nil
-}
-
-func (s *ClientSettings) SetDefaultParameters(project string, parameters []patch.Parameter) {
-	params := parametersToMap(parameters)
-	for i, p := range s.Projects {
-		if p.Name == project {
-			s.Projects[i].Parameters = params
-			return
-		}
-	}
-
-	s.Projects = append(s.Projects, ClientProjectConf{
-		Name:       project,
-		Default:    true,
-		Parameters: params,
-	})
 }
 
 func parametersFromMap(params map[string]string) []patch.Parameter {

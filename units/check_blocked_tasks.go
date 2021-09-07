@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 
@@ -147,21 +146,13 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 	blockingDeactivatedTasks, err := t.BlockedOnDeactivatedDependency(dependencyCaches)
 	catcher.Add(errors.Wrap(err, "can't get blocked status"))
 	if err == nil && len(blockingDeactivatedTasks) > 0 {
-		var deactivatedDependencies []task.Task
-		deactivatedDependencies, err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher")
+		err = task.DeactivateDependencies(blockingDeactivatedTasks, evergreen.DefaultTaskActivator+".dispatcher")
 		catcher.Add(err)
-		if err == nil {
-			catcher.Add(build.SetManyCachedTasksActivated(deactivatedDependencies, false))
-		}
 	}
 
 	// also update the display task status in case it is out of date
 	if t.IsPartOfDisplay() {
-		parent, err := t.GetDisplayTask()
-		catcher.Add(err)
-		if parent != nil {
-			catcher.Add(model.UpdateDisplayTask(parent))
-		}
+		catcher.Add(model.UpdateDisplayTaskForTask(t))
 	}
 
 	numModified := len(blockingTasks) + len(blockingDeactivatedTasks)

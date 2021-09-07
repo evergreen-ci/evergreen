@@ -14,6 +14,7 @@ func TestCreateHostBuildFromService(t *testing.T) {
 		Host:               "foo.com",
 		ExternalIdentifier: "sir-123",
 		IP:                 "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47",
+		IPv4:               "12.34.56.78",
 	}
 	c := &CreateHost{}
 	err := c.BuildFromService(h)
@@ -21,6 +22,7 @@ func TestCreateHostBuildFromService(t *testing.T) {
 	assert.Equal(utility.FromStringPtr(c.DNSName), h.Host)
 	assert.Equal(utility.FromStringPtr(c.InstanceID), h.ExternalIdentifier)
 	assert.Equal(utility.FromStringPtr(c.IP), h.IP)
+	assert.Equal(utility.FromStringPtr(c.IPv4), h.IPv4)
 }
 
 func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {

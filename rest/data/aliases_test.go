@@ -9,6 +9,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type AliasSuite struct {
@@ -56,10 +57,11 @@ func (a *AliasSuite) SetupTest() {
 			Variant:   "variant",
 			Task:      "task",
 		},
-		{ProjectID: "repo_id",
-			Alias:   "from_repo",
-			Variant: "repo_variant",
-			Task:    "repo_task",
+		{
+			ProjectID: "repo_id",
+			Alias:     "from_repo",
+			Variant:   "repo_variant",
+			Task:      "repo_task",
 		},
 	}
 	for _, v := range aliases {
@@ -185,4 +187,53 @@ func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 	a.NoError(err)
 	a.True(hasAliases)
 	a.Equal("file.yml", path)
+}
+
+func (a *AliasSuite) TestUpdateAliasesForSection() {
+	originalAliases, err := model.FindAliasesForProject("project_id")
+	a.NoError(err)
+	a.Len(originalAliases, 3)
+
+	// delete one alias, add one alias, modify one alias
+	aliasToKeep := restModel.APIProjectAlias{}
+	a.NoError(aliasToKeep.BuildFromService(originalAliases[0]))
+	aliasToModify := restModel.APIProjectAlias{}
+	a.NoError(aliasToModify.BuildFromService(originalAliases[1]))
+	aliasToModify.Alias = utility.ToStringPtr("this is a new alias")
+
+	newAlias := restModel.APIProjectAlias{
+		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+		Alias:   utility.ToStringPtr("patchAlias"),
+		Variant: utility.ToStringPtr("var"),
+		Task:    utility.ToStringPtr("task"),
+	}
+	newInternalAlias := restModel.APIProjectAlias{
+		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+		Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias), //internal alias shouldn't be added
+		Variant: utility.ToStringPtr("var"),
+		Task:    utility.ToStringPtr("task"),
+	}
+
+	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
+	modified, err := a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
+	a.NoError(err)
+	a.True(modified)
+
+	aliasesFromDb, err := model.FindAliasesForProject("project_id")
+	a.NoError(err)
+	a.Len(aliasesFromDb, 3)
+	for _, alias := range aliasesFromDb {
+		a.NotEqual(alias.ID, originalAliases[2].ID)         // removed the alias that we didn't add to the new alias list
+		a.NotEqual(alias.Alias, evergreen.CommitQueueAlias) // didn't add the internal alias on the patch alias section
+		if alias.ID == originalAliases[1].ID {              // verify we modified the second alias
+			a.Equal(alias.Alias, "this is a new alias")
+		}
+	}
+
+	modified, err = a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
+	a.NoError(err)
+	a.True(modified)
+	aliasesFromDb, err = model.FindAliasesForProject("project_id")
+	a.NoError(err)
+	a.Len(aliasesFromDb, 4) // adds internal alias
 }

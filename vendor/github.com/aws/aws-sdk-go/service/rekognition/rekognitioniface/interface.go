@@ -88,6 +88,14 @@ type RekognitionAPI interface {
 	DeleteFacesWithContext(aws.Context, *rekognition.DeleteFacesInput, ...request.Option) (*rekognition.DeleteFacesOutput, error)
 	DeleteFacesRequest(*rekognition.DeleteFacesInput) (*request.Request, *rekognition.DeleteFacesOutput)
 
+	DeleteProject(*rekognition.DeleteProjectInput) (*rekognition.DeleteProjectOutput, error)
+	DeleteProjectWithContext(aws.Context, *rekognition.DeleteProjectInput, ...request.Option) (*rekognition.DeleteProjectOutput, error)
+	DeleteProjectRequest(*rekognition.DeleteProjectInput) (*request.Request, *rekognition.DeleteProjectOutput)
+
+	DeleteProjectVersion(*rekognition.DeleteProjectVersionInput) (*rekognition.DeleteProjectVersionOutput, error)
+	DeleteProjectVersionWithContext(aws.Context, *rekognition.DeleteProjectVersionInput, ...request.Option) (*rekognition.DeleteProjectVersionOutput, error)
+	DeleteProjectVersionRequest(*rekognition.DeleteProjectVersionInput) (*request.Request, *rekognition.DeleteProjectVersionOutput)
+
 	DeleteStreamProcessor(*rekognition.DeleteStreamProcessorInput) (*rekognition.DeleteStreamProcessorOutput, error)
 	DeleteStreamProcessorWithContext(aws.Context, *rekognition.DeleteStreamProcessorInput, ...request.Option) (*rekognition.DeleteStreamProcessorOutput, error)
 	DeleteStreamProcessorRequest(*rekognition.DeleteStreamProcessorInput) (*request.Request, *rekognition.DeleteStreamProcessorOutput)
@@ -129,6 +137,10 @@ type RekognitionAPI interface {
 	DetectModerationLabels(*rekognition.DetectModerationLabelsInput) (*rekognition.DetectModerationLabelsOutput, error)
 	DetectModerationLabelsWithContext(aws.Context, *rekognition.DetectModerationLabelsInput, ...request.Option) (*rekognition.DetectModerationLabelsOutput, error)
 	DetectModerationLabelsRequest(*rekognition.DetectModerationLabelsInput) (*request.Request, *rekognition.DetectModerationLabelsOutput)
+
+	DetectProtectiveEquipment(*rekognition.DetectProtectiveEquipmentInput) (*rekognition.DetectProtectiveEquipmentOutput, error)
+	DetectProtectiveEquipmentWithContext(aws.Context, *rekognition.DetectProtectiveEquipmentInput, ...request.Option) (*rekognition.DetectProtectiveEquipmentOutput, error)
+	DetectProtectiveEquipmentRequest(*rekognition.DetectProtectiveEquipmentInput) (*request.Request, *rekognition.DetectProtectiveEquipmentOutput)
 
 	DetectText(*rekognition.DetectTextInput) (*rekognition.DetectTextOutput, error)
 	DetectTextWithContext(aws.Context, *rekognition.DetectTextInput, ...request.Option) (*rekognition.DetectTextOutput, error)
@@ -180,6 +192,20 @@ type RekognitionAPI interface {
 	GetPersonTrackingPages(*rekognition.GetPersonTrackingInput, func(*rekognition.GetPersonTrackingOutput, bool) bool) error
 	GetPersonTrackingPagesWithContext(aws.Context, *rekognition.GetPersonTrackingInput, func(*rekognition.GetPersonTrackingOutput, bool) bool, ...request.Option) error
 
+	GetSegmentDetection(*rekognition.GetSegmentDetectionInput) (*rekognition.GetSegmentDetectionOutput, error)
+	GetSegmentDetectionWithContext(aws.Context, *rekognition.GetSegmentDetectionInput, ...request.Option) (*rekognition.GetSegmentDetectionOutput, error)
+	GetSegmentDetectionRequest(*rekognition.GetSegmentDetectionInput) (*request.Request, *rekognition.GetSegmentDetectionOutput)
+
+	GetSegmentDetectionPages(*rekognition.GetSegmentDetectionInput, func(*rekognition.GetSegmentDetectionOutput, bool) bool) error
+	GetSegmentDetectionPagesWithContext(aws.Context, *rekognition.GetSegmentDetectionInput, func(*rekognition.GetSegmentDetectionOutput, bool) bool, ...request.Option) error
+
+	GetTextDetection(*rekognition.GetTextDetectionInput) (*rekognition.GetTextDetectionOutput, error)
+	GetTextDetectionWithContext(aws.Context, *rekognition.GetTextDetectionInput, ...request.Option) (*rekognition.GetTextDetectionOutput, error)
+	GetTextDetectionRequest(*rekognition.GetTextDetectionInput) (*request.Request, *rekognition.GetTextDetectionOutput)
+
+	GetTextDetectionPages(*rekognition.GetTextDetectionInput, func(*rekognition.GetTextDetectionOutput, bool) bool) error
+	GetTextDetectionPagesWithContext(aws.Context, *rekognition.GetTextDetectionInput, func(*rekognition.GetTextDetectionOutput, bool) bool, ...request.Option) error
+
 	IndexFaces(*rekognition.IndexFacesInput) (*rekognition.IndexFacesOutput, error)
 	IndexFacesWithContext(aws.Context, *rekognition.IndexFacesInput, ...request.Option) (*rekognition.IndexFacesOutput, error)
 	IndexFacesRequest(*rekognition.IndexFacesInput) (*request.Request, *rekognition.IndexFacesOutput)
@@ -204,6 +230,10 @@ type RekognitionAPI interface {
 
 	ListStreamProcessorsPages(*rekognition.ListStreamProcessorsInput, func(*rekognition.ListStreamProcessorsOutput, bool) bool) error
 	ListStreamProcessorsPagesWithContext(aws.Context, *rekognition.ListStreamProcessorsInput, func(*rekognition.ListStreamProcessorsOutput, bool) bool, ...request.Option) error
+
+	ListTagsForResource(*rekognition.ListTagsForResourceInput) (*rekognition.ListTagsForResourceOutput, error)
+	ListTagsForResourceWithContext(aws.Context, *rekognition.ListTagsForResourceInput, ...request.Option) (*rekognition.ListTagsForResourceOutput, error)
+	ListTagsForResourceRequest(*rekognition.ListTagsForResourceInput) (*request.Request, *rekognition.ListTagsForResourceOutput)
 
 	RecognizeCelebrities(*rekognition.RecognizeCelebritiesInput) (*rekognition.RecognizeCelebritiesOutput, error)
 	RecognizeCelebritiesWithContext(aws.Context, *rekognition.RecognizeCelebritiesInput, ...request.Option) (*rekognition.RecognizeCelebritiesOutput, error)
@@ -245,9 +275,17 @@ type RekognitionAPI interface {
 	StartProjectVersionWithContext(aws.Context, *rekognition.StartProjectVersionInput, ...request.Option) (*rekognition.StartProjectVersionOutput, error)
 	StartProjectVersionRequest(*rekognition.StartProjectVersionInput) (*request.Request, *rekognition.StartProjectVersionOutput)
 
+	StartSegmentDetection(*rekognition.StartSegmentDetectionInput) (*rekognition.StartSegmentDetectionOutput, error)
+	StartSegmentDetectionWithContext(aws.Context, *rekognition.StartSegmentDetectionInput, ...request.Option) (*rekognition.StartSegmentDetectionOutput, error)
+	StartSegmentDetectionRequest(*rekognition.StartSegmentDetectionInput) (*request.Request, *rekognition.StartSegmentDetectionOutput)
+
 	StartStreamProcessor(*rekognition.StartStreamProcessorInput) (*rekognition.StartStreamProcessorOutput, error)
 	StartStreamProcessorWithContext(aws.Context, *rekognition.StartStreamProcessorInput, ...request.Option) (*rekognition.StartStreamProcessorOutput, error)
 	StartStreamProcessorRequest(*rekognition.StartStreamProcessorInput) (*request.Request, *rekognition.StartStreamProcessorOutput)
+
+	StartTextDetection(*rekognition.StartTextDetectionInput) (*rekognition.StartTextDetectionOutput, error)
+	StartTextDetectionWithContext(aws.Context, *rekognition.StartTextDetectionInput, ...request.Option) (*rekognition.StartTextDetectionOutput, error)
+	StartTextDetectionRequest(*rekognition.StartTextDetectionInput) (*request.Request, *rekognition.StartTextDetectionOutput)
 
 	StopProjectVersion(*rekognition.StopProjectVersionInput) (*rekognition.StopProjectVersionOutput, error)
 	StopProjectVersionWithContext(aws.Context, *rekognition.StopProjectVersionInput, ...request.Option) (*rekognition.StopProjectVersionOutput, error)
@@ -256,6 +294,14 @@ type RekognitionAPI interface {
 	StopStreamProcessor(*rekognition.StopStreamProcessorInput) (*rekognition.StopStreamProcessorOutput, error)
 	StopStreamProcessorWithContext(aws.Context, *rekognition.StopStreamProcessorInput, ...request.Option) (*rekognition.StopStreamProcessorOutput, error)
 	StopStreamProcessorRequest(*rekognition.StopStreamProcessorInput) (*request.Request, *rekognition.StopStreamProcessorOutput)
+
+	TagResource(*rekognition.TagResourceInput) (*rekognition.TagResourceOutput, error)
+	TagResourceWithContext(aws.Context, *rekognition.TagResourceInput, ...request.Option) (*rekognition.TagResourceOutput, error)
+	TagResourceRequest(*rekognition.TagResourceInput) (*request.Request, *rekognition.TagResourceOutput)
+
+	UntagResource(*rekognition.UntagResourceInput) (*rekognition.UntagResourceOutput, error)
+	UntagResourceWithContext(aws.Context, *rekognition.UntagResourceInput, ...request.Option) (*rekognition.UntagResourceOutput, error)
+	UntagResourceRequest(*rekognition.UntagResourceInput) (*request.Request, *rekognition.UntagResourceOutput)
 
 	WaitUntilProjectVersionRunning(*rekognition.DescribeProjectVersionsInput) error
 	WaitUntilProjectVersionRunningWithContext(aws.Context, *rekognition.DescribeProjectVersionsInput, ...request.WaiterOption) error

@@ -76,18 +76,6 @@ func TestDataConnectorSuite(t *testing.T) {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-
-	b.Tasks = []build.TaskCache{
-		{
-			Id: testTask1.Id,
-		},
-		{
-			Id: testTask2.Id,
-		},
-		{
-			Id: testTask3.Id,
-		},
-	}
 	require.NoError(t, b.Insert(), "error inserting documents")
 	require.NoError(t, v.Insert(), "error inserting documents")
 	require.NoError(t, testTask1.Insert(), "error inserting documents")
@@ -154,6 +142,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.HostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
 	s.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
 	s.EqualValues(testSettings.HostInit.S3BaseURL, settingsFromConnector.HostInit.S3BaseURL)
+	s.EqualValues(testSettings.PodInit.S3BaseURL, settingsFromConnector.PodInit.S3BaseURL)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
 	// We have to check different cases because the mock connector does not set
 	// defaults for the settings.
@@ -177,6 +166,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
+	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
@@ -301,6 +291,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
+	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)

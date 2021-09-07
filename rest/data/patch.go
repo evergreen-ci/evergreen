@@ -39,11 +39,15 @@ type DBPatchConnector struct{}
 // FindPatchesByProject uses the service layer's patches type to query the backing database for
 // the patches.
 func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
-	patches, err := patch.Find(patch.PatchesByProject(projectId, ts, limit))
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching patches for project %s", projectId)
-	}
 	apiPatches := []restModel.APIPatch{}
+	id, err := model.GetIdForProject(projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching project with id %s", projectId)
+	}
+	patches, err := patch.Find(patch.PatchesByProject(id, ts, limit))
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching patches for project %s", id)
+	}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
@@ -80,6 +84,25 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 	}
 
 	return &apiPatch, nil
+}
+
+// GetChildPatchIds queries the backing database for the child patch ids
+func (pc *DBPatchConnector) GetChildPatchIds(patchId string) ([]string, error) {
+	if err := validatePatchID(patchId); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	p, err := patch.FindOneId(patchId)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch with id %s not found", patchId),
+		}
+	}
+
+	return p.Triggers.ChildPatches, nil
 }
 
 func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.APIPatch, error) {
@@ -286,6 +309,29 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 		}
 	}
 
+	// set the patch status to the collective status between the parent and child patches
+	if patchDoc.IsParent() {
+		allStatuses := []string{patchDoc.Status}
+		for _, childPatchId := range patchDoc.Triggers.ChildPatches {
+			cp, err := patch.FindOneId(childPatchId)
+			if err != nil {
+				return nil, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "can't get child patch").Error(),
+				}
+			}
+			if cp == nil {
+				return nil, gimlet.ErrorResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    fmt.Sprintf("child patch with id %s not found", childPatchId),
+				}
+			}
+			allStatuses = append(allStatuses, cp.Status)
+		}
+
+		patchDoc.Status = patch.GetCollectiveStatus(allStatuses)
+	}
+
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -304,10 +350,11 @@ func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockPatchConnector struct {
-	CachedPatches    []restModel.APIPatch
-	CachedAborted    map[string]string
-	CachedPriority   map[string]int64
-	CachedRawPatches map[string]string
+	CachedPatches     []restModel.APIPatch
+	CachedProjectRefs []restModel.APIProjectRef
+	CachedAborted     map[string]string
+	CachedPriority    map[string]int64
+	CachedRawPatches  map[string]string
 }
 
 // FindPatchesByProject queries the cached patches splice for the matching patches.
@@ -317,9 +364,18 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 	if limit <= 0 {
 		return patchesToReturn, nil
 	}
+	var id string
+	for _, p := range hp.CachedProjectRefs {
+		if *p.Id == projectId || *p.Identifier == projectId {
+			id = *p.Id
+		}
+	}
+	if id == "" {
+		return nil, errors.Errorf("failed to find project '%s'", projectId)
+	}
 	for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
 		p := hp.CachedPatches[i]
-		if *p.ProjectId == projectId && !p.CreateTime.After(ts) {
+		if *p.ProjectId == id && !p.CreateTime.After(ts) {
 			patchesToReturn = append(patchesToReturn, p)
 			if len(patchesToReturn) == limit {
 				break
@@ -339,6 +395,14 @@ func (pc *MockPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch
 	return nil, gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("patch with id %s not found", patchId),
+	}
+}
+
+// GetChildPatchIds is not implemented
+func (pc *MockPatchConnector) GetChildPatchIds(patchId string) ([]string, error) {
+	return nil, gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    "not implemented",
 	}
 }
 

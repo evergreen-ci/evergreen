@@ -365,34 +365,10 @@ functions:
 #######################################
 
 tasks:
-  - name: coverage
-    tags: ["report"]
-    commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-          token: ${github_token}
-          shallow_clone: false
-      - func: run-make
-        vars:
-          target: get-go-imports
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars:
-          target: build
-      - func: run-make
-        vars:
-          target: "coverage-html"
-          make_args: "-k"
-          tz: "America/New_York"
-
   - <<: *run-build
     name: dist-staging
     patch_only: true
     run_on: archlinux-new-small
-
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
@@ -403,13 +379,12 @@ tasks:
     name: smoke-test-agent-monitor
     tags: ["smoke"]
   - <<: *run-generate-lint
-
   - <<: *run-go-test-suite
     name: js-test
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
+    tags: ["nodb", "test"]
     name: test-thirdparty-docker
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -418,7 +393,7 @@ tasks:
     tags: ["db", "test"]
     name: test-rest-route
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
+    tags: ["db", "test"]
     name: test-rest-client
   - <<: *run-go-test-suite-with-mongodb
     name: test-rest-model
@@ -429,6 +404,12 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test", "agent"]
+    name: test-agent-internal
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "agent"]
+    name: test-agent-internal-client
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-util
@@ -442,10 +423,10 @@ tasks:
     tags: ["db", "test", "cli"]
     name: test-operations
   - <<: *run-go-test-suite
-    tags: ["nodb", "test", "cli"]
+    tags: ["nodb", "test"]
     name: test-operations-metabuild-generator
   - <<: *run-go-test-suite
-    tags: ["nodb", "test", "cli"]
+    tags: ["nodb", "test"]
     name: test-operations-metabuild-model
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -466,7 +447,7 @@ tasks:
     tags: ["db", "test"]
     name: test-evergreen
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
+    tags: ["db", "test"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -687,34 +668,6 @@ buildvariants:
     tasks:
       - name: generate-lint
 
-  - name: coverage
-    display_name: Coverage
-    run_on:
-      - archlinux-new-small
-      - archlinux-new-large
-    expansions:
-      gobin: /opt/golang/go1.16/bin/go
-      goroot: /opt/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
-      test_timeout: 15m
-    tasks:
-      - name: ".report"
-        stepback: false
-
-  - name: osx
-    display_name: OSX
-    batchtime: 2880
-    run_on:
-      - macos-1014
-    expansions:
-      disable_coverage: yes
-      gobin: /opt/golang/go1.16/bin/go
-      goroot: /opt/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
-    tasks:
-      - name: "dist"
-      - name: ".test"
-
   - name: windows
     display_name: Windows
     run_on:
@@ -746,3 +699,17 @@ buildvariants:
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
+
+  - name: osx
+    display_name: OSX
+    batchtime: 2880
+    run_on:
+      - macos-1014
+    expansions:
+      disable_coverage: yes
+      gobin: /opt/golang/go1.16/bin/go
+      goroot: /opt/golang/go1.16
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
+    tasks:
+      - name: ".agent .test"
+      - name: ".cli .test"

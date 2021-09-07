@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -48,15 +50,8 @@ type AWSSSHKey struct {
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
-	err := db.FindOne(
-		ProjectVarsCollection,
-		bson.M{
-			projectVarIdKey: projectId,
-		},
-		db.NoProjection,
-		db.NoSort,
-		projectVars,
-	)
+	q := db.Query(bson.M{projectVarIdKey: projectId})
+	err := db.FindOneQ(ProjectVarsCollection, q, projectVars)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -249,6 +244,21 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 		}
 	}
 	return res
+}
+
+func GetVarsByValue(val string) ([]*ProjectVars, error) {
+	matchingProjects := []*ProjectVars{}
+	filter := fmt.Sprintf("function() { for (var field in this.vars) { if (this.vars[field] == \"%s\") return true; } return false; }", val)
+	q := db.Query(bson.M{"$where": filter})
+	err := db.FindAllQ(ProjectVarsCollection, q, &matchingProjects)
+
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return matchingProjects, nil
 }
 
 // MergeWithRepoVars merges the project and repo variables
