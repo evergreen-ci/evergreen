@@ -132,12 +132,13 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		if err := UpdateDisplayTaskForTask(t); err != nil {
 			return errors.Wrap(err, "problem updating display task")
 		}
+	} else {
+		err := UpdateBuildAndVersionStatusForTask(t)
+		if err != nil {
+			return errors.Wrap(err, "problem updating build and version status for task")
+		}
 	}
 
-	err := UpdateBuildAndVersionStatusForTask(t)
-	if err != nil {
-		return errors.Wrap(err, "problem updating build and version status for task")
-	}
 	return nil
 }
 
