@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -2630,4 +2631,48 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	assert.Equal(t, dt.Id, tasks[0].Id)
 	assert.Equal(t, t2.Id, tasks[1].Id)
 	assert.Equal(t, t4.Id, tasks[2].Id)
+}
+
+func TestGetTasksByVersionAnnotations(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, annotations.Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Execution: 3,
+		Status:    evergreen.TaskFailed,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+
+	a := annotations.TaskAnnotation{
+		Id:            "myAnnotation",
+		TaskId:        t2.Id,
+		TaskExecution: t2.Execution,
+		Issues: []annotations.IssueLink{
+			{IssueKey: "EVG-1212"},
+		},
+	}
+	assert.NoError(t, a.Upsert())
+
+	opts := GetTasksByVersionOptions{}
+	tasks, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 3)
+	assert.Equal(t, tasks[0].Id, "t1")
+	assert.Equal(t, evergreen.TaskSucceeded, tasks[0].DisplayStatus)
+	assert.Equal(t, tasks[1].Id, "t2")
+	assert.Equal(t, evergreen.TaskKnownIssue, tasks[1].DisplayStatus)
+	assert.Equal(t, tasks[2].Id, "t3")
+	assert.Equal(t, evergreen.TaskFailed, tasks[2].DisplayStatus)
 }
