@@ -461,10 +461,6 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	if t.task.Aborted {
-		return nil, nil
-	}
-
 	return t.generate(sub, "", "")
 }
 

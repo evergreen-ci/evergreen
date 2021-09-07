@@ -193,20 +193,7 @@ func (t *versionTriggers) versionGithubCheckOutcome(sub *event.Subscription) (*n
 }
 
 func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification.Notification, error) {
-	versionTasks, err := task.FindAll(task.ByVersion(t.version.Id))
-	skipNotification := false
-	// If the only failures in the version come from aborted tasks then we skip sending a notification
-	for _, versionTask := range versionTasks {
-		if versionTask.Status == evergreen.TaskFailed {
-			if versionTask.Aborted {
-				skipNotification = true
-			} else {
-				skipNotification = false
-				break
-			}
-		}
-	}
-	if t.data.Status != evergreen.VersionFailed || skipNotification {
+	if t.data.Status != evergreen.VersionFailed {
 		return nil, nil
 	}
 
