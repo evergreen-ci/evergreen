@@ -86,7 +86,7 @@ func (s *BackgroundSuite) TestTaskAbort() {
 	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
 	beat := <-heartbeat
 	end := time.Now()
-	s.Equal(evergreen.TaskFailed, beat)
+	s.Equal(evergreen.TaskUnscheduled, beat)
 	s.True(end.Sub(start) < time.Second) // canceled before context expired
 }
 
