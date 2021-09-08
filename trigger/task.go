@@ -335,7 +335,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 		shouldSkipTicket := false
 		if t.task.DisplayOnly {
 			for _, exec := range t.task.ExecutionTasks {
-				executionTask, err := task.FindByIdExecution(exec, &t.task.Execution)
+				executionTask, err := task.FindByIdExecution(exec, utility.ToIntPtr(t.task.Execution))
 				if err != nil {
 					return nil, errors.Wrapf(err, "error getting execution task")
 				}
