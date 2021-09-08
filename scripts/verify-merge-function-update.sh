@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Script makes sure that changes to the ParserProject struct and merge functions happen concurrently.
+# Script to verify that if the ParserProject struct is updated, its merge functions are also updated.
 
 set -eo pipefail
 
