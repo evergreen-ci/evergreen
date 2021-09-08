@@ -200,16 +200,16 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting failed tasks in version")
 	}
-	skipNofitication := false
+	skipNotification := false
 	for _, failedTask := range failedTasks {
 		if !failedTask.Aborted {
-			skipNofitication = false
+			skipNotification = false
 			break
 		} else {
-			skipNofitication = true
+			skipNotification = true
 		}
 	}
-	if skipNofitication {
+	if skipNotification {
 		return nil, nil
 	}
 
