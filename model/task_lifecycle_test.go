@@ -1481,12 +1481,14 @@ func TestAbortTask(t *testing.T) {
 				Id:      "et1",
 				Status:  evergreen.TaskStarted,
 				BuildId: b.Id,
+				Version: v.Id,
 			}
 			So(et1.Insert(), ShouldBeNil)
 			et2 := task.Task{
 				Id:      "et2",
 				Status:  evergreen.TaskFailed,
 				BuildId: b.Id,
+				Version: v.Id,
 			}
 			So(et2.Insert(), ShouldBeNil)
 
