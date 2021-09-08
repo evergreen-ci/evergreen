@@ -768,7 +768,7 @@ func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string
 
 func (pc *MockProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
 	if len(p.Owner) == 0 || len(p.Repo) == 0 {
-		return nil, errors.New("Owner and repository must not be empty strings")
+		return nil, nil
 	}
 	return &model.ProjectSettings{}, nil
 }
