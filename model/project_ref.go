@@ -553,6 +553,38 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	return catcher.Resolve()
 }
 
+func (p *ProjectRef) ChangeOwnerRepo(u *user.DBUser) error {
+	before, err := GetProjectSettingsById(p.Id, false)
+	if err != nil {
+		return errors.Wrap(err, "error getting before project settings event")
+	}
+
+	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+
+	}
+	if p.UseRepoSettings {
+		if err := p.RemoveFromRepoScope(); err != nil {
+			return errors.Wrapf(err, "error removing project from old repo scope")
+		}
+		p.RepoRefId = "" // will reassign this in add
+		if err := p.AddToRepoScope(u); err != nil {
+			return errors.Wrapf(err, "error addding project to new repo scope")
+		}
+	}
+	update := bson.M{
+		"$set": bson.M{
+			ProjectRefOwnerKey:     p.Owner,
+			ProjectRefRepoKey:      p.Repo,
+			ProjectRefRepoRefIdKey: p.RepoRefId,
+		},
+	}
+	if err := db.UpdateId(ProjectRefCollection, p.Id, update); err != nil {
+		return errors.Wrap(err, "error updating owner/repo in the DB")
+	}
+	return GetAndLogProjectModified(p.Id, u.Id, false, before)
+}
+
 // RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope, removes repo view permission
 // for branch admins, and removes branch edit access for repo admins.
 func (p *ProjectRef) RemoveFromRepoScope() error {
