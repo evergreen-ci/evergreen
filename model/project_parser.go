@@ -89,6 +89,7 @@ type ParserProject struct {
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 } // End of ParserProject struct
+// Comment above is used by the linter to detect the end of the struct.
 
 type parserTaskGroup struct {
 	Name                    string             `yaml:"name,omitempty" bson:"name,omitempty"`
