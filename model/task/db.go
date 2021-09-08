@@ -345,6 +345,14 @@ func ByVersion(version string) db.Q {
 	})
 }
 
+// FailedTasksByVersion produces a query that returns all failed tasks for the given version.
+func FailedTasksByVersion(version string) db.Q {
+	return db.Query(bson.M{
+		VersionKey: version,
+		StatusKey:  bson.M{"$in": evergreen.TaskFailureStatuses},
+	})
+}
+
 // ByVersion produces a query that returns tasks for the given version.
 func ByVersions(versions []string) db.Q {
 	return db.Query(bson.M{VersionKey: bson.M{"$in": versions}})
