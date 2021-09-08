@@ -3614,6 +3614,151 @@ tasks:
 	assert.True(checkTask.Activated)
 }
 
+func TestEvalStepbackTaskGroup(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, event.AllLogCollection))
+	yml := `
+stepback: true
+`
+	v1 := Version{
+		Id:        "v1",
+		Config:    yml,
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	v2 := Version{
+		Id:        "prev_v1",
+		Config:    yml,
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	v3 := Version{
+		Id:        "prev_success_v1",
+		Config:    yml,
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	require.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
+
+	t1 := task.Task{
+		Id:                  "t1",
+		BuildId:             "b1",
+		Version:             "v1",
+		TaskGroup:           "my_group",
+		TaskGroupMaxHosts:   1,
+		DisplayName:         "first",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskSucceeded,
+		Activated:           true,
+		RevisionOrderNumber: 3,
+	}
+	t2 := task.Task{
+		Id:                  "t2",
+		BuildId:             "b1",
+		Version:             "v1",
+		TaskGroup:           "my_group",
+		TaskGroupMaxHosts:   1,
+		DisplayName:         "second",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskFailed,
+		Activated:           true,
+		RevisionOrderNumber: 3,
+	}
+	t3 := task.Task{
+		Id:                  "t3",
+		BuildId:             "b1",
+		Version:             "v1",
+		TaskGroup:           "my_group",
+		TaskGroupMaxHosts:   1,
+		DisplayName:         "third",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskUndispatched,
+		Activated:           true,
+		RevisionOrderNumber: 3,
+	}
+	prevT1 := task.Task{
+		Id:                  "prev_t1",
+		BuildId:             "prev_b1",
+		Version:             "prev_v1",
+		TaskGroup:           "my_group",
+		DisplayName:         "first",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskUndispatched,
+		Activated:           false,
+		RevisionOrderNumber: 2,
+	}
+	prevT2 := task.Task{
+		Id:                  "prev_t2",
+		BuildId:             "prev_b1",
+		Version:             "prev_v1",
+		TaskGroup:           "my_group",
+		DisplayName:         "second",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskUndispatched,
+		Activated:           false,
+		RevisionOrderNumber: 2,
+	}
+	prevT3 := task.Task{
+		Id:                  "prev_t3",
+		BuildId:             "prev_b1",
+		Version:             "prev_v1",
+		TaskGroup:           "my_group",
+		DisplayName:         "third",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskUndispatched,
+		Activated:           false,
+		RevisionOrderNumber: 2,
+	}
+	prevSuccessT1 := task.Task{
+		Id:                  "prev_success_t1",
+		BuildId:             "prev_success_b1",
+		Version:             "prev_success_v1",
+		TaskGroup:           "my_group",
+		DisplayName:         "first",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskSucceeded,
+		Activated:           true,
+		RevisionOrderNumber: 1,
+	}
+	prevSuccessT2 := task.Task{
+		Id:                  "prev_success_t2",
+		BuildId:             "prev_success_b1",
+		Version:             "prev_success_v1",
+		TaskGroup:           "my_group",
+		DisplayName:         "second",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskSucceeded,
+		Activated:           true,
+		RevisionOrderNumber: 1,
+	}
+	prevSuccessT3 := task.Task{
+		Id:                  "prev_success_t3",
+		BuildId:             "prev_success_b1",
+		Version:             "prev_success_v1",
+		TaskGroup:           "my_group",
+		DisplayName:         "third",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              evergreen.TaskSucceeded,
+		Activated:           true,
+		RevisionOrderNumber: 1,
+	}
+	assert.NoError(t, db.InsertMany(task.Collection, t1, t2, t3, prevT1, prevT2, prevT3, prevSuccessT1, prevSuccessT2, prevSuccessT3))
+	assert.NoError(t, evalStepback(&t2, "", evergreen.TaskFailed, false))
+
+	// verify only the previous t1 and t2 are stepped back
+	prevT1FromDb, err := task.FindOneId(prevT1.Id)
+	assert.NoError(t, err)
+	assert.True(t, prevT1FromDb.Activated)
+	prevT2FromDb, err := task.FindOneId(prevT2.Id)
+	assert.NoError(t, err)
+	assert.True(t, prevT2FromDb.Activated)
+	prevT3FromDb, err := task.FindOneId(prevT3.Id)
+	assert.NoError(t, err)
+	assert.False(t, prevT3FromDb.Activated)
+
+	// stepping back t3 should now also stepback t3 and not error on earlier activated tasks
+	assert.NoError(t, evalStepback(&t3, "", evergreen.TaskFailed, false))
+	prevT3FromDb, err = task.FindOneId(prevT3.Id)
+	assert.NoError(t, err)
+	assert.True(t, prevT3FromDb.Activated)
+}
+
 func TestUpdateBlockedDependencies(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, event.AllLogCollection))
