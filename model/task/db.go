@@ -345,19 +345,11 @@ func ByVersion(version string) db.Q {
 	})
 }
 
-// AbortedTasksByVersion produces a query that returns all aborted tasks for the given version.
-func AbortedTasksByVersion(version string) db.Q {
-	return db.Query(bson.M{
-		VersionKey: version,
-		AbortedKey: true,
-	})
-}
-
 // FailedTasksByVersion produces a query that returns all failed tasks for the given version.
 func FailedTasksByVersion(version string) db.Q {
 	return db.Query(bson.M{
 		VersionKey: version,
-		StatusKey:  evergreen.TaskFailed,
+		StatusKey:  bson.M{"$in": evergreen.TaskFailureStatuses},
 	})
 }
 

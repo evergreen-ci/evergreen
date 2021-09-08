@@ -196,15 +196,20 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 	if t.data.Status != evergreen.VersionFailed {
 		return nil, nil
 	}
-	abortedTasks, err := task.Count(task.AbortedTasksByVersion(t.version.Id))
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting aborted tasks in version")
-	}
-	failedTasks, err := task.Count(task.FailedTasksByVersion(t.version.Id))
+	failedTasks, err := task.FindAll(task.FailedTasksByVersion(t.version.Id))
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting failed tasks in version")
 	}
-	if abortedTasks > 0 && abortedTasks == failedTasks {
+	skipNofitication := false
+	for _, failedTask := range failedTasks {
+		if !failedTask.Aborted {
+			skipNofitication = false
+			break
+		} else {
+			skipNofitication = true
+		}
+	}
+	if skipNofitication {
 		return nil, nil
 	}
 
