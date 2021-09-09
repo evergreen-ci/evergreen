@@ -392,7 +392,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                   func(childComplexity int, taskID string) int
-		RestartVersions               func(childComplexity int, patchID string, abort bool, versionsToRestarts []*model1.VersionToRestart) int
+		RestartVersions               func(childComplexity int, patchID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
@@ -1050,7 +1050,7 @@ type MutationResolver interface {
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
-	RestartVersions(ctx context.Context, patchID string, abort bool, versionsToRestarts []*model1.VersionToRestart) (*string, error)
+	RestartVersions(ctx context.Context, patchID string, abort bool, versionsToRestart []*model1.VersionToRestart) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
 	ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*model.APITask, error)
 	EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*model.APIPatch, error)
@@ -2745,7 +2745,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RestartVersions(childComplexity, args["patchId"].(string), args["abort"].(bool), args["versionsToRestarts"].([]*model1.VersionToRestart)), true
+		return e.complexity.Mutation.RestartVersions(childComplexity, args["patchId"].(string), args["abort"].(bool), args["versionsToRestart"].([]*model1.VersionToRestart)), true
 
 	case "Mutation.saveSubscription":
 		if e.complexity.Mutation.SaveSubscription == nil {
@@ -6260,7 +6260,7 @@ type Mutation {
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
-  restartVersions(patchId: String!, abort: Boolean!, versionsToRestarts: [VersionToRestart!]!): String
+  restartVersions(patchId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
@@ -7861,13 +7861,13 @@ func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Cont
 	}
 	args["abort"] = arg1
 	var arg2 []*model1.VersionToRestart
-	if tmp, ok := rawArgs["versionsToRestarts"]; ok {
+	if tmp, ok := rawArgs["versionsToRestart"]; ok {
 		arg2, err = ec.unmarshalNVersionToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestartᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["versionsToRestarts"] = arg2
+	args["versionsToRestart"] = arg2
 	return args, nil
 }
 
@@ -14963,7 +14963,7 @@ func (ec *executionContext) _Mutation_restartVersions(ctx context.Context, field
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RestartVersions(rctx, args["patchId"].(string), args["abort"].(bool), args["versionsToRestarts"].([]*model1.VersionToRestart))
+		return ec.resolvers.Mutation().RestartVersions(rctx, args["patchId"].(string), args["abort"].(bool), args["versionsToRestart"].([]*model1.VersionToRestart))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
