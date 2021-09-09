@@ -392,7 +392,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                   func(childComplexity int, taskID string) int
-		RestartVersion                func(childComplexity int, patchID string, abort bool, versionToRestart []*model1.VersionToRestart) int
+		RestartVersions               func(childComplexity int, patchID string, abort bool, versionToRestarts []*model1.VersionToRestart) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
@@ -1050,7 +1050,7 @@ type MutationResolver interface {
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
-	RestartVersion(ctx context.Context, patchID string, abort bool, versionToRestart []*model1.VersionToRestart) (*string, error)
+	RestartVersions(ctx context.Context, patchID string, abort bool, versionToRestarts []*model1.VersionToRestart) (*string, error)
 	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
 	ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*model.APITask, error)
 	EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*model.APIPatch, error)
@@ -2735,17 +2735,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string)), true
 
-	case "Mutation.restartVersion":
-		if e.complexity.Mutation.RestartVersion == nil {
+	case "Mutation.restartVersions":
+		if e.complexity.Mutation.RestartVersions == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_restartVersion_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_restartVersions_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RestartVersion(childComplexity, args["patchId"].(string), args["abort"].(bool), args["VersionToRestart"].([]*model1.VersionToRestart)), true
+		return e.complexity.Mutation.RestartVersions(childComplexity, args["patchId"].(string), args["abort"].(bool), args["VersionToRestarts"].([]*model1.VersionToRestart)), true
 
 	case "Mutation.saveSubscription":
 		if e.complexity.Mutation.SaveSubscription == nil {
@@ -6260,7 +6260,7 @@ type Mutation {
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
-  restartVersion(patchId: String!, abort: Boolean!, VersionToRestart: [VersionToRestart!]!): String
+  restartVersions(patchId: String!, abort: Boolean!, VersionToRestarts: [VersionToRestart!]!): String
   restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
@@ -7841,7 +7841,7 @@ func (ec *executionContext) field_Mutation_restartTask_args(ctx context.Context,
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_restartVersion_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -7861,13 +7861,13 @@ func (ec *executionContext) field_Mutation_restartVersion_args(ctx context.Conte
 	}
 	args["abort"] = arg1
 	var arg2 []*model1.VersionToRestart
-	if tmp, ok := rawArgs["VersionToRestart"]; ok {
+	if tmp, ok := rawArgs["VersionToRestarts"]; ok {
 		arg2, err = ec.unmarshalNVersionToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestartᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["VersionToRestart"] = arg2
+	args["VersionToRestarts"] = arg2
 	return args, nil
 }
 
@@ -14939,7 +14939,7 @@ func (ec *executionContext) _Mutation_unschedulePatchTasks(ctx context.Context, 
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_restartVersion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_restartVersions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -14955,7 +14955,7 @@ func (ec *executionContext) _Mutation_restartVersion(ctx context.Context, field 
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_restartVersion_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_restartVersions_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -14963,7 +14963,7 @@ func (ec *executionContext) _Mutation_restartVersion(ctx context.Context, field 
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RestartVersion(rctx, args["patchId"].(string), args["abort"].(bool), args["VersionToRestart"].([]*model1.VersionToRestart))
+		return ec.resolvers.Mutation().RestartVersions(rctx, args["patchId"].(string), args["abort"].(bool), args["VersionToRestarts"].([]*model1.VersionToRestart))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -34302,8 +34302,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_schedulePatchTasks(ctx, field)
 		case "unschedulePatchTasks":
 			out.Values[i] = ec._Mutation_unschedulePatchTasks(ctx, field)
-		case "restartVersion":
-			out.Values[i] = ec._Mutation_restartVersion(ctx, field)
+		case "restartVersions":
+			out.Values[i] = ec._Mutation_restartVersions(ctx, field)
 		case "restartPatch":
 			out.Values[i] = ec._Mutation_restartPatch(ctx, field)
 		case "scheduleUndispatchedBaseTasks":

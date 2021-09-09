@@ -2173,14 +2173,14 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 	return &patchID, nil
 }
 
-func (r *mutationResolver) RestartVersion(ctx context.Context, patchID string, abort bool, versionToRestart []*model.VersionToRestart) (*string, error) {
-	if len(versionToRestart) == 0 {
+func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, abort bool, versionsToRestart []*model.VersionToRestart) (*string, error) {
+	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "`taskIds` array is empty. You must provide at least one task id")
 	}
 	modifications := VersionModifications{
 		Action:            Restart,
 		Abort:             abort,
-		VersionsToRestart: versionToRestart,
+		VersionsToRestart: versionsToRestart,
 	}
 	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
