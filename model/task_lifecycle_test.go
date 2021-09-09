@@ -327,13 +327,16 @@ func TestActivatePreviousTask(t *testing.T) {
 
 func TestDeactivatePreviousTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
 			"Error clearing task and build collections")
 		// create two tasks
 		displayName := "testTask"
 		userName := "user"
 		b := &build.Build{
 			Id: "testBuild",
+		}
+		v := &Version{
+			Id: "testVersion",
 		}
 		previousTask := &task.Task{
 			Id:                  "one",
@@ -343,6 +346,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			ActivatedBy:         "user",
 			BuildId:             b.Id,
+			Version:             v.Id,
 			Status:              evergreen.TaskUndispatched,
 			Project:             "sample",
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -355,10 +359,12 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Priority:            1,
 			Activated:           true,
 			BuildId:             b.Id,
+			Version:             v.Id,
 			Project:             "sample",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(b.Insert(), ShouldBeNil)
+		So(v.Insert(), ShouldBeNil)
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
@@ -382,6 +388,15 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		b3 := &build.Build{
 			Id: "testBuild3",
 		}
+		v1 := &Version{
+			Id: "testVersion1",
+		}
+		v2 := &Version{
+			Id: "testVersion2",
+		}
+		v3 := &Version{
+			Id: "testVersion3",
+		}
 		dt1 := &task.Task{
 			Id:                  "displayTaskOld",
 			DisplayName:         "displayTask",
@@ -390,6 +405,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			ActivatedBy:         "user",
 			BuildId:             b1.Id,
+			Version:             v1.Id,
 			Status:              evergreen.TaskUndispatched,
 			Project:             "sample",
 			DisplayOnly:         true,
@@ -404,6 +420,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			ActivatedBy:         "user",
 			BuildId:             b1.Id,
+			Version:             v1.Id,
 			Status:              evergreen.TaskUndispatched,
 			Project:             "sample",
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -416,6 +433,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Priority:            1,
 			Activated:           true,
 			BuildId:             b2.Id,
+			Version:             v2.Id,
 			Project:             "sample",
 			DisplayOnly:         true,
 			ExecutionTasks:      []string{"execTaskNew"},
@@ -429,6 +447,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			ActivatedBy:         "user",
 			BuildId:             b2.Id,
+			Version:             v2.Id,
 			Status:              evergreen.TaskSucceeded,
 			Project:             "sample",
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -441,6 +460,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Priority:            1,
 			Activated:           true,
 			BuildId:             b3.Id,
+			Version:             v3.Id,
 			Project:             "sample",
 			DisplayOnly:         true,
 			ExecutionTasks:      []string{"execTask1", "execTask2"},
@@ -454,6 +474,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			ActivatedBy:         "user",
 			BuildId:             b3.Id,
+			Version:             v3.Id,
 			Status:              evergreen.TaskUndispatched,
 			Project:             "sample",
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -466,6 +487,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			ActivatedBy:         "user",
 			BuildId:             b3.Id,
+			Version:             v3.Id,
 			Status:              evergreen.TaskStarted,
 			Project:             "sample",
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -473,6 +495,9 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		So(b1.Insert(), ShouldBeNil)
 		So(b2.Insert(), ShouldBeNil)
 		So(b3.Insert(), ShouldBeNil)
+		So(v1.Insert(), ShouldBeNil)
+		So(v2.Insert(), ShouldBeNil)
+		So(v3.Insert(), ShouldBeNil)
 		So(dt1.Insert(), ShouldBeNil)
 		So(dt2.Insert(), ShouldBeNil)
 		So(dt3.Insert(), ShouldBeNil)
@@ -1409,12 +1434,16 @@ func TestAbortTask(t *testing.T) {
 		b := &build.Build{
 			Id: "buildtest",
 		}
+		v := &Version{
+			Id: "versiontest",
+		}
 		testTask := &task.Task{
 			Id:          "testone",
 			DisplayName: displayName,
 			Activated:   false,
 			BuildId:     b.Id,
 			Status:      evergreen.TaskStarted,
+			Version:     v.Id,
 		}
 		finishedTask := &task.Task{
 			Id:          "another",
@@ -1424,6 +1453,7 @@ func TestAbortTask(t *testing.T) {
 			Status:      evergreen.TaskFailed,
 		}
 		So(b.Insert(), ShouldBeNil)
+		So(v.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 		So(finishedTask.Insert(), ShouldBeNil)
 		var err error
@@ -1444,18 +1474,21 @@ func TestAbortTask(t *testing.T) {
 				ExecutionTasks: []string{"et1", "et2"},
 				Status:         evergreen.TaskStarted,
 				BuildId:        b.Id,
+				Version:        v.Id,
 			}
 			So(dt.Insert(), ShouldBeNil)
 			et1 := task.Task{
 				Id:      "et1",
 				Status:  evergreen.TaskStarted,
 				BuildId: b.Id,
+				Version: v.Id,
 			}
 			So(et1.Insert(), ShouldBeNil)
 			et2 := task.Task{
 				Id:      "et2",
 				Status:  evergreen.TaskFailed,
 				BuildId: b.Id,
+				Version: v.Id,
 			}
 			So(et2.Insert(), ShouldBeNil)
 
