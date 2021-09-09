@@ -50,6 +50,7 @@ func makeTaskTriggers() eventHandler {
 		event.TriggerRuntimeChangeByPercent:      t.taskRuntimeChange,
 		event.TriggerRegression:                  t.taskRegression,
 		event.TriggerTaskFirstFailureInVersion:   t.taskFirstFailureInVersion,
+		event.TriggerTaskStarted:                 t.taskStarted,
 		triggerTaskFirstFailureInBuild:           t.taskFirstFailureInBuild,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
@@ -474,6 +475,18 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 	}
 
 	if t.data.Status != evergreen.TaskSucceeded {
+		return nil, nil
+	}
+
+	return t.generate(sub, "", "")
+}
+
+func (t *taskTriggers) taskStarted(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
+	if t.data.Status != evergreen.TaskStarted {
 		return nil, nil
 	}
 

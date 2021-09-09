@@ -279,6 +279,7 @@ func (s *taskSuite) SetupTest() {
 			Target: "A-3",
 		}),
 		event.NewSubscriptionByID(event.ResourceTypeTask, triggerTaskFailedOrBlocked, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, event.TriggerTaskStarted, s.event.ResourceId, apiSub),
 	}
 
 	for i := range s.subs {
@@ -371,7 +372,7 @@ func (s *taskSuite) TestGithubPREvent() {
 func (s *taskSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 1)
+	s.Len(n, 2)
 
 	s.task.Status = evergreen.TaskSucceeded
 	s.data.Status = evergreen.TaskSucceeded
@@ -1227,7 +1228,7 @@ func (s *taskSuite) TestProjectTrigger() {
 
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 1)
+	s.Len(n, 2)
 }
 
 func (s *taskSuite) TestBuildBreak() {
