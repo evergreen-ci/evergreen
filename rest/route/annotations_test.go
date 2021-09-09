@@ -757,7 +757,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 
 	plugins := evergreen.PluginConfig{
 		"buildbaron": {
-			"projects": map[string]evergreen.BuildBaronSettings{
+			"projects": map[string]evergreen.BuildBaronProject{
 				testProject: {
 					TicketCreateProject: "EVG",
 					TaskAnnotationSettings: evergreen.AnnotationsSettings{

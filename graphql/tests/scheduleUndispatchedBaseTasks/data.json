@@ -288,6 +288,7 @@
       "_id": "base_generator_task",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ac",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "build_id": "5",
       "build_variant": "ubuntu1604",
       "display_name": "Some generator task",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
@@ -300,6 +301,7 @@
     {
       "_id": "base_generated_task",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "build_id": "5",
       "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
       "build_variant": "ubuntu1604",
       "display_name": "Some generated task",
