@@ -78,8 +78,8 @@ func (r *Resolver) ProjectSettings() ProjectSettingsResolver {
 	return &projectSettingsResolver{r}
 }
 
-func (r *Resolver) SubscriberWrapper() SubscriberWrapperResolver {
-	return &subscriberWrapperResolver{r}
+func (r *Resolver) ProjectSubscriber() ProjectSubscriberResolver {
+	return &projectSubscriberResolver{r}
 }
 
 // IssueLink returns IssueLinkResolver implementation.
@@ -100,7 +100,7 @@ type projectResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
 type issueLinkResolver struct{ *Resolver }
 type projectSettingsResolver struct{ *Resolver }
-type subscriberWrapperResolver struct{ *Resolver }
+type projectSubscriberResolver struct{ *Resolver }
 type projectVarsResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
@@ -375,7 +375,7 @@ func (r *projectSettingsResolver) Subscriptions(ctx context.Context, a *restMode
 	return res, nil
 }
 
-func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, a *restModel.APISubscriber) (*Subscriber, error) {
+func (r *projectSubscriberResolver) Subscriber(ctx context.Context, a *restModel.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
 	subscriberType := utility.FromStringPtr(a.Type)
 

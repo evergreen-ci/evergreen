@@ -47,9 +47,9 @@ type ResolverRoot interface {
 	Patch() PatchResolver
 	Project() ProjectResolver
 	ProjectSettings() ProjectSettingsResolver
+	ProjectSubscriber() ProjectSubscriberResolver
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
-	SubscriberWrapper() SubscriberWrapperResolver
 	Task() TaskResolver
 	TaskQueueItem() TaskQueueItemResolver
 	TicketFields() TicketFieldsResolver
@@ -581,6 +581,11 @@ type ComplexityRoot struct {
 		Vars                  func(childComplexity int) int
 	}
 
+	ProjectSubscriber struct {
+		Subscriber func(childComplexity int) int
+		Type       func(childComplexity int) int
+	}
+
 	ProjectSubscription struct {
 		ID             func(childComplexity int) int
 		OwnerType      func(childComplexity int) int
@@ -694,11 +699,6 @@ type ComplexityRoot struct {
 		JiraIssueSubscriber   func(childComplexity int) int
 		SlackSubscriber       func(childComplexity int) int
 		WebhookSubscriber     func(childComplexity int) int
-	}
-
-	SubscriberWrapper struct {
-		Subscriber func(childComplexity int) int
-		Type       func(childComplexity int) int
 	}
 
 	Task struct {
@@ -1107,6 +1107,9 @@ type ProjectSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 }
+type ProjectSubscriberResolver interface {
+	Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error)
+}
 type ProjectVarsResolver interface {
 	PrivateVars(ctx context.Context, obj *model.APIProjectVars) ([]*string, error)
 }
@@ -1147,9 +1150,6 @@ type QueryResolver interface {
 	TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error)
 	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
-}
-type SubscriberWrapperResolver interface {
-	Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error)
 }
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
@@ -3776,6 +3776,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSettings.Vars(childComplexity), true
 
+	case "ProjectSubscriber.subscriber":
+		if e.complexity.ProjectSubscriber.Subscriber == nil {
+			break
+		}
+
+		return e.complexity.ProjectSubscriber.Subscriber(childComplexity), true
+
+	case "ProjectSubscriber.type":
+		if e.complexity.ProjectSubscriber.Type == nil {
+			break
+		}
+
+		return e.complexity.ProjectSubscriber.Type(childComplexity), true
+
 	case "ProjectSubscription.id":
 		if e.complexity.ProjectSubscription.ID == nil {
 			break
@@ -4448,20 +4462,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Subscriber.WebhookSubscriber(childComplexity), true
-
-	case "SubscriberWrapper.subscriber":
-		if e.complexity.SubscriberWrapper.Subscriber == nil {
-			break
-		}
-
-		return e.complexity.SubscriberWrapper.Subscriber(childComplexity), true
-
-	case "SubscriberWrapper.type":
-		if e.complexity.SubscriberWrapper.Type == nil {
-			break
-		}
-
-		return e.complexity.SubscriberWrapper.Type(childComplexity), true
 
 	case "Task.abortInfo":
 		if e.complexity.Task.AbortInfo == nil {
@@ -6990,9 +6990,9 @@ type ProjectSubscription {
   id: String!
   resourceType: String!
   trigger: String!
-  selectors: [Selector]!
-  regexSelectors: [Selector]!
-  subscriber: SubscriberWrapper
+  selectors: [Selector!]!
+  regexSelectors: [Selector!]!
+  subscriber: ProjectSubscriber
   ownerType: String!
   triggerData: StringMap
  }
@@ -7002,7 +7002,7 @@ type Selector {
   data: String!
 }
 
-type SubscriberWrapper {
+type ProjectSubscriber {
   type: String!
   subscriber: Subscriber!
 
@@ -20092,6 +20092,74 @@ func (ec *executionContext) _ProjectSettings_subscriptions(ctx context.Context, 
 	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _ProjectSubscriber_type(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ProjectSubscriber",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ProjectSubscriber_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "ProjectSubscriber",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectSubscriber().Subscriber(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Subscriber)
+	fc.Result = res
+	return ec.marshalNSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSubscriber(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _ProjectSubscription_id(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -20225,7 +20293,7 @@ func (ec *executionContext) _ProjectSubscription_selectors(ctx context.Context, 
 	}
 	res := resTmp.([]model.APISelector)
 	fc.Result = res
-	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, field.Selections, res)
+	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectSubscription_regexSelectors(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
@@ -20259,7 +20327,7 @@ func (ec *executionContext) _ProjectSubscription_regexSelectors(ctx context.Cont
 	}
 	res := resTmp.([]model.APISelector)
 	fc.Result = res
-	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, field.Selections, res)
+	return ec.marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectSubscription_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
@@ -20290,7 +20358,7 @@ func (ec *executionContext) _ProjectSubscription_subscriber(ctx context.Context,
 	}
 	res := resTmp.(model.APISubscriber)
 	fc.Result = res
-	return ec.marshalOSubscriberWrapper2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, field.Selections, res)
+	return ec.marshalOProjectSubscriber2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectSubscription_ownerType(ctx context.Context, field graphql.CollectedField, obj *model.APISubscription) (ret graphql.Marshaler) {
@@ -22935,74 +23003,6 @@ func (ec *executionContext) _Subscriber_slackSubscriber(ctx context.Context, fie
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _SubscriberWrapper_type(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "SubscriberWrapper",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Type, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _SubscriberWrapper_subscriber(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "SubscriberWrapper",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.SubscriberWrapper().Subscriber(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*Subscriber)
-	fc.Result = res
-	return ec.marshalNSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSubscriber(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -35306,6 +35306,47 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 	return out
 }
 
+var projectSubscriberImplementors = []string{"ProjectSubscriber"}
+
+func (ec *executionContext) _ProjectSubscriber(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscriber) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectSubscriberImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectSubscriber")
+		case "type":
+			out.Values[i] = ec._ProjectSubscriber_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "subscriber":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectSubscriber_subscriber(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var projectSubscriptionImplementors = []string{"ProjectSubscription"}
 
 func (ec *executionContext) _ProjectSubscription(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscription) graphql.Marshaler {
@@ -36217,47 +36258,6 @@ func (ec *executionContext) _Subscriber(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._Subscriber_emailSubscriber(ctx, field, obj)
 		case "slackSubscriber":
 			out.Values[i] = ec._Subscriber_slackSubscriber(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var subscriberWrapperImplementors = []string{"SubscriberWrapper"}
-
-func (ec *executionContext) _SubscriberWrapper(ctx context.Context, sel ast.SelectionSet, obj *model.APISubscriber) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, subscriberWrapperImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("SubscriberWrapper")
-		case "type":
-			out.Values[i] = ec._SubscriberWrapper_type(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "subscriber":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._SubscriberWrapper_subscriber(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -39846,7 +39846,11 @@ func (ec *executionContext) marshalNRequiredStatus2githubᚗcomᚋevergreenᚑci
 	return v
 }
 
-func (ec *executionContext) marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, sel ast.SelectionSet, v []model.APISelector) graphql.Marshaler {
+func (ec *executionContext) marshalNSelector2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, sel ast.SelectionSet, v model.APISelector) graphql.Marshaler {
+	return ec._Selector(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APISelector) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -39870,7 +39874,7 @@ func (ec *executionContext) marshalNSelector2ᚕgithubᚗcomᚋevergreenᚑciᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOSelector2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, sel, v[i])
+			ret[i] = ec.marshalNSelector2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -41966,6 +41970,10 @@ func (ec *executionContext) marshalOProjectAlias2ᚖgithubᚗcomᚋevergreenᚑc
 	return ec._ProjectAlias(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOProjectSubscriber2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx context.Context, sel ast.SelectionSet, v model.APISubscriber) graphql.Marshaler {
+	return ec._ProjectSubscriber(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalOProjectSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v model.APISubscription) graphql.Marshaler {
 	return ec._ProjectSubscription(ctx, sel, &v)
 }
@@ -42049,10 +42057,6 @@ func (ec *executionContext) marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreen
 		return graphql.Null
 	}
 	return ec._SearchReturnInfo(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOSelector2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelector(ctx context.Context, sel ast.SelectionSet, v model.APISelector) graphql.Marshaler {
-	return ec._Selector(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOSortDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx context.Context, v interface{}) (SortDirection, error) {
@@ -42304,10 +42308,6 @@ func (ec *executionContext) marshalOStringMap2map(ctx context.Context, sel ast.S
 		return graphql.Null
 	}
 	return MarshalStringMap(v)
-}
-
-func (ec *executionContext) marshalOSubscriberWrapper2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx context.Context, sel ast.SelectionSet, v model.APISubscriber) graphql.Marshaler {
-	return ec._SubscriberWrapper(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {

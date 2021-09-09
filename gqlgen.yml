@@ -137,7 +137,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
   ProjectSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
-  SubscriberWrapper:
+  ProjectSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
     fields:
       subscriber:

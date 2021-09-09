@@ -829,9 +829,9 @@ type ProjectSubscription {
   id: String!
   resourceType: String!
   trigger: String!
-  selectors: [Selector]!
-  regexSelectors: [Selector]!
-  subscriber: SubscriberWrapper
+  selectors: [Selector!]!
+  regexSelectors: [Selector!]!
+  subscriber: ProjectSubscriber
   ownerType: String!
   triggerData: StringMap
  }
@@ -841,7 +841,7 @@ type Selector {
   data: String!
 }
 
-type SubscriberWrapper {
+type ProjectSubscriber {
   type: String!
   subscriber: Subscriber!
 
