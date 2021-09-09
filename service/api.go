@@ -674,12 +674,12 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/distro_view").Wrap(checkTask, checkHost).Handler(as.GetDistroView).Get()
 	app.Route().Version(2).Route("/task/{taskId}/downstreamParams").Wrap(checkTask).Handler(as.SetDownstreamParams).Post()
 	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(checkTask).Handler(as.GetParserProject).Get()
-	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
+	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTaskSecret).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()
 
 	// plugins
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(checkTask).Handler(as.gitServePatchFile).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(checkTask).Handler(as.gitServePatch).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(checkTaskSecret).Handler(as.gitServePatchFile).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(checkTaskSecret).Handler(as.gitServePatch).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(checkTask).Handler(as.keyValPluginInc).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/manifest/load").Wrap(checkTask).Handler(as.manifestLoadHandler).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/s3Copy/s3Copy").Wrap(checkTask).Handler(as.s3copyPlugin).Post()
