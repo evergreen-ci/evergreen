@@ -48,9 +48,9 @@ type RestartResults struct {
 	ItemsErrored   []string
 }
 
-type TaskToRestart struct {
-	PatchID *string  `json:"patchId"`
-	TaskIds []string `json:"taskIds"`
+type VersionToRestart struct {
+	VersionId *string  `json:"patchId"`
+	TaskIds   []string `json:"taskIds"`
 }
 
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
@@ -277,8 +277,8 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 		taskIds = append(taskIds, task.Id)
 	}
 
-	toRestart := TaskToRestart{PatchID: &versionId, TaskIds: taskIds}
-	return RestartVersions(versionId, []*TaskToRestart{&toRestart}, abortInProgress, caller)
+	toRestart := VersionToRestart{VersionId: &versionId, TaskIds: taskIds}
+	return RestartVersions(versionId, []*VersionToRestart{&toRestart}, abortInProgress, caller)
 }
 
 // RestartVersion restarts completed tasks associated with a versionId.
@@ -385,11 +385,11 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 // RestartVersions restarts completed tasks associated with a set of versionId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
-func RestartVersions(versionId string, taskIds []*TaskToRestart, abortInProgress bool, caller string) error {
+func RestartVersions(versionId string, taskIds []*VersionToRestart, abortInProgress bool, caller string) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range taskIds {
-		err := RestartVersion(*t.PatchID, t.TaskIds, abortInProgress, caller)
-		catcher.Add(errors.Wrapf(err, "error restarting tasks for version '%s'", *t.PatchID))
+		err := RestartVersion(*t.VersionId, t.TaskIds, abortInProgress, caller)
+		catcher.Add(errors.Wrapf(err, "error restarting tasks for version '%s'", *t.VersionId))
 	}
 	return errors.Wrap(catcher.Resolve(), "error restarting tasks")
 }

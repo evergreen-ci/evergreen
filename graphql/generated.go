@@ -363,8 +363,9 @@ type ComplexityRoot struct {
 		RemovePublicKey               func(childComplexity int, keyName string) int
 		RemoveVolume                  func(childComplexity int, volumeID string) int
 		RestartJasper                 func(childComplexity int, hostIds []string) int
-		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []*model1.TaskToRestart) int
+		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                   func(childComplexity int, taskID string) int
+		RestartVersion                func(childComplexity int, patchID string, abort bool, versionToRestart []*model1.VersionToRestart) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
@@ -877,7 +878,8 @@ type MutationResolver interface {
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
-	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []*model1.TaskToRestart) (*string, error)
+	RestartVersion(ctx context.Context, patchID string, abort bool, versionToRestart []*model1.VersionToRestart) (*string, error)
+	RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error)
 	ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*model.APITask, error)
 	EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*model.APIPatch, error)
 	SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error)
@@ -2450,7 +2452,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RestartPatch(childComplexity, args["patchId"].(string), args["abort"].(bool), args["taskIds"].([]*model1.TaskToRestart)), true
+		return e.complexity.Mutation.RestartPatch(childComplexity, args["patchId"].(string), args["abort"].(bool), args["taskIds"].([]string)), true
 
 	case "Mutation.restartTask":
 		if e.complexity.Mutation.RestartTask == nil {
@@ -2463,6 +2465,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.restartVersion":
+		if e.complexity.Mutation.RestartVersion == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_restartVersion_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RestartVersion(childComplexity, args["patchId"].(string), args["abort"].(bool), args["VersionToRestart"].([]*model1.VersionToRestart)), true
 
 	case "Mutation.saveSubscription":
 		if e.complexity.Mutation.SaveSubscription == nil {
@@ -5271,7 +5285,8 @@ type Mutation {
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [TaskToRestart!]!): String
+  restartVersion(patchId: String!, abort: Boolean!, VersionToRestart: [VersionToRestart!]!): String
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
@@ -5331,8 +5346,8 @@ type Mutation {
   clearMySubscriptions: Int!
 }
 
-input TaskToRestart {
-  patchId: String
+input VersionToRestart {
+  versionId: String
   taskIds: [String!]!
 }
 
@@ -6653,9 +6668,9 @@ func (ec *executionContext) field_Mutation_restartPatch_args(ctx context.Context
 		}
 	}
 	args["abort"] = arg1
-	var arg2 []*model1.TaskToRestart
+	var arg2 []string
 	if tmp, ok := rawArgs["taskIds"]; ok {
-		arg2, err = ec.unmarshalNTaskToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskToRestartᚄ(ctx, tmp)
+		arg2, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -6675,6 +6690,36 @@ func (ec *executionContext) field_Mutation_restartTask_args(ctx context.Context,
 		}
 	}
 	args["taskId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_restartVersion_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["patchId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["patchId"] = arg0
+	var arg1 bool
+	if tmp, ok := rawArgs["abort"]; ok {
+		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["abort"] = arg1
+	var arg2 []*model1.VersionToRestart
+	if tmp, ok := rawArgs["VersionToRestart"]; ok {
+		arg2, err = ec.unmarshalNVersionToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestartᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["VersionToRestart"] = arg2
 	return args, nil
 }
 
@@ -13336,6 +13381,44 @@ func (ec *executionContext) _Mutation_unschedulePatchTasks(ctx context.Context, 
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_restartVersion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_restartVersion_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RestartVersion(rctx, args["patchId"].(string), args["abort"].(bool), args["VersionToRestart"].([]*model1.VersionToRestart))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Mutation_restartPatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -13360,7 +13443,7 @@ func (ec *executionContext) _Mutation_restartPatch(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RestartPatch(rctx, args["patchId"].(string), args["abort"].(bool), args["taskIds"].([]*model1.TaskToRestart))
+		return ec.resolvers.Mutation().RestartPatch(rctx, args["patchId"].(string), args["abort"].(bool), args["taskIds"].([]string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27512,30 +27595,6 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputTaskToRestart(ctx context.Context, obj interface{}) (model1.TaskToRestart, error) {
-	var it model1.TaskToRestart
-	var asMap = obj.(map[string]interface{})
-
-	for k, v := range asMap {
-		switch k {
-		case "patchId":
-			var err error
-			it.PatchID, err = ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "taskIds":
-			var err error
-			it.TaskIds, err = ec.unmarshalNString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputUpdateVolumeInput(ctx context.Context, obj interface{}) (UpdateVolumeInput, error) {
 	var it UpdateVolumeInput
 	var asMap = obj.(map[string]interface{})
@@ -27665,6 +27724,30 @@ func (ec *executionContext) unmarshalInputVariantTasks(ctx context.Context, obj 
 		case "displayTasks":
 			var err error
 			it.DisplayTasks, err = ec.unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputVersionToRestart(ctx context.Context, obj interface{}) (model1.VersionToRestart, error) {
+	var it model1.VersionToRestart
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "versionId":
+			var err error
+			it.VersionId, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskIds":
+			var err error
+			it.TaskIds, err = ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29265,6 +29348,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_schedulePatchTasks(ctx, field)
 		case "unschedulePatchTasks":
 			out.Values[i] = ec._Mutation_unschedulePatchTasks(ctx, field)
+		case "restartVersion":
+			out.Values[i] = ec._Mutation_restartVersion(ctx, field)
 		case "restartPatch":
 			out.Values[i] = ec._Mutation_restartPatch(ctx, field)
 		case "scheduleUndispatchedBaseTasks":
@@ -34634,38 +34719,6 @@ func (ec *executionContext) marshalNTaskTestResult2ᚖgithubᚗcomᚋevergreen�
 	return ec._TaskTestResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNTaskToRestart2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskToRestart(ctx context.Context, v interface{}) (model1.TaskToRestart, error) {
-	return ec.unmarshalInputTaskToRestart(ctx, v)
-}
-
-func (ec *executionContext) unmarshalNTaskToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskToRestartᚄ(ctx context.Context, v interface{}) ([]*model1.TaskToRestart, error) {
-	var vSlice []interface{}
-	if v != nil {
-		if tmp1, ok := v.([]interface{}); ok {
-			vSlice = tmp1
-		} else {
-			vSlice = []interface{}{v}
-		}
-	}
-	var err error
-	res := make([]*model1.TaskToRestart, len(vSlice))
-	for i := range vSlice {
-		res[i], err = ec.unmarshalNTaskToRestart2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskToRestart(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) unmarshalNTaskToRestart2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskToRestart(ctx context.Context, v interface{}) (*model1.TaskToRestart, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalNTaskToRestart2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskToRestart(ctx, v)
-	return &res, err
-}
-
 func (ec *executionContext) marshalNTestLog2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTestLogs(ctx context.Context, sel ast.SelectionSet, v model.TestLogs) graphql.Marshaler {
 	return ec._TestLog(ctx, sel, &v)
 }
@@ -34880,6 +34933,38 @@ func (ec *executionContext) marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 		return graphql.Null
 	}
 	return ec._Version(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNVersionToRestart2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestart(ctx context.Context, v interface{}) (model1.VersionToRestart, error) {
+	return ec.unmarshalInputVersionToRestart(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNVersionToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestartᚄ(ctx context.Context, v interface{}) ([]*model1.VersionToRestart, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*model1.VersionToRestart, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNVersionToRestart2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestart(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNVersionToRestart2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestart(ctx context.Context, v interface{}) (*model1.VersionToRestart, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNVersionToRestart2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestart(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalNVolume2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVolume(ctx context.Context, sel ast.SelectionSet, v model.APIVolume) graphql.Marshaler {
