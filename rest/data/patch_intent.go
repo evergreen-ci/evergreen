@@ -19,18 +19,12 @@ type DBPatchIntentConnector struct{}
 
 func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 	patchDoc := intent.NewPatch()
-	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+	_, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "failed to fetch project_ref",
-		}
-	}
-	if projectRef == nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusUnprocessableEntity,
-			Message:    "cannot map pull request to project",
 		}
 	}
 
