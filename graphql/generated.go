@@ -5286,7 +5286,7 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartVersion(patchId: String!, abort: Boolean!, VersionToRestart: [VersionToRestart!]!): String
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
