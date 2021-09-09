@@ -1,0 +1,14 @@
+{
+    projectSettings(identifier: "sandbox") {
+        aliases {
+            id
+            alias
+            gitTag
+            variant
+            task
+            remotePath
+            variantTags
+            taskTags
+        }
+    }
+}

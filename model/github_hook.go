@@ -52,7 +52,7 @@ func (h *GithubHook) Remove() error {
 
 func FindGithubHook(owner, repo string) (*GithubHook, error) {
 	if len(owner) == 0 || len(repo) == 0 {
-		return nil, errors.New("Owner and repository must not be empty strings")
+		return nil, nil
 	}
 
 	hook := &GithubHook{}

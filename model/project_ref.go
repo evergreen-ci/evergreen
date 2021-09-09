@@ -98,10 +98,6 @@ type ProjectRef struct {
 	// List of commands
 	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 
-	// The following fields are used by Evergreen and are not discoverable.
-	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
-
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
@@ -111,6 +107,10 @@ type ProjectRef struct {
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
 	RepoRefId       string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
+
+	// The following fields are used by Evergreen and are not discoverable.
+	// Hidden determines whether or not the project is discoverable/tracked in the UI
+	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 }
 
 type CommitQueueParams struct {
