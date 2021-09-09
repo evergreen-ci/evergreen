@@ -598,11 +598,13 @@ tasks:
             GOPATH: ${workdir}/gopath
             GOROOT: ${goroot}
   - name: verify-agent-version-update
+    tags: ["linter"]
     patch_only: true
     commands:
       - func: get-project
       - func: verify-agent-version-update
   - name: verify-merge-function-update
+    tags: ["linter"]
     patch_only: true
     commands:
       - func: get-project
@@ -651,8 +653,7 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
-      - name: "verify-agent-version-update"
-      - name: "verify-merge-function-update"
+      - name: ".linter"
       - name: "docker-cleanup"
       - name: test-db-auth
       - name: test-cloud

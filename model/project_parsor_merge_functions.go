@@ -1,6 +1,7 @@
+package model
+
 // Used to detect changes within the merge functions.
 // Should only be modified in conjunction with ParserProject struct.
-package model
 
 import (
 	"github.com/mongodb/grip"

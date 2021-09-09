@@ -27,9 +27,9 @@ fi
 
 # See if the project parser merge functions file has changed
 files_changed="$(git diff --name-only "${common_ancestor}" -- "${MERGE_FUNC_FILE_PATH}")"
-if [[ "${files_changed}" == "" ]]; then
+if [[ "${files_changed}" != "" ]]; then
     exit 0;
 fi
 
-echo -e "ParserProject struct has been changed but ${MERGE_FUNC_FILE_PATH} has not been updated. Please update the ParserProject struct." >&2
+echo -e "ParserProject struct has been changed but ${MERGE_FUNC_FILE_PATH} has not been updated. Please update the merge function." >&2
 exit 1
