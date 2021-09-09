@@ -158,11 +158,6 @@ type PatchTime struct {
 	SubmittedAt string  `json:"submittedAt"`
 }
 
-type PatchTriggerAlias struct {
-	Alias        string `json:"alias"`
-	ChildProject string `json:"childProject"`
-}
-
 type Patches struct {
 	Patches            []*model.APIPatch `json:"patches"`
 	FilteredPatchCount int               `json:"filteredPatchCount"`
@@ -230,6 +225,16 @@ type SpawnVolumeInput struct {
 type StatusCount struct {
 	Status string `json:"status"`
 	Count  int    `json:"count"`
+}
+
+type Subscriber struct {
+	GithubPRSubscriber    *model.APIGithubPRSubscriber    `json:"githubPRSubscriber"`
+	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber"`
+	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber"`
+	JiraIssueSubscriber   *model.APIJIRAIssueSubscriber   `json:"jiraIssueSubscriber"`
+	JiraCommentSubscriber *string                         `json:"jiraCommentSubscriber"`
+	EmailSubscriber       *string                         `json:"emailSubscriber"`
+	SlackSubscriber       *string                         `json:"slackSubscriber"`
 }
 
 type TaskFiles struct {
