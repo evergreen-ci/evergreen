@@ -737,7 +737,7 @@
         "task_execution": 0,
         "url": "/url/without/scheme/host",
         "url_raw": "/raw/url/without/scheme/host"
-      }
+       }
     ],
     "project_ref": [
       {
@@ -2830,8 +2830,8 @@
             "testResults": [
               {
                 "logs": {
-                  "htmlDisplayURL": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=#L126",
-                  "rawDisplayURL": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true"
+                  "url": "https://localhost:8443/lobster/test/exec1/0/apple?groupId=#shareLine=126",
+                  "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true"
                 },
                 "id": "29ef7a20a7798219e191d00e"
               }
@@ -2848,8 +2848,8 @@
             "testResults": [
               {
                 "logs": {
-                  "htmlDisplayURL": "https://original-url.com",
-                  "rawDisplayURL": "https://original-raw-url.com"
+                  "url": "https://original-url.com",
+                  "urlRaw": "https://original-raw-url.com"
                 },
                 "id": "19ef7a20a7798219e191d00e"
               }
@@ -2859,49 +2859,15 @@
       }
     },
     {
-      "query_file": "task_test-logs-prepend-api_url-when-scheme-and-host-not-provided.graphql",
+      "query_file": "task_test-formats-url-with-line-num-and-log-id-when-url-empty.graphql",
       "result": {
         "data": {
           "taskTests": {
             "testResults": [
               {
                 "logs": {
-                  "htmlDisplayURL": "https://localhost:8443/url/without/scheme/host",
-                  "rawDisplayURL": "https://localhost:8443/raw/url/without/scheme/host"
-                },
-                "id": "49ef7a20a7798219e191d00e"
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "task_test-formats-html-url-with-line-num-and-log-id-when-url-empty.graphql",
-      "result": {
-        "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "logs": {
-                  "htmlDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126"
-                },
-                "id": "39ef7a20a7798219e191d00e"
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "task_test-formats-raw-url-with-query-param-and-log-id-when-raw-url-empty.graphql",
-      "result": {
-        "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "logs": {
-                  "rawDisplayURL": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?text=true"
+                  "url": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126",
+                  "urlRaw": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?text=true"
                 },
                 "id": "39ef7a20a7798219e191d00e"
               }

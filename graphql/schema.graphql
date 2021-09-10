@@ -689,8 +689,8 @@ type TestResult {
 }
 
 type TestLog {
-  htmlDisplayURL: String
-  rawDisplayURL: String
+  url: String
+  urlRaw: String
 }
 
 type Dependency {

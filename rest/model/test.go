@@ -2,11 +2,10 @@ package model
 
 import (
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -35,18 +34,20 @@ type APITest struct {
 // TestLogs is a struct for storing the information about logs that will be
 // written out as part of an APITest.
 type TestLogs struct {
-	URL            *string `json:"url"`
-	LineNum        int     `json:"line_num"`
-	URLRaw         *string `json:"url_raw"`
-	LogId          *string `json:"log_id"`
-	RawDisplayURL  *string `json:"url_raw_display"`
-	HTMLDisplayURL *string `json:"url_html_display"`
+	URL     *string `json:"url"`
+	URLRaw  *string `json:"url_raw"`
+	LineNum int     `json:"line_num"`
+	LogId   *string `json:"log_id,omitempty"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
+		at.Id = utility.ToStringPtr(v.ID.Hex())
 		at.Execution = v.Execution
+		if v.GroupID != "" {
+			at.GroupId = utility.ToStringPtr(v.GroupID)
+		}
 		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestFile)
@@ -54,62 +55,28 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.DisplayTestName = utility.ToStringPtr(v.DisplayTestName)
 		}
 		at.ExitCode = v.ExitCode
-		at.Id = utility.ToStringPtr(v.ID.Hex())
-
 		startTime := utility.FromPythonTime(v.StartTime)
 		endTime := utility.FromPythonTime(v.EndTime)
 		at.Duration = v.EndTime - v.StartTime
 		at.StartTime = ToTimePtr(startTime)
 		at.EndTime = ToTimePtr(endTime)
 
+		tr := task.ConvertToOld(v)
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.URL),
-			URLRaw:  utility.ToStringPtr(v.URLRaw),
-			LogId:   utility.ToStringPtr(v.LogID),
+			URL:     utility.ToStringPtr(tr.GetLogURL(false)),
+			URLRaw:  utility.ToStringPtr(tr.GetLogURL(true)),
 			LineNum: v.LineNum,
 		}
-
-		isEmptyLogID := v.LogID == ""
-		isEmptyURL := v.URL == ""
-		isEmptyURLRaw := v.URLRaw == ""
-
-		if !isEmptyURL {
-			at.Logs.HTMLDisplayURL = at.Logs.URL
-		} else if isEmptyLogID {
-			at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(v.TestFile),
-				url.QueryEscape(v.GroupID),
-				v.LineNum,
-			))
-		} else {
-			dispString := fmt.Sprintf("/test_log/%s#L%d", *at.Logs.LogId, at.Logs.LineNum)
-			at.Logs.HTMLDisplayURL = &dispString
+		if v.LogID != "" {
+			at.Logs.LogId = utility.ToStringPtr(v.LogID)
 		}
 
-		if !isEmptyURLRaw {
-			at.Logs.RawDisplayURL = at.Logs.URLRaw
-		} else if isEmptyLogID {
-			at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(v.TestFile),
-				url.QueryEscape(v.GroupID),
-			))
-		} else {
-			dispString := fmt.Sprintf("/test_log/%s?text=true", *at.Logs.LogId)
-			at.Logs.RawDisplayURL = &dispString
-		}
-
-		if v.GroupID != "" {
-			at.GroupId = utility.ToStringPtr(v.GroupID)
-		}
 	case *apimodels.CedarTestResult:
 		at.Id = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution
+		if v.GroupID != "" {
+			at.GroupId = utility.ToStringPtr(v.GroupID)
+		}
 		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestName)
@@ -120,48 +87,17 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.EndTime = utility.ToTimePtr(v.End)
 		duration := v.End.Sub(v.Start)
 		at.Duration = duration.Seconds()
-
-		testName := v.TestName
 		if v.LogTestName != "" {
-			testName = v.LogTestName
 			at.LogTestName = utility.ToStringPtr(v.LogTestName)
 		}
 
+		tr := task.ConvertCedarTestResult(*v)
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.LogURL),
-			URLRaw:  utility.ToStringPtr(v.RawLogURL),
+			URL:     utility.ToStringPtr(tr.GetLogURL(false)),
+			URLRaw:  utility.ToStringPtr(tr.GetLogURL(true)),
 			LineNum: v.LineNum,
 		}
-		isEmptyURL := v.LogURL == ""
-		isEmptyURLRaw := v.RawLogURL == ""
 
-		if !isEmptyURL {
-			at.Logs.HTMLDisplayURL = at.Logs.URL
-		} else {
-			at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(testName),
-				url.QueryEscape(v.GroupID),
-				v.LineNum,
-			))
-		}
-		if !isEmptyURLRaw {
-			at.Logs.RawDisplayURL = at.Logs.URLRaw
-		} else {
-			at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(testName),
-				url.QueryEscape(v.GroupID),
-			))
-		}
-
-		if v.GroupID != "" {
-			at.GroupId = utility.ToStringPtr(v.GroupID)
-		}
 	case string:
 		at.TaskId = utility.ToStringPtr(v)
 	default:
