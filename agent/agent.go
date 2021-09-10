@@ -738,12 +738,15 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
 		if tc.task.ID != "" && tc.taskConfig != nil {
 			logger.Infof("cleaning up processes for task: %s", tc.task.ID)
-			if err := agentutil.KillSpawnedProcs(tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
-				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
-				logger.Critical(msg)
+			if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
+				// If the host is in a state where ps is timing out we need human intervention.
+				if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
+					disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
+					logger.CriticalWhen(disableErr != nil, fmt.Sprintf("error disabling host: %s", disableErr))
+				}
+				logger.Critical(fmt.Sprintf("error cleaning up spawned processes: %v", err))
 			}
-
-			logger.Infof("cleaned up processes for task: %s", tc.task.ID)
+			logger.Infof("cleaned up processes for task: '%s'", tc.task.ID)
 		}
 
 		logger.Info("cleaning up Docker artifacts")
@@ -751,8 +754,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		ctx, cancel = context.WithTimeout(ctx, dockerTimeout)
 		defer cancel()
 		if err := docker.Cleanup(ctx, logger); err != nil {
-			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)
-			logger.Critical(msg)
+			logger.Critical(fmt.Sprintf("error cleaning up Docker artifacts: %s", err))
 		}
 		logger.Info("cleaned up Docker artifacts")
 	}
