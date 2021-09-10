@@ -110,6 +110,8 @@ func statsByDistroPipeline() []bson.M {
 	return []bson.M{
 		{
 			"$match": bson.M{
+				// don't count user-spawned hosts EVG-15232
+				StartedByKey: evergreen.User,
 				StatusKey: bson.M{
 					"$in": evergreen.ActiveStatus,
 				},

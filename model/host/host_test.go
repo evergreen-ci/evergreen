@@ -1674,43 +1674,51 @@ func TestHostStats(t *testing.T) {
 		Distro:      distro.Distro{Id: d1},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task",
+		StartedBy:   evergreen.User,
 	}
 	host2 := &Host{
-		Id:     "host2",
-		Distro: distro.Distro{Id: d1},
-		Status: evergreen.HostStarting,
+		Id:        "host2",
+		Distro:    distro.Distro{Id: d1},
+		Status:    evergreen.HostStarting,
+		StartedBy: evergreen.User,
 	}
 	host3 := &Host{
-		Id:     "host3",
-		Distro: distro.Distro{Id: d1},
-		Status: evergreen.HostTerminated,
+		Id:        "host3",
+		Distro:    distro.Distro{Id: d1},
+		Status:    evergreen.HostTerminated,
+		StartedBy: evergreen.User,
 	}
 	host4 := &Host{
 		Id:          "host4",
 		Distro:      distro.Distro{Id: d1},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task2",
+		StartedBy:   evergreen.User,
 	}
 	host5 := &Host{
-		Id:     "host5",
-		Distro: distro.Distro{Id: d2},
-		Status: evergreen.HostProvisioning,
+		Id:        "host5",
+		Distro:    distro.Distro{Id: d2},
+		Status:    evergreen.HostProvisioning,
+		StartedBy: evergreen.User,
 	}
 	host6 := &Host{
-		Id:     "host6",
-		Distro: distro.Distro{Id: d2},
-		Status: evergreen.HostProvisioning,
+		Id:        "host6",
+		Distro:    distro.Distro{Id: d2},
+		Status:    evergreen.HostProvisioning,
+		StartedBy: evergreen.User,
 	}
 	host7 := &Host{
 		Id:          "host7",
 		Distro:      distro.Distro{Id: d2},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task3",
+		StartedBy:   evergreen.User,
 	}
 	host8 := &Host{
-		Id:     "host8",
-		Distro: distro.Distro{Id: d2},
-		Status: evergreen.HostRunning,
+		Id:        "host8",
+		Distro:    distro.Distro{Id: d2},
+		Status:    evergreen.HostRunning,
+		StartedBy: evergreen.User,
 	}
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
