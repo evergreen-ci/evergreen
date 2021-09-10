@@ -91,9 +91,9 @@ func TestWaitForExit(t *testing.T) {
 			assert.Empty(t, pids)
 		},
 		"long-running process": func(t *testing.T) {
-			longProcess := exec.CommandContext(ctx, "sleep", "10")
+			longProcess := exec.CommandContext(ctx, "sleep", "30")
 			require.NoError(t, longProcess.Start())
-			waitCtx, cancel := context.WithTimeout(ctx, time.Second)
+			waitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			pids, err := waitForExit(waitCtx, []int{longProcess.Process.Pid})
 			assert.Error(t, err)
