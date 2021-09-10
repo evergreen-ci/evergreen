@@ -345,6 +345,14 @@ func ByVersion(version string) db.Q {
 	})
 }
 
+// FailedTasksByVersion produces a query that returns all failed tasks for the given version.
+func FailedTasksByVersion(version string) db.Q {
+	return db.Query(bson.M{
+		VersionKey: version,
+		StatusKey:  bson.M{"$in": evergreen.TaskFailureStatuses},
+	})
+}
+
 // ByVersion produces a query that returns tasks for the given version.
 func ByVersions(versions []string) db.Q {
 	return db.Query(bson.M{VersionKey: bson.M{"$in": versions}})
@@ -1406,13 +1414,14 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 	return err
 }
 
-func AddHostCreateDetails(taskId, hostId string, hostCreateError error) error {
+func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
 	}
 	err := UpdateOne(
 		bson.M{
-			IdKey: taskId,
+			IdKey:        taskId,
+			ExecutionKey: execution,
 		},
 		bson.M{"$push": bson.M{
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},

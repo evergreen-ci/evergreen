@@ -2580,10 +2580,14 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
-func GetHostByIdWithTask(hostID string) (*Host, error) {
+func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{IdKey: hostID},
+			"$match": bson.M{
+				"$or": []bson.M{
+					{TagKey: hostID},
+					{IdKey: hostID},
+				}},
 		},
 		{
 			"$lookup": bson.M{

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -95,8 +96,8 @@ func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID 
 	return hosts, filteredHostsCount, totalHostsCount, nil
 }
 
-func (hc *DBConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
-	host, err := host.GetHostByIdWithTask(hostID)
+func (hc *DBConnector) GetHostByIdOrTagWithTask(hostID string) (*host.Host, error) {
+	host, err := host.GetHostByIdOrTagWithTask(hostID)
 	if err != nil {
 		return nil, err
 	}
@@ -167,6 +168,12 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 
 func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
 	return errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, user, "terminated via REST API"))
+}
+
+// DisableHost disables the host, notifies it's been disabled,
+// and clears and resets its running task.
+func (hc *DBHostConnector) DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
+	return units.HandlePoisonedHost(ctx, env, host, reason)
 }
 
 func (hc *DBHostConnector) CheckHostSecret(hostID string, r *http.Request) (int, error) {
@@ -447,6 +454,17 @@ func (hc *MockHostConnector) TerminateHost(ctx context.Context, host *host.Host,
 	return errors.New("can't find host")
 }
 
+func (hc *MockHostConnector) DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
+	for i, h := range hc.CachedHosts {
+		if h.Id == host.Id {
+			hc.CachedHosts[i].Status = evergreen.HostDecommissioned
+			return nil
+		}
+	}
+
+	return errors.New("can't find host")
+}
+
 func (hc *MockHostConnector) CheckHostSecret(hostID string, r *http.Request) (int, error) {
 	if hostID != "" {
 		return http.StatusOK, nil
@@ -505,6 +523,10 @@ func (hc *MockHostConnector) GetPaginatedRunningHosts(hostID, distroID, currentT
 }
 
 func (hc *MockHostConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
+	return nil, nil
+}
+
+func (hc *MockHostConnector) GetHostByIdOrTagWithTask(hostID string) (*host.Host, error) {
 	return nil, nil
 }
 

@@ -182,8 +182,8 @@ type Connector interface {
 	// GetRunningHosts gets paginated running hosts and applies any filters
 	GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error)
 
-	// Find a host by ID and queries for full running task
-	GetHostByIdWithTask(hostID string) (*host.Host, error)
+	// Find a host by ID or Tag and queries for full running task
+	GetHostByIdOrTagWithTask(hostID string) (*host.Host, error)
 
 	// GenerateHostProvisioningScript generates and returns the script to
 	// provision the host given by host ID.
@@ -296,6 +296,10 @@ type Connector interface {
 
 	// TerminateHost terminates the given host via the cloud provider's API
 	TerminateHost(context.Context, *host.Host, string) error
+
+	// DisableHost disables the host, notifies it's been disabled,
+	// and clears and resets its running task.
+	DisableHost(context.Context, evergreen.Environment, *host.Host, string) error
 
 	CheckHostSecret(string, *http.Request) (int, error)
 

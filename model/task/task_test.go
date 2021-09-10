@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -439,6 +440,42 @@ func TestFindTasksByIds(t *testing.T) {
 			}
 
 			dbTasks, err := Find(ByIds([]string{"one", "two"}))
+			So(err, ShouldBeNil)
+			So(len(dbTasks), ShouldEqual, 2)
+			So(dbTasks[0].Id, ShouldNotEqual, "three")
+			So(dbTasks[1].Id, ShouldNotEqual, "three")
+		})
+	})
+}
+
+func TestFailedTasksByVersion(t *testing.T) {
+	Convey("When calling FailedTasksByVersion...", t, func() {
+		So(db.Clear(Collection), ShouldBeNil)
+		Convey("only tasks with the failed statuses should be returned", func() {
+
+			tasks := []Task{
+				{
+					Id:      "one",
+					Version: "v1",
+					Status:  evergreen.TaskFailed,
+				},
+				{
+					Id:      "two",
+					Version: "v1",
+					Status:  evergreen.TaskSetupFailed,
+				},
+				{
+					Id:      "three",
+					Version: "v1",
+					Status:  evergreen.TaskSucceeded,
+				},
+			}
+
+			for _, task := range tasks {
+				So(task.Insert(), ShouldBeNil)
+			}
+
+			dbTasks, err := Find(FailedTasksByVersion("v1"))
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 2)
 			So(dbTasks[0].Id, ShouldNotEqual, "three")
@@ -1717,10 +1754,10 @@ func TestGetTimeSpent(t *testing.T) {
 
 func TestAddHostCreateDetails(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	task := Task{Id: "t1"}
+	task := Task{Id: "t1", Execution: 0}
 	assert.NoError(t, task.Insert())
 	errToSave := errors.Wrapf(errors.New("InsufficientCapacityError"), "error trying to start host")
-	assert.NoError(t, AddHostCreateDetails(task.Id, "h1", errToSave))
+	assert.NoError(t, AddHostCreateDetails(task.Id, "h1", 0, errToSave))
 	dbTask, err := FindOneId(task.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbTask)
@@ -1728,7 +1765,7 @@ func TestAddHostCreateDetails(t *testing.T) {
 	assert.Equal(t, dbTask.HostCreateDetails[0].HostId, "h1")
 	assert.Contains(t, dbTask.HostCreateDetails[0].Error, "InsufficientCapacityError")
 
-	assert.NoError(t, AddHostCreateDetails(task.Id, "h2", errToSave))
+	assert.NoError(t, AddHostCreateDetails(task.Id, "h2", 0, errToSave))
 	dbTask, err = FindOneId(task.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbTask)
@@ -2630,4 +2667,48 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	assert.Equal(t, dt.Id, tasks[0].Id)
 	assert.Equal(t, t2.Id, tasks[1].Id)
 	assert.Equal(t, t4.Id, tasks[2].Id)
+}
+
+func TestGetTasksByVersionAnnotations(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, annotations.Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Execution: 3,
+		Status:    evergreen.TaskFailed,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+
+	a := annotations.TaskAnnotation{
+		Id:            "myAnnotation",
+		TaskId:        t2.Id,
+		TaskExecution: t2.Execution,
+		Issues: []annotations.IssueLink{
+			{IssueKey: "EVG-1212"},
+		},
+	}
+	assert.NoError(t, a.Upsert())
+
+	opts := GetTasksByVersionOptions{}
+	tasks, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 3)
+	assert.Equal(t, tasks[0].Id, "t1")
+	assert.Equal(t, evergreen.TaskSucceeded, tasks[0].DisplayStatus)
+	assert.Equal(t, tasks[1].Id, "t2")
+	assert.Equal(t, evergreen.TaskKnownIssue, tasks[1].DisplayStatus)
+	assert.Equal(t, tasks[2].Id, "t3")
+	assert.Equal(t, evergreen.TaskFailed, tasks[2].DisplayStatus)
 }

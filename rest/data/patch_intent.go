@@ -28,10 +28,7 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 		}
 	}
 	if projectRef == nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusUnprocessableEntity,
-			Message:    "cannot map pull request to project",
-		}
+		return nil
 	}
 
 	if err := intent.Insert(); err != nil {

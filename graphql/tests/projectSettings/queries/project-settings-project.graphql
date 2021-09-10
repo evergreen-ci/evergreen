@@ -1,0 +1,42 @@
+{
+    projectSettings(identifier: "sandbox") {
+        githubWebhooksEnabled
+        projectRef {
+            id
+            identifier
+            commitQueue {
+                enabled
+                mergeMethod
+            }
+            periodicBuilds {
+                alias
+                message
+            }
+            githubChecksEnabled
+            patchingDisabled
+            prTestingEnabled
+            batchTime
+
+            gitTagAuthorizedUsers
+            gitTagAuthorizedTeams
+
+            triggers {
+                project
+                taskRegex
+            }
+            patchTriggerAliases {
+                alias
+                childProject
+                taskSpecifiers {
+                    taskRegex
+                    variantRegex
+                }
+            }
+
+            taskSync {
+                configEnabled
+                patchEnabled
+            }
+        }
+    }
+}

@@ -98,20 +98,19 @@ type ProjectRef struct {
 	// List of commands
 	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 
-	// The following fields are used by Evergreen and are not discoverable.
-	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
-
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
 	// Plugin settings
-	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
-	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
+	PerfEnabled *bool `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
 	RepoRefId       string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
+
+	// The following fields are used by Evergreen and are not discoverable.
+	// Hidden determines whether or not the project is discoverable/tracked in the UI
+	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 }
 
 type CommitQueueParams struct {
@@ -236,7 +235,6 @@ var (
 	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey  = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
-	projectRefBuildBaronSettingsKey      = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
 	projectRefPerfEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
@@ -553,6 +551,38 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 
 	catcher.Add(GetAndLogProjectModified(p.Id, u.Id, false, before))
 	return catcher.Resolve()
+}
+
+func (p *ProjectRef) ChangeOwnerRepo(u *user.DBUser) error {
+	before, err := GetProjectSettingsById(p.Id, false)
+	if err != nil {
+		return errors.Wrap(err, "error getting before project settings event")
+	}
+
+	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+
+	}
+	if p.UseRepoSettings {
+		if err := p.RemoveFromRepoScope(); err != nil {
+			return errors.Wrapf(err, "error removing project from old repo scope")
+		}
+		p.RepoRefId = "" // will reassign this in add
+		if err := p.AddToRepoScope(u); err != nil {
+			return errors.Wrapf(err, "error addding project to new repo scope")
+		}
+	}
+	update := bson.M{
+		"$set": bson.M{
+			ProjectRefOwnerKey:     p.Owner,
+			ProjectRefRepoKey:      p.Repo,
+			ProjectRefRepoRefIdKey: p.RepoRefId,
+		},
+	}
+	if err := db.UpdateId(ProjectRefCollection, p.Id, update); err != nil {
+		return errors.Wrap(err, "error updating owner/repo in the DB")
+	}
+	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
 
 // RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope, removes repo view permission

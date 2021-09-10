@@ -88,6 +88,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 		Id:        "task_known",
 		Execution: 2,
 		Version:   "version_known",
+		Status:    evergreen.TaskSucceeded,
 	}
 	task_not_known := &task.Task{
 		Id:        "task_not_known",
@@ -131,7 +132,8 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 
 	task, _, err := s.ctx.FindTasksByVersion("version_known", opts)
 	s.NoError(err)
-	s.Equal(evergreen.TaskKnownIssue, task[0].DisplayStatus)
+	// ignore annotation for successful task
+	s.Equal(evergreen.TaskSucceeded, task[0].DisplayStatus)
 
 	// test with empty issues list
 	task, _, err = s.ctx.FindTasksByVersion("version_not_known", opts)
