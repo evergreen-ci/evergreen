@@ -19,7 +19,7 @@ const (
 	cleanupCheckAttempts   = 10
 	cleanupCheckTimeoutMin = 100 * time.Millisecond
 	cleanupCheckTimeoutMax = time.Second
-	contextTimeout         = time.Hour
+	contextTimeout         = 10 * time.Minute
 )
 
 // TrackProcess is a noop by default if we don't need to do any special
