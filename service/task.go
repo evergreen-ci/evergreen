@@ -934,6 +934,8 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 
 		for _, tr := range projCtx.Task.LocalTestResults {
+			tr.URL = tr.GetLogURL(false)
+			tr.URLRaw = tr.GetLogURL(true)
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 				TestResult: tr,
 				TaskId:     tr.TaskID,
@@ -942,6 +944,8 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 	} else {
 		for _, tr := range projCtx.Context.Task.LocalTestResults {
+			tr.URL = tr.GetLogURL(false)
+			tr.URLRaw = tr.GetLogURL(true)
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 				TestResult: tr,
 				TaskId:     tr.TaskID,

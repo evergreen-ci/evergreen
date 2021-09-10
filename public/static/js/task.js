@@ -356,52 +356,11 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
     return testResult.test_result.status === 'pass';
   };
 
-  $scope.getURL = function (testResult, isRaw) {
-    var url = (isRaw) ? testResult.url_raw : testResult.url;
-    let prefix = '/test_log/';
-    let raw = 'text=true';
-    let lineNum = '#L' + (testResult.line_num || 0);
-    if (url == '' && testResult.log_id) {
-      if (isRaw) {
-        url = prefix + testResult.log_id + '?' +  raw;
-      } else  {
-        url = prefix + testResult.log_id + lineNum;
-      }
-    } else if (url == '') {
-      let test_name = (testResult.log_test_name) ? testResult.log_test_name : testResult.test_file;
-      let group_id = (testResult.group_id) ? encodeURIComponent(testResult.group_id) : '';
-      url = prefix + encodeURIComponent(testResult.task_id) + '/' + testResult.execution + '?test_name=' + encodeURIComponent(test_name);
-      if (group_id != '') {
-        url += '&group_id=' + group_id;
-      }
-      if (isRaw) {
-        url += '&' + raw;
-      } else {
-        url += lineNum;
-      }
-    }
-    const deprecatedLogkeeperLobsterURL = "https://logkeeper.mongodb.org";
-    const isLogkeeperLink = url.includes(`${deprecatedLogkeeperLobsterURL}/build`);
-    if(!isRaw && isLogkeeperLink) {
-      url = url.replace(deprecatedLogkeeperLobsterURL, `${window.evgBaseUrl}/lobster`);
-    }
-    return url;
-  };
-
   $scope.execTaskUrl = function (taskId, execution) {
     if (execution >= 0) {
       return '/task/' + taskId + '/' + execution;
     }
     return '/task/' + taskId;
-  };
-
-  $scope.hideURL = function (testResult, isRaw) {
-    var url = isRaw ? testResult.url_raw : testResult.url;
-    return !((url != '') || (testResult.log_id) || (testResult.task_id != '' && testResult.display_name != ''));
-  };
-
-  $scope.hasBothURL = function (testResult) {
-    return !($scope.hideURL(testResult) || $scope.hideURL(testResult, 'raw'))
   };
 
   var hash = $locationHash.get();
