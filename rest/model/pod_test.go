@@ -13,10 +13,12 @@ import (
 func TestAPICreatePod(t *testing.T) {
 	t.Run("ToService", func(t *testing.T) {
 		apiPod := APICreatePod{
-			Name:   utility.ToStringPtr("id"),
-			Memory: utility.ToIntPtr(128),
-			CPU:    utility.ToIntPtr(128),
-			Image:  utility.ToStringPtr("image"),
+			Name:         utility.ToStringPtr("id"),
+			Memory:       utility.ToIntPtr(128),
+			CPU:          utility.ToIntPtr(128),
+			Image:        utility.ToStringPtr("image"),
+			RepoUsername: utility.ToStringPtr("username"),
+			RepoPassword: utility.ToStringPtr("password"),
 			EnvVars: []*APIPodEnvVar{
 				{
 					Name:   utility.ToStringPtr("name"),
@@ -48,6 +50,8 @@ func TestAPICreatePod(t *testing.T) {
 
 		assert.Equal(t, utility.FromStringPtr(apiPod.Secret), p.Secret)
 		assert.Equal(t, utility.FromStringPtr(apiPod.Image), p.TaskContainerCreationOpts.Image)
+		assert.Equal(t, utility.FromStringPtr(apiPod.RepoUsername), p.TaskContainerCreationOpts.RepoUsername)
+		assert.Equal(t, utility.FromStringPtr(apiPod.RepoPassword), p.TaskContainerCreationOpts.RepoPassword)
 		assert.Equal(t, utility.FromIntPtr(apiPod.Memory), p.TaskContainerCreationOpts.MemoryMB)
 		assert.Equal(t, utility.FromIntPtr(apiPod.CPU), p.TaskContainerCreationOpts.CPU)
 		assert.Equal(t, utility.FromStringPtr(apiPod.OS), string(p.TaskContainerCreationOpts.OS))
@@ -70,9 +74,11 @@ func TestAPIPod(t *testing.T) {
 			Status: pod.StatusRunning,
 			Secret: "secret",
 			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-				Image:    "image",
-				MemoryMB: 128,
-				CPU:      128,
+				Image:        "image",
+				RepoUsername: "username",
+				RepoPassword: "password",
+				MemoryMB:     128,
+				CPU:          128,
 				EnvVars: map[string]string{
 					"var0": "val0",
 					"var1": "val1",
@@ -110,11 +116,13 @@ func TestAPIPod(t *testing.T) {
 			Status: &status,
 			Secret: utility.ToStringPtr("secret"),
 			TaskContainerCreationOpts: APIPodTaskContainerCreationOptions{
-				Image:    utility.ToStringPtr("image"),
-				MemoryMB: utility.ToIntPtr(128),
-				CPU:      utility.ToIntPtr(128),
-				OS:       utility.ToStringPtr("linux"),
-				Arch:     utility.ToStringPtr("amd64"),
+				Image:        utility.ToStringPtr("image"),
+				RepoUsername: utility.ToStringPtr("username"),
+				RepoPassword: utility.ToStringPtr("password"),
+				MemoryMB:     utility.ToIntPtr(128),
+				CPU:          utility.ToIntPtr(128),
+				OS:           utility.ToStringPtr("linux"),
+				Arch:         utility.ToStringPtr("amd64"),
 				EnvVars: map[string]string{
 					"var0": "val0",
 					"var1": "val1",
@@ -153,6 +161,8 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
 			assert.Equal(t, utility.FromStringPtr(apiPod.Secret), dbPod.Secret)
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image), dbPod.TaskContainerCreationOpts.Image)
+			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoUsername), dbPod.TaskContainerCreationOpts.RepoUsername)
+			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoPassword), dbPod.TaskContainerCreationOpts.RepoPassword)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB), dbPod.TaskContainerCreationOpts.MemoryMB)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU), dbPod.TaskContainerCreationOpts.CPU)
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.OS), string(dbPod.TaskContainerCreationOpts.OS))
@@ -209,6 +219,8 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, PodStatusRunning, *apiPod.Status)
 			assert.Equal(t, dbPod.Secret, utility.FromStringPtr(apiPod.Secret))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.Image, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image))
+			assert.Equal(t, dbPod.TaskContainerCreationOpts.RepoUsername, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoUsername))
+			assert.Equal(t, dbPod.TaskContainerCreationOpts.RepoPassword, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoPassword))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.CPU, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU))
 			assert.Equal(t, string(dbPod.TaskContainerCreationOpts.OS), utility.FromStringPtr(apiPod.TaskContainerCreationOpts.OS))
