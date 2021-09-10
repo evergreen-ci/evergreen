@@ -2008,6 +2008,46 @@ func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.AP
 	return TaskQueueItemTypeCommit, nil
 }
 
+func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
+	usr := MustHaveUser(ctx)
+	pRef, err := r.sc.FindProjectById(id, false)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", id))
+	}
+	if err = pRef.AttachToRepo(usr); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
+	}
+
+	res := &restModel.APIProjectRef{}
+	if err := res.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building project from service: %s", err.Error()))
+	}
+	return res, nil
+}
+
+func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
+	usr := MustHaveUser(ctx)
+	pRef, err := r.sc.FindProjectById(id, false)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", id))
+	}
+	if err = pRef.DetachFromRepo(usr); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
+	}
+
+	res := &restModel.APIProjectRef{}
+	if err := res.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building project from service: %s", err.Error()))
+	}
+	return res, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {

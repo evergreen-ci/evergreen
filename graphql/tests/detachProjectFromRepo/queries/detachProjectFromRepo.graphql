@@ -1,0 +1,6 @@
+mutation {
+    detachProjectFromRepo(id: "1234") {
+        repoRefId
+        useRepoSettings
+    }
+}
