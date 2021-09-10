@@ -112,7 +112,7 @@ func TestJIRASummary(t *testing.T) {
 		Convey("a task with two failed tests should return a subject", func() {
 			j.data.Task.LocalTestResults = []task.TestResult{
 				{TestFile: testName1, Status: evergreen.TestFailedStatus},
-				{TestFile: testName2, Status: evergreen.TestFailedStatus},
+				{TestFile: "test_file", DisplayTestName: testName2, Status: evergreen.TestFailedStatus},
 				{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 				{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 				{TestFile: testName3, Status: evergreen.TestSucceededStatus},
@@ -138,7 +138,7 @@ func TestJIRASummary(t *testing.T) {
 		})
 		Convey("a task with failing tests should return a subject omitting any silently failing tests", func() {
 			j.data.Task.LocalTestResults = []task.TestResult{
-				{TestFile: testName1, Status: evergreen.TestFailedStatus},
+				{TestFile: "test_file", DisplayTestName: testName1, Status: evergreen.TestFailedStatus},
 				{TestFile: testName2, Status: evergreen.TestFailedStatus},
 				{TestFile: testName3, Status: evergreen.TestSilentlyFailedStatus},
 			}
@@ -170,7 +170,7 @@ func TestJIRASummary(t *testing.T) {
 				{TestFile: testName2, Status: evergreen.TestFailedStatus},
 				{TestFile: testName3, Status: evergreen.TestFailedStatus},
 				{TestFile: testName3, Status: evergreen.TestFailedStatus},
-				{TestFile: testName3, Status: evergreen.TestFailedStatus},
+				{TestFile: "test_file", DisplayTestName: testName3, Status: evergreen.TestFailedStatus},
 				{TestFile: reallyLongTestName, Status: evergreen.TestFailedStatus},
 			}
 			subj, err := j.getSummary()
@@ -263,7 +263,7 @@ func TestJIRADescription(t *testing.T) {
 					Project:     projectId,
 					LocalTestResults: []task.TestResult{
 						{TestFile: testName1, Status: evergreen.TestFailedStatus, URL: "direct_link"},
-						{TestFile: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
+						{TestFile: "test_file", DisplayTestName: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
 						{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 					},
 					CreateTime: time.Unix(createTime, 0).UTC(),
@@ -338,8 +338,8 @@ func TestJIRADescription(t *testing.T) {
 			So(tests, ShouldContain, "FunUnitTest")
 
 			So(len(logfiles), ShouldEqual, 2)
-			So(logfiles, ShouldContain, "direct_link")
-			So(logfiles, ShouldContain, "http://evergreen.ui/test_log/123")
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(false))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(false))
 
 			So(len(taskURLs), ShouldEqual, 1)
 			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0")

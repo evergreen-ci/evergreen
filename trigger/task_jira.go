@@ -242,7 +242,7 @@ func (j *jiraBuilder) getSummary() (string, error) {
 
 	for _, test := range j.data.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
-			failed = append(failed, cleanTestName(test.TestFile))
+			failed = append(failed, cleanTestName(test.GetDisplayTestName()))
 		}
 	}
 
@@ -298,7 +298,7 @@ func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotification
 	for i := range j.data.Task.LocalTestResults {
 		if j.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			j.data.FailedTests = append(j.data.FailedTests, j.data.Task.LocalTestResults[i])
-			j.data.FailedTestNames = append(j.data.FailedTestNames, j.data.Task.LocalTestResults[i].TestFile)
+			j.data.FailedTestNames = append(j.data.FailedTestNames, j.data.Task.LocalTestResults[i].GetDisplayTestName())
 		}
 	}
 
@@ -343,15 +343,6 @@ func historyURL(t *task.Task, testName, uiRoot string) string {
 		uiRoot, url.PathEscape(t.Project), url.PathEscape(t.DisplayName), t.Revision, url.QueryEscape(testName))
 }
 
-// logURL returns the full URL for linking to a test's logs.
-// Returns the empty string if no internal or external log is referenced.
-func logURL(test task.TestResult, root string) string {
-	if test.LogId != "" {
-		return root + "/test_log/" + url.PathEscape(test.LogId)
-	}
-	return test.URL
-}
-
 // getDescription returns the body of the JIRA ticket, with links.
 func (j *jiraBuilder) getDescription() (string, error) {
 	const jiraMaxDescLength = 32767
@@ -360,8 +351,8 @@ func (j *jiraBuilder) getDescription() (string, error) {
 	for _, test := range j.data.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			tests = append(tests, jiraTestFailure{
-				Name:       cleanTestName(test.TestFile),
-				URL:        logURL(test, j.data.UIRoot),
+				Name:       cleanTestName(test.GetDisplayTestName()),
+				URL:        test.GetLogURL(false),
 				HistoryURL: historyURL(j.data.Task, cleanTestName(test.TestFile), j.data.UIRoot),
 				TaskID:     test.TaskID,
 				Execution:  test.Execution,

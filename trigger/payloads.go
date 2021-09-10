@@ -107,7 +107,7 @@ const emailTaskFailTemplate = `
         <tr>
           <td width="90%">
             <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
-              {{ .TestFile }}
+	      {{ .GetDisplayTestName }}
             </span>
           </td>
           {{ if eq $.Task.Details.Type "system" }}
@@ -425,29 +425,11 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 }
 
 func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "problem getting evergreen config")
-	}
-
 	result := []task.TestResult{}
 	for i := range t.LocalTestResults {
 		if t.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			testResult := t.LocalTestResults[i]
-			if testResult.URL != "" {
-				logURL, err := url.Parse(testResult.URL)
-				if err != nil {
-					return nil, errors.Wrapf(err, "unable to parse URL %s", testResult.URL)
-				}
-				if logURL.Host == "" {
-					testResult.URL = settings.Ui.Url + testResult.URL
-				} else {
-					testResult.URL = logURL.String()
-				}
-			} else if testResult.LogId != "" {
-				testResult.URL = logURL(testResult, settings.Ui.Url)
-			}
-
+			testResult.URL = testResult.GetLogURL(false)
 			result = append(result, testResult)
 		}
 	}
