@@ -70,6 +70,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// copy project, disable necessary settings
 	oldId := projectToCopy.Id
+	projectToCopy.Id = "" // this will be regenerated during Create
 	projectToCopy.Identifier = p.newProject
 	projectToCopy.Enabled = utility.FalsePtr()
 	projectToCopy.PRTestingEnabled = nil
