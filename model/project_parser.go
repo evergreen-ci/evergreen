@@ -84,6 +84,10 @@ type ParserProject struct {
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
+
+	// ProjectRef override fields
+	DeactivatePrevious *bool `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 
@@ -765,6 +769,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		TaskAnnotationSettings: pp.TaskAnnotationSettings,
 		BuildBaronSettings:     pp.BuildBaronSettings,
 		PerfEnabled:            utility.FromBoolPtr(pp.PerfEnabled),
+		DeactivatePrevious:     utility.FromBoolPtr(pp.DeactivatePrevious),
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -1396,6 +1401,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		catcher.New("perf settings can only be defined in one yaml")
 	} else if toMerge.PerfEnabled != nil {
 		pp.PerfEnabled = toMerge.PerfEnabled
+	}
+
+	if pp.DeactivatePrevious != nil && toMerge.DeactivatePrevious != nil {
+		catcher.New("scheduling settings can only be defined in one yaml")
+	} else if toMerge.DeactivatePrevious != nil {
+		pp.DeactivatePrevious = toMerge.DeactivatePrevious
 	}
 
 	return catcher.Resolve()

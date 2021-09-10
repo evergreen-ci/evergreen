@@ -1340,12 +1340,9 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 }
 
 func IsPerfEnabledForProject(projectId string) bool {
-	lastGoodVersion, err := FindVersionByLastKnownGoodConfig(projectId, -1)
-	if err == nil && lastGoodVersion != nil {
-		parserProject, err := ParserProjectFindOneById(lastGoodVersion.Id)
-		if err == nil && parserProject != nil && utility.FromBoolPtr(parserProject.PerfEnabled) {
-			return true
-		}
+	parserProject, err := ParserProjectFindOneByVersion(projectId, "")
+	if err == nil && utility.FromBoolPtr(parserProject.PerfEnabled) {
+		return true
 	}
 	project, err := FindMergedProjectRef(projectId)
 	if err == nil && project != nil {

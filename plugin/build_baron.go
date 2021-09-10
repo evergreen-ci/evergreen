@@ -126,23 +126,13 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 		return evergreen.WebHook{}, false
 	}
 	if flags.PluginAdminPageDisabled {
-		if version == "" {
-			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
-			if err == nil && lastGoodVersion != nil {
-				version = lastGoodVersion.Id
-			}
+		parserProject, err := model.ParserProjectFindOneByVersion(project, version)
+		if err != nil {
+			return evergreen.WebHook{}, false
 		}
-		var parserProject *model.ParserProject
-		if version != "" {
-			parserProject, err = model.ParserProjectFindOneById(version)
-			if err != nil {
-				return evergreen.WebHook{}, false
-			}
-			if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
-				webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
-			}
-		}
-		if parserProject == nil || parserProject.TaskAnnotationSettings == nil {
+		if parserProject.TaskAnnotationSettings != nil {
+			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
+		} else {
 			projectRef, err := model.FindMergedProjectRef(project)
 			if err != nil || projectRef == nil {
 				return evergreen.WebHook{}, false
@@ -190,20 +180,12 @@ func BbGetProject(settings *evergreen.Settings, projectId string, version string
 		return evergreen.BuildBaronSettings{}, false
 	}
 	if flags.PluginAdminPageDisabled {
-		if version == "" {
-			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(projectId, -1)
-			if err == nil && lastGoodVersion != nil {
-				version = lastGoodVersion.Id
-			}
+		parserProject, err := model.ParserProjectFindOneByVersion(projectId, version)
+		if err != nil {
+			return evergreen.BuildBaronSettings{}, false
 		}
-		if version != "" {
-			parserProject, err := model.ParserProjectFindOneById(version)
-			if err != nil {
-				return evergreen.BuildBaronSettings{}, false
-			}
-			if parserProject != nil && parserProject.BuildBaronSettings != nil {
-				return *parserProject.BuildBaronSettings, true
-			}
+		if parserProject.BuildBaronSettings != nil {
+			return *parserProject.BuildBaronSettings, true
 		}
 		projectRef, err := model.FindMergedProjectRef(projectId)
 		if err != nil || projectRef == nil {
