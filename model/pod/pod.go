@@ -4,9 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -40,6 +38,9 @@ const (
 	StatusStarting Status = "starting"
 	// StatusRunning indicates that the pod's containers are running.
 	StatusRunning Status = "running"
+	// StatusDecommissioned indicates that the pod is currently running but will
+	// be terminated shortly.
+	StatusDecommissioned Status = "decommissioned"
 	// StatusTerminated indicates that all of the pod's containers and
 	// associated resources have been deleted.
 	StatusTerminated Status = "terminated"
@@ -204,39 +205,19 @@ func (p *Pod) Remove() error {
 	)
 }
 
-// UpdateStatus updates the pod status. If the new status is identical to the
-// current one, this is a no-op.
+// UpdateStatus updates the pod status.
 func (p *Pod) UpdateStatus(s Status) error {
-	if p.Status == s {
-		return nil
+	ts := utility.BSONTime(time.Now())
+	if err := UpdateOneStatus(p.ID, p.Status, s, ts); err != nil {
+		return errors.Wrap(err, "updating status")
 	}
-
-	byIDAndStatus := ByID(p.ID)
-	byIDAndStatus[StatusKey] = p.Status
-
-	updated := utility.BSONTime(time.Now())
-	setFields := bson.M{StatusKey: s}
-	switch s {
-	case StatusInitializing:
-		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoInitializingKey)] = updated
-	case StatusStarting:
-		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey)] = updated
-	}
-
-	if err := UpdateOne(byIDAndStatus, bson.M{
-		"$set": setFields,
-	}); err != nil {
-		return err
-	}
-
-	event.LogPodStatusChanged(p.ID, string(p.Status), string(s))
 
 	p.Status = s
 	switch s {
 	case StatusInitializing:
-		p.TimeInfo.Initializing = updated
+		p.TimeInfo.Initializing = ts
 	case StatusStarting:
-		p.TimeInfo.Starting = updated
+		p.TimeInfo.Starting = ts
 	}
 
 	return nil

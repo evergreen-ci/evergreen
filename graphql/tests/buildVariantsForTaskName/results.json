@@ -1,0 +1,14 @@
+{
+    "tests": [
+      {
+          "query_file": "buildVariantsForTaskName.graphql",
+          "result": {
+            "data": {"buildVariantsForTaskName":[
+               {"displayName": "OSX", "buildVariant": "osx" },
+               {"displayName": "Ubuntu 16.04","buildVariant": "ubuntu1604"}
+               ]}
+          }
+        }
+    ]
+}
+  

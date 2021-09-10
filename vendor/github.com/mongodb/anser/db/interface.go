@@ -9,7 +9,6 @@ type Session interface {
 	Copy() Session
 	Close()
 	DB(string) Database
-	SetSocketTimeout(time.Duration)
 	Error() error
 }
 
@@ -24,7 +23,7 @@ type Database interface {
 // mgo.Collection type.
 type Collection interface {
 	DropCollection() error
-	Pipe(interface{}) Results
+	Pipe(interface{}) Aggregation
 	Find(interface{}) Query
 	FindId(interface{}) Query
 	Count() (int, error)
@@ -50,6 +49,13 @@ type Query interface {
 	// name of the index as a string or the index specification as a document.
 	Hint(interface{}) Query
 	Apply(Change, interface{}) (*ChangeInfo, error)
+	MaxTime(time.Duration) Query
+	Results
+}
+
+type Aggregation interface {
+	Hint(interface{}) Aggregation
+	MaxTime(time.Duration) Aggregation
 	Results
 }
 
@@ -79,8 +85,7 @@ type Iterator interface {
 }
 
 // Results reflect the output of a database operation and is part of
-// the query interface, and is returned by the pipeline (e.g
-// aggregation operation.)
+// the query interface
 type Results interface {
 	All(interface{}) error
 	One(interface{}) error

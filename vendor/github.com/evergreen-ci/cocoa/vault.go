@@ -9,7 +9,9 @@ import (
 // Vault allows you to interact with a secrets storage service.
 type Vault interface {
 	// CreateSecret creates a new secret and returns the unique identifier for
-	// the stored secret.
+	// the stored secret. If the secret already exists, it just returns the
+	// unique identifier for the existing secret without modifying its value. To
+	// update the secret's value, see UpdateValue.
 	CreateSecret(ctx context.Context, s NamedSecret) (id string, err error)
 	// GetValue returns the value of the secret identified by ID.
 	GetValue(ctx context.Context, id string) (val string, err error)

@@ -78,6 +78,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 			case <-timer.C:
 				runStartedAt := time.Now()
 				err := sc.jasper.CreateCommand(ctx).Append(sc.Cmds...).
+					ContinueOnError(true).
 					SetOutputSender(level.Info, sc.logger.System().GetSender()).
 					SetErrorSender(level.Error, sc.logger.System().GetSender()).
 					Run(ctx)

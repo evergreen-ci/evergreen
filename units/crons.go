@@ -751,7 +751,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			hosts[i], hosts[j] = hosts[j], hosts[i]
 		}
 
-		// refersh HostInit
+		// refresh HostInit
 		if err := env.Settings().HostInit.Get(env); err != nil {
 			return errors.Wrap(err, "problem getting global config")
 		}
@@ -1273,7 +1273,7 @@ func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		pods, err := pod.FindByStaleStarting()
+		pods, err := pod.FindByNeedsTermination()
 		if err != nil {
 			return errors.Wrap(err, "finding pods that have been stuck starting for too long")
 		}

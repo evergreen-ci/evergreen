@@ -60,8 +60,11 @@ func (o *BasicECSPodOptions) SetStatusInfo(s cocoa.ECSPodStatusInfo) *BasicECSPo
 func (o *BasicECSPodOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(o.Client == nil, "must specify a client")
-	catcher.NewWhen(o.Resources == nil, "must specify at least one underlying resource being used by the pod")
-	catcher.NewWhen(o.Resources != nil && o.Resources.TaskID == nil, "must specify task ID")
+	if o.Resources != nil {
+		catcher.Wrap(o.Resources.Validate(), "invalid resources")
+	} else {
+		catcher.New("missing pod resources")
+	}
 	if o.StatusInfo != nil {
 		catcher.Add(o.StatusInfo.Validate())
 	} else {
@@ -165,10 +168,12 @@ func (p *BasicECSPod) Delete(ctx context.Context) error {
 
 	for _, c := range p.resources.Containers {
 		for _, s := range c.Secrets {
-			if utility.FromBoolPtr(s.Owned) {
-				id := utility.FromStringPtr(s.Name)
-				catcher.Wrapf(p.vault.DeleteSecret(ctx, id), "deleting secret '%s' for container '%s'", id, utility.FromStringPtr(c.Name))
+			if !utility.FromBoolPtr(s.Owned) {
+				continue
 			}
+
+			id := utility.FromStringPtr(s.ID)
+			catcher.Wrapf(p.vault.DeleteSecret(ctx, id), "deleting secret '%s' for container '%s'", id, utility.FromStringPtr(c.Name))
 		}
 	}
 

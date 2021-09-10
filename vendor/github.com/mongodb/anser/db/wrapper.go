@@ -34,9 +34,6 @@ type sessionWrapper struct {
 func (s *sessionWrapper) Clone() Session { s.isClone = true; return s }
 func (s *sessionWrapper) Copy() Session  { s.isClone = true; return s }
 func (s *sessionWrapper) Error() error   { return s.catcher.Resolve() }
-func (s *sessionWrapper) SetSocketTimeout(d time.Duration) {
-	s.ctx, s.canceler = context.WithTimeout(s.ctx, d)
-}
 
 func (s *sessionWrapper) DB(name string) Database {
 	return &databaseWrapper{
@@ -77,13 +74,11 @@ type collectionWrapper struct {
 
 func (c *collectionWrapper) DropCollection() error { return errors.WithStack(c.coll.Drop(c.ctx)) }
 
-func (c *collectionWrapper) Pipe(p interface{}) Results {
-	cursor, err := c.coll.Aggregate(c.ctx, p, options.Aggregate().SetAllowDiskUse(true))
-
-	return &resultsWrapper{
-		err:    err,
-		cursor: cursor,
-		ctx:    c.ctx,
+func (c *collectionWrapper) Pipe(p interface{}) Aggregation {
+	return &aggregationWrapper{
+		ctx:      c.ctx,
+		coll:     c.coll,
+		pipeline: p,
 	}
 }
 
@@ -337,38 +332,6 @@ func (b *bulkWrapper) Run() (*BulkResult, error) {
 	return &BulkResult{Matched: int(res.MatchedCount), Modified: int(res.ModifiedCount)}, nil
 }
 
-type resultsWrapper struct {
-	ctx    context.Context
-	cursor *mongo.Cursor
-	err    error
-}
-
-func (r *resultsWrapper) All(result interface{}) error {
-	if r.err != nil {
-		return errors.WithStack(r.err)
-	}
-
-	return errors.WithStack(r.cursor.All(r.ctx, result))
-}
-
-func (r *resultsWrapper) One(result interface{}) error {
-	if r.err != nil {
-		return errors.WithStack(r.err)
-	}
-
-	return errors.WithStack(ResolveCursorOne(r.ctx, r.cursor, result))
-}
-
-func (r *resultsWrapper) Iter() Iterator {
-	catcher := grip.NewCatcher()
-	catcher.Add(r.err)
-	return &iteratorWrapper{
-		ctx:     r.ctx,
-		cursor:  r.cursor,
-		catcher: catcher,
-	}
-}
-
 type iteratorWrapper struct {
 	ctx        context.Context
 	cursor     *mongo.Cursor
@@ -406,6 +369,7 @@ type queryWrapper struct {
 	skip       int
 	sort       []string
 	hint       interface{}
+	maxTime    time.Duration
 }
 
 func (q *queryWrapper) Limit(l int) Query             { q.limit = l; return q }
@@ -413,6 +377,7 @@ func (q *queryWrapper) Select(proj interface{}) Query { q.projection = proj; ret
 func (q *queryWrapper) Sort(keys ...string) Query     { q.sort = append(q.sort, keys...); return q }
 func (q *queryWrapper) Skip(s int) Query              { q.skip = s; return q }
 func (q *queryWrapper) Hint(h interface{}) Query      { q.hint = h; return q }
+func (q *queryWrapper) MaxTime(d time.Duration) Query { q.maxTime = d; return q }
 func (q *queryWrapper) Count() (int, error) {
 	v, err := q.coll.CountDocuments(q.ctx, q.filter)
 	return int(v), errors.WithStack(err)
@@ -484,7 +449,8 @@ func (q *queryWrapper) exec() error {
 		q.filter = struct{}{}
 	}
 
-	opts := options.Find()
+	opts := options.Find().SetHint(q.hint)
+
 	if q.projection != nil {
 		opts.SetProjection(q.projection)
 	}
@@ -497,8 +463,8 @@ func (q *queryWrapper) exec() error {
 	if q.skip > 0 {
 		opts.SetSkip(int64(q.skip))
 	}
-	if q.hint != "" {
-		opts.SetHint(q.hint)
+	if q.maxTime > 0 {
+		opts.SetMaxTime(q.maxTime)
 	}
 
 	var err error
@@ -539,6 +505,63 @@ func (q *queryWrapper) Iter() Iterator {
 	return &iteratorWrapper{
 		ctx:     q.ctx,
 		cursor:  q.cursor,
+		catcher: catcher,
+	}
+}
+
+type aggregationWrapper struct {
+	ctx      context.Context
+	coll     *mongo.Collection
+	pipeline interface{}
+	cursor   *mongo.Cursor
+	hint     interface{}
+	maxTime  time.Duration
+}
+
+func (a *aggregationWrapper) Hint(hint interface{}) Aggregation   { a.hint = hint; return a }
+func (a *aggregationWrapper) MaxTime(d time.Duration) Aggregation { a.maxTime = d; return a }
+
+func (a *aggregationWrapper) exec() error {
+	if a.cursor != nil {
+		return nil
+	}
+
+	opts := options.Aggregate().
+		SetAllowDiskUse(true).
+		SetHint(a.hint)
+
+	if a.maxTime > 0 {
+		opts.SetMaxTime(a.maxTime)
+	}
+
+	var err error
+	a.cursor, err = a.coll.Aggregate(a.ctx, a.pipeline, opts)
+
+	return errors.WithStack(err)
+}
+
+func (a *aggregationWrapper) All(result interface{}) error {
+	if err := a.exec(); err != nil {
+		return errors.WithStack(err)
+	}
+	return errors.WithStack(a.cursor.All(a.ctx, result))
+}
+
+func (a *aggregationWrapper) One(result interface{}) error {
+	if err := a.exec(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return errors.WithStack(ResolveCursorOne(a.ctx, a.cursor, result))
+}
+
+func (a *aggregationWrapper) Iter() Iterator {
+	catcher := grip.NewCatcher()
+	catcher.Add(a.exec())
+
+	return &iteratorWrapper{
+		ctx:     a.ctx,
+		cursor:  a.cursor,
 		catcher: catcher,
 	}
 }

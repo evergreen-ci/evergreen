@@ -97,7 +97,7 @@ type LegacyCollection struct {
 	Mutex        sync.Mutex
 }
 
-func (c *LegacyCollection) Pipe(p interface{}) db.Results {
+func (c *LegacyCollection) Pipe(p interface{}) db.Aggregation {
 	pm := &Pipeline{Pipe: p}
 
 	c.Mutex.Lock()
@@ -181,21 +181,23 @@ type Query struct {
 	NumLimit        int
 	NumSkip         int
 	IndexHint       interface{}
+	MaxQTime        time.Duration
 	Error           error
 	CountNum        int
 	ApplyChangeSpec db.Change
 	ApplyChangeInfo *db.ChangeInfo
 }
 
-func (q *Query) Count() (int, error)           { return q.CountNum, q.Error }
-func (q *Query) Limit(n int) db.Query          { q.NumLimit = n; return q }
-func (q *Query) Select(p interface{}) db.Query { q.Project = p; return q }
-func (q *Query) Skip(n int) db.Query           { q.NumSkip = n; return q }
-func (q *Query) Hint(h interface{}) db.Query   { q.IndexHint = h; return q }
-func (q *Query) Iter() db.Iterator             { return &Iterator{Error: q.Error, Query: q} }
-func (q *Query) One(r interface{}) error       { return q.Error }
-func (q *Query) All(r interface{}) error       { return q.Error }
-func (q *Query) Sort(keys ...string) db.Query  { q.SortKeys = keys; return q }
+func (q *Query) Count() (int, error)              { return q.CountNum, q.Error }
+func (q *Query) Limit(n int) db.Query             { q.NumLimit = n; return q }
+func (q *Query) Select(p interface{}) db.Query    { q.Project = p; return q }
+func (q *Query) Skip(n int) db.Query              { q.NumSkip = n; return q }
+func (q *Query) Hint(h interface{}) db.Query      { q.IndexHint = h; return q }
+func (q *Query) MaxTime(d time.Duration) db.Query { q.MaxQTime = d; return q }
+func (q *Query) Iter() db.Iterator                { return &Iterator{Error: q.Error, Query: q} }
+func (q *Query) One(r interface{}) error          { return q.Error }
+func (q *Query) All(r interface{}) error          { return q.Error }
+func (q *Query) Sort(keys ...string) db.Query     { q.SortKeys = keys; return q }
 
 func (q *Query) Apply(ch db.Change, r interface{}) (*db.ChangeInfo, error) {
 	q.ApplyChangeSpec = ch
@@ -232,6 +234,8 @@ type Pipeline struct {
 	Error error
 }
 
-func (p *Pipeline) Iter() db.Iterator       { return &Iterator{Pipeline: p} }
-func (p *Pipeline) All(r interface{}) error { return p.Error }
-func (p *Pipeline) One(r interface{}) error { return p.Error }
+func (p *Pipeline) Iter() db.Iterator                      { return &Iterator{Pipeline: p} }
+func (p *Pipeline) All(r interface{}) error                { return p.Error }
+func (p *Pipeline) One(r interface{}) error                { return p.Error }
+func (p *Pipeline) Hint(hint interface{}) db.Aggregation   { return p }
+func (p *Pipeline) MaxTime(d time.Duration) db.Aggregation { return p }

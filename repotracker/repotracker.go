@@ -993,6 +993,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			DistroAliases:       distroAliases,
 			TaskCreateTime:      v.CreateTime,
 			GithubChecksAliases: aliasesMatchingVariant,
+			ProjectIdentifier:   projectInfo.Ref.Identifier,
 		}
 
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)

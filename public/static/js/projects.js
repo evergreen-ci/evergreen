@@ -418,7 +418,7 @@ mciModule.controller(
             batch_time: parseInt($scope.projectRef.batch_time),
             deactivate_previous: $scope.projectRef.deactivate_previous,
             relative_url: $scope.projectRef.relative_url,
-            branch_name: $scope.projectRef.branch_name || "master",
+            branch_name: $scope.projectRef.branch_name || "main",
             owner_name: $scope.projectRef.owner_name,
             repo_name: $scope.projectRef.repo_name,
             enabled: $scope.projectRef.enabled,
@@ -618,7 +618,8 @@ mciModule.controller(
             $scope.isDirty = false;
           },
           function (resp) {
-            $scope.saveMessage = "Couldn't save project: " + resp.data.error;
+            const message = (resp.data.error ? resp.data.error : resp.data);
+            $scope.saveMessage = "Couldn't save project: " + message;
           }
         );
     };
@@ -1378,16 +1379,34 @@ mciModule.controller(
 mciModule.directive("adminNewProject", function () {
   return {
     restrict: "E",
-    template: '<div class="row">' +
-      '<div class="col-lg-12">' +
-      "Enter project name " +
-      '<form style="display: inline" ng-submit="addProject()">' +
-      '<input type="text" id="project-name" placeholder="project name" ng-model="newProject.identifier">' +
-      ' <input type="checkbox" id="copy-project" ng-model="newProject.copyProject">' +
-      " Duplicate current project" +
-      "</form>" +
-      '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-click="addProject()">Create Project</button>' +
-      "</div>" +
-      "</div>",
+    template: '' +
+      '<div class="row">' +
+        '<div class="col-lg-12">' +
+         "Enter project identifier " +
+          '<input type="text" id="project-name" placeholder="project name" ng-model="newProject.identifier">' +
+        "</div>" +
+      '</div>' +
+      '<div class="row">' +
+        '<div class="col-lg-12">' +
+          "Optionally enter immutable project ID " +
+          '<div class="muted small">' +
+            "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason. Cannot be changed!)" +
+          '</div>' +
+          '<input type="text" id="project-name" placeholder="immutable project ID" ng-model="newProject.id">' +
+        '</div>' +
+      '</div>' +
+      '<div class="row">' +
+        '<div class="col-lg-12">' +
+        '<form style="display: inline">' +
+          '<input type="checkbox" id="copy-project" ng-model="newProject.copyProject">' +
+          " Duplicate current project " +
+        "</form>" +
+        '</div>' +
+      '</div>' +
+      '<div class="row">'  +
+        '<div class="col-lg-12">' +
+          '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-disabled="!newProject.identifier" ng-click="addProject()">Create Project</button>' +
+        '</div>' +
+      '</div>',
   };
 });

@@ -336,7 +336,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	patchDoc.Id = j.PatchID
 
-	if err = j.processTriggerAliases(ctx, patchDoc, pref); err != nil {
+	if _, err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
 		return errors.Wrap(err, "problem processing trigger aliases")
 	}
 
@@ -476,9 +476,9 @@ func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project
 	return res, nil
 }
 
-func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef) error {
-	if len(p.Triggers.Aliases) == 0 {
-		return nil
+func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) ([]string, error) {
+	if len(aliasNames) == 0 {
+		return nil, nil
 	}
 
 	type aliasGroup struct {
@@ -487,10 +487,10 @@ func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *pat
 		parentAsModule string
 	}
 	aliasGroups := make(map[aliasGroup][]patch.PatchTriggerDefinition)
-	for _, aliasName := range p.Triggers.Aliases {
+	for _, aliasName := range aliasNames {
 		alias, found := projectRef.GetPatchTriggerAlias(aliasName)
 		if !found {
-			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
+			return nil, errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
 		}
 
 		// group patches on project, status, parentAsModule
@@ -503,6 +503,7 @@ func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *pat
 	}
 
 	triggerIntents := make([]patch.Intent, 0, len(aliasGroups))
+	childPatchIds := make([]string, 0, len(aliasGroups))
 	for group, definitions := range aliasGroups {
 		triggerIntent := patch.NewTriggerIntent(patch.TriggerIntentOptions{
 			ParentID:       p.Id.Hex(),
@@ -515,17 +516,18 @@ func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *pat
 		})
 
 		if err := triggerIntent.Insert(); err != nil {
-			return errors.Wrap(err, "problem inserting trigger intent")
+			return nil, errors.Wrap(err, "problem inserting trigger intent")
 		}
 
 		triggerIntents = append(triggerIntents, triggerIntent)
-		p.Triggers.ChildPatches = append(p.Triggers.ChildPatches, triggerIntent.ID())
+		childPatchIds = append(childPatchIds, triggerIntent.ID())
 	}
+	p.Triggers.ChildPatches = append(p.Triggers.ChildPatches, childPatchIds...)
 
 	for _, intent := range triggerIntents {
 		triggerIntent, ok := intent.(*patch.TriggerIntent)
 		if !ok {
-			return errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
+			return nil, errors.Errorf("intent '%s' didn't not have expected type '%T'", intent.ID(), intent)
 		}
 
 		job := NewPatchIntentProcessor(mgobson.ObjectIdHex(intent.ID()), intent)
@@ -534,15 +536,15 @@ func (j *patchIntentProcessor) processTriggerAliases(ctx context.Context, p *pat
 			// we need the child patch intents to exist when the parent patch is finalized.
 			job.Run(ctx)
 			if err := job.Error(); err != nil {
-				return errors.Wrap(err, "problem processing child patch")
+				return nil, errors.Wrap(err, "problem processing child patch")
 			}
 		} else {
-			if err := j.env.RemoteQueue().Put(ctx, job); err != nil {
-				return errors.Wrap(err, "problem enqueueing child patch processing")
+			if err := env.RemoteQueue().Put(ctx, job); err != nil {
+				return nil, errors.Wrap(err, "problem enqueueing child patch processing")
 			}
 		}
 	}
-	return nil
+	return childPatchIds, nil
 }
 
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {

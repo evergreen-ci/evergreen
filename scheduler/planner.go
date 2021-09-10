@@ -190,6 +190,7 @@ func (unit *Unit) RankValue() int64 {
 		inPatch          bool
 		anyNonGroupTasks bool
 		generateTask     bool
+		stepbackTask     bool
 	)
 
 	for _, t := range unit.tasks {
@@ -204,6 +205,9 @@ func (unit *Unit) RankValue() int64 {
 		}
 		if t.GenerateTask {
 			generateTask = true
+		}
+		if t.ActivatedBy == evergreen.StepbackTaskActivator {
+			stepbackTask = true
 		}
 
 		if !t.ActivatedTime.IsZero() {
@@ -249,9 +253,15 @@ func (unit *Unit) RankValue() int64 {
 		// of a bump, to avoid running older builds first.
 		avgLifeTime := timeInQueue / time.Duration(length)
 
+		var mainlinePriority int64
 		if avgLifeTime < time.Duration(7*24)*time.Hour {
-			unit.cachedValue += priority * unit.distro.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
+			mainlinePriority += unit.distro.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
+		if stepbackTask {
+			mainlinePriority += unit.distro.GetStepbackTaskFactor()
+		}
+
+		unit.cachedValue += priority * mainlinePriority
 	}
 
 	// Start with the number of tasks so that units with more

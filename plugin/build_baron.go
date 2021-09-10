@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -36,7 +37,15 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	}
 
 	for projName, proj := range bbpOptions.Projects {
-		webhookConfigured := proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint != ""
+		webHook := proj.TaskAnnotationSettings.FileTicketWebHook
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.Wrap(err, "error getting service flags")
+		}
+		if flags.PluginAdminPageDisabled {
+			webHook, _ = IsWebhookConfigured(projName, "")
+		}
+		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
 			return fmt.Errorf("ticket_create_project and taskAnnotationSettings.FileTicketWebHook endpoint cannot both be blank")
 		}
@@ -69,7 +78,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 					"message":      "The custom file ticket webhook and the build baron TicketCreateProject should not both be configured",
 					"project_name": projName})
 			}
-			if _, err := url.Parse(proj.TaskAnnotationSettings.FileTicketWebHook.Endpoint); err != nil {
+			if _, err := url.Parse(webHook.Endpoint); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":      "Failed to parse webhook endpoint for project",
 					"project_name": projName}))
@@ -104,4 +113,79 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 			},
 		},
 	}, nil
+}
+
+// IsWebhookConfigured webhook will can be retrieved from project or admin config depending on PluginAdminPageDisabled flag
+// if deriving from project config, we first try to retrieve webhook config prom project parser config, otherwise we fallback to project page settings
+// version is needed to retrieve last good project config, if version is not available/empty when calling this function we must first retrieve it
+func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool) {
+	var webHook evergreen.WebHook
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return evergreen.WebHook{}, false
+	}
+	if flags.PluginAdminPageDisabled {
+		if version == "" {
+			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
+			if err != nil || lastGoodVersion == nil {
+				return evergreen.WebHook{}, false
+			}
+			version = lastGoodVersion.Id
+		}
+		parserProject, err := model.ParserProjectFindOneById(version)
+		if err != nil {
+			return evergreen.WebHook{}, false
+		}
+		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
+			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
+		} else {
+			projectRef, err := model.FindMergedProjectRef(project)
+			if err != nil || projectRef == nil {
+				return evergreen.WebHook{}, false
+			}
+			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+		}
+	} else {
+		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
+		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
+	}
+	if webHook.Endpoint != "" {
+		return webHook, true
+	} else {
+		return evergreen.WebHook{}, false
+	}
+}
+
+func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
+	bbconf, ok := settings.Plugins["buildbaron"]
+	if !ok {
+		return nil
+	}
+
+	projectConfig, ok := bbconf["projects"]
+	if !ok {
+		grip.Error("no build baron projects configured")
+		return nil
+	}
+
+	projects := map[string]evergreen.BuildBaronProject{}
+	err := mapstructure.Decode(projectConfig, &projects)
+	if err != nil {
+		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
+	}
+
+	return projects
+}
+
+func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
+	buildBaronProjects := BbGetConfig(settings)
+	bbProject, ok := buildBaronProjects[projectId]
+	if !ok {
+		// project may be stored under the identifier rather than the ID
+		identifier, err := model.GetIdentifierForProject(projectId)
+		if err == nil && identifier != "" {
+			bbProject, ok = buildBaronProjects[identifier]
+		}
+	}
+	return bbProject, ok
 }

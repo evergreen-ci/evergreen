@@ -81,20 +81,34 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		if j.ecsClient != nil {
 			j.AddError(j.ecsClient.Close(ctx))
 		}
+
+		if j.pod != nil && j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned), "updating pod status to decommissioned after pod failed to start"))
+		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {
-		j.AddError(err)
+		j.AddRetryableError(err)
 		return
 	}
 
+	settings := *j.env.Settings()
+	// Use the latest service flags instead of those cached in the environment.
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
+		return
+	}
+	settings.ServiceFlags = *flags
+
 	switch j.pod.Status {
 	case pod.StatusInitializing:
-		opts, err := cloud.ExportPodCreationOptions(j.env.Settings(), j.pod)
+		opts, err := cloud.ExportECSPodCreationOptions(&settings, j.pod)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "exporting pod creation options"))
+			return
 		}
 
-		p, err := j.ecsPodCreator.CreatePod(ctx, opts)
+		p, err := j.ecsPodCreator.CreatePod(ctx, *opts)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "starting pod"))
 			return
@@ -103,7 +117,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		j.ecsPod = p
 
 		res := p.Resources()
-		if err := j.pod.UpdateResources(cloud.ImportPodResources(res)); err != nil {
+		if err := j.pod.UpdateResources(cloud.ImportECSPodResources(res)); err != nil {
 			j.AddError(errors.Wrap(err, "updating pod resources"))
 		}
 

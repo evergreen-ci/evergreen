@@ -32,33 +32,35 @@ const (
 )
 
 type Project struct {
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`
-	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
-	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
-	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`
-	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Ignore             []string                   `yaml:"ignore,omitempty" bson:"ignore"`
-	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
-	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
-	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Enabled                bool                           `yaml:"enabled,omitempty" bson:"enabled"`
+	Stepback               bool                           `yaml:"stepback,omitempty" bson:"stepback"`
+	PreErrorFailsTask      bool                           `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask     bool                           `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
+	OomTracker             bool                           `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
+	BatchTime              int                            `yaml:"batchtime,omitempty" bson:"batch_time"`
+	Owner                  string                         `yaml:"owner,omitempty" bson:"owner_name"`
+	Repo                   string                         `yaml:"repo,omitempty" bson:"repo_name"`
+	RemotePath             string                         `yaml:"remote_path,omitempty" bson:"remote_path"`
+	Branch                 string                         `yaml:"branch,omitempty" bson:"branch_name"`
+	Identifier             string                         `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName            string                         `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType            string                         `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore                 []string                       `yaml:"ignore,omitempty" bson:"ignore"`
+	Parameters             []ParameterInfo                `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
+	Pre                    *YAMLCommandSet                `yaml:"pre,omitempty" bson:"pre"`
+	Post                   *YAMLCommandSet                `yaml:"post,omitempty" bson:"post"`
+	Timeout                *YAMLCommandSet                `yaml:"timeout,omitempty" bson:"timeout"`
+	EarlyTermination       *YAMLCommandSet                `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
+	CallbackTimeout        int                            `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules                ModuleList                     `yaml:"modules,omitempty" bson:"modules"`
+	BuildVariants          BuildVariants                  `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions              map[string]*YAMLCommandSet     `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups             []TaskGroup                    `yaml:"task_groups,omitempty" bson:"task_groups"`
+	Tasks                  []ProjectTask                  `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs        int                            `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+	PerfEnabled            bool                           `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -276,6 +278,11 @@ type Module struct {
 	Repo   string `yaml:"repo,omitempty" bson:"repo"`
 	Prefix string `yaml:"prefix,omitempty" bson:"prefix"`
 	Ref    string `yaml:"ref,omitempty" bson:"ref"`
+}
+
+type Include struct {
+	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty"`
+	Module   string `yaml:"module,omitempty" bson:"module,omitempty"`
 }
 
 type ModuleList []Module

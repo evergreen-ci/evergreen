@@ -235,6 +235,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Aborted:                 v.Aborted,
 			CanSync:                 v.CanSync,
 			MustHaveResults:         v.MustHaveResults,
+			ParentTaskId:            utility.FromStringPtr(v.DisplayTaskId),
 			SyncAtEndOpts: APISyncAtEndOptions{
 				Enabled:  v.SyncAtEndOpts.Enabled,
 				Statuses: v.SyncAtEndOpts.Statuses,

@@ -105,6 +105,7 @@ type MainlineCommitVersion struct {
 
 type MainlineCommits struct {
 	NextPageOrderNumber *int                     `json:"nextPageOrderNumber"`
+	PrevPageOrderNumber *int                     `json:"prevPageOrderNumber"`
 	Versions            []*MainlineCommitVersion `json:"versions"`
 }
 
@@ -125,9 +126,10 @@ type Manifest struct {
 }
 
 type PatchConfigure struct {
-	Description   string                `json:"description"`
-	VariantsTasks []*VariantTasks       `json:"variantsTasks"`
-	Parameters    []*model.APIParameter `json:"parameters"`
+	Description         string                `json:"description"`
+	VariantsTasks       []*VariantTasks       `json:"variantsTasks"`
+	Parameters          []*model.APIParameter `json:"parameters"`
+	PatchTriggerAliases []string              `json:"patchTriggerAliases"`
 }
 
 type PatchDuration struct {
@@ -154,11 +156,6 @@ type PatchTime struct {
 	Started     *string `json:"started"`
 	Finished    *string `json:"finished"`
 	SubmittedAt string  `json:"submittedAt"`
-}
-
-type PatchTriggerAlias struct {
-	Alias        string `json:"alias"`
-	ChildProject string `json:"childProject"`
 }
 
 type Patches struct {
@@ -228,6 +225,16 @@ type SpawnVolumeInput struct {
 type StatusCount struct {
 	Status string `json:"status"`
 	Count  int    `json:"count"`
+}
+
+type Subscriber struct {
+	GithubPRSubscriber    *model.APIGithubPRSubscriber    `json:"githubPRSubscriber"`
+	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber"`
+	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber"`
+	JiraIssueSubscriber   *model.APIJIRAIssueSubscriber   `json:"jiraIssueSubscriber"`
+	JiraCommentSubscriber *string                         `json:"jiraCommentSubscriber"`
+	EmailSubscriber       *string                         `json:"emailSubscriber"`
+	SlackSubscriber       *string                         `json:"slackSubscriber"`
 }
 
 type TaskFiles struct {

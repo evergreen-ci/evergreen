@@ -38,7 +38,7 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 				SetExecutionOptions(*execOpts)
 			assert.NoError(t, opts.Validate())
 
-			p, err := c.CreatePod(ctx, opts)
+			p, err := c.CreatePod(ctx, *opts)
 			require.NoError(t, err)
 			require.NotNil(t, p)
 
@@ -46,13 +46,13 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 				require.NoError(t, p.Delete(ctx))
 			}()
 
-			stat := p.StatusInfo()
-			assert.Equal(t, cocoa.StatusStarting, stat.Status)
+			ps := p.StatusInfo()
+			assert.Equal(t, cocoa.StatusStarting, ps.Status)
 		},
 		"CreatePodFailsWithInvalidCreationOpts": func(ctx context.Context, t *testing.T, c cocoa.ECSPodCreator) {
 			opts := cocoa.NewECSPodCreationOptions()
 
-			p, err := c.CreatePod(ctx, opts)
+			p, err := c.CreatePod(ctx, *opts)
 			require.Error(t, err)
 			require.Zero(t, p)
 		},
@@ -61,7 +61,7 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 				SetName("envVar").
 				SetSecretOptions(*cocoa.NewSecretOptions().
 					SetName(testutil.NewSecretName("name")).
-					SetValue("value"))
+					SetNewValue("value"))
 			containerDef := cocoa.NewECSContainerDefinition().
 				SetImage("image").
 				AddEnvironmentVariables(*envVar).
@@ -79,7 +79,7 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 				SetExecutionOptions(*execOpts)
 			assert.NoError(t, opts.Validate())
 
-			p, err := c.CreatePod(ctx, opts)
+			p, err := c.CreatePod(ctx, *opts)
 			require.Error(t, err)
 			require.Zero(t, p)
 		},
@@ -88,7 +88,7 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 				SetUsername("username").
 				SetPassword("password")
 			creds := cocoa.NewRepositoryCredentials().
-				SetSecretName(testutil.NewSecretName(t.Name())).
+				SetName(testutil.NewSecretName(t.Name())).
 				SetNewCredentials(*storedCreds)
 			containerDef := cocoa.NewECSContainerDefinition().
 				SetImage("image").
@@ -107,7 +107,7 @@ func ECSPodCreatorTests() map[string]ECSPodCreatorTestCase {
 				SetExecutionOptions(*execOpts)
 			assert.NoError(t, opts.Validate())
 
-			p, err := c.CreatePod(ctx, opts)
+			p, err := c.CreatePod(ctx, *opts)
 			require.Error(t, err)
 			require.Zero(t, p)
 		},
@@ -121,7 +121,7 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 			envVar := cocoa.NewEnvironmentVariable().SetName("envVar").
 				SetSecretOptions(*cocoa.NewSecretOptions().
 					SetName(testutil.NewSecretName("name")).
-					SetValue("value"))
+					SetNewValue("value"))
 			containerDef := cocoa.NewECSContainerDefinition().SetImage("image").
 				AddEnvironmentVariables(*envVar).
 				SetMemoryMB(128).
@@ -140,7 +140,7 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 				SetName(testutil.NewTaskDefinitionFamily(t.Name()))
 			assert.Error(t, opts.Validate())
 
-			p, err := c.CreatePod(ctx, opts)
+			p, err := c.CreatePod(ctx, *opts)
 			require.Error(t, err)
 			require.Zero(t, p)
 		},
@@ -149,9 +149,8 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 				SetName("envVar").
 				SetSecretOptions(*cocoa.NewSecretOptions().
 					SetName(testutil.NewSecretName("name")).
-					SetValue("value").
-					SetExists(false))
-			envVar.SecretOpts.SetOwned(true)
+					SetNewValue("value").
+					SetOwned(true))
 
 			containerDef := cocoa.NewECSContainerDefinition().
 				SetImage("image").
@@ -173,7 +172,7 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 				SetExecutionOptions(*execOpts)
 			assert.NoError(t, opts.Validate())
 
-			p, err := c.CreatePod(ctx, opts)
+			p, err := c.CreatePod(ctx, *opts)
 			require.NoError(t, err)
 			require.NotNil(t, p)
 
@@ -188,7 +187,7 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 				SetUsername("username").
 				SetPassword("password")
 			creds := cocoa.NewRepositoryCredentials().
-				SetSecretName(testutil.NewSecretName(t.Name())).
+				SetName(testutil.NewSecretName(t.Name())).
 				SetNewCredentials(*storedCreds).
 				SetOwned(true)
 
@@ -212,7 +211,7 @@ func ECSPodCreatorWithVaultTests() map[string]ECSPodCreatorTestCase {
 				SetExecutionOptions(*execOpts)
 			assert.NoError(t, opts.Validate())
 
-			p, err := c.CreatePod(ctx, opts)
+			p, err := c.CreatePod(ctx, *opts)
 			require.NoError(t, err)
 			require.NotNil(t, p)
 

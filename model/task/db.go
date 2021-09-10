@@ -141,21 +141,21 @@ var (
 	}
 
 	// Checks if task dependencies are attainable/ have met all their dependencies and are not blocked
-	isAttainable = bson.M{
-		"$ne": []interface{}{bson.M{"$reduce": bson.M{
+	isUnattainable = bson.M{
+		"$reduce": bson.M{
 			"input":        "$" + DependsOnKey,
 			"initialValue": false,
-			"in":           bson.M{"$or": []interface{}{"$$" + bsonutil.GetDottedKeyName("value", DependencyUnattainableKey), "$$" + bsonutil.GetDottedKeyName("this", DependencyUnattainableKey)}},
+			"in":           bson.M{"$or": []interface{}{"$$value", bsonutil.GetDottedKeyName("$$this", DependencyUnattainableKey)}},
 		},
-		}, true},
 	}
-	// This should reflect Task.GetDisplayStatus()
+
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
 			DisplayStatusKey: displayStatusExpression,
 		},
 	}
 
+	// This should reflect Task.GetDisplayStatus()
 	displayStatusExpression = bson.M{
 		"$switch": bson.M{
 			"branches": []bson.M{
@@ -233,7 +233,7 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
-							{"$eq": []interface{}{isAttainable, false}},
+							isUnattainable,
 						},
 					},
 					"then": evergreen.TaskStatusBlocked,
@@ -342,6 +342,14 @@ func ByActivation(active bool) db.Q {
 func ByVersion(version string) db.Q {
 	return db.Query(bson.M{
 		VersionKey: version,
+	})
+}
+
+// FailedTasksByVersion produces a query that returns all failed tasks for the given version.
+func FailedTasksByVersion(version string) db.Q {
+	return db.Query(bson.M{
+		VersionKey: version,
+		StatusKey:  bson.M{"$in": evergreen.TaskFailureStatuses},
 	})
 }
 
@@ -803,9 +811,14 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
-// FindUniqueBuildVariantNamesByTask returns  a list of unique build variants names for a given task name
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]string, error) {
-	buildVariantsKey := "build_variants"
+type BuildVariantTuple struct {
+	BuildVariant string `bson:"build_variant"`
+	DisplayName  string `bson:"display_name"`
+}
+
+// FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name,
+// it tries to return the most recent display name for each build variant to avoid duplicates from display names changing
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*BuildVariantTuple, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:     projectId,
@@ -813,44 +826,68 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]str
 			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes}},
 		}}
 
-	group := bson.M{
+	// sort by most recent version to get the most recent display names for the build variants first
+	sortByOrderNumber := bson.M{
+		"$sort": bson.M{
+			CreateTimeKey: -1,
+		},
+	}
+
+	pipeline = append(pipeline, sortByOrderNumber)
+
+	// group the build variants by unique build variant names and get a build id for each
+	groupByBuildVariant := bson.M{
 		"$group": bson.M{
-			"_id":            taskName,
-			buildVariantsKey: bson.M{"$addToSet": "$" + BuildVariantKey},
-		},
-	}
-	unwindAndSort := []bson.M{
-		{
-			"$unwind": "$build_variants",
-		},
-		{
-			"$sort": bson.M{
-				"build_variants": 1,
+			"_id": bson.M{
+				BuildVariantKey: "$" + BuildVariantKey,
 			},
-		},
-		{
-			"$group": bson.M{
-				"_id":            nil,
-				buildVariantsKey: bson.M{"$push": "$" + buildVariantsKey},
+			BuildIdKey: bson.M{
+				"$first": "$" + BuildIdKey,
 			},
 		},
 	}
 
-	pipeline = append(pipeline, group)
-	pipeline = append(pipeline, unwindAndSort...)
+	pipeline = append(pipeline, groupByBuildVariant)
 
-	type taskBuildVariants struct {
-		BuildVariants []string `bson:"build_variants"`
+	// reorganize the results to get the build variant names and a corresponding build id
+	projectBuildId := bson.M{
+		"$project": bson.M{
+			"_id":           0,
+			BuildVariantKey: bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
+			BuildIdKey:      "$" + BuildIdKey,
+		},
 	}
 
-	result := []taskBuildVariants{}
+	pipeline = append(pipeline, projectBuildId)
+
+	// get the display name for each build variant
+	pipeline = append(pipeline, AddBuildVariantDisplayName...)
+
+	// cleanup the results
+	project := bson.M{
+		"$project": bson.M{
+			"_id":           0,
+			"build_variant": "$" + BuildVariantKey,
+			"display_name":  "$" + BuildVariantDisplayNameKey,
+		},
+	}
+	pipeline = append(pipeline, project)
+
+	sort := bson.M{
+		"$sort": bson.M{
+			"display_name": 1,
+		},
+	}
+	pipeline = append(pipeline, sort)
+
+	result := []*BuildVariantTuple{}
 	if err := Aggregate(pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "can't get build variant tasks")
 	}
 	if len(result) == 0 {
 		return nil, nil
 	}
-	return result[0].BuildVariants, nil
+	return result, nil
 }
 
 // FindTaskNamesByBuildVariant returns a list of unique task names for a given build variant
@@ -1377,13 +1414,14 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 	return err
 }
 
-func AddHostCreateDetails(taskId, hostId string, hostCreateError error) error {
+func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
 	}
 	err := UpdateOne(
 		bson.M{
-			IdKey: taskId,
+			IdKey:        taskId,
+			ExecutionKey: execution,
 		},
 		bson.M{"$push": bson.M{
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},

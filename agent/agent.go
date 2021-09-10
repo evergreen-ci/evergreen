@@ -574,10 +574,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Errorf("Programmer error: Invalid task status %s", detail.Status)
 	}
 
+	tc.Lock()
 	if tc.systemMetricsCollector != nil {
 		err := tc.systemMetricsCollector.Close()
 		tc.logger.System().Error(errors.Wrap(err, "error closing system metrics collector"))
 	}
+	tc.Unlock()
 
 	a.killProcs(ctx, tc, false)
 
@@ -658,10 +660,13 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.removeTaskDirectory(tc)
-	defer a.killProcs(ctx, tc, true)
 	if tc.taskConfig == nil {
 		return
 	}
+	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
+	// empty working directory to killProcs, and is okay because this
+	// killProcs is only for the processes run in runPostGroupCommands.
+	defer a.killProcs(ctx, tc, true)
 	defer func() {
 		if tc.logger != nil {
 			grip.Error(tc.logger.Close())
@@ -731,7 +736,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	}
 
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
-		if tc.task.ID != "" {
+		if tc.task.ID != "" && tc.taskConfig != nil {
 			logger.Infof("cleaning up processes for task: %s", tc.task.ID)
 			if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
 				// If the host is in a state where ps is timing out we need human intervention.

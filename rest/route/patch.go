@@ -557,11 +557,11 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find project from version"))
 		}
 	}
-	variantTasks := graphql.PatchVariantsTasksRequest{
+	patchUpdateReq := graphql.PatchUpdate{
 		Description: p.variantTasks.Description,
 	}
-	if variantTasks.Description == "" && dbVersion != nil {
-		variantTasks.Description = dbVersion.Message
+	if patchUpdateReq.Description == "" && dbVersion != nil {
+		patchUpdateReq.Description = dbVersion.Message
 	}
 	for _, v := range p.variantTasks.Variants {
 		variantToSchedule := patch.VariantTasks{Variant: v.Id}
@@ -584,9 +584,9 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 				}
 			}
 		}
-		variantTasks.VariantsTasks = append(variantTasks.VariantsTasks, variantToSchedule)
+		patchUpdateReq.VariantsTasks = append(patchUpdateReq.VariantsTasks, variantToSchedule)
 	}
-	err, code, msg, versionId := graphql.SchedulePatch(p.patchId, dbVersion, variantTasks, nil)
+	err, code, msg, versionId := graphql.SchedulePatch(ctx, p.patchId, dbVersion, patchUpdateReq)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to schedule patch"))
 	}

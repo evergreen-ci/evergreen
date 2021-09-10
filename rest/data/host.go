@@ -96,8 +96,8 @@ func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID 
 	return hosts, filteredHostsCount, totalHostsCount, nil
 }
 
-func (hc *DBConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
-	host, err := host.GetHostByIdWithTask(hostID)
+func (hc *DBConnector) GetHostByIdOrTagWithTask(hostID string) (*host.Host, error) {
+	host, err := host.GetHostByIdOrTagWithTask(hostID)
 	if err != nil {
 		return nil, err
 	}
@@ -523,6 +523,10 @@ func (hc *MockHostConnector) GetPaginatedRunningHosts(hostID, distroID, currentT
 }
 
 func (hc *MockHostConnector) GetHostByIdWithTask(hostID string) (*host.Host, error) {
+	return nil, nil
+}
+
+func (hc *MockHostConnector) GetHostByIdOrTagWithTask(hostID string) (*host.Host, error) {
 	return nil, nil
 }
 

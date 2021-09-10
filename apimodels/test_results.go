@@ -31,11 +31,13 @@ type CedarTestResult struct {
 // GetCedarTestResultsOptions represents the arguments passed into the
 // GetCedarTestResults function.
 type GetCedarTestResultsOptions struct {
-	BaseURL       string `json:"-"`
-	TaskID        string `json:"-"`
-	DisplayTaskID string `json:"-"`
-	TestName      string `json:"-"`
-	Execution     int    `json:"-"`
+	BaseURL         string `json:"-"`
+	TaskID          string `json:"-"`
+	DisplayTaskID   string `json:"-"`
+	TestName        string `json:"-"`
+	Execution       int    `json:"-"`
+	LatestExecution bool   `json:"-"`
+	FailedSample    bool   `json:"-"`
 }
 
 // GetCedarTestResults makes request to cedar for a task's test results.
@@ -44,10 +46,12 @@ func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (
 		CedarOpts: timber.GetOptions{
 			BaseURL: fmt.Sprintf("https://%s", opts.BaseURL),
 		},
-		TaskID:        opts.TaskID,
-		DisplayTaskID: opts.DisplayTaskID,
-		TestName:      opts.TestName,
-		Execution:     opts.Execution,
+		TaskID:          opts.TaskID,
+		DisplayTaskID:   opts.DisplayTaskID,
+		TestName:        opts.TestName,
+		Execution:       opts.Execution,
+		LatestExecution: opts.LatestExecution,
+		FailedSample:    opts.FailedSample,
 	}
 	data, err := testresults.GetTestResults(ctx, getOpts)
 	if err != nil {

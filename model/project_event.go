@@ -20,7 +20,7 @@ const (
 	EventTypeProjectAdded    = "PROJECT_ADDED"
 )
 
-type ProjectSettingsEvent struct {
+type ProjectSettings struct {
 	ProjectRef         ProjectRef           `bson:"proj_ref" json:"proj_ref"`
 	GitHubHooksEnabled bool                 `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
 	Vars               ProjectVars          `bson:"vars" json:"vars"`
@@ -29,9 +29,9 @@ type ProjectSettingsEvent struct {
 }
 
 type ProjectChangeEvent struct {
-	User   string               `bson:"user" json:"user"`
-	Before ProjectSettingsEvent `bson:"before" json:"before"`
-	After  ProjectSettingsEvent `bson:"after" json:"after"`
+	User   string          `bson:"user" json:"user"`
+	Before ProjectSettings `bson:"before" json:"before"`
+	After  ProjectSettings `bson:"after" json:"after"`
 }
 
 type ProjectChangeEvents []ProjectChangeEventEntry
@@ -145,7 +145,15 @@ func LogProjectAdded(projectId, username string) error {
 	return LogProjectEvent(EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
 }
 
-func LogProjectModified(projectId, username string, before, after *ProjectSettingsEvent) error {
+func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSettings) error {
+	after, err := GetProjectSettingsById(id, isRepo)
+	if err != nil {
+		return errors.Wrap(err, "error getting after project settings event")
+	}
+	return errors.Wrapf(LogProjectModified(id, userId, before, after), "error logging project modified")
+}
+
+func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
 	if before == nil || after == nil {
 		return nil
 	}
