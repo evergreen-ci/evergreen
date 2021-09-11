@@ -685,12 +685,12 @@ type TestResult {
   taskId: String
   execution: Int
   logTestName: String
-  lineNum: Int
 }
 
 type TestLog {
   url: String
   urlRaw: String
+  lineNum: Int
 }
 
 type Dependency {

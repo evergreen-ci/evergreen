@@ -19,7 +19,7 @@ type APITest struct {
 	Execution       int        `json:"execution"`
 	GroupId         *string    `json:"group_id,omitempty"`
 	Status          *string    `json:"status"`
-	BaseStatus      *string    `json:"base_status"`
+	BaseStatus      *string    `json:"base_status,omitempty"`
 	TestFile        *string    `json:"test_file"`
 	DisplayTestName *string    `json:"display_test_name,omitempty"`
 	Logs            TestLogs   `json:"logs"`
@@ -28,7 +28,6 @@ type APITest struct {
 	EndTime         *time.Time `json:"end_time"`
 	Duration        float64    `json:"duration"`
 	LogTestName     *string    `json:"log_test_name,omitempty"`
-	LineNum         int        `json:"line_num,omitempty"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
@@ -48,7 +47,6 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if v.GroupID != "" {
 			at.GroupId = utility.ToStringPtr(v.GroupID)
 		}
-		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestFile)
 		if v.DisplayTestName != "" {
@@ -77,7 +75,6 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if v.GroupID != "" {
 			at.GroupId = utility.ToStringPtr(v.GroupID)
 		}
-		at.LineNum = v.LineNum
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestName)
 		if v.DisplayTestName != "" {
@@ -85,8 +82,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		}
 		at.StartTime = utility.ToTimePtr(v.Start)
 		at.EndTime = utility.ToTimePtr(v.End)
-		duration := v.End.Sub(v.Start)
-		at.Duration = duration.Seconds()
+		at.Duration = v.End.Sub(v.Start).Seconds()
 		if v.LogTestName != "" {
 			at.LogTestName = utility.ToStringPtr(v.LogTestName)
 		}
