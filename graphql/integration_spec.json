@@ -2332,17 +2332,6 @@
       }
     },
     {
-      "query_file": "attach-project-to-repo.graphql",
-      "result": {
-        "data": {
-          "attachProjectToRepo": {
-            "repoRefId": "myEvergreenRepo",
-            "useRepoSettings": true
-          }
-        }
-      }
-    },
-    {
       "query_file": "projects1.graphql",
       "result": {
         "data": {
