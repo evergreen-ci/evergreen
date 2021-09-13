@@ -2173,7 +2173,7 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 	return &patchID, nil
 }
 
-func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, abort bool, versionsToRestart []*model.VersionToRestart) (*string, error) {
+func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart")
 	}
@@ -2186,7 +2186,25 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, 
 	if err != nil {
 		return nil, err
 	}
-	return &patchID, nil
+	versions := []*restModel.APIVersion{}
+	for _, version := range versionsToRestart {
+		if version.VersionId != nil {
+			v, versionErr := r.sc.FindVersionById(*version.VersionId)
+			if versionErr != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", *version.VersionId, versionErr.Error()))
+			}
+			if v == nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", *version.VersionId))
+			}
+			apiVersion := restModel.APIVersion{}
+			if err = apiVersion.BuildFromService(v); err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", *version.VersionId, err.Error()))
+			}
+			versions = append(versions, &apiVersion)
+		}
+	}
+
+	return versions, nil
 }
 
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
