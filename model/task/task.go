@@ -379,7 +379,7 @@ func (tr TestResult) GetLogURL(raw bool) string {
 		)
 	}
 
-	return fmt.Sprintf("%s/lobster/test/%s/%d/%s?groupId=%s#shareLine=%d",
+	return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s?groupId=%s#shareLine=%d",
 		root,
 		url.PathEscape(tr.TaskID),
 		tr.Execution,
