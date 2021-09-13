@@ -385,9 +385,9 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 // RestartVersions restarts selected tasks for a set of versions.
 // If abortInProgress is true for any version, it also sets the abort flag on any in-progress tasks.
-func RestartVersions(taskIds []*VersionToRestart, abortInProgress bool, caller string) error {
+func RestartVersions(versionsToRestart []*VersionToRestart, abortInProgress bool, caller string) error {
 	catcher := grip.NewBasicCatcher()
-	for _, t := range taskIds {
+	for _, t := range versionsToRestart {
 		err := RestartVersion(*t.VersionId, t.TaskIds, abortInProgress, caller)
 		catcher.Add(errors.Wrapf(err, "error restarting tasks for version '%s'", *t.VersionId))
 	}
