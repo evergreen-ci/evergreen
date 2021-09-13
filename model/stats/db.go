@@ -654,10 +654,6 @@ func (filter StatsFilter) buildMatchStageForTest() bson.M {
 		match[DbTestStatsIdDistroKeyFull] = BuildMatchArrayExpression(filter.Distros)
 	}
 
-	if filter.StartAt != nil {
-		match["$or"] = filter.buildTestPaginationOrBranches()
-	}
-
 	return bson.M{"$match": match}
 }
 
