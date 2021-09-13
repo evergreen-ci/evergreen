@@ -799,7 +799,7 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requester := r.Header.Get("Origin")
-		grip.Debug(message.Fields{
+		grip.DebugWhen(requester != "", message.Fields{
 			"op":              "addCORSHeaders",
 			"requester":       requester,
 			"allowed_origins": allowedOrigins,
