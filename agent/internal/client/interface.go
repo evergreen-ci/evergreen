@@ -111,7 +111,7 @@ type Communicator interface {
 	ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error
 	GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error)
 
-	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error
+	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
 }
 
 type LoggerMetadata struct {
