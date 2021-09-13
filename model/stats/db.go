@@ -600,6 +600,47 @@ func (filter StatsFilter) buildMatchStageForTest() bson.M {
 		DbTestStatsIdProjectKeyFull:   filter.Project,
 		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
+
+	// After cutting over the below build variants to use resmoke spawned
+	// with jasper (SERVER-54315), test names are now random UUIDs with
+	// with a human-readble display name. For the period between
+	// 09/01/21-09/14/21, the historical test stats calculations failed to
+	// account for this (EVG-15396). We should ignore any test stats
+	// affected by this bug.
+	//
+	// TODO: (EVG-15396) Remove this code once all affected test stats TTL
+	// on 03/14/2022.
+	affectedVariants := []string{
+		"enterprise-rhel-80-64-bit",
+		"enterprise-rhel-80-64-bit-dynamic-required",
+	}
+	if len(filter.BuildVariants) == 0 || len(utility.StringSliceIntersection(filter.BuildVariants, affectedVariants)) > 0 {
+		or := []bson.M{
+			{
+				"$and": []bson.M{
+					{DbTaskStatsIdBuildVariantKeyFull: bson.M{"$in": affectedVariants}},
+					{DbTaskStatsIdDateKeyFull: bson.M{
+						"$lt": time.Date(2021, time.September, 1, 0, 0, 0, 0, time.UTC),
+						"$gt": time.Date(2021, time.September, 14, 0, 0, 0, 0, time.UTC),
+					}},
+				},
+			},
+			{
+				DbTaskStatsIdBuildVariantKeyFull: bson.M{"$nin": affectedVariants},
+			},
+		}
+		if filter.StartAt != nil {
+			match["$and"] = []bson.M{
+				{"$or": or},
+				{"$or": filter.buildTestPaginationOrBranches()},
+			}
+		} else {
+			match["$or"] = or
+		}
+	} else if filter.StartAt != nil {
+		match["$or"] = filter.buildTestPaginationOrBranches()
+	}
+
 	if len(filter.Tests) > 0 {
 		match[DbTestStatsIdTestFileKeyFull] = BuildMatchArrayExpression(filter.Tests)
 	}
@@ -795,36 +836,6 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 		},
 		DbTestStatsIdProjectKeyFull:   filter.Project,
 		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
-	}
-
-	// After cutting over the below build variants to use resmoke spawned
-	// with jasper (SERVER-54315), test names are now random UUIDs with
-	// with a human-readble display name. For the period between
-	// 09/01/21-09/14/21, the historical test stats calculations failed to
-	// account for this (EVG-15396). We should ignore any test stats
-	// affected by this bug.
-	//
-	// TODO: (EVG-15396) Remove this code once all affected test stats TTL
-	// on 03/14/2022.
-	affectedVariants := []string{
-		"enterprise-rhel-80-64-bit",
-		"enterprise-rhel-80-64-bit-dynamic-required",
-	}
-	if len(filter.BuildVariants) == 0 || len(utility.StringSliceIntersection(filter.BuildVariants, affectedVariants)) > 0 {
-		match["$or"] = []bson.M{
-			{
-				"$and": []bson.M{
-					{DbTaskStatsIdBuildVariantKeyFull: bson.M{"$in": affectedVariants}},
-					{DbTaskStatsIdDateKeyFull: bson.M{
-						"$lt": time.Date(2021, time.September, 1, 0, 0, 0, 0, time.UTC),
-						"$gt": time.Date(2021, time.September, 14, 0, 0, 0, 0, time.UTC),
-					}},
-				},
-			},
-			{
-				DbTaskStatsIdBuildVariantKeyFull: bson.M{"$nin": affectedVariants},
-			},
-		}
 	}
 
 	if len(filter.Tasks) > 0 {
