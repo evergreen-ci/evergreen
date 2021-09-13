@@ -801,7 +801,7 @@ func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) 
 		}
 
 		if t.IsPartOfSingleHostTaskGroup() {
-			// stepback earlier task group tasks as well
+			// Stepback earlier task group tasks as well because these need to be run sequentially.
 			catcher := grip.NewBasicCatcher()
 			tasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
 			if err != nil {
