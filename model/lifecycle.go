@@ -49,8 +49,8 @@ type RestartResults struct {
 }
 
 type VersionToRestart struct {
-	VersionId *string  `json:"patchId"`
-	TaskIds   []string `json:"taskIds"`
+	VersionId *string  `json:"version_id"`
+	TaskIds   []string `json:"task_ids"`
 }
 
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
@@ -383,7 +383,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 }
 
-// RestartVersions restarts selected tasks for a set of versions,
+// RestartVersions restarts selected tasks for a set of versions.
 // If abortInProgress is true for any version, it also sets the abort flag on any in-progress tasks.
 func RestartVersions(taskIds []*VersionToRestart, abortInProgress bool, caller string) error {
 	catcher := grip.NewBasicCatcher()

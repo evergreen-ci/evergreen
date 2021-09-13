@@ -674,7 +674,7 @@ type VersionModifications struct {
 	Active            bool                      `json:"active"`
 	Abort             bool                      `json:"abort"`
 	Priority          int64                     `json:"priority"`
-	VersionsToRestart []*model.VersionToRestart `json:"task_ids"`
+	VersionsToRestart []*model.VersionToRestart `json:"versions_to_restart"`
 	TaskIds           []string                  `json:"task_ids"` // deprecated
 }
 
