@@ -1,5 +1,5 @@
 mutation {
-    detachProjectFromRepo(id: "nonexistent") {
+    detachProjectFromRepo(projectId: "nonexistent") {
         repoRefId
         useRepoSettings
     }

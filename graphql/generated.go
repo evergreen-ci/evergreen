@@ -374,12 +374,12 @@ type ComplexityRoot struct {
 		AbortTask                     func(childComplexity int, taskID string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject            func(childComplexity int, identifier string) int
-		AttachProjectToRepo           func(childComplexity int, id string) int
+		AttachProjectToRepo           func(childComplexity int, projectID string) int
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions          func(childComplexity int) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DetachProjectFromRepo         func(childComplexity int, id string) int
+		DetachProjectFromRepo         func(childComplexity int, projectID string) int
 		DetachVolumeFromHost          func(childComplexity int, volumeID string) int
 		EditAnnotationNote            func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
 		EditSpawnHost                 func(childComplexity int, spawnHost *EditSpawnHostInput) int
@@ -1047,8 +1047,8 @@ type IssueLinkResolver interface {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
-	AttachProjectToRepo(ctx context.Context, id string) (*model.APIProjectRef, error)
-	DetachProjectFromRepo(ctx context.Context, id string) (*model.APIProjectRef, error)
+	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
+	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
@@ -2547,7 +2547,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AttachProjectToRepo(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.AttachProjectToRepo(childComplexity, args["projectId"].(string)), true
 
 	case "Mutation.attachVolumeToHost":
 		if e.complexity.Mutation.AttachVolumeToHost == nil {
@@ -2602,7 +2602,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DetachProjectFromRepo(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.DetachProjectFromRepo(childComplexity, args["projectId"].(string)), true
 
 	case "Mutation.detachVolumeFromHost":
 		if e.complexity.Mutation.DetachVolumeFromHost == nil {
@@ -6270,8 +6270,8 @@ var sources = []*ast.Source{
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  attachProjectToRepo(id: String!): Project!
-  detachProjectFromRepo(id: String!): Project!
+  attachProjectToRepo(projectId: String!): Project!
+  detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -7517,13 +7517,13 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_args(ctx context.
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
+	if tmp, ok := rawArgs["projectId"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["id"] = arg0
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -7581,13 +7581,13 @@ func (ec *executionContext) field_Mutation_detachProjectFromRepo_args(ctx contex
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
+	if tmp, ok := rawArgs["projectId"]; ok {
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["id"] = arg0
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -14852,7 +14852,7 @@ func (ec *executionContext) _Mutation_attachProjectToRepo(ctx context.Context, f
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AttachProjectToRepo(rctx, args["id"].(string))
+		return ec.resolvers.Mutation().AttachProjectToRepo(rctx, args["projectId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14893,7 +14893,7 @@ func (ec *executionContext) _Mutation_detachProjectFromRepo(ctx context.Context,
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DetachProjectFromRepo(rctx, args["id"].(string))
+		return ec.resolvers.Mutation().DetachProjectFromRepo(rctx, args["projectId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

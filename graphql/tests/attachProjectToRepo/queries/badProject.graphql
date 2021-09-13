@@ -1,5 +1,5 @@
 mutation {
-    attachProjectToRepo(id: "nonexistent") {
+    attachProjectToRepo(projectId: "nonexistent") {
         repoRefId
         useRepoSettings
     }

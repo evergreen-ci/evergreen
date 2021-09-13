@@ -2008,14 +2008,14 @@ func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.AP
 	return TaskQueueItemTypeCommit, nil
 }
 
-func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := MustHaveUser(ctx)
-	pRef, err := r.sc.FindProjectById(id, false)
+	pRef, err := r.sc.FindProjectById(projectID, false)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
 	}
 	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", id))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
 	if err = pRef.AttachToRepo(usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
@@ -2028,17 +2028,17 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, id string) (
 	return res, nil
 }
 
-func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := MustHaveUser(ctx)
-	pRef, err := r.sc.FindProjectById(id, false)
+	pRef, err := r.sc.FindProjectById(projectID, false)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
 	}
 	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", id))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
 	if err = pRef.DetachFromRepo(usr); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error detaching from repo: %s", err.Error()))
 	}
 
 	res := &restModel.APIProjectRef{}
