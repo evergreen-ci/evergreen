@@ -1216,7 +1216,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			Id: projectId,
 		}
 		parserProj := model.ParserProject{
-			Id: projectId,
+			Id: versionId,
 		}
 		So(parserProj.Insert(), ShouldBeNil)
 		So(proj.Insert(), ShouldBeNil)
