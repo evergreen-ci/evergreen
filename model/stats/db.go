@@ -801,7 +801,7 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 	// with jasper (SERVER-54315), test names are now random UUIDs with
 	// with a human-readble display name. For the period between
 	// 09/01/21-09/13/21, the historical test stats calculations failed to
-	// for this (EVG-15396). We should ignored any test stats affected by
+	// for this (EVG-15396). We should ignore any test stats affected by
 	// this bug.
 	affectedVariants := []string{
 		"enterprise-rhel-80-64-bit",
