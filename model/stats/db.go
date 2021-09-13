@@ -228,16 +228,26 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 					{"$eq": Array{testResultTaskIdKeyRef, "$$task_id"}},
 					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
 				{"$project": bson.M{
-					testresult.IDKey:        0,
-					dbTestStatsLastIDKey:    "$" + testresult.IDKey,
-					testresult.TestFileKey:  1,
-					testresult.StatusKey:    1,
-					testresult.StartTimeKey: 1,
-					testresult.EndTimeKey:   1}}},
+					testresult.IDKey:              0,
+					dbTestStatsLastIDKey:          "$" + testresult.IDKey,
+					testresult.TestFileKey:        1,
+					testresult.DisplayTestNameKey: 1,
+					testresult.StatusKey:          1,
+					testresult.StartTimeKey:       1,
+					testresult.EndTimeKey:         1}}},
 			"as": "testresults"}},
 		{"$unwind": "$testresults"},
 		{"$project": bson.M{
-			dbTestStatsIdTestFileKey: "$testresults." + testresult.TestFileKey,
+			// Use the display test name if there is one.
+			dbTestStatsIdTestFileKey: bson.M{
+				"$cond": bson.M{
+					"if": bson.M{
+						"$ne": []string{bsonutil.GetDottedKeyName("$testresults", testresult.DisplayTestNameKey), ""},
+					},
+					"then": bsonutil.GetDottedKeyName("$testresults", testresult.DisplayTestNameKey),
+					"else": bsonutil.GetDottedKeyName("$testresults", testresult.TestFileKey),
+				},
+			},
 			// We use the name of the display task if there is one.
 			DbTestStatsIdTaskNameKey:     bson.M{"$ifNull": Array{"$display_task." + task.DisplayNameKey, "$task_name"}},
 			DbTestStatsIdBuildVariantKey: 1,
@@ -786,6 +796,34 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 		DbTestStatsIdProjectKeyFull:   filter.Project,
 		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
+
+	// After cutting over the below build variants to use resmoke spawned
+	// with jasper (SERVER-54315), test names are now random UUIDs with
+	// with a human-readble display name. For the period between
+	// 09/01/21-09/13/21, the historical test stats aggregation failed to
+	// for this (EVG-15396). We should ignored any test stats affected by
+	// this bug.
+	affectedVariants := []string{
+		"enterprise-rhel-80-64-bit",
+		"enterprise-rhel-80-64-bit-dynamic-required",
+	}
+	if len(filter.Tasks) == 0 || len(utility.StringSliceIntersection(filter.Tasks, affectedVariants)) > 0 {
+		match["$or"] = []bson.M{
+			{
+				"$and": []bson.M{
+					{DbTaskStatsIdBuildVariantKeyFull: bson.M{"$in": affectedVariants}},
+					{DbTaskStatsIdDateKeyFull: bson.M{
+						"$lt": time.Date(2021, time.September, 1, 0, 0, 0, 0, time.UTC),
+						"$gt": time.Date(2021, time.September, 13, 0, 0, 0, 0, time.UTC),
+					}},
+				},
+			},
+			{
+				DbTaskStatsIdBuildVariantKeyFull: bson.M{"$nin": affectedVariants},
+			},
+		}
+	}
+
 	if len(filter.Tasks) > 0 {
 		match[DbTaskStatsIdTaskNameKeyFull] = BuildMatchArrayExpression(filter.Tasks)
 	}
