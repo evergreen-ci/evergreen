@@ -6,7 +6,7 @@
     execution: 0
   ) {
     testResults {
-      logs: {
+      logs {
         lineNum
       }
     }
