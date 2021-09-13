@@ -19,6 +19,7 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 1)
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Nil(bbPlugin.Configure(map[string]interface{}{
@@ -33,24 +34,27 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 2)
 
 	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject: "BFG",
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 0)
 
 	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 0)
 }
 
 func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
