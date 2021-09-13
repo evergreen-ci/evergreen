@@ -57,7 +57,11 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			hasValidationError = true
 		}
 		if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
-			return fmt.Errorf("ticket_search_projects cannot be empty")
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "ticket_search_projects cannot be empty",
+				"project_name": projName,
+			}))
+			hasValidationError = true
 		}
 		if proj.BFSuggestionServer != "" {
 			if _, err := url.Parse(proj.BFSuggestionServer); err != nil {
