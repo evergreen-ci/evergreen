@@ -130,6 +130,9 @@ type uiTestResult struct {
 	TestResult task.TestResult `json:"test_result"`
 	TaskId     string          `json:"task_id"`
 	TaskName   string          `json:"task_name"`
+	URL        string          `json:"url"`
+	URLRaw     string          `json:"url_raw"`
+	URLLobster string          `json:"url_lobster"`
 }
 
 type logData struct {
@@ -934,23 +937,23 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 		}
 
 		for _, tr := range projCtx.Task.LocalTestResults {
-			tr.URL = tr.GetLogURL(evergreen.LogViewerLobster)
-			tr.URLRaw = tr.GetLogURL(evergreen.LogViewerLobster)
-			tr.URLLobster = tr.GetLogURL(evergreen.LogViewerLobster)
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 				TestResult: tr,
 				TaskId:     tr.TaskID,
 				TaskName:   execTaskDisplayNameMap[tr.TaskID],
+				URL:        tr.GetLogURL(evergreen.LogViewerHTML),
+				URLRaw:     tr.GetLogURL(evergreen.LogViewerRaw),
+				URLLobster: tr.GetLogURL(evergreen.LogViewerLobster),
 			})
 		}
 	} else {
 		for _, tr := range projCtx.Context.Task.LocalTestResults {
-			tr.URL = tr.GetLogURL(evergreen.LogViewerLobster)
-			tr.URLRaw = tr.GetLogURL(evergreen.LogViewerLobster)
-			tr.URLLobster = tr.GetLogURL(evergreen.LogViewerLobster)
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 				TestResult: tr,
 				TaskId:     tr.TaskID,
+				URL:        tr.GetLogURL(evergreen.LogViewerHTML),
+				URLRaw:     tr.GetLogURL(evergreen.LogViewerRaw),
+				URLLobster: tr.GetLogURL(evergreen.LogViewerLobster),
 			})
 		}
 

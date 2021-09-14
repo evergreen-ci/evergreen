@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -42,9 +43,10 @@ func TestTestBuildFromService(t *testing.T) {
 					Status:    utility.ToStringPtr(input.Status),
 					TestFile:  utility.ToStringPtr(input.TestFile),
 					Logs: TestLogs{
-						URL:     utility.ToStringPtr(otr.GetLogURL(false)),
-						URLRaw:  utility.ToStringPtr(otr.GetLogURL(true)),
-						LineNum: 15,
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						LineNum:    15,
 					},
 					ExitCode:  1,
 					StartTime: utility.ToTimePtr(start),
@@ -81,10 +83,11 @@ func TestTestBuildFromService(t *testing.T) {
 					GroupId:         utility.ToStringPtr(input.GroupID),
 					Status:          utility.ToStringPtr(input.Status),
 					Logs: TestLogs{
-						URL:     utility.ToStringPtr(otr.GetLogURL(false)),
-						URLRaw:  utility.ToStringPtr(otr.GetLogURL(true)),
-						LineNum: 15,
-						LogId:   utility.ToStringPtr(input.LogID),
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						LineNum:    15,
+						LogId:      utility.ToStringPtr(input.LogID),
 					},
 					ExitCode:  1,
 					StartTime: utility.ToTimePtr(start),
@@ -115,9 +118,10 @@ func TestTestBuildFromService(t *testing.T) {
 					TestFile:  utility.ToStringPtr(input.TestName),
 					Status:    utility.ToStringPtr(input.Status),
 					Logs: TestLogs{
-						URL:     utility.ToStringPtr(otr.GetLogURL(false)),
-						URLRaw:  utility.ToStringPtr(otr.GetLogURL(true)),
-						LineNum: 15,
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						LineNum:    15,
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),
@@ -153,9 +157,10 @@ func TestTestBuildFromService(t *testing.T) {
 					Status:          utility.ToStringPtr(input.Status),
 					LogTestName:     utility.ToStringPtr(input.LogTestName),
 					Logs: TestLogs{
-						URL:     utility.ToStringPtr(otr.GetLogURL(false)),
-						URLRaw:  utility.ToStringPtr(otr.GetLogURL(true)),
-						LineNum: 15,
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						LineNum:    15,
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),

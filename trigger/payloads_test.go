@@ -179,8 +179,8 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 	tr, err := getFailedTestsFromTemplate(t)
 	s.NoError(err)
 	s.Require().Len(tr, 2)
-	s.Equal(test2.GetLogURL(false), tr[0].URL)
-	s.Equal(test3.GetLogURL(false), tr[1].URL)
+	s.Equal(test2.GetLogURL(evergreen.LogViewerHTML), tr[0].URL)
+	s.Equal(test3.GetLogURL(evergreen.LogViewerHTML), tr[1].URL)
 }
 
 func TestTruncateString(t *testing.T) {

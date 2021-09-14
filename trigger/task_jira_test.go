@@ -338,8 +338,8 @@ func TestJIRADescription(t *testing.T) {
 			So(tests, ShouldContain, "FunUnitTest")
 
 			So(len(logfiles), ShouldEqual, 2)
-			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(false))
-			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(false))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(evergreen.LogViewerHTML))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(evergreen.LogViewerHTML))
 
 			So(len(taskURLs), ShouldEqual, 1)
 			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0")
