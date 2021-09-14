@@ -73,6 +73,7 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 1)
 
 	bbPlugin = BuildBaronPlugin{}
 	assert.Nil(bbPlugin.Configure(map[string]interface{}{
@@ -85,9 +86,10 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 1)
 
 	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:  "BFG",
@@ -97,9 +99,10 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 0)
 
 	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:     "BFG",
@@ -108,9 +111,10 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 0)
 
 	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:     "BFG",
@@ -120,9 +124,10 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 0)
 
 	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:     "BFG",
@@ -133,9 +138,10 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 0)
 
 	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:     "BFG",
@@ -145,9 +151,10 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 0)
 
 	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:     "BFG",
@@ -157,4 +164,5 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 			},
 		},
 	}))
+	assert.Len(bbPlugin.opts.Projects, 0)
 }
