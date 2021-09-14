@@ -374,10 +374,12 @@ type ComplexityRoot struct {
 		AbortTask                     func(childComplexity int, taskID string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject            func(childComplexity int, identifier string) int
+		AttachProjectToRepo           func(childComplexity int, projectID string) int
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions          func(childComplexity int) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
+		DetachProjectFromRepo         func(childComplexity int, projectID string) int
 		DetachVolumeFromHost          func(childComplexity int, volumeID string) int
 		EditAnnotationNote            func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
 		EditSpawnHost                 func(childComplexity int, spawnHost *EditSpawnHostInput) int
@@ -1045,6 +1047,8 @@ type IssueLinkResolver interface {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
+	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
+	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
@@ -2533,6 +2537,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(string)), true
 
+	case "Mutation.attachProjectToRepo":
+		if e.complexity.Mutation.AttachProjectToRepo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_attachProjectToRepo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AttachProjectToRepo(childComplexity, args["projectId"].(string)), true
+
 	case "Mutation.attachVolumeToHost":
 		if e.complexity.Mutation.AttachVolumeToHost == nil {
 			break
@@ -2575,6 +2591,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CreatePublicKey(childComplexity, args["publicKeyInput"].(PublicKeyInput)), true
+
+	case "Mutation.detachProjectFromRepo":
+		if e.complexity.Mutation.DetachProjectFromRepo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_detachProjectFromRepo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DetachProjectFromRepo(childComplexity, args["projectId"].(string)), true
 
 	case "Mutation.detachVolumeFromHost":
 		if e.complexity.Mutation.DetachVolumeFromHost == nil {
@@ -6242,6 +6270,8 @@ var sources = []*ast.Source{
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  attachProjectToRepo(projectId: String!): Project!
+  detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -7483,6 +7513,20 @@ func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_attachProjectToRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_attachVolumeToHost_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -7530,6 +7574,20 @@ func (ec *executionContext) field_Mutation_createPublicKey_args(ctx context.Cont
 		}
 	}
 	args["publicKeyInput"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_detachProjectFromRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -14754,6 +14812,88 @@ func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context,
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().RemoveFavoriteProject(rctx, args["identifier"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_attachProjectToRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_attachProjectToRepo_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AttachProjectToRepo(rctx, args["projectId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_detachProjectFromRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_detachProjectFromRepo_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DetachProjectFromRepo(rctx, args["projectId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -34176,6 +34316,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removeFavoriteProject":
 			out.Values[i] = ec._Mutation_removeFavoriteProject(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "attachProjectToRepo":
+			out.Values[i] = ec._Mutation_attachProjectToRepo(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "detachProjectFromRepo":
+			out.Values[i] = ec._Mutation_detachProjectFromRepo(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

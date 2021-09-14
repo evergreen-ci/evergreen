@@ -64,6 +64,9 @@ type Communicator interface {
 	// task and sets CedarResultsFailed if there are failed results.
 	SetHasCedarResults(context.Context, TaskData, bool) error
 
+	// DisableHost signals to the app server that the host should be disabled.
+	DisableHost(context.Context, string, apimodels.DisableInfo) error
+
 	// GetAgentSetupData populates an agent with the necessary data, including
 	// secrets.
 	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
