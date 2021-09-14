@@ -1,5 +1,3 @@
-include:
-  - filename: ex.yml
 command_type: test
 stepback: true
 ignore:
