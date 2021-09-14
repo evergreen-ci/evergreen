@@ -664,25 +664,27 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 }
 
 // HasFailedTests returns true if the task had any failed tests.
-func (t *Task) HasFailedTests() bool {
+func (t *Task) HasFailedTests() (bool, error) {
 	// Check cedar flags before populating test results to avoid
 	// unnecessarily downloading results from cedar.
 	if t.HasCedarResults {
 		if t.CedarResultsFailed {
-			return true
+			return true, nil
 		}
 
-		return false
+		return false, nil
 	}
 
-	t.PopulateTestResults()
+	if err := t.PopulateTestResults(); err != nil {
+		return false, errors.WithStack(err)
+	}
 	for _, test := range t.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 // FindTaskOnBaseCommit returns the task that is on the base commit.
