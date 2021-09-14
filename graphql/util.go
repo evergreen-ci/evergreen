@@ -681,7 +681,7 @@ type VersionModifications struct {
 func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
 	switch modifications.Action {
 	case Restart:
-		if modifications.VersionsToRestart == nil { // to maintain backwards compatability with legacy Ui and support the deprecated restartPatch resolver
+		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
 			if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 			}
