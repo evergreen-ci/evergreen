@@ -207,7 +207,7 @@ func (c *podCommunicator) AttachFiles(ctx context.Context, taskData TaskData, ta
 	return errors.New("TODO: implement")
 }
 
-func (c *podCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+func (c *podCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error {
 	return errors.New("TODO: implement")
 }
 
