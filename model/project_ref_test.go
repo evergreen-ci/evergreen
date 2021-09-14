@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/testutil"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -266,6 +268,52 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 	}
 }
 
+func TestChangeOwnerRepo(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
+		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
+	env := evergreen.GetEnvironment()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	settings := testutil.TestConfig()
+	settings.GithubOrgs = []string{"evergreen-ci"}
+	settings.GithubOrgs = []string{"newOwner"}
+	assert.NoError(t, evergreen.UpdateConfig(settings))
+
+	evergreen.SetEnvironment(env)
+	pRef := ProjectRef{
+		Id:              "myProject",
+		Owner:           "evergreen-ci",
+		Repo:            "evergreen",
+		Admins:          []string{"me"},
+		RepoRefId:       "myRepo",
+		UseRepoSettings: true,
+	}
+	assert.NoError(t, pRef.Insert())
+	repoRef := RepoRef{ProjectRef{
+		Id: "myRepo",
+	}}
+	assert.NoError(t, repoRef.Upsert())
+	u := &user.DBUser{Id: "me",
+		SystemRoles: []string{GetViewRepoRole("myRepo")},
+	}
+	assert.NoError(t, u.Insert())
+	pRef.Owner = "newOwner"
+	pRef.Repo = "newRepo"
+	assert.NoError(t, pRef.ChangeOwnerRepo(u))
+
+	pRefFromDB, err := FindOneProjectRef(pRef.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, pRefFromDB)
+	assert.NotEqual(t, pRefFromDB.RepoRefId, "myRepo")
+	assert.Equal(t, pRefFromDB.Owner, "newOwner")
+	assert.Equal(t, pRefFromDB.Repo, "newRepo")
+
+	userFromDB, err := user.FindOneById("me")
+	assert.NoError(t, err)
+	assert.Len(t, userFromDB.SystemRoles, 2)
+	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
+	assert.Contains(t, userFromDB.SystemRoles, GetViewRepoRole(pRefFromDB.RepoRefId))
+}
+
 func TestAttachToRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection))
@@ -350,6 +398,8 @@ func TestDetachFromRepo(t *testing.T) {
 
 			// reattach to repo to test without project patch aliases
 			assert.NoError(t, pRef.AttachToRepo(dbUser))
+			assert.NotEmpty(t, pRef.RepoRefId)
+			assert.True(t, pRef.UseRepoSettings)
 			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
@@ -467,6 +517,8 @@ func TestDetachFromRepo(t *testing.T) {
 
 			repoRef := RepoRef{ProjectRef{
 				Id:                    pRef.RepoRefId,
+				Owner:                 pRef.Owner,
+				Repo:                  pRef.Repo,
 				PRTestingEnabled:      utility.TruePtr(),
 				GitTagVersionsEnabled: utility.FalsePtr(),
 				GithubChecksEnabled:   utility.TruePtr(),

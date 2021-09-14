@@ -65,6 +65,10 @@ type LogInfo struct {
 	URL     string `bson:"url" json:"url"`
 }
 
+type DisableInfo struct {
+	Reason string `bson:"reason" json:"reason"`
+}
+
 type ModuleCloneInfo struct {
 	Prefixes map[string]string `bson:"prefixes,omitempty" json:"prefixes,omitempty"`
 }

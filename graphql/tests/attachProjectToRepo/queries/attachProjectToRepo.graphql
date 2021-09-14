@@ -1,0 +1,6 @@
+mutation {
+    attachProjectToRepo(projectId: "1234") {
+        repoRefId
+        useRepoSettings
+    }
+}

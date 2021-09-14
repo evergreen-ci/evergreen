@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/acl"
 	"github.com/mongodb/amboy"
+	"github.com/rs/cors"
 )
 
 const defaultLimit = 100
@@ -52,8 +53,12 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	cedarTestStats := checkCedarTestStats(settings)
-
-	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
+	if settings != nil && len(settings.Ui.CORSOrigins) > 0 {
+		app.AddMiddleware(cors.New(cors.Options{
+			AllowedOrigins:   settings.Ui.CORSOrigins,
+			AllowCredentials: true,
+		}))
+	}
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
@@ -110,6 +115,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangeHostsStatuses(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetHostByID(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeHostModifyRouteManager(sc, env))
+	app.AddRoute("/hosts/{host_id}/disable").Version(2).Post().Wrap(checkHost).RouteHandler(makeDisableHostHandler(sc, env))
 	app.AddRoute("/hosts/{host_id}/stop").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStopManager(sc, env))
 	app.AddRoute("/hosts/{host_id}/start").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStartManager(sc, env))
 	app.AddRoute("/hosts/{host_id}/change_password").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostChangePassword(sc, env))

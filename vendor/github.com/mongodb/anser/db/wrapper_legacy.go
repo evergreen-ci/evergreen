@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -33,7 +35,7 @@ type collectionLegacyWrapper struct {
 
 func (c collectionLegacyWrapper) Bulk() Bulk { return bulkLegacyWrapper{c.Collection.Bulk()} }
 
-func (c collectionLegacyWrapper) Pipe(p interface{}) Results {
+func (c collectionLegacyWrapper) Pipe(p interface{}) Aggregation {
 	return pipelineLegacyWrapper{c.Collection.Pipe(p)}
 }
 
@@ -87,11 +89,20 @@ func (q queryLegacyWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, e
 	return buildChangeInfo(i), errors.WithStack(err)
 }
 
+func (q queryLegacyWrapper) MaxTime(d time.Duration) Query {
+	return queryLegacyWrapper{q.Query.SetMaxTime(d)}
+}
+
 type pipelineLegacyWrapper struct {
 	*mgo.Pipe
 }
 
 func (p pipelineLegacyWrapper) Iter() Iterator { return p.Pipe.Iter() }
+
+// Hint and MaxTime are unsupported no-ops because the legacy driver's support for
+// hints and max time is limited.
+func (p pipelineLegacyWrapper) Hint(hint interface{}) Aggregation   { return p }
+func (p pipelineLegacyWrapper) MaxTime(d time.Duration) Aggregation { return p }
 
 type bulkLegacyWrapper struct {
 	*mgo.Bulk
