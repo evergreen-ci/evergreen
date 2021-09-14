@@ -296,7 +296,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 		slackColor = evergreenSuccessColor
 		data.PastTenseStatus = "succeeded"
 	} else if data.PastTenseStatus == evergreen.TaskStarted {
-		slackColor = evergreenSuccessColor
+		slackColor = evergreenRunningColor
 	}
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride
