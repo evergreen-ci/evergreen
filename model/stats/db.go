@@ -228,16 +228,26 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 					{"$eq": Array{testResultTaskIdKeyRef, "$$task_id"}},
 					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
 				{"$project": bson.M{
-					testresult.IDKey:        0,
-					dbTestStatsLastIDKey:    "$" + testresult.IDKey,
-					testresult.TestFileKey:  1,
-					testresult.StatusKey:    1,
-					testresult.StartTimeKey: 1,
-					testresult.EndTimeKey:   1}}},
+					testresult.IDKey:              0,
+					dbTestStatsLastIDKey:          "$" + testresult.IDKey,
+					testresult.TestFileKey:        1,
+					testresult.DisplayTestNameKey: 1,
+					testresult.StatusKey:          1,
+					testresult.StartTimeKey:       1,
+					testresult.EndTimeKey:         1}}},
 			"as": "testresults"}},
 		{"$unwind": "$testresults"},
 		{"$project": bson.M{
-			dbTestStatsIdTestFileKey: "$testresults." + testresult.TestFileKey,
+			// Use the display test name if there is one.
+			dbTestStatsIdTestFileKey: bson.M{
+				"$cond": bson.M{
+					"if": bson.M{
+						"$ne": []string{bsonutil.GetDottedKeyName("$testresults", testresult.DisplayTestNameKey), ""},
+					},
+					"then": bsonutil.GetDottedKeyName("$testresults", testresult.DisplayTestNameKey),
+					"else": bsonutil.GetDottedKeyName("$testresults", testresult.TestFileKey),
+				},
+			},
 			// We use the name of the display task if there is one.
 			DbTestStatsIdTaskNameKey:     bson.M{"$ifNull": Array{"$display_task." + task.DisplayNameKey, "$task_name"}},
 			DbTestStatsIdBuildVariantKey: 1,
@@ -590,6 +600,7 @@ func (filter StatsFilter) buildMatchStageForTest() bson.M {
 		DbTestStatsIdProjectKeyFull:   filter.Project,
 		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
+
 	if len(filter.Tests) > 0 {
 		match[DbTestStatsIdTestFileKeyFull] = BuildMatchArrayExpression(filter.Tests)
 	}
@@ -786,6 +797,7 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 		DbTestStatsIdProjectKeyFull:   filter.Project,
 		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
+
 	if len(filter.Tasks) > 0 {
 		match[DbTaskStatsIdTaskNameKeyFull] = BuildMatchArrayExpression(filter.Tasks)
 	}
