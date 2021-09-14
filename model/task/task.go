@@ -665,14 +665,21 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 
 // HasFailedTests returns true if the task had any failed tests.
 func (t *Task) HasFailedTests() bool {
+	// Check cedar flags before populating test results to avoid
+	// unnecessarily downloading results from cedar.
+	if t.HasCedarResults {
+		if t.CedarResultsFailed {
+			return true
+		}
+
+		return false
+	}
+
+	t.PopulateTestResults()
 	for _, test := range t.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			return true
 		}
-	}
-
-	if t.HasCedarResults && t.CedarResultsFailed {
-		return true
 	}
 
 	return false
