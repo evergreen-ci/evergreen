@@ -974,7 +974,7 @@ func (p ECSClusterPlatform) Validate() error {
 type LogViewer string
 
 const (
-	LogViewerRaw     = "raw"
-	LogViewerHTML    = "html"
-	LogViewerLobster = "lobster"
+	LogViewerRaw     LogViewer = "raw"
+	LogViewerHTML    LogViewer = "html"
+	LogViewerLobster LogViewer = "lobster"
 )
