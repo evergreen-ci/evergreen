@@ -3648,7 +3648,7 @@ tasks:
 }
 
 func TestEvalStepbackTaskGroup(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, event.AllLogCollection))
+	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection, event.AllLogCollection))
 	yml := `
 stepback: true
 `
@@ -3669,6 +3669,13 @@ stepback: true
 	}
 	require.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
 
+	b1 := build.Build{
+		Id: "prev_b1",
+	}
+	b2 := build.Build{
+		Id: "prev_b2",
+	}
+	require.NoError(t, db.InsertMany(build.Collection, b1, b2))
 	t1 := task.Task{
 		Id:                  "t1",
 		BuildId:             "b1",
