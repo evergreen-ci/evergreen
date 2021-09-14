@@ -20,6 +20,7 @@ func insertTestDocuments() error {
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
 			RunningTask: "foo",
+			StartedBy:   evergreen.User,
 		},
 		Host{
 			Id:     "two",
@@ -29,6 +30,7 @@ func insertTestDocuments() error {
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
 			RunningTask: "bar",
+			StartedBy:   evergreen.User,
 		},
 		Host{
 			Id:     "three",
@@ -38,6 +40,7 @@ func insertTestDocuments() error {
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
 			RunningTask: "foo-foo",
+			StartedBy:   evergreen.User,
 		},
 		Host{
 			Id:     "four",
@@ -46,6 +49,7 @@ func insertTestDocuments() error {
 				Id:       "redhat",
 				Provider: evergreen.ProviderNameEc2Spot,
 			},
+			StartedBy: evergreen.User,
 		},
 		Host{
 			Id:     "five",
@@ -54,6 +58,7 @@ func insertTestDocuments() error {
 				Id:       "foo",
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
+			StartedBy: evergreen.User,
 		},
 		Host{
 			Id:     "six",
@@ -62,6 +67,16 @@ func insertTestDocuments() error {
 				Id:       "bar",
 				Provider: evergreen.ProviderNameStatic,
 			},
+			StartedBy: evergreen.User,
+		},
+		Host{
+			Id:     "seven",
+			Status: evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id:       "debian",
+				Provider: evergreen.ProviderNameStatic,
+			},
+			RunningTask: "foo",
 		},
 	}
 
