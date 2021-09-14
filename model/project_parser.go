@@ -84,7 +84,9 @@ type ParserProject struct {
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
 
-	// ProjectRef override fields
+	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
+	// Values for the below fields set on this struct will take precedence over the project page and will
+	// be the configs used for a given project during runtime.
 	DeactivatePrevious *bool `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
 
 	// List of yamls to merge
@@ -1212,4 +1214,8 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 		}
 	}
 	return newDeps, evalErrs
+}
+
+func (p *ParserProject) ShouldDeactivatePrevious() bool {
+	return utility.FromBoolPtr(p.DeactivatePrevious)
 }
