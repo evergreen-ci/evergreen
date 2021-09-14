@@ -740,7 +740,7 @@ func (c *hostCommunicator) SetDownstreamParams(ctx context.Context, downstreamPa
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion2,
+		version:  apiVersion1,
 	}
 
 	info.setTaskPathSuffix("downstreamParams")
