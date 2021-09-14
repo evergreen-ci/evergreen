@@ -683,7 +683,6 @@ buildvariants:
       goroot: /opt/golang/go1.16
     tasks:
       - name: generate-lint
-      - name: print-stuff
 
   - name: windows
     display_name: Windows
