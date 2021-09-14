@@ -116,6 +116,11 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 	return &nextTask, nil
 }
 
+// DisableHost signals to the app server that the pod should be disabled.
+func (c *podCommunicator) DisableHost(ctx context.Context, hostID string, details apimodels.DisableInfo) error {
+	return errors.New("TODO: implement")
+}
+
 // GetCedarConfig returns the cedar service information including the base URL,
 // URL, RPC port, and credentials.
 func (c *podCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {

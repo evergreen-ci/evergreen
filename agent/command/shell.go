@@ -248,6 +248,9 @@ func (c *shellExec) doExpansions(exp *util.Expansions) error {
 	c.Script, err = exp.ExpandString(c.Script)
 	catcher.Add(err)
 
+	c.Shell, err = exp.ExpandString(c.Shell)
+	catcher.Add(err)
+
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
 		catcher.Add(err)

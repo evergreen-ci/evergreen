@@ -1,0 +1,6 @@
+mutation {
+    attachProjectToRepo(projectId: "nonexistent") {
+        repoRefId
+        useRepoSettings
+    }
+}

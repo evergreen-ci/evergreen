@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "query_file": "attachProjectToRepo.graphql",
+      "result": {
+        "data": {
+          "attachProjectToRepo": {
+            "repoRefId": "myRepo",
+            "useRepoSettings": true
+          }
+        }
+      }
+    },
+    {
+      "query_file": "badProject.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "error finding project nonexistent: 404 (Not Found): project with id 'nonexistent' not found",
+            "path": [
+              "attachProjectToRepo"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
