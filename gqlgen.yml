@@ -240,3 +240,13 @@ models:
         resolver: true
   BuildVariantTuple:
     model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
+  TaskLogs:
+    fields:
+      eventLogs:
+        resolver: true
+      taskLogs:
+        resolver: true
+      systemLogs:
+        resolver: true
+      agentLogs:
+        resolver: true
