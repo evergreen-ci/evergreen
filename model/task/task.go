@@ -299,6 +299,7 @@ type TestResult struct {
 	GroupID         string  `json:"group_id,omitempty" bson:"group_id,omitempty"`
 	URL             string  `json:"url" bson:"url,omitempty"`
 	URLRaw          string  `json:"url_raw" bson:"url_raw,omitempty"`
+	URLLobster      string  `json:"url_lobster" bson:"-"`
 	LogId           string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
 	LineNum         int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
 	ExitCode        int     `json:"exit_code" bson:"exit_code"`
@@ -334,11 +335,49 @@ func (tr TestResult) GetDisplayTestName() string {
 }
 
 // GetLogURL returns the external or internal log URL for this test result.
-func (tr TestResult) GetLogURL(raw bool) string {
+func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 	root := evergreen.GetEnvironment().Settings().ApiUrl
 	deprecatedLobsterURL := "https://logkeeper.mongodb.org"
 
-	if raw {
+	switch viewer {
+	case evergreen.LogViewerHTML:
+		if tr.URL != "" {
+			if strings.Contains(tr.URL, deprecatedLobsterURL) {
+				return strings.Replace(tr.URL, deprecatedLobsterURL, root, 1)
+			}
+
+			return tr.URL
+		}
+
+		if tr.LogId != "" {
+			return fmt.Sprintf("%s/test_log/%s#L%d",
+				root,
+				url.PathEscape(tr.LogId),
+				tr.LineNum,
+			)
+		}
+
+		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s",
+			root,
+			url.PathEscape(tr.TaskID),
+			tr.Execution,
+			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.GroupID),
+		)
+	case evergreen.LogViewerLobster:
+		if tr.URL != "" {
+			return ""
+		}
+
+		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s?groupId=%s#shareLine=%d",
+			root,
+			url.PathEscape(tr.TaskID),
+			tr.Execution,
+			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.GroupID),
+			tr.LineNum,
+		)
+	default:
 		if tr.URLRaw != "" {
 			if strings.Contains(tr.URLRaw, deprecatedLobsterURL) {
 				return strings.Replace(tr.URLRaw, deprecatedLobsterURL, root, 1)
@@ -362,31 +401,6 @@ func (tr TestResult) GetLogURL(raw bool) string {
 			url.QueryEscape(tr.GroupID),
 		)
 	}
-
-	if tr.URL != "" {
-		if strings.Contains(tr.URL, deprecatedLobsterURL) {
-			return strings.Replace(tr.URL, deprecatedLobsterURL, root, 1)
-		}
-
-		return tr.URL
-	}
-
-	if tr.LogId != "" {
-		return fmt.Sprintf("%s/test_log/%s#L%d",
-			root,
-			url.PathEscape(tr.LogId),
-			tr.LineNum,
-		)
-	}
-
-	return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s?groupId=%s#shareLine=%d",
-		root,
-		url.PathEscape(tr.TaskID),
-		tr.Execution,
-		url.QueryEscape(tr.GetLogTestName()),
-		url.QueryEscape(tr.GroupID),
-		tr.LineNum,
-	)
 }
 
 type DisplayTaskCache struct {

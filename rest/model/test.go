@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -33,10 +34,11 @@ type APITest struct {
 // TestLogs is a struct for storing the information about logs that will be
 // written out as part of an APITest.
 type TestLogs struct {
-	URL     *string `json:"url"`
-	URLRaw  *string `json:"url_raw"`
-	LineNum int     `json:"line_num"`
-	LogId   *string `json:"log_id,omitempty"`
+	URL        *string `json:"url"`
+	URLRaw     *string `json:"url_raw"`
+	URLLobster *string `json:"url_lobster"`
+	LineNum    int     `json:"line_num"`
+	LogId      *string `json:"log_id,omitempty"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
@@ -61,9 +63,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 		tr := task.ConvertToOld(v)
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(tr.GetLogURL(false)),
-			URLRaw:  utility.ToStringPtr(tr.GetLogURL(true)),
-			LineNum: v.LineNum,
+			URL:        utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
+			URLRaw:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
+			URLLobster: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerLobster)),
+			LineNum:    v.LineNum,
 		}
 		if v.LogID != "" {
 			at.Logs.LogId = utility.ToStringPtr(v.LogID)
@@ -89,9 +92,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 		tr := task.ConvertCedarTestResult(*v)
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(tr.GetLogURL(false)),
-			URLRaw:  utility.ToStringPtr(tr.GetLogURL(true)),
-			LineNum: v.LineNum,
+			URL:        utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
+			URLRaw:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
+			URLLobster: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerLobster)),
+			LineNum:    v.LineNum,
 		}
 
 	case string:

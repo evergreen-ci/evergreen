@@ -469,8 +469,16 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                             <div class="progress [[progressBarClass]]" test-result-bar="test.test_result" style="width: [[barWidth]]%"></div>
                           </td>
                           <td class="col-lg-3">
+                            <div class="url-link nowrap" id="lobster-link">
+                                <a ng-href="[[test.test_result.url_lobster]]" ng-hide="[[test.test_result.lobster == '']]">
+                                  Lobster
+                                </a>
+                              </div>
+                              <div id="separator">
+                                <b>&middot;</b>
+                              </div>
                             <div class="url-link nowrap" id="html-link">
-                                <a ng-href="[[test.test_result.url]]">
+                                <a ng-href="[[test.test_result.url]]" ng-hide="[[test.test_result.url == '']]">
                                   HTML
                                 </a>
                               </div>
@@ -478,7 +486,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                                 <b>&middot;</b>
                               </div>
                               <div class="url-link nowrap" id="raw-link">
-                                <a ng-href="[[test.test_result.url_raw]]">
+                                <a ng-href="[[test.test_result.url_raw]]" ng-hide="[[test.test_result.url_raw == '']]">
                                   Raw
                                 </a>
                               </div>

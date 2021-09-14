@@ -429,7 +429,7 @@ func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
 	for i := range t.LocalTestResults {
 		if t.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			testResult := t.LocalTestResults[i]
-			testResult.URL = testResult.GetLogURL(false)
+			testResult.URL = testResult.GetLogURL(evergreen.LogViewerHTML)
 			result = append(result, testResult)
 		}
 	}

@@ -352,7 +352,7 @@ func (j *jiraBuilder) getDescription() (string, error) {
 		if test.Status == evergreen.TestFailedStatus {
 			tests = append(tests, jiraTestFailure{
 				Name:       cleanTestName(test.GetDisplayTestName()),
-				URL:        test.GetLogURL(false),
+				URL:        test.GetLogURL(evergreen.LogViewerHTML),
 				HistoryURL: historyURL(j.data.Task, cleanTestName(test.TestFile), j.data.UIRoot),
 				TaskID:     test.TaskID,
 				Execution:  test.Execution,
