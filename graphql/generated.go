@@ -728,9 +728,10 @@ type ComplexityRoot struct {
 	}
 
 	TestLog struct {
-		LineNum func(childComplexity int) int
-		URL     func(childComplexity int) int
-		URLRaw  func(childComplexity int) int
+		LineNum    func(childComplexity int) int
+		URL        func(childComplexity int) int
+		URLLobster func(childComplexity int) int
+		URLRaw     func(childComplexity int) int
 	}
 
 	TestResult struct {
@@ -4511,6 +4512,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestLog.URL(childComplexity), true
 
+	case "TestLog.urlLobster":
+		if e.complexity.TestLog.URLLobster == nil {
+			break
+		}
+
+		return e.complexity.TestLog.URLLobster(childComplexity), true
+
 	case "TestLog.urlRaw":
 		if e.complexity.TestLog.URLRaw == nil {
 			break
@@ -5877,6 +5885,7 @@ type TestResult {
 type TestLog {
   url: String
   urlRaw: String
+  urlLobster: String
   lineNum: Int
 }
 
@@ -22965,6 +22974,37 @@ func (ec *executionContext) _TestLog_urlRaw(ctx context.Context, field graphql.C
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestLog_urlLobster(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URLLobster, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TestLog_lineNum(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -31781,6 +31821,8 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._TestLog_url(ctx, field, obj)
 		case "urlRaw":
 			out.Values[i] = ec._TestLog_urlRaw(ctx, field, obj)
+		case "urlLobster":
+			out.Values[i] = ec._TestLog_urlLobster(ctx, field, obj)
 		case "lineNum":
 			out.Values[i] = ec._TestLog_lineNum(ctx, field, obj)
 		default:

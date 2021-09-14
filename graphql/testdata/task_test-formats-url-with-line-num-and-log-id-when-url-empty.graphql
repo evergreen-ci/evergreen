@@ -4,6 +4,7 @@
       logs {
         url
         urlRaw
+        urlLobster
       }
       id
     }

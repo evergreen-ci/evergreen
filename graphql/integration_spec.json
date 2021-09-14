@@ -2830,8 +2830,9 @@
             "testResults": [
               {
                 "logs": {
-                  "url": "https://localhost:8443/lobster/test/exec1/0/apple?groupId=#shareLine=126",
-                  "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true"
+                  "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=",
+                  "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true",
+                  "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/apple?groupId=#shareLine=126"
                 },
                 "id": "29ef7a20a7798219e191d00e"
               }
@@ -2849,7 +2850,8 @@
               {
                 "logs": {
                   "url": "https://original-url.com",
-                  "urlRaw": "https://original-raw-url.com"
+                  "urlRaw": "https://original-raw-url.com",
+                  "urlLobster": ""
                 },
                 "id": "19ef7a20a7798219e191d00e"
               }
@@ -2867,7 +2869,8 @@
               {
                 "logs": {
                   "url": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126",
-                  "urlRaw": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?text=true"
+                  "urlRaw": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?text=true",
+                  "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/d?groupId=#shareLine=126"
                 },
                 "id": "39ef7a20a7798219e191d00e"
               }

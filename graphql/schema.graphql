@@ -690,6 +690,7 @@ type TestResult {
 type TestLog {
   url: String
   urlRaw: String
+  urlLobster: String
   lineNum: Int
 }
 
