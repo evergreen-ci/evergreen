@@ -25,6 +25,7 @@ import (
 )
 
 func init() {
+	registry.registerEventHandler(event.ResourceTypeTask, event.TaskStarted, makeTaskTriggers)
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskFinished, makeTaskTriggers)
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskBlocked, makeTaskTriggers)
 }
@@ -294,6 +295,8 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	} else if data.PastTenseStatus == evergreen.TaskSucceeded {
 		slackColor = evergreenSuccessColor
 		data.PastTenseStatus = "succeeded"
+	} else if data.PastTenseStatus == evergreen.TaskStarted {
+		slackColor = evergreenSuccessColor
 	}
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride

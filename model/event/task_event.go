@@ -9,6 +9,7 @@ import (
 
 func init() {
 	registry.AddType(ResourceTypeTask, taskEventDataFactory)
+	registry.AllowSubscription(ResourceTypeTask, TaskStarted)
 	registry.AllowSubscription(ResourceTypeTask, TaskFinished)
 	registry.AllowSubscription(ResourceTypeTask, TaskBlocked)
 }

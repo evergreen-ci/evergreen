@@ -263,6 +263,11 @@ mciModule.controller('TaskCtrl', function ($scope, $rootScope, $now, $timeout, $
   $scope.permissions = $window.permissions || {};
 
   $scope.triggers = [{
+      trigger: "task-started",
+      resource_type: "TASK",
+      label: "this task starts",
+    },
+    {
       trigger: "outcome",
       resource_type: "TASK",
       label: "this task finishes",
