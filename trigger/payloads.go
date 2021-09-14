@@ -27,7 +27,7 @@ const (
 	evergreenSuccessColor    = "#4ead4a"
 	evergreenFailColor       = "#ce3c3e"
 	evergreenSystemFailColor = "#ce3c3e"
-	evergreenRunningColor    = "#FEF7E3"
+	evergreenRunningColor    = "#ffdd49"
 
 	// slackAttachmentsLimit is a limit to the number of extra entries to
 	// attach to a Slack message. It does not count the link to Evergreen,
