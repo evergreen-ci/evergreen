@@ -36,7 +36,7 @@ type Query {
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
-  taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
+  taskLogs(taskId: String!, execution: Int): TaskLogs!
   patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
@@ -81,6 +81,8 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  attachProjectToRepo(projectId: String!): Project!
+  detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -995,7 +997,9 @@ type User {
   patches(patchesInput: PatchesInput!): Patches!
 }
 
-type RecentTaskLogs {
+type TaskLogs {
+  taskId: String!
+  execution: Int!
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!

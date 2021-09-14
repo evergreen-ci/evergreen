@@ -182,13 +182,6 @@ type PublicKeyInput struct {
 	Key  string `json:"key"`
 }
 
-type RecentTaskLogs struct {
-	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
-	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
-	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
-	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
-}
-
 type SortOrder struct {
 	Key       TaskSortCategory `json:"Key"`
 	Direction SortDirection    `json:"Direction"`
@@ -240,6 +233,15 @@ type Subscriber struct {
 type TaskFiles struct {
 	FileCount    int             `json:"fileCount"`
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
+}
+
+type TaskLogs struct {
+	TaskID     string                        `json:"taskId"`
+	Execution  int                           `json:"execution"`
+	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
+	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
+	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
+	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
 }
 
 type TaskQueueDistro struct {

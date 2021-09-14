@@ -398,6 +398,8 @@ func TestDetachFromRepo(t *testing.T) {
 
 			// reattach to repo to test without project patch aliases
 			assert.NoError(t, pRef.AttachToRepo(dbUser))
+			assert.NotEmpty(t, pRef.RepoRefId)
+			assert.True(t, pRef.UseRepoSettings)
 			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
@@ -515,6 +517,8 @@ func TestDetachFromRepo(t *testing.T) {
 
 			repoRef := RepoRef{ProjectRef{
 				Id:                    pRef.RepoRefId,
+				Owner:                 pRef.Owner,
+				Repo:                  pRef.Repo,
 				PRTestingEnabled:      utility.TruePtr(),
 				GitTagVersionsEnabled: utility.FalsePtr(),
 				GithubChecksEnabled:   utility.TruePtr(),

@@ -477,6 +477,8 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	if err = p.RemoveFromRepoScope(); err != nil {
 		return err
 	}
+	p.UseRepoSettings = false
+	p.RepoRefId = ""
 
 	mergedProject, err := FindMergedProjectRef(p.Id)
 	if err != nil {
