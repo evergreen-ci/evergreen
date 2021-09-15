@@ -815,46 +815,12 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		testLog   *model.TestLog
 	)
 
-	// Check buildlogger logs first.
-	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.Cedar.BaseURL,
-		TaskID:        taskID,
-		TestName:      testName,
-		GroupID:       vals.Get("group_id"),
-		Execution:     taskExec,
-		PrintPriority: !raw,
-	}
-	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
-	if err == nil {
-		defer func() {
-			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
-				"task_id":   taskID,
-				"test_name": testName,
-				"message":   "failed to close buildlogger log ReadCloser",
-			}))
-		}()
-	} else {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"task_id":   taskID,
-			"test_name": testName,
-			"message":   "problem getting buildlogger logs",
-		}))
-	}
-
-	// If buildlogger fails, fall back to db.
-	if logReader == nil {
-		if logId != "" { // direct link to a log document by its ID
-			testLog, err = model.FindOneTestLogById(logId)
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
-		} else {
-			testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
+	if logId != "" {
+		// Direct link to a log document in the database.
+		testLog, err = model.FindOneTestLogById(logId)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
 		}
 
 		if testLog == nil {
@@ -880,6 +846,32 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}()
+	} else {
+		// Search for logs in cedar.
+		opts := apimodels.GetBuildloggerLogsOptions{
+			BaseURL:       uis.Settings.Cedar.BaseURL,
+			TaskID:        taskID,
+			TestName:      testName,
+			GroupID:       vals.Get("group_id"),
+			Execution:     taskExec,
+			PrintPriority: !raw,
+		}
+		logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
+		if err == nil {
+			defer func() {
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id":   taskID,
+					"test_name": testName,
+					"message":   "failed to close buildlogger log ReadCloser",
+				}))
+			}()
+		} else {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id":   taskID,
+				"test_name": testName,
+				"message":   "problem getting buildlogger logs",
+			}))
+		}
 	}
 
 	if raw {

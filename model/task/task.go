@@ -299,7 +299,6 @@ type TestResult struct {
 	GroupID         string  `json:"group_id,omitempty" bson:"group_id,omitempty"`
 	URL             string  `json:"url" bson:"url,omitempty"`
 	URLRaw          string  `json:"url_raw" bson:"url_raw,omitempty"`
-	URLLobster      string  `json:"url_lobster" bson:"-"`
 	LogId           string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
 	LineNum         int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
 	ExitCode        int     `json:"exit_code" bson:"exit_code"`
@@ -365,7 +364,9 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 			url.QueryEscape(tr.GroupID),
 		)
 	case evergreen.LogViewerLobster:
-		if tr.URL != "" {
+		// Evergreen-hosted lobster does not support external logs nor
+		// logs stored in the database.
+		if tr.URL != "" || tr.URLRaw != "" || tr.LogId != "" {
 			return ""
 		}
 
