@@ -608,7 +608,7 @@ func (filter StatsFilter) buildMatchStageForTest() bson.M {
 	// account for this (EVG-15396). We should ignore any test stats
 	// affected by this bug.
 	//
-	// TODO: (EVG-15396) Remove this code once all affected test stats TTL
+	// TODO: (EVG-15408) Remove this code once all affected test stats TTL
 	// on 03/14/2022.
 	or := []bson.M{
 		{DbTaskStatsIdDateKeyFull: bson.M{"$lt": time.Date(2021, time.August, 30, 0, 0, 0, 0, time.UTC)}},
