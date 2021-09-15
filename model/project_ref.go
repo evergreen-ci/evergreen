@@ -1907,26 +1907,29 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			}
 		}
 	}
-	if err = catcher.Resolve(); err != nil {
-		return errors.Wrap(err, "error adding users")
-	}
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user %s", removedUser)
+			catcher.Wrapf(err, "error finding user %s", removedUser)
+			continue
 		}
 		if adminUser == nil {
 			continue
 		}
 
 		if err = adminUser.RemoveRole(role.ID); err != nil {
-			return errors.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			catcher.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			continue
 		}
 		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
 			if err = adminUser.RemoveRole(viewRole); err != nil {
-				return errors.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				catcher.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				continue
 			}
 		}
+	}
+	if err = catcher.Resolve(); err != nil {
+		return errors.Wrap(err, "error updating some admins")
 	}
 	return nil
 }
