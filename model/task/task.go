@@ -334,6 +334,10 @@ func (tr TestResult) GetDisplayTestName() string {
 }
 
 // GetLogURL returns the external or internal log URL for this test result.
+//
+// It is not advisable to set URL or URLRaw with the output of this function as
+// those fields are reserved for external logs and used to determine URL
+// generation for other log viewers.
 func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 	root := evergreen.GetEnvironment().Settings().ApiUrl
 	deprecatedLobsterURL := "https://logkeeper.mongodb.org/lobster"

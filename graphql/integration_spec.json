@@ -2870,7 +2870,7 @@
                 "logs": {
                   "url": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126",
                   "urlRaw": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?text=true",
-                  "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/d?groupId=#shareLine=126"
+                  "urlLobster": ""
                 },
                 "id": "39ef7a20a7798219e191d00e"
               }
