@@ -40,9 +40,9 @@ type TestLogs struct {
 	LineNum    int     `json:"line_num"`
 	LogId      *string `json:"log_id,omitempty"`
 
-	// TODO: (EVG-15379): Remove once spruce is udpated.
+	// TODO: (EVG-15379): Remove once spruce is updated.
 	HTMLDisplayURL *string `json:"url_raw_display"`
-	RawDisplayURL  *string `json:"url_html_display`
+	RawDisplayURL  *string `json:"url_html_display"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
