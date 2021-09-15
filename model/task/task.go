@@ -336,12 +336,12 @@ func (tr TestResult) GetDisplayTestName() string {
 // GetLogURL returns the external or internal log URL for this test result.
 func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 	root := evergreen.GetEnvironment().Settings().ApiUrl
-	deprecatedLobsterURL := "https://logkeeper.mongodb.org"
+	deprecatedLobsterURL := "https://logkeeper.mongodb.org/lobster"
 
 	switch viewer {
 	case evergreen.LogViewerHTML:
 		if tr.URL != "" {
-			if strings.Contains(tr.URL, deprecatedLobsterURL) {
+			if strings.Contains(tr.URL+"/lobster", deprecatedLobsterURL) {
 				return strings.Replace(tr.URL, deprecatedLobsterURL, root, 1)
 			}
 
@@ -380,10 +380,6 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 		)
 	default:
 		if tr.URLRaw != "" {
-			if strings.Contains(tr.URLRaw, deprecatedLobsterURL) {
-				return strings.Replace(tr.URLRaw, deprecatedLobsterURL, root, 1)
-			}
-
 			return tr.URLRaw
 		}
 
