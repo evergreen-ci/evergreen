@@ -116,7 +116,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		DisplayName:       t.version.Id,
 		Object:            event.ObjectVersion,
 		Project:           projectName,
-		URL:               versionLink(t.uiConfig.Url, t.version.Id, evergreen.IsPatchRequester(t.version.Requester)),
+		URL:               versionLink(t.uiConfig.Url, t.version.Id, evergreen.IsPatchRequester(t.version.Requester), false),
 		PastTenseStatus:   t.data.Status,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,

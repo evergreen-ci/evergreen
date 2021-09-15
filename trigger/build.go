@@ -331,7 +331,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		Fields: []*message.SlackAttachmentField{
 			{
 				Title: "Version",
-				Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.build.Version, hasPatch), t.build.Version),
+				Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.build.Version, hasPatch, false), t.build.Version),
 			},
 			{
 				Title: "Makespan",

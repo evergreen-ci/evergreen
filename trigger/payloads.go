@@ -470,8 +470,11 @@ func buildLink(uiBase string, buildID string, hasPatch bool) string {
 	return url
 }
 
-func versionLink(uiBase string, versionID string, hasPatch bool) string {
+func versionLink(uiBase string, versionID string, hasPatch bool, isChild bool) string {
 	url := fmt.Sprintf("%s/version/%s", uiBase, url.PathEscape(versionID))
+	if isChild {
+		url += "/downstream-tasks"
+	}
 	if hasPatch {
 		url += "?redirect_spruce_users=true"
 	}
