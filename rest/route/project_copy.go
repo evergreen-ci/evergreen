@@ -50,8 +50,24 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	if err == nil {
 		return gimlet.MakeJSONErrorResponder(errors.New("provide different ID for new project"))
 	}
+	apiErr, ok := err.(gimlet.ErrorResponse)
+	if !ok {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("Type assertion failed: type %T does not hold an error", err))
+	}
+	if apiErr.StatusCode != http.StatusNotFound {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
+	}
 
-	apiProjectRef, err := data.CopyProject(ctx, p.sc, p.oldProject, p.newProject)
+	projectToCopy, err := p.sc.FindProjectById(p.oldProject, false)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
+			"Database error finding project '%s'", p.oldProject))
+	}
+	if projectToCopy == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", p.oldProject))
+	}
+
+	apiProjectRef, err := data.CopyProject(ctx, p.sc, projectToCopy, p.newProject)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

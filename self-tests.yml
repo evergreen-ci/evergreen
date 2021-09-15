@@ -339,6 +339,15 @@ functions:
         env:
           BRANCH_NAME: ${branch_name}
 
+  verify-merge-function-update:
+    - command: subprocess.exec
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        binary: bash
+        args: ["scripts/verify-merge-function-update.sh"]
+        env:
+          BRANCH_NAME: ${branch_name}
+
   attach-test-results:
     - command: gotest.parse_files
       type: system
@@ -589,10 +598,17 @@ tasks:
             GOPATH: ${workdir}/gopath
             GOROOT: ${goroot}
   - name: verify-agent-version-update
+    tags: ["linter"]
     patch_only: true
     commands:
       - func: get-project
       - func: verify-agent-version-update
+  - name: verify-merge-function-update
+    tags: ["linter"]
+    patch_only: true
+    commands:
+      - func: get-project
+      - func: verify-merge-function-update
   - name: test-db-auth
     commands:
       - func: get-project
@@ -637,7 +653,7 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
-      - name: "verify-agent-version-update"
+      - name: ".linter"
       - name: "docker-cleanup"
       - name: test-db-auth
       - name: test-cloud

@@ -45,6 +45,8 @@ imports:
 
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+  - name: github.com/rs/cors
+    version: 76f58f330d76a55c5badc74f6212e8a15e742c77
 
   - name: github.com/jacobsa/oglematchers
     version: 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
@@ -174,7 +176,7 @@ imports:
   - name: github.com/evergreen-ci/birch
     version: 9279ecfa890703259ea90af5d1c1fac4e9869bb2
   - name: github.com/mongodb/anser
-    version: 8f3e5cdbbb8779fdb021c9ffcd9cd514d6688464
+    version: 7c3b6870adfb65e15f5b130bae0adbb7efc67718
   - name: github.com/mongodb/ftdc
     version: fd0bfc553fcbcdfdb56f202df39992382971c3a1
 

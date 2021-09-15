@@ -448,6 +448,42 @@ func TestFindTasksByIds(t *testing.T) {
 	})
 }
 
+func TestFailedTasksByVersion(t *testing.T) {
+	Convey("When calling FailedTasksByVersion...", t, func() {
+		So(db.Clear(Collection), ShouldBeNil)
+		Convey("only tasks with the failed statuses should be returned", func() {
+
+			tasks := []Task{
+				{
+					Id:      "one",
+					Version: "v1",
+					Status:  evergreen.TaskFailed,
+				},
+				{
+					Id:      "two",
+					Version: "v1",
+					Status:  evergreen.TaskSetupFailed,
+				},
+				{
+					Id:      "three",
+					Version: "v1",
+					Status:  evergreen.TaskSucceeded,
+				},
+			}
+
+			for _, task := range tasks {
+				So(task.Insert(), ShouldBeNil)
+			}
+
+			dbTasks, err := Find(FailedTasksByVersion("v1"))
+			So(err, ShouldBeNil)
+			So(len(dbTasks), ShouldEqual, 2)
+			So(dbTasks[0].Id, ShouldNotEqual, "three")
+			So(dbTasks[1].Id, ShouldNotEqual, "three")
+		})
+	})
+}
+
 func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 	tasks := []Task{
 		{

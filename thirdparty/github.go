@@ -128,6 +128,22 @@ func githubShouldRetryWith404s(index int, req *http.Request, resp *http.Response
 	return githubShouldRetry(index, req, resp, err)
 }
 
+func getGithubClientRetryWith404s(token, caller string) *http.Client {
+	grip.Info(message.Fields{
+		"ticket":  "EVG-14603",
+		"message": "called getGithubClientRetryWith404s",
+		"caller":  caller,
+	})
+	return utility.GetOauth2CustomHTTPRetryableClient(
+		token,
+		githubShouldRetryWith404s,
+		utility.RetryHTTPDelay(utility.RetryOptions{
+			MaxAttempts: NumGithubAttempts,
+			MinDelay:    GithubRetryMinDelay,
+		}),
+	)
+}
+
 func getGithubClient(token, caller string) *http.Client {
 	grip.Info(message.Fields{
 		"ticket":  "EVG-14603",
@@ -664,14 +680,7 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 }
 
 func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
-	httpClient := utility.GetOauth2CustomHTTPRetryableClient(
-		token,
-		githubShouldRetryWith404s,
-		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: NumGithubAttempts,
-			MinDelay:    GithubRetryMinDelay,
-		}),
-	)
+	httpClient := getGithubClientRetryWith404s(token, "GithubUserPermissionLevel")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
@@ -691,14 +700,7 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
 func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch) (string, error) {
-	httpClient := utility.GetOauth2CustomHTTPRetryableClient(
-		token,
-		githubShouldRetryWith404s,
-		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: NumGithubAttempts,
-			MinDelay:    GithubRetryMinDelay,
-		}),
-	)
+	httpClient := getGithubClientRetryWith404s(token, "GetPullRequestMergeBase")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
@@ -732,14 +734,7 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 }
 
 func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, PRNumber int) (*github.PullRequest, error) {
-	httpClient := utility.GetOauth2CustomHTTPRetryableClient(
-		token,
-		githubShouldRetryWith404s,
-		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: NumGithubAttempts,
-			MinDelay:    GithubRetryMinDelay,
-		}),
-	)
+	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequest")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
@@ -754,14 +749,8 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string, []Summary, error) {
-	httpClient := utility.GetOauth2CustomHTTPRetryableClient(
-		token,
-		githubShouldRetryWith404s,
-		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: NumGithubAttempts,
-			MinDelay:    GithubRetryMinDelay,
-		}),
-	)
+	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestDiff")
+
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 

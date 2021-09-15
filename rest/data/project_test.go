@@ -375,8 +375,9 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsNoRepo() {
 		Admins:  []string{},
 	}
 	projectSettingsEvent, err := s.ctx.GetProjectSettings(projRef)
-	s.NotNil(err)
-	s.Nil(projectSettingsEvent)
+	s.Nil(err)
+	s.NotNil(projectSettingsEvent)
+	s.False(projectSettingsEvent.GitHubHooksEnabled)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {

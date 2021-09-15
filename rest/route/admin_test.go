@@ -42,7 +42,10 @@ type AdminRouteSuite struct {
 func TestAdminRouteSuiteWithDB(t *testing.T) {
 	s := new(AdminRouteSuite)
 	s.sc = &data.DBConnector{}
-	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection), "Error clearing collections")
+	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection), "clearing collections")
+	defer func() {
+		assert.NoError(t, db.ClearCollections(evergreen.ConfigCollection), "clearing collections")
+	}()
 
 	// run the rest of the tests
 	suite.Run(t, s)

@@ -1888,6 +1888,13 @@
         "triggers": []
       }
     ],
+    "repo_ref": [
+      {
+        "_id": "myEvergreenRepo",
+        "owner_name": "evergreen-ci",
+        "repo_name": "evergreen"
+      }
+    ],
     "versions": [
       {
         "_id": "version",

@@ -158,11 +158,6 @@ type PatchTime struct {
 	SubmittedAt string  `json:"submittedAt"`
 }
 
-type PatchTriggerAlias struct {
-	Alias        string `json:"alias"`
-	ChildProject string `json:"childProject"`
-}
-
 type Patches struct {
 	Patches            []*model.APIPatch `json:"patches"`
 	FilteredPatchCount int               `json:"filteredPatchCount"`
@@ -185,13 +180,6 @@ type ProjectBuildVariant struct {
 type PublicKeyInput struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`
-}
-
-type RecentTaskLogs struct {
-	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
-	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
-	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
-	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
 }
 
 type SortOrder struct {
@@ -232,9 +220,28 @@ type StatusCount struct {
 	Count  int    `json:"count"`
 }
 
+type Subscriber struct {
+	GithubPRSubscriber    *model.APIGithubPRSubscriber    `json:"githubPRSubscriber"`
+	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber"`
+	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber"`
+	JiraIssueSubscriber   *model.APIJIRAIssueSubscriber   `json:"jiraIssueSubscriber"`
+	JiraCommentSubscriber *string                         `json:"jiraCommentSubscriber"`
+	EmailSubscriber       *string                         `json:"emailSubscriber"`
+	SlackSubscriber       *string                         `json:"slackSubscriber"`
+}
+
 type TaskFiles struct {
 	FileCount    int             `json:"fileCount"`
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
+}
+
+type TaskLogs struct {
+	TaskID     string                        `json:"taskId"`
+	Execution  int                           `json:"execution"`
+	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
+	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
+	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
+	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
 }
 
 type TaskQueueDistro struct {

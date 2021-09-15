@@ -1003,6 +1003,28 @@ func TestHostFilterGetHandler(t *testing.T) {
 	assert.Equal(t, "h2", utility.FromStringPtr(hosts[0].(*model.APIHost).Id))
 }
 
+func TestDisableHostHandler(t *testing.T) {
+	hostID := "h1"
+	connector := data.MockConnector{
+		MockHostConnector: data.MockHostConnector{
+			CachedHosts: []host.Host{
+				{
+					Id:     hostID,
+					Status: evergreen.HostRunning,
+				},
+			},
+		},
+	}
+	dh := disableHost{
+		sc:     &connector,
+		hostID: hostID,
+	}
+
+	responder := dh.Run(context.Background())
+	assert.Equal(t, http.StatusOK, responder.Status())
+	assert.Equal(t, evergreen.HostDecommissioned, connector.CachedHosts[0].Status)
+}
+
 func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -90,7 +90,7 @@ func exportECSPodStatus(s pod.Status) (cocoa.ECSStatus, error) {
 		return cocoa.StatusUnknown, errors.Errorf("a pod that is initializing does not exist in ECS yet")
 	case pod.StatusStarting:
 		return cocoa.StatusStarting, nil
-	case pod.StatusRunning:
+	case pod.StatusRunning, pod.StatusDecommissioned:
 		return cocoa.StatusRunning, nil
 	case pod.StatusTerminated:
 		return cocoa.StatusDeleted, nil

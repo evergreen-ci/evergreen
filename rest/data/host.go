@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -167,6 +168,12 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 
 func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
 	return errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, user, "terminated via REST API"))
+}
+
+// DisableHost disables the host, notifies it's been disabled,
+// and clears and resets its running task.
+func (hc *DBHostConnector) DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
+	return units.HandlePoisonedHost(ctx, env, host, reason)
 }
 
 func (hc *DBHostConnector) CheckHostSecret(hostID string, r *http.Request) (int, error) {
@@ -440,6 +447,17 @@ func (hc *MockHostConnector) SetHostExpirationTime(host *host.Host, newExp time.
 func (hc *MockHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
 	for _, h := range hc.CachedHosts {
 		if h.Id == host.Id {
+			return nil
+		}
+	}
+
+	return errors.New("can't find host")
+}
+
+func (hc *MockHostConnector) DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
+	for i, h := range hc.CachedHosts {
+		if h.Id == host.Id {
+			hc.CachedHosts[i].Status = evergreen.HostDecommissioned
 			return nil
 		}
 	}
