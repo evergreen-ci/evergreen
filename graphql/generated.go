@@ -728,10 +728,12 @@ type ComplexityRoot struct {
 	}
 
 	TestLog struct {
-		LineNum    func(childComplexity int) int
-		URL        func(childComplexity int) int
-		URLLobster func(childComplexity int) int
-		URLRaw     func(childComplexity int) int
+		HTMLDisplayURL func(childComplexity int) int
+		LineNum        func(childComplexity int) int
+		RawDisplayURL  func(childComplexity int) int
+		URL            func(childComplexity int) int
+		URLLobster     func(childComplexity int) int
+		URLRaw         func(childComplexity int) int
 	}
 
 	TestResult struct {
@@ -4498,12 +4500,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskTestResult.TotalTestCount(childComplexity), true
 
+	case "TestLog.htmlDisplayURL":
+		if e.complexity.TestLog.HTMLDisplayURL == nil {
+			break
+		}
+
+		return e.complexity.TestLog.HTMLDisplayURL(childComplexity), true
+
 	case "TestLog.lineNum":
 		if e.complexity.TestLog.LineNum == nil {
 			break
 		}
 
 		return e.complexity.TestLog.LineNum(childComplexity), true
+
+	case "TestLog.rawDisplayURL":
+		if e.complexity.TestLog.RawDisplayURL == nil {
+			break
+		}
+
+		return e.complexity.TestLog.RawDisplayURL(childComplexity), true
 
 	case "TestLog.url":
 		if e.complexity.TestLog.URL == nil {
@@ -5887,6 +5903,9 @@ type TestLog {
   urlRaw: String
   urlLobster: String
   lineNum: Int
+  htmlDisplayURL: String @deprecated(reason: "htmlDisplayURL deprecated, use url instead (EVG-15379)")
+  rawDisplayURL: String @deprecated(reason: "rawDisplayURL deprecated, use urlRaw instead (EVG-15379)")
+
 }
 
 type Dependency {
@@ -23036,6 +23055,68 @@ func (ec *executionContext) _TestLog_lineNum(ctx context.Context, field graphql.
 	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TestLog_htmlDisplayURL(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HTMLDisplayURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TestLog_rawDisplayURL(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TestLog",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RawDisplayURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TestResult_id(ctx context.Context, field graphql.CollectedField, obj *model.APITest) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -31825,6 +31906,10 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._TestLog_urlLobster(ctx, field, obj)
 		case "lineNum":
 			out.Values[i] = ec._TestLog_lineNum(ctx, field, obj)
+		case "htmlDisplayURL":
+			out.Values[i] = ec._TestLog_htmlDisplayURL(ctx, field, obj)
+		case "rawDisplayURL":
+			out.Values[i] = ec._TestLog_rawDisplayURL(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

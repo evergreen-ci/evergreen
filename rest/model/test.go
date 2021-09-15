@@ -36,9 +36,13 @@ type APITest struct {
 type TestLogs struct {
 	URL        *string `json:"url"`
 	URLRaw     *string `json:"url_raw"`
-	URLLobster *string `json:"url_lobster"`
+	URLLobster *string `json:"url_lobster,omitempty"`
 	LineNum    int     `json:"line_num"`
 	LogId      *string `json:"log_id,omitempty"`
+
+	// TODO: (EVG-15379): Remove once spruce is udpated.
+	HTMLDisplayURL *string `json:"url_raw_display"`
+	RawDisplayURL  *string `json:"url_html_display`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
@@ -67,6 +71,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			URLRaw:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
 			URLLobster: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerLobster)),
 			LineNum:    v.LineNum,
+
+			// TODO: (EVG-15379) Remove after spruce is updated.
+			HTMLDisplayURL: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
+			RawDisplayURL:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
 		}
 		if v.LogID != "" {
 			at.Logs.LogId = utility.ToStringPtr(v.LogID)
@@ -96,6 +104,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			URLRaw:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
 			URLLobster: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerLobster)),
 			LineNum:    v.LineNum,
+
+			// TODO: (EVG-15379) Remove after spruce is updated.
+			HTMLDisplayURL: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
+			RawDisplayURL:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
 		}
 
 	case string:
