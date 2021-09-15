@@ -45,8 +45,17 @@ func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
+	projectToCopy, err := p.sc.FindProjectById(p.oldProject, false)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
+			"Database error finding project '%s'", p.oldProject))
+	}
+	if projectToCopy == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", p.oldProject))
+	}
+
 	// verify project with new name doesn't exist
-	_, err := p.sc.FindProjectById(p.newProject, false)
+	_, err = p.sc.FindProjectById(p.newProject, false)
 	if err == nil {
 		return gimlet.MakeJSONErrorResponder(errors.New("provide different ID for new project"))
 	}
@@ -56,15 +65,6 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if apiErr.StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
-	}
-
-	projectToCopy, err := p.sc.FindProjectById(p.oldProject, false)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
-			"Database error finding project '%s'", p.oldProject))
-	}
-	if projectToCopy == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", p.oldProject))
 	}
 
 	apiProjectRef, err := data.CopyProject(ctx, p.sc, projectToCopy, p.newProject)
