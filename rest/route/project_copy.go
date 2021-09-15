@@ -64,7 +64,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("Type assertion failed: type %T does not hold an error", err))
 	}
 	if apiErr.StatusCode != http.StatusNotFound {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
 	}
 
 	apiProjectRef, err := data.CopyProject(ctx, p.sc, projectToCopy, p.newProject)
