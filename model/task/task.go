@@ -3,6 +3,7 @@ package task
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -314,7 +315,7 @@ type TestResult struct {
 // GetLogTestName returns the name of the test in the logging backend. This is
 // used for test logs in cedar where the name of the test in the logging
 // service may differ from that in the test results service.
-func (tr *TestResult) GetLogTestName() string {
+func (tr TestResult) GetLogTestName() string {
 	if tr.LogTestName != "" {
 		return tr.LogTestName
 	}
@@ -324,12 +325,84 @@ func (tr *TestResult) GetLogTestName() string {
 
 // GetDisplayTestName returns the name of the test that should be displayed in
 // the UI. In most cases, this will just be TestFile.
-func (tr *TestResult) GetDisplayTestName() string {
+func (tr TestResult) GetDisplayTestName() string {
 	if tr.DisplayTestName != "" {
 		return tr.DisplayTestName
 	}
 
 	return tr.TestFile
+}
+
+// GetLogURL returns the external or internal log URL for this test result.
+//
+// It is not advisable to set URL or URLRaw with the output of this function as
+// those fields are reserved for external logs and used to determine URL
+// generation for other log viewers.
+func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
+	root := evergreen.GetEnvironment().Settings().ApiUrl
+	deprecatedLobsterURL := "https://logkeeper.mongodb.org/lobster"
+
+	switch viewer {
+	case evergreen.LogViewerHTML:
+		if tr.URL != "" {
+			if strings.Contains(tr.URL+"/lobster", deprecatedLobsterURL) {
+				return strings.Replace(tr.URL, deprecatedLobsterURL, root, 1)
+			}
+
+			return tr.URL
+		}
+
+		if tr.LogId != "" {
+			return fmt.Sprintf("%s/test_log/%s#L%d",
+				root,
+				url.PathEscape(tr.LogId),
+				tr.LineNum,
+			)
+		}
+
+		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
+			root,
+			url.PathEscape(tr.TaskID),
+			tr.Execution,
+			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.GroupID),
+			tr.LineNum,
+		)
+	case evergreen.LogViewerLobster:
+		// Evergreen-hosted lobster does not support external logs nor
+		// logs stored in the database.
+		if tr.URL != "" || tr.URLRaw != "" || tr.LogId != "" {
+			return ""
+		}
+
+		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s/%s#shareLine=%d",
+			root,
+			url.PathEscape(tr.TaskID),
+			tr.Execution,
+			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.GroupID),
+			tr.LineNum,
+		)
+	default:
+		if tr.URLRaw != "" {
+			return tr.URLRaw
+		}
+
+		if tr.LogId != "" {
+			return fmt.Sprintf("%s/test_log/%s?text=true",
+				root,
+				url.PathEscape(tr.LogId),
+			)
+		}
+
+		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
+			root,
+			url.PathEscape(tr.TaskID),
+			tr.Execution,
+			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.GroupID),
+		)
+	}
 }
 
 type DisplayTaskCache struct {

@@ -76,6 +76,15 @@ func (s *payloadSuite) TestEmailWithTaskContent() {
 			TimedOut: false,
 		},
 	}
+	s.t.FailedTests = []task.TestResult{
+		{
+			TestFile: "test0",
+		},
+		{
+			TestFile:        "test1",
+			DisplayTestName: "display_test1",
+		},
+	}
 	s.t.Build = &build.Build{
 		DisplayName: "buildname",
 	}
@@ -89,6 +98,8 @@ func (s *payloadSuite) TestEmailWithTaskContent() {
 	s.Require().NotNil(m)
 	s.Contains(m.Body, "thetask")
 	s.Contains(m.Body, "TASK")
+	s.Contains(m.Body, "test0")
+	s.Contains(m.Body, "display_test1")
 	s.Contains(m.Body, "theproject")
 	s.Contains(m.Body, "buildname")
 
@@ -142,18 +153,14 @@ func (s *payloadSuite) TestSlack() {
 
 func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 	test1 := task.TestResult{
-		URL:    "/test_log/failed",
-		Status: evergreen.TestFailedStatus,
-	}
-	test2 := task.TestResult{
-		URL:    "/test_log/success",
+		URL:    "http://www.something.com/absolute",
 		Status: evergreen.TestSucceededStatus,
 	}
-	test3 := task.TestResult{
+	test2 := task.TestResult{
 		URL:    "http://www.something.com/absolute",
 		Status: evergreen.TestFailedStatus,
 	}
-	test4 := task.TestResult{
+	test3 := task.TestResult{
 		LogId:  "abc",
 		Status: evergreen.TestFailedStatus,
 	}
@@ -163,7 +170,7 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 		Details: apimodels.TaskEndDetail{
 			TimedOut: false,
 		},
-		LocalTestResults: []task.TestResult{test1, test2, test3, test4},
+		LocalTestResults: []task.TestResult{test1, test2, test3},
 	}
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
@@ -171,11 +178,9 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 
 	tr, err := getFailedTestsFromTemplate(t)
 	s.NoError(err)
-	s.Require().Len(tr, 3)
-	s.Equal(settings.Ui.Url+test1.URL, tr[0].URL)
-	s.NotEqual(test1.URL, tr[0].URL)
-	s.Equal(test3.URL, tr[1].URL)
-	s.Equal(settings.Ui.Url+"/test_log/abc", tr[2].URL)
+	s.Require().Len(tr, 2)
+	s.Equal(test2.GetLogURL(evergreen.LogViewerHTML), tr[0].URL)
+	s.Equal(test3.GetLogURL(evergreen.LogViewerHTML), tr[1].URL)
 }
 
 func TestTruncateString(t *testing.T) {

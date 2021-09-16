@@ -1106,7 +1106,7 @@ func TestIsTestRegression(t *testing.T) {
 	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSucceededStatus))
 }
 
-func TestMapTestResultsByTestFile(t *testing.T) {
+func TestMapTestResultsByTestName(t *testing.T) {
 	assert := assert.New(t)
 
 	results := []task.TestResult{}
@@ -1127,13 +1127,14 @@ func TestMapTestResultsByTestFile(t *testing.T) {
 				Status:   first,
 			},
 			task.TestResult{
-				TestFile: fmt.Sprintf("file%d", i),
-				Status:   second,
+				TestFile:        utility.RandomString(),
+				DisplayTestName: fmt.Sprintf("file%d", i),
+				Status:          second,
 			},
 		)
 	}
 
-	m := mapTestResultsByTestFile(results)
+	m := mapTestResultsByTestName(results)
 	assert.Len(m, 4)
 
 	for _, v := range m {
