@@ -673,7 +673,6 @@ func FindEvergreenHome() string {
 
 // IsSystemActivator returns true when the task activator is Evergreen.
 func IsSystemActivator(caller string) bool {
-	//check is caller in list, same for task activation
 	return utility.StringSliceContains(SystemActivators, caller)
 }
 
