@@ -360,12 +360,13 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 			)
 		}
 
-		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s",
+		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
 			url.QueryEscape(tr.GetLogTestName()),
 			url.QueryEscape(tr.GroupID),
+			tr.LineNum,
 		)
 	case evergreen.LogViewerLobster:
 		// Evergreen-hosted lobster does not support external logs nor

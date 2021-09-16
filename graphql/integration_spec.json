@@ -2830,7 +2830,7 @@
             "testResults": [
               {
                 "logs": {
-                  "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=",
+                  "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=#L126",
                   "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true",
                   "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/apple?groupId=#shareLine=126"
                 },
