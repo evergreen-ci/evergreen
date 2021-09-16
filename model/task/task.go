@@ -375,16 +375,14 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 			return ""
 		}
 
-		route := fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s",
+		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s/%s#shareLine=%d",
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
 			url.QueryEscape(tr.GetLogTestName()),
+			url.QueryEscape(tr.GroupID),
+			tr.LineNum,
 		)
-		if tr.GroupID != "" {
-			route = fmt.Sprintf("%s/%s", route, url.QueryEscape(tr.GroupID))
-		}
-		return fmt.Sprintf("%s#shareLine=%d", route, tr.LineNum)
 	default:
 		if tr.URLRaw != "" {
 			return tr.URLRaw
