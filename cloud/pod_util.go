@@ -90,7 +90,7 @@ func exportECSPodStatus(s pod.Status) (cocoa.ECSStatus, error) {
 		return cocoa.StatusUnknown, errors.Errorf("a pod that is initializing does not exist in ECS yet")
 	case pod.StatusStarting:
 		return cocoa.StatusStarting, nil
-	case pod.StatusRunning:
+	case pod.StatusRunning, pod.StatusDecommissioned:
 		return cocoa.StatusRunning, nil
 	case pod.StatusTerminated:
 		return cocoa.StatusDeleted, nil
@@ -212,17 +212,13 @@ func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*coc
 // exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
 func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSContainerDefinition, error) {
-	script, err := agentScript(settings, p)
-	if err != nil {
-		return nil, errors.Wrap(err, "building agent script")
-	}
 	return cocoa.NewECSContainerDefinition().
 		SetName(agentContainerName).
 		SetImage(p.TaskContainerCreationOpts.Image).
 		SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 		SetCPU(p.TaskContainerCreationOpts.CPU).
 		SetWorkingDir(p.TaskContainerCreationOpts.WorkingDir).
-		SetCommand(script).
+		SetCommand(agentScript(settings, p)).
 		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, p)).
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort)), nil
 }

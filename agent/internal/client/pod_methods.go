@@ -116,6 +116,11 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 	return &nextTask, nil
 }
 
+// DisableHost signals to the app server that the pod should be disabled.
+func (c *podCommunicator) DisableHost(ctx context.Context, hostID string, details apimodels.DisableInfo) error {
+	return errors.New("TODO: implement")
+}
+
 // GetCedarConfig returns the cedar service information including the base URL,
 // URL, RPC port, and credentials.
 func (c *podCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
@@ -202,7 +207,7 @@ func (c *podCommunicator) AttachFiles(ctx context.Context, taskData TaskData, ta
 	return errors.New("TODO: implement")
 }
 
-func (c *podCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+func (c *podCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error {
 	return errors.New("TODO: implement")
 }
 

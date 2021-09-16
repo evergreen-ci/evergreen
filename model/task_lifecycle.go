@@ -134,6 +134,10 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 	}
 
+	if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
+		return errors.Wrap(err, "problem updating build and version status for task")
+	}
+
 	return nil
 }
 
@@ -242,9 +246,9 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		msg := fmt.Sprintf("Task '%v' reached max execution (%v):", t.Id, evergreen.MaxTaskExecution)
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugln(msg, "allowing exception for", user)
-		} else {
-			grip.Debugln(msg, "marking as failed")
+		} else if !t.IsFinished() {
 			if detail != nil {
+				grip.Debugln(msg, "marking as failed")
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOneId(etId)
@@ -258,8 +262,15 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 				}
 				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false))
 			} else {
-				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
+				grip.Critical(message.Fields{
+					"message":     "TryResetTask called with nil TaskEndDetail",
+					"origin":      origin,
+					"task_id":     taskId,
+					"task_status": t.Status,
+				})
 			}
+		} else {
+			return nil
 		}
 	}
 
@@ -462,7 +473,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
-	if t.HasFailedTests() {
+	hasFailedTests, err := t.HasFailedTests()
+	if err != nil {
+		return errors.Wrap(err, "checking for failed tests")
+	}
+	if hasFailedTests {
 		detailsCopy.Status = evergreen.TaskFailed
 	}
 
@@ -495,7 +510,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		})
 	}
 	startPhaseAt := time.Now()
-	err := t.MarkEnd(finishTime, &detailsCopy)
+	err = t.MarkEnd(finishTime, &detailsCopy)
 	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
 		"function":      "MarkEnd",
@@ -796,11 +811,31 @@ func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) 
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if shouldStepBack {
-			if err = doStepback(t); err != nil {
-				return errors.Wrap(err, "Error during step back")
-			}
+		if !shouldStepBack {
+			return nil
 		}
+
+		if t.IsPartOfSingleHostTaskGroup() {
+			// Stepback earlier task group tasks as well because these need to be run sequentially.
+			catcher := grip.NewBasicCatcher()
+			tasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			if err != nil {
+				return errors.Wrapf(err, "can't get task group for task '%s'", t.Id)
+			}
+			if len(tasks) == 0 {
+				return errors.Errorf("no tasks in task group '%s' for task '%s'", t.TaskGroup, t.Id)
+			}
+			for _, tgTask := range tasks {
+				catcher.Wrapf(doStepback(&tgTask), "error stepping back task group task '%s'", tgTask.DisplayName)
+				if tgTask.Id == t.Id {
+					break // don't need to stepback later tasks in the group
+				}
+			}
+
+			return catcher.Resolve()
+		}
+		return errors.Wrap(doStepback(t), "error during stepback")
+
 	} else if deactivatePrevious && status == evergreen.TaskSucceeded {
 		// if the task was successful, ignore running previous
 		// activated tasks for this buildvariant

@@ -96,7 +96,7 @@ func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
 	t.Status = utility.ToStringPtr(def.Status)
 	t.ParentAsModule = utility.ToStringPtr(def.ParentAsModule)
 	var specifiers []APITaskSpecifier
-	for _, ts := range t.TaskSpecifiers {
+	for _, ts := range def.TaskSpecifiers {
 		specifier := APITaskSpecifier{}
 		if err := specifier.BuildFromService(ts); err != nil {
 			return errors.Wrap(err, "cannot convert task specifier")

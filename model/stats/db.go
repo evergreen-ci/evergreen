@@ -228,16 +228,26 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 					{"$eq": Array{testResultTaskIdKeyRef, "$$task_id"}},
 					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
 				{"$project": bson.M{
-					testresult.IDKey:        0,
-					dbTestStatsLastIDKey:    "$" + testresult.IDKey,
-					testresult.TestFileKey:  1,
-					testresult.StatusKey:    1,
-					testresult.StartTimeKey: 1,
-					testresult.EndTimeKey:   1}}},
+					testresult.IDKey:              0,
+					dbTestStatsLastIDKey:          "$" + testresult.IDKey,
+					testresult.TestFileKey:        1,
+					testresult.DisplayTestNameKey: 1,
+					testresult.StatusKey:          1,
+					testresult.StartTimeKey:       1,
+					testresult.EndTimeKey:         1}}},
 			"as": "testresults"}},
 		{"$unwind": "$testresults"},
 		{"$project": bson.M{
-			dbTestStatsIdTestFileKey: "$testresults." + testresult.TestFileKey,
+			// Use the display test name if there is one.
+			dbTestStatsIdTestFileKey: bson.M{
+				"$cond": bson.M{
+					"if": bson.M{
+						"$ne": []string{bsonutil.GetDottedKeyName("$testresults", testresult.DisplayTestNameKey), ""},
+					},
+					"then": bsonutil.GetDottedKeyName("$testresults", testresult.DisplayTestNameKey),
+					"else": bsonutil.GetDottedKeyName("$testresults", testresult.TestFileKey),
+				},
+			},
 			// We use the name of the display task if there is one.
 			DbTestStatsIdTaskNameKey:     bson.M{"$ifNull": Array{"$display_task." + task.DisplayNameKey, "$task_name"}},
 			DbTestStatsIdBuildVariantKey: 1,
@@ -590,6 +600,29 @@ func (filter StatsFilter) buildMatchStageForTest() bson.M {
 		DbTestStatsIdProjectKeyFull:   filter.Project,
 		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
+
+	// After cutting over the a few build variants to use resmoke spawned
+	// with jasper (SERVER-54315), test names are now random UUIDs with
+	// with a human-readble display name. For the period between
+	// 09/01/21-09/14/21, the historical test stats calculations failed to
+	// account for this (EVG-15396). We should ignore any test stats
+	// affected by this bug.
+	//
+	// TODO: (EVG-15408) Remove this code once all affected test stats TTL
+	// on 03/14/2022.
+	or := []bson.M{
+		{DbTaskStatsIdDateKeyFull: bson.M{"$lt": time.Date(2021, time.August, 30, 0, 0, 0, 0, time.UTC)}},
+		{DbTaskStatsIdDateKeyFull: bson.M{"$gt": time.Date(2021, time.September, 14, 0, 0, 0, 0, time.UTC)}},
+	}
+	if filter.StartAt != nil {
+		match["$and"] = []bson.M{
+			{"$or": or},
+			{"$or": filter.buildTestPaginationOrBranches()},
+		}
+	} else {
+		match["$or"] = or
+	}
+
 	if len(filter.Tests) > 0 {
 		match[DbTestStatsIdTestFileKeyFull] = BuildMatchArrayExpression(filter.Tests)
 	}
@@ -601,10 +634,6 @@ func (filter StatsFilter) buildMatchStageForTest() bson.M {
 	}
 	if len(filter.Distros) > 0 {
 		match[DbTestStatsIdDistroKeyFull] = BuildMatchArrayExpression(filter.Distros)
-	}
-
-	if filter.StartAt != nil {
-		match["$or"] = filter.buildTestPaginationOrBranches()
 	}
 
 	return bson.M{"$match": match}
@@ -786,6 +815,7 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 		DbTestStatsIdProjectKeyFull:   filter.Project,
 		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
+
 	if len(filter.Tasks) > 0 {
 		match[DbTaskStatsIdTaskNameKeyFull] = BuildMatchArrayExpression(filter.Tasks)
 	}

@@ -156,6 +156,12 @@ func TestExportECSPodStatus(t *testing.T) {
 		assert.NoError(t, s.Validate())
 		assert.Equal(t, cocoa.StatusRunning, s)
 	})
+	t.Run("SucceedsWithDecommissionedStatus", func(t *testing.T) {
+		s, err := exportECSPodStatus(pod.StatusDecommissioned)
+		require.NoError(t, err)
+		assert.NoError(t, s.Validate())
+		assert.Equal(t, cocoa.StatusRunning, s)
+	})
 	t.Run("SucceedsWithTerminatedStatus", func(t *testing.T) {
 		s, err := exportECSPodStatus(pod.StatusTerminated)
 		require.NoError(t, err)

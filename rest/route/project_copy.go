@@ -4,9 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -49,7 +47,8 @@ func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
 func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	projectToCopy, err := p.sc.FindProjectById(p.oldProject, false)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.oldProject))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
+			"Database error finding project '%s'", p.oldProject))
 	}
 	if projectToCopy == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", p.oldProject))
@@ -58,46 +57,20 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	// verify project with new name doesn't exist
 	_, err = p.sc.FindProjectById(p.newProject, false)
 	if err == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("provide different ID for new project"))
+		return gimlet.MakeJSONErrorResponder(errors.New("provide different ID for new project"))
 	}
 	apiErr, ok := err.(gimlet.ErrorResponse)
 	if !ok {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("Type assertion failed: type %T does not hold an error", err))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("Type assertion failed: type %T does not hold an error", err))
 	}
 	if apiErr.StatusCode != http.StatusNotFound {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
 	}
 
-	// copy project, disable necessary settings
-	oldId := projectToCopy.Id
-	projectToCopy.Identifier = p.newProject
-	projectToCopy.Enabled = utility.FalsePtr()
-	projectToCopy.PRTestingEnabled = nil
-	projectToCopy.CommitQueue.Enabled = nil
-	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err = p.sc.CreateProject(projectToCopy, u); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error creating project for id '%s'", p.newProject))
+	apiProjectRef, err := data.CopyProject(ctx, p.sc, projectToCopy, p.newProject)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	apiProjectRef := &model.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(*projectToCopy); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error building API project from service"))
-	}
-
-	// copy variables, aliases, and subscriptions
-	if err = p.sc.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.oldProject))
-	}
-	if err = p.sc.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying aliases from project '%s'", p.oldProject))
-	}
-	if err = p.sc.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying subscriptions from project '%s'", p.oldProject))
-	}
-	// set the same admin roles from the old project on the newly copied project.
-	if err = p.sc.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", p.newProject))
-	}
-
 	return gimlet.NewJSONResponse(apiProjectRef)
 }
 

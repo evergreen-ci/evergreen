@@ -297,6 +297,10 @@ type Connector interface {
 	// TerminateHost terminates the given host via the cloud provider's API
 	TerminateHost(context.Context, *host.Host, string) error
 
+	// DisableHost disables the host, notifies it's been disabled,
+	// and clears and resets its running task.
+	DisableHost(context.Context, evergreen.Environment, *host.Host, string) error
+
 	CheckHostSecret(string, *http.Request) (int, error)
 
 	// CreatePod creates a new pod and returns the result of creating the pod.

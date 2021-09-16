@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 
@@ -577,6 +578,67 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 		Content: script,
 	}
 	return gimlet.NewJSONResponse(apiOpts)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/host/{host_id}/disable
+type disableHost struct {
+	sc  data.Connector
+	env evergreen.Environment
+
+	hostID string
+	reason string
+}
+
+func makeDisableHostHandler(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+	return &disableHost{
+		sc:  sc,
+		env: env,
+	}
+}
+
+func (h *disableHost) Factory() gimlet.RouteHandler {
+	return &disableHost{
+		sc:  h.sc,
+		env: h.env,
+	}
+}
+
+func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	h.hostID = gimlet.GetVars(r)["host_id"]
+	if h.hostID == "" {
+		return errors.New("host ID must be specified")
+	}
+
+	info := apimodels.DisableInfo{}
+	if err := utility.ReadJSON(body, &info); err != nil {
+		return errors.Wrap(err, "unable to parse request body")
+	}
+	h.reason = info.Reason
+
+	return nil
+}
+
+func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
+	host, err := h.sc.FindHostById(h.hostID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
+	}
+	if host == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
+		)
+	}
+
+	if err = h.sc.DisableHost(ctx, h.env, host, h.reason); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,8 @@
+{
+    projectSettings(identifier: "sandbox") {
+        vars{
+            vars
+            privateVars
+        }
+    }
+}

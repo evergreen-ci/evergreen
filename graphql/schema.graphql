@@ -36,7 +36,7 @@ type Query {
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
-  taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
+  taskLogs(taskId: String!, execution: Int): TaskLogs!
   patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
@@ -75,15 +75,19 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
+  projectSettings(identifier: String!): ProjectSettings!
 }
 
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  attachProjectToRepo(projectId: String!): Project!
+  detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
@@ -142,6 +146,12 @@ type Mutation {
   bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
 }
+
+input VersionToRestart {
+  versionId: String!
+  taskIds: [String!]!
+}
+
 
 # Array of activated and unactivated versions
 # nextPageOrderNumber represents the last order number returned and is used for pagination
@@ -517,6 +527,9 @@ type FileDiff {
 type PatchTriggerAlias {
   alias: String!
   childProject: String!
+  taskSpecifiers: [TaskSpecifier]
+  status: String
+  parentAsModule: String
 }
 
 type UserPatches {
@@ -685,12 +698,16 @@ type TestResult {
   taskId: String
   execution: Int
   logTestName: String
-  lineNum: Int
 }
 
 type TestLog {
-  htmlDisplayURL: String
-  rawDisplayURL: String
+  url: String
+  urlRaw: String
+  urlLobster: String
+  lineNum: Int
+  htmlDisplayURL: String @deprecated(reason: "htmlDisplayURL deprecated, use url instead (EVG-15418)")
+  rawDisplayURL: String @deprecated(reason: "rawDisplayURL deprecated, use urlRaw instead (EVG-15418)")
+
 }
 
 type Dependency {
@@ -797,15 +814,185 @@ type GroupedProjects {
   projects: [Project!]!
 }
 
+type ProjectSettings {
+  githubWebhooksEnabled: Boolean!
+  projectRef: Project
+  vars: ProjectVars
+  aliases: [ProjectAlias]
+  subscriptions: [ProjectSubscription]
+}
+
+type ProjectVars {
+  vars: StringMap
+  privateVars: [String]
+}
+
+type ProjectAlias {
+  id: String!
+  alias: String!
+  gitTag: String!
+  variant: String!
+  task: String!
+  remotePath: String!
+  variantTags: [String!]!
+  taskTags: [String!]!
+}
+
+type ProjectSubscription {
+  id: String!
+  resourceType: String!
+  trigger: String!
+  selectors: [Selector!]!
+  regexSelectors: [Selector!]!
+  subscriber: ProjectSubscriber
+  ownerType: String!
+  triggerData: StringMap
+ }
+
+type Selector {
+  type: String!
+  data: String!
+}
+
+type ProjectSubscriber {
+  type: String!
+  subscriber: Subscriber!
+
+}
+
+type Subscriber {
+  githubPRSubscriber: GithubPRSubscriber
+  githubCheckSubscriber: GithubCheckSubscriber
+  webhookSubscriber: WebhookSubscriber
+  jiraIssueSubscriber: JiraIssueSubscriber
+  jiraCommentSubscriber: String
+  emailSubscriber: String
+  slackSubscriber: String
+}
+
+type GithubPRSubscriber {
+  owner: String!
+  repo: String!
+  ref: String!
+  prNumber: Int
+}
+
+type GithubCheckSubscriber {
+  owner: String!
+  repo: String!
+  ref: String!
+}
+
+type JiraIssueSubscriber {
+  project: String!
+  issueType: String!
+}
+
+type WebhookSubscriber {
+  url: String!
+  secret: String!
+  headers: [WebhookHeader]!
+}
+
+type WebhookHeader {
+  key: String!
+  value: String!
+}
+
 type Project {
-  displayName: String!
   id: String!
   identifier: String!
-  isFavorite: Boolean!
+  displayName: String!
+  enabled: Boolean
+  private: Boolean
   owner: String!
-  patches(patchesInput: PatchesInput!): Patches!
   repo: String!
+  branch: String!
+  remotePath: String!
+  patchingDisabled: Boolean
+  repotrackerDisabled: Boolean
+  dispatchingDisabled: Boolean
+  prTestingEnabled: Boolean
+  githubChecksEnabled: Boolean
+  batchTime: Int
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  notifyOnBuildFailure: Boolean
+  triggers: [TriggerAlias]
+  patchTriggerAliases: [PatchTriggerAlias]
+  githubTriggerAliases: [String]
+  periodicBuilds: [PeriodicBuild]
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParams
+  admins: [String]
   spawnHostScriptPath: String!
+  tracksPushEvents: Boolean
+  taskSync: TaskSyncOptions
+  gitTagAuthorizedUsers: [String]
+  gitTagAuthorizedTeams: [String]
+  gitTagVersionsEnabled: Boolean
+
+  filesIgnoredFromCache: [String]
+  disabledStatsCache: Boolean
+  workstationConfig: WorkstationConfig
+
+  hidden: Boolean
+  useRepoSettings: Boolean!
+  repoRefId: String
+
+  isFavorite: Boolean!
+  patches(patchesInput: PatchesInput!): Patches!
+}
+
+type TriggerAlias {
+  project: String
+  level: String!
+  definitionID: String!
+  buildVariantRegex: String!
+  taskRegex: String!
+  status: String!
+  dateCutoff: Int!
+  configFile: String!
+  generateFile: String!
+  command: String!
+  alias: String!
+}
+
+
+type PeriodicBuild {
+  id: String!
+  configFile: String!
+  intervalHours: Int!
+  alias: String!
+  message: String!
+  nextRunTime: Time!
+}
+
+type CommitQueueParams {
+  enabled: Boolean
+  mergeMethod: String
+  message: String
+}
+
+type TaskSyncOptions {
+  configEnabled: Boolean!
+  patchEnabled: Boolean!
+}
+
+type WorkstationConfig {
+  setupCommands: [WorkstationSetupCommand]
+  gitClone: Boolean!
+}
+
+type WorkstationSetupCommand {
+  Command: String!
+  Directory: String
+}
+
+type TaskSpecifier {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
 }
 
 type File {
@@ -821,7 +1008,9 @@ type User {
   patches(patchesInput: PatchesInput!): Patches!
 }
 
-type RecentTaskLogs {
+type TaskLogs {
+  taskId: String!
+  execution: Int!
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!

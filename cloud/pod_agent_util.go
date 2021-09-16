@@ -7,35 +7,69 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
-	"github.com/pkg/errors"
 )
 
 // agentScript returns the script to provision and run the agent in the pod's
 // container.
-func agentScript(settings *evergreen.Settings, p *pod.Pod) ([]string, error) {
-	downloadCmd, err := downloadAgentCommands(settings, p)
-	if err != nil {
-		return nil, errors.WithStack(err)
+func agentScript(settings *evergreen.Settings, p *pod.Pod) []string {
+	scriptCmds := []string{downloadAgentCommands(settings, p)}
+	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
+		scriptCmds = append(scriptCmds, fmt.Sprintf("chmod +x %s", clientName(p)))
 	}
-
 	agentCmd := strings.Join(agentCommand(settings, p), " ")
+	scriptCmds = append(scriptCmds, agentCmd)
 
-	return []string{
-		"bash", "-c",
-		strings.Join([]string{downloadCmd, fmt.Sprintf("chmod +x %s", clientName(p)), agentCmd}, " && "),
-	}, nil
+	return append(invokeShellScriptCommand(p), strings.Join(scriptCmds, " && "))
 }
 
-// agentCommand returns the arguments to start the agent on a pod.
+// invokeShellScriptCommand returns the arguments to invoke an in-line shell
+// script in the pod's container.
+func invokeShellScriptCommand(p *pod.Pod) []string {
+	if p.TaskContainerCreationOpts.OS == pod.OSWindows {
+		return []string{"cmd.exe", "/c"}
+	}
+
+	return []string{"bash", "-c"}
+}
+
+// agentCommand returns the arguments to start the agent in the pod's container.
 func agentCommand(settings *evergreen.Settings, p *pod.Pod) []string {
+	var pathSep string
+	if p.TaskContainerCreationOpts.OS == pod.OSWindows {
+		pathSep = "\\"
+	} else {
+		pathSep = "/"
+	}
+
 	return []string{
-		fmt.Sprintf("./%s", clientName(p)),
+		fmt.Sprintf(".%s%s", pathSep, clientName(p)),
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
 		fmt.Sprintf("--mode=pod"),
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(p.TaskContainerCreationOpts.WorkingDir, "agent")),
 		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
 	}
+}
+
+// downloadAgentCommands returns the commands to download the agent in the pod's
+// container.
+func downloadAgentCommands(settings *evergreen.Settings, p *pod.Pod) string {
+	const (
+		curlDefaultNumRetries = 10
+		curlDefaultMaxSecs    = 100
+	)
+	retryArgs := curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
+
+	var curlCmd string
+	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
+		// Attempt to download the agent from S3, but fall back to downloading
+		// from the app server if it fails.
+		curlCmd = fmt.Sprintf("(curl -LO '%s' %s || curl -LO '%s' %s)", s3ClientURL(settings, p), retryArgs, clientURL(settings, p), retryArgs)
+	} else {
+		curlCmd = fmt.Sprintf("curl -LO '%s' %s", clientURL(settings, p), retryArgs)
+	}
+
+	return curlCmd
 }
 
 // clientURL returns the URL used to get the latest Evergreen client version
@@ -73,26 +107,6 @@ func clientName(p *pod.Pod) string {
 		return name + ".exe"
 	}
 	return name
-}
-
-// downloadAgentCommands returns the commands to download the agent.
-func downloadAgentCommands(settings *evergreen.Settings, p *pod.Pod) (string, error) {
-	const (
-		curlDefaultNumRetries = 10
-		curlDefaultMaxSecs    = 100
-	)
-	retryArgs := curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
-
-	var curlCmd string
-	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
-		// Attempt to download the agent from S3, but fall back to downloading from
-		// the app server if it fails.
-		curlCmd = fmt.Sprintf("(curl -LO '%s' %s || curl -LO '%s' %s)", s3ClientURL(settings, p), retryArgs, clientURL(settings, p), retryArgs)
-	} else {
-		curlCmd = fmt.Sprintf("curl -LO '%s' %s", clientURL(settings, p), retryArgs)
-	}
-
-	return curlCmd, nil
 }
 
 // curlRetryArgs constructs options to configure the curl retry behavior.

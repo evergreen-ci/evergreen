@@ -161,12 +161,10 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var hook *model.GithubHook
-	if projRef.Owner != "" && projRef.Repo != "" {
-		hook, err = model.FindGithubHook(projRef.Owner, projRef.Repo)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
+	hook, err = model.FindGithubHook(projRef.Owner, projRef.Repo)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 	subscriptions, err := event.FindSubscriptionsByOwner(projRef.Id, event.OwnerTypeProject)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -29,24 +30,32 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 			}
 
 			for _, container := range containers {
-				catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, container, reason))
+				catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, &container, reason))
 			}
-			catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, *parent, reason))
+			catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, parent, reason))
 		}
+	} else {
+		catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, h, reason))
 	}
-	catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, *h, reason))
+
 	return catcher.Resolve()
 }
 
-func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h host.Host, reason string) error {
-	if h.Status == evergreen.HostDecommissioned || h.Status == evergreen.HostTerminated {
+func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, reason string) error {
+	if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		return nil
 	}
+
 	err := h.DisablePoisonedHost(reason)
 	if err != nil {
 		return errors.Wrap(err, "error disabling poisoned host")
 	}
-	return env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(env, &h, nil, reason))
+
+	if err = env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(env, h, nil, reason)); err != nil {
+		return errors.Wrap(err, "enqueueing decohost notify job")
+	}
+
+	return model.ClearAndResetStrandedTask(h)
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts

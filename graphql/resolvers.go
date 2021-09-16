@@ -73,10 +73,25 @@ func (r *Resolver) Project() ProjectResolver {
 func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
+func (r *Resolver) TaskLogs() TaskLogsResolver {
+	return &taskLogsResolver{r}
+}
+
+func (r *Resolver) ProjectSettings() ProjectSettingsResolver {
+	return &projectSettingsResolver{r}
+}
+
+func (r *Resolver) ProjectSubscriber() ProjectSubscriberResolver {
+	return &projectSubscriberResolver{r}
+}
 
 // IssueLink returns IssueLinkResolver implementation.
 func (r *Resolver) IssueLink() IssueLinkResolver {
 	return &issueLinkResolver{r}
+}
+
+func (r *Resolver) ProjectVars() ProjectVarsResolver {
+	return &projectVarsResolver{r}
 }
 
 type hostResolver struct{ *Resolver }
@@ -87,6 +102,10 @@ type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
 type issueLinkResolver struct{ *Resolver }
+type projectSettingsResolver struct{ *Resolver }
+type projectSubscriberResolver struct{ *Resolver }
+type projectVarsResolver struct{ *Resolver }
+type taskLogsResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -291,6 +310,125 @@ func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProje
 	}
 	return false, nil
 }
+
+func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, a *restModel.APIProjectSettings) (bool, error) {
+	hook, err := model.FindGithubHook(utility.FromStringPtr(a.ProjectRef.Owner), utility.FromStringPtr(a.ProjectRef.Repo))
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Database error finding github hook for project '%s': %s", *a.ProjectRef.Id, err.Error()))
+	}
+	return hook != nil, nil
+}
+
+func (r *projectSettingsResolver) Vars(ctx context.Context, a *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
+	vars, err := model.FindOneProjectVars(utility.FromStringPtr(a.ProjectRef.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", *a.ProjectRef.Id, err.Error()))
+	}
+	if vars == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("vars for '%s' don't exist", *a.ProjectRef.Id))
+	}
+	res := &restModel.APIProjectVars{}
+	if err = res.BuildFromService(vars); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIProjectVars from service: %s", err.Error()))
+	}
+	return res, nil
+}
+
+func (r *projectSettingsResolver) Aliases(ctx context.Context, a *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
+	aliases, err := model.FindAliasesForProject(utility.FromStringPtr(a.ProjectRef.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding aliases for project: %s", err.Error()))
+	}
+	res := []*restModel.APIProjectAlias{}
+	for _, alias := range aliases {
+		apiAlias := restModel.APIProjectAlias{}
+		if err = apiAlias.BuildFromService(alias); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectAlias %s from service: %s",
+				alias.Alias, err.Error()))
+		}
+		res = append(res, &apiAlias)
+	}
+	return res, nil
+}
+
+func (r *projectVarsResolver) PrivateVars(ctx context.Context, a *restModel.APIProjectVars) ([]*string, error) {
+	res := []*string{}
+	for privateAlias, isPrivate := range a.PrivateVars {
+		if isPrivate {
+			res = append(res, utility.ToStringPtr(privateAlias))
+		}
+	}
+	return res, nil
+}
+
+func (r *projectSettingsResolver) Subscriptions(ctx context.Context, a *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
+	subscriptions, err := event.FindSubscriptionsByOwner(utility.FromStringPtr(a.ProjectRef.Id), event.OwnerTypeProject)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding subscription for project: %s", err.Error()))
+	}
+
+	res := []*restModel.APISubscription{}
+	for _, sub := range subscriptions {
+		apiSubscription := restModel.APISubscription{}
+		if err = apiSubscription.BuildFromService(sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectSubscription %s from service: %s",
+				sub.ID, err.Error()))
+		}
+		res = append(res, &apiSubscription)
+	}
+	return res, nil
+}
+
+func (r *projectSubscriberResolver) Subscriber(ctx context.Context, a *restModel.APISubscriber) (*Subscriber, error) {
+	res := &Subscriber{}
+	subscriberType := utility.FromStringPtr(a.Type)
+
+	switch subscriberType {
+	case event.GithubPullRequestSubscriberType:
+		sub := restModel.APIGithubPRSubscriber{}
+		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem converting %s subscriber: %s",
+				event.GithubPullRequestSubscriberType, err.Error()))
+		}
+		res.GithubPRSubscriber = &sub
+	case event.GithubCheckSubscriberType:
+		sub := restModel.APIGithubCheckSubscriber{}
+		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
+				event.GithubCheckSubscriberType, err.Error()))
+		}
+		res.GithubCheckSubscriber = &sub
+
+	case event.EvergreenWebhookSubscriberType:
+		sub := restModel.APIWebhookSubscriber{}
+		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
+				event.EvergreenWebhookSubscriberType, err.Error()))
+		}
+		res.WebhookSubscriber = &sub
+
+	case event.JIRAIssueSubscriberType:
+		sub := &restModel.APIJIRAIssueSubscriber{}
+		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
+				event.JIRAIssueSubscriberType, err.Error()))
+		}
+		res.JiraIssueSubscriber = sub
+	case event.JIRACommentSubscriberType:
+		res.JiraCommentSubscriber = a.Target.(*string)
+	case event.EmailSubscriberType:
+		res.EmailSubscriber = a.Target.(*string)
+	case event.SlackSubscriberType:
+		res.SlackSubscriber = a.Target.(*string)
+	case event.EnqueuePatchSubscriberType:
+		// We don't store information in target for this case, so do nothing.
+	default:
+		return nil, errors.Errorf("unknown subscriber type: '%s'", subscriberType)
+	}
+
+	return res, nil
+}
+
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindOneProjectRef(identifier)
 	if err != nil || p == nil {
@@ -800,6 +938,33 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	return apiHosts, nil
 }
 
+func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
+	res := &restModel.APIProjectSettings{}
+	projectRef, err := model.FindOneProjectRef(identifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
+	}
+	if projectRef == nil {
+		// If the project ref doesn't exist for the identifier, we may be looking for a repo, so check that collection.
+		repoRef, err := model.FindOneRepoRef(identifier)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
+		}
+		if repoRef != nil {
+			projectRef = &repoRef.ProjectRef
+		}
+	}
+	if projectRef == nil {
+		return nil, ResourceNotFound.Send(ctx, "project/repo doesn't exist")
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+	res.ProjectRef = apiProjectRef
+	return res, nil
+}
+
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
@@ -972,15 +1137,17 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 	return *obj.Id, nil
 }
 
-func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*PatchTriggerAlias, error) {
+func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
 	project, err := r.sc.FindProjectById(*obj.ProjectId, true)
 	if err != nil || project == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.ProjectId, err))
 	}
 
-	aliases := []*PatchTriggerAlias{}
+	aliases := []*restModel.APIPatchTriggerDefinition{}
 	for _, alias := range project.PatchTriggerAliases {
-		aliases = append(aliases, &PatchTriggerAlias{Alias: alias.Alias, ChildProject: alias.ChildProject})
+		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
+			Alias:        utility.ToStringPtr(alias.Alias),
+			ChildProject: utility.ToStringPtr(alias.ChildProject)})
 	}
 	return aliases, nil
 }
@@ -1392,14 +1559,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			if err = apiTest.BuildFromService(&t); err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
-			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
-				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
-				apiTest.Logs.HTMLDisplayURL = &formattedURL
-			}
-			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
-				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
-				apiTest.Logs.RawDisplayURL = &formattedURL
-			}
 
 			baseTestStatus := baseTestStatusMap[utility.FromStringPtr(apiTest.DisplayTestName)]
 			if baseTestStatus == "" {
@@ -1435,14 +1594,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			if err = apiTest.BuildFromService(&t); err != nil {
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
-			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.HTMLDisplayURL)); apiTest.Logs.HTMLDisplayURL != nil && err != nil {
-				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.HTMLDisplayURL)
-				apiTest.Logs.HTMLDisplayURL = &formattedURL
-			}
-			if err = util.CheckURL(utility.FromStringPtr(apiTest.Logs.RawDisplayURL)); apiTest.Logs.RawDisplayURL != nil && err != nil {
-				formattedURL := fmt.Sprintf("%s%s", r.sc.GetURL(), *apiTest.Logs.RawDisplayURL)
-				apiTest.Logs.RawDisplayURL = &formattedURL
-			}
+
 			baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
 			apiTest.BaseStatus = &baseTestStatus
 			testPointers = append(testPointers, &apiTest)
@@ -1508,13 +1660,84 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 	return &taskFiles, nil
 }
 
-func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *int) (*RecentTaskLogs, error) {
+func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *int) (*TaskLogs, error) {
+	t, err := task.FindByIdExecution(taskID, execution)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	// Let the individual TaskLogs resolvers handle fetching logs for the task
+	// We can avoid the overhead of fetching task logs that we will not view
+	// and we can avoid handling errors that we will not see
+	return &TaskLogs{TaskID: taskID, Execution: *execution}, nil
+}
+
+func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
+	const logMessageCount = 100
+
+	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", obj.TaskID))
+	}
+	// need project to get default logger
+	p, err := r.sc.FindProjectById(t.Project, true)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
+	}
+
+	defaultLogger := p.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	var systemLogs []apimodels.LogMessage
+	// get logs from cedar
+	if defaultLogger == model.BuildloggerLogSender {
+		opts := apimodels.GetBuildloggerLogsOptions{
+			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:        t.Id,
+			Execution:     t.Execution,
+			PrintPriority: true,
+			Tail:          logMessageCount,
+			LogType:       apimodels.TaskLogPrefix,
+		}
+
+		// system logs
+		opts.LogType = apimodels.SystemLogPrefix
+		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
+		if blErr != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, t.Id, systemLogReader)
+	} else {
+		systemLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
+			[]string{apimodels.SystemLogPrefix})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", obj.TaskID, err.Error()))
+		}
+	}
+	systemLogPointers := []*apimodels.LogMessage{}
+	for i := range systemLogs {
+		systemLogPointers = append(systemLogPointers, &systemLogs[i])
+	}
+
+	return systemLogPointers, nil
+}
+func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*restModel.TaskAPIEventLogEntry, error) {
 	const logMessageCount = 100
 	var loggedEvents []event.EventLogEntry
 	// loggedEvents is ordered ts descending
-	loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(taskID, logMessageCount))
+	loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
 	}
 
 	// remove all scheduled events except the youngest and push to filteredEvents
@@ -1529,7 +1752,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 		}
 	}
 
-	// reverse order so ts is ascending
+	// reverse order so it is ascending
 	for i := len(filteredEvents)/2 - 1; i >= 0; i-- {
 		opp := len(filteredEvents) - 1 - i
 		filteredEvents[i], filteredEvents[opp] = filteredEvents[opp], filteredEvents[i]
@@ -1545,15 +1768,77 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
+	return apiEventLogPointers, nil
+}
+func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
+	const logMessageCount = 100
 
-	// need to task to get project id
-	t, err := task.FindByIdExecution(taskID, execution)
+	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: task not found", obj.TaskID))
 	}
+	//  need project to get default logger
+	p, err := r.sc.FindProjectById(t.Project, true)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
+	}
+
+	defaultLogger := p.DefaultLogger
+	if defaultLogger == "" {
+		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
+	var agentLogs []apimodels.LogMessage
+	// get logs from cedar
+	if defaultLogger == model.BuildloggerLogSender {
+		opts := apimodels.GetBuildloggerLogsOptions{
+			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:        t.Id,
+			Execution:     t.Execution,
+			PrintPriority: true,
+			Tail:          logMessageCount,
+			LogType:       apimodels.AgentLogPrefix,
+		}
+		// agent logs
+		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
+		if blErr != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, t.Id, agentLogReader)
+	} else {
+		// agent logs
+		agentLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
+			[]string{apimodels.AgentLogPrefix})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", obj.TaskID, err.Error()))
+		}
+	}
+
+	agentLogPointers := []*apimodels.LogMessage{}
+
+	for i := range agentLogs {
+		agentLogPointers = append(agentLogPointers, &agentLogs[i])
+	}
+	return agentLogPointers, nil
+}
+func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
+	const logMessageCount = 100
+
+	// need to task to get project id
+	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", obj.TaskID))
+	}
+
 	// need project to get default logger
 	p, err := r.sc.FindProjectById(t.Project, true)
 	if err != nil {
@@ -1563,23 +1848,19 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
 	}
 
-	var taskExecution int
-	taskExecution = t.Execution
-
 	defaultLogger := p.DefaultLogger
 	if defaultLogger == "" {
 		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
 	}
 
 	taskLogs := []apimodels.LogMessage{}
-	systemLogs := []apimodels.LogMessage{}
-	agentLogs := []apimodels.LogMessage{}
+
 	// get logs from cedar
 	if defaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:        taskID,
-			Execution:     taskExecution,
+			TaskID:        t.Id,
+			Execution:     t.Execution,
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.TaskLogPrefix,
@@ -1589,54 +1870,21 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 		if blErr != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, taskLogReader)
-		// system logs
-		opts.LogType = apimodels.SystemLogPrefix
-		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
-		if blErr != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
-		}
-		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, systemLogReader)
-		// agent logs
-		opts.LogType = apimodels.AgentLogPrefix
-		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
-		if blErr != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
-		}
-		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, taskID, agentLogReader)
+		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, taskLogReader)
+
 	} else {
 		// task logs
-		taskLogs, err = model.FindMostRecentLogMessages(taskID, taskExecution, logMessageCount, []string{},
+		taskLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", taskID, err.Error()))
-		}
-		// system logs
-		systemLogs, err = model.FindMostRecentLogMessages(taskID, taskExecution, logMessageCount, []string{},
-			[]string{apimodels.SystemLogPrefix})
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", taskID, err.Error()))
-		}
-		// agent logs
-		agentLogs, err = model.FindMostRecentLogMessages(taskID, taskExecution, logMessageCount, []string{},
-			[]string{apimodels.AgentLogPrefix})
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", taskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 	taskLogPointers := []*apimodels.LogMessage{}
-	systemLogPointers := []*apimodels.LogMessage{}
-	agentLogPointers := []*apimodels.LogMessage{}
 	for i := range taskLogs {
 		taskLogPointers = append(taskLogPointers, &taskLogs[i])
 	}
-	for i := range systemLogs {
-		systemLogPointers = append(systemLogPointers, &systemLogs[i])
-	}
-	for i := range agentLogs {
-		agentLogPointers = append(agentLogPointers, &agentLogs[i])
-	}
-	return &RecentTaskLogs{EventLogs: apiEventLogPointers, TaskLogs: taskLogPointers, AgentLogs: agentLogPointers, SystemLogs: systemLogPointers}, nil
+	return taskLogPointers, nil
 }
 
 func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) ([]*GroupedBuildVariant, error) {
@@ -1845,6 +2093,46 @@ func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.AP
 	return TaskQueueItemTypeCommit, nil
 }
 
+func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
+	usr := MustHaveUser(ctx)
+	pRef, err := r.sc.FindProjectById(projectID, false)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
+	}
+	if err = pRef.AttachToRepo(usr); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
+	}
+
+	res := &restModel.APIProjectRef{}
+	if err := res.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building project from service: %s", err.Error()))
+	}
+	return res, nil
+}
+
+func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
+	usr := MustHaveUser(ctx)
+	pRef, err := r.sc.FindProjectById(projectID, false)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
+	}
+	if pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
+	}
+	if err = pRef.DetachFromRepo(usr); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error detaching from repo: %s", err.Error()))
+	}
+
+	res := &restModel.APIProjectRef{}
+	if err := res.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building project from service: %s", err.Error()))
+	}
+	return res, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
@@ -2008,6 +2296,40 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 		return nil, err
 	}
 	return &patchID, nil
+}
+
+func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
+	if len(versionsToRestart) == 0 {
+		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart")
+	}
+	modifications := VersionModifications{
+		Action:            Restart,
+		Abort:             abort,
+		VersionsToRestart: versionsToRestart,
+	}
+	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	if err != nil {
+		return nil, err
+	}
+	versions := []*restModel.APIVersion{}
+	for _, version := range versionsToRestart {
+		if version.VersionId != nil {
+			v, versionErr := r.sc.FindVersionById(*version.VersionId)
+			if versionErr != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", *version.VersionId, versionErr.Error()))
+			}
+			if v == nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", *version.VersionId))
+			}
+			apiVersion := restModel.APIVersion{}
+			if err = apiVersion.BuildFromService(v); err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", *version.VersionId, err.Error()))
+			}
+			versions = append(versions, &apiVersion)
+		}
+	}
+
+	return versions, nil
 }
 
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
