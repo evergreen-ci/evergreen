@@ -1278,9 +1278,8 @@ func TestTryResetTask(t *testing.T) {
 				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
-				So(testTask.Details, ShouldResemble, *detail)
-				So(testTask.Status, ShouldEqual, detail.Status)
-				So(testTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
+				So(testTask.Details, ShouldNotResemble, *detail)
+				So(testTask.Status, ShouldNotEqual, detail.Status)
 			})
 			Convey("should reset and use detail information if the UI package passes in a detail ", func() {
 				So(TryResetTask(anotherTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
