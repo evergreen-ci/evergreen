@@ -50,68 +50,68 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 		}
 		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Critical(message.Fields{
 				"message":      "ticket_create_project and taskAnnotationSettings.FileTicketWebHook endpoint cannot both be blank",
 				"project_name": projName,
-			}))
+			})
 			hasValidationError = true
 		}
 		if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Critical(message.Fields{
 				"message":      "ticket_search_projects cannot be empty",
 				"project_name": projName,
-			}))
+			})
 			hasValidationError = true
 		}
 		if proj.BFSuggestionServer != "" {
 			if _, err := url.Parse(proj.BFSuggestionServer); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Critical(message.WrapError(err, message.Fields{
 					"message":      fmt.Sprintf(`Failed to parse bf_suggestion_server for project "%s"`, projName),
 					"project_name": projName,
 				}))
 				hasValidationError = true
 			}
 			if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Critical(message.Fields{
 					"message": fmt.Sprintf(`Failed validating configuration for project "%s": `+
 						"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName),
 					"project_name": projName,
-				}))
+				})
 				hasValidationError = true
 			}
 			if proj.BFSuggestionTimeoutSecs <= 0 {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Critical(message.Fields{
 					"message": fmt.Sprintf(`Failed validating configuration for project "%s": `+
 						"bf_suggestion_timeout_secs must be positive", projName),
 					"project_name": projName,
-				}))
+				})
 				hasValidationError = true
 			}
 		} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Critical(message.Fields{
 				"message": fmt.Sprintf(`Failed validating configuration for project "%s": `+
 					"bf_suggestion_username and bf_suggestion_password must be blank alt_endpoint_url is blank", projName),
 				"project_name": projName,
-			}))
+			})
 			hasValidationError = true
 		} else if proj.BFSuggestionTimeoutSecs != 0 {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Critical(message.Fields{
 				"message": fmt.Sprintf(`Failed validating configuration for project "%s": `+
 					"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName),
 				"project_name": projName,
-			}))
+			})
 			hasValidationError = true
 		}
 		// the webhook cannot be used if the default build baron creation and search is configurd
 		if webhookConfigured {
 			if len(proj.TicketCreateProject) != 0 {
-				grip.Error(message.Fields{
+				grip.Critical(message.Fields{
 					"message":      "The custom file ticket webhook and the build baron TicketCreateProject should not both be configured",
 					"project_name": projName})
 				hasValidationError = true
 			}
 			if _, err := url.Parse(webHook.Endpoint); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Critical(message.WrapError(err, message.Fields{
 					"message":      "Failed to parse webhook endpoint for project",
 					"project_name": projName}))
 				hasValidationError = true
