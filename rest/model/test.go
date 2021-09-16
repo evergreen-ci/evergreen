@@ -40,7 +40,7 @@ type TestLogs struct {
 	LineNum    int     `json:"line_num"`
 	LogId      *string `json:"log_id,omitempty"`
 
-	// TODO: (EVG-15379): Remove once spruce is updated.
+	// TODO: (EVG-15418): Remove once spruce is updated.
 	HTMLDisplayURL *string `json:"url_raw_display"`
 	RawDisplayURL  *string `json:"url_html_display"`
 }
@@ -72,7 +72,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			URLLobster: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerLobster)),
 			LineNum:    v.LineNum,
 
-			// TODO: (EVG-15379) Remove after spruce is updated.
+			// TODO: (EVG-15418) Remove after spruce is updated.
 			HTMLDisplayURL: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
 			RawDisplayURL:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
 		}
@@ -105,7 +105,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			URLLobster: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerLobster)),
 			LineNum:    v.LineNum,
 
-			// TODO: (EVG-15379) Remove after spruce is updated.
+			// TODO: (EVG-15418) Remove after spruce is updated.
 			HTMLDisplayURL: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
 			RawDisplayURL:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
 		}
