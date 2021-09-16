@@ -3,12 +3,14 @@ package event
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
 
 func init() {
 	registry.AddType(ResourceTypeTask, taskEventDataFactory)
+	registry.AllowSubscription(ResourceTypeTask, TaskStarted)
 	registry.AllowSubscription(ResourceTypeTask, TaskFinished)
 	registry.AllowSubscription(ResourceTypeTask, TaskBlocked)
 }
@@ -114,7 +116,7 @@ func LogTaskUndispatched(taskId string, execution int, hostId string) {
 }
 
 func LogTaskStarted(taskId string, execution int) {
-	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution})
+	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution, Status: evergreen.TaskStarted})
 }
 
 func LogTaskFinished(taskId string, execution int, hostId, status string) {

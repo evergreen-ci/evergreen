@@ -25,6 +25,7 @@ import (
 )
 
 func init() {
+	registry.registerEventHandler(event.ResourceTypeTask, event.TaskStarted, makeTaskTriggers)
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskFinished, makeTaskTriggers)
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskBlocked, makeTaskTriggers)
 }
@@ -50,6 +51,7 @@ func makeTaskTriggers() eventHandler {
 		event.TriggerRuntimeChangeByPercent:      t.taskRuntimeChange,
 		event.TriggerRegression:                  t.taskRegression,
 		event.TriggerTaskFirstFailureInVersion:   t.taskFirstFailureInVersion,
+		event.TriggerTaskStarted:                 t.taskStarted,
 		triggerTaskFirstFailureInBuild:           t.taskFirstFailureInBuild,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
@@ -293,6 +295,8 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	} else if data.PastTenseStatus == evergreen.TaskSucceeded {
 		slackColor = evergreenSuccessColor
 		data.PastTenseStatus = "succeeded"
+	} else if data.PastTenseStatus == evergreen.TaskStarted {
+		slackColor = evergreenRunningColor
 	}
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride
@@ -474,6 +478,18 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 	}
 
 	if t.data.Status != evergreen.TaskSucceeded {
+		return nil, nil
+	}
+
+	return t.generate(sub, "", "")
+}
+
+func (t *taskTriggers) taskStarted(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
+	if t.data.Status != evergreen.TaskStarted {
 		return nil, nil
 	}
 
