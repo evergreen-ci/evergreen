@@ -268,8 +268,9 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 					"task_id":     taskId,
 					"task_status": t.Status,
 				})
-				return nil
 			}
+		} else {
+			return nil
 		}
 	}
 
