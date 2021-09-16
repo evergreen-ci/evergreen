@@ -203,6 +203,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	projectParser, err := model.ParserProjectFindOneByVersion(t.Project, t.Version)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+	}
+
 	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
 	// Call before MarkEnd so the version is marked finished when this is the last task in the version
 	// to finish
@@ -223,7 +228,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.ShouldDeactivatePrevious())
+	deactivatePrevious := projectRef.ShouldDeactivatePrevious()
+	if projectParser.ShouldDeactivatePrevious() {
+		deactivatePrevious = true
+	}
+	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
