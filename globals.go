@@ -512,6 +512,11 @@ var (
 		MergeTestRequester,
 	}
 
+	SystemActivators = []string{
+		DefaultTaskActivator,
+		APIServerTaskActivator,
+	}
+
 	// UpHostStatus is a list of all host statuses that are considered up.
 	UpHostStatus = []string{
 		HostRunning,
@@ -668,7 +673,8 @@ func FindEvergreenHome() string {
 
 // IsSystemActivator returns true when the task activator is Evergreen.
 func IsSystemActivator(caller string) bool {
-	return caller == DefaultTaskActivator || caller == APIServerTaskActivator
+	//check is caller in list, same for task activation
+	return utility.StringSliceContains(SystemActivators, caller)
 }
 
 func IsPatchRequester(requester string) bool {
