@@ -357,7 +357,7 @@ func (projectRef *ProjectRef) Insert() error {
 func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if p.Id != "" {
 		// verify that this is a unique ID
-		conflictingRef, err := FindOneProjectRef(p.Id)
+		conflictingRef, err := FindBranchProjectRef(p.Id)
 		if err != nil {
 			return errors.Wrap(err, "error checking for conflicting project ref")
 		}
@@ -483,6 +483,9 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	mergedProject, err := FindMergedProjectRef(p.Id)
 	if err != nil {
 		return errors.Wrap(err, "error finding merged project ref")
+	}
+	if mergedProject == nil {
+		return errors.Errorf("project ref '%s' doesn't exist", p.Id)
 	}
 
 	// Save repo variables that don't exist in the repo as the project variables.
@@ -678,20 +681,20 @@ func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 
 }
 
-// FindOneProjectRef gets a project ref given the project identifier.
+// FindBranchProjectRef gets a project ref given the project identifier.
 // This returns only branch-level settings; to include repo settings, use FindMergedProjectRef.
-func FindOneProjectRef(identifier string) (*ProjectRef, error) {
+func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 	return findOneProjectRefQ(byId(identifier))
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
 func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
-	pRef, err := FindOneProjectRef(identifier)
+	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
 	}
 	if pRef == nil {
-		return nil, errors.Errorf("project ref '%s' does not exist", identifier)
+		return nil, nil
 	}
 	if pRef.UseRepoSettings {
 		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
@@ -1238,7 +1241,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	return hiddenProject, nil
 }
 
-// FindOneProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
+// FindBranchProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
 // There should only ever be one project for the query because we only enable commit queue if
 // no other project ref with the same specification has it enabled.
 
@@ -1329,7 +1332,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 		}
 		pRef = &repoRef.ProjectRef
 	} else {
-		pRef, err = FindOneProjectRef(projectId)
+		pRef, err = FindBranchProjectRef(projectId)
 
 	}
 	if err != nil {
@@ -2088,6 +2091,9 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting project '%s'", projectId)
 	}
+	if pRef == nil {
+		return nil, errors.Errorf("project ref '%s' doesn't exist", projectId)
+	}
 	return pRef, nil
 }
 
@@ -2121,7 +2127,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {
-	upstreamProject, err := FindOneProjectRef(t.Project)
+	upstreamProject, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "error finding upstream project %s", t.Project)
 	}
@@ -2249,7 +2255,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 		}
 		projectID = upstreamBuild.Project
 	}
-	upstreamProject, err := FindOneProjectRef(projectID)
+	upstreamProject, err := FindBranchProjectRef(projectID)
 	if err != nil {
 		return "", errors.Wrap(err, "error finding upstream project")
 	}

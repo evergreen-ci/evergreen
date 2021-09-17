@@ -30,7 +30,7 @@ func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*mod
 	if includeRepo {
 		p, err = model.FindMergedProjectRef(id)
 	} else {
-		p, err = model.FindOneProjectRef(id)
+		p, err = model.FindBranchProjectRef(id)
 	}
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*mod
 	if p == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("project with id '%s' not found", id),
+			Message:    fmt.Sprintf("project ref '%s' does not exist", id),
 		}
 	}
 	return p, nil

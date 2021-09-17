@@ -736,7 +736,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			}
 			// ensure that we're saving settings without a special case
 			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me"))
-			pRefFromDB, err := model.FindOneProjectRef(ref.Id)
+			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.NotEmpty(t, pRefFromDB.SpawnHostScriptPath)
@@ -754,7 +754,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me"))
-			pRefFromDB, err := model.FindOneProjectRef(ref.Id)
+			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.Nil(t, pRefFromDB.Restricted)

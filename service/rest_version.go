@@ -304,7 +304,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error getting github oauth token"})
 			return
 		}
-		pRef, err := model.FindOneProjectRef(srcVersion.Identifier)
+		pRef, err := model.FindMergedProjectRef(srcVersion.Identifier)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding project ref"})
 			return

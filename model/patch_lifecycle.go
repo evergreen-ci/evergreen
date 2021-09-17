@@ -682,6 +682,9 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get project ref '%s'", existingPatch.Project)
 	}
+	if projectRef == nil {
+		return nil, errors.Errorf("project ref '%s' doesn't exist", existingPatch.Project)
+	}
 	if err = projectRef.CommitQueueIsOn(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -856,7 +859,7 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 	if p.GithubPatchData.PRNumber == 0 {
 		return nil
 	}
-	projectRef, err := FindOneProjectRef(p.Project)
+	projectRef, err := FindMergedProjectRef(p.Project)
 	if err != nil {
 		return errors.Wrap(err, "unable to find project")
 	}

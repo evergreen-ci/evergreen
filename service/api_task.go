@@ -194,7 +194,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindOneProjectRef(t.Project)
+	projectRef, err := model.FindMergedProjectRef(t.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
@@ -495,7 +495,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		projectRef, err := model.FindMergedProjectRef(nextTask.Project)
-		if err != nil {
+		if err != nil || projectRef == nil {
 			grip.Alert(message.Fields{
 				"task_id":            nextTask.Id,
 				"message":            "could not find project ref for next task, skipping",

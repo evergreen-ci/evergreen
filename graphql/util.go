@@ -367,7 +367,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	// can't interrupt the db operations here
 	newCxt := context.Background()
 
-	projectRef, err := model.FindOneProjectRef(project.Identifier)
+	projectRef, err := model.FindMergedProjectRef(project.Identifier)
 	if err != nil {
 		return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
 	}
@@ -705,7 +705,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
 			if proj == nil {
-				projRef, err := model.FindOneProjectRef(version.Identifier)
+				projRef, err := model.FindMergedProjectRef(version.Identifier)
 				if err != nil {
 					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err.Error())
 				}
@@ -737,7 +737,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		}
 	case SetPriority:
 		if proj == nil {
-			projRef, err := model.FindOneProjectRef(version.Identifier)
+			projRef, err := model.FindMergedProjectRef(version.Identifier)
 			if err != nil {
 				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
 			}

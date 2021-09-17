@@ -211,6 +211,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if err != nil {
 		return errors.Wrap(err, "can't find patch project")
 	}
+	if pref == nil {
+		return errors.Errorf("no project ref '%s' found", patchDoc.Project)
+	}
 
 	// hidden projects can only run PR patches
 	if !pref.IsEnabled() && (j.IntentType != patch.GithubIntentType || !pref.IsHidden()) {
@@ -559,7 +562,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		}))
 	}()
 
-	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
+	projectRef, err := model.FindMergedProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
 	}

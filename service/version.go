@@ -76,7 +76,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			projectID = upstreamBuild.Project
 		}
 		var project *model.ProjectRef
-		project, err = model.FindOneProjectRef(projectID)
+		project, err = model.FindBranchProjectRef(projectID)
 		if err != nil {
 			http.Error(w, "error finding upstream project", http.StatusInternalServerError)
 			return
