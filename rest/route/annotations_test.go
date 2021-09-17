@@ -761,9 +761,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 				testProject: {
 					TicketCreateProject: "EVG",
 					TaskAnnotationSettings: evergreen.AnnotationsSettings{
-						FileTicketWebHook: evergreen.WebHook{
-							Endpoint: "random",
-						},
+						FileTicketWebHook: evergreen.WebHook{},
 					},
 				},
 			},
@@ -774,8 +772,11 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	r, err = http.NewRequest("PUT", "/task/t1/created_ticket?execution=1", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)
-	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "Error while retrieving webhook config")
+	assert.NoError(t, h.Parse(ctx, r))
+	assert.Equal(t, "t1", h.taskId)
+	assert.Equal(t, 1, h.execution)
+	assert.Equal(t, "test_annotation_user", h.user.(*user.DBUser).Id)
+	assert.Equal(t, url, h.ticket.URL)
 
 	// test with an invalid URL
 	h = &createdTicketByTaskPutHandler{
