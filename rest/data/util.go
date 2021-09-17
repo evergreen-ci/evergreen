@@ -48,3 +48,14 @@ func CopyProject(ctx context.Context, sc Connector, projectToCopy *model.Project
 	}
 	return apiProjectRef, nil
 }
+
+func CreateProject(ctx context.Context, sc Connector, projectRef *model.ProjectRef) (*model.ProjectRef, error) {
+	u := gimlet.GetUser(ctx).(*user.DBUser)
+
+	if err := sc.CreateProject(projectRef, u); err != nil {
+		return nil, errors.Wrapf(err, "error creating project '%s'", projectRef.Id)
+	}
+
+	//should this return an apiProject instead?
+	return projectRef, nil
+}

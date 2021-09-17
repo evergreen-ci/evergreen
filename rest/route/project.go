@@ -575,6 +575,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APIProjectRef to model.ProjectRef"))
 	}
+
 	dbProjectRef, ok := i.(*dbModel.ProjectRef)
 	if !ok {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -584,13 +585,15 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	dbProjectRef.Identifier = h.projectName
 
-	responder := gimlet.NewJSONResponse(struct{}{})
+	projectRef, err := data.CreateProject(ctx, h.sc, dbProjectRef)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+
+	}
+
+	responder := gimlet.NewJSONResponse(projectRef)
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
-	}
-	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err = h.sc.CreateProject(dbProjectRef, u); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.projectName))
 	}
 
 	return responder
