@@ -3159,6 +3159,8 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId 
 
 // Will return an array of activated and unactivated versions
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
+	startTime := time.Now()
+	activatedCommitsCheckedCount := 0
 	projectId, err := model.GetIdForProject(options.ProjectID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
@@ -3232,8 +3234,9 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		mainlineCommitVersion := MainlineCommitVersion{}
 
 		shouldNotBeRolledUp := true
-		if len(buildVariantOptions.Statuses) == 0 && len(buildVariantOptions.Tasks) == 0 && len(buildVariantOptions.Variants) == 0 {
-			shouldNotBeRolledUp, err = hasMatchingTasks(r.sc, v.Id, buildVariantOptions)
+		if utility.FromBoolPtr(v.Activated) && (len(buildVariantOptions.Statuses) != 0 || len(buildVariantOptions.Tasks) != 0 || len(buildVariantOptions.Variants) != 0) {
+			activatedCommitsCheckedCount++
+			shouldNotBeRolledUp, err = hasMatchingTasks(r.sc, v.Id, *buildVariantOptions)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking for matching tasks: %s", err.Error()))
 			}
@@ -3304,7 +3307,15 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			})
 		}
 	}
-
+	// Gather some analytics data
+	endTime := time.Now()
+	grip.Info(message.Fields{
+		"message":                 "mainlineCommits",
+		"commitsChecked":          len(versions),
+		"timeTaken":               endTime.Sub(startTime).String(),
+		"project":                 projectId,
+		"activatedCommitsChecked": activatedCommitsCheckedCount,
+	})
 	return &mainlineCommits, nil
 }
 
