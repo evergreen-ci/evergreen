@@ -54,7 +54,9 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 	}
 
 	webHook, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
-	if webHook.Endpoint != "" {
+	if webHook.Endpoint != "" && bbProject.TicketCreateProject != "" {
+		return taskNotFound, errors.Errorf("The custom file ticket webhook and the build baron TicketCreateProject should not both be configured")
+	} else if webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
 		return resp.StatusCode == http.StatusOK, err
