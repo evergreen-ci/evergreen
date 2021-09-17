@@ -3234,14 +3234,15 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		mainlineCommitVersion := MainlineCommitVersion{}
 
 		shouldNotBeRolledUp := true
-		if utility.FromBoolPtr(v.Activated) && (len(buildVariantOptions.Statuses) != 0 || len(buildVariantOptions.Tasks) != 0 || len(buildVariantOptions.Variants) != 0) {
-			activatedCommitsCheckedCount++
-			shouldNotBeRolledUp, err = hasMatchingTasks(r.sc, v.Id, *buildVariantOptions)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking for matching tasks: %s", err.Error()))
+		if buildVariantOptions != nil {
+			if utility.FromBoolPtr(v.Activated) && (len(buildVariantOptions.Statuses) != 0 || len(buildVariantOptions.Tasks) != 0 || len(buildVariantOptions.Variants) != 0) {
+				activatedCommitsCheckedCount++
+				shouldNotBeRolledUp, err = hasMatchingTasks(r.sc, v.Id, *buildVariantOptions)
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking for matching tasks: %s", err.Error()))
+				}
 			}
 		}
-
 		// If a version is activated we append it directly to our returned list of mainlineCommits
 		if utility.FromBoolPtr(v.Activated) && shouldNotBeRolledUp {
 			activatedVersionCount++
