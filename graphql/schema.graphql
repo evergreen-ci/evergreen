@@ -36,7 +36,7 @@ type Query {
   ): TaskTestResult!
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
-  taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
+  taskLogs(taskId: String!, execution: Int): TaskLogs!
   patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
@@ -86,7 +86,8 @@ type Mutation {
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
@@ -145,6 +146,12 @@ type Mutation {
   bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
 }
+
+input VersionToRestart {
+  versionId: String!
+  taskIds: [String!]!
+}
+
 
 # Array of activated and unactivated versions
 # nextPageOrderNumber represents the last order number returned and is used for pagination
@@ -691,12 +698,16 @@ type TestResult {
   taskId: String
   execution: Int
   logTestName: String
-  lineNum: Int
 }
 
 type TestLog {
-  htmlDisplayURL: String
-  rawDisplayURL: String
+  url: String
+  urlRaw: String
+  urlLobster: String
+  lineNum: Int
+  htmlDisplayURL: String @deprecated(reason: "htmlDisplayURL deprecated, use url instead (EVG-15418)")
+  rawDisplayURL: String @deprecated(reason: "rawDisplayURL deprecated, use urlRaw instead (EVG-15418)")
+
 }
 
 type Dependency {
@@ -997,7 +1008,9 @@ type User {
   patches(patchesInput: PatchesInput!): Patches!
 }
 
-type RecentTaskLogs {
+type TaskLogs {
+  taskId: String!
+  execution: Int!
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!

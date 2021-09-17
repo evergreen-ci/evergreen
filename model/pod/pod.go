@@ -146,7 +146,7 @@ type TaskContainerCreationOptions struct {
 	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir,omitempty"`
 }
 
-// OS represents recognized operating systems for pods.
+// OS represents a recognized operating system for pods.
 type OS string
 
 const (

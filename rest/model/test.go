@@ -2,11 +2,11 @@ package model
 
 import (
 	"fmt"
-	"net/url"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -20,7 +20,7 @@ type APITest struct {
 	Execution       int        `json:"execution"`
 	GroupId         *string    `json:"group_id,omitempty"`
 	Status          *string    `json:"status"`
-	BaseStatus      *string    `json:"base_status"`
+	BaseStatus      *string    `json:"base_status,omitempty"`
 	TestFile        *string    `json:"test_file"`
 	DisplayTestName *string    `json:"display_test_name,omitempty"`
 	Logs            TestLogs   `json:"logs"`
@@ -29,88 +29,63 @@ type APITest struct {
 	EndTime         *time.Time `json:"end_time"`
 	Duration        float64    `json:"duration"`
 	LogTestName     *string    `json:"log_test_name,omitempty"`
-	LineNum         int        `json:"line_num,omitempty"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
 // written out as part of an APITest.
 type TestLogs struct {
-	URL            *string `json:"url"`
-	LineNum        int     `json:"line_num"`
-	URLRaw         *string `json:"url_raw"`
-	LogId          *string `json:"log_id"`
-	RawDisplayURL  *string `json:"url_raw_display"`
-	HTMLDisplayURL *string `json:"url_html_display"`
+	URL        *string `json:"url"`
+	URLRaw     *string `json:"url_raw"`
+	URLLobster *string `json:"url_lobster,omitempty"`
+	LineNum    int     `json:"line_num"`
+	LogId      *string `json:"log_id,omitempty"`
+
+	// TODO: (EVG-15418): Remove once spruce is updated.
+	HTMLDisplayURL *string `json:"url_raw_display"`
+	RawDisplayURL  *string `json:"url_html_display"`
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
+		at.Id = utility.ToStringPtr(v.ID.Hex())
 		at.Execution = v.Execution
-		at.LineNum = v.LineNum
+		if v.GroupID != "" {
+			at.GroupId = utility.ToStringPtr(v.GroupID)
+		}
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestFile)
 		if v.DisplayTestName != "" {
 			at.DisplayTestName = utility.ToStringPtr(v.DisplayTestName)
 		}
 		at.ExitCode = v.ExitCode
-		at.Id = utility.ToStringPtr(v.ID.Hex())
-
 		startTime := utility.FromPythonTime(v.StartTime)
 		endTime := utility.FromPythonTime(v.EndTime)
 		at.Duration = v.EndTime - v.StartTime
 		at.StartTime = ToTimePtr(startTime)
 		at.EndTime = ToTimePtr(endTime)
 
+		tr := task.ConvertToOld(v)
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.URL),
-			URLRaw:  utility.ToStringPtr(v.URLRaw),
-			LogId:   utility.ToStringPtr(v.LogID),
-			LineNum: v.LineNum,
+			URL:        utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
+			URLRaw:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
+			URLLobster: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerLobster)),
+			LineNum:    v.LineNum,
+
+			// TODO: (EVG-15418) Remove after spruce is updated.
+			HTMLDisplayURL: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
+			RawDisplayURL:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
+		}
+		if v.LogID != "" {
+			at.Logs.LogId = utility.ToStringPtr(v.LogID)
 		}
 
-		isEmptyLogID := v.LogID == ""
-		isEmptyURL := v.URL == ""
-		isEmptyURLRaw := v.URLRaw == ""
-
-		if !isEmptyURL {
-			at.Logs.HTMLDisplayURL = at.Logs.URL
-		} else if isEmptyLogID {
-			at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(v.TestFile),
-				url.QueryEscape(v.GroupID),
-				v.LineNum,
-			))
-		} else {
-			dispString := fmt.Sprintf("/test_log/%s#L%d", *at.Logs.LogId, at.Logs.LineNum)
-			at.Logs.HTMLDisplayURL = &dispString
-		}
-
-		if !isEmptyURLRaw {
-			at.Logs.RawDisplayURL = at.Logs.URLRaw
-		} else if isEmptyLogID {
-			at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(v.TestFile),
-				url.QueryEscape(v.GroupID),
-			))
-		} else {
-			dispString := fmt.Sprintf("/test_log/%s?text=true", *at.Logs.LogId)
-			at.Logs.RawDisplayURL = &dispString
-		}
-
-		if v.GroupID != "" {
-			at.GroupId = utility.ToStringPtr(v.GroupID)
-		}
 	case *apimodels.CedarTestResult:
 		at.Id = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution
-		at.LineNum = v.LineNum
+		if v.GroupID != "" {
+			at.GroupId = utility.ToStringPtr(v.GroupID)
+		}
 		at.Status = utility.ToStringPtr(v.Status)
 		at.TestFile = utility.ToStringPtr(v.TestName)
 		if v.DisplayTestName != "" {
@@ -118,50 +93,23 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		}
 		at.StartTime = utility.ToTimePtr(v.Start)
 		at.EndTime = utility.ToTimePtr(v.End)
-		duration := v.End.Sub(v.Start)
-		at.Duration = duration.Seconds()
-
-		testName := v.TestName
+		at.Duration = v.End.Sub(v.Start).Seconds()
 		if v.LogTestName != "" {
-			testName = v.LogTestName
 			at.LogTestName = utility.ToStringPtr(v.LogTestName)
 		}
 
+		tr := task.ConvertCedarTestResult(*v)
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.LogURL),
-			URLRaw:  utility.ToStringPtr(v.RawLogURL),
-			LineNum: v.LineNum,
-		}
-		isEmptyURL := v.LogURL == ""
-		isEmptyURLRaw := v.RawLogURL == ""
+			URL:        utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
+			URLRaw:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
+			URLLobster: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerLobster)),
+			LineNum:    v.LineNum,
 
-		if !isEmptyURL {
-			at.Logs.HTMLDisplayURL = at.Logs.URL
-		} else {
-			at.Logs.HTMLDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(testName),
-				url.QueryEscape(v.GroupID),
-				v.LineNum,
-			))
-		}
-		if !isEmptyURLRaw {
-			at.Logs.RawDisplayURL = at.Logs.URLRaw
-		} else {
-			at.Logs.RawDisplayURL = utility.ToStringPtr(fmt.Sprintf(
-				"/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
-				url.PathEscape(v.TaskID),
-				v.Execution,
-				url.QueryEscape(testName),
-				url.QueryEscape(v.GroupID),
-			))
+			// TODO: (EVG-15418) Remove after spruce is updated.
+			HTMLDisplayURL: utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
+			RawDisplayURL:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
 		}
 
-		if v.GroupID != "" {
-			at.GroupId = utility.ToStringPtr(v.GroupID)
-		}
 	case string:
 		at.TaskId = utility.ToStringPtr(v)
 	default:

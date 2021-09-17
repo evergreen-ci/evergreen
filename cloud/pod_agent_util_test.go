@@ -29,8 +29,7 @@ func TestAgentScript(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			cmd, err := agentScript(settings, p)
-			require.NoError(t, err)
+			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
 
 			expected := []string{
@@ -51,15 +50,13 @@ func TestAgentScript(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			cmd, err := agentScript(settings, p)
-			require.NoError(t, err)
+			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
 
 			expected := []string{
-				"bash", "-c",
+				"cmd.exe", "/c",
 				"curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 && " +
-					"chmod +x evergreen.exe && " +
-					"./evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
+					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
 			}
 			assert.Equal(t, expected, cmd)
 		})
@@ -81,8 +78,7 @@ func TestAgentScript(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			cmd, err := agentScript(settings, p)
-			require.NoError(t, err)
+			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
 
 			expected := []string{
@@ -103,14 +99,12 @@ func TestAgentScript(t *testing.T) {
 				},
 				Secret: "secret",
 			}
-			cmd, err := agentScript(settings, p)
-			require.NoError(t, err)
+			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
 			expected := []string{
-				"bash", "-c",
+				"cmd.exe", "/c",
 				fmt.Sprintf("(curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100) && "+
-					"chmod +x evergreen.exe && "+
-					"./evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
+					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
 			}
 			assert.Equal(t, expected, cmd)
 		})

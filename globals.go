@@ -512,6 +512,11 @@ var (
 		MergeTestRequester,
 	}
 
+	SystemActivators = []string{
+		DefaultTaskActivator,
+		APIServerTaskActivator,
+	}
+
 	// UpHostStatus is a list of all host statuses that are considered up.
 	UpHostStatus = []string{
 		HostRunning,
@@ -668,7 +673,7 @@ func FindEvergreenHome() string {
 
 // IsSystemActivator returns true when the task activator is Evergreen.
 func IsSystemActivator(caller string) bool {
-	return caller == DefaultTaskActivator || caller == APIServerTaskActivator
+	return utility.StringSliceContains(SystemActivators, caller)
 }
 
 func IsPatchRequester(requester string) bool {
@@ -947,7 +952,7 @@ var SuperuserPermissions = []string{
 	PermissionRoleModify,
 }
 
-// Evergreen log types
+// Evergreen log types.
 const (
 	LogTypeAgent  = "agent_log"
 	LogTypeTask   = "task_log"
@@ -969,3 +974,12 @@ func (p ECSClusterPlatform) Validate() error {
 		return errors.Errorf("unrecognized ECS cluster platform '%s'", p)
 	}
 }
+
+// LogViewer represents recognized viewers for rendering logs.
+type LogViewer string
+
+const (
+	LogViewerRaw     LogViewer = "raw"
+	LogViewerHTML    LogViewer = "html"
+	LogViewerLobster LogViewer = "lobster"
+)
