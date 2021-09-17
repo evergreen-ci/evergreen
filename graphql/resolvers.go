@@ -3039,7 +3039,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId 
 }
 
 // Will return an array of activated and unactivated versions
-func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error) {
+func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
 	projectId, err := model.GetIdForProject(options.ProjectID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
@@ -3093,7 +3093,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 	}
 
-	for _, v := range versions {
+	for index, v := range versions {
 		if activatedVersionCount == limit {
 			break
 		}
@@ -3112,8 +3112,16 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 		mainlineCommitVersion := MainlineCommitVersion{}
 
+		shouldNotBeRolledUp := true
+		if len(buildVariantOptions.Statuses) == 0 && len(buildVariantOptions.Tasks) == 0 && len(buildVariantOptions.Variants) == 0 {
+			shouldNotBeRolledUp, err = hasMatchingTasks(r.sc, v.Id, buildVariantOptions)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking for matching tasks: %s", err.Error()))
+			}
+		}
+
 		// If a version is activated we append it directly to our returned list of mainlineCommits
-		if utility.FromBoolPtr(v.Activated) {
+		if utility.FromBoolPtr(v.Activated) && shouldNotBeRolledUp {
 			activatedVersionCount++
 			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
 			mainlineCommitVersion.Version = &apiVersion
@@ -3134,7 +3142,6 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 			} else {
 				mainlineCommitVersion.RolledUpVersions = []*restModel.APIVersion{&apiVersion}
-
 			}
 
 		}
@@ -3142,6 +3149,40 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		// Only add a mainlineCommit if a new one was added and it's not a modified existing RolledUpVersion
 		if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
 			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+		}
+
+		// If we have reached the limit of versions we have checked lets fetch some more until we have satisfied the activated version limit
+		if index == len(versions)-1 {
+			var skipOrderNumber int
+
+			// If NextPageOrderNumber is nil then use the last version's RevisionOrderNumber
+			if mainlineCommits.NextPageOrderNumber == nil {
+				skipOrderNumber = versions[len(versions)-1].RevisionOrderNumber
+			} else {
+				skipOrderNumber = utility.FromIntPtr(mainlineCommits.NextPageOrderNumber)
+			}
+
+			opts = model.MainlineCommitVersionOptions{
+				Activated:       true,
+				Limit:           limit,
+				SkipOrderNumber: skipOrderNumber,
+			}
+			activatedVersions, err = model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
+			}
+
+			opts.Activated = false
+			unactivatedVersions, err = model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting unactivated versions: %s", err.Error()))
+			}
+
+			newVersions := append(activatedVersions, unactivatedVersions...)
+			versions = append(versions, newVersions...)
+			sort.Slice(versions, func(i, j int) bool {
+				return versions[i].RevisionOrderNumber > versions[j].RevisionOrderNumber
+			})
 		}
 	}
 
