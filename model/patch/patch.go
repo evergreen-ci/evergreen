@@ -578,7 +578,7 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 	return err
 }
 
-// SetAliases appends the names of invoked trigger aliases to the DB
+// SetTriggerAliases appends the names of invoked trigger aliases to the DB
 func (p *Patch) SetTriggerAliases() error {
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoAliasesKey)
 	return UpdateOne(
