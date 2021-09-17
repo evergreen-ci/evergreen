@@ -780,6 +780,46 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), "admin")
 		},
+		"Access with error": func(t *testing.T, ref model.ProjectRef) {
+			newAdmin := user.DBUser{
+				Id: "newAdmin",
+			}
+			require.NoError(t, newAdmin.Insert())
+			ref.Restricted = nil // should now default to the repo value
+			ref.Admins = []string{"nonexistent", newAdmin.Id}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			assert.Errorf(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me"), "error updating project admin roles")
+			pRefFromDB, err := model.FindOneProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDB)
+			assert.Nil(t, pRefFromDB.Restricted)
+			// should still add newAdmin and delete oldAdmin even with errors
+			assert.Equal(t, []string{newAdmin.Id}, pRefFromDB.Admins)
+
+			mergedProject, err := model.FindMergedProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, mergedProject)
+			assert.True(t, mergedProject.IsRestricted())
+
+			restrictedScope, err := rm.GetScope(ctx, evergreen.RestrictedProjectsScope)
+			assert.NoError(t, err)
+			assert.NotNil(t, restrictedScope)
+			assert.Contains(t, restrictedScope.Resources, ref.Id)
+
+			unrestrictedScope, err := rm.GetScope(ctx, evergreen.UnrestrictedProjectsScope)
+			assert.NoError(t, err)
+			assert.NotNil(t, unrestrictedScope)
+			assert.NotContains(t, unrestrictedScope.Resources, ref.Id)
+
+			newAdminFromDB, err := user.FindOneById("newAdmin")
+			assert.NoError(t, err)
+			assert.NotNil(t, newAdminFromDB)
+			assert.Contains(t, newAdminFromDB.Roles(), "admin")
+		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.ProjectRef) {
 			// remove a variable, modify a variable, add a variable
 			updatedVars := &model.ProjectVars{

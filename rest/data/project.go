@@ -125,7 +125,7 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
 			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
 			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
-				return errors.Wrap(err, "error updating repo admin roles")
+				catcher.Wrap(err, "error updating repo admin roles")
 			}
 			branchProjects, err := model.FindMergedProjectRefsForRepo(repoRef)
 			if err != nil {
@@ -140,7 +140,7 @@ func (pc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context,
 			}
 		} else {
 			if err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
-				return errors.Wrap(err, "error updating project admin roles")
+				catcher.Wrap(err, "error updating project admin roles")
 			}
 			modified = true
 			if makeRestricted {
