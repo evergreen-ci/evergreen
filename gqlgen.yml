@@ -37,6 +37,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
+  ChildPatchAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIChildPatchAlias
   ModuleCodeChange:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
   FileDiff:

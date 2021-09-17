@@ -272,6 +272,18 @@
           }
         }
       }
+    },
+    {
+      "query_file": "childPatchAliases.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "childPatchAliases": [
+              { "alias": "evergreen_alias", "patchId": "5e4ff3abe3c3317e352062e4"}
+            ]
+          }
+        }
+      }
     }
   ]
 }
