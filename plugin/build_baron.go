@@ -46,7 +46,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 			return errors.Wrap(err, "error getting service flags")
 		}
 		if flags.PluginAdminPageDisabled {
-			webHook, _ = IsWebhookConfigured(projName, "")
+			webHook, _, _ = IsWebhookConfigured(projName, "")
 		}
 		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
@@ -154,41 +154,44 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 // IsWebhookConfigured webhook will can be retrieved from project or admin config depending on PluginAdminPageDisabled flag
 // if deriving from project config, we first try to retrieve webhook config prom project parser config, otherwise we fallback to project page settings
 // version is needed to retrieve last good project config, if version is not available/empty when calling this function we must first retrieve it
-func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool) {
+func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool, error) {
 	var webHook evergreen.WebHook
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return evergreen.WebHook{}, false
+		return evergreen.WebHook{}, false, err
 	}
 	if flags.PluginAdminPageDisabled {
 		if version == "" {
 			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(project, -1)
 			if err != nil || lastGoodVersion == nil {
-				return evergreen.WebHook{}, false
+				return evergreen.WebHook{}, false, errors.Errorf("Unable to find last good version for project %s", project)
 			}
 			version = lastGoodVersion.Id
 		}
 		parserProject, err := model.ParserProjectFindOneById(version)
 		if err != nil {
-			return evergreen.WebHook{}, false
+			return evergreen.WebHook{}, false, err
 		}
 		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
 			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
 		} else {
 			projectRef, err := model.FindMergedProjectRef(project)
 			if err != nil || projectRef == nil {
-				return evergreen.WebHook{}, false
+				return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
 			}
 			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
 		}
 	} else {
 		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
 		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
+		if webHook.Endpoint != "" && bbProject.TicketCreateProject != "" {
+			return evergreen.WebHook{}, false, errors.Errorf("The custom file ticket webhook and the build baron TicketCreateProject should not both be configured")
+		}
 	}
 	if webHook.Endpoint != "" {
-		return webHook, true
+		return webHook, true, nil
 	} else {
-		return evergreen.WebHook{}, false
+		return evergreen.WebHook{}, false, nil
 	}
 }
 
