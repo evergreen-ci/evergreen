@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 )
 
 // APITest contains the data to be returned whenever a test is used in the
@@ -95,4 +96,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 	}
 
 	return nil
+}
+
+func (at *APITest) ToService() (interface{}, error) {
+	// It is not valid translate an APITest object to a TestResult object
+	// due to data loss.
+	return nil, errors.New("not implemented")
 }
