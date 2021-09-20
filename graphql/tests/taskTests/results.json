@@ -62,7 +62,9 @@
           "taskTests": {
             "testResults": [
               {
-                "lineNum": 22
+                "logs": {
+                  "lineNum": 22
+                }
               }
             ]
           }

@@ -407,7 +407,7 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	return nil
 }
 
-func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error {
 	c.DownstreamParams = downstreamParams
 	return nil
 }

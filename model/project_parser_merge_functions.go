@@ -190,6 +190,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.PerfEnabled = toMerge.PerfEnabled
 	}
 
+	if pp.DeactivatePrevious != nil && toMerge.DeactivatePrevious != nil {
+		catcher.New("scheduling settings can only be defined in one yaml")
+	} else if toMerge.DeactivatePrevious != nil {
+		pp.DeactivatePrevious = toMerge.DeactivatePrevious
+	}
+
 	return catcher.Resolve()
 }
 

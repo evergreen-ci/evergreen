@@ -54,6 +54,24 @@ func ParserProjectFindOneById(id string) (*ParserProject, error) {
 	return ParserProjectFindOne(ParserProjectById(id))
 }
 
+func ParserProjectFindOneByVersion(projectId string, version string) (*ParserProject, error) {
+	if version == "" {
+		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(projectId, -1)
+		if err != nil || lastGoodVersion == nil {
+			return nil, errors.Wrapf(err, "Unable to retrieve last good version for project '%s'", projectId)
+		}
+		version = lastGoodVersion.Id
+	}
+	parserProject, err := ParserProjectFindOneById(version)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error retrieving parser project for version '%s'", version)
+	}
+	if parserProject == nil {
+		return nil, errors.Errorf("Unable to find parser project for project '%s'", projectId)
+	}
+	return parserProject, nil
+}
+
 // ParserProjectFindOne finds a parser project with a given query.
 func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
 	project := &ParserProject{}
