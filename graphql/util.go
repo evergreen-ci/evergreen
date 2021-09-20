@@ -663,15 +663,16 @@ func generateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 
 func hasMatchingTasks(sc data.Connector, versionId string, options BuildVariantOptions) (bool, error) {
 	opts := data.TaskFilterOptions{
-		Statuses:  options.Statuses,
-		Variants:  options.Variants,
-		TaskNames: options.Tasks,
+		Statuses:        options.Statuses,
+		Variants:        options.Variants,
+		TaskNames:       options.Tasks,
+		FieldsToProject: []string{task.IdKey},
 	}
-	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
+	_, count, err := sc.FindTasksByVersion(versionId, opts)
 	if err != nil {
 		return false, err
 	}
-	return len(tasks) > 0, nil
+	return count > 0, nil
 }
 
 type VersionModificationAction string
