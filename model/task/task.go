@@ -349,6 +349,12 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 				return strings.Replace(tr.URL, deprecatedLobsterURL, root, 1)
 			}
 
+			// Some test results may have internal URLs that are
+			// missing the root.
+			if err := util.CheckURL(tr.URL); err != nil {
+				return root + tr.URL
+			}
+
 			return tr.URL
 		}
 
@@ -385,6 +391,12 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 		)
 	default:
 		if tr.URLRaw != "" {
+			// Some test results may have internal URLs that are
+			// missing the root.
+			if err := util.CheckURL(tr.URL); err != nil {
+				return root + tr.URL
+			}
+
 			return tr.URLRaw
 		}
 
