@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -100,14 +99,4 @@ func (self *TestLog) Validate() error {
 	default:
 		return nil
 	}
-}
-
-// URL returns the path to access the log based on its current fields.
-// Does not error if fields are not set.
-func (self *TestLog) URL() string {
-	return fmt.Sprintf("/test_log/%v/%v/%v",
-		self.Task,
-		self.TaskExecution,
-		self.Name,
-	)
 }
