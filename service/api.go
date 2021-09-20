@@ -681,7 +681,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(checkTaskSecret).Handler(as.gitServePatch).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(checkTask).Handler(as.keyValPluginInc).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/manifest/load").Wrap(checkTask).Handler(as.manifestLoadHandler).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/s3Copy/s3Copy").Wrap(checkTask).Handler(as.s3copyPlugin).Post()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/s3Copy/s3Copy").Wrap(checkTaskSecret).Handler(as.s3copyPlugin).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/downstreamParams").Wrap(checkTask).Handler(as.SetDownstreamParams).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/tags/{task_name}/{name}").Wrap(checkTask).Handler(as.getTaskJSONTagsForTask).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/history/{task_name}/{name}").Wrap(checkTask).Handler(as.getTaskJSONTaskHistory).Get()
