@@ -400,6 +400,13 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	opts := model.APIHostParams{
 		UserSpawned: true,
 	}
+	if !ch.dryRun {
+		grip.Info(message.Fields{
+			"message": "executing user offboarding",
+			"context": "user offboarding",
+			"user":    ch.user,
+		})
+	}
 	// returns all up-hosts for user
 	hosts, err := ch.sc.FindHostsInRange(opts, ch.user)
 	if err != nil {
