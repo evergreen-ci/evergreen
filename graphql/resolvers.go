@@ -3634,7 +3634,7 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	if t == nil {
 		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
-	_, ok := plugin.IsWebhookConfigured(t.Project, t.Version)
+	_, ok, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
 	return ok, nil
 }
 
