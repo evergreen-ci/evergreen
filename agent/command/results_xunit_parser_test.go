@@ -252,8 +252,6 @@ func TestXMLToModelConversion(t *testing.T) {
 				Convey("and logs should be of the proper form", func() {
 					So(logs[0].Name, ShouldNotEqual, "")
 					So(len(logs[0].Lines), ShouldNotEqual, 0)
-					So(logs[0].URL(), ShouldContainSubstring,
-						"TEST/5/test.test_auth.TestAuthURIOptions.test_uri_options")
 				})
 			})
 		})
