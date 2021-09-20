@@ -759,9 +759,10 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 		"buildbaron": {
 			"projects": map[string]evergreen.BuildBaronProject{
 				testProject: {
-					TicketCreateProject: "EVG",
 					TaskAnnotationSettings: evergreen.AnnotationsSettings{
-						FileTicketWebHook: evergreen.WebHook{},
+						FileTicketWebHook: evergreen.WebHook{
+							Endpoint: "random",
+						},
 					},
 				},
 			},

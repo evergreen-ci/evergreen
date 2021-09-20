@@ -55,7 +55,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 
 	webHook, ok, err := plugin.IsWebhookConfigured(t.Project, t.Version)
 	if err != nil {
-		return taskNotFound, err
+		return taskNotFound, errors.Wrapf(err, "Error retrieving webhook config for %s", t.Project)
 	}
 	if ok && webHook.Endpoint != "" {
 		var resp *http.Response
