@@ -578,6 +578,17 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 	return err
 }
 
+// SetTriggerAliases appends the names of invoked trigger aliases to the DB
+func (p *Patch) SetTriggerAliases() error {
+	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoAliasesKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.Aliases}},
+		},
+	)
+}
+
 // SetChildPatches appends the IDs of downstream patches to the db
 func (p *Patch) SetChildPatches() error {
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
