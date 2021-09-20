@@ -34,7 +34,7 @@ const (
 	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
 
-	ecsTaskStateChangeType              = "ECS Task State Change"
+	ecsTaskStateChangeType = "ECS Task State Change"
 )
 
 type baseSNS struct {
