@@ -66,7 +66,11 @@ func (s *Static) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.Ha
 		// redirect if missing trailing slash
 		if !strings.HasSuffix(r.URL.Path, "/") {
 			r.URL.Path += "/"
+			if strings.HasPrefix(r.URL.Path, "//") {
+				r.URL.Path = dedupeURLSlashes(r.URL.Path)
+			}
 			http.Redirect(rw, r, r.URL.String(), http.StatusFound)
+
 			return
 		}
 
@@ -86,4 +90,17 @@ func (s *Static) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.Ha
 	}
 
 	http.ServeContent(rw, r, file, fi.ModTime(), f)
+}
+
+func dedupeURLSlashes(path string) string {
+	goodURL := ""
+	lastChar := rune(0)
+	for _, char := range path {
+		if lastChar == char && lastChar == '/' {
+			continue
+		}
+		goodURL += string(char)
+		lastChar = char
+	}
+	return goodURL
 }
