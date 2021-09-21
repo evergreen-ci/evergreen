@@ -17,15 +17,17 @@ type APIPodEnvVar struct {
 
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
-	Name       *string         `json:"name"`
-	Memory     *int            `json:"memory"`
-	CPU        *int            `json:"cpu"`
-	Image      *string         `json:"image"`
-	EnvVars    []*APIPodEnvVar `json:"env_vars"`
-	OS         *string         `json:"os"`
-	Arch       *string         `json:"arch"`
-	Secret     *string         `json:"secret"`
-	WorkingDir *string         `json:"working_dir"`
+	Name         *string         `json:"name"`
+	Memory       *int            `json:"memory"`
+	CPU          *int            `json:"cpu"`
+	Image        *string         `json:"image"`
+	RepoUsername *string         `json:"repo_username"`
+	RepoPassword *string         `json:"repo_password"`
+	EnvVars      []*APIPodEnvVar `json:"env_vars"`
+	OS           *string         `json:"os"`
+	Arch         *string         `json:"arch"`
+	Secret       *string         `json:"secret"`
+	WorkingDir   *string         `json:"working_dir"`
 }
 
 type APICreatePodResponse struct {
@@ -52,14 +54,16 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 			Initializing: time.Now(),
 		},
 		TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-			Image:      utility.FromStringPtr(p.Image),
-			MemoryMB:   utility.FromIntPtr(p.Memory),
-			CPU:        utility.FromIntPtr(p.CPU),
-			OS:         os,
-			Arch:       arch,
-			EnvVars:    envVars,
-			EnvSecrets: secrets,
-			WorkingDir: utility.FromStringPtr(p.WorkingDir),
+			Image:        utility.FromStringPtr(p.Image),
+			RepoUsername: utility.FromStringPtr(p.RepoUsername),
+			RepoPassword: utility.FromStringPtr(p.RepoPassword),
+			MemoryMB:     utility.FromIntPtr(p.Memory),
+			CPU:          utility.FromIntPtr(p.CPU),
+			OS:           os,
+			Arch:         arch,
+			EnvVars:      envVars,
+			EnvSecrets:   secrets,
+			WorkingDir:   utility.FromStringPtr(p.WorkingDir),
 		},
 	}, nil
 }
@@ -187,20 +191,24 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 // APIPodTaskContainerCreationOptions represents options to apply to the task's
 // container when creating a pod.
 type APIPodTaskContainerCreationOptions struct {
-	Image      *string           `json:"image,omitempty"`
-	MemoryMB   *int              `json:"memory_mb,omitempty"`
-	CPU        *int              `json:"cpu,omitempty"`
-	OS         *string           `json:"os,omitempty"`
-	Arch       *string           `json:"arch,omitempty"`
-	EnvVars    map[string]string `json:"env_vars,omitempty"`
-	EnvSecrets map[string]string `json:"env_secrets,omitempty"`
-	WorkingDir *string           `json:"working_dir,omitempty"`
+	Image        *string           `json:"image,omitempty"`
+	RepoUsername *string           `json:"repo_username,omitempty"`
+	RepoPassword *string           `json:"repo_password,omitempty"`
+	MemoryMB     *int              `json:"memory_mb,omitempty"`
+	CPU          *int              `json:"cpu,omitempty"`
+	OS           *string           `json:"os,omitempty"`
+	Arch         *string           `json:"arch,omitempty"`
+	EnvVars      map[string]string `json:"env_vars,omitempty"`
+	EnvSecrets   map[string]string `json:"env_secrets,omitempty"`
+	WorkingDir   *string           `json:"working_dir,omitempty"`
 }
 
 // BuildFromService converts service-layer task container creation options into
 // REST API task container creation options.
 func (o *APIPodTaskContainerCreationOptions) BuildFromService(opts pod.TaskContainerCreationOptions) {
 	o.Image = utility.ToStringPtr(opts.Image)
+	o.RepoUsername = utility.ToStringPtr(opts.RepoUsername)
+	o.RepoPassword = utility.ToStringPtr(opts.RepoPassword)
 	o.MemoryMB = utility.ToIntPtr(opts.MemoryMB)
 	o.CPU = utility.ToIntPtr(opts.CPU)
 	o.OS = utility.ToStringPtr(string(opts.OS))
@@ -222,14 +230,16 @@ func (o *APIPodTaskContainerCreationOptions) ToService() (*pod.TaskContainerCrea
 		return nil, errors.Wrap(err, "invalid architecture")
 	}
 	return &pod.TaskContainerCreationOptions{
-		Image:      utility.FromStringPtr(o.Image),
-		MemoryMB:   utility.FromIntPtr(o.MemoryMB),
-		CPU:        utility.FromIntPtr(o.CPU),
-		OS:         os,
-		Arch:       arch,
-		EnvVars:    o.EnvVars,
-		EnvSecrets: o.EnvSecrets,
-		WorkingDir: utility.FromStringPtr(o.WorkingDir),
+		Image:        utility.FromStringPtr(o.Image),
+		RepoUsername: utility.FromStringPtr(o.RepoUsername),
+		RepoPassword: utility.FromStringPtr(o.RepoPassword),
+		MemoryMB:     utility.FromIntPtr(o.MemoryMB),
+		CPU:          utility.FromIntPtr(o.CPU),
+		OS:           os,
+		Arch:         arch,
+		EnvVars:      o.EnvVars,
+		EnvSecrets:   o.EnvSecrets,
+		WorkingDir:   utility.FromStringPtr(o.WorkingDir),
 	}, nil
 }
 

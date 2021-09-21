@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -799,11 +800,11 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requester := r.Header.Get("Origin")
-		grip.DebugWhen(requester != "", message.Fields{
+		grip.Debug(message.Fields{
 			"op":              "addCORSHeaders",
 			"requester":       requester,
 			"allowed_origins": allowedOrigins,
-			"adding_headers":  util.StringContainsSliceRegex(allowedOrigins, requester),
+			"adding_headers":  utility.StringSliceContains(allowedOrigins, requester),
 			"settings_is_nil": evergreen.GetEnvironment().Settings() == nil,
 		})
 		if len(allowedOrigins) > 0 {
@@ -818,4 +819,13 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 		}
 		next(w, r)
 	}
+}
+
+func allowCORS(next http.HandlerFunc) http.HandlerFunc {
+	origins := []string{}
+	settings := evergreen.GetEnvironment().Settings()
+	if settings != nil {
+		origins = settings.Ui.CORSOrigins
+	}
+	return AddCORSHeaders(origins, next)
 }

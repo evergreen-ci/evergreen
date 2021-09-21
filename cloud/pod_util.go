@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/evergreen-ci/cocoa"
@@ -209,10 +210,20 @@ func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*coc
 	return opts, nil
 }
 
+// Constants related to secrets stored in Secrets Manager.
+const (
+	// internalSecretNamespace is the namespace for secrets that are
+	// Evergreen-internal.
+	internalSecretNamespace = "evg-internal"
+	// repoCredsSecretName is the name of the secret used to store private
+	// repository credentials for pods.
+	repoCredsSecretName = "repo-creds"
+)
+
 // exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
 func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSContainerDefinition, error) {
-	return cocoa.NewECSContainerDefinition().
+	def := cocoa.NewECSContainerDefinition().
 		SetName(agentContainerName).
 		SetImage(p.TaskContainerCreationOpts.Image).
 		SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
@@ -220,7 +231,20 @@ func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.
 		SetWorkingDir(p.TaskContainerCreationOpts.WorkingDir).
 		SetCommand(agentScript(settings, p)).
 		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, p)).
-		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort)), nil
+		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
+
+	if p.TaskContainerCreationOpts.RepoUsername != "" && p.TaskContainerCreationOpts.RepoPassword != "" {
+		secretName := makeInternalSecretName(settings.Providers.AWS.Pod.SecretsManager, p, repoCredsSecretName)
+
+		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().
+			SetName(secretName).
+			SetOwned(true).
+			SetNewCredentials(*cocoa.NewStoredRepositoryCredentials().
+				SetUsername(p.TaskContainerCreationOpts.RepoUsername).
+				SetPassword(p.TaskContainerCreationOpts.RepoPassword)))
+	}
+
+	return def, nil
 }
 
 // exportECSPodExecutionOptions exports the ECS configuration into
@@ -266,7 +290,7 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, p *pod.Pod) []cocoa
 	}
 
 	for k, v := range p.TaskContainerCreationOpts.EnvSecrets {
-		secretName := strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", p.ID, k}, "/")
+		secretName := makeSecretName(smConf, p, k)
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetSecretOptions(
 			*cocoa.NewSecretOptions().
 				SetName(secretName).
@@ -275,4 +299,16 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, p *pod.Pod) []cocoa
 	}
 
 	return allEnvVars
+}
+
+// makeSecretName creates a Secrets Manager secret name for the pod.
+func makeSecretName(smConf evergreen.SecretsManagerConfig, p *pod.Pod, name string) string {
+	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", p.ID, name}, "/")
+}
+
+// makeInternalSecretName creates a Secrets Manager secret name for the pod in a
+// reserved namespace that is meant for Evergreen-internal purposes and should
+// not be exposed to users.
+func makeInternalSecretName(smConf evergreen.SecretsManagerConfig, p *pod.Pod, name string) string {
+	return makeSecretName(smConf, p, fmt.Sprintf("%s/%s", internalSecretNamespace, name))
 }

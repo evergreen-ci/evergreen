@@ -1153,7 +1153,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 	for _, alias := range projectRef.PatchTriggerAliases {
 		matchingTasks, err := project.VariantTasksForSelectors([]patch.PatchTriggerDefinition{alias}, *obj.Requester)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem matching tasks to alias definitions", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem matching tasks to alias definitions: %v", err.Error()))
 		}
 
 		variantsTasks := []restModel.VariantTask{}

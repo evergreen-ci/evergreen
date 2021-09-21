@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/acl"
 	"github.com/mongodb/amboy"
-	"github.com/rs/cors"
 )
 
 const defaultLimit = 100
@@ -53,12 +52,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	cedarTestStats := checkCedarTestStats(settings)
-	if settings != nil && len(settings.Ui.CORSOrigins) > 0 {
-		app.AddMiddleware(cors.New(cors.Options{
-			AllowedOrigins:   settings.Ui.CORSOrigins,
-			AllowCredentials: true,
-		}))
-	}
+
+	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))

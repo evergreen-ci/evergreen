@@ -34,8 +34,7 @@ const (
 	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
 
-	ecsTaskStateChangeType              = "ECS Task State Change"
-	ecsContainerInstanceStateChangeType = "ECS Container Instance State Change"
+	ecsTaskStateChangeType = "ECS Task State Change"
 )
 
 type baseSNS struct {
@@ -423,10 +422,6 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 				Message:    fmt.Sprintf("unrecognized status '%s'", notification.Detail.LastStatus),
 			}
 		}
-	case ecsContainerInstanceStateChangeType:
-		// TODO (EVG-15333): remove this no-op once the event rule excludes
-		// container instance state changes.
-		return nil
 	default:
 		grip.Error(message.Fields{
 			"message":         "received an unknown notification detail type",
