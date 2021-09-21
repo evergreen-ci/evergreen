@@ -532,10 +532,16 @@ type ChildPatchAlias {
 type PatchTriggerAlias {
   alias: String!
   childProject: String!
-  taskSpecifiers: [TaskSpecifier]
-  status: String
-  parentAsModule: String
+  variantsTasks: [VariantTask]!
 }
+
+type PatchTriggerDefinition {
+   alias: String!
+   childProject: String!
+   taskSpecifiers: [TaskSpecifier]
+   status: String
+   parentAsModule: String
+ }
 
 type UserPatches {
   patches: [Patch!]!
@@ -925,7 +931,7 @@ type Project {
   defaultLogger: String
   notifyOnBuildFailure: Boolean
   triggers: [TriggerAlias]
-  patchTriggerAliases: [PatchTriggerAlias]
+  patchTriggerAliases: [PatchTriggerDefinition]
   githubTriggerAliases: [String]
   periodicBuilds: [PeriodicBuild]
   cedarTestResultsEnabled: Boolean

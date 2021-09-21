@@ -1137,18 +1137,39 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 	return *obj.Id, nil
 }
 
-func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
-	project, err := r.sc.FindProjectById(*obj.ProjectId, true)
-	if err != nil || project == nil {
+func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerAlias, error) {
+	projectRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
+	if err != nil || projectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.ProjectId, err))
 	}
 
-	aliases := []*restModel.APIPatchTriggerDefinition{}
-	for _, alias := range project.PatchTriggerAliases {
-		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
-			Alias:        utility.ToStringPtr(alias.Alias),
-			ChildProject: utility.ToStringPtr(alias.ChildProject)})
+	project := &model.Project{}
+	opts := model.GetProjectOpts{}
+	if _, err = model.LoadProjectInto(ctx, []byte(*obj.PatchedConfig), opts, *obj.ProjectId, project); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error unmarshaling project config: %v", err.Error()))
 	}
+
+	aliases := []*restModel.APIPatchTriggerAlias{}
+	for _, alias := range projectRef.PatchTriggerAliases {
+		matchingTasks, err := project.VariantTasksForSelectors([]patch.PatchTriggerDefinition{alias}, *obj.Requester)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem matching tasks to alias definitions", err.Error()))
+		}
+
+		variantsTasks := []restModel.VariantTask{}
+		for _, vt := range matchingTasks {
+			variantsTasks = append(variantsTasks, restModel.VariantTask{
+				Name:  utility.ToStringPtr(vt.Variant),
+				Tasks: utility.ToStringPtrSlice(vt.Tasks),
+			})
+		}
+		aliases = append(aliases, &restModel.APIPatchTriggerAlias{
+			Alias:         utility.ToStringPtr(alias.Alias),
+			ChildProject:  utility.ToStringPtr(alias.ChildProject),
+			VariantsTasks: variantsTasks,
+		})
+	}
+
 	return aliases, nil
 }
 

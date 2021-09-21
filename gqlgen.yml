@@ -119,6 +119,8 @@ models:
   CommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   PatchTriggerAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerAlias
+  PatchTriggerDefinition:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   TaskSpecifier:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
