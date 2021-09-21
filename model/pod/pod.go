@@ -123,6 +123,12 @@ func (i ContainerResourceInfo) IsZero() bool {
 type TaskContainerCreationOptions struct {
 	// Image is the image that the task's container will run.
 	Image string `bson:"image" json:"image"`
+	// RepoUsername is the username of the repository containing the image. This
+	// is only necessary if it is a private repository.
+	RepoUsername string `bson:"repo_username,omitempty" json:"repo_username,omitempty"`
+	// RepoPassword is the password of the repository containing the image. This
+	// is only necessary if it is a private repository.
+	RepoPassword string `bson:"repo_password,omitempty" json:"repo_password,omitempty"`
 	// MemoryMB is the memory (in MB) that the task's container will be
 	// allocated.
 	MemoryMB int `bson:"memory_mb" json:"memory_mb"`
