@@ -55,15 +55,24 @@ func ParserProjectFindOneById(id string) (*ParserProject, error) {
 }
 
 func ParserProjectFindOneByVersion(projectId string, version string) (*ParserProject, error) {
+	lookupVersion := false
 	if version == "" {
 		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(projectId, -1)
 		if err != nil || lastGoodVersion == nil {
 			return nil, errors.Wrapf(err, "Unable to retrieve last good version for project '%s'", projectId)
 		}
 		version = lastGoodVersion.Id
+		lookupVersion = true
 	}
 	parserProject, err := ParserProjectFindOneById(version)
 	if err != nil {
+		grip.Debug(message.Fields{
+			"message":        "error retrieving parser project by version",
+			"project_id":     projectId,
+			"version":        version,
+			"lookup_version": lookupVersion,
+			"err":            err.Error(),
+		})
 		return nil, errors.Wrapf(err, "Error retrieving parser project for version '%s'", version)
 	}
 	if parserProject == nil {
