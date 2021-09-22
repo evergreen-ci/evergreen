@@ -64,9 +64,11 @@ func downloadAgentCommands(settings *evergreen.Settings, p *pod.Pod) string {
 	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.PodInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading
 		// from the app server if it fails.
-		curlCmd = fmt.Sprintf("(curl -LO '%s' %s || curl -LO '%s' %s)", s3ClientURL(settings, p), retryArgs, clientURL(settings, p), retryArgs)
+		// Include -f to return an error code from curl if the HTTP request
+		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
+		curlCmd = fmt.Sprintf("(curl -fLO %s %s || curl -fLO %s %s)", s3ClientURL(settings, p), retryArgs, clientURL(settings, p), retryArgs)
 	} else {
-		curlCmd = fmt.Sprintf("curl -LO '%s' %s", clientURL(settings, p), retryArgs)
+		curlCmd = fmt.Sprintf("curl -fLO %s %s", clientURL(settings, p), retryArgs)
 	}
 
 	return curlCmd
