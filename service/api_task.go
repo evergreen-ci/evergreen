@@ -206,6 +206,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	projectParser, err := model.ParserProjectFindOneByVersion(t.Project, t.Version)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		// Not returning here in case of legacy versions that do not have a parser project
 	}
 
 	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
