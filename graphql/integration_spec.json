@@ -2858,7 +2858,7 @@
                 "logs": {
                   "url": "https://original-url.com",
                   "urlRaw": "https://original-raw-url.com",
-                  "urlLobster": ""
+                  "urlLobster": null
                 },
                 "id": "19ef7a20a7798219e191d00e"
               }
@@ -2877,7 +2877,7 @@
                 "logs": {
                   "url": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126",
                   "urlRaw": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?text=true",
-                  "urlLobster": ""
+                  "urlLobster": null
                 },
                 "id": "39ef7a20a7798219e191d00e"
               }
