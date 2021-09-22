@@ -16,6 +16,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -418,4 +419,48 @@ func TestServiceUserOperations(t *testing.T) {
 	users, valid = resp.Data().([]restModel.APIDBUser)
 	assert.True(t, valid)
 	assert.Len(t, users, 0)
+}
+
+func TestGetUsersForRole(t *testing.T) {
+	require.NoError(t, db.Clear(user.Collection))
+	ctx := context.Background()
+
+	u1 := user.DBUser{
+		Id: "me",
+		SystemRoles: []string{
+			"admin_access",
+			"basic_project_access",
+			"something_else",
+		},
+	}
+	u2 := user.DBUser{
+		Id: "mini-me",
+		SystemRoles: []string{
+			"basic_project_access",
+		},
+	}
+	u3 := user.DBUser{
+		Id: "you",
+		SystemRoles: []string{
+			"nothing_useful",
+		},
+	}
+	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3))
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/roles/basic_project_access/users", nil)
+	require.NoError(t, err)
+	req = gimlet.SetURLVars(req, map[string]string{"role_id": "basic_project_access"})
+	handler := makeGetUsersWithRole(&data.DBConnector{})
+	assert.NoError(t, handler.Parse(ctx, req))
+	assert.Equal(t, handler.(*usersWithRoleGetHandler).role, "basic_project_access")
+	resp := handler.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, resp.Status(), http.StatusOK)
+	usersWithRole, ok := resp.Data().(*UsersWithRoleResponse)
+	assert.True(t, ok)
+	assert.NotNil(t, usersWithRole.Users)
+	assert.Len(t, usersWithRole.Users, 2)
+	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[0]), u1.Id)
+	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[1]), u2.Id)
+
 }

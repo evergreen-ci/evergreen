@@ -439,6 +439,45 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+type UsersWithRoleResponse struct {
+	Users []*string `json:"users"`
+}
+
+type usersWithRoleGetHandler struct {
+	sc   data.Connector
+	role string
+}
+
+func makeGetUsersWithRole(sc data.Connector) gimlet.RouteHandler {
+	return &usersWithRoleGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *usersWithRoleGetHandler) Factory() gimlet.RouteHandler {
+	return &usersWithRoleGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *usersWithRoleGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.role = vars["role_id"]
+	return nil
+}
+
+func (h *usersWithRoleGetHandler) Run(ctx context.Context) gimlet.Responder {
+	users, err := user.FindByRole(h.role)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	res := []*string{}
+	for idx := range users {
+		res = append(res, &users[idx].Id)
+	}
+	return gimlet.NewJSONResponse(&UsersWithRoleResponse{Users: res})
+}
+
 type serviceUserPostHandler struct {
 	sc data.Connector
 	u  *model.APIDBUser
