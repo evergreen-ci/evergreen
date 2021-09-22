@@ -229,7 +229,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// mark task as finished
 	deactivatePrevious := projectRef.ShouldDeactivatePrevious()
-	if projectParser.ShouldDeactivatePrevious() {
+	if projectParser != nil && projectParser.ShouldDeactivatePrevious() {
 		deactivatePrevious = true
 	}
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, deactivatePrevious)
