@@ -38,7 +38,7 @@ func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*mod
 	if p == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("project ref '%s' does not exist", id),
+			Message:    fmt.Sprintf("project with id '%s' not found", id),
 		}
 	}
 	return p, nil
