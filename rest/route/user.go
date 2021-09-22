@@ -269,6 +269,10 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	}
 
 	rolesForResource, err := h.rm.FilterForResource(rolesToCheck, h.resourceId, h.resourceType)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(
+			errors.Wrapf(err, "unable to filter user roles for resource ID '%s'", h.resourceId))
+	}
 	rolesToRemove := []string{}
 	for _, r := range rolesForResource {
 		rolesToRemove = append(rolesToRemove, r.ID)
