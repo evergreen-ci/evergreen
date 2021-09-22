@@ -3,6 +3,10 @@
     patchTriggerAliases {
       alias
       childProject
+      variantsTasks {
+        name
+        tasks
+      }
     }
   }
 }
