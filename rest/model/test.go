@@ -15,18 +15,20 @@ import (
 // APITest contains the data to be returned whenever a test is used in the
 // API.
 type APITest struct {
-	ID         *string    `json:"test_id"`
-	TaskID     *string    `json:"task_id"`
-	Execution  int        `json:"execution"`
-	Status     *string    `json:"status"`
-	BaseStatus *string    `json:"base_status,omitempty"`
-	TestFile   *string    `json:"test_file"`
-	GroupID    *string    `json:"group_id,omitempty"`
-	Logs       TestLogs   `json:"logs"`
-	ExitCode   int        `json:"exit_code"`
-	StartTime  *time.Time `json:"start_time"`
-	EndTime    *time.Time `json:"end_time"`
-	Duration   float64    `json:"duration"`
+	ID         *string `json:"test_id"`
+	TaskID     *string `json:"task_id"`
+	Execution  int     `json:"execution"`
+	Status     *string `json:"status"`
+	BaseStatus *string `json:"base_status,omitempty"`
+	TestFile   *string `json:"test_file"`
+	// TODO: (EVG-15379) Remove this field once Spruce dependency is gone.
+	DisplayTestName *string    `json:"display_test_name"`
+	GroupID         *string    `json:"group_id,omitempty"`
+	Logs            TestLogs   `json:"logs"`
+	ExitCode        int        `json:"exit_code"`
+	StartTime       *time.Time `json:"start_time"`
+	EndTime         *time.Time `json:"end_time"`
+	Duration        float64    `json:"duration"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
