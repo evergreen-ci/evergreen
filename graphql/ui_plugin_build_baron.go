@@ -33,7 +33,7 @@ type FailingTaskData struct {
 	Execution int    `bson:"execution"`
 }
 
-// bbFileTicket creates a JIRA ticket for a task with the given test failures.
+// BbFileTicket creates a JIRA ticket for a task with the given test failures.
 func BbFileTicket(context context.Context, taskId string, execution int) (bool, error) {
 	taskNotFound := false
 	// Find information about the task
@@ -53,8 +53,11 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
 
-	webHook, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
-	if webHook.Endpoint != "" {
+	webHook, ok, err := plugin.IsWebhookConfigured(t.Project, t.Version)
+	if err != nil {
+		return taskNotFound, errors.Wrapf(err, "Error retrieving webhook config for %s", t.Project)
+	}
+	if ok && webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(context, taskId, execution, webHook)
 		return resp.StatusCode == http.StatusOK, err

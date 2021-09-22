@@ -120,7 +120,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		}
 		// if the caller is the default task activator only deactivate tasks that have not been activated by a user
 		if evergreen.IsSystemActivator(caller) {
-			query[task.ActivatedByKey] = caller
+			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
 		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))

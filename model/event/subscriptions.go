@@ -72,6 +72,7 @@ const (
 	TriggerExpiration                = "expiration"
 	TriggerPatchStarted              = "started"
 	TriggerTaskFirstFailureInVersion = "first-failure-in-version"
+	TriggerTaskStarted               = "task-started"
 )
 
 type Subscription struct {

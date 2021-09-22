@@ -524,6 +524,11 @@ type FileDiff {
   description: String!
 }
 
+type ChildPatchAlias {
+  alias: String!
+  patchId: String!
+}
+
 type PatchTriggerAlias {
   alias: String!
   childProject: String!
@@ -557,6 +562,7 @@ type Patch {
   variants: [String!]!
   tasks: [String!]!
   childPatches: [Patch!]
+  childPatchAliases: [ChildPatchAlias!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
@@ -698,12 +704,16 @@ type TestResult {
   taskId: String
   execution: Int
   logTestName: String
-  lineNum: Int
 }
 
 type TestLog {
-  htmlDisplayURL: String
-  rawDisplayURL: String
+  url: String
+  urlRaw: String
+  urlLobster: String
+  lineNum: Int
+  htmlDisplayURL: String @deprecated(reason: "htmlDisplayURL deprecated, use url instead (EVG-15418)")
+  rawDisplayURL: String @deprecated(reason: "rawDisplayURL deprecated, use urlRaw instead (EVG-15418)")
+
 }
 
 type Dependency {

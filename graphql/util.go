@@ -419,6 +419,10 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 			if err = p.SetChildPatches(); err != nil {
 				return errors.Wrapf(err, "error attaching child patches '%s'", p.Id.Hex()), http.StatusInternalServerError, "", ""
 			}
+			p.Triggers.Aliases = patchUpdateReq.PatchTriggerAliases
+			if err = p.SetTriggerAliases(); err != nil {
+				return errors.Wrapf(err, "error attaching trigger aliases '%s'", p.Id.Hex()), http.StatusInternalServerError, "", ""
+			}
 		}
 
 		requester := p.GetRequester()
