@@ -695,6 +695,7 @@ type TestResult {
   status: String!
   baseStatus: String
   testFile: String!
+  displayTestName: String
   logs: TestLog!
   exitCode: Int
   startTime: Time
@@ -702,6 +703,7 @@ type TestResult {
   endTime: Time
   taskId: String
   execution: Int
+  logTestName: String
 }
 
 type TestLog {
@@ -709,6 +711,9 @@ type TestLog {
   urlRaw: String
   urlLobster: String
   lineNum: Int
+  htmlDisplayURL: String @deprecated(reason: "htmlDisplayURL deprecated, use url instead (EVG-15418)")
+  rawDisplayURL: String @deprecated(reason: "rawDisplayURL deprecated, use urlRaw instead (EVG-15418)")
+
 }
 
 type Dependency {

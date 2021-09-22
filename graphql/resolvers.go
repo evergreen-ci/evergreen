@@ -1504,11 +1504,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 		if len(cedarBaseTestResults) > 0 {
 			for _, t := range cedarBaseTestResults {
-				if t.DisplayTestName != "" {
-					baseTestStatusMap[t.DisplayTestName] = t.Status
-				} else {
-					baseTestStatusMap[t.TestName] = t.Status
-				}
+				baseTestStatusMap[t.TestName] = t.Status
+				baseTestStatusMap[t.DisplayTestName] = t.Status
 			}
 		} else {
 			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
@@ -1563,7 +1560,10 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 
-			baseTestStatus := baseTestStatusMap[utility.FromStringPtr(apiTest.TestFile)]
+			baseTestStatus := baseTestStatusMap[utility.FromStringPtr(apiTest.DisplayTestName)]
+			if baseTestStatus == "" {
+				baseTestStatus = baseTestStatusMap[utility.FromStringPtr(apiTest.TestFile)]
+			}
 			apiTest.BaseStatus = &baseTestStatus
 			testPointers = append(testPointers, &apiTest)
 		}
