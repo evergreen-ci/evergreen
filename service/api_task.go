@@ -504,17 +504,22 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		projectRef, err := model.FindMergedProjectRef(nextTask.Project)
-		if err != nil || projectRef == nil {
-			grip.Alert(message.Fields{
-				"task_id":            nextTask.Id,
-				"message":            "could not find project ref for next task, skipping",
-				"project":            nextTask.Project,
-				"host_id":            currentHost.Id,
-				"task_group":         nextTask.TaskGroup,
-				"task_build_variant": nextTask.BuildVariant,
-				"task_version":       nextTask.Version,
-			})
-			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
+		errMsg := message.Fields{
+			"task_id":            nextTask.Id,
+			"message":            "could not find project ref for next task, skipping",
+			"project":            nextTask.Project,
+			"host_id":            currentHost.Id,
+			"task_group":         nextTask.TaskGroup,
+			"task_build_variant": nextTask.BuildVariant,
+			"task_version":       nextTask.Version,
+		}
+		if err != nil {
+			grip.Alert(message.WrapError(err, errMsg))
+			return nil, false, errors.Wrapf(err, "could not find project ref for next task '%s'", nextTask.Id)
+		}
+		if projectRef == nil {
+			grip.Alert(errMsg)
+			return nil, false, errors.Errorf("project ref for next task '%s' doesn't exist", nextTask.Id)
 		}
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",

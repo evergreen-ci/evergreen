@@ -980,12 +980,15 @@ func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request
 
 func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder {
 	proj, err := dbModel.FindMergedProjectRef(p.projectID)
-	if err != nil || proj == nil {
+	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting project",
 			"project": p.projectID,
 		}))
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("unable to get project '%s'", p.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "unable to get project '%s'", p.projectID))
+	}
+	if proj == nil {
+		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' doesn't exist", p.projectID))
 	}
 
 	triggerAliases := make([]string, 0, len(proj.PatchTriggerAliases))
