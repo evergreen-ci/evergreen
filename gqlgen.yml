@@ -15,6 +15,8 @@ resolver:
 models:
   Build:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
+  VersionToRestart:
+    model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   SubscriptionInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   SelectorInput:
@@ -35,6 +37,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
+  ChildPatchAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIChildPatchAlias
   ModuleCodeChange:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
   FileDiff:
@@ -240,3 +244,13 @@ models:
         resolver: true
   BuildVariantTuple:
     model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
+  TaskLogs:
+    fields:
+      eventLogs:
+        resolver: true
+      taskLogs:
+        resolver: true
+      systemLogs:
+        resolver: true
+      agentLogs:
+        resolver: true

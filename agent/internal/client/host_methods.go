@@ -752,19 +752,17 @@ func (c *hostCommunicator) AttachFiles(ctx context.Context, taskData TaskData, t
 	return nil
 }
 
-func (c *hostCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+func (c *hostCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error {
 	info := requestInfo{
-		method: http.MethodPost,
-		taskData: &TaskData{
-			ID: taskId,
-		},
-		version: apiVersion2,
+		method:   http.MethodPost,
+		taskData: &taskData,
+		version:  apiVersion1,
 	}
 
 	info.setTaskPathSuffix("downstreamParams")
 	resp, err := c.retryRequest(ctx, info, downstreamParams)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to set upstream params for task %s: %s", taskId, err.Error())
+		return utility.RespErrorf(resp, "failed to set upstream params for task %s: %s", taskData.ID, err.Error())
 	}
 	defer resp.Body.Close()
 

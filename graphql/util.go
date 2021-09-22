@@ -419,6 +419,10 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 			if err = p.SetChildPatches(); err != nil {
 				return errors.Wrapf(err, "error attaching child patches '%s'", p.Id.Hex()), http.StatusInternalServerError, "", ""
 			}
+			p.Triggers.Aliases = patchUpdateReq.PatchTriggerAliases
+			if err = p.SetTriggerAliases(); err != nil {
+				return errors.Wrapf(err, "error attaching trigger aliases '%s'", p.Id.Hex()), http.StatusInternalServerError, "", ""
+			}
 		}
 
 		requester := p.GetRequester()
@@ -670,17 +674,23 @@ const (
 )
 
 type VersionModifications struct {
-	Action   VersionModificationAction `json:"action"`
-	Active   bool                      `json:"active"`
-	Abort    bool                      `json:"abort"`
-	Priority int64                     `json:"priority"`
-	TaskIds  []string                  `json:"task_ids"`
+	Action            VersionModificationAction `json:"action"`
+	Active            bool                      `json:"active"`
+	Abort             bool                      `json:"abort"`
+	Priority          int64                     `json:"priority"`
+	VersionsToRestart []*model.VersionToRestart `json:"versions_to_restart"`
+	TaskIds           []string                  `json:"task_ids"` // deprecated
 }
 
 func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
 	switch modifications.Action {
 	case Restart:
-		if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
+		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
+			if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
+				return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
+			}
+		}
+		if err := model.RestartVersions(modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 		}
 	case SetActive:

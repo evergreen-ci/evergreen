@@ -397,7 +397,7 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		require.Equal(t, p.TaskContainerCreationOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
 		require.Len(t, cDef.PortMappings, 1)
 		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
-		require.Len(t, opts.ContainerDefinitions[0].EnvVars, 2)
+		require.Len(t, cDef.EnvVars, 2)
 		for _, envVar := range cDef.EnvVars {
 			if envVar.SecretOpts != nil {
 				name := utility.FromStringPtr(envVar.Name)
@@ -413,6 +413,22 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 				assert.Equal(t, p.TaskContainerCreationOpts.EnvVars[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.Value))
 			}
 		}
+	})
+	t.Run("SucceedsWithRepositoryCredentials", func(t *testing.T) {
+		settings := validSettings()
+		p := validPod()
+		p.TaskContainerCreationOpts.RepoUsername = "username"
+		p.TaskContainerCreationOpts.RepoPassword = "password"
+		opts, err := ExportECSPodCreationOptions(settings, p)
+		require.NoError(t, err)
+		require.NotZero(t, opts)
+
+		require.Len(t, opts.ContainerDefinitions, 1)
+		cDef := opts.ContainerDefinitions[0]
+		assert.True(t, strings.HasPrefix(utility.FromStringPtr(cDef.RepoCreds.Name), settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
+		assert.Contains(t, utility.FromStringPtr(cDef.RepoCreds.Name), p.ID)
+		assert.Equal(t, utility.FromStringPtr(cDef.RepoCreds.NewCreds.Username), p.TaskContainerCreationOpts.RepoUsername)
+		assert.Equal(t, utility.FromStringPtr(cDef.RepoCreds.NewCreds.Password), p.TaskContainerCreationOpts.RepoPassword)
 	})
 	t.Run("OnlyUsesAWSVPCWhenAWSVPCSettingsAreGiven", func(t *testing.T) {
 		settings := validSettings()

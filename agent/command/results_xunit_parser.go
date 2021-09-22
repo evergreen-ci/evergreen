@@ -139,8 +139,6 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (task.Test
 		log.Task = conf.Task.Id
 		log.TaskExecution = conf.Task.Execution
 
-		// update the URL of the result to the expected log URL
-		res.URL = log.URL()
 		res.LogTestName = log.Name
 	}
 
