@@ -425,8 +425,9 @@ func TestJasperCommands(t *testing.T) {
 			h.Distro.BootstrapSettings.ResourceLimits = distro.ResourceLimits{
 				NumProcesses:    1,
 				NumFiles:        2,
-				LockedMemoryKB:  3,
-				VirtualMemoryKB: 4,
+				NumTasks:        3,
+				LockedMemoryKB:  4,
+				VirtualMemoryKB: 5,
 			}
 			cmd := h.ForceReinstallJasperCommand(settings)
 			assert.True(t, strings.HasPrefix(cmd, "sudo /foo/jasper_cli jasper service force-reinstall rpc"))
@@ -436,6 +437,7 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_procs=%d", h.Distro.BootstrapSettings.ResourceLimits.NumProcesses))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_files=%d", h.Distro.BootstrapSettings.ResourceLimits.NumFiles))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_tasks=%d", h.Distro.BootstrapSettings.ResourceLimits.NumTasks))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_virtual_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_locked_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB))
 		},

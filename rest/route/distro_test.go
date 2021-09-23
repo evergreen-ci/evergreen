@@ -1336,8 +1336,9 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					"resource_limits": {
 						"num_files": 1,
 						"num_processes": 2,
-						"locked_memory": 3,
-						"virtual_memory": 4
+						"num_tasks": 3,
+						"locked_memory": 4,
+						"virtual_memory": 5
 					},
 					"precondition_scripts": [
 						{
@@ -1414,8 +1415,9 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal([]model.APIEnvVar{{Key: utility.ToStringPtr("envKey"), Value: utility.ToStringPtr("envValue")}}, apiDistro.BootstrapSettings.Env)
 	s.Equal(1, apiDistro.BootstrapSettings.ResourceLimits.NumFiles)
 	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
-	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)
-	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
+	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.NumTasks)
+	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)
+	s.Equal(5, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	s.Require().Len(apiDistro.BootstrapSettings.PreconditionScripts, 1)
 	s.Equal(utility.ToStringPtr("/tmp/foo"), apiDistro.BootstrapSettings.PreconditionScripts[0].Path)
 	s.Equal(utility.ToStringPtr("echo foo"), apiDistro.BootstrapSettings.PreconditionScripts[0].Script)
