@@ -30,7 +30,7 @@ func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*mod
 	if includeRepo {
 		p, err = model.FindMergedProjectRef(id)
 	} else {
-		p, err = model.FindOneProjectRef(id)
+		p, err = model.FindBranchProjectRef(id)
 	}
 	if err != nil {
 		return nil, err

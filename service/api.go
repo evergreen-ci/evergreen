@@ -86,12 +86,12 @@ func MustHaveHost(r *http.Request) *host.Host {
 
 // MustHaveProject gets the project from the HTTP request and panics
 // if there is no project specified
-func MustHaveProject(r *http.Request) (*model.ProjectRef, *model.Project) {
-	pref, p := GetProject(r)
-	if pref == nil || p == nil {
+func MustHaveProject(r *http.Request) *model.Project {
+	p := GetProject(r)
+	if p == nil {
 		panic("no project attached to request")
 	}
-	return pref, p
+	return p
 }
 
 // checkTask get the task from the request header and ensures that there is a task. It checks the secret
@@ -130,7 +130,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		projectRef, err := model.FindOneProjectRef(projectId)
+		projectRef, err := model.FindBranchProjectRef(projectId)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -151,7 +151,6 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		r = setProjectRefContext(r, projectRef)
 		r = setProjectContext(r, p)
 
 		next(w, r)
@@ -224,7 +223,7 @@ func (as *APIServer) GetParserProject(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	p, err := model.FindOneProjectRef(t.Project)
+	p, err := model.FindMergedProjectRef(t.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -491,7 +490,7 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 // fetchProjectRef returns a project ref given the project identifier
 func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["identifier"]
-	projectRef, err := model.FindOneProjectRef(id)
+	projectRef, err := model.FindMergedProjectRef(id)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -514,7 +513,7 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
-	_, project := MustHaveProject(r)
+	project := MustHaveProject(r)
 
 	// zero out the depends on and commands fields because they are
 	// unnecessary and may not get marshaled properly
@@ -526,7 +525,7 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, project.Tasks)
 }
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
-	_, project := MustHaveProject(r)
+	project := MustHaveProject(r)
 
 	gimlet.WriteJSON(w, project.BuildVariants)
 }

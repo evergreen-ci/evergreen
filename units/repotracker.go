@@ -95,6 +95,10 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
+	if ref == nil {
+		j.AddError(errors.Errorf("project ref '%s' does not exist", j.ProjectID))
+		return
+	}
 
 	if !repotracker.CheckGithubAPIResources(ctx, token) {
 		j.AddError(errors.Errorf("skipping repotracker run [%s] for %s because of github limit issues",

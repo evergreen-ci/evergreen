@@ -665,7 +665,7 @@ func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := dbModel.FindOneProjectRef(h.projectName)
+	project, err := dbModel.FindBranchProjectRef(h.projectName)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "project '%s' could not be found successfully", h.projectName))
 	}
@@ -955,7 +955,7 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 //
 // Handler for the patch trigger aliases defined for project
 //
-//    /projects/{project_id}/parameters
+//    /projects/{project_id}/patch_trigger_aliases
 type GetPatchTriggerAliasHandler struct {
 	projectID string
 	sc        data.Connector
@@ -979,13 +979,16 @@ func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder {
-	proj, err := dbModel.FindOneProjectRef(p.projectID)
+	proj, err := dbModel.FindMergedProjectRef(p.projectID)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting project",
 			"project": p.projectID,
 		}))
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("unable to get project '%s'", p.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "unable to get project '%s'", p.projectID))
+	}
+	if proj == nil {
+		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' doesn't exist", p.projectID))
 	}
 
 	triggerAliases := make([]string, 0, len(proj.PatchTriggerAliases))

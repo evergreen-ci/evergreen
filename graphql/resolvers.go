@@ -300,7 +300,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 }
 
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
-	p, err := model.FindOneProjectRef(*at.Identifier)
+	p, err := model.FindBranchProjectRef(*at.Identifier)
 	if err != nil || p == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *at.Identifier, err))
 	}
@@ -430,7 +430,7 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, a *restModel
 }
 
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindOneProjectRef(identifier)
+	p, err := model.FindBranchProjectRef(identifier)
 	if err != nil || p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
 	}
@@ -450,7 +450,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 }
 
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindOneProjectRef(identifier)
+	p, err := model.FindBranchProjectRef(identifier)
 	if err != nil || p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
 	}
@@ -940,7 +940,7 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
 	res := &restModel.APIProjectSettings{}
-	projectRef, err := model.FindOneProjectRef(identifier)
+	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}

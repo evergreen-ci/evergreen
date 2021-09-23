@@ -886,7 +886,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		return nil, errors.New("host cannot be nil")
 	}
 
-	projectRef, err := FindOneProjectRef(t.Project)
+	projectRef, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding project ref")
 	}
@@ -902,7 +902,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 	expansions.Put("project", projectRef.Identifier)
-	expansions.Put("project_identifier", projectRef.Identifier) // TODO: depreciate
+	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
 	expansions.Put("project_id", projectRef.Id)
 	if t.ActivatedBy == evergreen.StepbackTaskActivator {
 		expansions.Put("is_stepback", "true")
@@ -938,7 +938,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			upstreamProjectID = upstreamBuild.Project
 		}
 		var upstreamProject *ProjectRef
-		upstreamProject, err = FindOneProjectRef(upstreamProjectID)
+		upstreamProject, err = FindBranchProjectRef(upstreamProjectID)
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding project")
 		}
