@@ -632,7 +632,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 
 	projectRef, err := model.FindMergedProjectRef(projectID)
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.WithStack(err)
+		return nil, http.StatusNotFound, errors.WithStack(err)
 	}
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("error finding the project '%s'", projectID)

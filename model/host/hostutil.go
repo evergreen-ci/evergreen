@@ -99,9 +99,9 @@ func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) ([]st
 		// the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
 		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		curlCmd = fmt.Sprintf("(curl -fLO '%s'%s || curl -LO '%s'%s)", h.Distro.S3ClientURL(settings), curlArgs, h.Distro.ClientURL(settings), curlArgs)
+		curlCmd = fmt.Sprintf("(curl -fLO %s%s || curl -fLO %s%s)", h.Distro.S3ClientURL(settings), curlArgs, h.Distro.ClientURL(settings), curlArgs)
 	} else {
-		curlCmd += fmt.Sprintf("curl -LO '%s'%s", h.Distro.ClientURL(settings), curlArgs)
+		curlCmd += fmt.Sprintf("curl -fLO %s%s", h.Distro.ClientURL(settings), curlArgs)
 	}
 	return []string{
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
@@ -363,7 +363,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
 		fmt.Sprintf("cd %s", h.Distro.BootstrapSettings.JasperBinaryDir),
-		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
+		fmt.Sprintf("curl -fLO %s/%s %s", config.URL, downloadedFile, curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
 		fmt.Sprintf("rm -f '%s'", downloadedFile),

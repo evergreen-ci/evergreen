@@ -19,7 +19,7 @@ func insertTestDocuments() error {
 				Id:       "debian",
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
-			RunningTask: "foo",
+			RunningTask: "baz",
 			StartedBy:   evergreen.User,
 		},
 		Host{
@@ -86,6 +86,9 @@ func insertTestDocuments() error {
 func TestHostStatsByProvider(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(db.ClearCollections(Collection))
+	}()
 	assert.NoError(insertTestDocuments())
 
 	result := ProviderStats{}
@@ -102,13 +105,14 @@ func TestHostStatsByProvider(t *testing.T) {
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Provider < alt[j].Provider })
 	sort.Slice(result, func(i, j int) bool { return result[i].Provider < result[j].Provider })
 	assert.Equal(alt, result)
-
-	assert.NoError(db.ClearCollections(Collection))
 }
 
 func TestHostStatsByDistro(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(db.ClearCollections(Collection))
+	}()
 	assert.NoError(insertTestDocuments())
 
 	result := DistroStats{}
@@ -133,6 +137,4 @@ func TestHostStatsByDistro(t *testing.T) {
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Distro < alt[j].Distro })
 	sort.Slice(result, func(i, j int) bool { return result[i].Distro < result[j].Distro })
 	assert.Equal(alt, result)
-
-	assert.NoError(db.ClearCollections(Collection))
 }

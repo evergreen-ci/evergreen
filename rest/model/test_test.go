@@ -38,17 +38,15 @@ func TestTestBuildFromService(t *testing.T) {
 				otr := task.ConvertToOld(input)
 
 				output := &APITest{
-					Id:        utility.ToStringPtr(input.ID.Hex()),
+					ID:        utility.ToStringPtr(input.ID.Hex()),
 					Execution: input.Execution,
 					Status:    utility.ToStringPtr(input.Status),
 					TestFile:  utility.ToStringPtr(input.TestFile),
 					Logs: TestLogs{
-						URL:            utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
-						URLRaw:         utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
-						URLLobster:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
-						LineNum:        15,
-						HTMLDisplayURL: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
-						RawDisplayURL:  utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						LineNum:    15,
 					},
 					ExitCode:  1,
 					StartTime: utility.ToTimePtr(start),
@@ -78,20 +76,17 @@ func TestTestBuildFromService(t *testing.T) {
 				otr := task.ConvertToOld(input)
 
 				output := &APITest{
-					Id:              utility.ToStringPtr(input.ID.Hex()),
-					Execution:       input.Execution,
-					TestFile:        utility.ToStringPtr(input.TestFile),
-					DisplayTestName: utility.ToStringPtr(input.DisplayTestName),
-					GroupId:         utility.ToStringPtr(input.GroupID),
-					Status:          utility.ToStringPtr(input.Status),
+					ID:        utility.ToStringPtr(input.ID.Hex()),
+					Execution: input.Execution,
+					TestFile:  utility.ToStringPtr(input.DisplayTestName),
+					GroupID:   utility.ToStringPtr(input.GroupID),
+					Status:    utility.ToStringPtr(input.Status),
 					Logs: TestLogs{
-						URL:            utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
-						URLRaw:         utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
-						URLLobster:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
-						LineNum:        15,
-						LogId:          utility.ToStringPtr(input.LogID),
-						HTMLDisplayURL: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
-						RawDisplayURL:  utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: nil,
+						LineNum:    15,
+						LogID:      utility.ToStringPtr(input.LogID),
 					},
 					ExitCode:  1,
 					StartTime: utility.ToTimePtr(start),
@@ -117,17 +112,15 @@ func TestTestBuildFromService(t *testing.T) {
 				otr := task.ConvertCedarTestResult(*input)
 
 				output := &APITest{
-					Id:        utility.ToStringPtr(input.TestName),
+					ID:        utility.ToStringPtr(input.TestName),
 					Execution: input.Execution,
 					TestFile:  utility.ToStringPtr(input.TestName),
 					Status:    utility.ToStringPtr(input.Status),
 					Logs: TestLogs{
-						URL:            utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
-						URLRaw:         utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
-						URLLobster:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
-						LineNum:        15,
-						HTMLDisplayURL: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
-						RawDisplayURL:  utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						LineNum:    15,
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),
@@ -155,20 +148,16 @@ func TestTestBuildFromService(t *testing.T) {
 				otr := task.ConvertCedarTestResult(*input)
 
 				output := &APITest{
-					Id:              utility.ToStringPtr(input.TestName),
-					Execution:       input.Execution,
-					TestFile:        utility.ToStringPtr(input.TestName),
-					DisplayTestName: utility.ToStringPtr(input.DisplayTestName),
-					GroupId:         utility.ToStringPtr(input.GroupID),
-					Status:          utility.ToStringPtr(input.Status),
-					LogTestName:     utility.ToStringPtr(input.LogTestName),
+					ID:        utility.ToStringPtr(input.TestName),
+					Execution: input.Execution,
+					TestFile:  utility.ToStringPtr(input.DisplayTestName),
+					GroupID:   utility.ToStringPtr(input.GroupID),
+					Status:    utility.ToStringPtr(input.Status),
 					Logs: TestLogs{
-						URL:            utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
-						URLRaw:         utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
-						URLLobster:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
-						LineNum:        15,
-						HTMLDisplayURL: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
-						RawDisplayURL:  utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
+						LineNum:    15,
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),
@@ -182,7 +171,7 @@ func TestTestBuildFromService(t *testing.T) {
 			name: "TaskID",
 			io: func() (interface{}, *APITest) {
 				output := &APITest{
-					TaskId: utility.ToStringPtr("task"),
+					TaskID: utility.ToStringPtr("task"),
 				}
 
 				return "task", output

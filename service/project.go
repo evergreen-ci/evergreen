@@ -89,7 +89,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	if projRef.UseRepoSettings {
 		projRef, err = model.FindMergedProjectRef(projRef.Id)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			uis.LoggedError(w, r, http.StatusNotFound, err)
 			return
 		}
 	}
