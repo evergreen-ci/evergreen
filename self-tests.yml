@@ -1,5 +1,3 @@
-include:
-  - filename: duplicate.yml
 command_type: test
 stepback: true
 ignore:
