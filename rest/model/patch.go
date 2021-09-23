@@ -74,12 +74,6 @@ type APIChildPatchAlias struct {
 	PatchID *string `json:"patch_id"`
 }
 
-type APIPatchTriggerAlias struct {
-	Alias         *string       `json:"alias"`
-	ChildProject  *string       `json:"child_project"`
-	VariantsTasks []VariantTask `json:"variants_tasks"`
-}
-
 type APIModulePatch struct {
 	BranchName     *string    `json:"branch_name"`
 	HTMLLink       *string    `json:"html_link"`

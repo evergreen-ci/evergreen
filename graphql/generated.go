@@ -504,17 +504,12 @@ type ComplexityRoot struct {
 	}
 
 	PatchTriggerAlias struct {
-		Alias         func(childComplexity int) int
-		ChildProject  func(childComplexity int) int
-		VariantsTasks func(childComplexity int) int
-	}
-
-	PatchTriggerDefinition struct {
 		Alias          func(childComplexity int) int
 		ChildProject   func(childComplexity int) int
 		ParentAsModule func(childComplexity int) int
 		Status         func(childComplexity int) int
 		TaskSpecifiers func(childComplexity int) int
+		VariantsTasks  func(childComplexity int) int
 	}
 
 	Patches struct {
@@ -1119,7 +1114,7 @@ type PatchResolver interface {
 	TaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 	BaseTaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 
-	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerAlias, error)
+	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
 }
 type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
@@ -3397,47 +3392,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchTriggerAlias.ChildProject(childComplexity), true
 
+	case "PatchTriggerAlias.parentAsModule":
+		if e.complexity.PatchTriggerAlias.ParentAsModule == nil {
+			break
+		}
+
+		return e.complexity.PatchTriggerAlias.ParentAsModule(childComplexity), true
+
+	case "PatchTriggerAlias.status":
+		if e.complexity.PatchTriggerAlias.Status == nil {
+			break
+		}
+
+		return e.complexity.PatchTriggerAlias.Status(childComplexity), true
+
+	case "PatchTriggerAlias.taskSpecifiers":
+		if e.complexity.PatchTriggerAlias.TaskSpecifiers == nil {
+			break
+		}
+
+		return e.complexity.PatchTriggerAlias.TaskSpecifiers(childComplexity), true
+
 	case "PatchTriggerAlias.variantsTasks":
 		if e.complexity.PatchTriggerAlias.VariantsTasks == nil {
 			break
 		}
 
 		return e.complexity.PatchTriggerAlias.VariantsTasks(childComplexity), true
-
-	case "PatchTriggerDefinition.alias":
-		if e.complexity.PatchTriggerDefinition.Alias == nil {
-			break
-		}
-
-		return e.complexity.PatchTriggerDefinition.Alias(childComplexity), true
-
-	case "PatchTriggerDefinition.childProject":
-		if e.complexity.PatchTriggerDefinition.ChildProject == nil {
-			break
-		}
-
-		return e.complexity.PatchTriggerDefinition.ChildProject(childComplexity), true
-
-	case "PatchTriggerDefinition.parentAsModule":
-		if e.complexity.PatchTriggerDefinition.ParentAsModule == nil {
-			break
-		}
-
-		return e.complexity.PatchTriggerDefinition.ParentAsModule(childComplexity), true
-
-	case "PatchTriggerDefinition.status":
-		if e.complexity.PatchTriggerDefinition.Status == nil {
-			break
-		}
-
-		return e.complexity.PatchTriggerDefinition.Status(childComplexity), true
-
-	case "PatchTriggerDefinition.taskSpecifiers":
-		if e.complexity.PatchTriggerDefinition.TaskSpecifiers == nil {
-			break
-		}
-
-		return e.complexity.PatchTriggerDefinition.TaskSpecifiers(childComplexity), true
 
 	case "Patches.filteredPatchCount":
 		if e.complexity.Patches.FilteredPatchCount == nil {
@@ -6837,16 +6818,11 @@ type ChildPatchAlias {
 type PatchTriggerAlias {
   alias: String!
   childProject: String!
+  taskSpecifiers: [TaskSpecifier]
+  status: String
+  parentAsModule: String
   variantsTasks: [VariantTask]!
 }
-
-type PatchTriggerDefinition {
-   alias: String!
-   childProject: String!
-   taskSpecifiers: [TaskSpecifier]
-   status: String
-   parentAsModule: String
- }
 
 type UserPatches {
   patches: [Patch!]!
@@ -7236,7 +7212,7 @@ type Project {
   defaultLogger: String
   notifyOnBuildFailure: Boolean
   triggers: [TriggerAlias]
-  patchTriggerAliases: [PatchTriggerDefinition]
+  patchTriggerAliases: [PatchTriggerAlias]
   githubTriggerAliases: [String]
   periodicBuilds: [PeriodicBuild]
   cedarTestResultsEnabled: Boolean
@@ -17962,9 +17938,9 @@ func (ec *executionContext) _Patch_patchTriggerAliases(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIPatchTriggerAlias)
+	res := resTmp.([]*model.APIPatchTriggerDefinition)
 	fc.Result = res
-	return ec.marshalNPatchTriggerAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerAliasᚄ(ctx, field.Selections, res)
+	return ec.marshalNPatchTriggerAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinitionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchDuration_makespan(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
@@ -18326,7 +18302,7 @@ func (ec *executionContext) _PatchTime_submittedAt(ctx context.Context, field gr
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _PatchTriggerAlias_alias(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerAlias) (ret graphql.Marshaler) {
+func (ec *executionContext) _PatchTriggerAlias_alias(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -18360,7 +18336,7 @@ func (ec *executionContext) _PatchTriggerAlias_alias(ctx context.Context, field 
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _PatchTriggerAlias_childProject(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerAlias) (ret graphql.Marshaler) {
+func (ec *executionContext) _PatchTriggerAlias_childProject(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -18394,7 +18370,100 @@ func (ec *executionContext) _PatchTriggerAlias_childProject(ctx context.Context,
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _PatchTriggerAlias_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerAlias) (ret graphql.Marshaler) {
+func (ec *executionContext) _PatchTriggerAlias_taskSpecifiers(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTriggerAlias",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskSpecifiers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APITaskSpecifier)
+	fc.Result = res
+	return ec.marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTriggerAlias_status(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTriggerAlias",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTriggerAlias_parentAsModule(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTriggerAlias",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ParentAsModule, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTriggerAlias_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -18426,167 +18495,6 @@ func (ec *executionContext) _PatchTriggerAlias_variantsTasks(ctx context.Context
 	res := resTmp.([]model.VariantTask)
 	fc.Result = res
 	return ec.marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchTriggerDefinition_alias(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchTriggerDefinition",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Alias, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchTriggerDefinition_childProject(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchTriggerDefinition",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ChildProject, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchTriggerDefinition_taskSpecifiers(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchTriggerDefinition",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TaskSpecifiers, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]model.APITaskSpecifier)
-	fc.Result = res
-	return ec.marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchTriggerDefinition_status(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchTriggerDefinition",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Status, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchTriggerDefinition_parentAsModule(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "PatchTriggerDefinition",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ParentAsModule, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patches_patches(ctx context.Context, field graphql.CollectedField, obj *Patches) (ret graphql.Marshaler) {
@@ -19499,7 +19407,7 @@ func (ec *executionContext) _Project_patchTriggerAliases(ctx context.Context, fi
 	}
 	res := resTmp.([]model.APIPatchTriggerDefinition)
 	fc.Result = res
-	return ec.marshalOPatchTriggerDefinition2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx, field.Selections, res)
+	return ec.marshalOPatchTriggerAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_githubTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -35646,7 +35554,7 @@ func (ec *executionContext) _PatchTime(ctx context.Context, sel ast.SelectionSet
 
 var patchTriggerAliasImplementors = []string{"PatchTriggerAlias"}
 
-func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.SelectionSet, obj *model.APIPatchTriggerAlias) graphql.Marshaler {
+func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.SelectionSet, obj *model.APIPatchTriggerDefinition) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, patchTriggerAliasImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -35665,49 +35573,17 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "taskSpecifiers":
+			out.Values[i] = ec._PatchTriggerAlias_taskSpecifiers(ctx, field, obj)
+		case "status":
+			out.Values[i] = ec._PatchTriggerAlias_status(ctx, field, obj)
+		case "parentAsModule":
+			out.Values[i] = ec._PatchTriggerAlias_parentAsModule(ctx, field, obj)
 		case "variantsTasks":
 			out.Values[i] = ec._PatchTriggerAlias_variantsTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var patchTriggerDefinitionImplementors = []string{"PatchTriggerDefinition"}
-
-func (ec *executionContext) _PatchTriggerDefinition(ctx context.Context, sel ast.SelectionSet, obj *model.APIPatchTriggerDefinition) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, patchTriggerDefinitionImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("PatchTriggerDefinition")
-		case "alias":
-			out.Values[i] = ec._PatchTriggerDefinition_alias(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "childProject":
-			out.Values[i] = ec._PatchTriggerDefinition_childProject(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "taskSpecifiers":
-			out.Values[i] = ec._PatchTriggerDefinition_taskSpecifiers(ctx, field, obj)
-		case "status":
-			out.Values[i] = ec._PatchTriggerDefinition_status(ctx, field, obj)
-		case "parentAsModule":
-			out.Values[i] = ec._PatchTriggerDefinition_parentAsModule(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -40449,11 +40325,11 @@ func (ec *executionContext) marshalNPatchTasks2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._PatchTasks(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNPatchTriggerAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerAlias(ctx context.Context, sel ast.SelectionSet, v model.APIPatchTriggerAlias) graphql.Marshaler {
+func (ec *executionContext) marshalNPatchTriggerAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, sel ast.SelectionSet, v model.APIPatchTriggerDefinition) graphql.Marshaler {
 	return ec._PatchTriggerAlias(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNPatchTriggerAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIPatchTriggerAlias) graphql.Marshaler {
+func (ec *executionContext) marshalNPatchTriggerAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinitionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIPatchTriggerDefinition) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -40477,7 +40353,7 @@ func (ec *executionContext) marshalNPatchTriggerAlias2ᚕᚖgithubᚗcomᚋeverg
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNPatchTriggerAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerAlias(ctx, sel, v[i])
+			ret[i] = ec.marshalNPatchTriggerAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -40490,7 +40366,7 @@ func (ec *executionContext) marshalNPatchTriggerAlias2ᚕᚖgithubᚗcomᚋeverg
 	return ret
 }
 
-func (ec *executionContext) marshalNPatchTriggerAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerAlias(ctx context.Context, sel ast.SelectionSet, v *model.APIPatchTriggerAlias) graphql.Marshaler {
+func (ec *executionContext) marshalNPatchTriggerAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, sel ast.SelectionSet, v *model.APIPatchTriggerDefinition) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -42766,11 +42642,11 @@ func (ec *executionContext) marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._PatchTime(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOPatchTriggerDefinition2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, sel ast.SelectionSet, v model.APIPatchTriggerDefinition) graphql.Marshaler {
-	return ec._PatchTriggerDefinition(ctx, sel, &v)
+func (ec *executionContext) marshalOPatchTriggerAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, sel ast.SelectionSet, v model.APIPatchTriggerDefinition) graphql.Marshaler {
+	return ec._PatchTriggerAlias(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOPatchTriggerDefinition2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, sel ast.SelectionSet, v []model.APIPatchTriggerDefinition) graphql.Marshaler {
+func (ec *executionContext) marshalOPatchTriggerAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, sel ast.SelectionSet, v []model.APIPatchTriggerDefinition) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -42797,7 +42673,7 @@ func (ec *executionContext) marshalOPatchTriggerDefinition2ᚕgithubᚗcomᚋeve
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOPatchTriggerDefinition2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx, sel, v[i])
+			ret[i] = ec.marshalOPatchTriggerAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)

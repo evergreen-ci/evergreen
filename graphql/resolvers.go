@@ -1137,10 +1137,14 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 	return *obj.Id, nil
 }
 
-func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerAlias, error) {
+func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
 	projectRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
 	if err != nil || projectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.ProjectId, err))
+	}
+
+	if len(projectRef.PatchTriggerAliases) == 0 {
+		return nil, nil
 	}
 
 	project := &model.Project{}
@@ -1149,7 +1153,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error unmarshaling project config: %v", err.Error()))
 	}
 
-	aliases := []*restModel.APIPatchTriggerAlias{}
+	aliases := []*restModel.APIPatchTriggerDefinition{}
 	for _, alias := range projectRef.PatchTriggerAliases {
 		matchingTasks, err := project.VariantTasksForSelectors([]patch.PatchTriggerDefinition{alias}, *obj.Requester)
 		if err != nil {
@@ -1163,7 +1167,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 				Tasks: utility.ToStringPtrSlice(vt.Tasks),
 			})
 		}
-		aliases = append(aliases, &restModel.APIPatchTriggerAlias{
+		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
 			Alias:         utility.ToStringPtr(alias.Alias),
 			ChildProject:  utility.ToStringPtr(alias.ChildProject),
 			VariantsTasks: variantsTasks,

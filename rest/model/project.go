@@ -79,6 +79,7 @@ type APIPatchTriggerDefinition struct {
 	TaskSpecifiers []APITaskSpecifier `json:"task_specifiers"`
 	Status         *string            `json:"status,omitempty"`
 	ParentAsModule *string            `json:"parent_as_module,omitempty"`
+	VariantsTasks  []VariantTask      `json:"variants_tasks"`
 }
 
 func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
