@@ -57,7 +57,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	cedarTestStats := checkCedarTestStats(settings)
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
-	// app.AddWrapper(gimlet.WrapperMiddleware(passThroughOptions))
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
