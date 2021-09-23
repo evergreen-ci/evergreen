@@ -1,6 +1,9 @@
 package route
 
 import (
+	"context"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -54,6 +57,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	cedarTestStats := checkCedarTestStats(settings)
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
+	// app.AddWrapper(gimlet.WrapperMiddleware(passThroughOptions))
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
@@ -209,4 +213,36 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionBuilds(sc))
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeRestartVersion(sc))
 	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(checkUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByVersion(sc))
+
+	// Add an options method to every POST request to handle pre-flight Options requests
+	// These requests must not check for credentials and just validate whether a route exists
+	// And allows requests from a origin.
+	for _, route := range app.Routes() {
+		if route.HasMethod("POST") {
+			app.AddRoute(route.GetRoute()).Version(2).Options().RouteHandler(makeOptionsHandler())
+		}
+	}
+}
+
+// optionsHandler is a RequestHandler for resolving options requests
+type optionsHandler struct {
+}
+
+func makeOptionsHandler() gimlet.RouteHandler {
+	return &optionsHandler{}
+}
+
+// Handler returns a pointer to a new optionsHandler.
+func (h *optionsHandler) Factory() gimlet.RouteHandler {
+	return &optionsHandler{}
+}
+
+func (h *optionsHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+// Execute returns an empty json response to the options request
+// The options request only looks for a 200 status code so the response value is not relevant
+func (h *optionsHandler) Run(ctx context.Context) gimlet.Responder {
+	return gimlet.NewJSONResponse(struct{}{})
 }
