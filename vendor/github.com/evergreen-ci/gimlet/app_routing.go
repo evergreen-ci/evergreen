@@ -88,6 +88,10 @@ func (a *APIApp) PrefixRoute(p string) *APIRoute {
 	return route
 }
 
+func (a *APIApp) Routes() []*APIRoute {
+	return a.routes
+}
+
 // Route allows you to set or reset the route path on an existing route.
 func (r *APIRoute) Route(route string) *APIRoute {
 	r.route = route
@@ -275,4 +279,18 @@ func (r *APIRoute) Method(m string) *APIRoute {
 	default:
 		return r
 	}
+}
+
+func (r *APIRoute) HasMethod(method string) bool {
+	for _, m := range r.methods {
+		if m.String() == method {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (r *APIRoute) GetRoute() string {
+	return r.route
 }
