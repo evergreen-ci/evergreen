@@ -227,7 +227,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(err, ShouldBeNil)
 			stubVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
-			Printf("bynnbynn %s", stubVersion.Errors)
 			So(stubVersion.Errors[0], ShouldContainSubstring, errStr)
 			So(len(stubVersion.BuildVariants), ShouldEqual, 0)
 		})
