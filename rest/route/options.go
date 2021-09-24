@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-// optionsHandler is a RequestHandler for resolving options requests
+// optionsHandler is a RequestHandler for resolving options requests.
 type optionsHandler struct {
 }
 
@@ -24,8 +24,8 @@ func (h *optionsHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// Execute returns an empty json response to the options request
-// The options request only looks for a 200 status code so the response value is not relevant
+// Execute returns an empty json response to the options request.
+// The options request only looks for a 200 status code so the response value is not relevant.
 func (h *optionsHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
