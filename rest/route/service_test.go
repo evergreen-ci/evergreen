@@ -1169,6 +1169,23 @@ func TestParentTaskInfo(t *testing.T) {
 	}
 }
 
+func TestOptionsRequest(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+
+	route := "/rest/v2/tasks/test/restart"
+	_, err := http.NewRequest("OPTIONS", route, nil)
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	tbh := &optionsHandler{}
+	resp := tbh.Run(ctx)
+	data, ok := resp.Data().(interface{})
+	assert.True(t, ok)
+	assert.Equal(t, data, struct{}{})
+	assert.Equal(t, resp.Status(), http.StatusOK)
+
+}
+
 func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []model.Model, pages *gimlet.ResponsePages) {
 	if !assert.NotNil(t, h) {
 		return

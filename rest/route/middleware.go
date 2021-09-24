@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -800,12 +799,13 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requester := r.Header.Get("Origin")
-		grip.Debug(message.Fields{
+		grip.DebugWhen(requester != "", message.Fields{
 			"op":              "addCORSHeaders",
 			"requester":       requester,
 			"allowed_origins": allowedOrigins,
-			"adding_headers":  utility.StringSliceContains(allowedOrigins, requester),
+			"adding_headers":  util.StringContainsSliceRegex(allowedOrigins, requester),
 			"settings_is_nil": evergreen.GetEnvironment().Settings() == nil,
+			"headers":         r.Header,
 		})
 		if len(allowedOrigins) > 0 {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
@@ -815,6 +815,7 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
+				w.Header().Add("Access-Control-Max-Age", "600")
 			}
 		}
 		next(w, r)
