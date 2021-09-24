@@ -8,6 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const MergeProjectConfigError = "error merging project configs"
+
 // mergeUnorderedUnique merges fields that are lists where the order doesn't matter.
 // These fields can be defined throughout multiple yamls but cannot contain duplicate keys.
 // These fields are: [task, task group, parameter, module, function]
@@ -280,5 +282,5 @@ func (pp *ParserProject) mergeMultipleProjectConfigs(toMerge *ParserProject) err
 		catcher.Add(err)
 	}
 
-	return errors.Wrap(catcher.Resolve(), "error merging project configs")
+	return errors.Wrap(catcher.Resolve(), MergeProjectConfigError)
 }

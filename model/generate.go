@@ -135,7 +135,7 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 	newPP.Id = v.Id
 	p, err = TranslateProject(newPP)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "error translating project")
+		return nil, nil, nil, errors.Wrap(err, TranslateProjectError)
 	}
 	return p, newPP, v, nil
 }

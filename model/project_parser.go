@@ -23,6 +23,7 @@ import (
 )
 
 const LoadProjectError = "load project error(s)"
+const TranslateProjectError = "error translating project"
 
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
@@ -787,7 +788,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	catcher.Extend(errs)
-	return proj, errors.Wrap(catcher.Resolve(), "error translating project")
+	return proj, errors.Wrap(catcher.Resolve(), TranslateProjectError)
 }
 
 func (pp *ParserProject) AddTask(name string, commands []PluginCommandConf) {

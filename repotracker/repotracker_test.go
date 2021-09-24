@@ -221,13 +221,12 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		})
 
 		Convey("We should handle invalid configuration files with merging errors gracefully by storing a stub version", func() {
-			errStr := "merging project configs"
-			poller.setNextError(errors.New(errStr))
+			poller.setNextError(errors.New(model.MergeProjectConfigError))
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
 			stubVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
-			So(stubVersion.Errors[0], ShouldContainSubstring, errStr)
+			So(stubVersion.Errors[0], ShouldContainSubstring, model.MergeProjectConfigError)
 			So(len(stubVersion.BuildVariants), ShouldEqual, 0)
 		})
 
