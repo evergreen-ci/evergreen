@@ -103,14 +103,21 @@ vendor:
 
 .PHONY:vendor
 vendor-clean:
+	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/google.golang.org/genproto/
+	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/jpillora/
 	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/evergreen-ci/utility/gitignore.go
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/stretchr/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/pkg/errors/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/golang.org/x/net/
