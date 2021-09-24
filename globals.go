@@ -952,6 +952,16 @@ var SuperuserPermissions = []string{
 	PermissionRoleModify,
 }
 
+const (
+	BasicProjectAccessRole = "basic_project_access"
+	BasicDistroAccessRole  = "basic_distro_access"
+)
+
+var BasicAccessRoles = []string{
+	BasicProjectAccessRole,
+	BasicDistroAccessRole,
+}
+
 // Evergreen log types.
 const (
 	LogTypeAgent  = "agent_log"
