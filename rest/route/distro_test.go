@@ -1415,7 +1415,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal([]model.APIEnvVar{{Key: utility.ToStringPtr("envKey"), Value: utility.ToStringPtr("envValue")}}, apiDistro.BootstrapSettings.Env)
 	s.Equal(1, apiDistro.BootstrapSettings.ResourceLimits.NumFiles)
 	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
-	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.NumTasks)
+	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.NumTasks)
 	s.Equal(4, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	s.Equal(5, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	s.Require().Len(apiDistro.BootstrapSettings.PreconditionScripts, 1)
