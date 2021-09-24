@@ -1147,14 +1147,13 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 		return nil, nil
 	}
 
-	project := &model.Project{}
-	opts := model.GetProjectOpts{}
-	if _, err = model.LoadProjectInto(ctx, []byte(*obj.PatchedConfig), opts, *obj.ProjectId, project); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error unmarshaling project config: %v", err.Error()))
-	}
-
 	aliases := []*restModel.APIPatchTriggerDefinition{}
 	for _, alias := range projectRef.PatchTriggerAliases {
+		_, project, err := model.FindLatestVersionWithValidProject(alias.ChildProject)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Problem getting last known project for '%s'", alias.ChildProject).Error())
+		}
+
 		matchingTasks, err := project.VariantTasksForSelectors([]patch.PatchTriggerDefinition{alias}, *obj.Requester)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem matching tasks to alias definitions: %v", err.Error()))

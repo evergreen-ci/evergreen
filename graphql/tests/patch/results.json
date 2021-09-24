@@ -272,9 +272,9 @@
                 "childProject": "spruce",
                 "variantsTasks": [
                   {
-                    "name": "ubuntu1604",
+                    "name": "ubuntu1804",
                     "tasks": [
-                      "lint"
+                      "compile"
                     ]
                   }
                 ]
