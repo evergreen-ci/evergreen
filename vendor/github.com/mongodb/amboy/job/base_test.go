@@ -41,6 +41,7 @@ func (s *BaseCheckSuite) TestAddErrorWithNilObjectDoesNotChangeErrorState() {
 		s.base.AddError(nil)
 		s.NoError(s.base.Error())
 		s.Len(s.base.status.Errors, 0)
+		s.Zero(s.base.status.ErrorCount)
 		s.False(s.base.HasErrors())
 	}
 }
@@ -60,6 +61,7 @@ func (s *BaseCheckSuite) TestAddErrorsPersistsErrorsInJob() {
 		s.base.AddError(errors.New("foo"))
 		s.Error(s.base.Error())
 		s.Len(s.base.status.Errors, i)
+		s.Equal(i, s.base.status.ErrorCount)
 		s.True(s.base.HasErrors())
 		s.Len(strings.Split(s.base.Error().Error(), "\n"), i)
 	}
