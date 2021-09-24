@@ -145,6 +145,7 @@ type Mutation {
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
   bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
+  overrideTaskDependencies(taskId: String!): Task!
 }
 
 input VersionToRestart {

@@ -2169,6 +2169,21 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	return apiTask, err
 }
 
+func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID string) (*restModel.APITask, error) {
+	currentUser := MustHaveUser(ctx)
+	t, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
+	}
+	return GetAPITaskFromTask(ctx, r.sc, *t)
+}
+
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 	patchUpdateReq := PatchUpdate{}
 	patchUpdateReq.BuildFromGqlInput(configure)

@@ -234,6 +234,7 @@ var (
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
 							isUnattainable,
+							{"$eq": []interface{}{"$" + OverrideDependenciesKey, false}},
 						},
 					},
 					"then": evergreen.TaskStatusBlocked,

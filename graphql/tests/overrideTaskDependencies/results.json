@@ -1,0 +1,23 @@
+{
+    "tests": [
+        {
+            "query_file": "overrideTaskDependencies.graphql",
+            "result": {
+                "data": {
+                    "overrideTaskDependencies": {
+                        "id": "t1",
+                        "execution": 0,
+                        "status": "will-run",
+                        "reliesOn": [
+                            {
+                            "name": "a dep",
+                            "metStatus": "UNMET",
+                            "requiredStatus": "MUST_SUCCEED"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
