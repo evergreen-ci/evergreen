@@ -43,6 +43,7 @@ type APIPatch struct {
 	CanEnqueueToCommitQueue bool                 `json:"can_enqueue_to_commit_queue"`
 	ChildPatches            []APIPatch           `json:"child_patches"`
 	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
+	Requester               *string              `json:"requester"`
 }
 
 type DownstreamTasks struct {
@@ -137,6 +138,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Activated = v.Activated
 	apiPatch.Alias = utility.ToStringPtr(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
+	apiPatch.Requester = utility.ToStringPtr(v.GetRequester())
 
 	if v.Parameters != nil {
 		apiPatch.Parameters = []APIParameter{}

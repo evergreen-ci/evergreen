@@ -1138,17 +1138,46 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 }
 
 func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
-	project, err := r.sc.FindProjectById(*obj.ProjectId, true)
-	if err != nil || project == nil {
+	projectRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
+	if err != nil || projectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.ProjectId, err))
 	}
 
-	aliases := []*restModel.APIPatchTriggerDefinition{}
-	for _, alias := range project.PatchTriggerAliases {
-		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
-			Alias:        utility.ToStringPtr(alias.Alias),
-			ChildProject: utility.ToStringPtr(alias.ChildProject)})
+	if len(projectRef.PatchTriggerAliases) == 0 {
+		return nil, nil
 	}
+
+	projectCache := map[string]*model.Project{}
+	aliases := []*restModel.APIPatchTriggerDefinition{}
+	for _, alias := range projectRef.PatchTriggerAliases {
+		project, projectCached := projectCache[alias.ChildProject]
+		if !projectCached {
+			_, project, err = model.FindLatestVersionWithValidProject(alias.ChildProject)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Problem getting last known project for '%s'", alias.ChildProject).Error())
+			}
+			projectCache[alias.ChildProject] = project
+		}
+
+		matchingTasks, err := project.VariantTasksForSelectors([]patch.PatchTriggerDefinition{alias}, *obj.Requester)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem matching tasks to alias definitions: %v", err.Error()))
+		}
+
+		variantsTasks := []restModel.VariantTask{}
+		for _, vt := range matchingTasks {
+			variantsTasks = append(variantsTasks, restModel.VariantTask{
+				Name:  utility.ToStringPtr(vt.Variant),
+				Tasks: utility.ToStringPtrSlice(vt.Tasks),
+			})
+		}
+		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
+			Alias:         utility.ToStringPtr(alias.Alias),
+			ChildProject:  utility.ToStringPtr(alias.ChildProject),
+			VariantsTasks: variantsTasks,
+		})
+	}
+
 	return aliases, nil
 }
 
