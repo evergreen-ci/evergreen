@@ -324,7 +324,7 @@ type Connector interface {
 	UpdateProjectAliases(string, []restModel.APIProjectAlias) error
 	// UpdateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
 	// upserts any current aliases, and deletes any aliases that existed previously but not anymore (only
-	// considers the aliases that are relevant for the section).
+	// considers the aliases that are relevant for the section). Returns if any aliases have been modified.
 	UpdateAliasesForSection(string, []restModel.APIProjectAlias, []model.ProjectAlias, model.ProjectPageSection) (bool, error)
 	// HasMatchingGitTagAliasAndRemotePath returns true if the project has aliases defined that match the given tag, and
 	// returns the remote path if applicable
@@ -342,9 +342,9 @@ type Connector interface {
 	// GeneratePoll checks to see if a `generate.tasks` job has finished.
 	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, []string, error)
 
-	// SaveSubscriptions, given an owner, a list of current subscriptions, a list of previous subscriptions, and an isProject boolean,
+	// SaveSubscriptions, given an owner, a list of current subscriptions and an isProject boolean and
 	// upserts the given set of API subscriptions (if the owner is a project type, verify that all current subscriptions have
-	// the right owner and owner type) and deletes any subscriptions that existed previously but not anymore.
+	// the right owner and owner type).
 	SaveSubscriptions(string, []restModel.APISubscription, bool) error
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)

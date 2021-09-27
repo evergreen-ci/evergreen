@@ -69,6 +69,7 @@ type MockConnector struct {
 	MockTaskReliabilityConnector
 	MockCommitQueueConnector
 	MockSchedulerConnector
+	MockDBConnector
 }
 
 func (ctx *MockConnector) GetURL() string          { return ctx.URL }
