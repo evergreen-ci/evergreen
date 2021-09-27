@@ -1671,7 +1671,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	// Let the individual TaskLogs resolvers handle fetching logs for the task
 	// We can avoid the overhead of fetching task logs that we will not view
 	// and we can avoid handling errors that we will not see
-	return &TaskLogs{TaskID: taskID, Execution: *execution}, nil
+	return &TaskLogs{TaskID: taskID, Execution: utility.FromIntPtr(&t.Execution)}, nil
 }
 
 func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
@@ -3440,14 +3440,14 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 				// fetch the child patch to see if it's activated
 				p, err := patch.FindOneId(cp)
 				if err != nil {
-					return nil, err
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching a child patch: %s", err.Error()))
 				}
 				if p == nil {
 					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
 				}
 				if p.Version != "" {
 					//only return the error if the version is activated (and we therefore expect it to be there)
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch child version: %s ", err.Error()))
+					return nil, InternalServerError.Send(ctx, "An unexpected error occured. Could not find a child version and expected one.")
 				}
 			}
 			if cv != nil {
