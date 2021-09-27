@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -48,6 +49,11 @@ type SecretsManagerClient struct {
 
 	DescribeSecretInput  *secretsmanager.DescribeSecretInput
 	DescribeSecretOutput *secretsmanager.DescribeSecretOutput
+	DescribeSecretError  error
+
+	ListSecretsInput  *secretsmanager.ListSecretsInput
+	ListSecretsOutput *secretsmanager.ListSecretsOutput
+	ListSecretsError  error
 
 	UpdateSecretInput  *secretsmanager.UpdateSecretInput
 	UpdateSecretOutput *secretsmanager.UpdateSecretOutput
@@ -85,10 +91,11 @@ func (c *SecretsManagerClient) CreateSecret(ctx context.Context, in *secretsmana
 
 	ts := time.Now()
 	GlobalSecretCache[name] = StoredSecret{
+		ARN:         utility.FromStringPtr(in.Name),
+		Value:       utility.FromStringPtr(in.SecretString),
 		BinaryValue: in.SecretBinary,
 		Created:     ts,
 		Accessed:    ts,
-		Value:       utility.FromStringPtr(in.SecretString),
 	}
 
 	return &secretsmanager.CreateSecretOutput{
@@ -139,8 +146,8 @@ func (c *SecretsManagerClient) GetSecretValue(ctx context.Context, in *secretsma
 func (c *SecretsManagerClient) DescribeSecret(ctx context.Context, in *secretsmanager.DescribeSecretInput) (*secretsmanager.DescribeSecretOutput, error) {
 	c.DescribeSecretInput = in
 
-	if c.DescribeSecretOutput != nil {
-		return c.DescribeSecretOutput, nil
+	if c.DescribeSecretOutput != nil || c.DescribeSecretError != nil {
+		return c.DescribeSecretOutput, c.DescribeSecretError
 	}
 
 	if in.SecretId == nil {
@@ -160,6 +167,75 @@ func (c *SecretsManagerClient) DescribeSecret(ctx context.Context, in *secretsma
 		LastChangedDate:  utility.ToTimePtr(s.Updated),
 		DeletedDate:      utility.ToTimePtr(s.Deleted),
 	}, nil
+}
+
+// ListSecrets saves the input options and returns all matching mock secrets'
+// metadata information. The mock output can be customized. By default, it will
+// return any matching cached mock secrets in the global secret cache.
+func (c *SecretsManagerClient) ListSecrets(ctx context.Context, in *secretsmanager.ListSecretsInput) (*secretsmanager.ListSecretsOutput, error) {
+	c.ListSecretsInput = in
+
+	if c.ListSecretsOutput != nil || c.ListSecretsError != nil {
+		return c.ListSecretsOutput, c.ListSecretsError
+	}
+
+	matched := map[string]StoredSecret{}
+	for _, filter := range in.Filters {
+		if filter == nil {
+			continue
+		}
+
+		if filter.Key != nil {
+			name := utility.FromStringPtr(filter.Key)
+			s, ok := GlobalSecretCache[name]
+			if !ok {
+				continue
+			}
+
+			matched[name] = s
+		}
+
+		for _, v := range filter.Values {
+			if v == nil {
+				continue
+			}
+
+			for _, name := range c.namesMatchingValue(utility.FromStringPtr(v)) {
+				matched[name] = GlobalSecretCache[name]
+			}
+		}
+	}
+
+	var converted []*secretsmanager.SecretListEntry
+	for name, s := range matched {
+		converted = append(converted, &secretsmanager.SecretListEntry{
+			ARN:              utility.ToStringPtr(s.ARN),
+			Name:             utility.ToStringPtr(name),
+			CreatedDate:      utility.ToTimePtr(s.Created),
+			LastAccessedDate: utility.ToTimePtr(s.Accessed),
+			LastChangedDate:  utility.ToTimePtr(s.Updated),
+			DeletedDate:      utility.ToTimePtr(s.Deleted),
+		})
+	}
+
+	return &secretsmanager.ListSecretsOutput{
+		SecretList: converted,
+	}, nil
+}
+
+// namesMatchingValue returns the names of all secrets that match the given
+// value. If the value begins with a "!", the match is negated.
+func (c *SecretsManagerClient) namesMatchingValue(val string) []string {
+	var names []string
+	for name, s := range GlobalSecretCache {
+		if strings.HasPrefix(val, "!") && s.Value != val[1:] {
+			names = append(names, name)
+		}
+		if !strings.HasPrefix(val, "!") && s.Value == val {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 // UpdateSecretValue saves the input options and returns an updated mock secret

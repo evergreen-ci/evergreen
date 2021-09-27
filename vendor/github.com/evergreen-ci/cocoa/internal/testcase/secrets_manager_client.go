@@ -23,7 +23,7 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 	return map[string]SecretsManagerClientTestCase{
 		"CreateSecretSucceeds": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
 			out, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
-				Name:         aws.String(testutil.NewSecretName(t.Name())),
+				Name:         aws.String(testutil.NewSecretName(t)),
 				SecretString: aws.String(utility.RandomString()),
 			})
 			require.NoError(t, err)
@@ -37,7 +37,7 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 			assert.Zero(t, out)
 		},
 		"GetSecretValueSucceedsWithExistingSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
-			secretName := testutil.NewSecretName(t.Name())
+			secretName := testutil.NewSecretName(t)
 			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 				Name:         aws.String(secretName),
 				SecretString: aws.String("foo"),
@@ -64,13 +64,13 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 		},
 		"GetSecretValueFailsWithValidNonexistentSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
 			out, err := c.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-				SecretId: aws.String(testutil.NewSecretName(t.Name())),
+				SecretId: aws.String(testutil.NewSecretName(t)),
 			})
 			assert.Error(t, err)
 			assert.Zero(t, out)
 		},
 		"UpdateSecretValueSucceedsWithExistingSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
-			secretName := testutil.NewSecretName(t.Name())
+			secretName := testutil.NewSecretName(t)
 			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
 				Name:         aws.String(secretName),
 				SecretString: aws.String("bar"),
@@ -104,7 +104,7 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 		},
 		"UpdateSecretValueFailsWithValidNonexistentSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
 			out, err := c.UpdateSecretValue(ctx, &secretsmanager.UpdateSecretInput{
-				SecretId:     aws.String(testutil.NewSecretName(t.Name())),
+				SecretId:     aws.String(testutil.NewSecretName(t)),
 				SecretString: aws.String("hello"),
 			})
 			assert.Error(t, err)
@@ -112,7 +112,7 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 		},
 		"DescribeSecretSucceeds": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
 			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
-				Name:         aws.String(testutil.NewSecretName(t.Name())),
+				Name:         aws.String(testutil.NewSecretName(t)),
 				SecretString: aws.String("bar"),
 			})
 			require.NoError(t, err)
@@ -131,7 +131,7 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 		},
 		"DescribeSecretSucceedsAfterDeletion": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
 			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
-				Name:         aws.String(testutil.NewSecretName(t.Name())),
+				Name:         aws.String(testutil.NewSecretName(t)),
 				SecretString: aws.String("bar"),
 			})
 			require.NoError(t, err)
@@ -157,7 +157,7 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 		},
 		"DescribeSecretFailsWithValidNonexistentSecret": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
 			out, err := c.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{
-				SecretId: aws.String(testutil.NewSecretName(t.Name())),
+				SecretId: aws.String(testutil.NewSecretName(t)),
 			})
 			assert.Error(t, err)
 			assert.Zero(t, out)
@@ -169,7 +169,7 @@ func SecretsManagerClientTests() map[string]SecretsManagerClientTestCase {
 		},
 		"DeleteSecretSucceeds": func(ctx context.Context, t *testing.T, c cocoa.SecretsManagerClient) {
 			createOut, err := c.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
-				Name:         aws.String(testutil.NewSecretName(t.Name())),
+				Name:         aws.String(testutil.NewSecretName(t)),
 				SecretString: aws.String("hello"),
 			})
 			require.NoError(t, err)

@@ -15,7 +15,10 @@ type ECSPod interface {
 	Resources() ECSPodResources
 	// StatusInfo returns the current cached status information for the pod.
 	StatusInfo() ECSPodStatusInfo
-	// TODO (EVG-15161): add GetLatestStatus method to get non-cached status.
+	// LatestStatusInfo returns the latest non-cached status information for the
+	// pod. Implementations should query ECS directly for its most up-to-date
+	// status.
+	LatestStatusInfo(ctx context.Context) (*ECSPodStatusInfo, error)
 	// Stop stops the running pod without cleaning up any of its underlying
 	// resources.
 	Stop(ctx context.Context) error
