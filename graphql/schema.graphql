@@ -793,6 +793,7 @@ type Task {
   projectId: String!
   reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
+  canOverrideDependencies: Boolean!
   requester: String!
   restarts: Int
   revision: String

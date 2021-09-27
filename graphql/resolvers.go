@@ -364,6 +364,32 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 	return dependencies, nil
 }
 
+func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restModel.APITask) (bool, error) {
+	currentUser := MustHaveUser(ctx)
+	i, err := at.ToService()
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+	if t.OverrideDependencies {
+		return false, nil
+	}
+	requiredPermission := gimlet.PermissionOpts{
+		ResourceType:  "project",
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: 30,
+		Resource:      t.Project,
+	}
+	if len(t.DependsOn) > 0 && currentUser.HasPermission(requiredPermission) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
 	p, err := model.FindBranchProjectRef(*at.Identifier)
 	if err != nil || p == nil {
