@@ -729,6 +729,7 @@ type ComplexityRoot struct {
 		CanSync                 func(childComplexity int) int
 		CanUnschedule           func(childComplexity int) int
 		CreateTime              func(childComplexity int) int
+		DependsOn               func(childComplexity int) int
 		Details                 func(childComplexity int) int
 		DispatchTime            func(childComplexity int) int
 		DisplayName             func(childComplexity int) int
@@ -1206,6 +1207,7 @@ type TaskResolver interface {
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
+	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
@@ -4682,6 +4684,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.CreateTime(childComplexity), true
 
+	case "Task.dependsOn":
+		if e.complexity.Task.DependsOn == nil {
+			break
+		}
+
+		return e.complexity.Task.DependsOn(childComplexity), true
+
 	case "Task.details":
 		if e.complexity.Task.Details == nil {
 			break
@@ -6986,7 +6995,7 @@ type Dependency {
   metStatus: MetStatus!
   requiredStatus: RequiredStatus!
   buildVariant: String!
-  uiLink: String!
+  uiLink: String! @deprecated(reason: "uiLink is deprecated and should not be used")
 }
 
 type PatchMetadata {
@@ -7059,7 +7068,8 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
-  reliesOn: [Dependency!]!
+  reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
+  dependsOn: [Dependency!]
   requester: String!
   restarts: Int
   revision: String
@@ -24979,6 +24989,37 @@ func (ec *executionContext) _Task_reliesOn(ctx context.Context, field graphql.Co
 	return ec.marshalNDependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_dependsOn(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().DependsOn(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*Dependency)
+	fc.Result = res
+	return ec.marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_requester(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -37228,6 +37269,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				}
 				return res
 			})
+		case "dependsOn":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_dependsOn(ctx, field, obj)
+				return res
+			})
 		case "requester":
 			out.Values[i] = ec._Task_requester(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -41891,6 +41943,46 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 
 func (ec *executionContext) marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
 	return ec._CommitQueueParams(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx context.Context, sel ast.SelectionSet, v []*Dependency) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDependency2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependency(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalODistro2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v model.APIDistro) graphql.Marshaler {
