@@ -147,7 +147,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		cmds, ok := funcs[name]
 		if !ok {
 			errs = append(errs, fmt.Sprintf("function '%s' not found in project functions", name))
-		} else {
+		} else if cmds != nil {
 			for i, c := range cmds.List() {
 				if c.Function != "" {
 					errs = append(errs, fmt.Sprintf("can not reference a function within a "+
