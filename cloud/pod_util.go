@@ -289,13 +289,22 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, p *pod.Pod) []cocoa
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetValue(v))
 	}
 
-	for k, v := range p.TaskContainerCreationOpts.EnvSecrets {
-		secretName := makeSecretName(smConf, p, k)
-		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetSecretOptions(
-			*cocoa.NewSecretOptions().
-				SetName(secretName).
-				SetNewValue(v).
-				SetOwned(true)))
+	for envVarName, s := range p.TaskContainerCreationOpts.EnvSecrets {
+		opts := cocoa.NewSecretOptions().SetOwned(utility.FromBoolPtr(s.Owned))
+		if utility.FromBoolPtr(s.Exists) && s.ExternalID != "" {
+			opts.SetID(s.ExternalID)
+		} else if s.Name != "" {
+			opts.SetName(makeSecretName(smConf, p, s.Name))
+		} else {
+			opts.SetName(makeSecretName(smConf, p, envVarName))
+		}
+		if !utility.FromBoolPtr(s.Exists) && s.Value != "" {
+			opts.SetNewValue(s.Value)
+		}
+
+		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().
+			SetName(envVarName).
+			SetSecretOptions(*opts))
 	}
 
 	return allEnvVars
