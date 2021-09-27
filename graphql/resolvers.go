@@ -3447,7 +3447,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 				}
 				if p.Version != "" {
 					//only return the error if the version is activated (and we therefore expect it to be there)
-					return nil, InternalServerError.Send(ctx, "An unexpected error occured. Could not find a child version and expected one.")
+					return nil, InternalServerError.Send(ctx, "An unexpected error occurred. Could not find a child version and expected one.")
 				}
 			}
 			if cv != nil {
