@@ -170,6 +170,7 @@ type ComplexityRoot struct {
 		MetStatus      func(childComplexity int) int
 		Name           func(childComplexity int) int
 		RequiredStatus func(childComplexity int) int
+		TaskID         func(childComplexity int) int
 		UILink         func(childComplexity int) int
 	}
 
@@ -1670,6 +1671,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Dependency.RequiredStatus(childComplexity), true
+
+	case "Dependency.taskId":
+		if e.complexity.Dependency.TaskID == nil {
+			break
+		}
+
+		return e.complexity.Dependency.TaskID(childComplexity), true
 
 	case "Dependency.uiLink":
 		if e.complexity.Dependency.UILink == nil {
@@ -7004,6 +7012,7 @@ type Dependency {
   metStatus: MetStatus!
   requiredStatus: RequiredStatus!
   buildVariant: String!
+  taskId: String!
   uiLink: String! @deprecated(reason: "uiLink is deprecated and should not be used")
 }
 
@@ -10894,6 +10903,40 @@ func (ec *executionContext) _Dependency_buildVariant(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.BuildVariant, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Dependency_taskId(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Dependency",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33691,6 +33734,11 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 			}
 		case "buildVariant":
 			out.Values[i] = ec._Dependency_buildVariant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskId":
+			out.Values[i] = ec._Dependency_taskId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

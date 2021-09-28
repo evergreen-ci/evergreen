@@ -357,6 +357,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 			BuildVariant:   depTask.BuildVariant,
 			MetStatus:      metStatus,
 			RequiredStatus: requiredStatus,
+			TaskID:         dep.TaskId,
 		}
 
 		dependencies = append(dependencies, &dependency)
@@ -2263,7 +2264,7 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
-	// Clear DisplayStatus so GetDisplayStatus recalculates it
+	// Clear DisplayStatus so GetDisplayStatus recalculates it.
 	t.DisplayStatus = ""
 	t.DisplayStatus = t.GetDisplayStatus()
 	return GetAPITaskFromTask(ctx, r.sc, *t)
