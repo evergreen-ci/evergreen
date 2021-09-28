@@ -329,8 +329,8 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 				Image:      "image",
 				MemoryMB:   128,
 				CPU:        128,
-				OS:         "linux",
-				Arch:       "amd64",
+				OS:         pod.OSLinux,
+				Arch:       pod.ArchAMD64,
 				WorkingDir: "/root",
 				EnvVars: map[string]string{
 					"name": "value",
@@ -385,6 +385,9 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		require.NotZero(t, opts.ExecutionOpts.AWSVPCOpts)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.Subnets, opts.ExecutionOpts.AWSVPCOpts.Subnets)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, opts.ExecutionOpts.AWSVPCOpts.SecurityGroups)
+		require.NotZero(t, opts.ExecutionOpts.PlacementOpts)
+		require.Len(t, opts.ExecutionOpts.PlacementOpts.InstanceFilters, 1)
+		assert.Equal(t, "ecs.cpu-architecture == x86_64", opts.ExecutionOpts.PlacementOpts.InstanceFilters[0])
 
 		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
 		assert.Contains(t, utility.FromStringPtr(opts.Name), p.ID)

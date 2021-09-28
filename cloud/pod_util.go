@@ -186,7 +186,7 @@ const (
 // cocoa.ECSPodExecutionOptions.
 func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSPodCreationOptions, error) {
 	ecsConf := settings.Providers.AWS.Pod.ECS
-	execOpts, err := exportECSPodExecutionOptions(ecsConf, p.TaskContainerCreationOpts.OS)
+	execOpts, err := exportECSPodExecutionOptions(ecsConf, p.TaskContainerCreationOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod execution options")
 	}
@@ -247,9 +247,26 @@ func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.
 	return def, nil
 }
 
+// podArchToECSArch exports a pod container CPU architecture to an ECS
+// CPU architecture.
+func exportECSPodArch(arch pod.Arch) string {
+	switch arch {
+	case pod.ArchAMD64:
+		return "x86_64"
+	case pod.ArchARM64:
+		return "arm64"
+	default:
+		return ""
+	}
+}
+
+const (
+	ecsCPUArchConstraint = "ecs.cpu-architecture"
+)
+
 // exportECSPodExecutionOptions exports the ECS configuration into
 // cocoa.ECSPodExecutionOptions.
-func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*cocoa.ECSPodExecutionOptions, error) {
+func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodExecutionOptions, error) {
 	opts := cocoa.NewECSPodExecutionOptions()
 
 	if len(ecsConfig.AWSVPC.Subnets) != 0 || len(ecsConfig.AWSVPC.SecurityGroups) != 0 {
@@ -258,13 +275,18 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (
 			SetSecurityGroups(ecsConfig.AWSVPC.SecurityGroups))
 	}
 
+	if arch := exportECSPodArch(containerOpts.Arch); arch != "" {
+		archConstraint := fmt.Sprintf("%s == %s", ecsCPUArchConstraint, arch)
+		opts.SetPlacementOptions(*cocoa.NewECSPodPlacementOptions().AddInstanceFilters(archConstraint))
+	}
+
 	for _, cluster := range ecsConfig.Clusters {
-		if string(podOS) == string(cluster.Platform) {
+		if string(containerOpts.OS) == string(cluster.Platform) {
 			return opts.SetCluster(cluster.Name), nil
 		}
 	}
 
-	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(podOS))
+	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(containerOpts.OS))
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.

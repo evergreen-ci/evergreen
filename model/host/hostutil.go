@@ -313,6 +313,9 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		if numFiles := h.Distro.BootstrapSettings.ResourceLimits.NumFiles; numFiles != 0 {
 			params = append(params, fmt.Sprintf("--limit_num_files=%d", numFiles))
 		}
+		if numTasks := h.Distro.BootstrapSettings.ResourceLimits.NumTasks; numTasks != 0 {
+			params = append(params, fmt.Sprintf("--limit_num_tasks=%d", numTasks))
+		}
 		if lockedMem := h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB; lockedMem != 0 {
 			params = append(params, fmt.Sprintf("--limit_locked_memory=%d", lockedMem))
 		}

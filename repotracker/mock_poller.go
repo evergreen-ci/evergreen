@@ -56,7 +56,7 @@ func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*m
 
 	p, err := model.TranslateProject(d.parserProject)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error translating project")
+		return nil, nil, errors.Wrapf(err, model.TranslateProjectError)
 	}
 	return p, d.parserProject, nil
 }

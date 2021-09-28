@@ -535,6 +535,7 @@ type PatchTriggerAlias {
   taskSpecifiers: [TaskSpecifier]
   status: String
   parentAsModule: String
+  variantsTasks: [VariantTask]!
 }
 
 type UserPatches {

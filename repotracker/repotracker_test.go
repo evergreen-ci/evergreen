@@ -220,6 +220,16 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(len(stubVersion.BuildVariants), ShouldEqual, 0)
 		})
 
+		Convey("We should handle invalid configuration files with merging errors gracefully by storing a stub version", func() {
+			poller.setNextError(errors.New(model.MergeProjectConfigError))
+			err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
+			stubVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			So(err, ShouldBeNil)
+			So(stubVersion.Errors[0], ShouldContainSubstring, model.MergeProjectConfigError)
+			So(len(stubVersion.BuildVariants), ShouldEqual, 0)
+		})
+
 		Convey("Project configuration files with missing distros should still create versions", func() {
 			poller.addBadDistro("Cray-Y-MP")
 			err := repoTracker.StoreRevisions(ctx, revisions)

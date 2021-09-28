@@ -831,7 +831,6 @@ func (d *mongoDriver) Complete(ctx context.Context, j amboy.Job) error {
 
 func (d *mongoDriver) prepareInterchange(j amboy.Job) (*registry.JobInterchange, error) {
 	stat := j.Status()
-	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
@@ -1132,19 +1131,30 @@ func (d *mongoDriver) getNextQuery() bson.M {
 
 	d.modifyQueryForGroup(qd)
 
-	timeLimits := bson.M{}
+	var timeLimits []bson.M
 	if d.opts.CheckWaitUntil {
-		timeLimits["time_info.wait_until"] = bson.M{"$lte": now}
+		checkWaitUntil := bson.M{"$or": []bson.M{
+			{"time_info.wait_until": bson.M{"$lte": now}},
+			{"time_info.wait_until": bson.M{"$exists": false}},
+		}}
+		timeLimits = append(timeLimits, checkWaitUntil)
 	}
+
 	if d.opts.CheckDispatchBy {
-		timeLimits["$or"] = []bson.M{
+		checkDispatchBy := bson.M{"$or": []bson.M{
 			{"time_info.dispatch_by": bson.M{"$gt": now}},
+			{"time_info.dispatch_by": bson.M{"$exists": false}},
+			// TODO (EVG-XXX): remove zero value case after 90 day TTL
+			// (2022-01-01) since the field will be omitted.
 			{"time_info.dispatch_by": time.Time{}},
-		}
+		}}
+		timeLimits = append(timeLimits, checkDispatchBy)
 	}
+
 	if len(timeLimits) > 0 {
-		qd = bson.M{"$and": []bson.M{qd, timeLimits}}
+		qd = bson.M{"$and": append(timeLimits, qd)}
 	}
+
 	return qd
 }
 
