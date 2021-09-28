@@ -723,6 +723,7 @@ type ComplexityRoot struct {
 		BuildVariantDisplayName func(childComplexity int) int
 		CanAbort                func(childComplexity int) int
 		CanModifyAnnotation     func(childComplexity int) int
+		CanOverrideDependencies func(childComplexity int) int
 		CanRestart              func(childComplexity int) int
 		CanSchedule             func(childComplexity int) int
 		CanSetPriority          func(childComplexity int) int
@@ -1208,6 +1209,7 @@ type TaskResolver interface {
 
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
+	CanOverrideDependencies(ctx context.Context, obj *model.APITask) (bool, error)
 
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
@@ -4642,6 +4644,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.CanModifyAnnotation(childComplexity), true
 
+	case "Task.canOverrideDependencies":
+		if e.complexity.Task.CanOverrideDependencies == nil {
+			break
+		}
+
+		return e.complexity.Task.CanOverrideDependencies(childComplexity), true
+
 	case "Task.canRestart":
 		if e.complexity.Task.CanRestart == nil {
 			break
@@ -7070,6 +7079,7 @@ type Task {
   projectId: String!
   reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
+  canOverrideDependencies: Boolean!
   requester: String!
   restarts: Int
   revision: String
@@ -25020,6 +25030,40 @@ func (ec *executionContext) _Task_dependsOn(ctx context.Context, field graphql.C
 	return ec.marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_canOverrideDependencies(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanOverrideDependencies(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_requester(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -37278,6 +37322,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_dependsOn(ctx, field, obj)
+				return res
+			})
+		case "canOverrideDependencies":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canOverrideDependencies(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "requester":
