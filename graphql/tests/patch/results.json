@@ -267,7 +267,18 @@
         "data": {
           "patch": {
             "patchTriggerAliases": [
-              { "alias": "__commit_queue", "childProject": "child"}
+              {
+                "alias": "test-alias",
+                "childProject": "spruce",
+                "variantsTasks": [
+                  {
+                    "name": "ubuntu1804",
+                    "tasks": [
+                      "compile"
+                    ]
+                  }
+                ]
+              }
             ]
           }
         }

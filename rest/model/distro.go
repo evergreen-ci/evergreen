@@ -253,6 +253,7 @@ func (e *APIEnvVar) ToService() (interface{}, error) {
 type APIResourceLimits struct {
 	NumFiles        int `json:"num_files"`
 	NumProcesses    int `json:"num_processes"`
+	NumTasks        int `json:"num_tasks"`
 	LockedMemoryKB  int `json:"locked_memory"`
 	VirtualMemoryKB int `json:"virtual_memory"`
 }
@@ -329,6 +330,7 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	}
 	s.ResourceLimits.NumFiles = settings.ResourceLimits.NumFiles
 	s.ResourceLimits.NumProcesses = settings.ResourceLimits.NumProcesses
+	s.ResourceLimits.NumTasks = settings.ResourceLimits.NumTasks
 	s.ResourceLimits.LockedMemoryKB = settings.ResourceLimits.LockedMemoryKB
 	s.ResourceLimits.VirtualMemoryKB = settings.ResourceLimits.VirtualMemoryKB
 
@@ -377,6 +379,7 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	}
 	settings.ResourceLimits.NumFiles = s.ResourceLimits.NumFiles
 	settings.ResourceLimits.NumProcesses = s.ResourceLimits.NumProcesses
+	settings.ResourceLimits.NumTasks = s.ResourceLimits.NumTasks
 	settings.ResourceLimits.LockedMemoryKB = s.ResourceLimits.LockedMemoryKB
 	settings.ResourceLimits.VirtualMemoryKB = s.ResourceLimits.VirtualMemoryKB
 

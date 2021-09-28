@@ -45,22 +45,22 @@ func newDriverID() string { return strings.Replace(uuid.New().String(), "-", "."
 type TestCloser func(context.Context) error
 
 type QueueTestCase struct {
-	Name                    string
-	Constructor             func(context.Context, string, int) (amboy.Queue, TestCloser, error)
-	MinSize                 int
-	MaxSize                 int
-	SingleWorker            bool
-	MultiSupported          bool
-	OrderedSupported        bool
-	OrderedStartsBefore     bool
-	WaitUntilSupported      bool
-	DispatchBeforeSupported bool
-	MaxTimeSupported        bool
-	ScopesSupported         bool
-	RetrySupported          bool
-	SkipUnordered           bool
-	IsRemote                bool
-	Skip                    bool
+	Name                string
+	Constructor         func(context.Context, string, int) (amboy.Queue, TestCloser, error)
+	MinSize             int
+	MaxSize             int
+	SingleWorker        bool
+	MultiSupported      bool
+	OrderedSupported    bool
+	OrderedStartsBefore bool
+	WaitUntilSupported  bool
+	DispatchBySupported bool
+	MaxTimeSupported    bool
+	ScopesSupported     bool
+	RetrySupported      bool
+	SkipUnordered       bool
+	IsRemote            bool
+	Skip                bool
 }
 
 type PoolTestCase struct {
@@ -81,15 +81,15 @@ type SizeTestCase struct {
 func DefaultQueueTestCases() []QueueTestCase {
 	return []QueueTestCase{
 		{
-			Name:                    "AdaptiveOrdering",
-			OrderedSupported:        true,
-			OrderedStartsBefore:     true,
-			WaitUntilSupported:      true,
-			SingleWorker:            true,
-			DispatchBeforeSupported: true,
-			MaxTimeSupported:        true,
-			MinSize:                 2,
-			MaxSize:                 16,
+			Name:                "AdaptiveOrdering",
+			OrderedSupported:    true,
+			OrderedStartsBefore: true,
+			WaitUntilSupported:  true,
+			SingleWorker:        true,
+			DispatchBySupported: true,
+			MaxTimeSupported:    true,
+			MinSize:             2,
+			MaxSize:             16,
 			Constructor: func(ctx context.Context, _ string, size int) (amboy.Queue, TestCloser, error) {
 				return NewAdaptiveOrderedLocalQueue(size, defaultLocalQueueCapcity), func(ctx context.Context) error { return nil }, nil
 			},
@@ -113,22 +113,22 @@ func DefaultQueueTestCases() []QueueTestCase {
 			},
 		},
 		{
-			Name:                    "LimitedSize",
-			WaitUntilSupported:      true,
-			DispatchBeforeSupported: true,
-			MaxTimeSupported:        true,
-			ScopesSupported:         true,
+			Name:                "LimitedSize",
+			WaitUntilSupported:  true,
+			DispatchBySupported: true,
+			MaxTimeSupported:    true,
+			ScopesSupported:     true,
 			Constructor: func(ctx context.Context, _ string, size int) (amboy.Queue, TestCloser, error) {
 				return NewLocalLimitedSize(size, 1024*size), func(ctx context.Context) error { return nil }, nil
 			},
 		},
 		{
-			Name:                    "LimitedSizeSerializable",
-			WaitUntilSupported:      true,
-			DispatchBeforeSupported: true,
-			MaxTimeSupported:        true,
-			ScopesSupported:         true,
-			RetrySupported:          true,
+			Name:                "LimitedSizeSerializable",
+			WaitUntilSupported:  true,
+			DispatchBySupported: true,
+			MaxTimeSupported:    true,
+			ScopesSupported:     true,
+			RetrySupported:      true,
 			Constructor: func(ctx context.Context, _ string, size int) (amboy.Queue, TestCloser, error) {
 				q, err := NewLocalLimitedSizeSerializable(size, 1024*size)
 				return q, func(ctx context.Context) error { return nil }, err
@@ -439,7 +439,7 @@ func TestQueueSmoke(t *testing.T) {
 					var (
 						testRetryOnce                sync.Once
 						testWaitUntilOnce            sync.Once
-						testDispatchBeforeOnce       sync.Once
+						testDispatchByOnce           sync.Once
 						testMaxTimeOnce              sync.Once
 						testScopesOnce               sync.Once
 						testApplyScopesOnEnqueueOnce sync.Once
@@ -481,10 +481,10 @@ func TestQueueSmoke(t *testing.T) {
 								})
 							}
 
-							if test.DispatchBeforeSupported {
-								testDispatchBeforeOnce.Do(func() {
-									t.Run("DispatchBefore", func(t *testing.T) {
-										DispatchBeforeTest(bctx, t, test, runner, size)
+							if test.DispatchBySupported {
+								testDispatchByOnce.Do(func() {
+									t.Run("DispatchBy", func(t *testing.T) {
+										DispatchByTest(bctx, t, test, runner, size)
 									})
 								})
 							}
@@ -811,7 +811,7 @@ waitLoop:
 	assert.Equal(t, numJobs, completed)
 }
 
-func DispatchBeforeTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func DispatchByTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithTimeout(bctx, 2*time.Minute)
 	defer cancel()
 

@@ -917,6 +917,13 @@ Evergreen - Distros
                 min="-1">
               <div class="icon fa fa-warning distro-error" ng-show="form.numProcesses.$invalid"> Invalid max processes</div><br />
 
+              <label class="muted">Number of Cgroup Tasks:</label>
+              <input type="number" ng-readonly="readOnly" name="numTasks"
+                class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.num_tasks"
+                placeholder="Max number of cgroup tasks (threads). Set -1 for unlimited"
+                min="-1">
+              <div class="icon fa fa-warning distro-error" ng-show="form.numTasks.$invalid"> Invalid max cgroup tasks</div><br />
+
               <label class="muted">Locked Memory:</label>
               <input type="number" ng-readonly="readOnly" name="lockedMemoryKB"
                 class="form-control" ng-model="activeDistro.bootstrap_settings.resource_limits.locked_memory"

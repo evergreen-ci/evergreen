@@ -511,6 +511,7 @@ type ComplexityRoot struct {
 		ParentAsModule func(childComplexity int) int
 		Status         func(childComplexity int) int
 		TaskSpecifiers func(childComplexity int) int
+		VariantsTasks  func(childComplexity int) int
 	}
 
 	Patches struct {
@@ -3434,6 +3435,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchTriggerAlias.TaskSpecifiers(childComplexity), true
+
+	case "PatchTriggerAlias.variantsTasks":
+		if e.complexity.PatchTriggerAlias.VariantsTasks == nil {
+			break
+		}
+
+		return e.complexity.PatchTriggerAlias.VariantsTasks(childComplexity), true
 
 	case "Patches.filteredPatchCount":
 		if e.complexity.Patches.FilteredPatchCount == nil {
@@ -6830,6 +6838,7 @@ type PatchTriggerAlias {
   taskSpecifiers: [TaskSpecifier]
   status: String
   parentAsModule: String
+  variantsTasks: [VariantTask]!
 }
 
 type UserPatches {
@@ -18557,6 +18566,40 @@ func (ec *executionContext) _PatchTriggerAlias_parentAsModule(ctx context.Contex
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTriggerAlias_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTriggerAlias",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.VariantsTasks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.VariantTask)
+	fc.Result = res
+	return ec.marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patches_patches(ctx context.Context, field graphql.CollectedField, obj *Patches) (ret graphql.Marshaler) {
@@ -35623,6 +35666,11 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._PatchTriggerAlias_status(ctx, field, obj)
 		case "parentAsModule":
 			out.Values[i] = ec._PatchTriggerAlias_parentAsModule(ctx, field, obj)
+		case "variantsTasks":
+			out.Values[i] = ec._PatchTriggerAlias_variantsTasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
