@@ -107,8 +107,8 @@ func (opts GetOptions) parse() string {
 	return urlString
 }
 
-// Get returns an io.ReadCloser with the logs or log metadata requested via
-// HTTP to a Cedar service.
+// Get returns a paginated read closer with the logs or log metadata requested
+// via HTTP to a Cedar service.
 func Get(ctx context.Context, opts GetOptions) (io.ReadCloser, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, errors.WithStack(err)

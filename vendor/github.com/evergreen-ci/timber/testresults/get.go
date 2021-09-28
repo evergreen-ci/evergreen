@@ -67,7 +67,8 @@ func (opts GetOptions) parse() string {
 		urlString += "/stats"
 	}
 
-	var params []string
+	// TODO: (EVG-15263) Remove once Evergreen is using new API with stats.
+	params := []string{"stats=true"}
 	if opts.Execution != nil {
 		params = append(params, fmt.Sprintf("execution=%d", *opts.Execution))
 	}
@@ -107,9 +108,33 @@ func (opts GetOptions) parse() string {
 	return urlString
 }
 
-// Get returns an io.ReadCloser with the test results requested via HTTP to a
-// Cedar service.
-func Get(ctx context.Context, opts GetOptions) (io.ReadCloser, error) {
+// Get returns the test results requested via HTTP to a Cedar service.
+func Get(ctx context.Context, opts GetOptions) ([]byte, error) {
+	resp, err := get(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	catcher := grip.NewBasicCatcher()
+	data, err := io.ReadAll(resp.Body)
+	catcher.Wrap(err, "reading response body")
+	catcher.Wrap(resp.Body.Close(), "cloding response body")
+
+	return data, catcher.Resolve()
+}
+
+// GetWithPaginatedReadCloser returns a paginated read closer for the test
+// results requested via HTTP to a Cedar service.
+func GetWithPaginatedReadCloser(ctx context.Context, opts GetOptions) (io.ReadCloser, error) {
+	resp, err := get(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return timber.NewPaginatedReadCloser(ctx, resp, opts.Cedar), nil
+}
+
+func get(ctx context.Context, opts GetOptions) (*http.Response, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -122,5 +147,6 @@ func Get(ctx context.Context, opts GetOptions) (io.ReadCloser, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("failed to fetch test results with resp '%s'", resp.Status)
 	}
-	return timber.NewPaginatedReadCloser(ctx, resp, opts.Cedar), nil
+
+	return resp, nil
 }
