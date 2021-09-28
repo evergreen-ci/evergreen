@@ -79,8 +79,9 @@ func TestDistroToService(t *testing.T) {
 			ResourceLimits: APIResourceLimits{
 				NumFiles:        1,
 				NumProcesses:    2,
-				LockedMemoryKB:  3,
-				VirtualMemoryKB: 4,
+				NumTasks:        3,
+				LockedMemoryKB:  4,
+				VirtualMemoryKB: 5,
 			},
 			PreconditionScripts: []APIPreconditionScript{
 				{
@@ -118,6 +119,7 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.Env[0].Value), d.BootstrapSettings.Env[0].Value)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumFiles, d.BootstrapSettings.ResourceLimits.NumFiles)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses, d.BootstrapSettings.ResourceLimits.NumProcesses)
+	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.NumTasks, d.BootstrapSettings.ResourceLimits.NumTasks)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.LockedMemoryKB, d.BootstrapSettings.ResourceLimits.LockedMemoryKB)
 	assert.Equal(t, apiDistro.BootstrapSettings.ResourceLimits.VirtualMemoryKB, d.BootstrapSettings.ResourceLimits.VirtualMemoryKB)
 	require.Len(t, d.BootstrapSettings.PreconditionScripts, 1)

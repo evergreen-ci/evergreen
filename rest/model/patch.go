@@ -17,31 +17,33 @@ import (
 
 // APIPatch is the model to be returned by the API whenever patches are fetched.
 type APIPatch struct {
-	Id                      *string           `json:"patch_id"`
-	Description             *string           `json:"description"`
-	ProjectId               *string           `json:"project_id"`
-	ProjectIdentifier       *string           `json:"project_identifier"`
-	Branch                  *string           `json:"branch"`
-	Githash                 *string           `json:"git_hash"`
-	PatchNumber             int               `json:"patch_number"`
-	Author                  *string           `json:"author"`
-	Version                 *string           `json:"version"`
-	Status                  *string           `json:"status"`
-	CreateTime              *time.Time        `json:"create_time"`
-	StartTime               *time.Time        `json:"start_time"`
-	FinishTime              *time.Time        `json:"finish_time"`
-	Variants                []*string         `json:"builds"`
-	Tasks                   []*string         `json:"tasks"`
-	DownstreamTasks         []DownstreamTasks `json:"downstream_tasks"`
-	VariantsTasks           []VariantTask     `json:"variants_tasks"`
-	Activated               bool              `json:"activated"`
-	Alias                   *string           `json:"alias,omitempty"`
-	GithubPatchData         githubPatch       `json:"github_patch_data,omitempty"`
-	ModuleCodeChanges       []APIModulePatch  `json:"module_code_changes"`
-	Parameters              []APIParameter    `json:"parameters"`
-	PatchedConfig           *string           `json:"patched_config"`
-	CanEnqueueToCommitQueue bool              `json:"can_enqueue_to_commit_queue"`
-	ChildPatches            []APIPatch        `json:"child_patches"`
+	Id                      *string              `json:"patch_id"`
+	Description             *string              `json:"description"`
+	ProjectId               *string              `json:"project_id"`
+	ProjectIdentifier       *string              `json:"project_identifier"`
+	Branch                  *string              `json:"branch"`
+	Githash                 *string              `json:"git_hash"`
+	PatchNumber             int                  `json:"patch_number"`
+	Author                  *string              `json:"author"`
+	Version                 *string              `json:"version"`
+	Status                  *string              `json:"status"`
+	CreateTime              *time.Time           `json:"create_time"`
+	StartTime               *time.Time           `json:"start_time"`
+	FinishTime              *time.Time           `json:"finish_time"`
+	Variants                []*string            `json:"builds"`
+	Tasks                   []*string            `json:"tasks"`
+	DownstreamTasks         []DownstreamTasks    `json:"downstream_tasks"`
+	VariantsTasks           []VariantTask        `json:"variants_tasks"`
+	Activated               bool                 `json:"activated"`
+	Alias                   *string              `json:"alias,omitempty"`
+	GithubPatchData         githubPatch          `json:"github_patch_data,omitempty"`
+	ModuleCodeChanges       []APIModulePatch     `json:"module_code_changes"`
+	Parameters              []APIParameter       `json:"parameters"`
+	PatchedConfig           *string              `json:"patched_config"`
+	CanEnqueueToCommitQueue bool                 `json:"can_enqueue_to_commit_queue"`
+	ChildPatches            []APIPatch           `json:"child_patches"`
+	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
+	Requester               *string              `json:"requester"`
 }
 
 type DownstreamTasks struct {
@@ -65,6 +67,11 @@ type FileDiff struct {
 	Deletions   int     `json:"deletions"`
 	DiffLink    *string `json:"diff_link"`
 	Description string  `json:"description"`
+}
+
+type APIChildPatchAlias struct {
+	Alias   *string `json:"alias"`
+	PatchID *string `json:"patch_id"`
 }
 
 type APIModulePatch struct {
@@ -131,6 +138,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Activated = v.Activated
 	apiPatch.Alias = utility.ToStringPtr(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
+	apiPatch.Requester = utility.ToStringPtr(v.GetRequester())
 
 	if v.Parameters != nil {
 		apiPatch.Parameters = []APIParameter{}
@@ -190,12 +198,23 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.ChildPatches = childPatches
 
 	// set the patch status to the collective status between the parent and child patches
+	// Also correlate each child patch ID with the alias that invoked it
 	if len(childPatches) > 0 {
 		allStatuses := []string{*apiPatch.Status}
-		for _, cp := range childPatches {
+		childPatchAliases := []APIChildPatchAlias{}
+		for i, cp := range childPatches {
 			allStatuses = append(allStatuses, *cp.Status)
+
+			if i < len(v.Triggers.Aliases) {
+				childPatchAlias := APIChildPatchAlias{
+					Alias:   utility.ToStringPtr(v.Triggers.Aliases[i]),
+					PatchID: utility.ToStringPtr(*cp.Id),
+				}
+				childPatchAliases = append(childPatchAliases, childPatchAlias)
+			}
 		}
 		apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatus(allStatuses))
+		apiPatch.ChildPatchAliases = childPatchAliases
 
 	}
 

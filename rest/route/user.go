@@ -168,6 +168,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 type deletePermissionsRequest struct {
 	ResourceType string `json:"resource_type"`
+	ResourceId   string `json:"resource_id"`
 }
 
 const allResourceType = "all"
@@ -177,6 +178,7 @@ type userPermissionsDeleteHandler struct {
 	rm           gimlet.RoleManager
 	userID       string
 	resourceType string
+	resourceId   string
 }
 
 func makeDeleteUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
@@ -204,8 +206,12 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 		return errors.Wrap(err, "request body is an invalid format")
 	}
 	h.resourceType = request.ResourceType
+	h.resourceId = request.ResourceId
 	if !utility.StringSliceContains(evergreen.ValidResourceTypes, h.resourceType) && h.resourceType != allResourceType {
 		return errors.New("resource_type is not a valid value")
+	}
+	if h.resourceType != allResourceType && h.resourceId == "" {
+		return errors.New("Must specify a resource ID to delete permissions for unless deleting all permissions")
 	}
 
 	return nil
@@ -226,6 +232,12 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	if !valid {
 		return gimlet.MakeJSONInternalErrorResponder(errors.New("user exists, but is of invalid type"))
 	}
+	if dbUser == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("no matching DB user for '%s'", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
+	}
 
 	if h.resourceType == allResourceType {
 		err = dbUser.DeleteAllRoles()
@@ -245,27 +257,33 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to get roles for user"))
 	}
-	scopesIds := []string{}
-	for _, role := range roles {
-		scopesIds = append(scopesIds, role.Scope)
-	}
-	applicableScopes, err := h.rm.FilterScopesByResourceType(scopesIds, h.resourceType)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error filtering scopes",
-		}))
-		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to find applicable scopes for user"))
-	}
-	rolesToRemove := []string{}
-	scopesToRemove := []string{}
-	for _, scope := range applicableScopes {
-		scopesToRemove = append(scopesToRemove, scope.ID)
-	}
-	for _, role := range roles {
-		if utility.StringSliceContains(scopesToRemove, role.Scope) {
-			rolesToRemove = append(rolesToRemove, role.ID)
+	rolesToCheck := []gimlet.Role{}
+	// don't remove basic access, just special access
+	for _, r := range roles {
+		if !utility.StringSliceContains(evergreen.BasicAccessRoles, r.ID) {
+			rolesToCheck = append(rolesToCheck, r)
 		}
 	}
+	if len(rolesToCheck) == 0 {
+		gimlet.NewJSONResponse(struct{}{})
+	}
+
+	rolesForResource, err := h.rm.FilterForResource(rolesToCheck, h.resourceId, h.resourceType)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(
+			errors.Wrapf(err, "unable to filter user roles for resource ID '%s'", h.resourceId))
+	}
+	rolesToRemove := []string{}
+	for _, r := range rolesForResource {
+		rolesToRemove = append(rolesToRemove, r.ID)
+	}
+
+	grip.Info(message.Fields{
+		"removed_roles": rolesToRemove,
+		"user":          dbUser.Id,
+		"resource_type": h.resourceType,
+		"resource_id":   h.resourceId,
+	})
 	err = dbUser.DeleteRoles(rolesToRemove)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -437,6 +455,45 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+type UsersWithRoleResponse struct {
+	Users []*string `json:"users"`
+}
+
+type usersWithRoleGetHandler struct {
+	sc   data.Connector
+	role string
+}
+
+func makeGetUsersWithRole(sc data.Connector) gimlet.RouteHandler {
+	return &usersWithRoleGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *usersWithRoleGetHandler) Factory() gimlet.RouteHandler {
+	return &usersWithRoleGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *usersWithRoleGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.role = vars["role_id"]
+	return nil
+}
+
+func (h *usersWithRoleGetHandler) Run(ctx context.Context) gimlet.Responder {
+	users, err := user.FindByRole(h.role)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	res := []*string{}
+	for idx := range users {
+		res = append(res, &users[idx].Id)
+	}
+	return gimlet.NewJSONResponse(&UsersWithRoleResponse{Users: res})
 }
 
 type serviceUserPostHandler struct {

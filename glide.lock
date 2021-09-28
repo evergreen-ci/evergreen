@@ -45,8 +45,6 @@ imports:
 
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
-  - name: github.com/rs/cors
-    version: 76f58f330d76a55c5badc74f6212e8a15e742c77
 
   - name: github.com/jacobsa/oglematchers
     version: 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
@@ -125,11 +123,11 @@ imports:
   - name: github.com/mongodb/grip
     version: d883a62b49faf8279c9209d28db88858a103177e
   - name: github.com/mongodb/amboy
-    version: 43815750c2f1d63d1f1de803a8a684ca79ac82d6
+    version: 1553970ee7418f62c686a17ec859f53ddbd5dffd
   - name: github.com/evergreen-ci/cocoa
     version: 9633061a7220b184e7bc8908dba9a3da021637e4
   - name: github.com/evergreen-ci/gimlet
-    version: 3aa4522aad2fa8ad15755e00441b597d6d54cc5e
+    version: 31cad9d4fe5899f5952d7b5114f4fbbf6ddca953
   - name: github.com/evergreen-ci/shrub
     version: 005df8abf87f20331677ecfaa19744efb99eb80b
   - name: github.com/evergreen-ci/pail

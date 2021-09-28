@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func Validate() cli.Command {
@@ -74,7 +76,21 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool) error 
 		return errors.Wrap(err, "problem reading file")
 	}
 
-	projErrors, err := ac.ValidateLocalConfig(confFile, quiet, includeLong)
+	project := &model.Project{}
+	ctx := context.Background()
+	opts := model.GetProjectOpts{
+		ReadFileFrom: model.ReadFromLocal,
+	}
+	pp, err := model.LoadProjectInto(ctx, confFile, opts, "", project)
+	if err != nil {
+		return errors.Wrapf(err, "%s is an invalid configuration", path)
+	}
+	projectYaml, err := yaml.Marshal(pp)
+	if err != nil {
+		return errors.Wrapf(err, "Could not marshal parser project into yaml")
+	}
+
+	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong)
 	if err != nil {
 		return nil
 	}

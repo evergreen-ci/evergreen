@@ -215,20 +215,17 @@ func (pc *DBCommitQueueConnector) FindCommitQueueForProject(name string) (*restM
 	return apiCommitQueue, nil
 }
 
-func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, issue, user string) (*restModel.APICommitQueueItem, error) {
-	projectRef, err := model.FindOneProjectRef(id)
+func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommitQueueItem, error) {
+	id, err := model.GetIdForProject(identifier)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't find projectRef for '%s'", id)
+		return nil, errors.Wrapf(err, "can't find projectRef for '%s'", identifier)
 	}
-	if projectRef == nil {
-		return nil, errors.Errorf("can't find project ref for '%s'", id)
-	}
-	cq, err := commitqueue.FindOneId(projectRef.Id)
+	cq, err := commitqueue.FindOneId(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+		return nil, errors.Wrapf(err, "can't get commit queue for project '%s'", identifier)
 	}
 	if cq == nil {
-		return nil, errors.Errorf("no commit queue found for '%s'", id)
+		return nil, errors.Errorf("no commit queue found for '%s'", identifier)
 	}
 	version, err := model.GetVersionForCommitQueueItem(cq, issue)
 	if err != nil {
@@ -339,7 +336,7 @@ func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, er
 	if requestedPatch == nil {
 		return "", errors.New("no patch found")
 	}
-	project, err := model.FindOneProjectRef(requestedPatch.Project)
+	project, err := model.FindMergedProjectRef(requestedPatch.Project)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to find project for patch")
 	}

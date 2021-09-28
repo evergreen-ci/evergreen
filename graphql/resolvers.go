@@ -300,7 +300,7 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 }
 
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
-	p, err := model.FindOneProjectRef(*at.Identifier)
+	p, err := model.FindBranchProjectRef(*at.Identifier)
 	if err != nil || p == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *at.Identifier, err))
 	}
@@ -430,7 +430,7 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, a *restModel
 }
 
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindOneProjectRef(identifier)
+	p, err := model.FindBranchProjectRef(identifier)
 	if err != nil || p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
 	}
@@ -450,7 +450,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 }
 
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindOneProjectRef(identifier)
+	p, err := model.FindBranchProjectRef(identifier)
 	if err != nil || p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
 	}
@@ -940,7 +940,7 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
 	res := &restModel.APIProjectSettings{}
-	projectRef, err := model.FindOneProjectRef(identifier)
+	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
@@ -1138,17 +1138,46 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 }
 
 func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
-	project, err := r.sc.FindProjectById(*obj.ProjectId, true)
-	if err != nil || project == nil {
+	projectRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
+	if err != nil || projectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.ProjectId, err))
 	}
 
-	aliases := []*restModel.APIPatchTriggerDefinition{}
-	for _, alias := range project.PatchTriggerAliases {
-		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
-			Alias:        utility.ToStringPtr(alias.Alias),
-			ChildProject: utility.ToStringPtr(alias.ChildProject)})
+	if len(projectRef.PatchTriggerAliases) == 0 {
+		return nil, nil
 	}
+
+	projectCache := map[string]*model.Project{}
+	aliases := []*restModel.APIPatchTriggerDefinition{}
+	for _, alias := range projectRef.PatchTriggerAliases {
+		project, projectCached := projectCache[alias.ChildProject]
+		if !projectCached {
+			_, project, err = model.FindLatestVersionWithValidProject(alias.ChildProject)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Problem getting last known project for '%s'", alias.ChildProject).Error())
+			}
+			projectCache[alias.ChildProject] = project
+		}
+
+		matchingTasks, err := project.VariantTasksForSelectors([]patch.PatchTriggerDefinition{alias}, *obj.Requester)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem matching tasks to alias definitions: %v", err.Error()))
+		}
+
+		variantsTasks := []restModel.VariantTask{}
+		for _, vt := range matchingTasks {
+			variantsTasks = append(variantsTasks, restModel.VariantTask{
+				Name:  utility.ToStringPtr(vt.Variant),
+				Tasks: utility.ToStringPtrSlice(vt.Tasks),
+			})
+		}
+		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
+			Alias:         utility.ToStringPtr(alias.Alias),
+			ChildProject:  utility.ToStringPtr(alias.ChildProject),
+			VariantsTasks: variantsTasks,
+		})
+	}
+
 	return aliases, nil
 }
 
@@ -1504,8 +1533,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 		if len(cedarBaseTestResults) > 0 {
 			for _, t := range cedarBaseTestResults {
-				baseTestStatusMap[t.TestName] = t.Status
-				baseTestStatusMap[t.DisplayTestName] = t.Status
+				if t.DisplayTestName != "" {
+					baseTestStatusMap[t.DisplayTestName] = t.Status
+				} else {
+					baseTestStatusMap[t.TestName] = t.Status
+				}
 			}
 		} else {
 			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
@@ -1560,10 +1592,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 				return nil, InternalServerError.Send(ctx, err.Error())
 			}
 
-			baseTestStatus := baseTestStatusMap[utility.FromStringPtr(apiTest.DisplayTestName)]
-			if baseTestStatus == "" {
-				baseTestStatus = baseTestStatusMap[utility.FromStringPtr(apiTest.TestFile)]
-			}
+			baseTestStatus := baseTestStatusMap[utility.FromStringPtr(apiTest.TestFile)]
 			apiTest.BaseStatus = &baseTestStatus
 			testPointers = append(testPointers, &apiTest)
 		}
@@ -1671,7 +1700,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	// Let the individual TaskLogs resolvers handle fetching logs for the task
 	// We can avoid the overhead of fetching task logs that we will not view
 	// and we can avoid handling errors that we will not see
-	return &TaskLogs{TaskID: taskID, Execution: *execution}, nil
+	return &TaskLogs{TaskID: taskID, Execution: utility.FromIntPtr(&t.Execution)}, nil
 }
 
 func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
@@ -3493,14 +3522,14 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 				// fetch the child patch to see if it's activated
 				p, err := patch.FindOneId(cp)
 				if err != nil {
-					return nil, err
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching a child patch: %s", err.Error()))
 				}
 				if p == nil {
 					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
 				}
 				if p.Version != "" {
 					//only return the error if the version is activated (and we therefore expect it to be there)
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch child version: %s ", err.Error()))
+					return nil, InternalServerError.Send(ctx, "An unexpected error occurred. Could not find a child version and expected one.")
 				}
 			}
 			if cv != nil {
@@ -3687,7 +3716,7 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	if t == nil {
 		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
-	_, ok := plugin.IsWebhookConfigured(t.Project, t.Version)
+	_, ok, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
 	return ok, nil
 }
 

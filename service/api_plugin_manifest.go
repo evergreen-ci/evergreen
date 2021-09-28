@@ -18,11 +18,15 @@ import (
 func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
-	projectRef, err := model.FindOneProjectRef(task.Project)
+	projectRef, err := model.FindMergedProjectRef(task.Project)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest,
-			errors.Wrapf(err, "projectRef not found for project %s", task.Project))
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "error finding project '%s'", task.Project))
 		return
+	}
+	if projectRef == nil {
+		as.LoggedError(w, r, http.StatusBadRequest,
+			errors.Errorf("project ref '%s' doesn't exist", task.Project))
 	}
 
 	v, err := model.VersionFindOne(model.VersionById(task.Version))

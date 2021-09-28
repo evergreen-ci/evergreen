@@ -37,7 +37,7 @@ func TestFindOneProjectRef(t *testing.T) {
 	}
 	assert.Nil(projectRef.Insert())
 
-	projectRefFromDB, err := FindOneProjectRef("ident")
+	projectRefFromDB, err := FindBranchProjectRef("ident")
 	assert.Nil(err)
 	assert.NotNil(projectRefFromDB)
 
@@ -300,7 +300,7 @@ func TestChangeOwnerRepo(t *testing.T) {
 	pRef.Repo = "newRepo"
 	assert.NoError(t, pRef.ChangeOwnerRepo(u))
 
-	pRefFromDB, err := FindOneProjectRef(pRef.Id)
+	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotEqual(t, pRefFromDB.RepoRefId, "myRepo")
@@ -334,7 +334,7 @@ func TestAttachToRepo(t *testing.T) {
 	assert.True(t, pRef.UseRepoSettings)
 	assert.NotEmpty(t, pRef.RepoRefId)
 
-	pRefFromDB, err := FindOneProjectRef(pRef.Id)
+	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.True(t, pRefFromDB.UseRepoSettings)
@@ -352,7 +352,7 @@ func TestDetachFromRepo(t *testing.T) {
 		"project ref is updated correctly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 
-			pRefFromDB, err := FindOneProjectRef(pRef.Id)
+			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.False(t, pRefFromDB.UseRepoSettings)
@@ -570,7 +570,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		ProjectPageGeneralSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGeneralSection, "me"))
 
-			pRefFromDb, err := FindOneProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Equal(t, pRefFromDb.BatchTime, 0)
@@ -583,7 +583,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		ProjectPageAccessSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageAccessSection, "me"))
 
-			pRefFromDb, err := FindOneProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.Private)
@@ -607,7 +607,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Len(t, aliases, 5)
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubAndCQSection, "me"))
 
-			pRefFromDb, err := FindOneProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
@@ -623,7 +623,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		ProjectPageNotificationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageNotificationsSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
@@ -634,7 +634,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Len(t, aliases, 5)
 
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePatchAliasSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
@@ -649,14 +649,14 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		ProjectPageTriggersSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageTriggersSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.Triggers)
 		},
 		ProjectPageWorkstationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageWorkstationsSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.GitClone)
@@ -664,7 +664,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		ProjectPagePeriodicBuildsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePeriodicBuildsSection, "me"))
-			pRefFromDb, err := FindOneProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PeriodicBuilds)
@@ -1590,7 +1590,7 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 	assert.NoError(p.Insert())
 
 	assert.NoError(p.UpdateNextPeriodicBuild("2", now.Add(10*time.Hour)))
-	dbProject, err := FindOneProjectRef(p.Id)
+	dbProject, err := FindBranchProjectRef(p.Id)
 	assert.NoError(err)
 	assert.True(now.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
 	assert.True(now.Equal(p.PeriodicBuilds[0].NextRunTime))
@@ -1684,15 +1684,15 @@ func TestRemoveAdminFromProjects(t *testing.T) {
 	assert.NoError(t, RemoveAdminFromProjects("villain"))
 
 	// verify that we carry out multiple updates
-	pRefFromDB, err := FindOneProjectRef(pRef.Id)
+	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotContains(t, pRefFromDB.Admins, "villain")
-	pRefFromDB, err = FindOneProjectRef(pRef2.Id)
+	pRefFromDB, err = FindBranchProjectRef(pRef2.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotContains(t, pRefFromDB.Admins, "villain")
-	pRefFromDB, err = FindOneProjectRef(pRef3.Id)
+	pRefFromDB, err = FindBranchProjectRef(pRef3.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotContains(t, pRefFromDB.Admins, "villain")

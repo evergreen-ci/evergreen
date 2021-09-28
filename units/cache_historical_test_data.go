@@ -188,9 +188,12 @@ func reportTiming(fn func()) time.Duration {
 }
 
 func getTasksToIgnore(projectId string) ([]*regexp.Regexp, error) {
-	ref, err := model.FindOneProjectRef(projectId)
+	ref, err := model.FindMergedProjectRef(projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not get project ref")
+	}
+	if ref == nil {
+		return nil, errors.Errorf("project ref '%s' not found", projectId)
 	}
 
 	filePatternsStr := ref.FilesIgnoredFromCache

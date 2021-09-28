@@ -179,6 +179,17 @@ func FindByGithubName(name string) (*DBUser, error) {
 	return &u, nil
 }
 
+func FindByRole(role string) ([]DBUser, error) {
+	res := []DBUser{}
+	err := db.FindAllQ(
+		Collection,
+		db.Query(bson.M{RolesKey: role}),
+		&res,
+	)
+	return res, errors.Wrapf(err, "error finding users with role '%s'", role)
+
+}
+
 // GetPatchUser gets a user from their GitHub UID. If no such user is found, it
 // defaults to the global GitHub pull request user.
 func GetPatchUser(gitHubUID int) (*DBUser, error) {

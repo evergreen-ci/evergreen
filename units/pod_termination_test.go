@@ -78,20 +78,9 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.NotEqual(t, pod.StatusTerminated, dbPod.Status)
 		},
-		"FailsWhenPodStatusUpdateErrors": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			require.NoError(t, j.pod.Insert())
+		"TerminatesWithoutDeletingResourcesForIntentPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusInitializing
-
-			j.Run(ctx)
-			require.Error(t, j.Error())
-
-			dbPod, err := pod.FindOneByID(j.PodID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.NotEqual(t, pod.StatusTerminated, j.pod.Status)
-		},
-		"TerminatesWithoutDeletingResourcesForInitializingPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			j.pod.Status = pod.StatusInitializing
+			j.pod.Resources = pod.ResourceInfo{}
 			require.NoError(t, j.pod.Insert())
 
 			j.Run(ctx)

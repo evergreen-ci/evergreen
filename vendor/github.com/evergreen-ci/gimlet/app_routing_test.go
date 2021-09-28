@@ -249,3 +249,14 @@ func (s *RoutingSuite) TestRouteWrapperMutators() {
 	r.ClearWrappers()
 	s.Len(r.wrappers, 0)
 }
+
+func (s *RoutingSuite) TestRouteInfo() {
+	r := s.app.AddRoute("/foo")
+	s.Len(s.app.Routes(), 1)
+	s.Equal(r.GetRoute(), "/foo")
+	bar := s.app.AddRoute("/bar").Post()
+	s.Len(s.app.Routes(), 2)
+	s.Equal(bar.GetRoute(), "/bar")
+	s.True(bar.HasMethod("POST"))
+	s.False(bar.HasMethod("GET"))
+}

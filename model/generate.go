@@ -135,7 +135,7 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 	newPP.Id = v.Id
 	p, err = TranslateProject(newPP)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "error translating project")
+		return nil, nil, nil, errors.Wrap(err, TranslateProjectError)
 	}
 	return p, newPP, v, nil
 }
@@ -256,7 +256,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		}
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
-	projectRef, err := FindOneProjectRef(p.Identifier)
+	projectRef, err := FindMergedProjectRef(p.Identifier)
 	if err != nil {
 		return errors.Wrap(err, "unable to find project ref")
 	}

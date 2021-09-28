@@ -16,6 +16,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -256,19 +257,21 @@ func TestDeleteUserPermissions(t *testing.T) {
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
 	u := user.DBUser{
 		Id:          "user",
-		SystemRoles: []string{"role1", "role2", "role3"},
+		SystemRoles: []string{"role1", "role2", "role3", evergreen.BasicProjectAccessRole},
 	}
 	require.NoError(t, u.Insert())
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "distro"}))
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: evergreen.AllProjectsScope, Resources: []string{"resource1", "resource2"}, Type: "project"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role2", Scope: "scope2"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role3", Scope: "scope3"}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: evergreen.BasicProjectAccessRole, Scope: evergreen.AllProjectsScope}))
 	handler := userPermissionsDeleteHandler{sc: &data.DBConnector{}, rm: rm, userID: u.Id}
 	ctx := context.Background()
 
-	body := `{ "resource_type": "project" }`
+	body := `{ "resource_type": "project", "resource_id": "resource1" }`
 	request, err := http.NewRequest(http.MethodDelete, "", bytes.NewBuffer([]byte(body)))
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
 	require.NoError(t, err)
@@ -277,8 +280,9 @@ func TestDeleteUserPermissions(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	dbUser, err := user.FindOneById(u.Id)
 	require.NoError(t, err)
-	assert.Len(t, dbUser.SystemRoles, 1)
-	assert.Equal(t, "role3", dbUser.SystemRoles[0])
+	assert.Len(t, dbUser.SystemRoles, 3)
+	assert.NotContains(t, dbUser.SystemRoles, "role1")
+	assert.Contains(t, dbUser.SystemRoles, evergreen.BasicProjectAccessRole)
 
 	body = `{ "resource_type": "all" }`
 	request, err = http.NewRequest(http.MethodDelete, "", bytes.NewBuffer([]byte(body)))
@@ -418,4 +422,48 @@ func TestServiceUserOperations(t *testing.T) {
 	users, valid = resp.Data().([]restModel.APIDBUser)
 	assert.True(t, valid)
 	assert.Len(t, users, 0)
+}
+
+func TestGetUsersForRole(t *testing.T) {
+	require.NoError(t, db.Clear(user.Collection))
+	ctx := context.Background()
+
+	u1 := user.DBUser{
+		Id: "me",
+		SystemRoles: []string{
+			"admin_access",
+			"basic_project_access",
+			"something_else",
+		},
+	}
+	u2 := user.DBUser{
+		Id: "mini-me",
+		SystemRoles: []string{
+			"basic_project_access",
+		},
+	}
+	u3 := user.DBUser{
+		Id: "you",
+		SystemRoles: []string{
+			"nothing_useful",
+		},
+	}
+	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3))
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/roles/basic_project_access/users", nil)
+	require.NoError(t, err)
+	req = gimlet.SetURLVars(req, map[string]string{"role_id": "basic_project_access"})
+	handler := makeGetUsersWithRole(&data.DBConnector{})
+	assert.NoError(t, handler.Parse(ctx, req))
+	assert.Equal(t, handler.(*usersWithRoleGetHandler).role, "basic_project_access")
+	resp := handler.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, resp.Status(), http.StatusOK)
+	usersWithRole, ok := resp.Data().(*UsersWithRoleResponse)
+	assert.True(t, ok)
+	assert.NotNil(t, usersWithRole.Users)
+	assert.Len(t, usersWithRole.Users, 2)
+	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[0]), u1.Id)
+	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[1]), u2.Id)
+
 }

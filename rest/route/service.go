@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/acl"
 	"github.com/mongodb/amboy"
-	"github.com/rs/cors"
 )
 
 const defaultLimit = 100
@@ -53,12 +52,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	cedarTestStats := checkCedarTestStats(settings)
-	if settings != nil && len(settings.Ui.CORSOrigins) > 0 {
-		app.AddMiddleware(cors.New(cors.Options{
-			AllowedOrigins:   settings.Ui.CORSOrigins,
-			AllowCredentials: true,
-		}))
-	}
+
+	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
@@ -176,6 +171,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(checkUser, checkRepoAdmin, editProjectSettings).RouteHandler(makePatchRepoByID(sc, env.Settings()))
 	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Post().Wrap(checkUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
+	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetUsersWithRole(sc))
 	app.AddRoute("/scheduler/compare_tasks").Version(2).Post().Wrap(checkUser).RouteHandler(makeCompareTasksRoute(sc))
 	app.AddRoute("/status/cli_version").Version(2).Get().RouteHandler(makeFetchCLIVersionRoute(sc))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostStatusByDistroRoute(sc))
@@ -214,4 +210,13 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionBuilds(sc))
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeRestartVersion(sc))
 	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(checkUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByVersion(sc))
+
+	// Add an options method to every POST request to handle pre-flight Options requests.
+	// These requests must not check for credentials and just validate whether a route exists
+	// And allows requests from a origin.
+	for _, route := range app.Routes() {
+		if route.HasMethod("POST") {
+			app.AddRoute(route.GetRoute()).Version(2).Options().RouteHandler(makeOptionsHandler())
+		}
+	}
 }
