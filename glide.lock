@@ -127,7 +127,7 @@ imports:
   - name: github.com/evergreen-ci/cocoa
     version: 9633061a7220b184e7bc8908dba9a3da021637e4
   - name: github.com/evergreen-ci/gimlet
-    version: 1f1f7e62a9c468b5290683fab6179ed6ac53f3bf
+    version: 31cad9d4fe5899f5952d7b5114f4fbbf6ddca953
   - name: github.com/evergreen-ci/shrub
     version: 005df8abf87f20331677ecfaa19744efb99eb80b
   - name: github.com/evergreen-ci/pail
