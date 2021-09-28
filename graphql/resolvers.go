@@ -2255,7 +2255,7 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	currentUser := MustHaveUser(ctx)
 	t, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -2263,6 +2263,9 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
+	// Clear DisplayStatus so GetDisplayStatus recalculates it
+	t.DisplayStatus = ""
+	t.DisplayStatus = t.GetDisplayStatus()
 	return GetAPITaskFromTask(ctx, r.sc, *t)
 }
 
