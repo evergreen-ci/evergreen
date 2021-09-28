@@ -211,6 +211,16 @@
         }
       }
     },
+       {
+      "query_file": "canOverrideDependencies.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "canOverrideDependencies": true
+          }
+        }
+      }
+    },
     {
       "query_file": "patchMetadata.graphql",
       "result": {

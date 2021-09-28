@@ -366,27 +366,18 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 
 func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restModel.APITask) (bool, error) {
 	currentUser := MustHaveUser(ctx)
-	i, err := at.ToService()
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
-	}
-	if t.OverrideDependencies {
+	if at.OverrideDependencies {
 		return false, nil
 	}
 	requiredPermission := gimlet.PermissionOpts{
-		ResourceType:  "project",
+		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: 30,
-		Resource:      t.Project,
+		RequiredLevel: evergreen.TasksAdmin.Value,
+		Resource:      *at.ProjectId,
 	}
-	if len(t.DependsOn) > 0 && currentUser.HasPermission(requiredPermission) {
+	if len(at.DependsOn) > 0 && currentUser.HasPermission(requiredPermission) {
 		return true, nil
 	}
-
 	return false, nil
 }
 
@@ -2236,7 +2227,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if priority > evergreen.MaxTaskPriority {
 		requiredPermission := gimlet.PermissionOpts{
 			Resource:      t.Project,
-			ResourceType:  "project",
+			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionTasks,
 			RequiredLevel: evergreen.TasksAdmin.Value,
 		}

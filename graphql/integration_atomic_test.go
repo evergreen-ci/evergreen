@@ -89,7 +89,7 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		APIKey:       apiKey,
 		EmailAddress: email,
 		Settings:     user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
-		SystemRoles:  []string{"unrestrictedTaskAccess", "modify_host"},
+		SystemRoles:  []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks"},
 		PubKeys: []user.PubKey{
 			{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
 			{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
@@ -98,23 +98,49 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 			{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 		}}
 	require.NoError(t, testUser.Insert())
-	modifyHostRole := gimlet.Role{
-		ID:          "modify_host",
-		Name:        "modify host",
-		Scope:       "modify_host_scope",
-		Permissions: map[string]int{"distro_hosts": 20},
-	}
-	_, err := env.DB().Collection("roles").InsertOne(ctx, modifyHostRole)
-	require.NoError(t, err)
 
-	modifyHostScope := gimlet.Scope{
-		ID:        "modify_host_scope",
+	roleManager := evergreen.GetEnvironment().RoleManager()
+
+	roles, err := roleManager.GetAllRoles()
+	require.NoError(t, err)
+	require.Len(t, roles, 0)
+
+	distroScope := gimlet.Scope{
+		ID:        evergreen.AllDistrosScope,
 		Name:      "modify host scope",
-		Type:      "distro",
+		Type:      evergreen.DistroResourceType,
 		Resources: []string{"ubuntu1604-small", "ubuntu1604-large"},
 	}
-	_, err = env.DB().Collection("scopes").InsertOne(ctx, modifyHostScope)
+	err = roleManager.AddScope(distroScope)
 	require.NoError(t, err)
+
+	modifyHostRole := gimlet.Role{
+		ID:          "modify_host",
+		Name:        evergreen.HostsEdit.Description,
+		Scope:       evergreen.AllDistrosScope,
+		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsEdit.Value},
+	}
+	err = roleManager.UpdateRole(modifyHostRole)
+	require.NoError(t, err)
+
+	modifyProjectTasks := gimlet.Scope{
+		ID:        "modify_tasks_scope",
+		Name:      "modify tasks scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"spruce"},
+	}
+	err = roleManager.AddScope(modifyProjectTasks)
+	require.NoError(t, err)
+
+	modifyProjectTaskRole := gimlet.Role{
+		ID:          "modify_project_tasks",
+		Name:        evergreen.TasksAdmin.Description,
+		Scope:       modifyProjectTasks.ID,
+		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksAdmin.Value},
+	}
+	err = roleManager.UpdateRole(modifyProjectTaskRole)
+	require.NoError(t, err)
+
 	state.apiKey = apiKey
 	state.apiUser = apiUser
 
