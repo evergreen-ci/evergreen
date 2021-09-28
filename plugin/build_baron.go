@@ -175,7 +175,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
 		}
 	} else {
-		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
+		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project, "")
 		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
 		if webHook.Endpoint != "" && bbProject.TicketCreateProject != "" {
 			return evergreen.WebHook{}, false, errors.Errorf("The custom file ticket webhook and the build baron TicketCreateProject should not both be configured")
