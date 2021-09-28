@@ -55,7 +55,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	// Unmarshal the project configuration into a struct
 	project := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{
+	opts := &model.GetProjectOpts{
 		Ref: modelData.ProjectRef,
 	}
 	pp, err := model.LoadProjectInto(ctx, projectConfig, opts, "", project)

@@ -530,9 +530,8 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 	}
 	p := &Project{}
 	// opts empty because project yaml with `include` will not hit this case
-	opts := GetProjectOpts{}
 	ctx := context.Background()
-	pp, err = LoadProjectInto(ctx, []byte(v.Config), opts, id, p)
+	pp, err = LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}
@@ -566,7 +565,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
 	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
@@ -583,7 +582,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts GetProjectOpts, iden
 				opts.ReadFileFrom = ReadFromPatch
 			}
 		}
-		yaml, err := retrieveFile(ctx, opts)
+		yaml, err := retrieveFile(ctx, *opts)
 		if err != nil {
 			return intermediateProject, errors.Wrapf(err, LoadProjectError)
 		}
@@ -715,7 +714,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *Pa
 	}
 
 	config := Project{}
-	pp, err := LoadProjectInto(ctx, fileContents, opts, opts.Ref.Id, &config)
+	pp, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
 	}

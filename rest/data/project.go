@@ -599,7 +599,7 @@ tasks:
 - name: t1
 `
 	p := &model.Project{}
-	opts := model.GetProjectOpts{
+	opts := &model.GetProjectOpts{
 		Ref:        &pRef,
 		RemotePath: file,
 		Token:      token,

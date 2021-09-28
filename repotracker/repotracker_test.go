@@ -318,8 +318,7 @@ tasks:
 
 	p := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{}
-	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), opts, "testproject", p)
+	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 
 	// create new version to use for activating
@@ -787,8 +786,7 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{}
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), opts, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -830,8 +828,7 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{}
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), opts, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -871,8 +868,7 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{}
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), opts, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	vErrs := VersionErrors{
 		Errors:   []string{"err1"},
@@ -909,8 +905,7 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{}
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), opts, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	s.NotNil(pp)
 	//force a duplicate key error with the version
@@ -957,8 +952,7 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{}
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), opts, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1020,8 +1014,7 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{}
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), opts, s.ref.Id, p)
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,

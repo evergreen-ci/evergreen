@@ -60,7 +60,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' doesn't exist", h.ProjectID))
 	}
 	p := &model.Project{}
-	opts := model.GetProjectOpts{
+	opts := &model.GetProjectOpts{
 		Ref: projectInfo.Ref,
 	}
 	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, h.Config, opts, projectInfo.Ref.Id, p)

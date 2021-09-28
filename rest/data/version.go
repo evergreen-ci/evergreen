@@ -384,8 +384,7 @@ func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, project
 	if v.Config != "" {
 		p := &model.Project{}
 		ctx := context.Background()
-		opts := model.GetProjectOpts{}
-		pp, err := model.LoadProjectInto(ctx, []byte(v.Config), opts, projectId, p)
+		pp, err := model.LoadProjectInto(ctx, []byte(v.Config), nil, projectId, p)
 		return p, pp, err
 	}
 	return nil, nil, errors.New("no project for version")
