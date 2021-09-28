@@ -8,13 +8,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -22,6 +20,7 @@ import (
 type testGetHandler struct {
 	taskID        string
 	displayTask   bool
+	cedarResults  bool
 	testStatus    string
 	testID        string
 	testName      string
@@ -54,9 +53,8 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 	tgh.taskID = projCtx.Task.Id
-	if len(projCtx.Task.ExecutionTasks) > 0 {
-		tgh.displayTask = true
-	}
+	tgh.displayTask = projCtx.Task.DisplayOnly
+	tgh.cedarResults = projCtx.Task.HasCedarResults
 
 	var err error
 	vals := r.URL.Query()
@@ -74,7 +72,6 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	tgh.testStatus = vals.Get("status")
 	tgh.key = vals.Get("start_at")
-	tgh.testID = vals.Get("test_id")
 	tgh.testName = vals.Get("test_name")
 	tgh.limit, err = getLimit(vals)
 	if err != nil {
@@ -85,95 +82,76 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
-	var (
-		tests []testresult.TestResult
-		key   string
-	)
+	var err error
+	var key string
 
-	// Check cedar test results first.
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: tgh.testExecution,
-		// When testID is populated, that means the user wants to fetch
-		// a single test by the unique test name stored in cedar.
-		TestName: tgh.testID,
-	}
-	if tgh.displayTask {
-		opts.DisplayTaskID = tgh.taskID
-	} else {
-		opts.TaskID = tgh.taskID
-	}
-	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	testStatuses := []string{}
-	if tgh.testStatus != "" {
-		testStatuses = append(testStatuses, tgh.testStatus)
-	}
-	if err == nil && tgh.testID == "" {
-		startAt := 0
+	if tgh.cedarResults {
+		var page int
 		if tgh.key != "" {
-			startAt, err = strconv.Atoi(tgh.key)
+			page, err = strconv.Atoi(tgh.key)
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.New("invalid start_at"))
 			}
 		}
-		var filteredCount int
-		cedarTestResults, filteredCount = graphql.FilterSortAndPaginateCedarTestResults(graphql.FilterSortAndPaginateCedarTestResultsOpts{
-			Limit:       tgh.limit,
-			Page:        startAt,
-			SortDir:     1,
-			Statuses:    testStatuses,
+
+		opts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			Execution:   utility.ToIntPtr(tgh.testExecution),
+			DisplayTask: tgh.displayTask,
 			TestName:    tgh.testName,
-			TestResults: cedarTestResults,
-		})
-
-		if startAt*tgh.limit < filteredCount {
-			key = fmt.Sprintf("%d", startAt+1)
+			Statuses:    []string{tgh.testStatus},
+			Limit:       tgh.limit,
+			Page:        page,
 		}
-	} else if err != nil {
-		// No cedar test results, fall back to the database.
-		grip.Warning(message.WrapError(err, message.Fields{
-			"task_id": tgh.taskID,
-			"message": "problem getting cedar test results",
-		}))
-
-		if tgh.testID != "" {
-			// When testID is populated, search the test results
-			// collection for the given id.
-			tests, err = tgh.sc.FindTestById(tgh.testID)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
-			}
-		} else {
-			tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-				Execution: tgh.testExecution,
-				Limit:     tgh.limit + 1,
-				Statuses:  testStatuses,
-				TaskID:    tgh.taskID,
-				TestID:    tgh.key,
-				TestName:  tgh.testName,
-			})
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
-			}
-
-			lastIndex := len(tests)
-			if lastIndex > tgh.limit {
-				key = string(tests[tgh.limit].ID)
-				lastIndex = tgh.limit
-			}
-			// Truncate the test results to just those that will be
-			// returned.
-			tests = tests[:lastIndex]
+		cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 		}
+		if page*tgh.limit < cedarTestResults.Stats.FilteredCount {
+			key = fmt.Sprintf("%d", page+1)
+		}
+
+		return tgh.buildResponse(cedarTestResults.Results, nil, key)
 	}
 
-	return tgh.buildResponse(cedarTestResults, tests, key)
+	var tests []testresult.TestResult
+	if tgh.testID != "" {
+		// When testID is populated, search the test results collection
+		// for the given ID.
+		tests, err = tgh.sc.FindTestById(tgh.testID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+		}
+	} else {
+		tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+			Execution: tgh.testExecution,
+			Limit:     tgh.limit + 1,
+			Statuses:  []string{tgh.testStatus},
+			TaskID:    tgh.taskID,
+			TestID:    tgh.key,
+			TestName:  tgh.testName,
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+		}
+
+		lastIndex := len(tests)
+		if lastIndex > tgh.limit {
+			key = string(tests[tgh.limit].ID)
+			lastIndex = tgh.limit
+		}
+		// Truncate the test results to just those that will be
+		// returned.
+		tests = tests[:lastIndex]
+	}
+
+	return tgh.buildResponse(nil, tests, key)
 }
 
 func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestResult, testResults []testresult.TestResult, key string) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error setting response format"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response format"))
 	}
 
 	if key != "" {
@@ -188,7 +166,7 @@ func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestR
 			},
 		})
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error paginating response"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "paginating response"))
 		}
 	}
 
@@ -224,7 +202,7 @@ func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, testResult i
 
 	if err := resp.AddData(at); err != nil {
 		return gimlet.ErrorResponse{
-			Message:    errors.Wrap(err, "error building response").Error(),
+			Message:    errors.Wrap(err, "building response").Error(),
 			StatusCode: http.StatusInternalServerError,
 		}
 	}

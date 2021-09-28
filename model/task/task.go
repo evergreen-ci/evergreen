@@ -86,8 +86,8 @@ type Task struct {
 	TaskGroupOrder     int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs               *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
 	MustHaveResults    bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
-	HasCedarResults    bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
-	CedarResultsFailed bool                `bson:"cedar_results_failed,omitempty" json:"cedar_results_failed,omitempty"`
+	HasCedarResults    bool                `bson:"has_cedar_results" json:"has_cedar_results"`
+	CedarResultsFailed bool                `bson:"cedar_results_failed" json:"cedar_results_failed"`
 	// we use a pointer for HasLegacyResults to distinguish the default from an intentional "false"
 	HasLegacyResults *bool `bson:"has_legacy_results,omitempty" json:"has_legacy_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
@@ -3434,13 +3434,10 @@ func (t *Task) getCedarTestResults() ([]TestResult, error) {
 	}
 
 	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: t.Execution,
-	}
-	if t.DisplayOnly {
-		opts.DisplayTaskID = taskID
-	} else {
-		opts.TaskID = taskID
+		BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:      taskID,
+		Execution:   utility.ToIntPtr(t.Execution),
+		DisplayTask: t.DisplayOnly,
 	}
 
 	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
@@ -3448,8 +3445,8 @@ func (t *Task) getCedarTestResults() ([]TestResult, error) {
 		return nil, errors.Wrap(err, "getting test results from cedar")
 	}
 
-	results := make([]TestResult, len(cedarResults))
-	for i, result := range cedarResults {
+	results := make([]TestResult, len(cedarResults.Results))
+	for i, result := range cedarResults.Results {
 		results[i] = ConvertCedarTestResult(result)
 	}
 

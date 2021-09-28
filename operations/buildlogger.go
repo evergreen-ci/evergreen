@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/buildlogger"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -117,6 +118,10 @@ func fetch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
+			var execution *int
+			if c.IsSet(executionFlagName) {
+				execution = utility.ToIntPtr(c.Int(executionFlagName))
+			}
 			start, err := time.Parse(time.RFC3339, c.String(startFlagName))
 			if err != nil {
 				return errors.Wrapf(err, "unable to parse start time '%s' from RFC3339 format", c.String(startFlagName))
@@ -133,15 +138,15 @@ func fetch() cli.Command {
 				}
 			}
 
-			opts := buildlogger.BuildloggerGetOptions{
-				CedarOpts: timber.GetOptions{
+			opts := buildlogger.GetOptions{
+				Cedar: timber.GetOptions{
 					BaseURL:  c.String(cedarBaseURLFlagName),
 					UserKey:  conf.APIKey,
 					UserName: conf.User,
 				},
 				TaskID:        c.String(taskIDFlagName),
 				TestName:      c.String(testNameFlagName),
-				Execution:     c.Int(executionFlagName),
+				Execution:     execution,
 				GroupID:       c.String(groupIDFlagName),
 				Start:         start,
 				End:           end,
@@ -152,7 +157,7 @@ func fetch() cli.Command {
 				Tail:          c.Int(tailFlagName),
 				Limit:         c.Int(limitFlagName),
 			}
-			r, err := buildlogger.GetLogs(ctx, opts)
+			r, err := buildlogger.Get(ctx, opts)
 			if err != nil {
 				return errors.Wrap(err, "problem fetching log(s)")
 			}
