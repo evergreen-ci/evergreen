@@ -99,7 +99,12 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		}}
 	require.NoError(t, testUser.Insert())
 
-	roleManager := evergreen.GetEnvironment().RoleManager()
+	// Create scope and role collection to avoid RoleManager from trying to create them in a collection https://jira.mongodb.org/browse/EVG-15499
+	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.ScopeCollection))
+	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.RoleCollection))
+
+	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.taskLogDB), state.testData, *state))
+	roleManager := env.RoleManager()
 
 	roles, err := roleManager.GetAllRoles()
 	require.NoError(t, err)
@@ -144,7 +149,6 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 	state.apiKey = apiKey
 	state.apiUser = apiUser
 
-	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database(state.taskLogDB), state.testData, *state))
 	directorySpecificTestSetup(t, *state)
 }
 
