@@ -1657,7 +1657,7 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:        obj.TaskID,
-			Execution:     obj.Execution,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.TaskLogPrefix,
@@ -1734,7 +1734,7 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*api
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:        obj.TaskID,
-			Execution:     obj.Execution,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.AgentLogPrefix,
@@ -1773,7 +1773,7 @@ func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apim
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:        obj.TaskID,
-			Execution:     obj.Execution,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.TaskLogPrefix,
