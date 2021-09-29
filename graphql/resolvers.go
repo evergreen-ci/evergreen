@@ -1490,7 +1490,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		return &TaskTestResult{
 			TestResults:       apiTestResults,
 			TotalTestCount:    cedarTestResults.Stats.TotalCount,
-			FilteredTestCount: cedarTestResults.Stats.FilteredCount,
+			FilteredTestCount: utility.FromIntPtr(cedarTestResults.Stats.FilteredCount),
 		}, nil
 	}
 

@@ -86,8 +86,8 @@ type Task struct {
 	TaskGroupOrder     int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs               *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
 	MustHaveResults    bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
-	HasCedarResults    bool                `bson:"has_cedar_results" json:"has_cedar_results"`
-	CedarResultsFailed bool                `bson:"cedar_results_failed" json:"cedar_results_failed"`
+	HasCedarResults    bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	CedarResultsFailed bool                `bson:"cedar_results_failed,omitempty" json:"cedar_results_failed,omitempty"`
 	// we use a pointer for HasLegacyResults to distinguish the default from an intentional "false"
 	HasLegacyResults *bool `bson:"has_legacy_results,omitempty" json:"has_legacy_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat

@@ -111,7 +111,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 		}
 
-		if page*tgh.limit < cedarTestResults.Stats.FilteredCount {
+		if page*tgh.limit < utility.FromIntPtr(cedarTestResults.Stats.FilteredCount) {
 			key = fmt.Sprintf("%d", page+1)
 		}
 

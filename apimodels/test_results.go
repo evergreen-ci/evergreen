@@ -31,9 +31,9 @@ type CedarTestResults struct {
 // CedarTestResultsStats represents the expected test results stats format
 // returned from Cedar.
 type CedarTestResultsStats struct {
-	TotalCount    int `json:"total_count"`
-	FailedCount   int `json:"failed_count"`
-	FilteredCount int `json:"filtered_count"`
+	TotalCount    int  `json:"total_count"`
+	FailedCount   int  `json:"failed_count"`
+	FilteredCount *int `json:"filtered_count"`
 }
 
 // CedarTestResult represents the expected test result format returned from
@@ -113,7 +113,7 @@ func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (
 // GetMultiPageCedarTestResults makes a request to Cedar for a task's test
 // results and returns an io.ReadCloser that will continue fetching and reading
 // subsequent pages of test results if paginated.
-func GetMutliPageCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (io.ReadCloser, error) {
+func GetMultiPageCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (io.ReadCloser, error) {
 	r, err := testresults.GetWithPaginatedReadCloser(ctx, opts.convert())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results from Cedar")
@@ -142,8 +142,8 @@ func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptio
 }
 
 // GetCedarTestResultsFailedSample makes a request to Cedar for a task's failed
-// test result sample (the first 10 failed tests). This route ignores
-// filtering, sorting, and pagination query parameters.
+// test result sample. This route ignores filtering, sorting, and pagination
+// query parameters.
 func GetCedarTestResultsFailedSample(ctx context.Context, opts GetCedarTestResultsOptions) ([]string, error) {
 	timberOpts := opts.convert()
 	timberOpts.FailedSample = true
