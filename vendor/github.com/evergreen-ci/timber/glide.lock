@@ -8,7 +8,9 @@ imports:
 - name: go.mongodb.org/mongo-driver
   version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 - name: github.com/evergreen-ci/utility
-  version: 29e693dadcd3a5df21206a8fbdecf061b726d008
+  version: 8a88f29180ba74476c65e36075bc372013e3ac05
+- name: github.com/evergreen-ci/gimlet
+  version: 6fa7ebbc3b486cdea3071cb3cc59b5b38583a7ff
 
 - name: github.com/pkg/errors
   version: 2b3a18b5f0fb6b4f9190549597d3f962c02bc5eb
@@ -20,10 +22,14 @@ imports:
   version: 11cf6ea5d3e9afda34846e1db511aa218049471c
 - name: github.com/peterhellberg/link
   version: 7d8125c3085c14bd320d898c73b78ef2c5320f31
+- name: github.com/jpillora/backoff
+  version: d80867952dff4e2fbfb4280ded4ff94d67790457
 
 # grpc and dependencies
 - name: google.golang.org/grpc
   version: ac54eec90516cee50fc6b9b113b34628a85f976f
+- name: golang.org/x/oauth2
+  version: f047394b6d14284165300fd82dad67edb3a4d7f6
 - name: golang.org/x/net
   version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
 - name: golang.org/x/sys

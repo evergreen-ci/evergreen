@@ -76,20 +76,21 @@ type GetBuildloggerLogsOptions struct {
 	TaskID        string `json:"-"`
 	TestName      string `json:"-"`
 	GroupID       string `json:"-"`
-	Execution     int    `json:"-"`
+	Execution     *int   `json:"-"`
 	PrintPriority bool   `json:"-"`
 	Tail          int    `json:"-"`
 	LogType       string `json:"-"`
 }
 
-// GetBuildloggerLogs makes request to cedar for a specifc log and returns a ReadCloser
+// GetBuildloggerLogs makes request to Cedar for a specifc log and returns an
+// io.ReadCloser.
 func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io.ReadCloser, error) {
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
 		return nil, errors.New("error getting user from context")
 	}
-	getOpts := buildlogger.BuildloggerGetOptions{
-		CedarOpts: timber.GetOptions{
+	getOpts := buildlogger.GetOptions{
+		Cedar: timber.GetOptions{
 			BaseURL:  fmt.Sprintf("https://%s", opts.BaseURL),
 			UserKey:  usr.GetAPIKey(),
 			UserName: usr.Username(),
@@ -117,12 +118,13 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 			evergreen.LogTypeAgent,
 		}
 	}
-	logReader, err := buildlogger.GetLogs(ctx, getOpts)
+	logReader, err := buildlogger.Get(ctx, getOpts)
 
 	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", opts.TaskID)
 }
 
-// ReadBuildloggerToChan parses cedar log lines by message and severity and reads into channel
+// ReadBuildloggerToChan parses Cedar buildlogger log lines by message and
+// severity and reads into a channel.
 func ReadBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, lines chan<- LogMessage) {
 	var (
 		line string
@@ -181,7 +183,7 @@ func ReadBuildloggerToChan(ctx context.Context, taskID string, r io.ReadCloser, 
 	}
 }
 
-// ReadBuildloggerToSlice returns a slice of LogMessages from a ReadCloser
+// ReadBuildloggerToSlice returns a slice of LogMessages from an io.ReadCloser.
 func ReadBuildloggerToSlice(ctx context.Context, taskID string, r io.ReadCloser) []LogMessage {
 	lines := []LogMessage{}
 	lineChan := make(chan LogMessage, 1024)
