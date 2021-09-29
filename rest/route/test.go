@@ -21,7 +21,7 @@ type testGetHandler struct {
 	taskID        string
 	displayTask   bool
 	cedarResults  bool
-	testStatus    string
+	testStatus    []string
 	testID        string
 	testName      string
 	testExecution int
@@ -70,7 +70,9 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	tgh.testStatus = vals.Get("status")
+	if status := vals.Get("status"); status != "" {
+		tgh.testStatus = []string{status}
+	}
 	tgh.key = vals.Get("start_at")
 	tgh.testName = vals.Get("test_name")
 	tgh.limit, err = getLimit(vals)
@@ -96,10 +98,11 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 		opts := apimodels.GetCedarTestResultsOptions{
 			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:      tgh.taskID,
 			Execution:   utility.ToIntPtr(tgh.testExecution),
 			DisplayTask: tgh.displayTask,
 			TestName:    tgh.testName,
-			Statuses:    []string{tgh.testStatus},
+			Statuses:    tgh.testStatus,
 			Limit:       tgh.limit,
 			Page:        page,
 		}
@@ -107,6 +110,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 		}
+
 		if page*tgh.limit < cedarTestResults.Stats.FilteredCount {
 			key = fmt.Sprintf("%d", page+1)
 		}
@@ -126,7 +130,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
 			Execution: tgh.testExecution,
 			Limit:     tgh.limit + 1,
-			Statuses:  []string{tgh.testStatus},
+			Statuses:  tgh.testStatus,
 			TaskID:    tgh.taskID,
 			TestID:    tgh.key,
 			TestName:  tgh.testName,
