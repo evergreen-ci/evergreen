@@ -2283,7 +2283,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 
 func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	currentUser := MustHaveUser(ctx)
-	t, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
+	t, err := task.FindByIdExecution(taskID, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
 	}
@@ -2293,8 +2293,6 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
-	// Clear DisplayStatus so GetDisplayStatus recalculates it.
-	t.DisplayStatus = ""
 	t.DisplayStatus = t.GetDisplayStatus()
 	return GetAPITaskFromTask(ctx, r.sc, *t)
 }
