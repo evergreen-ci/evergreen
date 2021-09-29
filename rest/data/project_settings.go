@@ -170,3 +170,7 @@ func (pc *MockDBConnector) SaveProjectSettingsForSection(ctx context.Context, pr
 	section model.ProjectPageSection, isRepo bool, userId string) error {
 	return nil
 }
+
+func (pc *MockDBConnector) CopyProject(ctx context.Context, projectToCopy *model.ProjectRef, newProject string) (*restModel.APIProjectRef, error) {
+	return nil, nil
+}
