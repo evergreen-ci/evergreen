@@ -76,8 +76,7 @@ func fetch() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  executionFlagName,
-				Usage: "The execution of the task id.",
-				Value: 0,
+				Usage: "The execution of the task id. Defaults to the latest.",
 			},
 			cli.StringFlag{
 				Name:  processNameFlagName,
