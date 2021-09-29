@@ -71,7 +71,7 @@ func isPerfEnabled(projectRef model.ProjectRef, projects []string) bool {
 		return false
 	}
 	if flags.PluginAdminPageDisabled {
-		return model.IsPerfEnabledForProject(projectRef.Id)
+		return utility.FromBoolPtr(projectRef.GetMergedConfig("").PerfEnabled)
 	} else {
 		return utility.StringSliceContains(projects, projectRef.Id) || utility.StringSliceContains(projects, projectRef.Identifier)
 	}

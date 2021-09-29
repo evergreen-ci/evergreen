@@ -161,19 +161,11 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 		return evergreen.WebHook{}, false, err
 	}
 	if flags.PluginAdminPageDisabled {
-		parserProject, err := model.ParserProjectFindOneByVersion(project, version)
-		if err != nil {
-			return evergreen.WebHook{}, false, err
+		projectRef, err := model.FindMergedProjectRef(project)
+		if err != nil || projectRef == nil {
+			return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
 		}
-		if parserProject != nil && parserProject.TaskAnnotationSettings != nil {
-			webHook = parserProject.TaskAnnotationSettings.FileTicketWebHook
-		} else {
-			projectRef, err := model.FindMergedProjectRef(project)
-			if err != nil || projectRef == nil {
-				return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
-			}
-			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
-		}
+		webHook = projectRef.GetMergedConfig(version).TaskAnnotationSettings.FileTicketWebHook
 	} else {
 		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
 		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
