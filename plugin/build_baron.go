@@ -138,10 +138,13 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
-					enabled := len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
-					if !enabled {
-						enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
+					bbSettings, ok := BbGetProject(evergreen.GetEnvironment().Settings(), context.ProjectRef.Id, "")
+					if !ok {
+						return struct {
+							Enabled bool `json:"enabled"`
+						}{false}, nil
 					}
+					enabled := len(bbSettings.TicketSearchProjects) > 0
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil
