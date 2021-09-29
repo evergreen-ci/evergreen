@@ -2681,6 +2681,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	}
 	return apiTask, nil
 }
+
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
 	i, err := obj.ToService()
 	if err != nil {
@@ -2697,10 +2698,12 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	duration := restModel.NewAPIDuration(start)
 	return &duration, nil
 }
+
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	if obj.HasCedarResults {
 		opts := apimodels.GetCedarTestResultsOptions{
 			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:      utility.FromStringPtr(obj.Id),
 			Execution:   utility.ToIntPtr(obj.Execution),
 			DisplayTask: obj.DisplayOnly,
 		}
@@ -2724,6 +2727,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 	if obj.HasCedarResults {
 		opts := apimodels.GetCedarTestResultsOptions{
 			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:      utility.FromStringPtr(obj.Id),
 			Execution:   utility.ToIntPtr(obj.Execution),
 			DisplayTask: obj.DisplayOnly,
 		}
