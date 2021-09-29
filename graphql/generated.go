@@ -821,12 +821,13 @@ type ComplexityRoot struct {
 	}
 
 	TaskLogs struct {
-		AgentLogs  func(childComplexity int) int
-		EventLogs  func(childComplexity int) int
-		Execution  func(childComplexity int) int
-		SystemLogs func(childComplexity int) int
-		TaskID     func(childComplexity int) int
-		TaskLogs   func(childComplexity int) int
+		AgentLogs     func(childComplexity int) int
+		DefaultLogger func(childComplexity int) int
+		EventLogs     func(childComplexity int) int
+		Execution     func(childComplexity int) int
+		SystemLogs    func(childComplexity int) int
+		TaskID        func(childComplexity int) int
+		TaskLogs      func(childComplexity int) int
 	}
 
 	TaskQueueDistro struct {
@@ -5180,6 +5181,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogs.AgentLogs(childComplexity), true
 
+	case "TaskLogs.defaultLogger":
+		if e.complexity.TaskLogs.DefaultLogger == nil {
+			break
+		}
+
+		return e.complexity.TaskLogs.DefaultLogger(childComplexity), true
+
 	case "TaskLogs.eventLogs":
 		if e.complexity.TaskLogs.EventLogs == nil {
 			break
@@ -7276,6 +7284,7 @@ type User {
 type TaskLogs {
   taskId: String!
   execution: Int!
+  defaultLogger: String!
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!
@@ -26367,6 +26376,40 @@ func (ec *executionContext) _TaskLogs_execution(ctx context.Context, field graph
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskLogs_defaultLogger(ctx context.Context, field graphql.CollectedField, obj *TaskLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskLogs",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultLogger, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskLogs_eventLogs(ctx context.Context, field graphql.CollectedField, obj *TaskLogs) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -37527,6 +37570,11 @@ func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "execution":
 			out.Values[i] = ec._TaskLogs_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "defaultLogger":
+			out.Values[i] = ec._TaskLogs_defaultLogger(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}

@@ -1628,22 +1628,6 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	// Let the individual TaskLogs resolvers handle fetching logs for the task
-	// We can avoid the overhead of fetching task logs that we will not view
-	// and we can avoid handling errors that we will not see
-	return &TaskLogs{TaskID: taskID, Execution: utility.FromIntPtr(&t.Execution)}, nil
-}
-
-func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
-	const logMessageCount = 100
-
-	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", obj.TaskID))
-	}
 	// need project to get default logger
 	p, err := r.sc.FindProjectById(t.Project, true)
 	if err != nil {
@@ -1652,19 +1636,28 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
 	}
-
 	defaultLogger := p.DefaultLogger
 	if defaultLogger == "" {
 		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
 	}
 
+	// Let the individual TaskLogs resolvers handle fetching logs for the task
+	// We can avoid the overhead of fetching task logs that we will not view
+	// and we can avoid handling errors that we will not see
+	return &TaskLogs{TaskID: taskID, Execution: t.Execution, DefaultLogger: defaultLogger}, nil
+}
+
+func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
+	const logMessageCount = 100
+
 	var systemLogs []apimodels.LogMessage
+
 	// get logs from cedar
-	if defaultLogger == model.BuildloggerLogSender {
+	if obj.DefaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:        t.Id,
-			Execution:     utility.ToIntPtr(t.Execution),
+			TaskID:        obj.TaskID,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.TaskLogPrefix,
@@ -1672,13 +1665,15 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 
 		// system logs
 		opts.LogType = apimodels.SystemLogPrefix
-		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
-		if blErr != nil {
+		systemLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
+		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, t.Id, systemLogReader)
+		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, systemLogReader)
 	} else {
-		systemLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
+		var err error
+
+		systemLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.SystemLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", obj.TaskID, err.Error()))
@@ -1733,47 +1728,27 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
-	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: task not found", obj.TaskID))
-	}
-	//  need project to get default logger
-	p, err := r.sc.FindProjectById(t.Project, true)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
-	}
-	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
-	}
-
-	defaultLogger := p.DefaultLogger
-	if defaultLogger == "" {
-		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
 	var agentLogs []apimodels.LogMessage
 	// get logs from cedar
-	if defaultLogger == model.BuildloggerLogSender {
+	if obj.DefaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:        t.Id,
-			Execution:     utility.ToIntPtr(t.Execution),
+			TaskID:        obj.TaskID,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.AgentLogPrefix,
 		}
 		// agent logs
-		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
-		if blErr != nil {
+		agentLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
+		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, t.Id, agentLogReader)
+		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, agentLogReader)
 	} else {
+		var err error
 		// agent logs
-		agentLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
+		agentLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.AgentLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", obj.TaskID, err.Error()))
@@ -1790,60 +1765,44 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*api
 func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
-	// need to task to get project id
-	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", obj.TaskID))
-	}
-
-	// need project to get default logger
-	p, err := r.sc.FindProjectById(t.Project, true)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
-	}
-	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
-	}
-
-	defaultLogger := p.DefaultLogger
-	if defaultLogger == "" {
-		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
-	taskLogs := []apimodels.LogMessage{}
+	var taskLogs []apimodels.LogMessage
 
 	// get logs from cedar
-	if defaultLogger == model.BuildloggerLogSender {
+	if obj.DefaultLogger == model.BuildloggerLogSender {
+
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:        t.Id,
-			Execution:     utility.ToIntPtr(t.Execution),
+			TaskID:        obj.TaskID,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.TaskLogPrefix,
 		}
 		// task logs
-		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
-		if blErr != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
+		taskLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
+
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching build logger logs: %s", err.Error()))
 		}
+
 		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, taskLogReader)
 
 	} else {
+		var err error
+
 		// task logs
-		taskLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
+		taskLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
+
 	taskLogPointers := []*apimodels.LogMessage{}
 	for i := range taskLogs {
 		taskLogPointers = append(taskLogPointers, &taskLogs[i])
 	}
+
 	return taskLogPointers, nil
 }
 

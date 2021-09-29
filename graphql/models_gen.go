@@ -236,12 +236,13 @@ type TaskFiles struct {
 }
 
 type TaskLogs struct {
-	TaskID     string                        `json:"taskId"`
-	Execution  int                           `json:"execution"`
-	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
-	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
-	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
-	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
+	TaskID        string                        `json:"taskId"`
+	Execution     int                           `json:"execution"`
+	DefaultLogger string                        `json:"defaultLogger"`
+	EventLogs     []*model.TaskAPIEventLogEntry `json:"eventLogs"`
+	TaskLogs      []*apimodels.LogMessage       `json:"taskLogs"`
+	SystemLogs    []*apimodels.LogMessage       `json:"systemLogs"`
+	AgentLogs     []*apimodels.LogMessage       `json:"agentLogs"`
 }
 
 type TaskQueueDistro struct {
