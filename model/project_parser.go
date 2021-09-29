@@ -1216,7 +1216,3 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 	}
 	return newDeps, evalErrs
 }
-
-func (p *ParserProject) ShouldDeactivatePrevious() bool {
-	return utility.FromBoolPtr(p.DeactivatePrevious)
-}

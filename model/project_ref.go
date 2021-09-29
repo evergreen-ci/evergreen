@@ -436,14 +436,16 @@ func (p *ProjectRef) GetMergedConfig(version string) *MergedProjectConfig {
 	perfEnabled := p.PerfEnabled
 	deactivatePrevious := p.DeactivatePrevious
 	taskAnnotationSettings := p.TaskAnnotationSettings
-	if parserProject.PerfEnabled != nil {
-		perfEnabled = parserProject.PerfEnabled
-	}
-	if parserProject.DeactivatePrevious != nil {
-		perfEnabled = parserProject.DeactivatePrevious
-	}
-	if parserProject.TaskAnnotationSettings != nil {
-		taskAnnotationSettings = *parserProject.TaskAnnotationSettings
+	if parserProject != nil {
+		if parserProject.PerfEnabled != nil {
+			perfEnabled = parserProject.PerfEnabled
+		}
+		if parserProject.DeactivatePrevious != nil {
+			perfEnabled = parserProject.DeactivatePrevious
+		}
+		if parserProject.TaskAnnotationSettings != nil {
+			taskAnnotationSettings = *parserProject.TaskAnnotationSettings
+		}
 	}
 	mergedConfig.PerfEnabled = perfEnabled
 	mergedConfig.DeactivatePrevious = deactivatePrevious
