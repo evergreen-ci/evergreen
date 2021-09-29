@@ -98,10 +98,10 @@ func (p *APICreatePod) splitEnvVars() (envVars map[string]string, secrets map[st
 type APIPod struct {
 	ID                        *string                            `json:"id"`
 	Status                    APIPodStatus                       `json:"status"`
-	Secret                    APIPodSecret                       `json:"secret,omitempty"`
-	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts,omitempty"`
-	TimeInfo                  APIPodTimeInfo                     `json:"time_info,omitempty"`
-	Resources                 APIPodResourceInfo                 `json:"resources,omitempty"`
+	Secret                    APIPodSecret                       `json:"secret"`
+	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts"`
+	TimeInfo                  APIPodTimeInfo                     `json:"time_info"`
+	Resources                 APIPodResourceInfo                 `json:"resources"`
 }
 
 // BuildFromService converts a service-layer pod model into a REST API model.
