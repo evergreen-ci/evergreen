@@ -415,7 +415,7 @@ func (p *ProjectRef) GetMergedConfig(version string) *MergedProjectConfig {
 	if version == "" {
 		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(p.Id, -1)
 		if err != nil || lastGoodVersion == nil {
-			return nil, errors.Wrapf(err, "Unable to retrieve last good version for project '%s'", p.Id)
+			return nil
 		}
 		version = lastGoodVersion.Id
 		lookupVersion = true
