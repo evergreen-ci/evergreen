@@ -74,6 +74,8 @@ type APITask struct {
 	CanSync                 bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts           APISyncAtEndOptions `json:"sync_at_end_opts"`
 	Ami                     *string             `json:"ami"`
+	HasCedarResults         bool                `json:"has_cedar_results"`
+	CedarResultsFailed      bool                `json:"cedar_results_failed"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
 }
@@ -234,6 +236,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Requester:               utility.ToStringPtr(v.Requester),
 			Aborted:                 v.Aborted,
 			CanSync:                 v.CanSync,
+			HasCedarResults:         v.HasCedarResults,
+			CedarResultsFailed:      v.CedarResultsFailed,
 			MustHaveResults:         v.MustHaveResults,
 			ParentTaskId:            utility.FromStringPtr(v.DisplayTaskId),
 			SyncAtEndOpts: APISyncAtEndOptions{
@@ -356,6 +360,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 		DisplayOnly:         ad.DisplayOnly,
 		Requester:           utility.FromStringPtr(ad.Requester),
 		CanSync:             ad.CanSync,
+		HasCedarResults:     ad.HasCedarResults,
+		CedarResultsFailed:  ad.CedarResultsFailed,
 		MustHaveResults:     ad.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  ad.SyncAtEndOpts.Enabled,

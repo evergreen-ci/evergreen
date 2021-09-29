@@ -3,9 +3,7 @@ package ecs
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
@@ -48,7 +46,7 @@ func TestBasicECSPodCreator(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
 			hc := utility.GetHTTPClient()
@@ -66,15 +64,7 @@ func TestBasicECSPodCreator(t *testing.T) {
 				assert.NoError(t, c.Close(ctx))
 			}()
 
-			smc, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
-				Creds:  credentials.NewEnvCredentials(),
-				Region: aws.String(testutil.AWSRegion()),
-				Role:   aws.String(testutil.AWSRole()),
-				RetryOpts: &utility.RetryOptions{
-					MaxAttempts: 5,
-				},
-				HTTPClient: hc,
-			})
+			smc, err := secret.NewBasicSecretsManagerClient(*awsOpts)
 			require.NoError(t, err)
 			require.NotNil(t, c)
 			defer func() {
@@ -95,72 +85,56 @@ func TestECSPodCreator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	hc := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(hc)
+
+	awsOpts := awsutil.NewClientOptions().
+		SetHTTPClient(hc).
+		SetCredentials(credentials.NewEnvCredentials()).
+		SetRole(testutil.AWSRole()).
+		SetRegion(testutil.AWSRegion())
+
+	c, err := NewBasicECSClient(*awsOpts)
+	require.NoError(t, err)
+	defer func() {
+		testutil.CleanupTaskDefinitions(ctx, t, c)
+		testutil.CleanupTasks(ctx, t, c)
+
+		assert.NoError(t, c.Close(ctx))
+	}()
+
 	for tName, tCase := range testcase.ECSPodCreatorTests() {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
-			hc := utility.GetHTTPClient()
-			defer utility.PutHTTPClient(hc)
-
-			awsOpts := awsutil.NewClientOptions().
-				SetHTTPClient(hc).
-				SetCredentials(credentials.NewEnvCredentials()).
-				SetRole(testutil.AWSRole()).
-				SetRegion(testutil.AWSRegion())
-
-			c, err := NewBasicECSClient(*awsOpts)
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, c.Close(ctx))
-			}()
-
-			podCreator, err := NewBasicECSPodCreator(c, nil)
+			pc, err := NewBasicECSPodCreator(c, nil)
 			require.NoError(t, err)
 
-			tCase(tctx, t, podCreator)
+			tCase(tctx, t, pc)
 		})
 	}
 
+	smc, err := secret.NewBasicSecretsManagerClient(*awsOpts)
+	require.NoError(t, err)
+	defer func() {
+		testutil.CleanupSecrets(ctx, t, smc)
+
+		assert.NoError(t, smc.Close(ctx))
+	}()
+
 	for tName, tCase := range testcase.ECSPodCreatorWithVaultTests() {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
-
-			hc := utility.GetHTTPClient()
-			defer utility.PutHTTPClient(hc)
-
-			awsOpts := awsutil.NewClientOptions().
-				SetHTTPClient(hc).
-				SetCredentials(credentials.NewEnvCredentials()).
-				SetRole(testutil.AWSRole()).
-				SetRegion(testutil.AWSRegion())
-
-			c, err := NewBasicECSClient(*awsOpts)
-			require.NoError(t, err)
-			defer c.Close(tctx)
-
-			smc, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
-				Creds:  credentials.NewEnvCredentials(),
-				Region: aws.String(testutil.AWSRegion()),
-				Role:   aws.String(testutil.AWSRole()),
-				RetryOpts: &utility.RetryOptions{
-					MaxAttempts: 5,
-				},
-				HTTPClient: hc,
-			})
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, smc.Close(tctx))
-			}()
 
 			m := secret.NewBasicSecretsManager(smc)
 			require.NotNil(t, m)
 
-			podCreator, err := NewBasicECSPodCreator(c, m)
+			pc, err := NewBasicECSPodCreator(c, m)
 			require.NoError(t, err)
 
-			tCase(tctx, t, podCreator)
+			tCase(tctx, t, pc)
 		})
 	}
 }

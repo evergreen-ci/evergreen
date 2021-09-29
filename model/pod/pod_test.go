@@ -26,8 +26,13 @@ func TestInsertAndFindOneByID(t *testing.T) {
 		},
 		"InsertSucceedsAndIsFoundByID": func(t *testing.T) {
 			p := Pod{
-				ID:     "id",
-				Secret: "secret",
+				ID: "id",
+				Secret: Secret{
+					Name:   "name",
+					Value:  "value",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 				Status: StatusRunning,
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
 					Image:    "alpine",

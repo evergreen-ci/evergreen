@@ -2,8 +2,6 @@ package ecs
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -15,11 +13,11 @@ import (
 	"github.com/evergreen-ci/cocoa/internal/testcase"
 	"github.com/evergreen-ci/cocoa/internal/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const defaultTestTimeout = time.Minute
 
 func TestECSClient(t *testing.T) {
 	assert.Implements(t, (*cocoa.ECSClient)(nil), &BasicECSClient{})
@@ -44,9 +42,16 @@ func TestECSClient(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, c)
 
+	defer func() {
+		testutil.CleanupTaskDefinitions(ctx, t, c)
+		testutil.CleanupTasks(ctx, t, c)
+
+		assert.NoError(t, c.Close(ctx))
+	}()
+
 	for tName, tCase := range testcase.ECSClientTaskDefinitionTests() {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
 			defer c.Close(tctx)
@@ -65,162 +70,26 @@ func TestECSClient(t *testing.T) {
 		},
 		Cpu:    aws.String("128"),
 		Memory: aws.String("4"),
-		Family: aws.String(testutil.NewTaskDefinitionFamily(t.Name())),
+		Family: aws.String(testutil.NewTaskDefinitionFamily(t)),
 	}
 
 	registerOut, err := c.RegisterTaskDefinition(ctx, registerIn)
 	require.NoError(t, err)
 	require.NotZero(t, registerOut)
 	require.NotZero(t, registerOut.TaskDefinition)
-
 	defer func() {
-		taskDefs := cleanupTaskDefinitions(ctx, t, c)
-		grip.InfoWhen(len(taskDefs) > 0, message.Fields{
-			"message":          "cleaned up leftover task definitions",
-			"task_definitions": taskDefs,
-			"test":             t.Name(),
+		_, err := c.DeregisterTaskDefinition(ctx, &ecs.DeregisterTaskDefinitionInput{
+			TaskDefinition: registerOut.TaskDefinition.TaskDefinitionArn,
 		})
-		tasks := cleanupTasks(ctx, t, c, taskDefs)
-		grip.InfoWhen(len(tasks) > 0, message.Fields{
-			"message": "cleaned up leftover running tasks",
-			"tasks":   tasks,
-			"test":    t.Name(),
-		})
-		require.NoError(t, c.Close(ctx))
+		assert.NoError(t, err)
 	}()
 
 	for tName, tCase := range testcase.ECSClientRegisteredTaskDefinitionTests(*registerIn, *registerOut) {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
 			tCase(tctx, t, c)
 		})
 	}
-}
-
-// cleanupTaskDefinitions cleans up all existing task definitions for testing
-// teardown.
-func cleanupTaskDefinitions(ctx context.Context, t *testing.T, c cocoa.ECSClient) []string {
-	out, err := c.ListTaskDefinitions(ctx, &ecs.ListTaskDefinitionsInput{
-		Status: aws.String(ecs.TaskDefinitionStatusActive),
-	})
-	require.NoError(t, err)
-	require.NotZero(t, out)
-
-	var taskDefs []string
-
-	for _, arn := range out.TaskDefinitionArns {
-		if arn == nil {
-			continue
-		}
-		taskDefArn := *arn
-		// Ignore task definitions that were not generated with testutil.NewTaskDefinitionFamily.
-		name := strings.Join([]string{testutil.TaskDefinitionPrefix(), "cocoa", t.Name()}, "-")
-		if !strings.Contains(taskDefArn, name) {
-			continue
-		}
-		taskDefs = append(taskDefs, *arn)
-		_, err := c.DeregisterTaskDefinition(ctx, &ecs.DeregisterTaskDefinitionInput{
-			TaskDefinition: arn,
-		})
-		assert.NoError(t, err)
-	}
-
-	return taskDefs
-}
-
-// cleanupTasks cleans up all tasks for testing teardown. It only cleans up
-// tasks if they are running and are created from one of the given task
-// definitions.
-func cleanupTasks(ctx context.Context, t *testing.T, c cocoa.ECSClient, taskDefs []string) []string {
-	out, err := c.ListTasks(ctx, &ecs.ListTasksInput{
-		Cluster: aws.String(testutil.ECSClusterName()),
-	})
-	require.NoError(t, err)
-	require.NotZero(t, out)
-
-	if len(out.TaskArns) == 0 {
-		return nil
-	}
-
-	describeOut, err := c.DescribeTasks(ctx, &ecs.DescribeTasksInput{
-		Cluster: aws.String(testutil.ECSClusterName()),
-		Tasks:   out.TaskArns,
-	})
-	require.NoError(t, err)
-
-	var tasks []string
-	for _, task := range describeOut.Tasks {
-		if task == nil {
-			continue
-		}
-
-		if task.TaskDefinitionArn == nil {
-			grip.Notice(message.Fields{
-				"message": "cannot check task for test teardown because it does not have a task definition ARN",
-				"context": "cocoa test teardown",
-				"task":    *task,
-				"test":    t.Name(),
-			})
-			continue
-		}
-		// Ignore tasks started by task definitions outside of the cocoa testing
-		// environment.
-		if taskDef := *task.TaskDefinitionArn; !utility.StringSliceContains(taskDefs, taskDef) {
-			continue
-		}
-
-		if task.LastStatus == nil {
-			grip.Notice(message.Fields{
-				"message": "cannot check task for test teardown because it does not have a status",
-				"context": "cocoa test teardown",
-				"task":    *task,
-				"test":    t.Name(),
-			})
-			continue
-		}
-
-		status := *task.LastStatus
-		switch status {
-		case "PROVISIONING", "PENDING", "ACTIVATING":
-			grip.Notice(message.Fields{
-				"message": "cannot stop the task because it is in an unstoppable state",
-				"context": "cocoa test teardown",
-				"status":  status,
-				"task":    *task,
-				"test":    t.Name(),
-			})
-			continue
-		case "RUNNING":
-			if task.DesiredStatus != nil && *task.DesiredStatus == "STOPPED" {
-				continue
-			}
-			if task.TaskArn == nil {
-				grip.Notice(message.Fields{
-					"message": "cannot stop the task because it is missing a task ARN",
-					"context": "cocoa test teardown",
-					"status":  status,
-					"task":    *task,
-					"test":    t.Name(),
-				})
-				continue
-			}
-			_, err := c.StopTask(ctx, &ecs.StopTaskInput{
-				Cluster: aws.String(testutil.ECSClusterName()),
-				Reason:  aws.String(fmt.Sprintf("cocoa test teardown for test '%s'", t.Name())),
-				Task:    task.TaskArn,
-			})
-			if assert.NoError(t, err) {
-				tasks = append(tasks, *task.TaskArn)
-			}
-		case "DEACTIVATING", "STOPPING", "DEPROVISIONING", "STOPPED":
-			continue
-		default:
-			assert.Fail(t, "unrecognized task status '%s'", status)
-		}
-
-	}
-
-	return tasks
 }

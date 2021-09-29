@@ -943,6 +943,11 @@ func TestECSPodPlacementOptions(t *testing.T) {
 		require.NotZero(t, opts)
 		assert.Zero(t, *opts)
 	})
+	t.Run("SetGroup", func(t *testing.T) {
+		group := "group"
+		opts := NewECSPodPlacementOptions().SetGroup(group)
+		assert.Equal(t, group, utility.FromStringPtr(opts.Group))
+	})
 	t.Run("SetStrategy", func(t *testing.T) {
 		strategy := StrategyBinpack
 		opts := NewECSPodPlacementOptions().SetStrategy(strategy)
@@ -1030,6 +1035,14 @@ func TestECSPodPlacementOptions(t *testing.T) {
 			require.NotZero(t, opts.Strategy)
 			assert.Equal(t, StrategySpread, *opts.Strategy)
 			assert.Equal(t, "custom", utility.FromStringPtr(opts.StrategyParameter))
+		})
+		t.Run("SucceedsWithNonemptyGroupName", func(t *testing.T) {
+			opts := NewECSPodPlacementOptions().SetGroup("group")
+			assert.NoError(t, opts.Validate())
+		})
+		t.Run("FailsWithEmptyGroupName", func(t *testing.T) {
+			opts := NewECSPodPlacementOptions().SetGroup("")
+			assert.Error(t, opts.Validate())
 		})
 	})
 }
