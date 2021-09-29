@@ -17,7 +17,7 @@ type VaultTestCase func(ctx context.Context, t *testing.T, v cocoa.Vault)
 func VaultTests(cleanupSecret func(ctx context.Context, t *testing.T, v cocoa.Vault, id string)) map[string]VaultTestCase {
 	return map[string]VaultTestCase{
 		"CreateSecretSucceeds": func(ctx context.Context, t *testing.T, v cocoa.Vault) {
-			id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t.Name())).SetValue("hello"))
+			id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t)).SetValue("hello"))
 			require.NoError(t, err)
 			require.NotZero(t, id)
 
@@ -29,7 +29,7 @@ func VaultTests(cleanupSecret func(ctx context.Context, t *testing.T, v cocoa.Va
 			assert.Zero(t, id)
 		},
 		"DeleteSecretWithExistingSecretSucceeds": func(ctx context.Context, t *testing.T, v cocoa.Vault) {
-			id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t.Name())).SetValue("hello"))
+			id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t)).SetValue("hello"))
 			require.NoError(t, err)
 			require.NotZero(t, id)
 
@@ -39,11 +39,11 @@ func VaultTests(cleanupSecret func(ctx context.Context, t *testing.T, v cocoa.Va
 			assert.Error(t, v.DeleteSecret(ctx, ""))
 		},
 		"DeleteSecretWithValidNonexistentInputNoops": func(ctx context.Context, t *testing.T, v cocoa.Vault) {
-			assert.NoError(t, v.DeleteSecret(ctx, testutil.NewSecretName(t.Name())))
+			assert.NoError(t, v.DeleteSecret(ctx, testutil.NewSecretName(t)))
 		},
 		"GetValueWithExistingSecretSucceeds": func(ctx context.Context, t *testing.T, v cocoa.Vault) {
 			val := "eggs"
-			id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t.Name())).SetValue(val))
+			id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t)).SetValue(val))
 			require.NoError(t, err)
 			require.NotZero(t, id)
 
@@ -60,12 +60,12 @@ func VaultTests(cleanupSecret func(ctx context.Context, t *testing.T, v cocoa.Va
 			assert.Zero(t, id)
 		},
 		"GetValueWithValidNonexistentInputFails": func(ctx context.Context, t *testing.T, v cocoa.Vault) {
-			id, err := v.GetValue(ctx, testutil.NewSecretName(t.Name()))
+			id, err := v.GetValue(ctx, testutil.NewSecretName(t))
 			assert.Error(t, err)
 			assert.Zero(t, id)
 		},
 		"UpdateValueSucceeds": func(ctx context.Context, t *testing.T, v cocoa.Vault) {
-			id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t.Name())).SetValue("eggs"))
+			id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t)).SetValue("eggs"))
 			require.NoError(t, err)
 			require.NotZero(t, id)
 
@@ -83,7 +83,7 @@ func VaultTests(cleanupSecret func(ctx context.Context, t *testing.T, v cocoa.Va
 			assert.Error(t, v.UpdateValue(ctx, *cocoa.NewNamedSecret()))
 		},
 		"UpdateValueWithValidNonexistentInputFails": func(ctx context.Context, t *testing.T, v cocoa.Vault) {
-			assert.Error(t, v.UpdateValue(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t.Name())).SetValue("leaf")))
+			assert.Error(t, v.UpdateValue(ctx, *cocoa.NewNamedSecret().SetName(testutil.NewSecretName(t)).SetValue("leaf")))
 		},
 	}
 }

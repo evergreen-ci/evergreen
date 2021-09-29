@@ -3,7 +3,6 @@ package mock
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/internal/testcase"
@@ -26,7 +25,7 @@ func TestVaultWithSecretsManager(t *testing.T) {
 
 	for tName, tCase := range testcase.VaultTests(cleanupSecret) {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
 			cleanupECSAndSecretsManagerCache()
