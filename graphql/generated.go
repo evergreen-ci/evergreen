@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -61,6 +62,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	SuperUserOnly func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -6260,7 +6262,9 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	&ast.Source{Name: "graphql/schema.graphql", Input: `type Query {
+	&ast.Source{Name: "graphql/schema.graphql", Input: `directive @superUserOnly on FIELD_DEFINITION 
+
+type Query {
   userPatches(
     limit: Int = 0
     page: Int = 0
@@ -6273,7 +6277,7 @@ var sources = []*ast.Source{
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   version(id: String!): Version!
-  projects: [GroupedProjects]!
+  projects: [GroupedProjects]! @superUserOnly
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -6343,13 +6347,13 @@ var sources = []*ast.Source{
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  attachProjectToRepo(projectId: String!): Project!
+  attachProjectToRepo(projectId: String!): Project! 
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated(reason: "restartPatch deprecated, Use restartVersions instead")
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
@@ -21204,8 +21208,28 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Projects(rctx)
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().Projects(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.SuperUserOnly == nil {
+				return nil, errors.New("directive superUserOnly is not implemented")
+			}
+			return ec.directives.SuperUserOnly(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, err
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]*GroupedProjects); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/evergreen-ci/evergreen/graphql.GroupedProjects`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)

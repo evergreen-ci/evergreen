@@ -1,3 +1,6 @@
+directive @superUserOnly on FIELD_DEFINITION 
+directive @permissions(permissions: [String!]) on FIELD_DEFINITION
+
 type Query {
   userPatches(
     limit: Int = 0
@@ -11,7 +14,7 @@ type Query {
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   version(id: String!): Version!
-  projects: [GroupedProjects]!
+  projects: [GroupedProjects]! @superUserOnly
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -81,13 +84,13 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  attachProjectToRepo(projectId: String!): Project!
+  attachProjectToRepo(projectId: String!): Project! 
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated(reason: "restartPatch deprecated, Use restartVersions instead")
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String

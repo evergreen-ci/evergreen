@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -3674,9 +3675,23 @@ func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIs
 
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
-	return Config{
+	c := Config{
 		Resolvers: &Resolver{
 			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
+	c.Directives.SuperUserOnly = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+		user := gimlet.GetUser(ctx)
+		opts := gimlet.PermissionOpts{
+			Resource:      evergreen.SuperUserPermissionsID,
+			ResourceType:  evergreen.SuperUserResourceType,
+			Permission:    evergreen.PermissionAdminSettings,
+			RequiredLevel: evergreen.AdminSettingsEdit.Value,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
+	}
+	return c
 }
