@@ -323,6 +323,11 @@ func (s *Subscription) Validate() error {
 	if !IsValidOwnerType(string(s.OwnerType)) {
 		catcher.Add(errors.Errorf("%s is not a valid owner type", s.OwnerType))
 	}
+	if s.OwnerType == OwnerTypeProject &&
+		s.ResourceType == ResourceTypeTask &&
+		s.Subscriber.Type == JIRACommentSubscriberType {
+		catcher.Add(errors.New("JIRA comment subscription not allowed for all tasks in the project"))
+	}
 	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
 	return catcher.Resolve()
