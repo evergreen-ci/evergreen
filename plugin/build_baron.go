@@ -139,12 +139,7 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
 					bbSettings, ok := BbGetProject(evergreen.GetEnvironment().Settings(), context.ProjectRef.Id, "")
-					if !ok {
-						return struct {
-							Enabled bool `json:"enabled"`
-						}{false}, nil
-					}
-					enabled := len(bbSettings.TicketSearchProjects) > 0
+					enabled := ok && len(bbSettings.TicketSearchProjects) > 0
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil
