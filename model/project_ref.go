@@ -1885,40 +1885,51 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		viewRole = GetViewRepoRole(p.RepoRefId)
 	}
 
+	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user '%s'", addedUser)
+			catcher.Wrapf(err, "error finding user '%s'", addedUser)
+			continue
 		}
 		if adminUser == nil {
-			return errors.Errorf("no user '%s' found", addedUser)
+			catcher.Errorf("no user '%s' found", addedUser)
+			continue
 		}
 		if err = adminUser.AddRole(role.ID); err != nil {
-			return errors.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
+			catcher.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
+			continue
 		}
 		if viewRole != "" {
 			if err = adminUser.AddRole(viewRole); err != nil {
-				return errors.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
+				catcher.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
+				continue
 			}
 		}
 	}
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user %s", removedUser)
+			catcher.Wrapf(err, "error finding user %s", removedUser)
+			continue
 		}
 		if adminUser == nil {
 			continue
 		}
 
 		if err = adminUser.RemoveRole(role.ID); err != nil {
-			return errors.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			catcher.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			continue
 		}
 		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
 			if err = adminUser.RemoveRole(viewRole); err != nil {
-				return errors.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				catcher.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				continue
 			}
 		}
+	}
+	if err = catcher.Resolve(); err != nil {
+		return errors.Wrap(err, "error updating some admins")
 	}
 	return nil
 }
