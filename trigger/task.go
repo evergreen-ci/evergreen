@@ -314,7 +314,14 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 				},
 				{
 					Title: "Version",
-					Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.task.Version, hasPatch, false), t.task.Version),
+					Value: fmt.Sprintf("<%s|%s>", versionLink(
+						versionLinkInput{
+							uiBase:    t.uiConfig.Url,
+							versionID: t.task.Version,
+							hasPatch:  hasPatch,
+							isChild:   false,
+						},
+					), t.task.Version),
 				},
 				{
 					Title: "Duration",

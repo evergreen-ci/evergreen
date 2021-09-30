@@ -308,10 +308,24 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 			return nil, errors.Wrapf(err, "failed to get githubContext for '%s'", t.patch.Id)
 		}
 		data.githubContext = githubContext
-		data.URL = versionLink(t.uiConfig.UIv2Url, t.patch.Triggers.ParentPatch, false, true)
+		data.URL = versionLink(
+			versionLinkInput{
+				uiBase:    t.uiConfig.UIv2Url,
+				versionID: t.patch.Triggers.ParentPatch,
+				hasPatch:  false,
+				isChild:   true,
+			},
+		)
 	} else {
 		data.githubContext = "evergreen"
-		data.URL = versionLink(t.uiConfig.Url, t.patch.Version, true, false)
+		data.URL = versionLink(
+			versionLinkInput{
+				uiBase:    t.uiConfig.Url,
+				versionID: t.patch.Version,
+				hasPatch:  true,
+				isChild:   false,
+			},
+		)
 	}
 
 	slackColor := evergreenFailColor
