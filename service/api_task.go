@@ -223,7 +223,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	deactivatePrevious := utility.FromBoolPtr(projectRef.GetMergedConfig(t.Version).DeactivatePrevious)
+	deactivatePrevious := utility.FromBoolPtr(projectRef.GetProjectParserMergedProjectRef(t.Version).DeactivatePrevious)
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)

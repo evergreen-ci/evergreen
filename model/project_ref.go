@@ -113,12 +113,6 @@ type ProjectRef struct {
 	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 }
 
-type MergedProjectConfig struct {
-	DeactivatePrevious     *bool                         `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
-	PerfEnabled            *bool                         `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
-	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-}
-
 type CommitQueueParams struct {
 	Enabled     *bool  `bson:"enabled" json:"enabled"`
 	MergeMethod string `bson:"merge_method" json:"merge_method"`
@@ -410,12 +404,17 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-func (p *ProjectRef) GetMergedConfig(version string) *MergedProjectConfig {
+func (p *ProjectRef) GetProjectParserMergedProjectRef(version string) *ProjectRef {
 	lookupVersion := false
 	if version == "" {
 		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(p.Id, -1)
 		if err != nil || lastGoodVersion == nil {
-			return nil
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    fmt.Sprintf("Unable to retrieve last good version for project '%s'", p.Id),
+				"project_id": p.Id,
+				"version":    version,
+			}))
+			return p
 		}
 		version = lastGoodVersion.Id
 		lookupVersion = true
@@ -423,34 +422,27 @@ func (p *ProjectRef) GetMergedConfig(version string) *MergedProjectConfig {
 	parserProject, err := ParserProjectFindOneById(version)
 	if err != nil {
 		grip.Debug(message.Fields{
-			"message":        "error retrieving parser project by version",
+			"message":        fmt.Sprintf("Error retrieving parser project for version '%s'", version),
 			"project_id":     p.Id,
 			"version":        version,
 			"lookup_version": lookupVersion,
 			"err":            err.Error(),
 		})
-		return nil
+		return p
 	}
-	mergedConfig := MergedProjectConfig{}
-
-	perfEnabled := p.PerfEnabled
-	deactivatePrevious := p.DeactivatePrevious
-	taskAnnotationSettings := p.TaskAnnotationSettings
+	pRef := p
 	if parserProject != nil {
 		if parserProject.PerfEnabled != nil {
-			perfEnabled = parserProject.PerfEnabled
+			pRef.PerfEnabled = parserProject.PerfEnabled
 		}
 		if parserProject.DeactivatePrevious != nil {
-			perfEnabled = parserProject.DeactivatePrevious
+			pRef.DeactivatePrevious = parserProject.DeactivatePrevious
 		}
 		if parserProject.TaskAnnotationSettings != nil {
-			taskAnnotationSettings = *parserProject.TaskAnnotationSettings
+			pRef.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
 		}
 	}
-	mergedConfig.PerfEnabled = perfEnabled
-	mergedConfig.DeactivatePrevious = deactivatePrevious
-	mergedConfig.TaskAnnotationSettings = taskAnnotationSettings
-	return &mergedConfig
+	return pRef
 }
 
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
@@ -1428,7 +1420,7 @@ func IsPerfEnabledForProject(projectId string) bool {
 	if err != nil || projectRef == nil {
 		return false
 	}
-	return utility.FromBoolPtr(projectRef.GetMergedConfig("").PerfEnabled)
+	return utility.FromBoolPtr(projectRef.GetProjectParserMergedProjectRef("").PerfEnabled)
 }
 
 func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
