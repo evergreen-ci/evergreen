@@ -37,12 +37,11 @@ type UIServer struct {
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
 
-	umconf             gimlet.UserMiddlewareConfiguration
-	Settings           evergreen.Settings
-	CookieStore        *sessions.CookieStore
-	clientConfig       *evergreen.ClientConfig
-	jiraHandler        thirdparty.JiraHandler
-	buildBaronProjects map[string]evergreen.BuildBaronProject
+	umconf       gimlet.UserMiddlewareConfiguration
+	Settings     evergreen.Settings
+	CookieStore  *sessions.CookieStore
+	clientConfig *evergreen.ClientConfig
+	jiraHandler  thirdparty.JiraHandler
 
 	hostCache map[string]hostCacheItem
 
@@ -89,16 +88,15 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 	}
 
 	uis := &UIServer{
-		Settings:           *settings,
-		env:                env,
-		queue:              queue,
-		Home:               home,
-		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
-		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
-		buildBaronProjects: plugin.BbGetConfig(settings),
-		render:             gimlet.NewHTMLRenderer(ropts),
-		renderText:         gimlet.NewTextRenderer(ropts),
-		jiraHandler:        thirdparty.NewJiraHandler(*settings.Jira.Export()),
+		Settings:     *settings,
+		env:          env,
+		queue:        queue,
+		Home:         home,
+		clientConfig: evergreen.GetEnvironment().ClientConfig(),
+		CookieStore:  sessions.NewCookieStore([]byte(settings.Ui.Secret)),
+		render:       gimlet.NewHTMLRenderer(ropts),
+		renderText:   gimlet.NewTextRenderer(ropts),
+		jiraHandler:  thirdparty.NewJiraHandler(*settings.Jira.Export()),
 		umconf: gimlet.UserMiddlewareConfiguration{
 			HeaderKeyName:  evergreen.APIKeyHeader,
 			HeaderUserName: evergreen.APIUserHeader,
