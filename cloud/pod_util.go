@@ -261,7 +261,7 @@ func exportECSPodArch(arch pod.Arch) string {
 }
 
 const (
-	ecsCPUArchConstraint = "ecs.cpu-architecture"
+	ecsCPUArchConstraint = "attribute:ecs.cpu-architecture"
 )
 
 // exportECSPodExecutionOptions exports the ECS configuration into
