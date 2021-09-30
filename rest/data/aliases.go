@@ -123,7 +123,7 @@ func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAli
 	if err := pc.UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
 		return false, errors.Wrap(err, "error updating project aliases")
 	}
-	modified := len(aliasesToUpdate) == 0
+	modified := len(aliasesToUpdate) > 0
 	catcher := grip.NewBasicCatcher()
 	// delete any aliasesToUpdate that were in the list before but are not now
 	for _, originalAlias := range originalAliases {

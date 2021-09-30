@@ -50,7 +50,7 @@ func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef, u *use
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Id),
+			Message:    errors.Wrapf(err, "project with id '%s' was not inserted", projectRef.Id).Error(),
 		}
 	}
 	return nil

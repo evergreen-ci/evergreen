@@ -164,13 +164,42 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 	return errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
 }
 
-type MockDBConnector struct{}
-
-func (pc *MockDBConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
+func (sc *MockConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectPageSection, isRepo bool, userId string) error {
 	return nil
 }
 
-func (pc *MockDBConnector) CopyProject(ctx context.Context, projectToCopy *model.ProjectRef, newProject string) (*restModel.APIProjectRef, error) {
-	return nil, nil
+func (sc *MockConnector) CopyProject(ctx context.Context, projectToCopy *model.ProjectRef, newProject string) (*restModel.APIProjectRef, error) {
+	// copy project, disable necessary settings
+	oldId := projectToCopy.Id
+	oldIdentifier := projectToCopy.Identifier
+	projectToCopy.Id = "" // this will be regenerated during Create
+	projectToCopy.Identifier = newProject
+	projectToCopy.Enabled = utility.FalsePtr()
+	projectToCopy.PRTestingEnabled = nil
+	projectToCopy.CommitQueue.Enabled = nil
+	u := gimlet.GetUser(ctx).(*user.DBUser)
+	if err := sc.CreateProject(projectToCopy, u); err != nil {
+		return nil, errors.Wrapf(err, "Database error creating project for id '%s'", newProject)
+	}
+	apiProjectRef := &restModel.APIProjectRef{}
+	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
+		return nil, errors.Wrap(err, "error building API project from service")
+	}
+
+	// copy variables, aliases, and subscriptions
+	if err := sc.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
+		return nil, errors.Wrapf(err, "error copying project vars from project '%s'", oldIdentifier)
+	}
+	if err := sc.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
+		return nil, errors.Wrapf(err, "error copying aliases from project '%s'", oldIdentifier)
+	}
+	if err := sc.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
+		return nil, errors.Wrapf(err, "error copying subscriptions from project '%s'", oldIdentifier)
+	}
+	// set the same admin roles from the old project on the newly copied project.
+	if err := sc.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
+		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", newProject)
+	}
+	return apiProjectRef, nil
 }
