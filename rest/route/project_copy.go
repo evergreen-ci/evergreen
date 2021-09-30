@@ -67,7 +67,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
 	}
 
-	apiProjectRef, err := data.CopyProject(ctx, p.sc, projectToCopy, p.newProject)
+	apiProjectRef, err := p.sc.CopyProject(ctx, projectToCopy, p.newProject)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
