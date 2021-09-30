@@ -965,6 +965,44 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 	return res, nil
 }
 
+func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
+	projectRef, err := model.FindOneProjectRef(*project.Identifier)
+	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
+	}
+	if projectRef != nil {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot create project with identifier '%s'", err.Error()))
+	}
+
+	i, err := project.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "API error converting from model.APIProjectRef to model.ProjectRef").Error())
+	}
+	dbProjectRef, ok := i.(*model.ProjectRef)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Unexpected type %T for model.ProjectRef", i).Error())
+	}
+
+	u := gimlet.GetUser(ctx).(*user.DBUser)
+	if err = r.sc.CreateProject(dbProjectRef, u); err != nil {
+		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", *project.Identifier).Error())
+	}
+
+	projectRef, err = model.FindOneProjectRef(*project.Identifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
+	}
+	if projectRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project: %s", err.Error()))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+
+	return &apiProjectRef, nil
+}
+
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
