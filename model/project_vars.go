@@ -63,7 +63,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
 func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
-	project, err := FindOneProjectRef(projectID)
+	project, err := FindBranchProjectRef(projectID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem getting project '%s'", projectID)
 	}

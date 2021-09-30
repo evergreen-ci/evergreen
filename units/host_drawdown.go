@@ -145,7 +145,7 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 		if t == nil {
 			return errors.Errorf("could not find last task '%s'", h.LastTask)
 		}
-		if t.IsPartOfSingleHostTaskGroup() {
+		if t.IsPartOfSingleHostTaskGroup() && t.Status == evergreen.TaskSucceeded {
 			return nil
 		}
 	}

@@ -34,8 +34,7 @@ const (
 	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
 
-	ecsTaskStateChangeType              = "ECS Task State Change"
-	ecsContainerInstanceStateChangeType = "ECS Container Instance State Change"
+	ecsTaskStateChangeType = "ECS Task State Change"
 )
 
 type baseSNS struct {
@@ -423,10 +422,6 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 				Message:    fmt.Sprintf("unrecognized status '%s'", notification.Detail.LastStatus),
 			}
 		}
-	case ecsContainerInstanceStateChangeType:
-		// TODO (EVG-15333): remove this no-op once the event rule excludes
-		// container instance state changes.
-		return nil
 	default:
 		grip.Error(message.Fields{
 			"message":         "received an unknown notification detail type",
@@ -447,17 +442,12 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 // handleStoppedPod handles an SNS notification that a pod has been stopped in
 // ECS.
 func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason string) error {
-	if p.Status == nil {
-		return errors.New("cannot handle stopped pod if current status is unknown")
-	}
-
-	status := *p.Status
-	if status == model.PodStatusDecommissioned || status == model.PodStatusTerminated {
+	if p.Status == model.PodStatusDecommissioned || p.Status == model.PodStatusTerminated {
 		return nil
 	}
 	id := utility.FromStringPtr(p.ID)
 
-	if err := sns.sc.UpdatePodStatus(id, status, model.PodStatusDecommissioned); err != nil {
+	if err := sns.sc.UpdatePodStatus(id, p.Status, model.PodStatusDecommissioned); err != nil {
 		return err
 	}
 
@@ -465,7 +455,7 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not enqueue job to terminate pod from SNS notification",
 			"pod_id":     id,
-			"pod_status": status,
+			"pod_status": p.Status,
 			"route":      "/hooks/aws/ecs",
 		}))
 	}

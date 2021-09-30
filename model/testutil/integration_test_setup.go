@@ -24,7 +24,7 @@ func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName, projec
 		projectPath = filepath.Join(config, "project", fmt.Sprintf("%v.yml", projectName))
 	}
 
-	projectRef, err := model.FindOneProjectRef(projectName)
+	projectRef, err := model.FindBranchProjectRef(projectName)
 	if err != nil {
 		return err
 	}

@@ -631,7 +631,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 
 	projectRef, err := model.FindMergedProjectRef(projectID)
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.WithStack(err)
+		return nil, http.StatusNotFound, errors.WithStack(err)
 	}
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("error finding the project '%s'", projectID)
@@ -805,6 +805,7 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 			"allowed_origins": allowedOrigins,
 			"adding_headers":  util.StringContainsSliceRegex(allowedOrigins, requester),
 			"settings_is_nil": evergreen.GetEnvironment().Settings() == nil,
+			"headers":         r.Header,
 		})
 		if len(allowedOrigins) > 0 {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
@@ -814,8 +815,18 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
+				w.Header().Add("Access-Control-Max-Age", "600")
 			}
 		}
 		next(w, r)
 	}
+}
+
+func allowCORS(next http.HandlerFunc) http.HandlerFunc {
+	origins := []string{}
+	settings := evergreen.GetEnvironment().Settings()
+	if settings != nil {
+		origins = settings.Ui.CORSOrigins
+	}
+	return AddCORSHeaders(origins, next)
 }

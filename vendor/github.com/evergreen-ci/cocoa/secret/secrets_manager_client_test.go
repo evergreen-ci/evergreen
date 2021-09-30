@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
@@ -16,6 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// defaultTestTimeout is the standard timeout for integration tests against
+// Secrets Manager.
+const defaultTestTimeout = time.Minute
+
 func TestSecretsManagerClient(t *testing.T) {
 	assert.Implements(t, (*cocoa.SecretsManagerClient)(nil), &BasicSecretsManagerClient{})
 
@@ -24,27 +27,25 @@ func TestSecretsManagerClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	hc := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(hc)
+
+	c, err := NewBasicSecretsManagerClient(*awsutil.NewClientOptions().
+		SetHTTPClient(hc).
+		SetCredentials(credentials.NewEnvCredentials()).
+		SetRole(testutil.AWSRole()).
+		SetRegion(testutil.AWSRegion()))
+	require.NoError(t, err)
+	defer func() {
+		testutil.CleanupSecrets(ctx, t, c)
+
+		assert.NoError(t, c.Close(ctx))
+	}()
+
 	for tName, tCase := range testcase.SecretsManagerClientTests() {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
-
-			hc := utility.GetHTTPClient()
-			defer utility.PutHTTPClient(hc)
-
-			c, err := NewBasicSecretsManagerClient(awsutil.ClientOptions{
-				Creds:  credentials.NewEnvCredentials(),
-				Region: aws.String(testutil.AWSRegion()),
-				Role:   aws.String(testutil.AWSRole()),
-				RetryOpts: &utility.RetryOptions{
-					MaxAttempts: 5,
-				},
-				HTTPClient: hc,
-			})
-			require.NoError(t, err)
-			require.NotNil(t, c)
-
-			defer c.Close(tctx)
 
 			tCase(tctx, t, c)
 		})

@@ -23,6 +23,7 @@ import (
 )
 
 const LoadProjectError = "load project error(s)"
+const TranslateProjectError = "error translating project"
 
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
@@ -82,7 +83,14 @@ type ParserProject struct {
 	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime             time.Time                      `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
+
+	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
+	// Values for the below fields set on this struct will take precedence over the project page and will
+	// be the configs used for a given project during runtime.
+	DeactivatePrevious *bool `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 
@@ -763,7 +771,9 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		ExecTimeoutSecs:        utility.FromIntPtr(pp.ExecTimeoutSecs),
 		Loggers:                pp.Loggers,
 		TaskAnnotationSettings: pp.TaskAnnotationSettings,
+		BuildBaronSettings:     pp.BuildBaronSettings,
 		PerfEnabled:            utility.FromBoolPtr(pp.PerfEnabled),
+		DeactivatePrevious:     utility.FromBoolPtr(pp.DeactivatePrevious),
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -780,7 +790,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	catcher.Extend(errs)
-	return proj, errors.Wrap(catcher.Resolve(), "error translating project")
+	return proj, errors.Wrap(catcher.Resolve(), TranslateProjectError)
 }
 
 func (pp *ParserProject) AddTask(name string, commands []PluginCommandConf) {
@@ -1207,4 +1217,8 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 		}
 	}
 	return newDeps, evalErrs
+}
+
+func (p *ParserProject) ShouldDeactivatePrevious() bool {
+	return utility.FromBoolPtr(p.DeactivatePrevious)
 }

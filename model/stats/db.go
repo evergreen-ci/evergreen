@@ -601,6 +601,28 @@ func (filter StatsFilter) buildMatchStageForTest() bson.M {
 		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
 
+	// After cutting over the a few build variants to use resmoke spawned
+	// with jasper (SERVER-54315), test names are now random UUIDs with
+	// with a human-readble display name. For the period between
+	// 09/01/21-09/14/21, the historical test stats calculations failed to
+	// account for this (EVG-15396). We should ignore any test stats
+	// affected by this bug.
+	//
+	// TODO: (EVG-15408) Remove this code once all affected test stats TTL
+	// on 03/14/2022.
+	or := []bson.M{
+		{DbTaskStatsIdDateKeyFull: bson.M{"$lt": time.Date(2021, time.August, 30, 0, 0, 0, 0, time.UTC)}},
+		{DbTaskStatsIdDateKeyFull: bson.M{"$gt": time.Date(2021, time.September, 14, 0, 0, 0, 0, time.UTC)}},
+	}
+	if filter.StartAt != nil {
+		match["$and"] = []bson.M{
+			{"$or": or},
+			{"$or": filter.buildTestPaginationOrBranches()},
+		}
+	} else {
+		match["$or"] = or
+	}
+
 	if len(filter.Tests) > 0 {
 		match[DbTestStatsIdTestFileKeyFull] = BuildMatchArrayExpression(filter.Tests)
 	}
@@ -612,10 +634,6 @@ func (filter StatsFilter) buildMatchStageForTest() bson.M {
 	}
 	if len(filter.Distros) > 0 {
 		match[DbTestStatsIdDistroKeyFull] = BuildMatchArrayExpression(filter.Distros)
-	}
-
-	if filter.StartAt != nil {
-		match["$or"] = filter.buildTestPaginationOrBranches()
 	}
 
 	return bson.M{"$match": match}

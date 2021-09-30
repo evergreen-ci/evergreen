@@ -3,9 +3,7 @@ package secret
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
@@ -30,25 +28,25 @@ func TestSecretsManager(t *testing.T) {
 		}
 	}
 
+	hc := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(hc)
+
+	c, err := NewBasicSecretsManagerClient(*awsutil.NewClientOptions().
+		SetHTTPClient(hc).
+		SetCredentials(credentials.NewEnvCredentials()).
+		SetRole(testutil.AWSRole()).
+		SetRegion(testutil.AWSRegion()))
+	require.NoError(t, err)
+	defer func() {
+		testutil.CleanupSecrets(ctx, t, c)
+
+		assert.NoError(t, c.Close(ctx))
+	}()
+
 	for tName, tCase := range testcase.VaultTests(cleanupSecret) {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
-
-			hc := utility.GetHTTPClient()
-			defer utility.PutHTTPClient(hc)
-
-			c, err := NewBasicSecretsManagerClient(awsutil.ClientOptions{
-				Creds:  credentials.NewEnvCredentials(),
-				Region: aws.String(testutil.AWSRegion()),
-				Role:   aws.String(testutil.AWSRole()),
-				RetryOpts: &utility.RetryOptions{
-					MaxAttempts: 5,
-				},
-				HTTPClient: hc,
-			})
-			require.NoError(t, err)
-			require.NotNil(t, c)
 
 			m := NewBasicSecretsManager(c)
 			require.NotNil(t, m)

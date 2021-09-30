@@ -279,6 +279,7 @@ func (s *taskSuite) SetupTest() {
 			Target: "A-3",
 		}),
 		event.NewSubscriptionByID(event.ResourceTypeTask, triggerTaskFailedOrBlocked, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, event.TriggerTaskStarted, s.event.ResourceId, apiSub),
 	}
 
 	for i := range s.subs {
@@ -371,7 +372,7 @@ func (s *taskSuite) TestGithubPREvent() {
 func (s *taskSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 1)
+	s.Len(n, 2)
 
 	s.task.Status = evergreen.TaskSucceeded
 	s.data.Status = evergreen.TaskSucceeded
@@ -1105,7 +1106,7 @@ func TestIsTestRegression(t *testing.T) {
 	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSucceededStatus))
 }
 
-func TestMapTestResultsByTestFile(t *testing.T) {
+func TestMapTestResultsByTestName(t *testing.T) {
 	assert := assert.New(t)
 
 	results := []task.TestResult{}
@@ -1126,13 +1127,14 @@ func TestMapTestResultsByTestFile(t *testing.T) {
 				Status:   first,
 			},
 			task.TestResult{
-				TestFile: fmt.Sprintf("file%d", i),
-				Status:   second,
+				TestFile:        utility.RandomString(),
+				DisplayTestName: fmt.Sprintf("file%d", i),
+				Status:          second,
 			},
 		)
 	}
 
-	m := mapTestResultsByTestFile(results)
+	m := mapTestResultsByTestName(results)
 	assert.Len(m, 4)
 
 	for _, v := range m {
@@ -1227,7 +1229,7 @@ func (s *taskSuite) TestProjectTrigger() {
 
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 1)
+	s.Len(n, 2)
 }
 
 func (s *taskSuite) TestBuildBreak() {

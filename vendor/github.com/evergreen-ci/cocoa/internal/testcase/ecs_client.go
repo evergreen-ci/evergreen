@@ -41,7 +41,7 @@ func ECSClientTaskDefinitionTests() map[string]ECSClientTestCase {
 				},
 				Cpu:    aws.String("128"),
 				Memory: aws.String("4"),
-				Family: aws.String(testutil.NewTaskDefinitionFamily(t.Name())),
+				Family: aws.String(testutil.NewTaskDefinitionFamily(t)),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, registerOut)
@@ -68,7 +68,7 @@ func ECSClientRegisteredTaskDefinitionTests(registerIn ecs.RegisterTaskDefinitio
 		"RunTaskFailsWithValidButNonexistentInput": func(ctx context.Context, t *testing.T, c cocoa.ECSClient) {
 			out, err := c.RunTask(ctx, &ecs.RunTaskInput{
 				Cluster:        aws.String(testutil.ECSClusterName()),
-				TaskDefinition: aws.String(testutil.NewTaskDefinitionFamily(t.Name()) + ":1"),
+				TaskDefinition: aws.String(testutil.NewTaskDefinitionFamily(t) + ":1"),
 			})
 			assert.Error(t, err)
 			assert.Zero(t, out)
@@ -153,8 +153,8 @@ func ECSClientRegisteredTaskDefinitionTests(registerIn ecs.RegisterTaskDefinitio
 				Cluster: aws.String(testutil.ECSClusterName()),
 				Tasks:   []*string{aws.String(utility.RandomString())},
 			})
-			assert.NoError(t, err)
-			assert.NotZero(t, out)
+			require.NoError(t, err)
+			require.NotZero(t, out)
 			assert.NotZero(t, out.Failures)
 			assert.Empty(t, out.Tasks)
 		},
@@ -184,7 +184,7 @@ func ECSClientRegisteredTaskDefinitionTests(registerIn ecs.RegisterTaskDefinitio
 		},
 		"DescribeTaskDefinitionFailsWithNonexistentTaskDefinition": func(ctx context.Context, t *testing.T, c cocoa.ECSClient) {
 			out, err := c.DescribeTaskDefinition(ctx, &ecs.DescribeTaskDefinitionInput{
-				TaskDefinition: aws.String(testutil.NewTaskDefinitionFamily(t.Name())),
+				TaskDefinition: aws.String(testutil.NewTaskDefinitionFamily(t)),
 			})
 			assert.Error(t, err)
 			assert.Zero(t, out)

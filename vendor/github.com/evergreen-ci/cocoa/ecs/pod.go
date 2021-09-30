@@ -128,6 +128,32 @@ func (p *BasicECSPod) StatusInfo() cocoa.ECSPodStatusInfo {
 	return p.statusInfo
 }
 
+// LatestStatusInfo returns the most up-to-date status information for the pod.
+func (p *BasicECSPod) LatestStatusInfo(ctx context.Context) (*cocoa.ECSPodStatusInfo, error) {
+	out, err := p.client.DescribeTasks(ctx, &ecs.DescribeTasksInput{
+		Cluster: p.resources.Cluster,
+		Tasks:   []*string{p.resources.TaskID},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "describing task")
+	}
+
+	if len(out.Failures) != 0 {
+		catcher := grip.NewBasicCatcher()
+		for _, failure := range out.Failures {
+			catcher.Errorf("%s: %s\n", utility.FromStringPtr(failure.Detail), utility.FromStringPtr(failure.Reason))
+		}
+		return nil, errors.Wrap(catcher.Resolve(), "describing task")
+	}
+	if len(out.Tasks) == 0 {
+		return nil, errors.New("expected a task to exist in ECS, but none was returned")
+	}
+
+	p.statusInfo = translatePodStatusInfo(out.Tasks[0])
+
+	return &p.statusInfo, nil
+}
+
 // Stop stops the running pod without cleaning up any of its underlying
 // resources.
 func (p *BasicECSPod) Stop(ctx context.Context) error {

@@ -137,14 +137,14 @@ type JobTimeInfo struct {
 	End     time.Time `bson:"end,omitempty" json:"end,omitempty" yaml:"end,omitempty"`
 	// WaitUntil defers execution of a job until a particular time has elapsed.
 	// Support for this feature in Queue implementations is optional.
-	WaitUntil time.Time `bson:"wait_until" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
+	WaitUntil time.Time `bson:"wait_until,omitempty" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
 	// DispatchBy is a deadline before which the job must run. Support for this
 	// feature in Queue implementations is optional. Queues that support this
 	// feature may remove the job if the deadline has passed.
-	DispatchBy time.Time `bson:"dispatch_by" json:"dispatch_by,omitempty" yaml:"dispatch_by,omitempty"`
+	DispatchBy time.Time `bson:"dispatch_by,omitempty" json:"dispatch_by,omitempty" yaml:"dispatch_by,omitempty"`
 	// MaxTime is the maximum time that the job is allowed to run. If the
 	// runtime exceeds this duration, the Queue should abort the job.
-	MaxTime time.Duration `bson:"max_time" json:"max_time,omitempty" yaml:"max_time,omitempty"`
+	MaxTime time.Duration `bson:"max_time,omitempty" json:"max_time,omitempty" yaml:"max_time,omitempty"`
 }
 
 // JobRetryInfo stores configuration and information for a job that can retry.

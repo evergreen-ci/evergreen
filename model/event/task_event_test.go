@@ -90,7 +90,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(eventData.Execution, ShouldEqual, 1)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
-			So(eventData.Status, ShouldBeBlank)
+			So(eventData.Status, ShouldEqual, evergreen.TaskStarted)
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 
 			event = eventsForTask[4]

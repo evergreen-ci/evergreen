@@ -97,10 +97,11 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 			"job":                        j.ID(),
 		})
 	case pod.StatusStarting, pod.StatusRunning, pod.StatusDecommissioned:
-		// TODO (EVG-15034): ensure deletion is idempotent.
-		if err := j.ecsPod.Delete(ctx); err != nil {
-			j.AddError(errors.Wrap(err, "deleting pod resources"))
-			return
+		if j.ecsPod != nil {
+			if err := j.ecsPod.Delete(ctx); err != nil {
+				j.AddError(errors.Wrap(err, "deleting pod resources"))
+				return
+			}
 		}
 	case pod.StatusTerminated:
 		grip.Info(message.Fields{
@@ -152,7 +153,10 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 		j.pod = p
 	}
 
-	if j.pod.Status == pod.StatusInitializing || j.pod.Status == pod.StatusTerminated {
+	// The pod does not exist in the cloud if's already deleted (i.e. it's
+	// already terminated) or it never created any external resources (i.e. the
+	// pod resources is empty).
+	if j.pod.Status == pod.StatusTerminated || j.pod.Resources.IsZero() {
 		return nil
 	}
 

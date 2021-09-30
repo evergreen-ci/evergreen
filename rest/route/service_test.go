@@ -688,25 +688,9 @@ func TestTestPaginator(t *testing.T) {
 				limit := 100
 				expectedTests := []model.Model{}
 				for i := testToStartAt; i < testToStartAt+limit; i++ {
-					status := "pass"
-					if i%2 == 0 {
-						status = "fail"
-					}
-					nextModelTest := &model.APITest{
-						Id:        utility.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
-						StartTime: model.ToTimePtr(time.Unix(0, 0)),
-						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
-						Status:    utility.ToStringPtr(status),
-						TaskId:    utility.ToStringPtr(""),
-						TestFile:  utility.ToStringPtr(""),
-						Logs: model.TestLogs{
-							URL:            utility.ToStringPtr(""),
-							URLRaw:         utility.ToStringPtr(""),
-							LogId:          utility.ToStringPtr(""),
-							RawDisplayURL:  utility.ToStringPtr("/test_log//0?test_name=&group_id=&text=true"),
-							HTMLDisplayURL: utility.ToStringPtr("/test_log//0?test_name=&group_id=#L0"),
-						},
-					}
+					nextModelTest := &model.APITest{}
+					_ = nextModelTest.BuildFromService(&cachedTests[i])
+					_ = nextModelTest.BuildFromService("")
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &gimlet.ResponsePages{
@@ -734,25 +718,9 @@ func TestTestPaginator(t *testing.T) {
 				limit := 50
 				expectedTests := []model.Model{}
 				for i := testToStartAt; i < testToStartAt+limit; i++ {
-					status := "pass"
-					if i%2 == 0 {
-						status = "fail"
-					}
-					nextModelTest := &model.APITest{
-						Id:        utility.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
-						StartTime: model.ToTimePtr(time.Unix(0, 0)),
-						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
-						Status:    utility.ToStringPtr(status),
-						TaskId:    utility.ToStringPtr(""),
-						TestFile:  utility.ToStringPtr(""),
-						Logs: model.TestLogs{
-							URL:            utility.ToStringPtr(""),
-							URLRaw:         utility.ToStringPtr(""),
-							LogId:          utility.ToStringPtr(""),
-							RawDisplayURL:  utility.ToStringPtr("/test_log//0?test_name=&group_id=&text=true"),
-							HTMLDisplayURL: utility.ToStringPtr("/test_log//0?test_name=&group_id=#L0"),
-						},
-					}
+					nextModelTest := &model.APITest{}
+					_ = nextModelTest.BuildFromService(&cachedTests[i])
+					_ = nextModelTest.BuildFromService("")
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &gimlet.ResponsePages{
@@ -780,25 +748,9 @@ func TestTestPaginator(t *testing.T) {
 				limit := 100
 				expectedTests := []model.Model{}
 				for i := testToStartAt; i < testToStartAt+limit; i++ {
-					status := "pass"
-					if i%2 == 0 {
-						status = "fail"
-					}
-					nextModelTest := &model.APITest{
-						Id:        utility.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
-						StartTime: model.ToTimePtr(time.Unix(0, 0)),
-						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
-						Status:    utility.ToStringPtr(status),
-						TaskId:    utility.ToStringPtr(""),
-						TestFile:  utility.ToStringPtr(""),
-						Logs: model.TestLogs{
-							URL:            utility.ToStringPtr(""),
-							URLRaw:         utility.ToStringPtr(""),
-							LogId:          utility.ToStringPtr(""),
-							RawDisplayURL:  utility.ToStringPtr("/test_log//0?test_name=&group_id=&text=true"),
-							HTMLDisplayURL: utility.ToStringPtr("/test_log//0?test_name=&group_id=#L0"),
-						},
-					}
+					nextModelTest := &model.APITest{}
+					_ = nextModelTest.BuildFromService(&cachedTests[i])
+					_ = nextModelTest.BuildFromService("")
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &gimlet.ResponsePages{
@@ -826,25 +778,9 @@ func TestTestPaginator(t *testing.T) {
 				limit := 100
 				expectedTests := []model.Model{}
 				for i := testToStartAt; i < testToStartAt+limit; i++ {
-					status := "pass"
-					if i%2 == 0 {
-						status = "fail"
-					}
-					nextModelTest := &model.APITest{
-						Id:        utility.ToStringPtr(mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)).Hex()),
-						StartTime: model.ToTimePtr(time.Unix(0, 0)),
-						EndTime:   model.ToTimePtr(time.Unix(0, 0)),
-						Status:    utility.ToStringPtr(status),
-						TaskId:    utility.ToStringPtr(""),
-						TestFile:  utility.ToStringPtr(""),
-						Logs: model.TestLogs{
-							URL:            utility.ToStringPtr(""),
-							URLRaw:         utility.ToStringPtr(""),
-							LogId:          utility.ToStringPtr(""),
-							RawDisplayURL:  utility.ToStringPtr("/test_log//0?test_name=&group_id=&text=true"),
-							HTMLDisplayURL: utility.ToStringPtr("/test_log//0?test_name=&group_id=#L0"),
-						},
-					}
+					nextModelTest := &model.APITest{}
+					_ = nextModelTest.BuildFromService(&cachedTests[i])
+					_ = nextModelTest.BuildFromService("")
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &gimlet.ResponsePages{
@@ -1231,6 +1167,23 @@ func TestParentTaskInfo(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, expectedParentIDs[i], task.ParentTaskId)
 	}
+}
+
+func TestOptionsRequest(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+
+	route := "/rest/v2/tasks/test/restart"
+	_, err := http.NewRequest("OPTIONS", route, nil)
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	tbh := &optionsHandler{}
+	resp := tbh.Run(ctx)
+	data, ok := resp.Data().(interface{})
+	assert.True(t, ok)
+	assert.Equal(t, data, struct{}{})
+	assert.Equal(t, resp.Status(), http.StatusOK)
+
 }
 
 func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []model.Model, pages *gimlet.ResponsePages) {

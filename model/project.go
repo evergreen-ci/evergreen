@@ -60,7 +60,13 @@ type Project struct {
 	ExecTimeoutSecs        int                            `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            bool                           `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
+
+	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
+	// Values for the below fields set on this struct when TranslateProject is called for the project parser will
+	// take precedence over the project page and will be the configs used for a given project during runtime.
+	DeactivatePrevious bool `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -881,7 +887,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		return nil, errors.New("host cannot be nil")
 	}
 
-	projectRef, err := FindOneProjectRef(t.Project)
+	projectRef, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding project ref")
 	}
@@ -897,7 +903,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 	expansions.Put("project", projectRef.Identifier)
-	expansions.Put("project_identifier", projectRef.Identifier) // TODO: depreciate
+	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
 	expansions.Put("project_id", projectRef.Id)
 	if t.ActivatedBy == evergreen.StepbackTaskActivator {
 		expansions.Put("is_stepback", "true")
@@ -933,7 +939,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			upstreamProjectID = upstreamBuild.Project
 		}
 		var upstreamProject *ProjectRef
-		upstreamProject, err = FindOneProjectRef(upstreamProjectID)
+		upstreamProject, err = FindBranchProjectRef(upstreamProjectID)
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding project")
 		}

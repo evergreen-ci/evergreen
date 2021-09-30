@@ -524,12 +524,18 @@ type FileDiff {
   description: String!
 }
 
+type ChildPatchAlias {
+  alias: String!
+  patchId: String!
+}
+
 type PatchTriggerAlias {
   alias: String!
   childProject: String!
   taskSpecifiers: [TaskSpecifier]
   status: String
   parentAsModule: String
+  variantsTasks: [VariantTask]!
 }
 
 type UserPatches {
@@ -557,6 +563,7 @@ type Patch {
   variants: [String!]!
   tasks: [String!]!
   childPatches: [Patch!]
+  childPatchAliases: [ChildPatchAlias!]
   variantsTasks: [VariantTask]!
   activated: Boolean!
   alias: String
@@ -689,7 +696,7 @@ type TestResult {
   status: String!
   baseStatus: String
   testFile: String!
-  displayTestName: String
+  displayTestName: String @deprecated(reason: "displayTestName deprecated, use testFile instead (EVG-15379)")
   logs: TestLog!
   exitCode: Int
   startTime: Time
@@ -697,13 +704,13 @@ type TestResult {
   endTime: Time
   taskId: String
   execution: Int
-  logTestName: String
-  lineNum: Int
 }
 
 type TestLog {
-  htmlDisplayURL: String
-  rawDisplayURL: String
+  url: String
+  urlRaw: String
+  urlLobster: String
+  lineNum: Int
 }
 
 type Dependency {
@@ -1007,6 +1014,7 @@ type User {
 type TaskLogs {
   taskId: String!
   execution: Int!
+  defaultLogger: String!
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!

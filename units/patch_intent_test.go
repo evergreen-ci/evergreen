@@ -666,7 +666,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	projectRef, err := model.FindOneProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.project)
 	s.NotNil(projectRef)
 	s.NoError(err)
 

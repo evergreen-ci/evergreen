@@ -236,32 +236,41 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		return nil
 	}
 
+	catcher := grip.NewBasicCatcher()
 	adminRole := GetRepoAdminRole(r.Id)
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user '%s'", addedUser)
+			catcher.Wrapf(err, "error finding user '%s'", addedUser)
+			continue
 		}
 		if adminUser == nil {
-			return errors.Errorf("no user '%s' found", addedUser)
+			catcher.Errorf("no user '%s' found", addedUser)
+			continue
 		}
 		if err = adminUser.AddRole(adminRole); err != nil {
-			return errors.Wrapf(err, "error adding role %s to user %s", adminRole, addedUser)
+			catcher.Wrapf(err, "error adding role %s to user %s", adminRole, addedUser)
+			continue
 		}
 
 	}
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user %s", removedUser)
+			catcher.Wrapf(err, "error finding user %s", removedUser)
+			continue
 		}
 		if adminUser == nil {
 			continue
 		}
 
 		if err = adminUser.RemoveRole(adminRole); err != nil {
-			return errors.Wrapf(err, "error removing role %s from user %s", adminRole, removedUser)
+			catcher.Wrapf(err, "error removing role %s from user %s", adminRole, removedUser)
+			continue
 		}
+	}
+	if err := catcher.Resolve(); err != nil {
+		return errors.Wrap(err, "error updating some admins")
 	}
 	return nil
 }

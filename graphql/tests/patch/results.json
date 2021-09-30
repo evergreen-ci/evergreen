@@ -267,7 +267,30 @@
         "data": {
           "patch": {
             "patchTriggerAliases": [
-              { "alias": "__commit_queue", "childProject": "child"}
+              {
+                "alias": "test-alias",
+                "childProject": "spruce",
+                "variantsTasks": [
+                  {
+                    "name": "ubuntu1804",
+                    "tasks": [
+                      "compile"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "childPatchAliases.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "childPatchAliases": [
+              { "alias": "evergreen_alias", "patchId": "5e4ff3abe3c3317e352062e4"}
             ]
           }
         }

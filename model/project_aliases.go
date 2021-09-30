@@ -110,7 +110,7 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 		return aliases, nil
 	}
 
-	project, err := FindOneProjectRef(projectID)
+	project, err := FindBranchProjectRef(projectID)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "error finding project '%s'", projectID)
 	}

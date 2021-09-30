@@ -50,7 +50,6 @@ func (s *graphQLSuite) SetupSuite() {
 	server, err := service.CreateTestServer(testutil.TestConfig(), nil, true)
 	s.Require().NoError(err)
 	env := evergreen.GetEnvironment()
-	// ctx := context.Background()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.Require().NoError(env.DB().Drop(ctx))

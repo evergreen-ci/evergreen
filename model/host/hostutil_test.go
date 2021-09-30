@@ -48,7 +48,7 @@ func TestCurlCommand(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
+			expected := "cd /home/user && curl -fLO www.example.com/clients/windows_amd64/evergreen.exe && chmod +x evergreen.exe"
 			cmd, err := h.CurlCommand(settings)
 			require.NoError(t, err)
 			assert.Equal(expected, cmd)
@@ -61,7 +61,7 @@ func TestCurlCommand(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
+			expected := "cd /home/user && curl -fLO www.example.com/clients/linux_amd64/evergreen && chmod +x evergreen"
 			cmd, err := h.CurlCommand(settings)
 			require.NoError(t, err)
 			assert.Equal(expected, cmd)
@@ -81,7 +81,7 @@ func TestCurlCommand(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/windows_amd64/evergreen.exe' || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe') && chmod +x evergreen.exe", evergreen.BuildRevision)
+			expected := fmt.Sprintf("cd /home/user && (curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe || curl -fLO www.example.com/clients/windows_amd64/evergreen.exe) && chmod +x evergreen.exe", evergreen.BuildRevision)
 			cmd, err := h.CurlCommand(settings)
 			require.NoError(t, err)
 			assert.Equal(expected, cmd)
@@ -94,7 +94,7 @@ func TestCurlCommand(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/linux_amd64/evergreen' || curl -LO 'www.example.com/clients/linux_amd64/evergreen') && chmod +x evergreen", evergreen.BuildRevision)
+			expected := fmt.Sprintf("cd /home/user && (curl -fLO https://foo.com/%s/linux_amd64/evergreen || curl -fLO www.example.com/clients/linux_amd64/evergreen) && chmod +x evergreen", evergreen.BuildRevision)
 			cmd, err := h.CurlCommand(settings)
 			require.NoError(t, err)
 			assert.Equal(expected, cmd)
@@ -116,7 +116,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
+			expected := "cd /home/user && curl -fLO www.example.com/clients/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
 			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			assert.Equal(t, expected, cmd)
@@ -129,7 +129,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
+			expected := "cd /home/user && curl -fLO www.example.com/clients/linux_amd64/evergreen --retry 5 --retry-max-time 10 && chmod +x evergreen"
 			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			assert.Equal(t, expected, cmd)
@@ -149,7 +149,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 || curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10) && chmod +x evergreen.exe", evergreen.BuildRevision)
+			expected := fmt.Sprintf("cd /home/user && (curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10) && chmod +x evergreen.exe", evergreen.BuildRevision)
 			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			assert.Equal(t, expected, cmd)
@@ -162,7 +162,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 				},
 				User: "user",
 			}
-			expected := fmt.Sprintf("cd /home/user && (curl -fLO 'https://foo.com/%s/linux_amd64/evergreen' --retry 5 --retry-max-time 10 || curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10) && chmod +x evergreen", evergreen.BuildRevision)
+			expected := fmt.Sprintf("cd /home/user && (curl -fLO https://foo.com/%s/linux_amd64/evergreen --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/linux_amd64/evergreen --retry 5 --retry-max-time 10) && chmod +x evergreen", evergreen.BuildRevision)
 			cmd, err := h.CurlCommandWithRetry(settings, 5, 10)
 			require.NoError(t, err)
 			assert.Equal(t, expected, cmd)
@@ -274,7 +274,7 @@ func TestJasperCommands(t *testing.T) {
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
 				"cd /foo",
-				fmt.Sprintf("curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", curlDefaultNumRetries, curlDefaultMaxSecs),
+				fmt.Sprintf("curl -fLO www.example.com/download_file-linux-amd64-abc123.tar.gz --retry %d --retry-max-time %d", curlDefaultNumRetries, curlDefaultMaxSecs),
 				"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
 				"chmod +x 'jasper_cli'",
 				"rm -f 'download_file-linux-amd64-abc123.tar.gz'",
@@ -425,8 +425,9 @@ func TestJasperCommands(t *testing.T) {
 			h.Distro.BootstrapSettings.ResourceLimits = distro.ResourceLimits{
 				NumProcesses:    1,
 				NumFiles:        2,
-				LockedMemoryKB:  3,
-				VirtualMemoryKB: 4,
+				NumTasks:        3,
+				LockedMemoryKB:  4,
+				VirtualMemoryKB: 5,
 			}
 			cmd := h.ForceReinstallJasperCommand(settings)
 			assert.True(t, strings.HasPrefix(cmd, "sudo /foo/jasper_cli jasper service force-reinstall rpc"))
@@ -436,6 +437,7 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_procs=%d", h.Distro.BootstrapSettings.ResourceLimits.NumProcesses))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_files=%d", h.Distro.BootstrapSettings.ResourceLimits.NumFiles))
+			assert.Contains(t, cmd, fmt.Sprintf("--limit_num_tasks=%d", h.Distro.BootstrapSettings.ResourceLimits.NumTasks))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_virtual_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.VirtualMemoryKB))
 			assert.Contains(t, cmd, fmt.Sprintf("--limit_locked_memory=%d", h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB))
 		},
@@ -498,7 +500,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			expectedCmds := []string{
 				"cd /foo",
-				fmt.Sprintf("curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", curlDefaultNumRetries, curlDefaultMaxSecs),
+				fmt.Sprintf("curl -fLO www.example.com/download_file-windows-amd64-abc123.tar.gz --retry %d --retry-max-time %d", curlDefaultNumRetries, curlDefaultMaxSecs),
 				"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
 				"chmod +x 'jasper_cli.exe'",
 				"rm -f 'download_file-windows-amd64-abc123.tar.gz'",

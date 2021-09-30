@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,15 +28,19 @@ func TestAgentScript(t *testing.T) {
 					Arch:       pod.ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "secret",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
-			cmd, err := agentScript(settings, p)
-			require.NoError(t, err)
+			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
 
 			expected := []string{
 				"bash", "-c",
-				"curl -LO 'www.test.com/clients/linux_amd64/evergreen' --retry 10 --retry-max-time 100 && " +
+				"curl -fLO www.test.com/clients/linux_amd64/evergreen --retry 10 --retry-max-time 100 && " +
 					"chmod +x evergreen && " +
 					"./evergreen agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
 			}
@@ -49,17 +54,20 @@ func TestAgentScript(t *testing.T) {
 					Arch:       pod.ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "secret",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
-			cmd, err := agentScript(settings, p)
-			require.NoError(t, err)
+			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
 
 			expected := []string{
-				"bash", "-c",
-				"curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 && " +
-					"chmod +x evergreen.exe && " +
-					"./evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
+				"cmd.exe", "/c",
+				"curl -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 && " +
+					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
 			}
 			assert.Equal(t, expected, cmd)
 		})
@@ -79,15 +87,19 @@ func TestAgentScript(t *testing.T) {
 					Arch:       pod.ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "secret",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
-			cmd, err := agentScript(settings, p)
-			require.NoError(t, err)
+			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
 
 			expected := []string{
 				"bash", "-c",
-				fmt.Sprintf("(curl -LO 'https://foo.com/%s/linux_amd64/evergreen' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/linux_amd64/evergreen' --retry 10 --retry-max-time 100) && "+
+				fmt.Sprintf("(curl -fLO https://foo.com/%s/linux_amd64/evergreen --retry 10 --retry-max-time 100 || curl -fLO www.test.com/clients/linux_amd64/evergreen --retry 10 --retry-max-time 100) && "+
 					"chmod +x evergreen && "+
 					"./evergreen agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
 			}
@@ -101,16 +113,19 @@ func TestAgentScript(t *testing.T) {
 					Arch:       pod.ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "secret",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
-			cmd, err := agentScript(settings, p)
-			require.NoError(t, err)
+			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
 			expected := []string{
-				"bash", "-c",
-				fmt.Sprintf("(curl -LO 'https://foo.com/%s/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100 || curl -LO 'www.test.com/clients/windows_amd64/evergreen.exe' --retry 10 --retry-max-time 100) && "+
-					"chmod +x evergreen.exe && "+
-					"./evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
+				"cmd.exe", "/c",
+				fmt.Sprintf("(curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 || curl -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100) && "+
+					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
 			}
 			assert.Equal(t, expected, cmd)
 		})

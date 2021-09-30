@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/evergreen-ci/cocoa"
@@ -185,7 +186,7 @@ const (
 // cocoa.ECSPodExecutionOptions.
 func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSPodCreationOptions, error) {
 	ecsConf := settings.Providers.AWS.Pod.ECS
-	execOpts, err := exportECSPodExecutionOptions(ecsConf, p.TaskContainerCreationOpts.OS)
+	execOpts, err := exportECSPodExecutionOptions(ecsConf, p.TaskContainerCreationOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod execution options")
 	}
@@ -209,27 +210,63 @@ func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*coc
 	return opts, nil
 }
 
+// Constants related to secrets stored in Secrets Manager.
+const (
+	// internalSecretNamespace is the namespace for secrets that are
+	// Evergreen-internal.
+	internalSecretNamespace = "evg-internal"
+	// repoCredsSecretName is the name of the secret used to store private
+	// repository credentials for pods.
+	repoCredsSecretName = "repo-creds"
+)
+
 // exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
 func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSContainerDefinition, error) {
-	script, err := agentScript(settings, p)
-	if err != nil {
-		return nil, errors.Wrap(err, "building agent script")
-	}
-	return cocoa.NewECSContainerDefinition().
+	def := cocoa.NewECSContainerDefinition().
 		SetName(agentContainerName).
 		SetImage(p.TaskContainerCreationOpts.Image).
 		SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 		SetCPU(p.TaskContainerCreationOpts.CPU).
 		SetWorkingDir(p.TaskContainerCreationOpts.WorkingDir).
-		SetCommand(script).
+		SetCommand(agentScript(settings, p)).
 		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, p)).
-		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort)), nil
+		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
+
+	if p.TaskContainerCreationOpts.RepoUsername != "" && p.TaskContainerCreationOpts.RepoPassword != "" {
+		secretName := makeInternalSecretName(settings.Providers.AWS.Pod.SecretsManager, p, repoCredsSecretName)
+
+		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().
+			SetName(secretName).
+			SetOwned(true).
+			SetNewCredentials(*cocoa.NewStoredRepositoryCredentials().
+				SetUsername(p.TaskContainerCreationOpts.RepoUsername).
+				SetPassword(p.TaskContainerCreationOpts.RepoPassword)))
+	}
+
+	return def, nil
 }
+
+// podArchToECSArch exports a pod container CPU architecture to an ECS
+// CPU architecture.
+func exportECSPodArch(arch pod.Arch) string {
+	switch arch {
+	case pod.ArchAMD64:
+		return "x86_64"
+	case pod.ArchARM64:
+		return "arm64"
+	default:
+		return ""
+	}
+}
+
+const (
+	ecsCPUArchConstraint = "ecs.cpu-architecture"
+)
 
 // exportECSPodExecutionOptions exports the ECS configuration into
 // cocoa.ECSPodExecutionOptions.
-func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (*cocoa.ECSPodExecutionOptions, error) {
+func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodExecutionOptions, error) {
 	opts := cocoa.NewECSPodExecutionOptions()
 
 	if len(ecsConfig.AWSVPC.Subnets) != 0 || len(ecsConfig.AWSVPC.SecurityGroups) != 0 {
@@ -238,13 +275,18 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, podOS pod.OS) (
 			SetSecurityGroups(ecsConfig.AWSVPC.SecurityGroups))
 	}
 
+	if arch := exportECSPodArch(containerOpts.Arch); arch != "" {
+		archConstraint := fmt.Sprintf("%s == %s", ecsCPUArchConstraint, arch)
+		opts.SetPlacementOptions(*cocoa.NewECSPodPlacementOptions().AddInstanceFilters(archConstraint))
+	}
+
 	for _, cluster := range ecsConfig.Clusters {
-		if string(podOS) == string(cluster.Platform) {
+		if string(containerOpts.OS) == string(cluster.Platform) {
 			return opts.SetCluster(cluster.Name), nil
 		}
 	}
 
-	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(podOS))
+	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(containerOpts.OS))
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.
@@ -269,14 +311,35 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, p *pod.Pod) []cocoa
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetValue(v))
 	}
 
-	for k, v := range p.TaskContainerCreationOpts.EnvSecrets {
-		secretName := strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", p.ID, k}, "/")
-		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetSecretOptions(
-			*cocoa.NewSecretOptions().
-				SetName(secretName).
-				SetNewValue(v).
-				SetOwned(true)))
+	for envVarName, s := range p.TaskContainerCreationOpts.EnvSecrets {
+		opts := cocoa.NewSecretOptions().SetOwned(utility.FromBoolPtr(s.Owned))
+		if utility.FromBoolPtr(s.Exists) && s.ExternalID != "" {
+			opts.SetID(s.ExternalID)
+		} else if s.Name != "" {
+			opts.SetName(makeSecretName(smConf, p, s.Name))
+		} else {
+			opts.SetName(makeSecretName(smConf, p, envVarName))
+		}
+		if !utility.FromBoolPtr(s.Exists) && s.Value != "" {
+			opts.SetNewValue(s.Value)
+		}
+
+		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().
+			SetName(envVarName).
+			SetSecretOptions(*opts))
 	}
 
 	return allEnvVars
+}
+
+// makeSecretName creates a Secrets Manager secret name for the pod.
+func makeSecretName(smConf evergreen.SecretsManagerConfig, p *pod.Pod, name string) string {
+	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", p.ID, name}, "/")
+}
+
+// makeInternalSecretName creates a Secrets Manager secret name for the pod in a
+// reserved namespace that is meant for Evergreen-internal purposes and should
+// not be exposed to users.
+func makeInternalSecretName(smConf evergreen.SecretsManagerConfig, p *pod.Pod, name string) string {
+	return makeSecretName(smConf, p, fmt.Sprintf("%s/%s", internalSecretNamespace, name))
 }

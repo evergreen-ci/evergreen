@@ -1215,6 +1215,10 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		proj := model.ProjectRef{
 			Id: projectId,
 		}
+		parserProj := model.ParserProject{
+			Id: versionId,
+		}
+		So(parserProj.Insert(), ShouldBeNil)
 		So(proj.Insert(), ShouldBeNil)
 
 		task1 := task.Task{

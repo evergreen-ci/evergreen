@@ -120,7 +120,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		}
 		// if the caller is the default task activator only deactivate tasks that have not been activated by a user
 		if evergreen.IsSystemActivator(caller) {
-			query[task.ActivatedByKey] = caller
+			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
 		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
@@ -535,7 +535,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	var pRef *ProjectRef
 	var githubCheckAliases ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester {
-		pRef, err = FindOneProjectRef(project.Identifier)
+		pRef, err = FindMergedProjectRef(project.Identifier)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find project ref")
 		}
@@ -579,7 +579,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 	tasksWithActivationTime := activationInfo.getActivationTasks(b.BuildVariant)
 	if len(tasksWithActivationTime) > 0 && pRef == nil {
-		pRef, err = FindOneProjectRef(project.Identifier)
+		pRef, err = FindMergedProjectRef(project.Identifier)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find project ref")
 		}

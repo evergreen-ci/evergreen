@@ -136,7 +136,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		msg["display_task_id"] = j.task.DisplayTask.Id
 	}
 
-	pRef, err := model.FindOneProjectRef(j.task.Project)
+	pRef, err := model.FindBranchProjectRef(j.task.Project)
 	if pRef != nil {
 		msg["project_identifier"] = pRef.Identifier
 	}

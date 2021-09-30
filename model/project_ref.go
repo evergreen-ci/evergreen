@@ -102,7 +102,8 @@ type ProjectRef struct {
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
 	// Plugin settings
-	PerfEnabled *bool `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
+	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -235,6 +236,7 @@ var (
 	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey  = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
+	projectRefBuildBaronSettingsKey      = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
 	projectRefPerfEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
@@ -357,7 +359,7 @@ func (projectRef *ProjectRef) Insert() error {
 func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if p.Id != "" {
 		// verify that this is a unique ID
-		conflictingRef, err := FindOneProjectRef(p.Id)
+		conflictingRef, err := FindBranchProjectRef(p.Id)
 		if err != nil {
 			return errors.Wrap(err, "error checking for conflicting project ref")
 		}
@@ -483,6 +485,9 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	mergedProject, err := FindMergedProjectRef(p.Id)
 	if err != nil {
 		return errors.Wrap(err, "error finding merged project ref")
+	}
+	if mergedProject == nil {
+		return errors.Errorf("project ref '%s' doesn't exist", p.Id)
 	}
 
 	// Save repo variables that don't exist in the repo as the project variables.
@@ -678,20 +683,20 @@ func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 
 }
 
-// FindOneProjectRef gets a project ref given the project identifier.
+// FindBranchProjectRef gets a project ref given the project identifier.
 // This returns only branch-level settings; to include repo settings, use FindMergedProjectRef.
-func FindOneProjectRef(identifier string) (*ProjectRef, error) {
+func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 	return findOneProjectRefQ(byId(identifier))
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
 func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
-	pRef, err := FindOneProjectRef(identifier)
+	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
 	}
 	if pRef == nil {
-		return nil, errors.Errorf("project ref '%s' does not exist", identifier)
+		return nil, nil
 	}
 	if pRef.UseRepoSettings {
 		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
@@ -1238,7 +1243,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	return hiddenProject, nil
 }
 
-// FindOneProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
+// FindBranchProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
 // There should only ever be one project for the query because we only enable commit queue if
 // no other project ref with the same specification has it enabled.
 
@@ -1329,7 +1334,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 		}
 		pRef = &repoRef.ProjectRef
 	} else {
-		pRef, err = FindOneProjectRef(projectId)
+		pRef, err = FindBranchProjectRef(projectId)
 
 	}
 	if err != nil {
@@ -1372,12 +1377,9 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 }
 
 func IsPerfEnabledForProject(projectId string) bool {
-	lastGoodVersion, err := FindVersionByLastKnownGoodConfig(projectId, -1)
-	if err == nil && lastGoodVersion != nil {
-		parserProject, err := ParserProjectFindOneById(lastGoodVersion.Id)
-		if err == nil && parserProject != nil && utility.FromBoolPtr(parserProject.PerfEnabled) {
-			return true
-		}
+	parserProject, err := ParserProjectFindOneByVersion(projectId, "")
+	if err == nil && utility.FromBoolPtr(parserProject.PerfEnabled) {
+		return true
 	}
 	project, err := FindMergedProjectRef(projectId)
 	if err == nil && project != nil {
@@ -1885,40 +1887,51 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		viewRole = GetViewRepoRole(p.RepoRefId)
 	}
 
+	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user '%s'", addedUser)
+			catcher.Wrapf(err, "error finding user '%s'", addedUser)
+			continue
 		}
 		if adminUser == nil {
-			return errors.Errorf("no user '%s' found", addedUser)
+			catcher.Errorf("no user '%s' found", addedUser)
+			continue
 		}
 		if err = adminUser.AddRole(role.ID); err != nil {
-			return errors.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
+			catcher.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
+			continue
 		}
 		if viewRole != "" {
 			if err = adminUser.AddRole(viewRole); err != nil {
-				return errors.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
+				catcher.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
+				continue
 			}
 		}
 	}
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user %s", removedUser)
+			catcher.Wrapf(err, "error finding user %s", removedUser)
+			continue
 		}
 		if adminUser == nil {
 			continue
 		}
 
 		if err = adminUser.RemoveRole(role.ID); err != nil {
-			return errors.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			catcher.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			continue
 		}
 		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
 			if err = adminUser.RemoveRole(viewRole); err != nil {
-				return errors.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				catcher.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				continue
 			}
 		}
+	}
+	if err = catcher.Resolve(); err != nil {
+		return errors.Wrap(err, "error updating some admins")
 	}
 	return nil
 }
@@ -2088,6 +2101,9 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting project '%s'", projectId)
 	}
+	if pRef == nil {
+		return nil, errors.Errorf("project ref '%s' doesn't exist", projectId)
+	}
 	return pRef, nil
 }
 
@@ -2121,7 +2137,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 }
 
 func (t TriggerDefinition) Validate(parentProject string) error {
-	upstreamProject, err := FindOneProjectRef(t.Project)
+	upstreamProject, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "error finding upstream project %s", t.Project)
 	}
@@ -2249,7 +2265,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 		}
 		projectID = upstreamBuild.Project
 	}
-	upstreamProject, err := FindOneProjectRef(projectID)
+	upstreamProject, err := FindBranchProjectRef(projectID)
 	if err != nil {
 		return "", errors.Wrap(err, "error finding upstream project")
 	}

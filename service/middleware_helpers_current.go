@@ -16,9 +16,6 @@ func setAPIHostContext(r *http.Request, h *host.Host) *http.Request {
 func setAPITaskContext(r *http.Request, t *task.Task) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), model.ApiTaskKey, t))
 }
-func setProjectRefContext(r *http.Request, p *model.ProjectRef) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), model.ApiProjectRefKey, p))
-}
 func setProjectContext(r *http.Request, p *model.Project) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), model.ApiProjectKey, p))
 }
@@ -49,18 +46,13 @@ func GetHost(r *http.Request) *host.Host {
 
 // GetProject loads the project attached to a request into request
 // context.
-func GetProject(r *http.Request) (*model.ProjectRef, *model.Project) {
-	pref := r.Context().Value(model.ApiProjectRefKey)
-	if pref == nil {
-		return nil, nil
-	}
-
+func GetProject(r *http.Request) *model.Project {
 	p := r.Context().Value(model.ApiProjectKey)
 	if p == nil {
-		return nil, nil
+		return nil
 	}
 
-	return pref.(*model.ProjectRef), p.(*model.Project)
+	return p.(*model.Project)
 }
 
 // GetProjectContext fetches the projectContext associated with the request. Returns an error

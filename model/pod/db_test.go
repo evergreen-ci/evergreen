@@ -141,8 +141,13 @@ func TestFindOneByID(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"Succeeds": func(t *testing.T) {
 			p := Pod{
-				ID:     "id",
-				Secret: "secret",
+				ID: "id",
+				Secret: Secret{
+					Name:   "name",
+					Value:  "value",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
 			require.NoError(t, p.Insert())
 
@@ -172,8 +177,13 @@ func TestFindOneByExternalID(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"Succeeds": func(t *testing.T) {
 			p := Pod{
-				ID:     "id",
-				Secret: "secret",
+				ID: "id",
+				Secret: Secret{
+					Name:   "name",
+					Value:  "value",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 				Resources: ResourceInfo{
 					ExternalID: "external_id",
 				},

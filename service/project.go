@@ -72,7 +72,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 
 	id := gimlet.GetVars(r)["project_id"]
 
-	projRef, err := model.FindOneProjectRef(id)
+	projRef, err := model.FindBranchProjectRef(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -89,7 +89,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	if projRef.UseRepoSettings {
 		projRef, err = model.FindMergedProjectRef(projRef.Id)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			uis.LoggedError(w, r, http.StatusNotFound, err)
 			return
 		}
 	}
@@ -97,7 +97,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
 	for i, t := range projRef.PatchTriggerAliases {
 		var childProject *model.ProjectRef
-		childProject, err = model.FindOneProjectRef(t.ChildProject)
+		childProject, err = model.FindBranchProjectRef(t.ChildProject)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			continue
@@ -225,7 +225,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	projectRef, err := model.FindOneProjectRef(id)
+	projectRef, err := model.FindBranchProjectRef(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -314,7 +314,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if responseRef.Identifier != origProjectRef.Identifier {
-		conflictingRef, err := model.FindOneProjectRef(responseRef.Identifier)
+		conflictingRef, err := model.FindBranchProjectRef(responseRef.Identifier)
 		if err != nil {
 			http.Error(w, "error checking for conflicting project ref", http.StatusInternalServerError)
 			return
@@ -785,7 +785,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 
 	identifier := gimlet.GetVars(r)["project_id"]
 
-	projectRef, err := model.FindOneProjectRef(identifier)
+	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -869,7 +869,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindOneProjectRef(project)
+	projectRef, err := model.FindBranchProjectRef(project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -904,7 +904,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	// Validate the project exists
 	id := gimlet.GetVars(r)["project_id"]
-	projectRef, err := model.FindOneProjectRef(id)
+	projectRef, err := model.FindBranchProjectRef(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

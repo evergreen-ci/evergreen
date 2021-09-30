@@ -96,13 +96,6 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 
 		if t.Requester == evergreen.MergeTestRequester {
-			projRef, err := FindOneProjectRef(t.Project)
-			if err != nil {
-				return errors.Wrap(err, "unable to find project ref")
-			}
-			if projRef == nil {
-				return errors.New("no project found")
-			}
 			_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, t.Version, caller)
 			if err != nil {
 				return err
@@ -246,9 +239,9 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		msg := fmt.Sprintf("Task '%v' reached max execution (%v):", t.Id, evergreen.MaxTaskExecution)
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugln(msg, "allowing exception for", user)
-		} else {
-			grip.Debugln(msg, "marking as failed")
+		} else if !t.IsFinished() {
 			if detail != nil {
+				grip.Debugln(msg, "marking as failed")
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOneId(etId)
@@ -262,8 +255,15 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 				}
 				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false))
 			} else {
-				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
+				grip.Critical(message.Fields{
+					"message":     "TryResetTask called with nil TaskEndDetail",
+					"origin":      origin,
+					"task_id":     taskId,
+					"task_status": t.Status,
+				})
 			}
+		} else {
+			return nil
 		}
 	}
 
@@ -466,7 +466,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
-	if t.HasFailedTests() {
+	hasFailedTests, err := t.HasFailedTests()
+	if err != nil {
+		return errors.Wrap(err, "checking for failed tests")
+	}
+	if hasFailedTests {
 		detailsCopy.Status = evergreen.TaskFailed
 	}
 
@@ -499,7 +503,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		})
 	}
 	startPhaseAt := time.Now()
-	err := t.MarkEnd(finishTime, &detailsCopy)
+	err = t.MarkEnd(finishTime, &detailsCopy)
 	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
 		"function":      "MarkEnd",

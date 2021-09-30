@@ -188,11 +188,16 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "error finding last task '%s'", j.host.LastTask))
 			}
-
-			if lastTask != nil && lastTask.IsPartOfSingleHostTaskGroup() {
-				tasks, err := task.FindTaskGroupFromBuild(lastTask.BuildVariant, lastTask.TaskGroup)
+			// Only try to restart the task group if it was successful and should have continued executing.
+			if lastTask != nil && lastTask.IsPartOfSingleHostTaskGroup() && lastTask.Status == evergreen.TaskSucceeded {
+				tasks, err := task.FindTaskGroupFromBuild(lastTask.BuildId, lastTask.TaskGroup)
 				if err != nil {
 					j.AddError(errors.Wrapf(err, "can't get task group for task '%s'", lastTask.Id))
+					return
+				}
+				if len(tasks) == 0 {
+					j.AddError(errors.Errorf("no tasks found in task group for task '%s'", lastTask.Id))
+					return
 				}
 				if tasks[len(tasks)-1].Id != lastTask.Id {
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,

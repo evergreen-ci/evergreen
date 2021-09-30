@@ -8,6 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const MergeProjectConfigError = "error merging project configs"
+
 // mergeUnorderedUnique merges fields that are lists where the order doesn't matter.
 // These fields can be defined throughout multiple yamls but cannot contain duplicate keys.
 // These fields are: [task, task group, parameter, module, function]
@@ -190,6 +192,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.PerfEnabled = toMerge.PerfEnabled
 	}
 
+	if pp.DeactivatePrevious != nil && toMerge.DeactivatePrevious != nil {
+		catcher.New("scheduling settings can only be defined in one yaml")
+	} else if toMerge.DeactivatePrevious != nil {
+		pp.DeactivatePrevious = toMerge.DeactivatePrevious
+	}
+
 	return catcher.Resolve()
 }
 
@@ -274,5 +282,5 @@ func (pp *ParserProject) mergeMultipleProjectConfigs(toMerge *ParserProject) err
 		catcher.Add(err)
 	}
 
-	return errors.Wrap(catcher.Resolve(), "error merging project configs")
+	return errors.Wrap(catcher.Resolve(), MergeProjectConfigError)
 }

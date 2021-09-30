@@ -68,7 +68,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting evergreen settings")
 	}
-	upstreamProject, err := model.FindOneProjectRef(args.SourceVersion.Identifier)
+	upstreamProject, err := model.FindMergedProjectRef(args.SourceVersion.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project ref")
 	}
