@@ -78,7 +78,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool) error 
 
 	project := &model.Project{}
 	ctx := context.Background()
-	opts := model.GetProjectOpts{
+	opts := &model.GetProjectOpts{
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	pp, err := model.LoadProjectInto(ctx, confFile, opts, "", project)

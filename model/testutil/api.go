@@ -56,7 +56,8 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	project := &model.Project{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
-		Ref: modelData.ProjectRef,
+		Ref:          modelData.ProjectRef,
+		ReadFileFrom: model.ReadFromLocal,
 	}
 	pp, err := model.LoadProjectInto(ctx, projectConfig, opts, "", project)
 	if err != nil {
