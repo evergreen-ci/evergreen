@@ -74,8 +74,8 @@ type APITask struct {
 	CanSync                 bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts           APISyncAtEndOptions `json:"sync_at_end_opts"`
 	Ami                     *string             `json:"ami"`
-	HasCedarResults         bool                `json:"has_cedar_results"`
-	CedarResultsFailed      bool                `json:"cedar_results_failed"`
+	HasCedarResults         bool                `json:"-"`
+	CedarResultsFailed      bool                `json:"-"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
 }
