@@ -21,7 +21,7 @@ type GetOptions struct {
 }
 
 // Validate ensures GetOptions is configured correctly.
-func (opts *GetOptions) Validate() error {
+func (opts GetOptions) Validate() error {
 	if opts.BaseURL == "" {
 		return errors.New("must provide a base URL")
 	}
@@ -30,7 +30,7 @@ func (opts *GetOptions) Validate() error {
 }
 
 // DoReq makes an HTTP request to the cedar service.
-func (opts *GetOptions) DoReq(ctx context.Context, url string) (*http.Response, error) {
+func (opts GetOptions) DoReq(ctx context.Context, url string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating http request for cedar")

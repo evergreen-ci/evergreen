@@ -3,9 +3,7 @@ package ecs
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
@@ -51,7 +49,7 @@ func TestBasicECSPod(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
 			hc := utility.GetHTTPClient()
@@ -72,46 +70,42 @@ func TestBasicECSPod(t *testing.T) {
 	}
 }
 
-// TODO (EVG-14979): clean up resources in ECS tests more thoroughly
 func TestECSPod(t *testing.T) {
 	testutil.CheckAWSEnvVarsForECSAndSecretsManager(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	hc := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(hc)
+
+	awsOpts := awsutil.NewClientOptions().
+		SetHTTPClient(hc).
+		SetCredentials(credentials.NewEnvCredentials()).
+		SetRole(testutil.AWSRole()).
+		SetRegion(testutil.AWSRegion())
+
+	c, err := NewBasicECSClient(*awsOpts)
+	require.NoError(t, err)
+	defer func() {
+		testutil.CleanupTaskDefinitions(ctx, t, c)
+		testutil.CleanupTasks(ctx, t, c)
+
+		assert.NoError(t, c.Close(ctx))
+	}()
+
+	smc, err := secret.NewBasicSecretsManagerClient(*awsOpts)
+	require.NoError(t, err)
+	defer func() {
+		testutil.CleanupSecrets(ctx, t, smc)
+
+		assert.NoError(t, smc.Close(ctx))
+	}()
+
 	for tName, tCase := range testcase.ECSPodTests() {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 30*time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
-
-			hc := utility.GetHTTPClient()
-			defer utility.PutHTTPClient(hc)
-
-			awsOpts := awsutil.NewClientOptions().
-				SetHTTPClient(hc).
-				SetCredentials(credentials.NewEnvCredentials()).
-				SetRole(testutil.AWSRole()).
-				SetRegion(testutil.AWSRegion())
-
-			c, err := NewBasicECSClient(*awsOpts)
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, c.Close(ctx))
-			}()
-
-			smc, err := secret.NewBasicSecretsManagerClient(awsutil.ClientOptions{
-				Creds:  credentials.NewEnvCredentials(),
-				Region: aws.String(testutil.AWSRegion()),
-				Role:   aws.String(testutil.AWSRole()),
-				RetryOpts: &utility.RetryOptions{
-					MaxAttempts: 5,
-				},
-				HTTPClient: hc,
-			})
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, smc.Close(tctx))
-			}()
 
 			v := secret.NewBasicSecretsManager(smc)
 

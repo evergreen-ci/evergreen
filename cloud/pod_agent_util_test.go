@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +28,12 @@ func TestAgentScript(t *testing.T) {
 					Arch:       pod.ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "secret",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
 			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
@@ -48,7 +54,12 @@ func TestAgentScript(t *testing.T) {
 					Arch:       pod.ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "secret",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
 			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
@@ -76,7 +87,12 @@ func TestAgentScript(t *testing.T) {
 					Arch:       pod.ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "secret",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
 			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)
@@ -97,7 +113,12 @@ func TestAgentScript(t *testing.T) {
 					Arch:       pod.ArchAMD64,
 					WorkingDir: workingDir,
 				},
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "secret",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
 			cmd := agentScript(settings, p)
 			require.NotZero(t, cmd)

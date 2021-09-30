@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -21,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -34,130 +32,6 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/ssh"
 )
-
-type FilterSortAndPaginateCedarTestResultsOpts struct {
-	GroupID          string
-	Limit            int
-	Page             int
-	SortBy           string
-	SortDir          int
-	Statuses         []string
-	TestName         string
-	TestResults      []apimodels.CedarTestResult
-	BaseTestStatuses map[string]string
-}
-
-// FilterSortAndPaginateCedarTestResults takes an array of CedarTestResult objects and returns a filtered sorted and paginated version of that array.
-func FilterSortAndPaginateCedarTestResults(opts FilterSortAndPaginateCedarTestResultsOpts) ([]apimodels.CedarTestResult, int) {
-	var filteredAndSortedTestResults []apimodels.CedarTestResult
-	for _, testResult := range opts.TestResults {
-		match := true
-		if opts.TestName != "" {
-			if testResult.DisplayTestName != "" && !strings.Contains(testResult.DisplayTestName, opts.TestName) {
-				match = false
-			} else if testResult.DisplayTestName == "" && !strings.Contains(testResult.TestName, opts.TestName) {
-				match = false
-			}
-		}
-		if len(opts.Statuses) > 0 && !utility.StringSliceContains(opts.Statuses, testResult.Status) {
-			match = false
-		}
-		if opts.GroupID != "" && testResult.GroupID != opts.GroupID {
-			match = false
-		}
-		if match {
-			filteredAndSortedTestResults = append(filteredAndSortedTestResults, testResult)
-		}
-	}
-
-	if opts.SortBy != "" {
-		switch opts.SortBy {
-		case "start":
-			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
-				testResultI := filteredAndSortedTestResults[i]
-				testResultJ := filteredAndSortedTestResults[j]
-				if opts.SortDir == 1 {
-					return testResultI.Start.Before(testResultJ.Start)
-
-				}
-				return testResultI.Start.After(testResultJ.Start)
-			})
-			break
-		case "duration":
-			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
-				testResultI := filteredAndSortedTestResults[i]
-				testResultJ := filteredAndSortedTestResults[j]
-				iDuration := testResultI.End.Sub(testResultI.Start)
-				jDuration := testResultJ.End.Sub(testResultJ.Start)
-				if opts.SortDir == 1 {
-					return iDuration < jDuration
-				}
-				return iDuration > jDuration
-			})
-			break
-		case testresult.TestFileKey:
-			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
-				testResultI := filteredAndSortedTestResults[i]
-				testResultJ := filteredAndSortedTestResults[j]
-				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
-					if opts.SortDir == 1 {
-						return testResultI.DisplayTestName < testResultJ.DisplayTestName
-					}
-					return testResultI.DisplayTestName > testResultJ.DisplayTestName
-				} else {
-					if opts.SortDir == 1 {
-						return testResultI.TestName < testResultJ.TestName
-					}
-					return testResultI.TestName > testResultJ.TestName
-				}
-			})
-			break
-		case testresult.StatusKey:
-			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
-				testResultI := filteredAndSortedTestResults[i]
-				testResultJ := filteredAndSortedTestResults[j]
-				if opts.SortDir == 1 {
-					return testResultI.Status < testResultJ.Status
-				}
-				return testResultI.Status > testResultJ.Status
-			})
-			break
-		case "base_status":
-			sort.SliceStable(filteredAndSortedTestResults, func(i, j int) bool {
-				testResultI := filteredAndSortedTestResults[i]
-				testResultJ := filteredAndSortedTestResults[j]
-
-				if testResultI.DisplayTestName != "" && testResultJ.DisplayTestName != "" {
-					if opts.SortDir == 1 {
-						return opts.BaseTestStatuses[testResultI.DisplayTestName] < opts.BaseTestStatuses[testResultJ.DisplayTestName]
-					}
-					return opts.BaseTestStatuses[testResultI.DisplayTestName] > opts.BaseTestStatuses[testResultJ.DisplayTestName]
-				} else {
-					if opts.SortDir == 1 {
-						return opts.BaseTestStatuses[testResultI.TestName] < opts.BaseTestStatuses[testResultJ.TestName]
-					}
-					return opts.BaseTestStatuses[testResultI.TestName] > opts.BaseTestStatuses[testResultJ.TestName]
-				}
-			})
-			break
-		}
-	}
-	// Get filtered test count before applying any limits on it.
-	filteredTestCount := len(filteredAndSortedTestResults)
-	if opts.Limit != 0 {
-		offset := opts.Page * opts.Limit
-		end := offset + opts.Limit
-		if offset > filteredTestCount {
-			offset = filteredTestCount
-		}
-		if end > filteredTestCount {
-			end = filteredTestCount
-		}
-		filteredAndSortedTestResults = filteredAndSortedTestResults[offset:end]
-	}
-
-	return filteredAndSortedTestResults, filteredTestCount
-}
 
 // GetGroupedFiles returns the files of a Task inside a GroupedFile struct
 func GetGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {

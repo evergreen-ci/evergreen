@@ -77,6 +77,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 			at.GroupID = utility.ToStringPtr(v.GroupID)
 		}
 		at.Status = utility.ToStringPtr(v.Status)
+		if v.BaseStatus != "" {
+			at.BaseStatus = utility.ToStringPtr(v.BaseStatus)
+		}
 		at.StartTime = utility.ToTimePtr(v.Start)
 		at.EndTime = utility.ToTimePtr(v.End)
 		at.Duration = v.End.Sub(v.Start).Seconds()

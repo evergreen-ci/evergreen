@@ -13,6 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// defaultTestTimeout is the default test timeout for AWS utility tests.
+const defaultTestTimeout = time.Second
+
 func TestClientOptions(t *testing.T) {
 	t.Run("SetCredentials", func(t *testing.T) {
 		creds := credentials.NewEnvCredentials()
@@ -187,7 +190,7 @@ func TestClientOptionsGetCredentials(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, creds)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTestTimeout)
 	defer cancel()
 
 	resolved, err := creds.GetWithContext(ctx)
