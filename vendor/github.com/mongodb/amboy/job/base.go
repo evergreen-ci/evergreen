@@ -70,6 +70,7 @@ func (b *Base) AddError(err error) {
 		defer b.mutex.Unlock()
 
 		b.status.Errors = append(b.status.Errors, err.Error())
+		b.status.ErrorCount = len(b.status.Errors)
 	}
 }
 
@@ -84,6 +85,7 @@ func (b *Base) AddRetryableError(err error) {
 	defer b.mutex.Unlock()
 
 	b.status.Errors = append(b.status.Errors, err.Error())
+	b.status.ErrorCount = len(b.status.Errors)
 	b.retryInfo.NeedsRetry = true
 }
 

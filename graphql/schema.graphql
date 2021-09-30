@@ -535,6 +535,7 @@ type PatchTriggerAlias {
   taskSpecifiers: [TaskSpecifier]
   status: String
   parentAsModule: String
+  variantsTasks: [VariantTask]!
 }
 
 type UserPatches {
@@ -1013,6 +1014,7 @@ type User {
 type TaskLogs {
   taskId: String!
   execution: Int!
+  defaultLogger: String!
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!

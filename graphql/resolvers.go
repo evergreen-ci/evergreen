@@ -1138,17 +1138,46 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 }
 
 func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
-	project, err := r.sc.FindProjectById(*obj.ProjectId, true)
-	if err != nil || project == nil {
+	projectRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
+	if err != nil || projectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.ProjectId, err))
 	}
 
-	aliases := []*restModel.APIPatchTriggerDefinition{}
-	for _, alias := range project.PatchTriggerAliases {
-		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
-			Alias:        utility.ToStringPtr(alias.Alias),
-			ChildProject: utility.ToStringPtr(alias.ChildProject)})
+	if len(projectRef.PatchTriggerAliases) == 0 {
+		return nil, nil
 	}
+
+	projectCache := map[string]*model.Project{}
+	aliases := []*restModel.APIPatchTriggerDefinition{}
+	for _, alias := range projectRef.PatchTriggerAliases {
+		project, projectCached := projectCache[alias.ChildProject]
+		if !projectCached {
+			_, project, err = model.FindLatestVersionWithValidProject(alias.ChildProject)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Problem getting last known project for '%s'", alias.ChildProject).Error())
+			}
+			projectCache[alias.ChildProject] = project
+		}
+
+		matchingTasks, err := project.VariantTasksForSelectors([]patch.PatchTriggerDefinition{alias}, *obj.Requester)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem matching tasks to alias definitions: %v", err.Error()))
+		}
+
+		variantsTasks := []restModel.VariantTask{}
+		for _, vt := range matchingTasks {
+			variantsTasks = append(variantsTasks, restModel.VariantTask{
+				Name:  utility.ToStringPtr(vt.Variant),
+				Tasks: utility.ToStringPtrSlice(vt.Tasks),
+			})
+		}
+		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
+			Alias:         utility.ToStringPtr(alias.Alias),
+			ChildProject:  utility.ToStringPtr(alias.ChildProject),
+			VariantsTasks: variantsTasks,
+		})
+	}
+
 	return aliases, nil
 }
 
@@ -1422,200 +1451,131 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 }
 
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
-	sortBy := ""
-	if sortCategory != nil {
-		switch *sortCategory {
-		case TestSortCategoryStatus:
-			sortBy = testresult.StatusKey
-			break
-		case TestSortCategoryDuration:
-			sortBy = "duration"
-			break
-		case TestSortCategoryTestName:
-			sortBy = testresult.TestFileKey
-			break
-		case TestSortCategoryStartTime:
-			sortBy = testresult.StartTimeKey
-			break
-		case TestSortCategoryBaseStatus:
-			sortBy = "base_status"
-			break
-		}
-	}
-
-	sortDir := 1
-	if sortDirection != nil {
-		switch *sortDirection {
-		case SortDirectionDesc:
-			sortDir = -1
-			break
-		}
-	}
-
-	groupIdParam := utility.FromStringPtr(groupID)
-	testNameParam := utility.FromStringPtr(testName)
-	pageParam := 0
-	if page != nil {
-		pageParam = *page
-	}
-	limitParam := 0
-	if limit != nil {
-		limitParam = *limit
-	}
-	statusesParam := []string{}
-	if statuses != nil {
-		statusesParam = statuses
-	}
-
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id %s", taskID))
 	}
 	baseTask, err := dbTask.FindTaskOnBaseCommit()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task for task %s: %s", taskID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task %s: %s", taskID, err))
 	}
 
-	baseTestStatusMap := make(map[string]string)
-	// Fetch base tests and populate baseTestStatusMap
+	var sortBy, cedarSortBy string
+	if sortCategory != nil {
+		switch *sortCategory {
+		case TestSortCategoryStatus:
+			cedarSortBy = apimodels.CedarTestResultsSortByStatus
+			sortBy = testresult.StatusKey
+		case TestSortCategoryDuration:
+			cedarSortBy = apimodels.CedarTestResultsSortByDuration
+			sortBy = "duration"
+		case TestSortCategoryTestName:
+			cedarSortBy = apimodels.CedarTestResultsSortByTestName
+			sortBy = testresult.TestFileKey
+		case TestSortCategoryStartTime:
+			cedarSortBy = apimodels.CedarTestResultsSortByStart
+			sortBy = testresult.StartTimeKey
+		case TestSortCategoryBaseStatus:
+			cedarSortBy = apimodels.CedarTestResultsSortByBaseStatus
+			sortBy = "base_status"
+		}
+	}
+
+	if dbTask.HasCedarResults {
+		opts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:      evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:       taskID,
+			Execution:    utility.ToIntPtr(dbTask.Execution),
+			DisplayTask:  dbTask.DisplayOnly,
+			TestName:     utility.FromStringPtr(testName),
+			Statuses:     statuses,
+			GroupID:      utility.FromStringPtr(groupID),
+			SortBy:       cedarSortBy,
+			SortOrderDSC: sortDirection != nil && *sortDirection == SortDirectionDesc,
+			Limit:        utility.FromIntPtr(limit),
+			Page:         utility.FromIntPtr(page),
+		}
+		if baseTask != nil && baseTask.HasCedarResults {
+			opts.BaseTaskID = baseTask.Id
+		}
+		cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding test results for task %s: %s", taskID, err))
+		}
+
+		apiTestResults := make([]*restModel.APITest, len(cedarTestResults.Results))
+		for i, t := range cedarTestResults.Results {
+			apiTest := &restModel.APITest{}
+			if err = apiTest.BuildFromService(t.TaskID); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+			if err = apiTest.BuildFromService(&t); err != nil {
+				return nil, InternalServerError.Send(ctx, err.Error())
+			}
+
+			apiTestResults[i] = apiTest
+		}
+
+		return &TaskTestResult{
+			TestResults:       apiTestResults,
+			TotalTestCount:    cedarTestResults.Stats.TotalCount,
+			FilteredTestCount: utility.FromIntPtr(cedarTestResults.Stats.FilteredCount),
+		}, nil
+	}
+
+	baseTestStatusMap := map[string]string{}
 	if baseTask != nil {
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting getting latest execution for task %s: %s", baseTask.Id, err.Error()))
-		}
-
-		baseTestResultOpts := apimodels.GetCedarTestResultsOptions{
-			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			Execution: baseTask.Execution,
-		}
-
-		if len(baseTask.ExecutionTasks) > 0 {
-			baseTestResultOpts.DisplayTaskID = baseTask.Id
-		} else {
-			baseTestResultOpts.TaskID = baseTask.Id
-		}
-
-		cedarBaseTestResults, err := apimodels.GetCedarTestResults(ctx, baseTestResultOpts)
-		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"task_id": baseTask.Id,
-				"message": "problem getting cedar test results",
-			}))
-		}
-
-		if len(cedarBaseTestResults) > 0 {
-			for _, t := range cedarBaseTestResults {
-				if t.DisplayTestName != "" {
-					baseTestStatusMap[t.DisplayTestName] = t.Status
-				} else {
-					baseTestStatusMap[t.TestName] = t.Status
-				}
-			}
-		} else {
-			baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
-			for _, t := range baseTestResults {
-				baseTestStatusMap[t.TestFile] = t.Status
-			}
+		baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
+		for _, t := range baseTestResults {
+			baseTestStatusMap[t.TestFile] = t.Status
 		}
 	}
-
-	// Fetch tests and link base test status.
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+	sortDir := 1
+	if sortDirection != nil && *sortDirection == SortDirectionDesc {
+		sortDir = -1
+	}
+	filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+		TaskID:    taskID,
 		Execution: dbTask.Execution,
-	}
-	if len(dbTask.ExecutionTasks) > 0 {
-		opts.DisplayTaskID = taskID
-	} else {
-		opts.TaskID = taskID
-	}
-
-	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
-
+		TestName:  utility.FromStringPtr(testName),
+		Statuses:  statuses,
+		SortBy:    sortBy,
+		SortDir:   sortDir,
+		GroupID:   utility.FromStringPtr(groupID),
+		Limit:     utility.FromIntPtr(limit),
+		Page:      utility.FromIntPtr(page),
+	})
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"task_id": taskID,
-			"message": "problem getting cedar test results",
-		}))
+		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
-	testPointers := []*restModel.APITest{}
-	var totalTestCount int
-	var filteredTestCount int
-
-	if len(cedarTestResults) > 0 {
-		filteredTestResults, testCount := FilterSortAndPaginateCedarTestResults(FilterSortAndPaginateCedarTestResultsOpts{
-			GroupID:          groupIdParam,
-			Limit:            limitParam,
-			Page:             pageParam,
-			SortBy:           sortBy,
-			SortDir:          sortDir,
-			Statuses:         statusesParam,
-			TestName:         testNameParam,
-			TestResults:      cedarTestResults,
-			BaseTestStatuses: baseTestStatusMap,
-		})
-		for _, t := range filteredTestResults {
-			apiTest := restModel.APITest{}
-			if err = apiTest.BuildFromService(t.TaskID); err != nil {
-				return nil, InternalServerError.Send(ctx, err.Error())
-			}
-			if err = apiTest.BuildFromService(&t); err != nil {
-				return nil, InternalServerError.Send(ctx, err.Error())
-			}
-
-			baseTestStatus := baseTestStatusMap[utility.FromStringPtr(apiTest.TestFile)]
-			apiTest.BaseStatus = &baseTestStatus
-			testPointers = append(testPointers, &apiTest)
+	apiTestResults := make([]*restModel.APITest, len(filteredTestResults))
+	for i, t := range filteredTestResults {
+		apiTest := &restModel.APITest{}
+		if err = apiTest.BuildFromService(t.TaskID); err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
 		}
+		if err = apiTest.BuildFromService(&t); err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		apiTest.BaseStatus = utility.ToStringPtr(baseTestStatusMap[utility.FromStringPtr(apiTest.TestFile)])
 
-		totalTestCount = len(cedarTestResults)
-		filteredTestCount = testCount
-	} else {
-		filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-			TaskID:    taskID,
-			TestName:  testNameParam,
-			Statuses:  statusesParam,
-			SortBy:    sortBy,
-			GroupID:   groupIdParam,
-			SortDir:   sortDir,
-			Limit:     limitParam,
-			Execution: dbTask.Execution,
-			Page:      pageParam,
-		})
-		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, err.Error())
-		}
-
-		for _, t := range filteredTestResults {
-			apiTest := restModel.APITest{}
-			if err = apiTest.BuildFromService(t.TaskID); err != nil {
-				return nil, InternalServerError.Send(ctx, err.Error())
-			}
-			if err = apiTest.BuildFromService(&t); err != nil {
-				return nil, InternalServerError.Send(ctx, err.Error())
-			}
-
-			baseTestStatus := baseTestStatusMap[*apiTest.TestFile]
-			apiTest.BaseStatus = &baseTestStatus
-			testPointers = append(testPointers, &apiTest)
-		}
-		totalTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting total test count: %s", err.Error()))
-		}
-		filteredTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(taskID, testNameParam, statusesParam, dbTask.Execution)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting filtered test count: %s", err.Error()))
-		}
+		apiTestResults[i] = apiTest
+	}
+	totalTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting total test count: %s", err))
+	}
+	filteredTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(taskID, utility.FromStringPtr(testName), statuses, dbTask.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting filtered test count: %s", err))
 	}
 
-	taskTestResult := TaskTestResult{
-		TestResults:       testPointers,
+	return &TaskTestResult{
+		TestResults:       apiTestResults,
 		TotalTestCount:    totalTestCount,
 		FilteredTestCount: filteredTestCount,
-	}
-
-	return &taskTestResult, nil
+	}, nil
 }
 
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
@@ -1668,22 +1628,6 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	// Let the individual TaskLogs resolvers handle fetching logs for the task
-	// We can avoid the overhead of fetching task logs that we will not view
-	// and we can avoid handling errors that we will not see
-	return &TaskLogs{TaskID: taskID, Execution: *execution}, nil
-}
-
-func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
-	const logMessageCount = 100
-
-	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", obj.TaskID))
-	}
 	// need project to get default logger
 	p, err := r.sc.FindProjectById(t.Project, true)
 	if err != nil {
@@ -1692,19 +1636,28 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 	if p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
 	}
-
 	defaultLogger := p.DefaultLogger
 	if defaultLogger == "" {
 		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
 	}
 
+	// Let the individual TaskLogs resolvers handle fetching logs for the task
+	// We can avoid the overhead of fetching task logs that we will not view
+	// and we can avoid handling errors that we will not see
+	return &TaskLogs{TaskID: taskID, Execution: t.Execution, DefaultLogger: defaultLogger}, nil
+}
+
+func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
+	const logMessageCount = 100
+
 	var systemLogs []apimodels.LogMessage
+
 	// get logs from cedar
-	if defaultLogger == model.BuildloggerLogSender {
+	if obj.DefaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:        t.Id,
-			Execution:     t.Execution,
+			TaskID:        obj.TaskID,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.TaskLogPrefix,
@@ -1712,13 +1665,15 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 
 		// system logs
 		opts.LogType = apimodels.SystemLogPrefix
-		systemLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
-		if blErr != nil {
+		systemLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
+		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, t.Id, systemLogReader)
+		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, systemLogReader)
 	} else {
-		systemLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
+		var err error
+
+		systemLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.SystemLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", obj.TaskID, err.Error()))
@@ -1773,47 +1728,27 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
-	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: task not found", obj.TaskID))
-	}
-	//  need project to get default logger
-	p, err := r.sc.FindProjectById(t.Project, true)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
-	}
-	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
-	}
-
-	defaultLogger := p.DefaultLogger
-	if defaultLogger == "" {
-		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
 	var agentLogs []apimodels.LogMessage
 	// get logs from cedar
-	if defaultLogger == model.BuildloggerLogSender {
+	if obj.DefaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:        t.Id,
-			Execution:     t.Execution,
+			TaskID:        obj.TaskID,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.AgentLogPrefix,
 		}
 		// agent logs
-		agentLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
-		if blErr != nil {
+		agentLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
+		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, t.Id, agentLogReader)
+		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, agentLogReader)
 	} else {
+		var err error
 		// agent logs
-		agentLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
+		agentLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.AgentLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", obj.TaskID, err.Error()))
@@ -1830,60 +1765,44 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*api
 func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
-	// need to task to get project id
-	t, err := task.FindByIdExecution(obj.TaskID, &obj.Execution)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", obj.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", obj.TaskID))
-	}
-
-	// need project to get default logger
-	p, err := r.sc.FindProjectById(t.Project, true)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
-	}
-	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", t.Project))
-	}
-
-	defaultLogger := p.DefaultLogger
-	if defaultLogger == "" {
-		defaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-
-	taskLogs := []apimodels.LogMessage{}
+	var taskLogs []apimodels.LogMessage
 
 	// get logs from cedar
-	if defaultLogger == model.BuildloggerLogSender {
+	if obj.DefaultLogger == model.BuildloggerLogSender {
+
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:        t.Id,
-			Execution:     t.Execution,
+			TaskID:        obj.TaskID,
+			Execution:     utility.ToIntPtr(obj.Execution),
 			PrintPriority: true,
 			Tail:          logMessageCount,
 			LogType:       apimodels.TaskLogPrefix,
 		}
 		// task logs
-		taskLogReader, blErr := apimodels.GetBuildloggerLogs(ctx, opts)
-		if blErr != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
+		taskLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
+
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching build logger logs: %s", err.Error()))
 		}
+
 		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, taskLogReader)
 
 	} else {
+		var err error
+
 		// task logs
-		taskLogs, err = model.FindMostRecentLogMessages(t.Id, t.Execution, logMessageCount, []string{},
+		taskLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
+
 	taskLogPointers := []*apimodels.LogMessage{}
 	for i := range taskLogs {
 		taskLogPointers = append(taskLogPointers, &taskLogs[i])
 	}
+
 	return taskLogPointers, nil
 }
 
@@ -2750,6 +2669,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	}
 	return apiTask, nil
 }
+
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
 	i, err := obj.ToService()
 	if err != nil {
@@ -2766,71 +2686,50 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	duration := restModel.NewAPIDuration(start)
 	return &duration, nil
 }
+
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: obj.Execution,
-	}
-
-	if len(obj.ExecutionTasks) > 0 {
-		opts.DisplayTaskID = *obj.Id
-	} else {
-		opts.TaskID = *obj.Id
-	}
-
-	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"task_id": *obj.Id,
-			"message": "problem getting cedar test results",
-		}))
-	}
-	testCount := len(cedarTestResults)
-
-	// Check the db if cedar doesn't return any test results
-	if testCount == 0 {
-		testCount, err = r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
-		if err != nil {
-			return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test count: %s", err.Error()))
+	if obj.HasCedarResults {
+		opts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:      utility.FromStringPtr(obj.Id),
+			Execution:   utility.ToIntPtr(obj.Execution),
+			DisplayTask: obj.DisplayOnly,
 		}
+		stats, err := apimodels.GetCedarTestResultsStats(ctx, opts)
+		if err != nil {
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
+		}
+
+		return stats.TotalCount, nil
+	}
+
+	testCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 	}
 
 	return testCount, nil
 }
 
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: obj.Execution,
-	}
-
-	if len(obj.ExecutionTasks) > 0 {
-		opts.DisplayTaskID = *obj.Id
-	} else {
-		opts.TaskID = *obj.Id
-	}
-
-	cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"task_id": obj.Id,
-			"message": "problem getting cedar test results",
-		}))
-	}
-	failedTestCount := 0
-	// Get the count of the tests with the status failed
-	for _, test := range cedarTestResults {
-		if test.Status == evergreen.TestFailedStatus {
-			failedTestCount++
+	if obj.HasCedarResults {
+		opts := apimodels.GetCedarTestResultsOptions{
+			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:      utility.FromStringPtr(obj.Id),
+			Execution:   utility.ToIntPtr(obj.Execution),
+			DisplayTask: obj.DisplayOnly,
 		}
-	}
-
-	// Check the db if cedar doesn't return any results
-	if failedTestCount == 0 {
-		failedTestCount, err = r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
+		stats, err := apimodels.GetCedarTestResultsStats(ctx, opts)
 		if err != nil {
-			return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tests for failedTestCount: %s", err.Error()))
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 		}
+
+		return stats.FailedCount, nil
+	}
+
+	failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 	}
 
 	return failedTestCount, nil
@@ -3440,14 +3339,14 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 				// fetch the child patch to see if it's activated
 				p, err := patch.FindOneId(cp)
 				if err != nil {
-					return nil, err
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching a child patch: %s", err.Error()))
 				}
 				if p == nil {
 					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
 				}
 				if p.Version != "" {
 					//only return the error if the version is activated (and we therefore expect it to be there)
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch child version: %s ", err.Error()))
+					return nil, InternalServerError.Send(ctx, "An unexpected error occurred. Could not find a child version and expected one.")
 				}
 			}
 			if cv != nil {

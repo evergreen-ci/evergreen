@@ -24,13 +24,14 @@ import (
 // store no more than 2x the number specified, and no more the
 // specified capacity of completed jobs.
 type limitedSizeLocal struct {
-	channel     chan amboy.Job
-	toDelete    chan string
-	capacity    int
-	storage     map[string]amboy.Job
-	scopes      ScopeManager
-	dispatcher  Dispatcher
-	lifetimeCtx context.Context
+	channel        chan amboy.Job
+	toDelete       chan string
+	capacity       int
+	pendingStorage map[string]amboy.Job
+	storage        map[string]amboy.Job
+	scopes         ScopeManager
+	dispatcher     Dispatcher
+	lifetimeCtx    context.Context
 
 	deletedCount int
 	staleCount   int
@@ -43,10 +44,11 @@ type limitedSizeLocal struct {
 // workers and maximum capacity.
 func NewLocalLimitedSize(workers, capacity int) amboy.Queue {
 	q := &limitedSizeLocal{
-		capacity: capacity,
-		storage:  make(map[string]amboy.Job),
-		scopes:   NewLocalScopeManager(),
-		id:       fmt.Sprintf("queue.local.unordered.fixed.%s", uuid.New().String()),
+		capacity:       capacity,
+		pendingStorage: make(map[string]amboy.Job),
+		storage:        make(map[string]amboy.Job),
+		scopes:         NewLocalScopeManager(),
+		id:             fmt.Sprintf("queue.local.unordered.fixed.%s", uuid.New().String()),
 	}
 	q.dispatcher = NewDispatcher(q)
 	q.runner = pool.NewLocalWorkers(workers, q)
@@ -78,23 +80,31 @@ func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
 	name := j.ID()
 
 	q.mu.Lock()
-	defer q.mu.Unlock()
-
 	if _, ok := q.storage[name]; ok {
+		q.mu.Unlock()
 		return amboy.NewDuplicateJobErrorf("cannot dispatch '%s', already complete", name)
 	}
-
 	if j.ShouldApplyScopesOnEnqueue() {
 		if err := q.scopes.Acquire(name, j.Scopes()); err != nil {
+			q.mu.Unlock()
 			return errors.Wrapf(err, "applying scopes to job")
 		}
 	}
+	q.pendingStorage[name] = j
+	q.storage[name] = j
+	q.mu.Unlock()
 
 	select {
 	case <-ctx.Done():
+		q.mu.Lock()
+		delete(q.pendingStorage, name)
+		delete(q.storage, name)
+		q.mu.Unlock()
 		return errors.Wrapf(ctx.Err(), "queue full, cannot add %s", name)
 	case q.channel <- j:
-		q.storage[name] = j
+		q.mu.Lock()
+		delete(q.pendingStorage, name)
+		q.mu.Unlock()
 		return nil
 	}
 }
@@ -228,9 +238,15 @@ func (q *limitedSizeLocal) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	infos := make(chan amboy.JobInfo, len(q.storage))
+	infos := make(chan amboy.JobInfo, len(q.storage)-len(q.pendingStorage))
 	defer close(infos)
 	for _, j := range q.storage {
+		if _, ok := q.pendingStorage[j.ID()]; ok {
+			// The job is still pending in Put, so we should not
+			// include it as part of the queue.
+			continue
+		}
+
 		select {
 		case <-ctx.Done():
 			return infos
@@ -271,7 +287,7 @@ func (q *limitedSizeLocal) Stats(ctx context.Context) amboy.QueueStats {
 	defer q.mu.RUnlock()
 
 	s := amboy.QueueStats{
-		Total:     len(q.storage) + q.staleCount,
+		Total:     len(q.storage) - len(q.pendingStorage) + q.staleCount,
 		Completed: len(q.toDelete) + q.deletedCount,
 		Pending:   len(q.channel),
 	}

@@ -61,7 +61,7 @@ func TestPodCreationJob(t *testing.T) {
 				var found bool
 				for k, v := range j.pod.TaskContainerCreationOpts.EnvSecrets {
 					if strings.Contains(utility.FromStringPtr(secret.Name), k) {
-						assert.Equal(t, v, val)
+						assert.Equal(t, v.Value, val)
 						found = true
 						break
 					}
@@ -178,9 +178,17 @@ func TestPodCreationJob(t *testing.T) {
 					CPU:      128,
 					OS:       pod.OSLinux,
 					Arch:     pod.ArchAMD64,
-					EnvSecrets: map[string]string{
-						"s0": utility.RandomString(),
-						"s1": utility.RandomString(),
+					EnvSecrets: map[string]pod.Secret{
+						"SECRET_ENV_VAR0": {
+							Value:  utility.RandomString(),
+							Exists: utility.FalsePtr(),
+							Owned:  utility.TruePtr(),
+						},
+						"SECRET_ENV_VAR1": {
+							Value:  utility.RandomString(),
+							Exists: utility.FalsePtr(),
+							Owned:  utility.TruePtr(),
+						},
 					},
 				},
 			}

@@ -329,18 +329,36 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 				Image:      "image",
 				MemoryMB:   128,
 				CPU:        128,
-				OS:         "linux",
-				Arch:       "amd64",
+				OS:         pod.OSLinux,
+				Arch:       pod.ArchAMD64,
 				WorkingDir: "/root",
 				EnvVars: map[string]string{
-					"name": "value",
+					"ENV_VAR": "value",
 				},
-				EnvSecrets: map[string]string{
-					"s1": "secret",
+				EnvSecrets: map[string]pod.Secret{
+					"SECRET_ENV_VAR": {
+						Name:       "name0",
+						ExternalID: "external_id",
+						Value:      "value0",
+						Exists:     utility.TruePtr(),
+						Owned:      utility.FalsePtr(),
+					},
+					"SHARED_SECRET_ENV_VAR": {
+						Name:   "name1",
+						Value:  "value1",
+						Exists: utility.FalsePtr(),
+						Owned:  utility.TruePtr(),
+					},
+					"UNNAMED_SECRET_ENV_VAR": {
+						Value:  "value2",
+						Exists: utility.FalsePtr(),
+						Owned:  utility.TruePtr(),
+					},
 				},
 			},
 		}
 	}
+
 	validSettings := func() *evergreen.Settings {
 		return &evergreen.Settings{
 			Providers: evergreen.CloudProviders{
@@ -369,6 +387,7 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 			},
 		}
 	}
+
 	t.Run("Succeeds", func(t *testing.T) {
 		settings := validSettings()
 		p := validPod()
@@ -385,6 +404,9 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		require.NotZero(t, opts.ExecutionOpts.AWSVPCOpts)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.Subnets, opts.ExecutionOpts.AWSVPCOpts.Subnets)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, opts.ExecutionOpts.AWSVPCOpts.SecurityGroups)
+		require.NotZero(t, opts.ExecutionOpts.PlacementOpts)
+		require.Len(t, opts.ExecutionOpts.PlacementOpts.InstanceFilters, 1)
+		assert.Equal(t, "ecs.cpu-architecture == x86_64", opts.ExecutionOpts.PlacementOpts.InstanceFilters[0])
 
 		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
 		assert.Contains(t, utility.FromStringPtr(opts.Name), p.ID)
@@ -397,20 +419,39 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		require.Equal(t, p.TaskContainerCreationOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
 		require.Len(t, cDef.PortMappings, 1)
 		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
-		require.Len(t, cDef.EnvVars, 2)
+		require.Len(t, cDef.EnvVars, 4)
 		for _, envVar := range cDef.EnvVars {
-			if envVar.SecretOpts != nil {
-				name := utility.FromStringPtr(envVar.Name)
-				assert.Equal(t, "s1", name)
-				assert.Equal(t, p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.SecretOpts.NewValue))
-				secretRef := utility.FromStringPtr(envVar.SecretOpts.Name)
-				assert.True(t, strings.HasPrefix(secretRef, settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
-				assert.Contains(t, secretRef, p.ID)
-				assert.Contains(t, secretRef, name)
-				assert.True(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
-			} else {
-				assert.Equal(t, "name", utility.FromStringPtr(envVar.Name))
+			envVarName := utility.FromStringPtr(envVar.Name)
+			switch envVarName {
+			case "ENV_VAR":
 				assert.Equal(t, p.TaskContainerCreationOpts.EnvVars[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.Value))
+			case "SECRET_ENV_VAR":
+				s := p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
+				assert.Zero(t, envVar.SecretOpts.NewValue)
+				assert.Zero(t, envVar.SecretOpts.Name)
+				secretName := utility.FromStringPtr(envVar.SecretOpts.ID)
+				assert.Equal(t, s.ExternalID, secretName)
+				assert.False(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
+			case "SHARED_SECRET_ENV_VAR":
+				s := p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
+				assert.Equal(t, s.Value, utility.FromStringPtr(envVar.SecretOpts.NewValue))
+				assert.Zero(t, envVar.SecretOpts.ID)
+				secretName := utility.FromStringPtr(envVar.SecretOpts.Name)
+				assert.True(t, strings.HasPrefix(secretName, settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
+				assert.Contains(t, secretName, p.ID)
+				assert.Contains(t, secretName, s.Name)
+				assert.True(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
+			case "UNNAMED_SECRET_ENV_VAR":
+				s := p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
+				assert.Equal(t, s.Value, utility.FromStringPtr(envVar.SecretOpts.NewValue))
+				assert.Zero(t, envVar.SecretOpts.ID)
+				secretName := utility.FromStringPtr(envVar.SecretOpts.Name)
+				assert.True(t, strings.HasPrefix(secretName, settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
+				assert.Contains(t, secretName, p.ID)
+				assert.Contains(t, secretName, envVarName)
+				assert.True(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
+			default:
+				require.FailNow(t, "unexpected environment variable '%s'", envVarName)
 			}
 		}
 	})

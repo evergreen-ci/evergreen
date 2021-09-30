@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/evergreen-ci/cocoa"
@@ -32,7 +31,7 @@ func TestECSPodCreator(t *testing.T) {
 
 	for tName, tCase := range ecsPodCreatorTests() {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
 			cleanupECSAndSecretsManagerCache()
@@ -60,7 +59,7 @@ func TestECSPodCreator(t *testing.T) {
 
 	for tName, tCase := range testcase.ECSPodCreatorTests() {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
 			cleanupECSAndSecretsManagerCache()
@@ -81,7 +80,7 @@ func TestECSPodCreator(t *testing.T) {
 
 	for tName, tCase := range testcase.ECSPodCreatorWithVaultTests() {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, time.Second)
+			tctx, tcancel := context.WithTimeout(ctx, defaultTestTimeout)
 			defer tcancel()
 
 			cleanupECSAndSecretsManagerCache()
@@ -125,9 +124,10 @@ func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc 
 				SetCPU(256).
 				AddEnvironmentVariables(*envVar)
 			placementOpts := cocoa.NewECSPodPlacementOptions().
+				SetGroup("group").
 				SetStrategy(cocoa.StrategyBinpack).
 				SetStrategyParameter(cocoa.StrategyParamBinpackMemory).
-				AddInstanceFilters("runningTaskCount == 0")
+				AddInstanceFilters("runningTaskCount == 0", cocoa.ConstraintDistinctInstance)
 			awsvpcOpts := cocoa.NewAWSVPCOptions().
 				AddSubnets("subnet-12345").
 				AddSecurityGroups("sg-12345")
@@ -176,12 +176,15 @@ func ecsPodCreatorTests() map[string]func(ctx context.Context, t *testing.T, pc 
 
 			require.NotZero(t, c.RunTaskInput)
 			assert.Equal(t, utility.FromStringPtr(execOpts.Cluster), utility.FromStringPtr(c.RunTaskInput.Cluster))
+			assert.Equal(t, utility.FromStringPtr(placementOpts.Group), utility.FromStringPtr(c.RunTaskInput.Group))
 			require.Len(t, c.RunTaskInput.PlacementStrategy, 1)
 			assert.EqualValues(t, *placementOpts.Strategy, utility.FromStringPtr(c.RunTaskInput.PlacementStrategy[0].Type))
 			assert.Equal(t, utility.FromStringPtr(placementOpts.StrategyParameter), utility.FromStringPtr(c.RunTaskInput.PlacementStrategy[0].Field))
-			require.Len(t, c.RunTaskInput.PlacementConstraints, 1)
-			assert.Equal(t, placementOpts.InstanceFilters[0], utility.FromStringPtr(c.RunTaskInput.PlacementConstraints[0].Expression))
+			require.Len(t, c.RunTaskInput.PlacementConstraints, 2)
 			assert.Equal(t, "memberOf", utility.FromStringPtr(c.RunTaskInput.PlacementConstraints[0].Type))
+			assert.Equal(t, placementOpts.InstanceFilters[0], utility.FromStringPtr(c.RunTaskInput.PlacementConstraints[0].Expression))
+			assert.Equal(t, cocoa.ConstraintDistinctInstance, utility.FromStringPtr(c.RunTaskInput.PlacementConstraints[1].Type))
+			assert.Zero(t, c.RunTaskInput.PlacementConstraints[1].Expression)
 			require.NotZero(t, c.RunTaskInput.NetworkConfiguration)
 			require.NotZero(t, c.RunTaskInput.NetworkConfiguration.AwsvpcConfiguration)
 			assert.ElementsMatch(t, execOpts.AWSVPCOpts.Subnets, utility.FromStringPtrSlice(c.RunTaskInput.NetworkConfiguration.AwsvpcConfiguration.Subnets))

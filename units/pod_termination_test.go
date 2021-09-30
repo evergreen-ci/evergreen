@@ -132,9 +132,13 @@ func TestPodTerminationJob(t *testing.T) {
 					CPU:      128,
 					OS:       pod.OSLinux,
 					Arch:     pod.ArchAMD64,
-					EnvSecrets: map[string]string{
-						"secret0": utility.RandomString(),
-						"secret1": utility.RandomString(),
+					EnvSecrets: map[string]pod.Secret{
+						"SECRET_ENV_VAR0": {
+							Value: utility.RandomString(),
+						},
+						"SECRET_ENV_VAR1": {
+							Value: utility.RandomString(),
+						},
 					},
 				},
 			}
@@ -156,12 +160,12 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, err)
 
 			var envVars []cocoa.EnvironmentVariable
-			for name, val := range p.TaskContainerCreationOpts.EnvSecrets {
+			for name, secret := range p.TaskContainerCreationOpts.EnvSecrets {
 				envVars = append(envVars, *cocoa.NewEnvironmentVariable().
 					SetName(name).
 					SetSecretOptions(*cocoa.NewSecretOptions().
 						SetName(name).
-						SetNewValue(val).
+						SetNewValue(secret.Value).
 						SetOwned(true)))
 			}
 
