@@ -1171,10 +1171,18 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 				Tasks: utility.ToStringPtrSlice(vt.Tasks),
 			})
 		}
+
+		identifier, err := model.GetIdentifierForProject(alias.ChildProject)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting child project identifier: %v", err.Error()))
+		}
+
 		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
-			Alias:         utility.ToStringPtr(alias.Alias),
-			ChildProject:  utility.ToStringPtr(alias.ChildProject),
-			VariantsTasks: variantsTasks,
+			Alias:                  utility.ToStringPtr(alias.Alias),
+			ChildProject:           utility.ToStringPtr(alias.ChildProject),
+			ChildProjectId:         utility.ToStringPtr(alias.ChildProject),
+			ChildProjectIdentifier: utility.ToStringPtr(identifier),
+			VariantsTasks:          variantsTasks,
 		})
 	}
 
