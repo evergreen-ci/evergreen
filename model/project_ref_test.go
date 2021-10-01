@@ -50,6 +50,42 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Equal(projectRefFromDB.DefaultLogger, "buildlogger")
 }
 
+func TestMergeWithParserProject(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ParserProjectCollection),
+		"Error clearing collection")
+
+	projectRef := &ProjectRef{
+		Owner:              "mongodb",
+		Id:                 "ident",
+		PerfEnabled:        utility.TruePtr(),
+		DeactivatePrevious: utility.FalsePtr(),
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebHook: evergreen.WebHook{
+				Endpoint: "random1",
+			},
+		},
+	}
+	parserProject := &ParserProject{
+		Id:                 "v1",
+		DeactivatePrevious: utility.TruePtr(),
+		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+			FileTicketWebHook: evergreen.WebHook{
+				Endpoint: "random2",
+			},
+		},
+	}
+	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, parserProject.Insert())
+	mergedProject, err := projectRef.MergeWithParserProject("v1")
+	assert.NoError(t, err)
+	require.NotNil(t, mergedProject)
+	assert.Equal(t, "ident", mergedProject.Id)
+
+	assert.True(t, *mergedProject.DeactivatePrevious)
+	assert.True(t, *mergedProject.PerfEnabled)
+	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+}
+
 func TestFindMergedProjectRef(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection),
 		"Error clearing collection")

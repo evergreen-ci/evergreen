@@ -404,7 +404,10 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-func (p *ProjectRef) GetProjectParserMergedProjectRef(version string) *ProjectRef {
+// MergeWithParserProject looks up the parser project with the given project ref id and returns
+// a merged project ref that scans for any properties that can be set on both project ref and project parser.
+// Any values that are set at the project parser level will override the project ref settings in the returned struct.
+func (p *ProjectRef) MergeWithParserProject(version string) (*ProjectRef, error) {
 	lookupVersion := false
 	if version == "" {
 		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(p.Id, -1)
@@ -414,21 +417,20 @@ func (p *ProjectRef) GetProjectParserMergedProjectRef(version string) *ProjectRe
 				"project_id": p.Id,
 				"version":    version,
 			}))
-			return p
+			return nil, err
 		}
 		version = lastGoodVersion.Id
 		lookupVersion = true
 	}
 	parserProject, err := ParserProjectFindOneById(version)
 	if err != nil {
-		grip.Debug(message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message":        fmt.Sprintf("Error retrieving parser project for version '%s'", version),
 			"project_id":     p.Id,
 			"version":        version,
 			"lookup_version": lookupVersion,
-			"err":            err.Error(),
-		})
-		return p
+		}))
+		return nil, err
 	}
 	pRef := p
 	if parserProject != nil {
@@ -442,7 +444,7 @@ func (p *ProjectRef) GetProjectParserMergedProjectRef(version string) *ProjectRe
 			pRef.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
 		}
 	}
-	return pRef
+	return pRef, nil
 }
 
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
@@ -1420,7 +1422,11 @@ func IsPerfEnabledForProject(projectId string) bool {
 	if err != nil || projectRef == nil {
 		return false
 	}
-	return utility.FromBoolPtr(projectRef.GetProjectParserMergedProjectRef("").PerfEnabled)
+	mergedProjectRef, err := projectRef.MergeWithParserProject("")
+	if err != nil || mergedProjectRef == nil {
+		return false
+	}
+	return utility.FromBoolPtr(mergedProjectRef.PerfEnabled)
 }
 
 func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {

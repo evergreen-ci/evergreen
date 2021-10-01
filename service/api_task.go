@@ -223,7 +223,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	deactivatePrevious := utility.FromBoolPtr(projectRef.GetProjectParserMergedProjectRef(t.Version).DeactivatePrevious)
+	mergedProjectRef, err := projectRef.MergeWithParserProject(t.Version)
+	if err != nil || mergedProjectRef == nil {
+		err = errors.Wrapf(err, "Unable to merge parser project with project ref %s", t.Project)
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	deactivatePrevious := utility.FromBoolPtr(mergedProjectRef.DeactivatePrevious)
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
