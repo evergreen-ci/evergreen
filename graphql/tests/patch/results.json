@@ -269,7 +269,7 @@
             "patchTriggerAliases": [
               {
                 "alias": "test-alias",
-                "childProject": "spruce",
+                "childProjectId": "spruce",
                 "childProjectIdentifier": "spruce",
                 "variantsTasks": [
                   {

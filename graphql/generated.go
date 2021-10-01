@@ -506,6 +506,7 @@ type ComplexityRoot struct {
 	PatchTriggerAlias struct {
 		Alias                  func(childComplexity int) int
 		ChildProject           func(childComplexity int) int
+		ChildProjectId         func(childComplexity int) int
 		ChildProjectIdentifier func(childComplexity int) int
 		ParentAsModule         func(childComplexity int) int
 		Status                 func(childComplexity int) int
@@ -3390,6 +3391,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchTriggerAlias.ChildProject(childComplexity), true
+
+	case "PatchTriggerAlias.childProjectId":
+		if e.complexity.PatchTriggerAlias.ChildProjectId == nil {
+			break
+		}
+
+		return e.complexity.PatchTriggerAlias.ChildProjectId(childComplexity), true
 
 	case "PatchTriggerAlias.childProjectIdentifier":
 		if e.complexity.PatchTriggerAlias.ChildProjectIdentifier == nil {
@@ -6809,7 +6817,8 @@ type ChildPatchAlias {
 
 type PatchTriggerAlias {
   alias: String!
-  childProject: String!
+  childProject: String @deprecated
+  childProjectId: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier]
   status: String
@@ -18344,6 +18353,37 @@ func (ec *executionContext) _PatchTriggerAlias_childProject(ctx context.Context,
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.ChildProject, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTriggerAlias_childProjectId(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTriggerAlias",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChildProjectId, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35535,6 +35575,8 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			}
 		case "childProject":
 			out.Values[i] = ec._PatchTriggerAlias_childProject(ctx, field, obj)
+		case "childProjectId":
+			out.Values[i] = ec._PatchTriggerAlias_childProjectId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

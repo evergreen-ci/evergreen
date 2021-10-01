@@ -75,7 +75,8 @@ func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
 
 type APIPatchTriggerDefinition struct {
 	Alias                  *string            `json:"alias"`
-	ChildProject           *string            `json:"child_project"`
+	ChildProject           *string            `json:"child_project"` // deprecated
+	ChildProjectId         *string            `json:"child_project_id"`
 	ChildProjectIdentifier *string            `json:"child_project_identifier"`
 	TaskSpecifiers         []APITaskSpecifier `json:"task_specifiers"`
 	Status                 *string            `json:"status,omitempty"`
