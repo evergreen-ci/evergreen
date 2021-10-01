@@ -408,6 +408,13 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // a merged project ref that scans for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project parser level will override the project ref settings in the returned struct.
 func (p *ProjectRef) MergeWithParserProject(version string) (*ProjectRef, error) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting service flags")
+	}
+	if !flags.PluginAdminPageDisabled {
+		return p, nil
+	}
 	lookupVersion := false
 	if version == "" {
 		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(p.Id, -1)
