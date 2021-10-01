@@ -270,6 +270,7 @@
               {
                 "alias": "test-alias",
                 "childProject": "spruce",
+                "childProjectIdentifier": "spruce",
                 "variantsTasks": [
                   {
                     "name": "ubuntu1804",

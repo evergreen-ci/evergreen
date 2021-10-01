@@ -3,6 +3,7 @@
     patchTriggerAliases {
       alias
       childProject
+      childProjectIdentifier
       variantsTasks {
         name
         tasks

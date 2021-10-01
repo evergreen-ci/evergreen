@@ -532,6 +532,7 @@ type ChildPatchAlias {
 type PatchTriggerAlias {
   alias: String!
   childProject: String!
+  childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier]
   status: String
   parentAsModule: String
