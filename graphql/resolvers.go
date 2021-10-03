@@ -198,7 +198,7 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 }
 
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
-	if at.Aborted != true {
+	if !at.Aborted {
 		return nil, nil
 	}
 
@@ -368,6 +368,17 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restModel.APITask) (bool, error) {
 	currentUser := MustHaveUser(ctx)
 	if at.OverrideDependencies {
+		return false, nil
+	}
+	t, err := r.sc.FindTaskById(*at.Id)
+	if err != nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", *at.Id, err.Error()))
+	}
+	if t == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", *at.Id))
+	}
+	// if the task is not the latest execution of the task, it can't be overridden
+	if at.Execution != t.Execution {
 		return false, nil
 	}
 	requiredPermission := gimlet.PermissionOpts{
