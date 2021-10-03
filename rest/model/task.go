@@ -77,6 +77,7 @@ type APITask struct {
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
 	OverrideDependencies    bool                `json:"-"`
+	Archived                bool                `json:"archived"`
 }
 
 type APIAbortInfo struct {
@@ -315,6 +316,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 		}
 		at.OverrideDependencies = v.OverrideDependencies
+		at.Archived = v.Archived
 	case string:
 		ll := LogLinks{
 			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
@@ -426,6 +428,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 
 	st.DependsOn = dependsOn
 	st.OverrideDependencies = ad.OverrideDependencies
+	st.Archived = ad.Archived
 	return interface{}(st), nil
 }
 

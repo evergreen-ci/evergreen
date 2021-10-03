@@ -370,15 +370,8 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restMode
 	if at.OverrideDependencies {
 		return false, nil
 	}
-	t, err := r.sc.FindTaskById(*at.Id)
-	if err != nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", *at.Id, err.Error()))
-	}
-	if t == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", *at.Id))
-	}
 	// if the task is not the latest execution of the task, it can't be overridden
-	if at.Execution != t.Execution {
+	if at.Archived {
 		return false, nil
 	}
 	requiredPermission := gimlet.PermissionOpts{
