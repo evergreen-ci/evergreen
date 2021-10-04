@@ -328,12 +328,7 @@ func (p *commitQueueAdditionalPatches) Parse(ctx context.Context, r *http.Reques
 func (p *commitQueueAdditionalPatches) Run(ctx context.Context) gimlet.Responder {
 	additional, err := p.sc.GetAdditionalPatches(p.patchId)
 	if err != nil {
-		// Don't return an internal error if patch cannot be found
-		if strings.Contains(err.Error(), "not found in queue") {
-			return gimlet.NewJSONErrorResponse(err)
-		} else {
-			gimlet.NewJSONInternalErrorResponse(err)
-		}
+		gimlet.NewJSONInternalErrorResponse(err)
 	}
 	return gimlet.NewJSONResponse(additional)
 }
