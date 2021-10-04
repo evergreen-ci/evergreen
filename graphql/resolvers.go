@@ -2871,13 +2871,31 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 				return false, err
 			}
 			for _, projectName := range perfPlugin.Projects {
-				if projectName == pRef.Id || projectName == pRef.Identifier {
-					return true, nil
+				if projectName != pRef.Id || projectName != pRef.Identifier {
+					return false, nil
 				}
 			}
 		}
+		opts := apimodels.GetCedarPerfCountOptions{
+			BaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:  *obj.Id,
+		}
+
+		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
+		if err != nil {
+			return false, err
+		}
+		grip.Warning(message.Fields{
+			"message":         "DEBUGH",
+			"task_id":         opts.TaskID,
+			"NumberOfResults": result.NumberOfResults,
+		})
+		if result.NumberOfResults == 0 {
+
+			return false, nil
+		}
 	}
-	return false, nil
+	return true, nil
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {

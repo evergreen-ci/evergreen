@@ -67,8 +67,7 @@ func (opts GetOptions) parse() string {
 		urlString += "/stats"
 	}
 
-	// TODO: (EVG-15263) Remove once Evergreen is using new API formats.
-	params := []string{"stats=true"}
+	var params []string
 	if opts.Execution != nil {
 		params = append(params, fmt.Sprintf("execution=%d", *opts.Execution))
 	}
@@ -116,7 +115,7 @@ func Get(ctx context.Context, opts GetOptions) ([]byte, error) {
 	catcher := grip.NewBasicCatcher()
 	data, err := io.ReadAll(resp.Body)
 	catcher.Wrap(err, "reading response body")
-	catcher.Wrap(resp.Body.Close(), "cloding response body")
+	catcher.Wrap(resp.Body.Close(), "closing response body")
 
 	return data, catcher.Resolve()
 }
