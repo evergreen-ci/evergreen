@@ -2885,11 +2885,6 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 		if err != nil {
 			return false, err
 		}
-		grip.Warning(message.Fields{
-			"message":         "DEBUGH",
-			"task_id":         opts.TaskID,
-			"NumberOfResults": result.NumberOfResults,
-		})
 		if result.NumberOfResults == 0 {
 
 			return false, nil
