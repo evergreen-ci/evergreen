@@ -546,7 +546,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
-		Execution:     execution,
+		Execution:     utility.ToIntPtr(execution),
 		PrintPriority: true,
 		Tail:          DefaultLogMessages,
 		LogType:       logType,
@@ -606,7 +606,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
-		Execution:     execution,
+		Execution:     utility.ToIntPtr(execution),
 		PrintPriority: !raw,
 		LogType:       logType,
 	}
@@ -853,7 +853,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			TaskID:        taskID,
 			TestName:      testName,
 			GroupID:       vals.Get("group_id"),
-			Execution:     taskExec,
+			Execution:     utility.ToIntPtr(taskExec),
 			PrintPriority: !raw,
 		}
 		logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)

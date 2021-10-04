@@ -789,7 +789,7 @@ func (e *envState) ClientConfig() *ClientConfig {
 	return &config
 }
 
-type BuildBaronProject struct {
+type BuildBaronSettings struct {
 	// todo: reconfigure the BuildBaronConfigured check to use TicketSearchProjects instead
 
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
@@ -848,7 +848,7 @@ func (e *envState) SaveConfig() error {
 		if pluginName == "buildbaron" {
 			for fieldName, field := range plugin {
 				if fieldName == "projects" {
-					var projects map[string]BuildBaronProject
+					var projects map[string]BuildBaronSettings
 					err := mapstructure.Decode(field, &projects)
 					if err != nil {
 						return errors.Wrap(err, "problem decoding buildbaron projects")

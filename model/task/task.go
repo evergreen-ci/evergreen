@@ -3434,13 +3434,10 @@ func (t *Task) getCedarTestResults() ([]TestResult, error) {
 	}
 
 	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		Execution: t.Execution,
-	}
-	if t.DisplayOnly {
-		opts.DisplayTaskID = taskID
-	} else {
-		opts.TaskID = taskID
+		BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:      taskID,
+		Execution:   utility.ToIntPtr(t.Execution),
+		DisplayTask: t.DisplayOnly,
 	}
 
 	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
@@ -3448,8 +3445,8 @@ func (t *Task) getCedarTestResults() ([]TestResult, error) {
 		return nil, errors.Wrap(err, "getting test results from cedar")
 	}
 
-	results := make([]TestResult, len(cedarResults))
-	for i, result := range cedarResults {
+	results := make([]TestResult, len(cedarResults.Results))
+	for i, result := range cedarResults.Results {
 		results[i] = ConvertCedarTestResult(result)
 	}
 

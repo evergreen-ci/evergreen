@@ -506,12 +506,14 @@ type ComplexityRoot struct {
 	}
 
 	PatchTriggerAlias struct {
-		Alias          func(childComplexity int) int
-		ChildProject   func(childComplexity int) int
-		ParentAsModule func(childComplexity int) int
-		Status         func(childComplexity int) int
-		TaskSpecifiers func(childComplexity int) int
-		VariantsTasks  func(childComplexity int) int
+		Alias                  func(childComplexity int) int
+		ChildProject           func(childComplexity int) int
+		ChildProjectId         func(childComplexity int) int
+		ChildProjectIdentifier func(childComplexity int) int
+		ParentAsModule         func(childComplexity int) int
+		Status                 func(childComplexity int) int
+		TaskSpecifiers         func(childComplexity int) int
+		VariantsTasks          func(childComplexity int) int
 	}
 
 	Patches struct {
@@ -825,12 +827,13 @@ type ComplexityRoot struct {
 	}
 
 	TaskLogs struct {
-		AgentLogs  func(childComplexity int) int
-		EventLogs  func(childComplexity int) int
-		Execution  func(childComplexity int) int
-		SystemLogs func(childComplexity int) int
-		TaskID     func(childComplexity int) int
-		TaskLogs   func(childComplexity int) int
+		AgentLogs     func(childComplexity int) int
+		DefaultLogger func(childComplexity int) int
+		EventLogs     func(childComplexity int) int
+		Execution     func(childComplexity int) int
+		SystemLogs    func(childComplexity int) int
+		TaskID        func(childComplexity int) int
+		TaskLogs      func(childComplexity int) int
 	}
 
 	TaskQueueDistro struct {
@@ -3415,6 +3418,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchTriggerAlias.ChildProject(childComplexity), true
 
+	case "PatchTriggerAlias.childProjectId":
+		if e.complexity.PatchTriggerAlias.ChildProjectId == nil {
+			break
+		}
+
+		return e.complexity.PatchTriggerAlias.ChildProjectId(childComplexity), true
+
+	case "PatchTriggerAlias.childProjectIdentifier":
+		if e.complexity.PatchTriggerAlias.ChildProjectIdentifier == nil {
+			break
+		}
+
+		return e.complexity.PatchTriggerAlias.ChildProjectIdentifier(childComplexity), true
+
 	case "PatchTriggerAlias.parentAsModule":
 		if e.complexity.PatchTriggerAlias.ParentAsModule == nil {
 			break
@@ -5220,6 +5237,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogs.AgentLogs(childComplexity), true
 
+	case "TaskLogs.defaultLogger":
+		if e.complexity.TaskLogs.DefaultLogger == nil {
+			break
+		}
+
+		return e.complexity.TaskLogs.DefaultLogger(childComplexity), true
+
 	case "TaskLogs.eventLogs":
 		if e.complexity.TaskLogs.EventLogs == nil {
 			break
@@ -6834,7 +6858,9 @@ type ChildPatchAlias {
 
 type PatchTriggerAlias {
   alias: String!
-  childProject: String!
+  childProject: String @deprecated
+  childProjectId: String!
+  childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier]
   status: String
   parentAsModule: String
@@ -7320,6 +7346,7 @@ type User {
 type TaskLogs {
   taskId: String!
   execution: Int!
+  defaultLogger: String!
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!
@@ -18465,6 +18492,71 @@ func (ec *executionContext) _PatchTriggerAlias_childProject(ctx context.Context,
 		return graphql.Null
 	}
 	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTriggerAlias_childProjectId(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTriggerAlias",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChildProjectId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PatchTriggerAlias_childProjectIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "PatchTriggerAlias",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChildProjectIdentifier, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
 		if !graphql.HasFieldError(ctx, fc) {
 			ec.Errorf(ctx, "must not be null")
 		}
@@ -26563,6 +26655,40 @@ func (ec *executionContext) _TaskLogs_execution(ctx context.Context, field graph
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskLogs_defaultLogger(ctx context.Context, field graphql.CollectedField, obj *TaskLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "TaskLogs",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultLogger, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskLogs_eventLogs(ctx context.Context, field graphql.CollectedField, obj *TaskLogs) (ret graphql.Marshaler) {
@@ -35657,6 +35783,13 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			}
 		case "childProject":
 			out.Values[i] = ec._PatchTriggerAlias_childProject(ctx, field, obj)
+		case "childProjectId":
+			out.Values[i] = ec._PatchTriggerAlias_childProjectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "childProjectIdentifier":
+			out.Values[i] = ec._PatchTriggerAlias_childProjectIdentifier(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -37760,6 +37893,11 @@ func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "execution":
 			out.Values[i] = ec._TaskLogs_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "defaultLogger":
+			out.Values[i] = ec._TaskLogs_defaultLogger(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}

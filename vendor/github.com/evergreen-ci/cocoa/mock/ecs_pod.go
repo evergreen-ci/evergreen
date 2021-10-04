@@ -13,7 +13,10 @@ type ECSPod struct {
 
 	ResourcesOutput *cocoa.ECSPodResources
 
-	StatusOutput *cocoa.ECSPodStatusInfo
+	StatusInfoOutput *cocoa.ECSPodStatusInfo
+
+	LatestStatusInfoOutput *cocoa.ECSPodStatusInfo
+	LatestStatusInfoError  error
 
 	StopError error
 
@@ -31,11 +34,22 @@ func NewECSPod(p cocoa.ECSPod) *ECSPod {
 // output can be customized. By default, it will return the result of the
 // backing ECS pod.
 func (p *ECSPod) StatusInfo() cocoa.ECSPodStatusInfo {
-	if p.StatusOutput != nil {
-		return *p.StatusOutput
+	if p.StatusInfoOutput != nil {
+		return *p.StatusInfoOutput
 	}
 
 	return p.ECSPod.StatusInfo()
+}
+
+// LatestStatusInfo returns the mock latest status information about the pod.
+// The mock output can be customized. By default, it will return the result of
+// the backing ECS pod.
+func (p *ECSPod) LatestStatusInfo(ctx context.Context) (*cocoa.ECSPodStatusInfo, error) {
+	if p.LatestStatusInfoOutput != nil || p.LatestStatusInfoError != nil {
+		return p.LatestStatusInfoOutput, p.LatestStatusInfoError
+	}
+
+	return p.ECSPod.LatestStatusInfo(ctx)
 }
 
 // Resources returns mock resource information about the pod. The mock output

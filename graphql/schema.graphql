@@ -532,7 +532,9 @@ type ChildPatchAlias {
 
 type PatchTriggerAlias {
   alias: String!
-  childProject: String!
+  childProject: String @deprecated
+  childProjectId: String!
+  childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier]
   status: String
   parentAsModule: String
@@ -1018,6 +1020,7 @@ type User {
 type TaskLogs {
   taskId: String!
   execution: Int!
+  defaultLogger: String!
   eventLogs: [TaskEventLogEntry!]!
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!

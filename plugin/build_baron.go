@@ -18,7 +18,7 @@ func init() {
 }
 
 type bbPluginOptions struct {
-	Projects map[string]evergreen.BuildBaronProject
+	Projects map[string]evergreen.BuildBaronSettings
 }
 
 type BuildBaronPlugin struct {
@@ -31,7 +31,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	// pull out options needed from config file (JIRA authentication info, and list of projects)
 	bbpOptions := &bbPluginOptions{}
 	validatedBbOptions := &bbPluginOptions{}
-	validatedBbOptions.Projects = make(map[string]evergreen.BuildBaronProject)
+	validatedBbOptions.Projects = make(map[string]evergreen.BuildBaronSettings)
 
 	err := mapstructure.Decode(conf, bbpOptions)
 	if err != nil {
@@ -138,10 +138,8 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
-					enabled := len(bbp.opts.Projects[context.ProjectRef.Id].TicketSearchProjects) > 0
-					if !enabled {
-						enabled = len(bbp.opts.Projects[context.ProjectRef.Identifier].TicketSearchProjects) > 0
-					}
+					bbSettings, ok := BbGetProject(evergreen.GetEnvironment().Settings(), context.ProjectRef.Id, "")
+					enabled := ok && len(bbSettings.TicketSearchProjects) > 0
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{enabled}, nil
@@ -175,7 +173,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 			webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
 		}
 	} else {
-		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project)
+		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project, "")
 		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
 		if webHook.Endpoint != "" && bbProject.TicketCreateProject != "" {
 			return evergreen.WebHook{}, false, errors.Errorf("The custom file ticket webhook and the build baron TicketCreateProject should not both be configured")
@@ -188,7 +186,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	}
 }
 
-func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
+func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronSettings {
 	bbconf, ok := settings.Plugins["buildbaron"]
 	if !ok {
 		return nil
@@ -200,7 +198,7 @@ func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronPr
 		return nil
 	}
 
-	projects := map[string]evergreen.BuildBaronProject{}
+	projects := map[string]evergreen.BuildBaronSettings{}
 	err := mapstructure.Decode(projectConfig, &projects)
 	if err != nil {
 		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
@@ -209,7 +207,36 @@ func BbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronPr
 	return projects
 }
 
-func BbGetProject(settings *evergreen.Settings, projectId string) (evergreen.BuildBaronProject, bool) {
+// BbGetProject retrieves build baron settings from project or admin config depending on PluginAdminPageDisabled flag.
+// Project parser config takes precedence, otherwise fallback to project page settings (found using version ID if given).
+// Returns build baron settings and ok if found.
+func BbGetProject(settings *evergreen.Settings, projectId string, version string) (evergreen.BuildBaronSettings, bool) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return evergreen.BuildBaronSettings{}, false
+	}
+	if flags.PluginAdminPageDisabled {
+		if version == "" {
+			lastGoodVersion, err := model.FindVersionByLastKnownGoodConfig(projectId, -1)
+			if err == nil && lastGoodVersion != nil {
+				version = lastGoodVersion.Id
+			}
+		}
+		if version != "" {
+			parserProject, err := model.ParserProjectFindOneById(version)
+			if err != nil {
+				return evergreen.BuildBaronSettings{}, false
+			}
+			if parserProject != nil && parserProject.BuildBaronSettings != nil {
+				return *parserProject.BuildBaronSettings, true
+			}
+		}
+		projectRef, err := model.FindMergedProjectRef(projectId)
+		if err != nil || projectRef == nil {
+			return evergreen.BuildBaronSettings{}, false
+		}
+		return projectRef.BuildBaronSettings, true
+	}
 	buildBaronProjects := BbGetConfig(settings)
 	bbProject, ok := buildBaronProjects[projectId]
 	if !ok {

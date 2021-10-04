@@ -45,19 +45,28 @@ func TestPodConnector(t *testing.T) {
 			require.NotZero(t, apiPod)
 
 			require.NotZero(t, apiPod.Status)
-			assert.Equal(t, model.PodStatusInitializing, *apiPod.Status)
-			assert.Equal(t, "secret", utility.FromStringPtr(apiPod.Secret))
+			assert.Equal(t, model.PodStatusInitializing, apiPod.Status)
+			assert.Equal(t, podSecretEnvVar, utility.FromStringPtr(apiPod.Secret.Name))
+			assert.Equal(t, utility.FromStringPtr(p.Secret), utility.FromStringPtr(apiPod.Secret.Value))
 			require.NotZero(t, apiPod.TaskContainerCreationOpts.EnvVars)
 			assert.Equal(t, "env_value", apiPod.TaskContainerCreationOpts.EnvVars["env_name"])
 			assert.NotZero(t, apiPod.TaskContainerCreationOpts.EnvVars["POD_ID"])
 			require.NotZero(t, apiPod.TaskContainerCreationOpts.EnvSecrets)
-			assert.Equal(t, utility.FromStringPtr(p.Secret), apiPod.TaskContainerCreationOpts.EnvSecrets["POD_SECRET"])
+			secret, ok := apiPod.TaskContainerCreationOpts.EnvSecrets["POD_SECRET"]
+			require.True(t, ok)
+			assert.Equal(t, utility.FromStringPtr(p.Secret), utility.FromStringPtr(secret.Value))
 		},
 		"FindPodByIDSucceeds": func(t *testing.T, conn Connector) {
 			p := pod.Pod{
 				ID:     "id",
 				Status: pod.StatusInitializing,
-				Secret: "secret",
+				Secret: pod.Secret{
+					Name:       podSecretEnvVar,
+					Value:      "secret_value",
+					ExternalID: "external_id",
+					Exists:     utility.TruePtr(),
+					Owned:      utility.FalsePtr(),
+				},
 			}
 			require.NoError(t, p.Insert())
 
@@ -66,7 +75,7 @@ func TestPodConnector(t *testing.T) {
 			require.NotZero(t, apiPod)
 
 			assert.Equal(t, p.ID, utility.FromStringPtr(apiPod.ID))
-			assert.Equal(t, p.Secret, utility.FromStringPtr(apiPod.Secret))
+			assert.Equal(t, p.Secret, apiPod.Secret.ToService())
 		},
 		"FindPodByIDReturnsNilWithNonexistentPod": func(t *testing.T, conn Connector) {
 			apiPod, err := conn.FindPodByID("nonexistent")
@@ -75,8 +84,14 @@ func TestPodConnector(t *testing.T) {
 		},
 		"FindPodByExternalIDSucceeds": func(t *testing.T, conn Connector) {
 			p := pod.Pod{
-				ID:     "id",
-				Secret: "secret",
+				ID: "id",
+				Secret: pod.Secret{
+					Name:       podSecretEnvVar,
+					Value:      "secret_value",
+					ExternalID: "external_id",
+					Exists:     utility.TruePtr(),
+					Owned:      utility.FalsePtr(),
+				},
 				Status: pod.StatusRunning,
 				Resources: pod.ResourceInfo{
 					ExternalID: "external_id",
@@ -89,7 +104,7 @@ func TestPodConnector(t *testing.T) {
 			require.NotZero(t, apiPod)
 
 			assert.Equal(t, p.ID, utility.FromStringPtr(apiPod.ID))
-			assert.Equal(t, p.Secret, utility.FromStringPtr(apiPod.Secret))
+			assert.Equal(t, p.Secret, apiPod.Secret.ToService())
 		},
 		"FindPodByExternalIDReturnsNilWithNonexistentPod": func(t *testing.T, conn Connector) {
 			apiPod, err := conn.FindPodByExternalID("nonexistent")
@@ -113,29 +128,35 @@ func TestPodConnector(t *testing.T) {
 			require.NotZero(t, apiPod)
 
 			require.NotZero(t, apiPod.Status)
-			assert.Equal(t, updated, *apiPod.Status)
+			assert.Equal(t, updated, apiPod.Status)
 		},
 		"UpdatePodStatusFailsWithNonexistentPod": func(t *testing.T, conn Connector) {
 			assert.Error(t, conn.UpdatePodStatus("nonexistent", model.PodStatusRunning, model.PodStatusTerminated))
 		},
 		"CheckPodSecret": func(t *testing.T, conn Connector) {
 			p := pod.Pod{
-				ID:     "id",
-				Secret: "secret",
+				ID: "id",
+				Secret: pod.Secret{
+					Name:       podSecretEnvVar,
+					Value:      "secret_value",
+					ExternalID: "external_id",
+					Exists:     utility.TruePtr(),
+					Owned:      utility.FalsePtr(),
+				},
 			}
 			require.NoError(t, p.Insert())
 
 			t.Run("Succeeds", func(t *testing.T) {
-				assert.NoError(t, conn.CheckPodSecret(p.ID, p.Secret))
+				assert.NoError(t, conn.CheckPodSecret(p.ID, p.Secret.Value))
 			})
 			t.Run("FailsWithoutID", func(t *testing.T) {
-				assert.Error(t, conn.CheckPodSecret("", p.Secret))
+				assert.Error(t, conn.CheckPodSecret("", p.Secret.Value))
 			})
 			t.Run("FailsWithoutSecret", func(t *testing.T) {
 				assert.Error(t, conn.CheckPodSecret(p.ID, ""))
 			})
 			t.Run("FailsWithBadID", func(t *testing.T) {
-				assert.Error(t, conn.CheckPodSecret("bad_id", p.Secret))
+				assert.Error(t, conn.CheckPodSecret("bad_id", p.Secret.Value))
 			})
 			t.Run("FailsWithBadSecret", func(t *testing.T) {
 				assert.Error(t, conn.CheckPodSecret(p.ID, "bad_secret"))
