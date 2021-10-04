@@ -2354,6 +2354,21 @@ func TestDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, t11.Insert())
 	checkStatuses(t, evergreen.TaskWillRun, t11)
+	t12 := Task{
+		Id:                   "t12",
+		Status:               evergreen.TaskUndispatched,
+		Activated:            true,
+		OverrideDependencies: true,
+		DependsOn: []Dependency{
+			{
+				TaskId:       "t9",
+				Unattainable: true,
+				Status:       "success",
+			},
+		},
+	}
+	assert.NoError(t, t12.Insert())
+	checkStatuses(t, evergreen.TaskWillRun, t11)
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {

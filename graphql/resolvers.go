@@ -198,7 +198,7 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 }
 
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
-	if at.Aborted != true {
+	if !at.Aborted {
 		return nil, nil
 	}
 
@@ -297,6 +297,93 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 		dependencies = append(dependencies, &dependency)
 	}
 	return dependencies, nil
+}
+
+func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
+	dependencies := []*Dependency{}
+	if len(at.DependsOn) == 0 {
+		return nil, nil
+	}
+	depIds := []string{}
+	for _, dep := range at.DependsOn {
+		depIds = append(depIds, dep.TaskId)
+	}
+
+	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
+	}
+
+	taskMap := map[string]*task.Task{}
+	for i := range dependencyTasks {
+		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
+	}
+
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+
+	for _, dep := range at.DependsOn {
+		depTask, ok := taskMap[dep.TaskId]
+		if !ok {
+			continue
+		}
+		var metStatus MetStatus
+		if !depTask.IsFinished() {
+			metStatus = "PENDING"
+		} else if t.SatisfiesDependency(depTask) {
+			metStatus = "MET"
+		} else {
+			metStatus = "UNMET"
+		}
+		var requiredStatus RequiredStatus
+		switch dep.Status {
+		case model.AllStatuses:
+			requiredStatus = "MUST_FINISH"
+		case evergreen.TaskFailed:
+			requiredStatus = "MUST_FAIL"
+		default:
+			requiredStatus = "MUST_SUCCEED"
+		}
+
+		dependency := Dependency{
+			Name:           depTask.DisplayName,
+			BuildVariant:   depTask.BuildVariant,
+			MetStatus:      metStatus,
+			RequiredStatus: requiredStatus,
+			TaskID:         dep.TaskId,
+		}
+
+		dependencies = append(dependencies, &dependency)
+	}
+	return dependencies, nil
+}
+
+func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restModel.APITask) (bool, error) {
+	currentUser := MustHaveUser(ctx)
+	if at.OverrideDependencies {
+		return false, nil
+	}
+	// if the task is not the latest execution of the task, it can't be overridden
+	if at.Archived {
+		return false, nil
+	}
+	requiredPermission := gimlet.PermissionOpts{
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: evergreen.TasksAdmin.Value,
+		Resource:      *at.ProjectId,
+	}
+	if len(at.DependsOn) > 0 && currentUser.HasPermission(requiredPermission) {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
@@ -2072,7 +2159,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if priority > evergreen.MaxTaskPriority {
 		requiredPermission := gimlet.PermissionOpts{
 			Resource:      t.Project,
-			ResourceType:  "project",
+			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionTasks,
 			RequiredLevel: evergreen.TasksAdmin.Value,
 		}
@@ -2094,6 +2181,22 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
+}
+
+func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID string) (*restModel.APITask, error) {
+	currentUser := MustHaveUser(ctx)
+	t, err := task.FindByIdExecution(taskID, nil)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
+	}
+	t.DisplayStatus = t.GetDisplayStatus()
+	return GetAPITaskFromTask(ctx, r.sc, *t)
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {

@@ -170,6 +170,7 @@ type ComplexityRoot struct {
 		MetStatus      func(childComplexity int) int
 		Name           func(childComplexity int) int
 		RequiredStatus func(childComplexity int) int
+		TaskID         func(childComplexity int) int
 		UILink         func(childComplexity int) int
 	}
 
@@ -392,6 +393,7 @@ type ComplexityRoot struct {
 		EditSpawnHost                 func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch                  func(childComplexity int, patchID string, commitMessage *string) int
 		MoveAnnotationIssue           func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
+		OverrideTaskDependencies      func(childComplexity int, taskID string) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject         func(childComplexity int, identifier string) int
 		RemoveItemFromCommitQueue     func(childComplexity int, commitQueueID string, issue string) int
@@ -725,12 +727,14 @@ type ComplexityRoot struct {
 		BuildVariantDisplayName func(childComplexity int) int
 		CanAbort                func(childComplexity int) int
 		CanModifyAnnotation     func(childComplexity int) int
+		CanOverrideDependencies func(childComplexity int) int
 		CanRestart              func(childComplexity int) int
 		CanSchedule             func(childComplexity int) int
 		CanSetPriority          func(childComplexity int) int
 		CanSync                 func(childComplexity int) int
 		CanUnschedule           func(childComplexity int) int
 		CreateTime              func(childComplexity int) int
+		DependsOn               func(childComplexity int) int
 		Details                 func(childComplexity int) int
 		DispatchTime            func(childComplexity int) int
 		DisplayName             func(childComplexity int) int
@@ -1099,6 +1103,7 @@ type MutationResolver interface {
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
 	BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
+	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
 }
 type PatchResolver interface {
 	AuthorDisplayName(ctx context.Context, obj *model.APIPatch) (string, error)
@@ -1208,6 +1213,8 @@ type TaskResolver interface {
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
 	ReliesOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
+	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
+	CanOverrideDependencies(ctx context.Context, obj *model.APITask) (bool, error)
 
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
@@ -1668,6 +1675,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Dependency.RequiredStatus(childComplexity), true
+
+	case "Dependency.taskId":
+		if e.complexity.Dependency.TaskID == nil {
+			break
+		}
+
+		return e.complexity.Dependency.TaskID(childComplexity), true
 
 	case "Dependency.uiLink":
 		if e.complexity.Dependency.UILink == nil {
@@ -2699,6 +2713,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.MoveAnnotationIssue(childComplexity, args["taskId"].(string), args["execution"].(int), args["apiIssue"].(model.APIIssueLink), args["isIssue"].(bool)), true
+
+	case "Mutation.overrideTaskDependencies":
+		if e.complexity.Mutation.OverrideTaskDependencies == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_overrideTaskDependencies_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.OverrideTaskDependencies(childComplexity, args["taskId"].(string)), true
 
 	case "Mutation.removeAnnotationIssue":
 		if e.complexity.Mutation.RemoveAnnotationIssue == nil {
@@ -4651,6 +4677,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.CanModifyAnnotation(childComplexity), true
 
+	case "Task.canOverrideDependencies":
+		if e.complexity.Task.CanOverrideDependencies == nil {
+			break
+		}
+
+		return e.complexity.Task.CanOverrideDependencies(childComplexity), true
+
 	case "Task.canRestart":
 		if e.complexity.Task.CanRestart == nil {
 			break
@@ -4692,6 +4725,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.CreateTime(childComplexity), true
+
+	case "Task.dependsOn":
+		if e.complexity.Task.DependsOn == nil {
+			break
+		}
+
+		return e.complexity.Task.DependsOn(childComplexity), true
 
 	case "Task.details":
 		if e.complexity.Task.Details == nil {
@@ -6431,6 +6471,7 @@ type Mutation {
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
   bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
+  overrideTaskDependencies(taskId: String!): Task!
 }
 
 input VersionToRestart {
@@ -7006,7 +7047,8 @@ type Dependency {
   metStatus: MetStatus!
   requiredStatus: RequiredStatus!
   buildVariant: String!
-  uiLink: String!
+  taskId: String!
+  uiLink: String! @deprecated(reason: "uiLink is deprecated and should not be used")
 }
 
 type PatchMetadata {
@@ -7079,7 +7121,9 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
-  reliesOn: [Dependency!]!
+  reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
+  dependsOn: [Dependency!]
+  canOverrideDependencies: Boolean!
   requester: String!
   restarts: Int
   revision: String
@@ -7830,6 +7874,20 @@ func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.
 		}
 	}
 	args["isIssue"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_overrideTaskDependencies_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["taskId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskId"] = arg0
 	return args, nil
 }
 
@@ -10881,6 +10939,40 @@ func (ec *executionContext) _Dependency_buildVariant(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.BuildVariant, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Dependency_taskId(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Dependency",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16529,6 +16621,47 @@ func (ec *executionContext) _Mutation_clearMySubscriptions(ctx context.Context, 
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_overrideTaskDependencies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_overrideTaskDependencies_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().OverrideTaskDependencies(rctx, args["taskId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Note_message(ctx context.Context, field graphql.CollectedField, obj *model.APINote) (ret graphql.Marshaler) {
@@ -25042,6 +25175,71 @@ func (ec *executionContext) _Task_reliesOn(ctx context.Context, field graphql.Co
 	res := resTmp.([]*Dependency)
 	fc.Result = res
 	return ec.marshalNDependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_dependsOn(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().DependsOn(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*Dependency)
+	fc.Result = res
+	return ec.marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_canOverrideDependencies(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanOverrideDependencies(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_requester(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -33708,6 +33906,11 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "taskId":
+			out.Values[i] = ec._Dependency_taskId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "uiLink":
 			out.Values[i] = ec._Dependency_uiLink(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -35020,6 +35223,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "clearMySubscriptions":
 			out.Values[i] = ec._Mutation_clearMySubscriptions(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "overrideTaskDependencies":
+			out.Values[i] = ec._Mutation_overrideTaskDependencies(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -37329,6 +37537,31 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_reliesOn(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "dependsOn":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_dependsOn(ctx, field, obj)
+				return res
+			})
+		case "canOverrideDependencies":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canOverrideDependencies(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -42002,6 +42235,46 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 
 func (ec *executionContext) marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
 	return ec._CommitQueueParams(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx context.Context, sel ast.SelectionSet, v []*Dependency) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDependency2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependency(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
 }
 
 func (ec *executionContext) marshalODistro2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v model.APIDistro) graphql.Marshaler {

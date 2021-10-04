@@ -145,6 +145,7 @@ type Mutation {
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
   bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
+  overrideTaskDependencies(taskId: String!): Task!
 }
 
 input VersionToRestart {
@@ -720,7 +721,8 @@ type Dependency {
   metStatus: MetStatus!
   requiredStatus: RequiredStatus!
   buildVariant: String!
-  uiLink: String!
+  taskId: String!
+  uiLink: String! @deprecated(reason: "uiLink is deprecated and should not be used")
 }
 
 type PatchMetadata {
@@ -793,7 +795,9 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
-  reliesOn: [Dependency!]!
+  reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
+  dependsOn: [Dependency!]
+  canOverrideDependencies: Boolean!
   requester: String!
   restarts: Int
   revision: String

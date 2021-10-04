@@ -1501,7 +1501,7 @@ func (t *Task) GetDisplayStatus() string {
 		if !t.Activated {
 			return evergreen.TaskUnscheduled
 		}
-		if t.Blocked() {
+		if t.Blocked() && !t.OverrideDependencies {
 			return evergreen.TaskStatusBlocked
 		}
 		return evergreen.TaskWillRun
