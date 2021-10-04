@@ -108,7 +108,6 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 	return catcher.Resolve()
 }
 
-// should be called in the resolver
 func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
 	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
 	aliasesIdMap := map[string]bool{}
@@ -124,6 +123,7 @@ func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAli
 	if err := pc.UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
 		return false, errors.Wrap(err, "error updating project aliases")
 	}
+	modified := len(aliasesToUpdate) > 0
 	catcher := grip.NewBasicCatcher()
 	// delete any aliasesToUpdate that were in the list before but are not now
 	for _, originalAlias := range originalAliases {
@@ -134,9 +134,10 @@ func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAli
 		id := originalAlias.ID.Hex()
 		if _, ok := aliasesIdMap[id]; !ok {
 			catcher.Add(model.RemoveProjectAlias(id))
+			modified = true
 		}
 	}
-	return true, catcher.Resolve()
+	return modified, catcher.Resolve()
 }
 
 func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) bool {

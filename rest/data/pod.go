@@ -53,7 +53,7 @@ func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 			Message:    "pod does not exist",
 		}
 	}
-	if secret != p.Secret {
+	if secret != p.Secret.Value {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "pod secrets do not match",
@@ -156,7 +156,7 @@ func (c *MockPodConnector) CheckPodSecret(id, secret string) error {
 		if id != p.ID {
 			continue
 		}
-		if secret != p.Secret {
+		if secret != p.Secret.Value {
 			return errors.New("incorrect pod secret")
 		}
 	}
@@ -258,18 +258,28 @@ func translatePod(p model.APICreatePod) (*pod.Pod, error) {
 	return &dbPod, nil
 }
 
+const (
+	podIDEnvVar     = "POD_ID"
+	podSecretEnvVar = "POD_SECRET"
+)
+
 // addAgentPodSettings adds any pod configuration that is necessary to run the
 // agent.
 func addAgentPodSettings(p *pod.Pod) {
-	if p.Secret == "" {
-		p.Secret = utility.RandomString()
+	if p.Secret.Name == "" {
+		p.Secret.Name = podSecretEnvVar
 	}
+	if p.Secret.Value == "" {
+		p.Secret.Value = utility.RandomString()
+	}
+	p.Secret.Exists = utility.FalsePtr()
+	p.Secret.Owned = utility.TruePtr()
 	if p.TaskContainerCreationOpts.EnvSecrets == nil {
-		p.TaskContainerCreationOpts.EnvSecrets = map[string]string{}
+		p.TaskContainerCreationOpts.EnvSecrets = map[string]pod.Secret{}
 	}
-	p.TaskContainerCreationOpts.EnvSecrets["POD_SECRET"] = p.Secret
+	p.TaskContainerCreationOpts.EnvSecrets[podSecretEnvVar] = p.Secret
 	if p.TaskContainerCreationOpts.EnvVars == nil {
 		p.TaskContainerCreationOpts.EnvVars = map[string]string{}
 	}
-	p.TaskContainerCreationOpts.EnvVars["POD_ID"] = p.ID
+	p.TaskContainerCreationOpts.EnvVars[podIDEnvVar] = p.ID
 }

@@ -140,6 +140,7 @@ func TestTestBuildFromService(t *testing.T) {
 					DisplayTestName: "display",
 					GroupID:         "group",
 					Status:          "status",
+					BaseStatus:      "base_status",
 					LogTestName:     "log",
 					LineNum:         15,
 					Start:           start,
@@ -148,11 +149,12 @@ func TestTestBuildFromService(t *testing.T) {
 				otr := task.ConvertCedarTestResult(*input)
 
 				output := &APITest{
-					ID:        utility.ToStringPtr(input.TestName),
-					Execution: input.Execution,
-					TestFile:  utility.ToStringPtr(input.DisplayTestName),
-					GroupID:   utility.ToStringPtr(input.GroupID),
-					Status:    utility.ToStringPtr(input.Status),
+					ID:         utility.ToStringPtr(input.TestName),
+					Execution:  input.Execution,
+					TestFile:   utility.ToStringPtr(input.DisplayTestName),
+					GroupID:    utility.ToStringPtr(input.GroupID),
+					Status:     utility.ToStringPtr(input.Status),
+					BaseStatus: utility.ToStringPtr(input.BaseStatus),
 					Logs: TestLogs{
 						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
 						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),

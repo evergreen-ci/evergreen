@@ -1576,6 +1576,47 @@ func TestUpdateAdminRoles(t *testing.T) {
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
 
+func TestUpdateAdminRolesError(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
+	env := evergreen.GetEnvironment()
+	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	rm := env.RoleManager()
+	adminScope := gimlet.Scope{
+		ID:        evergreen.AllProjectsScope,
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"proj"},
+	}
+	require.NoError(t, rm.AddScope(adminScope))
+	adminRole := gimlet.Role{
+		ID:          "admin",
+		Scope:       evergreen.AllProjectsScope,
+		Permissions: adminPermissions,
+	}
+	require.NoError(t, rm.UpdateRole(adminRole))
+	oldAdmin := user.DBUser{
+		Id:          "oldAdmin",
+		SystemRoles: []string{"admin"},
+	}
+	require.NoError(t, oldAdmin.Insert())
+	newAdmin := user.DBUser{
+		Id: "newAdmin",
+	}
+	require.NoError(t, newAdmin.Insert())
+	p := ProjectRef{
+		Id: "proj",
+	}
+	require.NoError(t, p.Insert())
+
+	// check that the existing users have been added and removed while returning an error
+	assert.Error(t, p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id}))
+	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
+	assert.NoError(t, err)
+	assert.Len(t, oldAdminFromDB.Roles(), 0)
+	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
+	assert.NoError(t, err)
+	assert.Len(t, newAdminFromDB.Roles(), 1)
+}
+
 func TestUpdateNextPeriodicBuild(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.Clear(ProjectRefCollection))

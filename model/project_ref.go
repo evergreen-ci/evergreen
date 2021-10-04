@@ -102,7 +102,8 @@ type ProjectRef struct {
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 
 	// Plugin settings
-	PerfEnabled *bool `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
+	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// This is a temporary flag to enable individual projects to use repo settings
 	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
@@ -235,6 +236,7 @@ var (
 	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey  = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
+	projectRefBuildBaronSettingsKey      = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
 	projectRefPerfEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
@@ -1885,40 +1887,51 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		viewRole = GetViewRepoRole(p.RepoRefId)
 	}
 
+	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user '%s'", addedUser)
+			catcher.Wrapf(err, "error finding user '%s'", addedUser)
+			continue
 		}
 		if adminUser == nil {
-			return errors.Errorf("no user '%s' found", addedUser)
+			catcher.Errorf("no user '%s' found", addedUser)
+			continue
 		}
 		if err = adminUser.AddRole(role.ID); err != nil {
-			return errors.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
+			catcher.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
+			continue
 		}
 		if viewRole != "" {
 			if err = adminUser.AddRole(viewRole); err != nil {
-				return errors.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
+				catcher.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
+				continue
 			}
 		}
 	}
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
 		if err != nil {
-			return errors.Wrapf(err, "error finding user %s", removedUser)
+			catcher.Wrapf(err, "error finding user %s", removedUser)
+			continue
 		}
 		if adminUser == nil {
 			continue
 		}
 
 		if err = adminUser.RemoveRole(role.ID); err != nil {
-			return errors.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			catcher.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			continue
 		}
 		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
 			if err = adminUser.RemoveRole(viewRole); err != nil {
-				return errors.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				catcher.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				continue
 			}
 		}
+	}
+	if err = catcher.Resolve(); err != nil {
+		return errors.Wrap(err, "error updating some admins")
 	}
 	return nil
 }

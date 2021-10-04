@@ -308,7 +308,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.deleteAWSVPCSubnet = function (index) {
-    $scope.Settings.providers.aws.pod.ecs.awsvpc.subnets.split(index, 1);
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.subnets.splice(index, 1);
   }
 
   $scope.addAWSVPCSecurityGroup = function () {
@@ -376,7 +376,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.deleteAWSVPCSecurityGroup = function (index) {
-    $scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups.split(index, 1);
+    $scope.Settings.providers.aws.pod.ecs.awsvpc.security_groups.splice(index, 1);
   }
 
   $scope.addECSCluster = function () {
