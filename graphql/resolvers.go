@@ -966,12 +966,12 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 }
 
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindOneProjectRef(*project.Identifier)
+	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
 	if projectRef != nil {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot create project with identifier '%s'", err.Error()))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot create project with identifier '%s'", *project.Identifier))
 	}
 
 	i, err := project.ToService()
@@ -985,10 +985,10 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err = r.sc.CreateProject(dbProjectRef, u); err != nil {
-		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", *project.Identifier).Error())
+		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Database error for insert() project with project name '%s'", *project.Identifier).Error())
 	}
 
-	projectRef, err = model.FindOneProjectRef(*project.Identifier)
+	projectRef, err = model.FindBranchProjectRef(*project.Identifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
