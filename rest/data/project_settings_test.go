@@ -84,6 +84,52 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
 		},
+		"Access with error": func(t *testing.T, ref model.RepoRef) {
+			newAdmin := user.DBUser{
+				Id: "newAdmin",
+			}
+			require.NoError(t, newAdmin.Insert())
+			ref.Restricted = utility.TruePtr() // should also flip the project that defaults to this repo
+			ref.Admins = []string{"nonexistent", newAdmin.Id}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref.ProjectRef))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			assert.Error(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me"))
+			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, repoRefFromDb)
+			assert.True(t, repoRefFromDb.IsRestricted())
+			assert.Equal(t, []string{newAdmin.Id}, repoRefFromDb.Admins)
+
+			// should be restricted
+			projectThatDefaults, err := model.FindMergedProjectRef("myId")
+			assert.NoError(t, err)
+			assert.NotNil(t, projectThatDefaults)
+			assert.True(t, projectThatDefaults.IsRestricted())
+
+			// should not be restricted
+			projectThatDoesNotDefault, err := model.FindMergedProjectRef("myId2")
+			assert.NoError(t, err)
+			assert.NotNil(t, projectThatDoesNotDefault)
+			assert.False(t, projectThatDoesNotDefault.IsRestricted())
+
+			restrictedScope, err := rm.GetScope(ctx, evergreen.RestrictedProjectsScope)
+			assert.NoError(t, err)
+			assert.NotNil(t, restrictedScope)
+			assert.Contains(t, restrictedScope.Resources, projectThatDefaults.Id)
+
+			unrestrictedScope, err := rm.GetScope(ctx, evergreen.UnrestrictedProjectsScope)
+			assert.NoError(t, err)
+			assert.NotNil(t, unrestrictedScope)
+			assert.NotContains(t, unrestrictedScope.Resources, projectThatDefaults.Id)
+
+			newAdminFromDB, err := user.FindOneById("newAdmin")
+			assert.NoError(t, err)
+			assert.NotNil(t, newAdminFromDB)
+			assert.Contains(t, newAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
+		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.RepoRef) {
 			// remove a variable, modify a variable, add a variable
 			updatedVars := &model.ProjectVars{
@@ -232,6 +278,46 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, pRefFromDB)
 			assert.Nil(t, pRefFromDB.Restricted)
 			assert.Equal(t, pRefFromDB.Admins, ref.Admins)
+
+			mergedProject, err := model.FindMergedProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, mergedProject)
+			assert.True(t, mergedProject.IsRestricted())
+
+			restrictedScope, err := rm.GetScope(ctx, evergreen.RestrictedProjectsScope)
+			assert.NoError(t, err)
+			assert.NotNil(t, restrictedScope)
+			assert.Contains(t, restrictedScope.Resources, ref.Id)
+
+			unrestrictedScope, err := rm.GetScope(ctx, evergreen.UnrestrictedProjectsScope)
+			assert.NoError(t, err)
+			assert.NotNil(t, unrestrictedScope)
+			assert.NotContains(t, unrestrictedScope.Resources, ref.Id)
+
+			newAdminFromDB, err := user.FindOneById("newAdmin")
+			assert.NoError(t, err)
+			assert.NotNil(t, newAdminFromDB)
+			assert.Contains(t, newAdminFromDB.Roles(), "admin")
+		},
+		"Access with error": func(t *testing.T, ref model.ProjectRef) {
+			newAdmin := user.DBUser{
+				Id: "newAdmin",
+			}
+			require.NoError(t, newAdmin.Insert())
+			ref.Restricted = nil // should now default to the repo value
+			ref.Admins = []string{"nonexistent", newAdmin.Id}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			assert.Errorf(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me"), "error updating project admin roles")
+			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDB)
+			assert.Nil(t, pRefFromDB.Restricted)
+			// should still add newAdmin and delete oldAdmin even with errors
+			assert.Equal(t, []string{newAdmin.Id}, pRefFromDB.Admins)
 
 			mergedProject, err := model.FindMergedProjectRef(ref.Id)
 			assert.NoError(t, err)

@@ -242,14 +242,17 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "error finding user '%s'", addedUser)
+			r.removeFromAdmins(addedUser)
 			continue
 		}
 		if adminUser == nil {
 			catcher.Errorf("no user '%s' found", addedUser)
+			r.removeFromAdmins(addedUser)
 			continue
 		}
 		if err = adminUser.AddRole(adminRole); err != nil {
 			catcher.Wrapf(err, "error adding role %s to user %s", adminRole, addedUser)
+			r.removeFromAdmins(addedUser)
 			continue
 		}
 
@@ -273,6 +276,14 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		return errors.Wrap(err, "error updating some admins")
 	}
 	return nil
+}
+
+func (r *RepoRef) removeFromAdmins(user string) {
+	for i, name := range r.Admins {
+		if name == user {
+			r.Admins = append(r.Admins[:i], r.Admins[i+1:]...)
+		}
+	}
 }
 
 // GetUnrestrictedBranchProjectsScope returns the scope ID that includes the unrestricted branches for this project.
