@@ -76,12 +76,12 @@ type APITask struct {
 	Ami                     *string             `json:"ami"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
-  // These fields are used by graphql gen, but do not need to be exposed
+	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
-	OverrideDependencies    bool                `json:"-"`
-	Archived                bool                `json:"archived"`
-	HasCedarResults         bool                `json:"-"`
-	CedarResultsFailed      bool                `json:"-"`
+	OverrideDependencies bool `json:"-"`
+	Archived             bool `json:"archived"`
+	HasCedarResults      bool `json:"-"`
+	CedarResultsFailed   bool `json:"-"`
 }
 
 type APIAbortInfo struct {
