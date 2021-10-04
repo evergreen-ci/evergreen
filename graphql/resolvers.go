@@ -976,7 +976,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 	i, err := project.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "API error converting from model.APIProjectRef to model.ProjectRef").Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API error converting from model.APIProjectRef to model.ProjectRef: ", err.Error())
 	}
 	dbProjectRef, ok := i.(*model.ProjectRef)
 	if !ok {
