@@ -600,9 +600,10 @@ tasks:
 `
 	p := &model.Project{}
 	opts := &model.GetProjectOpts{
-		Ref:        &pRef,
-		RemotePath: file,
-		Token:      token,
+		Ref:          &pRef,
+		RemotePath:   file,
+		Token:        token,
+		ReadFileFrom: model.ReadFromLocal,
 	}
 	pp, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)
 	return p, pp, err
