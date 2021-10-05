@@ -2871,7 +2871,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 				return false, err
 			}
 			for _, projectName := range perfPlugin.Projects {
-				if projectName != pRef.Id || projectName != pRef.Identifier {
+				if projectName != pRef.Id && projectName != pRef.Identifier {
 					return false, nil
 				}
 			}
@@ -2883,7 +2883,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 
 		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
 		if err != nil {
-			return false, err
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: ", err))
 		}
 		if result.NumberOfResults == 0 {
 

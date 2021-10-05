@@ -11,7 +11,7 @@ import (
 )
 
 // GetCedarPerfCountOptions represents the arguments for getting a count
-// of perf results for a given task id from cedar
+// of perf results for a given task id from cedar.
 type GetCedarPerfCountOptions struct {
 	BaseURL string `json:"-"`
 	TaskID  string `json:"-"`
@@ -26,6 +26,8 @@ func (opts GetCedarPerfCountOptions) convert() perf.GetOptions {
 	}
 }
 
+// CedarPerfCount holds one element, NumberOfResults, matching the json returned by
+// cedar's perf count rest route.
 type CedarPerfCount struct {
 	NumberOfResults int `json:"number_of_results"`
 }
