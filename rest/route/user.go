@@ -159,6 +159,9 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if !valid {
 		return gimlet.NewTextInternalErrorResponse("unexpected type of user found")
 	}
+	if dbuser == nil {
+		return gimlet.NewTextInternalErrorResponse("error converting gimlet user to DBUser")
+	}
 	if err = dbuser.AddRole(newRole.ID); err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
