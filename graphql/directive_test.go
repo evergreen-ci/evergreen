@@ -3,7 +3,6 @@ package graphql_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
@@ -19,79 +18,64 @@ func init() {
 }
 
 func setupPermissions(t *testing.T, state *atomicGraphQLState) {
-	const apiKey = "testapikey"
-	const slackUsername = "testslackuser"
-	const email = "testuser@mongodb.com"
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
-	testUser := user.DBUser{
-		Id:           apiUser,
-		APIKey:       apiKey,
-		EmailAddress: email,
-		Settings:     user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
-		SystemRoles:  []string{"unrestrictedTaskAccess", "modify_host"},
-		PubKeys: []user.PubKey{
-			{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
-			{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
-			{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
-			{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
-			{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
-		}}
-	require.NoError(t, testUser.Insert())
-	modifyHostRole := gimlet.Role{
-		ID:          "modify_host",
-		Name:        "modify host",
-		Scope:       "modify_host_scope",
-		Permissions: map[string]int{"distro_hosts": 20},
+
+	superUserRole := gimlet.Role{
+		ID:          "superuser",
+		Name:        "superuser",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{"admin_settings": 10, "project_create": 10, "distro_create": 10, "modify_roles": 10},
 	}
-	_, err := env.DB().Collection("roles").InsertOne(ctx, modifyHostRole)
+	_, err := env.DB().Collection("roles").InsertOne(ctx, superUserRole)
 	require.NoError(t, err)
 
-	modifyHostScope := gimlet.Scope{
-		ID:        "modify_host_scope",
-		Name:      "modify host scope",
-		Type:      "distro",
-		Resources: []string{"ubuntu1604-small", "ubuntu1604-large"},
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      "super_user",
+		Resources: []string{"super_user"},
 	}
-	_, err = env.DB().Collection("scopes").InsertOne(ctx, modifyHostScope)
+	_, err = env.DB().Collection("scopes").InsertOne(ctx, superUserScope)
 	require.NoError(t, err)
-	state.apiKey = apiKey
-	state.apiUser = apiUser
-
-	require.NoError(t, setupData(*evergreen.GetEnvironment().DB(), *evergreen.GetEnvironment().Client().Database(state.taskLogDB), state.testData, *state))
-}
-
-func XTestDirectives(t *testing.T) {
-	// settings := testutil.TestConfig()
-	// testutil.ConfigureIntegrationTest(t, settings, "TestDirectives")
-	// server, err := service.CreateTestServer(settings, nil, true)
-	// require.NoError(t, err)
-	// defer server.Close()
-	config := graphql.New("/graphql")
-	require.NotNil(t, config)
-	ctx := context.Background()
-	obj := interface{}(nil)
-	next := func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return nil, nil
-	}
-	res, err := config.Directives.SuperUserOnly(ctx, obj, next)
-	require.NoError(t, err)
-	require.Nil(t, res)
 }
 
 func TestSuperUser(t *testing.T) {
 	setupPermissions(t, &atomicGraphQLState{})
+	const email = "testuser@mongodb.com"
+	const accessToken = "access_token"
+	const refreshToken = "refresh_token"
 	config := graphql.New("/graphql")
 	require.NotNil(t, config)
 	ctx := context.Background()
 	obj := interface{}(nil)
+
+	// callCount keeps track of how many times the function is called
+	callCount := 0
 	next := func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
+		callCount++
 		return nil, nil
 	}
+
+	usr, err := user.GetOrCreateUser(apiUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+
 	res, err := config.Directives.SuperUserOnly(ctx, obj, next)
+	require.Error(t, err, "user testuser does not have permission to access this resolver")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	err = usr.AddRole("superuser")
+	require.NoError(t, err)
+
+	res, err = config.Directives.SuperUserOnly(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
 }
