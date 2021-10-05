@@ -575,9 +575,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	// return intermediateProject even if we run into issues to show merge progress
 	for _, path := range intermediateProject.Include {
 		if opts == nil {
-			grip.Critical(message.Fields{
-				"message": "Trying to open include files with empty opts",
-			})
+			err = errors.New("Trying to open include files with empty opts")
+			grip.Critical(message.NewError(errors.WithStack(err)))
+			return nil, errors.Wrapf(err, LoadProjectError)
 		}
 		opts.RemotePath = path.FileName
 		// read from the patch diff if a change has been made in any of the include files
