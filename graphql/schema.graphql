@@ -81,6 +81,7 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  createProject(project: ProjectInput!): Project!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -305,6 +306,12 @@ input VariantTasks {
 input DisplayTask {
   Name: String!
   ExecTasks: [String!]!
+}
+
+input ProjectInput {
+  identifier: String!
+  owner: String!
+  repo: String!
 }
 
 input SubscriptionInput {

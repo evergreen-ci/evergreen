@@ -27,6 +27,17 @@
       }
     },
     {
+      "query_file": "create-project.graphql",
+      "result": {
+        "data": {
+          "createProject": {
+            "identifier": "catVideos",
+            "repo": "catGenerator"
+          }
+        }
+      }
+    },
+    {
       "query_file": "patches-default-params.graphql",
       "result": {
         "data": {
