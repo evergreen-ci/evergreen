@@ -24,11 +24,12 @@ ifneq (,$(GOROOT))
 gobin := $(GOROOT)/bin/go
 endif
 
+gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
 export GOCACHE := $(shell cygpath -m $(abspath $(buildDir)/.cache))
 export GOLANGCI_LINT_CACHE := $(shell cygpath -m $(abspath $(buildDir)/.lint-cache))
-export GOPATH := $(shell cygpath -m $(GOPATH))
+export GOPATH := $(shell cygpath -m $(gopath))
 export GOROOT := $(shell cygpath -m $(GOROOT))
 endif
 
