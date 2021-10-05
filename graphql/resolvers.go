@@ -2883,7 +2883,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 
 		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: ", err))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
 		}
 		if result.NumberOfResults == 0 {
 
