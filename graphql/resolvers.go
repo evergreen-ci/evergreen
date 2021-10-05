@@ -1109,7 +1109,8 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
@@ -1285,8 +1286,9 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
 		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 		opts := data.TaskFilterOptions{
-			Statuses:        failedAndAbortedStatuses,
-			FieldsToProject: []string{task.DisplayStatusKey},
+			Statuses:         failedAndAbortedStatuses,
+			FieldsToProject:  []string{task.DisplayStatusKey},
+			IncludeBaseTasks: false,
 		}
 		tasks, _, err := r.sc.FindTasksByVersion(id, opts)
 		if err != nil {
@@ -1516,13 +1518,14 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 		}
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:     statuses,
-		BaseStatuses: baseStatuses,
-		Variants:     []string{variantParam},
-		TaskNames:    []string{taskNameParam},
-		Page:         pageParam,
-		Limit:        limitParam,
-		Sorts:        taskSorts,
+		Statuses:         statuses,
+		BaseStatuses:     baseStatuses,
+		Variants:         []string{variantParam},
+		TaskNames:        []string{taskNameParam},
+		Page:             pageParam,
+		Limit:            limitParam,
+		Sorts:            taskSorts,
+		IncludeBaseTasks: true,
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -2252,6 +2255,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	opts := data.TaskFilterOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
+		IncludeBaseTasks:      false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -3308,7 +3312,9 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: false,
+		FieldsToProject:  []string{task.DisplayStatusKey},
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 	if err != nil {
@@ -3326,7 +3332,9 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: false,
+		FieldsToProject:  []string{task.DisplayStatusKey},
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(baseVersion.Id, opts)
 	if err != nil {
@@ -3341,11 +3349,12 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:        options.Statuses,
-		Variants:        options.Variants,
-		TaskNames:       options.Tasks,
-		Sorts:           defaultSort,
-		FieldsToProject: []string{task.DisplayStatusKey},
+		Statuses:         options.Statuses,
+		Variants:         options.Variants,
+		TaskNames:        options.Tasks,
+		Sorts:            defaultSort,
+		FieldsToProject:  []string{task.DisplayStatusKey},
+		IncludeBaseTasks: false,
 	}
 
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
@@ -3387,7 +3396,8 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 			{Key: task.DisplayNameKey, Order: 1},
 		}
 		opts := data.TaskFilterOptions{
-			Sorts: defaultSort,
+			Sorts:            defaultSort,
+			IncludeBaseTasks: false,
 		}
 		tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 		if err != nil {
@@ -3519,8 +3529,9 @@ func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIV
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := data.TaskFilterOptions{
-		Statuses:        failedAndAbortedStatuses,
-		FieldsToProject: []string{task.DisplayStatusKey},
+		Statuses:         failedAndAbortedStatuses,
+		FieldsToProject:  []string{task.DisplayStatusKey},
+		IncludeBaseTasks: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {

@@ -2949,6 +2949,7 @@ type GetTasksByVersionOptions struct {
 	FieldsToProject       []string
 	Sorts                 []TasksSortOrder
 	IncludeExecutionTasks bool
+	IncludeBaseTasks      bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -3039,7 +3040,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		pipeline = append(pipeline, recombineTasks...)
 	}
 
-	statusFacet := bson.M{
+	annotationFacet := bson.M{
 		"$facet": bson.M{
 			// We skip annotation lookup for non-failed tasks, because these can't have annotations
 			"not_failed": []bson.M{
@@ -3087,8 +3088,8 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			},
 		},
 	}
-	pipeline = append(pipeline, statusFacet)
-	recombineStatusFacet := []bson.M{
+	pipeline = append(pipeline, annotationFacet)
+	recombineAnnotationFacet := []bson.M{
 		{"$project": bson.M{
 			"tasks": bson.M{
 				"$setUnion": []string{"$not_failed", "$failed"},
@@ -3097,45 +3098,49 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		{"$unwind": "$tasks"},
 		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
 	}
-	pipeline = append(pipeline, recombineStatusFacet...)
+	pipeline = append(pipeline, recombineAnnotationFacet...)
 	pipeline = append(pipeline, []bson.M{
 		// Add a field for the display status of each task
 		addDisplayStatus,
-		// Add data about the base task
-		{"$lookup": bson.M{
-			"from": Collection,
-			"let": bson.M{
-				RevisionKey:     "$" + RevisionKey,
-				BuildVariantKey: "$" + BuildVariantKey,
-				DisplayNameKey:  "$" + DisplayNameKey,
-			},
-			"as": BaseTaskKey,
-			"pipeline": []bson.M{
-				{"$match": bson.M{
-					RequesterKey: evergreen.RepotrackerVersionRequester,
-					"$expr": bson.M{
-						"$and": []bson.M{
-							{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
-							{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-							{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+	}...)
+	if opts.IncludeBaseTasks {
+		pipeline = append(pipeline, []bson.M{
+			// Add data about the base task
+			{"$lookup": bson.M{
+				"from": Collection,
+				"let": bson.M{
+					RevisionKey:     "$" + RevisionKey,
+					BuildVariantKey: "$" + BuildVariantKey,
+					DisplayNameKey:  "$" + DisplayNameKey,
+				},
+				"as": BaseTaskKey,
+				"pipeline": []bson.M{
+					{"$match": bson.M{
+						RequesterKey: evergreen.RepotrackerVersionRequester,
+						"$expr": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
+								{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+								{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+							},
 						},
-					},
-				}},
-				{"$project": bson.M{
-					IdKey:     1,
-					StatusKey: displayStatusExpression,
-				}},
-				{"$limit": 1},
+					}},
+					{"$project": bson.M{
+						IdKey:     1,
+						StatusKey: displayStatusExpression,
+					}},
+					{"$limit": 1},
+				},
+			}},
+			{
+				"$unwind": bson.M{
+					"path":                       "$" + BaseTaskKey,
+					"preserveNullAndEmptyArrays": true,
+				},
 			},
-		}},
-		{
-			"$unwind": bson.M{
-				"path":                       "$" + BaseTaskKey,
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-	}...,
-	)
+		}...,
+		)
+	}
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if len(opts.Variants) == 0 {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
