@@ -972,7 +972,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
 	if projectRef != nil {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot create project with identifier '%s'", *project.Identifier))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot create project with identifier '%s', identifier already in use", *project.Identifier))
 	}
 
 	i, err := project.ToService()
