@@ -160,7 +160,10 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewTextInternalErrorResponse("unexpected type of user found")
 	}
 	if dbuser == nil {
-		return gimlet.NewTextInternalErrorResponse("error converting gimlet user to DBUser")
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
 	}
 	if err = dbuser.AddRole(newRole.ID); err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
