@@ -968,7 +968,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
 	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
 	if err != nil {
-		// if the project is not found, the err will be nil based on how FindBranchProjectRef is set up 
+		// if the project is not found, the err will be nil based on how FindBranchProjectRef is set up
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
 	if projectRef != nil {
@@ -977,7 +977,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 	i, err := project.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API error converting from model.APIProjectRef to model.ProjectRef: ", err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API error converting from model.APIProjectRef to model.ProjectRef: %s ", err.Error()))
 	}
 	dbProjectRef, ok := i.(*model.ProjectRef)
 	if !ok {
