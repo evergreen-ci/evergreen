@@ -13,7 +13,7 @@ type Query {
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   version(id: String!): Version!
-  projects: [GroupedProjects]! 
+  projects: [GroupedProjects]!  @superUserOnly
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!

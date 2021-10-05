@@ -3560,6 +3560,9 @@ func New(apiURL string) Config {
 	}
 	c.Directives.SuperUserOnly = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 		user := gimlet.GetUser(ctx)
+		if user == nil {
+			return nil, Forbidden.Send(ctx, "user not logged in")
+		}
 		opts := gimlet.PermissionOpts{
 			Resource:      evergreen.SuperUserPermissionsID,
 			ResourceType:  evergreen.SuperUserResourceType,
