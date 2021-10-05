@@ -83,7 +83,7 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  createProject(project: ProjectInput!): Project!
+  createProject(project: ProjectInput!): Project! @requireSuperUser
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
