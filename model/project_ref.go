@@ -301,6 +301,10 @@ func (p *ProjectRef) DoesTrackPushEvents() bool {
 	return utility.FromBoolPtr(p.TracksPushEvents)
 }
 
+func (p *ProjectRef) IsPerfEnabled() bool {
+	return utility.FromBoolPtr(p.PerfEnabled)
+}
+
 func (p *CommitQueueParams) IsEnabled() bool {
 	return utility.FromBoolPtr(p.Enabled)
 }
@@ -404,16 +408,16 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-// MergeWithParserProject looks up the parser project with the given project ref id and returns
-// a merged project ref that scans for any properties that can be set on both project ref and project parser.
+// MergeWithParserProject looks up the parser project with the given project ref id and modifies
+// the project ref scanning for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project parser level will override the project ref settings in the returned struct.
-func (p *ProjectRef) MergeWithParserProject(version string) (*ProjectRef, error) {
+func (p *ProjectRef) MergeWithParserProject(version string) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting service flags")
+		return errors.Wrap(err, "error getting service flags")
 	}
 	if !flags.PluginAdminPageDisabled {
-		return p, nil
+		return nil
 	}
 	lookupVersion := false
 	if version == "" {
@@ -424,7 +428,7 @@ func (p *ProjectRef) MergeWithParserProject(version string) (*ProjectRef, error)
 				"project_id": p.Id,
 				"version":    version,
 			}))
-			return nil, err
+			return err
 		}
 		version = lastGoodVersion.Id
 		lookupVersion = true
@@ -437,21 +441,20 @@ func (p *ProjectRef) MergeWithParserProject(version string) (*ProjectRef, error)
 			"version":        version,
 			"lookup_version": lookupVersion,
 		}))
-		return nil, err
+		return err
 	}
-	pRef := p
 	if parserProject != nil {
 		if parserProject.PerfEnabled != nil {
-			pRef.PerfEnabled = parserProject.PerfEnabled
+			p.PerfEnabled = parserProject.PerfEnabled
 		}
 		if parserProject.DeactivatePrevious != nil {
-			pRef.DeactivatePrevious = parserProject.DeactivatePrevious
+			p.DeactivatePrevious = parserProject.DeactivatePrevious
 		}
 		if parserProject.TaskAnnotationSettings != nil {
-			pRef.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
+			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
 		}
 	}
-	return pRef, nil
+	return nil
 }
 
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
@@ -1429,11 +1432,11 @@ func IsPerfEnabledForProject(projectId string) bool {
 	if err != nil || projectRef == nil {
 		return false
 	}
-	mergedProjectRef, err := projectRef.MergeWithParserProject("")
-	if err != nil || mergedProjectRef == nil {
+	err = projectRef.MergeWithParserProject("")
+	if err != nil {
 		return false
 	}
-	return utility.FromBoolPtr(mergedProjectRef.PerfEnabled)
+	return projectRef.IsPerfEnabled()
 }
 
 func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {

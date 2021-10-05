@@ -76,14 +76,14 @@ func TestMergeWithParserProject(t *testing.T) {
 	}
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, parserProject.Insert())
-	mergedProject, err := projectRef.MergeWithParserProject("v1")
+	err := projectRef.MergeWithParserProject("v1")
 	assert.NoError(t, err)
-	require.NotNil(t, mergedProject)
-	assert.Equal(t, "ident", mergedProject.Id)
+	require.NotNil(t, projectRef)
+	assert.Equal(t, "ident", projectRef.Id)
 
-	assert.True(t, *mergedProject.DeactivatePrevious)
-	assert.True(t, *mergedProject.PerfEnabled)
-	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+	assert.True(t, *projectRef.DeactivatePrevious)
+	assert.True(t, *projectRef.PerfEnabled)
+	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
 }
 
 func TestFindMergedProjectRef(t *testing.T) {
