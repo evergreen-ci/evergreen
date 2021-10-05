@@ -967,7 +967,8 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
 	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
-	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
+	if err != nil {
+		// if the project is not found, the err will be nil based on how FindBranchProjectRef is set up 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
 	if projectRef != nil {
