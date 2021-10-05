@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -62,7 +61,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	SuperUserOnly func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireSuperUser func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -6286,7 +6285,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	&ast.Source{Name: "graphql/schema.graphql", Input: `directive @superUserOnly on FIELD_DEFINITION 
+	&ast.Source{Name: "graphql/schema.graphql", Input: `directive @requireSuperUser on FIELD_DEFINITION 
 
 type Query {
   userPatches(
@@ -6301,7 +6300,7 @@ type Query {
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   version(id: String!): Version!
-  projects: [GroupedProjects]!  @superUserOnly
+  projects: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -21300,28 +21299,8 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Query().Projects(rctx)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.SuperUserOnly == nil {
-				return nil, errors.New("directive superUserOnly is not implemented")
-			}
-			return ec.directives.SuperUserOnly(ctx, nil, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, err
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.([]*GroupedProjects); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/evergreen-ci/evergreen/graphql.GroupedProjects`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Projects(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)

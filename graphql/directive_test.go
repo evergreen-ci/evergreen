@@ -34,7 +34,7 @@ func setupPermissions(t *testing.T, state *atomicGraphQLState) {
 	superUserScope := gimlet.Scope{
 		ID:        "superuser_scope",
 		Name:      "superuser scope",
-		Type:      "super_user",
+		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{"super_user"},
 	}
 	_, err = env.DB().Collection("scopes").InsertOne(ctx, superUserScope)
@@ -66,7 +66,7 @@ func TestSuperUser(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	res, err := config.Directives.SuperUserOnly(ctx, obj, next)
+	res, err := config.Directives.RequireSuperUser(ctx, obj, next)
 	require.Error(t, err, "user testuser does not have permission to access this resolver")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
@@ -74,7 +74,7 @@ func TestSuperUser(t *testing.T) {
 	err = usr.AddRole("superuser")
 	require.NoError(t, err)
 
-	res, err = config.Directives.SuperUserOnly(ctx, obj, next)
+	res, err = config.Directives.RequireSuperUser(ctx, obj, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)

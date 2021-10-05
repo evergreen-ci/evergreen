@@ -1,4 +1,4 @@
-directive @superUserOnly on FIELD_DEFINITION 
+directive @requireSuperUser on FIELD_DEFINITION 
 
 type Query {
   userPatches(
@@ -13,7 +13,7 @@ type Query {
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
   version(id: String!): Version!
-  projects: [GroupedProjects]!  @superUserOnly
+  projects: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!

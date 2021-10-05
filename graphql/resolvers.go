@@ -3558,7 +3558,7 @@ func New(apiURL string) Config {
 			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
-	c.Directives.SuperUserOnly = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+	c.Directives.RequireSuperUser = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 		user := gimlet.GetUser(ctx)
 		if user == nil {
 			return nil, Forbidden.Send(ctx, "user not logged in")
