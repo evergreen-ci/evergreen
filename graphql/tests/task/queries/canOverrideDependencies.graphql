@@ -1,0 +1,5 @@
+{
+  task(taskId: "task7") {
+    canOverrideDependencies
+  }
+}

@@ -96,6 +96,9 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, dbSubs[0].Selectors[0].Data, newData)
 		},
+		"DisallowedSubscription": func(t *testing.T, subs []restModel.APISubscription) {
+			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[2]}, false))
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
@@ -151,12 +154,28 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
+			disallowedSubscription := restModel.APISubscription{
+				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
+				Trigger:      utility.ToStringPtr("outcome"),
+				Owner:        utility.ToStringPtr("me"),
+				OwnerType:    utility.ToStringPtr(string(event.OwnerTypeProject)),
+				RegexSelectors: []restModel.APISelector{
+					{
+						Type: utility.ToStringPtr("object"),
+						Data: utility.ToStringPtr("object_data"),
+					},
+				},
+				Subscriber: restModel.APISubscriber{
+					Type:   utility.ToStringPtr(event.JIRACommentSubscriberType),
+					Target: "ticket",
+				},
+			}
 			for _, sub := range subs {
 				assert.NoError(t, sub.Upsert())
 			}
 			existingSub := restModel.APISubscription{}
 			assert.NoError(t, existingSub.BuildFromService(subs[0]))
-			test(t, []restModel.APISubscription{newSubscription, existingSub})
+			test(t, []restModel.APISubscription{newSubscription, existingSub, disallowedSubscription})
 		})
 	}
 }

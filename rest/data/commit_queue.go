@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
@@ -397,14 +399,20 @@ func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 func (pc *DBCommitQueueConnector) GetAdditionalPatches(patchId string) ([]string, error) {
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to find patch")
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "unable to find patch").Error(),
+		}
 	}
 	if p == nil {
 		return nil, errors.Errorf("patch '%s' not found", patchId)
 	}
 	cq, err := commitqueue.FindOneId(p.Project)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to find commit queue")
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "unable to find commit queue").Error(),
+		}
 	}
 	if cq == nil {
 		return nil, errors.Errorf("no commit queue for project '%s' found", p.Project)

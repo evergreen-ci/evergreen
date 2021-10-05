@@ -121,7 +121,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), *opts, p.Project, project); err != nil {
+		if _, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -162,7 +162,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	pp, err := LoadProjectInto(ctx, projectFileBytes, *opts, p.Project, project)
+	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
@@ -273,7 +273,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching project opts for patch")
 	}
-	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), *opts, p.Project, project)
+	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -690,8 +690,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	project := &Project{}
-	opts := GetProjectOpts{}
-	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedConfig), opts, existingPatch.Project, project); err != nil {
+	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedConfig), nil, existingPatch.Project, project); err != nil {
 		return nil, errors.Wrap(err, "problem loading project")
 	}
 

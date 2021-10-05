@@ -78,8 +78,10 @@ type APITask struct {
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
-	HasCedarResults    bool `json:"-"`
-	CedarResultsFailed bool `json:"-"`
+	OverrideDependencies bool `json:"-"`
+	Archived             bool `json:"archived"`
+	HasCedarResults      bool `json:"-"`
+	CedarResultsFailed   bool `json:"-"`
 }
 
 type APIAbortInfo struct {
@@ -319,6 +321,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				at.ProjectIdentifier = utility.ToStringPtr(identifier)
 			}
 		}
+		at.OverrideDependencies = v.OverrideDependencies
+		at.Archived = v.Archived
 	case string:
 		ll := LogLinks{
 			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
@@ -431,6 +435,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 	}
 
 	st.DependsOn = dependsOn
+	st.OverrideDependencies = ad.OverrideDependencies
+	st.Archived = ad.Archived
 	return interface{}(st), nil
 }
 

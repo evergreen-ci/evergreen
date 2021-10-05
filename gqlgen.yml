@@ -116,6 +116,8 @@ models:
     fields:
       patches:
         resolver: true
+  ProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   CommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   PatchTriggerAlias:

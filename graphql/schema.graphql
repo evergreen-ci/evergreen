@@ -83,6 +83,7 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
+  createProject(project: ProjectInput!): Project!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -147,6 +148,7 @@ type Mutation {
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
   bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
+  overrideTaskDependencies(taskId: String!): Task!
 }
 
 input VersionToRestart {
@@ -306,6 +308,12 @@ input VariantTasks {
 input DisplayTask {
   Name: String!
   ExecTasks: [String!]!
+}
+
+input ProjectInput {
+  identifier: String!
+  owner: String!
+  repo: String!
 }
 
 input SubscriptionInput {
@@ -722,7 +730,8 @@ type Dependency {
   metStatus: MetStatus!
   requiredStatus: RequiredStatus!
   buildVariant: String!
-  uiLink: String!
+  taskId: String!
+  uiLink: String! @deprecated(reason: "uiLink is deprecated and should not be used")
 }
 
 type PatchMetadata {
@@ -795,7 +804,9 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
-  reliesOn: [Dependency!]!
+  reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
+  dependsOn: [Dependency!]
+  canOverrideDependencies: Boolean!
   requester: String!
   restarts: Int
   revision: String
