@@ -315,6 +315,16 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	return reflect.DeepEqual(manifestModules, projectModules)
 }
 
+func (l *ModuleList) GetModuleByName(find string) (*Module, error) {
+	for _, module := range *l {
+		if module.Name == find {
+			return &module, nil
+		}
+	}
+
+	return nil, errors.New("No such module on this project.")
+}
+
 type TestSuite struct {
 	Name  string `yaml:"name,omitempty"`
 	Phase string `yaml:"phase,omitempty"`
