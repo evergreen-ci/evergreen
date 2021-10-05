@@ -1,4 +1,4 @@
-{
+mutation {
   createProject(
     project: {
       identifier: "catVideos", 
