@@ -161,7 +161,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if dbuser == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("no matching user for '%s'", h.userID),
+			Message:    fmt.Sprintf("unable to convert gimlet user '%s' to DBUser", h.userID),
 			StatusCode: http.StatusNotFound,
 		})
 	}
