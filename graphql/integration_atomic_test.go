@@ -81,24 +81,36 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 	const apiKey = "testapikey"
 	const slackUsername = "testslackuser"
 	const email = "testuser@mongodb.com"
+	const accessToken = "access_token"
+	const refreshToken = "refresh_token"
+	pubKeys := []user.PubKey{
+		{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
+		{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
+		{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
+		{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
+		{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
+	}
+	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser"}
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
-	testUser := user.DBUser{
-		Id:           apiUser,
-		APIKey:       apiKey,
-		EmailAddress: email,
-		Settings:     user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername},
-		SystemRoles:  []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks"},
-		PubKeys: []user.PubKey{
-			{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
-			{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
-			{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
-			{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
-			{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
-		}}
-	require.NoError(t, testUser.Insert())
 
+	usr, err := user.GetOrCreateUser(apiUser, apiUser, email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+
+	for _, pk := range pubKeys {
+		err = usr.AddPublicKey(pk.Name, pk.Key)
+		require.NoError(t, err)
+	}
+	err = usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername})
+	require.NoError(t, err)
+
+	for _, role := range systemRoles {
+		err = usr.AddRole(role)
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, usr.UpdateAPIKey(apiKey))
 	// Create scope and role collection to avoid RoleManager from trying to create them in a collection https://jira.mongodb.org/browse/EVG-15499
 	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.ScopeCollection))
 	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.RoleCollection))
@@ -144,6 +156,24 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksAdmin.Value},
 	}
 	err = roleManager.UpdateRole(modifyProjectTaskRole)
+	require.NoError(t, err)
+
+	superUserRole := gimlet.Role{
+		ID:          "superuser",
+		Name:        "superuser",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{"admin_settings": 10, "project_create": 10, "distro_create": 10, "modify_roles": 10},
+	}
+	err = roleManager.UpdateRole(superUserRole)
+	require.NoError(t, err)
+
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      evergreen.SuperUserResourceType,
+		Resources: []string{"super_user"},
+	}
+	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
 	state.apiKey = apiKey

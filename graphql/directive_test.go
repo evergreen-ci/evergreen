@@ -22,13 +22,23 @@ func setupPermissions(t *testing.T, state *atomicGraphQLState) {
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
 
+	// Create scope and role collection to avoid RoleManager from trying to create them in a collection https://jira.mongodb.org/browse/EVG-15499
+	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.ScopeCollection))
+	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.RoleCollection))
+
+	roleManager := env.RoleManager()
+
+	roles, err := roleManager.GetAllRoles()
+	require.NoError(t, err)
+	require.Len(t, roles, 0)
+
 	superUserRole := gimlet.Role{
 		ID:          "superuser",
 		Name:        "superuser",
 		Scope:       "superuser_scope",
 		Permissions: map[string]int{"admin_settings": 10, "project_create": 10, "distro_create": 10, "modify_roles": 10},
 	}
-	_, err := env.DB().Collection("roles").InsertOne(ctx, superUserRole)
+	err = roleManager.UpdateRole(superUserRole)
 	require.NoError(t, err)
 
 	superUserScope := gimlet.Scope{
@@ -37,7 +47,7 @@ func setupPermissions(t *testing.T, state *atomicGraphQLState) {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{"super_user"},
 	}
-	_, err = env.DB().Collection("scopes").InsertOne(ctx, superUserScope)
+	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 }
 
