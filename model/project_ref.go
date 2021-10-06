@@ -410,7 +410,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 
 // MergeWithParserProject looks up the parser project with the given project ref id and modifies
 // the project ref scanning for any properties that can be set on both project ref and project parser.
-// Any values that are set at the project parser level will override the project ref settings in the returned struct.
+// Any values that are set at the project parser level will be set on the project ref.
 func (p *ProjectRef) MergeWithParserProject(version string) error {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
