@@ -345,6 +345,10 @@ const (
 	ProjectPagePeriodicBuildsSection = "periodic-builds"
 )
 
+func NewProjectPageSection(section string) {
+
+}
+
 var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 	evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,

@@ -1,0 +1,10 @@
+mutation {
+    saveProjectSettingsForSection(
+        obj: {
+
+        }) {
+        projectRef{
+            enabled
+        }
+    }
+}
