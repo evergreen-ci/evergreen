@@ -3042,6 +3042,41 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	return result.Tasks, count, nil
 }
 
+type StatusCount struct {
+	Status string `bson:"status"`
+	Count  int    `bson:"count"`
+}
+
+func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*StatusCount, error) {
+	StatusCount := []*StatusCount{}
+	pipeline := getTasksByVersionPipeline(versionID, opts)
+	groupPipeline := []bson.M{
+		{"$group": bson.M{
+			"_id":   "$" + DisplayStatusKey,
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$sort": bson.M{"_id": 1}},
+		{"$project": bson.M{
+			"status": "$_id",
+			"count":  1,
+		}},
+	}
+	pipeline = append(pipeline, groupPipeline...)
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting task stats")
+	}
+	err = cursor.All(ctx, &StatusCount)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting task stats")
+	}
+
+	return StatusCount, nil
+}
+
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
 	var match bson.M = bson.M{}
 
