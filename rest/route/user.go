@@ -303,7 +303,7 @@ type UsersPermissionsInput struct {
 	ResourceType string `json:"resource_type"`
 }
 
-// Result is a map from userId to their highest permission for the resource
+// UserPermissionsResult is a map from userId to their highest permission for the resource
 type UsersPermissionsResult map[string]gimlet.Permissions
 
 type allUsersPermissionsGetHandler struct {
@@ -362,7 +362,7 @@ func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responde
 		roleIds = append(roleIds, role.ID)
 		permissionsMap[role.ID] = role.Permissions
 	}
-	// get users with roles; insert permissions?
+	// get users with roles
 	usersWithRoles, err := user.FindByRoles(roleIds)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "error finding users for roles '%v'", roleIds))
