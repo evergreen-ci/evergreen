@@ -303,6 +303,10 @@ func (p *ProjectRef) DoesTrackPushEvents() bool {
 	return utility.FromBoolPtr(p.TracksPushEvents)
 }
 
+func (p *ProjectRef) IsPerfEnabled() bool {
+	return utility.FromBoolPtr(p.PerfEnabled)
+}
+
 func (p *CommitQueueParams) IsEnabled() bool {
 	return utility.FromBoolPtr(p.Enabled)
 }
@@ -404,6 +408,48 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	}
 
 	return patch.PatchTriggerDefinition{}, false
+}
+
+// MergeWithParserProject looks up the parser project with the given project ref id and modifies
+// the project ref scanning for any properties that can be set on both project ref and project parser.
+// Any values that are set at the project parser level will be set on the project ref.
+func (p *ProjectRef) MergeWithParserProject(version string) error {
+	lookupVersion := false
+	if version == "" {
+		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(p.Id, -1)
+		if err != nil || lastGoodVersion == nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    fmt.Sprintf("Unable to retrieve last good version for project '%s'", p.Id),
+				"project_id": p.Id,
+				"version":    version,
+			}))
+			return err
+		}
+		version = lastGoodVersion.Id
+		lookupVersion = true
+	}
+	parserProject, err := ParserProjectFindOneById(version)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":        fmt.Sprintf("Error retrieving parser project for version '%s'", version),
+			"project_id":     p.Id,
+			"version":        version,
+			"lookup_version": lookupVersion,
+		}))
+		return err
+	}
+	if parserProject != nil {
+		if parserProject.PerfEnabled != nil {
+			p.PerfEnabled = parserProject.PerfEnabled
+		}
+		if parserProject.DeactivatePrevious != nil {
+			p.DeactivatePrevious = parserProject.DeactivatePrevious
+		}
+		if parserProject.TaskAnnotationSettings != nil {
+			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
+		}
+	}
+	return nil
 }
 
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
@@ -1377,15 +1423,15 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 }
 
 func IsPerfEnabledForProject(projectId string) bool {
-	parserProject, err := ParserProjectFindOneByVersion(projectId, "")
-	if err == nil && utility.FromBoolPtr(parserProject.PerfEnabled) {
-		return true
+	projectRef, err := FindMergedProjectRef(projectId)
+	if err != nil || projectRef == nil {
+		return false
 	}
-	project, err := FindMergedProjectRef(projectId)
-	if err == nil && project != nil {
-		return utility.FromBoolPtr(project.PerfEnabled)
+	err = projectRef.MergeWithParserProject("")
+	if err != nil {
+		return false
 	}
-	return false
+	return projectRef.IsPerfEnabled()
 }
 
 func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
