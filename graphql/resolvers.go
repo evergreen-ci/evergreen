@@ -3344,48 +3344,20 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
-func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*StatusCount, error) {
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
+func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error) {
+	opts := task.GetTasksByVersionOptions{
+		IncludeBaseTasks:      false,
+		IncludeExecutionTasks: false,
+		TaskNames:             options.Tasks,
+		Variants:              options.Variants,
+		Statuses:              options.Statuses,
 	}
-	opts := data.TaskFilterOptions{
-		Statuses:         options.Statuses,
-		Variants:         options.Variants,
-		TaskNames:        options.Tasks,
-		Sorts:            defaultSort,
-		FieldsToProject:  []string{task.DisplayStatusKey},
-		IncludeBaseTasks: false,
-	}
-
-	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
-
+	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version with id %s: %s", *v.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
 
-	statusCountsMap := map[string]int{}
-	for _, task := range tasks {
-		if val, exist := statusCountsMap[task.GetDisplayStatus()]; exist {
-			statusCountsMap[task.GetDisplayStatus()] = val + 1
-		} else {
-			statusCountsMap[task.GetDisplayStatus()] = 1
-		}
-	}
-
-	statusCountsArr := []*StatusCount{}
-	for statusName, statusCount := range statusCountsMap {
-		sc := StatusCount{
-			Status: statusName,
-			Count:  statusCount,
-		}
-		statusCountsArr = append(statusCountsArr, &sc)
-	}
-	//sort the result array by status name
-	sort.Slice(statusCountsArr, func(p, q int) bool {
-		return statusCountsArr[p].Status < statusCountsArr[q].Status
-	})
-
-	return statusCountsArr, nil
+	return stats, nil
 }
 
 // Returns grouped build variants for a version. Will not return build variants for unactivated versions

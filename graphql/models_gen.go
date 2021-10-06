@@ -216,11 +216,6 @@ type SpawnVolumeInput struct {
 	Host             *string    `json:"host"`
 }
 
-type StatusCount struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
-}
-
 type Subscriber struct {
 	GithubPRSubscriber    *model.APIGithubPRSubscriber    `json:"githubPRSubscriber"`
 	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber"`
