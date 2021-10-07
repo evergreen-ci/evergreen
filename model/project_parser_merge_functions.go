@@ -198,6 +198,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.DeactivatePrevious = toMerge.DeactivatePrevious
 	}
 
+	if pp.CommitQueue != nil && toMerge.CommitQueue != nil {
+		catcher.New("commit queue settings can only be defined in one yaml")
+	} else if toMerge.CommitQueue != nil {
+		pp.CommitQueue = toMerge.CommitQueue
+	}
+
 	return catcher.Resolve()
 }
 
