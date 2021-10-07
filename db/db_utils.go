@@ -120,6 +120,22 @@ func ClearCollections(collections ...string) error {
 	return nil
 }
 
+// DropCollections drops the specified collections, returning an error
+// immediately if dropping any one of them fails.
+func DropCollections(collections ...string) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	for _, coll := range collections {
+		if err := db.C(coll).DropCollection(); err != nil {
+			return errors.Wrapf(err, "couldn't drop collection '%s'", coll)
+		}
+	}
+	return nil
+}
+
 // EnsureIndex takes in a collection and ensures that the index is created if it
 // does not already exist.
 func EnsureIndex(collection string, index mongo.IndexModel) error {
@@ -131,7 +147,7 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 	return errors.WithStack(err)
 }
 
-// DropIndex takes in a collection and a slice of keys and drops those indexes
+// DropIndex drops all indexes in a collection.
 func DropAllIndexes(collection string) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
