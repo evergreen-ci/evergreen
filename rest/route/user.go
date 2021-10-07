@@ -300,6 +300,110 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+////////////////////////////////////////////////////////////////////////
+//
+// GET /users/permissions
+
+type UsersPermissionsInput struct {
+	ResourceId   string `json:"resource_id"`
+	ResourceType string `json:"resource_type"`
+}
+
+// UserPermissionsResult is a map from userId to their highest permission for the resource
+type UsersPermissionsResult map[string]gimlet.Permissions
+
+type allUsersPermissionsGetHandler struct {
+	sc    data.Connector
+	rm    gimlet.RoleManager
+	input UsersPermissionsInput
+}
+
+func makeGetAllUsersPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+	return &allUsersPermissionsGetHandler{
+		sc: sc,
+		rm: rm,
+	}
+}
+
+func (h *allUsersPermissionsGetHandler) Factory() gimlet.RouteHandler {
+	return &allUsersPermissionsGetHandler{
+		sc: h.sc,
+		rm: h.rm,
+	}
+}
+
+func (h *allUsersPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	err := utility.ReadJSON(r.Body, &h.input)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("error parsing request body: %s", err.Error()),
+		}
+	}
+	if !utility.StringSliceContains(evergreen.ValidResourceTypes, h.input.ResourceType) {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("resource_type must be in %v", evergreen.ValidResourceTypes),
+		}
+	}
+	if h.input.ResourceId == "" {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "resource_id is required",
+		}
+	}
+	return nil
+}
+
+func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	// get roles for resource ID
+	allRoles, _ := h.rm.GetAllRoles()
+	roles, err := h.rm.FilterForResource(allRoles, h.input.ResourceId, h.input.ResourceType)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding roles for resource"))
+	}
+	roleIds := []string{}
+	permissionsMap := map[string]gimlet.Permissions{}
+	for _, role := range roles {
+		roleIds = append(roleIds, role.ID)
+		permissionsMap[role.ID] = role.Permissions
+	}
+	// get users with roles
+	usersWithRoles, err := user.FindByRoles(roleIds)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "error finding users for roles '%v'", roleIds))
+	}
+	// map from users to their highest permissions
+	res := UsersPermissionsResult{}
+	for _, u := range usersWithRoles {
+		for _, userRole := range u.SystemRoles {
+			permissions, ok := permissionsMap[userRole]
+			if ok {
+				res[u.Username()] = getMaxPermissions(res[u.Username()], permissions)
+			}
+		}
+	}
+
+	return gimlet.NewJSONResponse(res)
+}
+
+func getMaxPermissions(p1, p2 gimlet.Permissions) gimlet.Permissions {
+	res := gimlet.Permissions{}
+	if p1 != nil {
+		res = p1
+	}
+	for key, val := range p2 {
+		if res[key] < val {
+			res[key] = val
+		}
+	}
+	return res
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /users/{user_id}/permissions
+
 type userPermissionsGetHandler struct {
 	sc     data.Connector
 	rm     gimlet.RoleManager
