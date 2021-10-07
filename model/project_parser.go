@@ -580,19 +580,34 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			grip.Critical(message.NewError(errors.WithStack(err)))
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
-		opts.RemotePath = path.FileName
+		// read from the patch diff if a change has been made in any of the include files
+		if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
+			if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ConfigChanged(path.FileName) {
+				opts.ReadFileFrom = ReadFromPatchDiff
+			} else {
+				opts.ReadFileFrom = ReadFromPatch
+			}
+		}
 		var yaml []byte
 		if path.Module != "" {
-			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
-		} else {
-			// read from the patch diff if a change has been made in any of the include files
-			if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
-				if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ConfigChanged(path.FileName) {
-					opts.ReadFileFrom = ReadFromPatchDiff
-				} else {
-					opts.ReadFileFrom = ReadFromPatch
-				}
+			module, err := GetModuleByName(intermediateProject.Modules, path.Module)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get module for module name '%s'", path.Module)
 			}
+			repoOwner, repoName := module.GetRepoOwnerAndName()
+			moduleOpts := GetProjectOpts{
+				Ref: &ProjectRef{
+					Id:    module.Name,
+					Owner: repoOwner,
+					Repo:  repoName,
+				},
+				RemotePath:   path.FileName,
+				Revision:     module.Branch,
+				Token:        opts.Token,
+				ReadFileFrom: ReadfromGithub,
+			}
+			yaml, err = retrieveFile(ctx, moduleOpts)
+		} else {
 			yaml, err = retrieveFile(ctx, *opts)
 		}
 		if err != nil {
@@ -688,34 +703,6 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	}
-}
-
-func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName string) ([]byte, error) {
-	module, err := modules.GetModuleByName(moduleName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "can't get module for module name '%s'", moduleName)
-	}
-	repoOwner, repoName := module.GetRepoOwnerAndName()
-	if opts.Token == "" {
-		conf, err := evergreen.GetConfig()
-		if err != nil {
-			return nil, errors.Wrap(err, "can't get evergreen configuration")
-		}
-		ghToken, err := conf.GetGithubOauthToken()
-		if err != nil {
-			return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
-		}
-		opts.Token = ghToken
-	}
-	configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, repoOwner, repoName, opts.RemotePath, module.Branch)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
-	}
-	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
-	}
-	return fileContents, nil
 }
 
 func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, error) {

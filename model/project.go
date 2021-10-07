@@ -315,14 +315,14 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	return reflect.DeepEqual(manifestModules, projectModules)
 }
 
-func (l *ModuleList) GetModuleByName(find string) (*Module, error) {
-	for _, module := range *l {
-		if module.Name == find {
+func GetModuleByName(moduleList ModuleList, moduleName string) (*Module, error) {
+	for _, module := range moduleList {
+		if module.Name == moduleName {
 			return &module, nil
 		}
 	}
 
-	return nil, errors.New("No such module on this project.")
+	return nil, errors.Errorf("Module '%s' doesn't exist.", moduleName)
 }
 
 type TestSuite struct {
