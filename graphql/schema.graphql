@@ -74,7 +74,7 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
+  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!

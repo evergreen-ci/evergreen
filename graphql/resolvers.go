@@ -3212,7 +3212,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId 
 }
 
 // Will return an array of activated and unactivated versions
-func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error) {
+func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
 	projectId, err := model.GetIdForProject(options.ProjectID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
@@ -3284,9 +3284,25 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			}
 		}
 		mainlineCommitVersion := MainlineCommitVersion{}
-
+		shouldCollapse := false
+		if !utility.FromBoolPtr(v.Activated) {
+			shouldCollapse = true
+		} else if buildVariantOptions != nil && (len(buildVariantOptions.Tasks) > 0 || len(buildVariantOptions.Variants) > 0 || len(buildVariantOptions.Statuses) > 0) {
+			opts := task.HasMatchingTasksOptions{
+				TaskNames: buildVariantOptions.Tasks,
+				Variants:  buildVariantOptions.Variants,
+				Statuses:  buildVariantOptions.Statuses,
+			}
+			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking if version has tasks: %s", err.Error()))
+			}
+			if !hasTasks {
+				shouldCollapse = true
+			}
+		}
 		// If a version is activated we append it directly to our returned list of mainlineCommits
-		if utility.FromBoolPtr(v.Activated) {
+		if !shouldCollapse {
 			activatedVersionCount++
 			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
 			mainlineCommitVersion.Version = &apiVersion
@@ -3316,6 +3332,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
 			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
 		}
+
 	}
 
 	return &mainlineCommits, nil

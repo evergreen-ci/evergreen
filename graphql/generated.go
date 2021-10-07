@@ -639,7 +639,7 @@ type ComplexityRoot struct {
 		HostEvents               func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
 		Hosts                    func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
 		InstanceTypes            func(childComplexity int) int
-		MainlineCommits          func(childComplexity int, options MainlineCommitsOptions) int
+		MainlineCommits          func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
 		MyHosts                  func(childComplexity int) int
 		MyPublicKeys             func(childComplexity int) int
 		MyVolumes                func(childComplexity int) int
@@ -1175,7 +1175,7 @@ type QueryResolver interface {
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
-	MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error)
+	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
 	TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error)
 	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
@@ -4159,7 +4159,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.MainlineCommits(childComplexity, args["options"].(MainlineCommitsOptions)), true
+		return e.complexity.Query.MainlineCommits(childComplexity, args["options"].(MainlineCommitsOptions), args["buildVariantOptions"].(*BuildVariantOptions)), true
 
 	case "Query.myHosts":
 		if e.complexity.Query.MyHosts == nil {
@@ -6416,7 +6416,7 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
+  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
@@ -8677,6 +8677,14 @@ func (ec *executionContext) field_Query_mainlineCommits_args(ctx context.Context
 		}
 	}
 	args["options"] = arg0
+	var arg1 *BuildVariantOptions
+	if tmp, ok := rawArgs["buildVariantOptions"]; ok {
+		arg1, err = ec.unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["buildVariantOptions"] = arg1
 	return args, nil
 }
 
@@ -22542,7 +22550,7 @@ func (ec *executionContext) _Query_mainlineCommits(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().MainlineCommits(rctx, args["options"].(MainlineCommitsOptions))
+		return ec.resolvers.Query().MainlineCommits(rctx, args["options"].(MainlineCommitsOptions), args["buildVariantOptions"].(*BuildVariantOptions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
