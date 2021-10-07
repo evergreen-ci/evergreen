@@ -13,8 +13,9 @@ import (
 // GetCedarPerfCountOptions represents the arguments for getting a count
 // of perf results for a given task id from cedar.
 type GetCedarPerfCountOptions struct {
-	BaseURL string `json:"-"`
-	TaskID  string `json:"-"`
+	BaseURL   string `json:"-"`
+	TaskID    string `json:"-"`
+	Execution int    `json:"_"`
 }
 
 func (opts GetCedarPerfCountOptions) convert() perf.GetOptions {
@@ -22,7 +23,8 @@ func (opts GetCedarPerfCountOptions) convert() perf.GetOptions {
 		Cedar: timber.GetOptions{
 			BaseURL: fmt.Sprintf("https://%s", opts.BaseURL),
 		},
-		TaskID: opts.TaskID,
+		TaskID:    opts.TaskID,
+		Execution: opts.Execution,
 	}
 }
 

@@ -3032,8 +3032,9 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 			}
 		}
 		opts := apimodels.GetCedarPerfCountOptions{
-			BaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:  *obj.Id,
+			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:    *obj.Id,
+			Execution: obj.Execution,
 		}
 
 		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
