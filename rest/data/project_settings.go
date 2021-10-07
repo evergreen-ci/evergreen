@@ -87,17 +87,18 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		adminsToDelete, adminsToAdd := utility.StringSliceSymmetricDifference(before.ProjectRef.Admins, mergedProjectRef.Admins)
 		makeRestricted := !before.ProjectRef.IsRestricted() && mergedProjectRef.IsRestricted()
 		makeUnrestricted := before.ProjectRef.IsRestricted() && !mergedProjectRef.IsRestricted()
+		modified = true
 		if isRepo {
 			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
 			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
 			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
-				return nil, errors.Wrap(err, "error updating repo admin roles")
+				catcher.Wrap(err, "error updating repo admin roles")
 			}
+			newProjectRef.Admins = repoRef.Admins
 			branchProjects, err := model.FindMergedProjectRefsForRepo(repoRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error finding branch projects for repo")
 			}
-			modified = true
 			if makeRestricted {
 				catcher.Wrap(repoRef.MakeRestricted(branchProjects), "error making repo restricted")
 			}
@@ -106,9 +107,8 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 			}
 		} else {
 			if err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
-				return nil, errors.Wrap(err, "error updating project admin roles")
+				catcher.Wrap(err, "error updating project admin roles")
 			}
-			modified = true
 			if makeRestricted {
 				catcher.Wrap(before.ProjectRef.MakeRestricted(), "error making branch restricted")
 			}
