@@ -355,7 +355,7 @@ input PatchesInput {
 }
 
 input ProjectSettingsInput {
-  githubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean
   projectRef: ProjectInput
   vars: ProjectVarsInput
   aliases: [ProjectAliasInput]
@@ -364,7 +364,7 @@ input ProjectSettingsInput {
 
 input ProjectInput {
   id: String!
-  identifier: String!
+  identifier: String
   displayName: String
   enabled: Boolean
   private: Boolean

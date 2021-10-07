@@ -32,7 +32,9 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			// ensure that we're saving settings without a special case
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			repoRefFromDB, err := model.FindOneRepoRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDB)
@@ -50,7 +52,9 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDb)
@@ -96,7 +100,9 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, true, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, true, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
@@ -208,7 +214,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			// ensure that we're saving settings without a special case
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
@@ -226,7 +234,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
@@ -265,7 +275,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
@@ -295,7 +307,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Subscriptions: []restModel.APISubscription{apiSub},
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, subsFromDb, 1)

@@ -9,7 +9,8 @@
       "repo_name" : "commit-queue-sandbox",
       "branch_name" : "main",
       "use_repo_settings" : false,
-      "admins": ["me"]
+      "admins": ["me"],
+      "spawn_host_script_path": "spawn_script"
     }
   ],
   "repo_ref":[
