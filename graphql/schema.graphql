@@ -320,7 +320,7 @@ input SubscriptionInput {
   subscriber: SubscriberInput!
   owner_type: String
   owner: String
-  trigger_data: StringMap!
+  trigger_data: StringMap
 }
 
 input UserSettingsInput {

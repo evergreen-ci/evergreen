@@ -1031,7 +1031,6 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string, 
 	var projectRef *model.ProjectRef
 	var err error
 	if isRepo {
-		// If the project ref doesn't exist for the identifier, we may be looking for a repo, so check that collection.
 		repoRef, err := model.FindOneRepoRef(identifier)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
