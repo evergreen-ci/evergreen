@@ -2354,6 +2354,21 @@ func TestDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, t11.Insert())
 	checkStatuses(t, evergreen.TaskWillRun, t11)
+	t12 := Task{
+		Id:                   "t12",
+		Status:               evergreen.TaskUndispatched,
+		Activated:            true,
+		OverrideDependencies: true,
+		DependsOn: []Dependency{
+			{
+				TaskId:       "t9",
+				Unattainable: true,
+				Status:       "success",
+			},
+		},
+	}
+	assert.NoError(t, t12.Insert())
+	checkStatuses(t, evergreen.TaskWillRun, t11)
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
@@ -2711,4 +2726,50 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 	assert.Equal(t, evergreen.TaskKnownIssue, tasks[1].DisplayStatus)
 	assert.Equal(t, tasks[2].Id, "t3")
 	assert.Equal(t, evergreen.TaskFailed, tasks[2].DisplayStatus)
+}
+
+func TestGetTaskStatsByVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskFailed,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t4 := Task{
+		Id:        "t4",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	t5 := Task{
+		Id:        "t5",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskStatusPending,
+	}
+	t6 := Task{
+		Id:        "t6",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	opts := GetTasksByVersionOptions{}
+	stats, err := GetTaskStatsByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(stats))
+
 }

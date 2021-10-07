@@ -1,0 +1,12 @@
+mutation {
+  createProject(
+    project: {
+      identifier: "catVideos", 
+      owner: "theCat", 
+      repo: "catGenerator"
+      }
+  ){
+    identifier
+    repo
+  }
+}

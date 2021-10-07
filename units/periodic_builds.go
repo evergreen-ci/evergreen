@@ -120,8 +120,11 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		return "", errors.Wrap(err, "error decoding config file")
 	}
 	proj := &model.Project{}
-	opts := model.GetProjectOpts{
-		Ref: j.project,
+	opts := &model.GetProjectOpts{
+		Ref:          j.project,
+		Revision:     j.project.Branch,
+		Token:        token,
+		ReadFileFrom: model.ReadfromGithub,
 	}
 	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {

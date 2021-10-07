@@ -1,0 +1,12 @@
+mutation{
+    overrideTaskDependencies(taskId: "t1"){
+        id
+        execution
+        status
+        reliesOn {
+            name
+            metStatus
+            requiredStatus
+        }
+    }
+}

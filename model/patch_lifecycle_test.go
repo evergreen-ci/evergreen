@@ -330,8 +330,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			So(projectData, ShouldNotBeNil)
 
 			project := &Project{}
-			opts := GetProjectOpts{}
-			_, err = LoadProjectInto(ctx, projectData, opts, "", project)
+			_, err = LoadProjectInto(ctx, projectData, nil, "", project)
 			So(err, ShouldBeNil)
 			So(len(project.Tasks), ShouldEqual, 2)
 		})
@@ -353,8 +352,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			project := &Project{}
-			opts := GetProjectOpts{}
-			_, err = LoadProjectInto(ctx, projectData, opts, "", project)
+			_, err = LoadProjectInto(ctx, projectData, nil, "", project)
 			So(err, ShouldBeNil)
 			So(project, ShouldNotBeNil)
 

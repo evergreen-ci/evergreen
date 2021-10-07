@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -198,7 +199,7 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 }
 
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
-	if at.Aborted != true {
+	if !at.Aborted {
 		return nil, nil
 	}
 
@@ -297,6 +298,93 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 		dependencies = append(dependencies, &dependency)
 	}
 	return dependencies, nil
+}
+
+func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
+	dependencies := []*Dependency{}
+	if len(at.DependsOn) == 0 {
+		return nil, nil
+	}
+	depIds := []string{}
+	for _, dep := range at.DependsOn {
+		depIds = append(depIds, dep.TaskId)
+	}
+
+	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
+	}
+
+	taskMap := map[string]*task.Task{}
+	for i := range dependencyTasks {
+		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
+	}
+
+	i, err := at.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	}
+
+	for _, dep := range at.DependsOn {
+		depTask, ok := taskMap[dep.TaskId]
+		if !ok {
+			continue
+		}
+		var metStatus MetStatus
+		if !depTask.IsFinished() {
+			metStatus = "PENDING"
+		} else if t.SatisfiesDependency(depTask) {
+			metStatus = "MET"
+		} else {
+			metStatus = "UNMET"
+		}
+		var requiredStatus RequiredStatus
+		switch dep.Status {
+		case model.AllStatuses:
+			requiredStatus = "MUST_FINISH"
+		case evergreen.TaskFailed:
+			requiredStatus = "MUST_FAIL"
+		default:
+			requiredStatus = "MUST_SUCCEED"
+		}
+
+		dependency := Dependency{
+			Name:           depTask.DisplayName,
+			BuildVariant:   depTask.BuildVariant,
+			MetStatus:      metStatus,
+			RequiredStatus: requiredStatus,
+			TaskID:         dep.TaskId,
+		}
+
+		dependencies = append(dependencies, &dependency)
+	}
+	return dependencies, nil
+}
+
+func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restModel.APITask) (bool, error) {
+	currentUser := MustHaveUser(ctx)
+	if at.OverrideDependencies {
+		return false, nil
+	}
+	// if the task is not the latest execution of the task, it can't be overridden
+	if at.Archived {
+		return false, nil
+	}
+	requiredPermission := gimlet.PermissionOpts{
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: evergreen.TasksAdmin.Value,
+		Resource:      *at.ProjectId,
+	}
+	if len(at.DependsOn) > 0 && currentUser.HasPermission(requiredPermission) {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
@@ -965,6 +1053,45 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 	return res, nil
 }
 
+func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
+	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
+	if err != nil {
+		// if the project is not found, the err will be nil based on how FindBranchProjectRef is set up
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
+	}
+	if projectRef != nil {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot create project with identifier '%s', identifier already in use", *project.Identifier))
+	}
+
+	i, err := project.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API error converting from model.APIProjectRef to model.ProjectRef: %s ", err.Error()))
+	}
+	dbProjectRef, ok := i.(*model.ProjectRef)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Unexpected type %T for model.ProjectRef", i).Error())
+	}
+
+	u := gimlet.GetUser(ctx).(*user.DBUser)
+	if err = r.sc.CreateProject(dbProjectRef, u); err != nil {
+		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Database error for insert() project with project name '%s'", *project.Identifier).Error())
+	}
+
+	projectRef, err = model.FindBranchProjectRef(*project.Identifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
+	}
+	if projectRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project: %s", err.Error()))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+
+	return &apiProjectRef, nil
+}
+
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
@@ -1022,7 +1149,8 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
@@ -1171,10 +1299,18 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 				Tasks: utility.ToStringPtrSlice(vt.Tasks),
 			})
 		}
+
+		identifier, err := model.GetIdentifierForProject(alias.ChildProject)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting child project identifier: %v", err.Error()))
+		}
+
 		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
-			Alias:         utility.ToStringPtr(alias.Alias),
-			ChildProject:  utility.ToStringPtr(alias.ChildProject),
-			VariantsTasks: variantsTasks,
+			Alias:                  utility.ToStringPtr(alias.Alias),
+			ChildProject:           utility.ToStringPtr(alias.ChildProject),
+			ChildProjectId:         utility.ToStringPtr(alias.ChildProject),
+			ChildProjectIdentifier: utility.ToStringPtr(identifier),
+			VariantsTasks:          variantsTasks,
 		})
 	}
 
@@ -1190,8 +1326,9 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
 		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 		opts := data.TaskFilterOptions{
-			Statuses:        failedAndAbortedStatuses,
-			FieldsToProject: []string{task.DisplayStatusKey},
+			Statuses:         failedAndAbortedStatuses,
+			FieldsToProject:  []string{task.DisplayStatusKey},
+			IncludeBaseTasks: false,
 		}
 		tasks, _, err := r.sc.FindTasksByVersion(id, opts)
 		if err != nil {
@@ -1421,13 +1558,14 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 		}
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:     statuses,
-		BaseStatuses: baseStatuses,
-		Variants:     []string{variantParam},
-		TaskNames:    []string{taskNameParam},
-		Page:         pageParam,
-		Limit:        limitParam,
-		Sorts:        taskSorts,
+		Statuses:         statuses,
+		BaseStatuses:     baseStatuses,
+		Variants:         []string{variantParam},
+		TaskNames:        []string{taskNameParam},
+		Page:             pageParam,
+		Limit:            limitParam,
+		Sorts:            taskSorts,
+		IncludeBaseTasks: true,
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -2064,7 +2202,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if priority > evergreen.MaxTaskPriority {
 		requiredPermission := gimlet.PermissionOpts{
 			Resource:      t.Project,
-			ResourceType:  "project",
+			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionTasks,
 			RequiredLevel: evergreen.TasksAdmin.Value,
 		}
@@ -2086,6 +2224,22 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	}
 	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
+}
+
+func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID string) (*restModel.APITask, error) {
+	currentUser := MustHaveUser(ctx)
+	t, err := task.FindByIdExecution(taskID, nil)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+	}
+	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
+	}
+	t.DisplayStatus = t.GetDisplayStatus()
+	return GetAPITaskFromTask(ctx, r.sc, *t)
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
@@ -2141,6 +2295,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	opts := data.TaskFilterOptions{
 		Statuses:              evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks: true,
+		IncludeBaseTasks:      false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -3210,7 +3365,9 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: false,
+		FieldsToProject:  []string{task.DisplayStatusKey},
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 	if err != nil {
@@ -3228,7 +3385,9 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: false,
+		FieldsToProject:  []string{task.DisplayStatusKey},
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(baseVersion.Id, opts)
 	if err != nil {
@@ -3238,47 +3397,20 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
-func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*StatusCount, error) {
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
+func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error) {
+	opts := task.GetTasksByVersionOptions{
+		IncludeBaseTasks:      false,
+		IncludeExecutionTasks: false,
+		TaskNames:             options.Tasks,
+		Variants:              options.Variants,
+		Statuses:              options.Statuses,
 	}
-	opts := data.TaskFilterOptions{
-		Statuses:        options.Statuses,
-		Variants:        options.Variants,
-		TaskNames:       options.Tasks,
-		Sorts:           defaultSort,
-		FieldsToProject: []string{task.DisplayStatusKey},
-	}
-
-	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
-
+	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version with id %s: %s", *v.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
 
-	statusCountsMap := map[string]int{}
-	for _, task := range tasks {
-		if val, exist := statusCountsMap[task.GetDisplayStatus()]; exist {
-			statusCountsMap[task.GetDisplayStatus()] = val + 1
-		} else {
-			statusCountsMap[task.GetDisplayStatus()] = 1
-		}
-	}
-
-	statusCountsArr := []*StatusCount{}
-	for statusName, statusCount := range statusCountsMap {
-		sc := StatusCount{
-			Status: statusName,
-			Count:  statusCount,
-		}
-		statusCountsArr = append(statusCountsArr, &sc)
-	}
-	//sort the result array by status name
-	sort.Slice(statusCountsArr, func(p, q int) bool {
-		return statusCountsArr[p].Status < statusCountsArr[q].Status
-	})
-
-	return statusCountsArr, nil
+	return stats, nil
 }
 
 // Returns grouped build variants for a version. Will not return build variants for unactivated versions
@@ -3289,7 +3421,8 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 			{Key: task.DisplayNameKey, Order: 1},
 		}
 		opts := data.TaskFilterOptions{
-			Sorts: defaultSort,
+			Sorts:            defaultSort,
+			IncludeBaseTasks: false,
 		}
 		tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 		if err != nil {
@@ -3421,8 +3554,9 @@ func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIV
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := data.TaskFilterOptions{
-		Statuses:        failedAndAbortedStatuses,
-		FieldsToProject: []string{task.DisplayStatusKey},
+		Statuses:         failedAndAbortedStatuses,
+		FieldsToProject:  []string{task.DisplayStatusKey},
+		IncludeBaseTasks: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
@@ -3557,9 +3691,26 @@ func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIs
 
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
-	return Config{
+	c := Config{
 		Resolvers: &Resolver{
 			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
+	c.Directives.RequireSuperUser = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+		user := gimlet.GetUser(ctx)
+		if user == nil {
+			return nil, Forbidden.Send(ctx, "user not logged in")
+		}
+		opts := gimlet.PermissionOpts{
+			Resource:      evergreen.SuperUserPermissionsID,
+			ResourceType:  evergreen.SuperUserResourceType,
+			Permission:    evergreen.PermissionAdminSettings,
+			RequiredLevel: evergreen.AdminSettingsEdit.Value,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
+	}
+	return c
 }

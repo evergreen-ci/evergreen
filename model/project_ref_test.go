@@ -1777,3 +1777,39 @@ func TestPointers(t *testing.T) {
 	assert.NotNil(t, pointerRef.PtrStruct)
 	assert.True(t, pointerRef.PtrStruct.ShouldGitClone())
 }
+
+func TestMergeWithParserProject(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ParserProjectCollection),
+		"Error clearing collection")
+
+	projectRef := &ProjectRef{
+		Owner:              "mongodb",
+		Id:                 "ident",
+		PerfEnabled:        utility.TruePtr(),
+		DeactivatePrevious: utility.FalsePtr(),
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebHook: evergreen.WebHook{
+				Endpoint: "random1",
+			},
+		},
+	}
+	parserProject := &ParserProject{
+		Id:                 "version1",
+		DeactivatePrevious: utility.TruePtr(),
+		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+			FileTicketWebHook: evergreen.WebHook{
+				Endpoint: "random2",
+			},
+		},
+	}
+	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, parserProject.Insert())
+	err := projectRef.MergeWithParserProject("version1")
+	assert.NoError(t, err)
+	require.NotNil(t, projectRef)
+	assert.Equal(t, "ident", projectRef.Id)
+
+	assert.True(t, *projectRef.DeactivatePrevious)
+	assert.True(t, *projectRef.PerfEnabled)
+	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+}

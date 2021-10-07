@@ -49,6 +49,7 @@ type Dependency struct {
 	MetStatus      MetStatus      `json:"metStatus"`
 	RequiredStatus RequiredStatus `json:"requiredStatus"`
 	BuildVariant   string         `json:"buildVariant"`
+	TaskID         string         `json:"taskId"`
 	UILink         string         `json:"uiLink"`
 }
 
@@ -213,11 +214,6 @@ type SpawnVolumeInput struct {
 	Expiration       *time.Time `json:"expiration"`
 	NoExpiration     *bool      `json:"noExpiration"`
 	Host             *string    `json:"host"`
-}
-
-type StatusCount struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
 }
 
 type Subscriber struct {
