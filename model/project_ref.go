@@ -1892,23 +1892,22 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "error finding user '%s'", addedUser)
-			p.removeFromAdmins(addedUser)
+			p.removeFromAdminsList(addedUser)
 			continue
 		}
 		if adminUser == nil {
 			catcher.Errorf("no user '%s' found", addedUser)
-			p.removeFromAdmins(addedUser)
+			p.removeFromAdminsList(addedUser)
 			continue
 		}
 		if err = adminUser.AddRole(role.ID); err != nil {
 			catcher.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
-			p.removeFromAdmins(addedUser)
+			p.removeFromAdminsList(addedUser)
 			continue
 		}
 		if viewRole != "" {
 			if err = adminUser.AddRole(viewRole); err != nil {
 				catcher.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
-				p.removeFromAdmins(addedUser)
 				continue
 			}
 		}
@@ -1925,6 +1924,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 
 		if err = adminUser.RemoveRole(role.ID); err != nil {
 			catcher.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			p.Admins = append(p.Admins, removedUser)
 			continue
 		}
 		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
@@ -1940,7 +1940,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	return nil
 }
 
-func (p *ProjectRef) removeFromAdmins(user string) {
+func (p *ProjectRef) removeFromAdminsList(user string) {
 	for i, name := range p.Admins {
 		if name == user {
 			p.Admins = append(p.Admins[:i], p.Admins[i+1:]...)
