@@ -690,12 +690,12 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 }
 
-func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName, path string) ([]byte, error) {
+func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName, filename string) ([]byte, error) {
 	// Look through any given local modules first
 	if opts.LocalModules != nil {
-		if val, ok := (*opts.LocalModules)[moduleName]; ok {
+		if path, ok := (*opts.LocalModules)[moduleName]; ok {
 			moduleOpts := GetProjectOpts{
-				RemotePath:   fmt.Sprintf("%s/%s", val, path),
+				RemotePath:   fmt.Sprintf("%s/%s", path, filename),
 				ReadFileFrom: ReadFromLocal,
 			}
 			return retrieveFile(ctx, moduleOpts)
@@ -713,7 +713,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 			Owner: repoOwner,
 			Repo:  repoName,
 		},
-		RemotePath:   path,
+		RemotePath:   filename,
 		Revision:     module.Branch,
 		Token:        opts.Token,
 		ReadFileFrom: ReadfromGithub,

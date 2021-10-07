@@ -15,10 +15,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-const (
-	localModuleFlagName = "module"
-)
-
 func Validate() cli.Command {
 
 	return cli.Command{
@@ -31,7 +27,7 @@ func Validate() cli.Command {
 			Name:  joinFlagNames(longFlagName, "l"),
 			Usage: "include long validation checks (only applies if the check is over some threshold, in which case a warning is issued)",
 		}, cli.StringSliceFlag{
-			Name:  joinFlagNames(localModuleFlagName, "lm"),
+			Name:  joinFlagNames(localModulesFlagName, "lm"),
 			Usage: "specify a local module as a MODULE_NAME=PATH pair",
 		}),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
@@ -87,8 +83,8 @@ func getLocalModulesFromInput(localModulePaths []string) (*map[string]string, er
 	catcher := grip.NewBasicCatcher()
 	for _, module := range localModulePaths {
 		pair := strings.Split(module, "=")
-		if len(pair) < 2 {
-			catcher.Add(errors.Errorf("problem parsing local module '%s'", module))
+		if len(pair) != 2 {
+			catcher.Errorf("expected only 1 '=' sign while parsing local module '%s'", module)
 		}
 		moduleMap[pair[0]] = pair[1]
 	}
