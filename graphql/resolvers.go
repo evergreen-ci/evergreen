@@ -1961,6 +1961,10 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
 	}
+	err = project.MergeWithParserProject("")
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error merging project with parser project %s: %s", id, err.Error()))
+	}
 	if project.CommitQueue.Message != "" {
 		commitQueue.Message = &project.CommitQueue.Message
 	}

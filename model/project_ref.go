@@ -1300,6 +1300,10 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 			owner, repo, branch)
 	}
 	for _, p := range projectRefs {
+		err = p.MergeWithParserProject("")
+		if err != nil {
+			return nil, errors.Wrap(err, "can't merge parser project with project ref")
+		}
 		if p.CommitQueue.IsEnabled() {
 			p.checkDefaultLogger()
 			return &p, nil
@@ -2130,6 +2134,10 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 	}
 	if p.IsPatchingDisabled() {
 		catcher.Add(errors.Errorf("patching is disabled for project '%s'", p.Id))
+	}
+	err := p.MergeWithParserProject("")
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "can't merge parser project with project ref"))
 	}
 	if !p.CommitQueue.IsEnabled() {
 		catcher.Add(errors.Errorf("commit queue is disabled for project '%s'", p.Id))

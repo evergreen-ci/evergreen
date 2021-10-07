@@ -507,6 +507,10 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	}
 
 	cq := APICommitQueueParams{}
+	err := projectRef.MergeWithParserProject("")
+	if err != nil {
+		return errors.Wrap(err, "can't merge parser project with project ref")
+	}
 	if err := cq.BuildFromService(projectRef.CommitQueue); err != nil {
 		return errors.Wrap(err, "can't convert commit queue parameters")
 	}

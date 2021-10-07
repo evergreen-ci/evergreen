@@ -235,6 +235,10 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 	if err != nil {
 		return errors.Wrap(err, "error finding original project")
 	}
+	err = oldProject.MergeWithParserProject("")
+	if err != nil {
+		return errors.Wrap(err, "can't merge parser project with project ref")
+	}
 	requestProjectRef := &model.APIProjectRef{}
 	if err = requestProjectRef.BuildFromService(*oldProject); err != nil {
 		return errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef")
@@ -313,6 +317,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	mergedProjectRef, err := dbModel.GetProjectRefMergedWithRepo(*h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error merging project ref"))
+	}
+	err = mergedProjectRef.MergeWithParserProject("")
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "failed to merge parser project with project ref"))
 	}
 
 	if h.newProjectRef.IsEnabled() {

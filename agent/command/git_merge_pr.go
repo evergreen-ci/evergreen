@@ -98,6 +98,11 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 	githubCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	err = conf.ProjectRef.MergeWithParserProject(patchDoc.Version)
+	if err != nil {
+		return errors.Wrap(err, "failed to merge parser project with project ref")
+	}
+
 	mergeOpts := &github.PullRequestOptions{
 		MergeMethod:        conf.ProjectRef.CommitQueue.MergeMethod,
 		CommitTitle:        patchDoc.GithubPatchData.CommitTitle,

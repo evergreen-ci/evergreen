@@ -66,7 +66,8 @@ type Project struct {
 	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
 	// Values for the below fields set on this struct when TranslateProject is called for the project parser will
 	// take precedence over the project page and will be the configs used for a given project during runtime.
-	DeactivatePrevious bool `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+	DeactivatePrevious bool              `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+	CommitQueue        CommitQueueParams `yaml:"commit_queue" bson:"commit_queue"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
