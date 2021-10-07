@@ -40,9 +40,14 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 
 // testFlaggingIdleHostsSetupTest resets the relevant db collections prior to a test
 func testFlaggingIdleHostsSetupTest(t *testing.T) {
-	require.NoError(t, db.ClearCollections(distro.Collection), "error clearing distro collection")
-	require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+	require.NoError(t, db.DropCollections(distro.Collection), "error clearing distro collection")
+	require.NoError(t, db.DropCollections(host.Collection), "error clearing hosts collection")
 	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "error adding host index")
+}
+
+func testFlaggingIdleHostsTeardownTest(t *testing.T) {
+	assert.NoError(t, db.DropCollections(distro.Collection), "error clearing distro collection")
+	assert.NoError(t, db.DropCollections(host.Collection), "error clearing hosts collection")
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -54,8 +59,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	env := evergreen.GetEnvironment()
 
 	t.Run("HostsCurrentlyRunningTasksShouldNeverBeFlagged", func(t *testing.T) {
-		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
@@ -83,8 +88,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	})
 
 	t.Run("EvenWithLastCommunicationTimeGreaterThanTenMinutes", func(t *testing.T) {
-		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
@@ -112,8 +117,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	})
 
 	t.Run("HostsNotRunningTasksShouldBeFlaggedIfTheyHaveBeenIdleAtLeastFifteenMinutesAndWillIncurPaymentInLessThanTenMinutes", func(t *testing.T) {
-		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
@@ -156,8 +161,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	})
 
 	t.Run("HostsNotCurrentlyRunningTaskWithLastCommunicationTimeGreaterThanTenMinsShouldBeMarkedAsIdle", func(t *testing.T) {
-		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
@@ -199,8 +205,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	})
 
 	t.Run("HostsThatHaveBeenProvisionedShouldHaveTheTimerReset", func(t *testing.T) {
-		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
 		// insert our reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
@@ -228,6 +235,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 	t.Run("LegacyHostsThatNeedNewAgentsShouldNotBeMarkedIdle", func(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
@@ -260,6 +268,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 	t.Run("NonLegacyHostsThatNeedNewAgentMonitorsShouldNotBeMarkedIdle", func(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
@@ -292,6 +301,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 	t.Run("NonLegacyHostsThatDoNotNeedNewAgentMonitorsShouldBeMarkedIdle", func(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
@@ -333,8 +343,9 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 	env := evergreen.GetEnvironment()
 
 	t.Run("AddSomeHostsWithReferencedDistrosThatDoNotExistInTheDistroCollection", func(t *testing.T) {
-		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
 		// insert two reference distro.Distro
 
 		distro1 := distro.Distro{
@@ -431,8 +442,8 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 	env := evergreen.GetEnvironment()
 
 	t.Run("NeitherHostShouldBeFlaggedAsIdleAsMinimumHostsIsTwo", func(t *testing.T) {
-		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
@@ -470,8 +481,8 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 	})
 
 	t.Run("MinimumHostsIsTwo;OneHostIsRunningItsTaskAndTwoHostsAreIdle", func(t *testing.T) {
-		// clear the distro and hosts collections; add an index on the host collection
 		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
 
 		// insert a reference distro.Distro (which has a non-zero value for its HostAllocatorSettings.MinimumHosts field)
 		distro1 := distro.Distro{
