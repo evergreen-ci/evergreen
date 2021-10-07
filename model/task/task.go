@@ -3222,10 +3222,10 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
 	}
 	pipeline = append(pipeline, recombineAnnotationFacet...)
-	pipeline = append(pipeline, []bson.M{
+	pipeline = append(pipeline,
 		// Add a field for the display status of each task
 		addDisplayStatus,
-	}...)
+	)
 	if opts.IncludeBaseTasks {
 		pipeline = append(pipeline, []bson.M{
 			// Add data about the base task
