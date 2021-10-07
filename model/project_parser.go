@@ -590,23 +590,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 		var yaml []byte
 		if path.Module != "" {
-			module, err := GetModuleByName(intermediateProject.Modules, path.Module)
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get module for module name '%s'", path.Module)
-			}
-			repoOwner, repoName := module.GetRepoOwnerAndName()
-			moduleOpts := GetProjectOpts{
-				Ref: &ProjectRef{
-					Id:    module.Name,
-					Owner: repoOwner,
-					Repo:  repoName,
-				},
-				RemotePath:   path.FileName,
-				Revision:     module.Branch,
-				Token:        opts.Token,
-				ReadFileFrom: ReadfromGithub,
-			}
-			yaml, err = retrieveFile(ctx, moduleOpts)
+			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module, path.FileName)
 		} else {
 			yaml, err = retrieveFile(ctx, *opts)
 		}
@@ -643,6 +627,7 @@ const (
 type GetProjectOpts struct {
 	Ref          *ProjectRef
 	PatchOpts    *PatchOpts
+	LocalModules *map[string]string
 	RemotePath   string
 	Revision     string
 	Token        string
@@ -703,6 +688,37 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	}
+}
+
+func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName, path string) ([]byte, error) {
+	// Look through any given local modules first
+	if opts.LocalModules != nil {
+		if val, ok := (*opts.LocalModules)[moduleName]; ok {
+			moduleOpts := GetProjectOpts{
+				RemotePath:   fmt.Sprintf("%s/%s", val, path),
+				ReadFileFrom: ReadFromLocal,
+			}
+			return retrieveFile(ctx, moduleOpts)
+		}
+	}
+	// Retrieve from github
+	module, err := GetModuleByName(modules, moduleName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get module for module name '%s'", moduleName)
+	}
+	repoOwner, repoName := module.GetRepoOwnerAndName()
+	moduleOpts := GetProjectOpts{
+		Ref: &ProjectRef{
+			Id:    module.Name,
+			Owner: repoOwner,
+			Repo:  repoName,
+		},
+		RemotePath:   path,
+		Revision:     module.Branch,
+		Token:        opts.Token,
+		ReadFileFrom: ReadfromGithub,
+	}
+	return retrieveFile(ctx, moduleOpts)
 }
 
 func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, error) {

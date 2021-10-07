@@ -322,7 +322,7 @@ func GetModuleByName(moduleList ModuleList, moduleName string) (*Module, error) 
 		}
 	}
 
-	return nil, errors.Errorf("Module '%s' doesn't exist.", moduleName)
+	return nil, errors.Errorf("Module '%s' doesn't exist", moduleName)
 }
 
 type TestSuite struct {

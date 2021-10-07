@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -12,6 +13,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
+)
+
+const (
+	localModuleFlagName = "module"
 )
 
 func Validate() cli.Command {
@@ -25,6 +30,9 @@ func Validate() cli.Command {
 		}, cli.BoolFlag{
 			Name:  joinFlagNames(longFlagName, "l"),
 			Usage: "include long validation checks (only applies if the check is over some threshold, in which case a warning is issued)",
+		}, cli.StringSliceFlag{
+			Name:  joinFlagNames(localModuleFlagName, "lm"),
+			Usage: "specify a local module as a MODULE_NAME=PATH pair",
 		}),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
@@ -32,6 +40,11 @@ func Validate() cli.Command {
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
+			localModulePaths := c.StringSlice(parameterFlagName)
+			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
+			if err != nil {
+				return err
+			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -60,17 +73,29 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, localModuleMap))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac, quiet, long)
+			return validateFile(path, ac, quiet, long, localModuleMap)
 		},
 	}
 }
+func getLocalModulesFromInput(localModulePaths []string) (*map[string]string, error) {
+	moduleMap := make(map[string]string)
+	catcher := grip.NewBasicCatcher()
+	for _, module := range localModulePaths {
+		pair := strings.Split(module, "=")
+		if len(pair) < 2 {
+			catcher.Add(errors.Errorf("problem parsing local module '%s'", module))
+		}
+		moduleMap[pair[0]] = pair[1]
+	}
+	return &moduleMap, catcher.Resolve()
+}
 
-func validateFile(path string, ac *legacyClient, quiet, includeLong bool) error {
+func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap *map[string]string) error {
 	confFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrap(err, "problem reading file")
@@ -79,6 +104,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool) error 
 	project := &model.Project{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
+		LocalModules: localModuleMap,
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	pp, err := model.LoadProjectInto(ctx, confFile, opts, "", project)
