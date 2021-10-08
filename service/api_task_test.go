@@ -155,11 +155,13 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		settings := distro.DispatcherSettings{
 			Version: evergreen.DispatcherVersionLegacy,
 		}
-		if err := db.DropCollections(distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection); err != nil {
-			t.Fatalf("clearing db: %v", err)
+
+		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
+		if err := db.DropCollections(colls...); err != nil {
+			t.Fatalf("dropping collections: %s", err)
 		}
 		defer func() {
-			assert.NoError(t, db.DropCollections(distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection))
+			assert.NoError(t, db.DropCollections(colls...))
 		}()
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
@@ -504,11 +506,12 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		settings := distro.DispatcherSettings{
 			Version: evergreen.DispatcherVersionRevisedWithDependencies,
 		}
-		if err := db.DropCollections(distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection); err != nil {
-			t.Fatalf("clearing db: %v", err)
+		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
+		if err := db.DropCollections(colls...); err != nil {
+			t.Fatalf("dropping collections: %v", err)
 		}
 		defer func() {
-			assert.NoError(t, db.DropCollections(distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection))
+			assert.NoError(t, db.DropCollections(colls...))
 		}()
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
@@ -770,12 +773,12 @@ func TestNextTask(t *testing.T) {
 	queue := env.LocalQueue()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
-		if err := db.DropCollections(model.ProjectRefCollection, host.Collection, task.Collection,
-			model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection); err != nil {
-			t.Fatalf("clearing db: %v", err)
+		colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection}
+		if err := db.DropCollections(colls...); err != nil {
+			t.Fatalf("dropping collections: %v", err)
 		}
 		defer func() {
-			assert.NoError(t, db.DropCollections(model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection))
+			assert.NoError(t, db.DropCollections(colls...))
 		}()
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
@@ -1197,12 +1200,12 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 	defer cancel()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
-		if err := db.DropCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
-			model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.AllLogCollection); err != nil {
-			t.Fatalf("clearing db: %v", err)
+		colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.AllLogCollection}
+		if err := db.DropCollections(colls...); err != nil {
+			t.Fatalf("dropping collections: %v", err)
 		}
 		defer func() {
-			assert.NoError(t, db.DropCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.AllLogCollection))
+			assert.NoError(t, db.DropCollections(colls...))
 		}()
 
 		q := queue.NewLocalLimitedSize(4, 2048)
