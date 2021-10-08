@@ -3332,10 +3332,10 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
 		}
 		index++
+		// If we have exhausted all of our versions we should fetch some more.
 		if index == len(versions) {
 			skipOrderNumber := versions[len(versions)-1].RevisionOrderNumber
 			opts := model.MainlineCommitVersionOptions{
-				Activated:       true,
 				Limit:           limit,
 				SkipOrderNumber: skipOrderNumber,
 			}
