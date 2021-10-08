@@ -27,9 +27,10 @@ endif
 gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
+gopath := $(shell cygpath -m $(gopath))
 export GOCACHE := $(shell cygpath -m $(abspath $(buildDir)/.cache))
 export GOLANGCI_LINT_CACHE := $(shell cygpath -m $(abspath $(buildDir)/.lint-cache))
-export GOPATH := $(shell cygpath -m $(gopath))
+export GOPATH := $(gopath)
 export GOROOT := $(shell cygpath -m $(GOROOT))
 endif
 
@@ -439,9 +440,13 @@ endif
 # of goimports when running test-rest-model in evergreen. As long as you have GOROOT
 # set to the directory containing your same version (1.9+) of the go binary, goimports
 # will work without this workaround
+toolsPath := $(gopath)/src/golang.org/x/tools
+ifeq ($(OS),Windows_NT)
+toolsPath := $(shell cygpath -m $(toolsPath))
+endif
 get-go-imports:
 	$(gobin) get -u golang.org/x/tools/imports
-	cd $(gopath)/src/golang.org/x/tools && git reset 727c06e3f111405bd52063f6120c7d72c3ba896e --hard
+	cd $(toolsPath) && git reset 727c06e3f111405bd52063f6120c7d72c3ba896e --hard
 # end vendoring tooling configuration
 
 
@@ -520,7 +525,7 @@ ifneq (go,$(gobin))
 lintEnvVars := PATH="$(shell dirname $(gobin)):$(PATH)"
 endif
 $(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
-	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
+	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --lintArgs="--timeout=2m" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages='$*'
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
