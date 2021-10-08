@@ -38,16 +38,17 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 	return num, out
 }
 
-// testFlaggingIdleHostsSetupTest resets the relevant db collections prior to a test
+// testFlaggingIdleHostsSetupTest resets the relevant db collections prior to a
+// test.
 func testFlaggingIdleHostsSetupTest(t *testing.T) {
-	require.NoError(t, db.DropCollections(distro.Collection), "error clearing distro collection")
-	require.NoError(t, db.DropCollections(host.Collection), "error clearing hosts collection")
-	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "error adding host index")
+	require.NoError(t, db.DropCollections(host.Collection, distro.Collection), "dropping collections")
+	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "adding host index")
 }
 
+// testFlaggingIdleHostsTeardownTest resets the relevant DB collections after a
+// test.
 func testFlaggingIdleHostsTeardownTest(t *testing.T) {
-	assert.NoError(t, db.DropCollections(distro.Collection), "error clearing distro collection")
-	assert.NoError(t, db.DropCollections(host.Collection), "error clearing hosts collection")
+	assert.NoError(t, db.DropCollections(host.Collection, distro.Collection), "dropping collections")
 }
 
 ////////////////////////////////////////////////////////////////////////
