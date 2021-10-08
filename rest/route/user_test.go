@@ -303,7 +303,7 @@ func TestGetUserPermissions(t *testing.T) {
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	u := user.DBUser{
 		Id:          "user",
-		SystemRoles: []string{"role1"},
+		SystemRoles: []string{"role1", evergreen.BasicProjectAccessRole, evergreen.BasicDistroAccessRole},
 	}
 	require.NoError(t, u.Insert())
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
