@@ -3222,31 +3222,17 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		limit = utility.FromIntPtr(options.Limit)
 	}
 	opts := model.MainlineCommitVersionOptions{
-		Activated:       true,
 		Limit:           limit,
 		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
 	}
 
-	activatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+	versions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
 	}
 
-	opts = model.MainlineCommitVersionOptions{
-		Activated:       false,
-		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
-	}
-	unactivatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting unactivated versions: %s", err.Error()))
-	}
-
-	versions := append(activatedVersions, unactivatedVersions...)
-	sort.Slice(versions, func(i, j int) bool {
-		return versions[i].RevisionOrderNumber > versions[j].RevisionOrderNumber
-	})
 	var mainlineCommits MainlineCommits
-	activatedVersionCount := 0
+	matchingVersionCount := 0
 
 	// We only want to return the PrevPageOrderNumber if a user is not on the first page
 	if options.SkipOrderNumber != nil {
@@ -3266,10 +3252,23 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 	}
 
-	for _, v := range versions {
-		if activatedVersionCount == limit {
+	index := 0
+	versionsCheckedCount := 0
+	for matchingVersionCount < limit {
+		// If we no longer have any more versions to check break out and return what we have
+		if index >= len(versions) {
 			break
 		}
+		// If we have checked more versions then the MaxMainlineCommitVersionLimit then break out and return what we have
+		if versionsCheckedCount >= model.MaxMainlineCommitVersionLimit {
+			// Return an error if we did not find any versions that match
+			if matchingVersionCount == 0 {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: exceeded max limit of %d versions", model.MaxMainlineCommitVersionLimit))
+			}
+			break
+		}
+		versionsCheckedCount++
+		v := versions[index]
 		apiVersion := restModel.APIVersion{}
 		err = apiVersion.BuildFromService(&v)
 		if err != nil {
@@ -3303,7 +3302,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 		// If a version is activated we append it directly to our returned list of mainlineCommits
 		if !shouldCollapse {
-			activatedVersionCount++
+			matchingVersionCount++
 			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
 			mainlineCommitVersion.Version = &apiVersion
 
@@ -3332,7 +3331,21 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
 			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
 		}
+		index++
+		if index == len(versions) {
+			skipOrderNumber := versions[len(versions)-1].RevisionOrderNumber
+			opts := model.MainlineCommitVersionOptions{
+				Activated:       true,
+				Limit:           limit,
+				SkipOrderNumber: skipOrderNumber,
+			}
 
+			versions, err = model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
+			}
+			index = 0
+		}
 	}
 
 	return &mainlineCommits, nil
