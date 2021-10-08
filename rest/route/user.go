@@ -445,7 +445,9 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if u == nil {
 		return gimlet.NewJSONErrorResponse(errors.New("user not found"))
 	}
-	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, u.Roles(), h.rm)
+	rolesToSearch, _ := utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.BasicAccessRoles)
+	// filter out the roles that everybody has automatically
+	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, rolesToSearch, h.rm)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting permission summary",
