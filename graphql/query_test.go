@@ -39,7 +39,7 @@ func getContext(t *testing.T) context.Context {
 
 func populateMainlineCommits(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.VersionCollection, task.Collection))
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 12; i++ {
 		versionId := fmt.Sprintf("v%d", i)
 		// Every other version is activated
 		isActivated := i%2 == 0
@@ -48,7 +48,7 @@ func populateMainlineCommits(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			Activated:           utility.ToBoolPtr(isActivated),
 			Branch:              projectId,
-			RevisionOrderNumber: 10 - i,
+			RevisionOrderNumber: 12 - i,
 			Identifier:          projectId,
 		}
 		require.NoError(t, v.Insert())
@@ -89,16 +89,16 @@ func TestMainlineCommits(t *testing.T) {
 	mainlineCommitOptions := graphql.MainlineCommitsOptions{
 		ProjectID:       projectId,
 		SkipOrderNumber: nil,
-		Limit:           utility.ToIntPtr(3),
+		Limit:           utility.ToIntPtr(2),
 	}
 	buildVariantOptions := graphql.BuildVariantOptions{}
 	res, err := config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
-	require.Equal(t, 6, utility.FromIntPtr(res.NextPageOrderNumber))
+	require.Equal(t, 10, utility.FromIntPtr(res.NextPageOrderNumber))
 	require.Nil(t, res.PrevPageOrderNumber)
-	require.Equal(t, 5, len(res.Versions))
+	require.Equal(t, 3, len(res.Versions))
 
 	buildVariantOptions = graphql.BuildVariantOptions{
 		Statuses: []string{evergreen.TaskFailed},
@@ -107,16 +107,19 @@ func TestMainlineCommits(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
-	require.Equal(t, 4, utility.FromIntPtr(res.NextPageOrderNumber))
+	require.Equal(t, 6, utility.FromIntPtr(res.NextPageOrderNumber))
 	require.Nil(t, res.PrevPageOrderNumber)
-	require.Equal(t, 4, len(res.Versions))
+	require.Equal(t, 3, len(res.Versions))
 
 	require.Nil(t, res.Versions[0].RolledUpVersions)
-
 	require.NotNil(t, res.Versions[0].Version)
 
 	require.NotNil(t, res.Versions[1].RolledUpVersions)
 	require.Equal(t, 5, len(res.Versions[1].RolledUpVersions))
 
 	require.NotNil(t, res.Versions[2].Version)
+
+	lastCommit := res.Versions[len(res.Versions)-1].Version
+	require.NotNil(t, lastCommit)
+	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
 }
