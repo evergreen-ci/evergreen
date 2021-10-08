@@ -27,9 +27,10 @@ endif
 gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
+gopath := $(shell cygpath -m $(gopath))
 export GOCACHE := $(shell cygpath -m $(abspath $(buildDir)/.cache))
 export GOLANGCI_LINT_CACHE := $(shell cygpath -m $(abspath $(buildDir)/.lint-cache))
-export GOPATH := $(shell cygpath -m $(gopath))
+export GOPATH := $(gopath)
 export GOROOT := $(shell cygpath -m $(GOROOT))
 endif
 
@@ -524,7 +525,7 @@ ifneq (go,$(gobin))
 lintEnvVars := PATH="$(shell dirname $(gobin)):$(PATH)"
 endif
 $(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
-	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
+	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --lintArgs="--timeout=2m" --customLinters="$(gopath)/bin/evg-lint -set_exit_status" --packages='$*'
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
