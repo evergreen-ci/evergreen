@@ -439,7 +439,9 @@ endif
 # of goimports when running test-rest-model in evergreen. As long as you have GOROOT
 # set to the directory containing your same version (1.9+) of the go binary, goimports
 # will work without this workaround
+ifeq ($(OS),Windows_NT)
 toolsPath := $(shell cygpath -m $(gopath)/src/golang.org/x/tools)
+endif
 get-go-imports:
 	$(gobin) get -u golang.org/x/tools/imports
 	cd $(toolsPath) && git reset 727c06e3f111405bd52063f6120c7d72c3ba896e --hard
