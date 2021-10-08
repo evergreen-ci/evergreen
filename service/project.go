@@ -150,11 +150,6 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	CQConflictingRefs := []string{}
 	githubChecksConflictingRefs := []string{}
 	for _, ref := range matchingRefs {
-		err = ref.MergeWithParserProject("")
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't merge parser project with project ref"))
-			return
-		}
 		if ref.IsPRTestingEnabled() && ref.Id != projRef.Id {
 			PRConflictingRefs = append(PRConflictingRefs, ref.Id)
 		}

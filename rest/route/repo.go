@@ -281,8 +281,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 		githubCheckIds []string
 	}{}
 	for _, p := range mergedRepos {
-		err = p.MergeWithParserProject("")
-		if !p.IsEnabled() || err != nil {
+		if !p.IsEnabled() {
 			continue
 		}
 		counts := branchInfo[p.Branch]

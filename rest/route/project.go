@@ -235,10 +235,6 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 	if err != nil {
 		return errors.Wrap(err, "error finding original project")
 	}
-	err = oldProject.MergeWithParserProject("")
-	if err != nil {
-		return errors.Wrap(err, "can't merge parser project with project ref")
-	}
 	requestProjectRef := &model.APIProjectRef{}
 	if err = requestProjectRef.BuildFromService(*oldProject); err != nil {
 		return errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef")

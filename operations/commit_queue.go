@@ -419,8 +419,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	if err != nil {
 		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
 	}
-	err = projectRef.MergeWithParserProject("")
-	if err != nil {
+	if err = projectRef.MergeWithParserProject(""); err != nil {
 		return errors.Wrap(err, "can't merge parser project with project ref")
 	}
 	cq, err := client.GetCommitQueue(ctx, projectRef.Id)
@@ -698,9 +697,10 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 
 func showCQMessageForProject(ac *legacyClient, projectID string) {
 	projectRef, _ := ac.GetProjectRef(projectID)
-	err := projectRef.MergeWithParserProject("")
-	if err != nil && projectRef != nil && projectRef.CommitQueue.Message != "" {
-		grip.Info(projectRef.CommitQueue.Message)
+	if projectRef != nil && projectRef.CommitQueue.Message != "" {
+		if err := projectRef.MergeWithParserProject(""); err != nil {
+			grip.Info(projectRef.CommitQueue.Message)
+		}
 	}
 }
 
