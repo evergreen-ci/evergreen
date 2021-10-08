@@ -698,9 +698,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 func showCQMessageForProject(ac *legacyClient, projectID string) {
 	projectRef, _ := ac.GetProjectRef(projectID)
 	if projectRef != nil && projectRef.CommitQueue.Message != "" {
-		if err := projectRef.MergeWithParserProject(""); err != nil {
-			grip.Info(projectRef.CommitQueue.Message)
-		}
+		grip.Info(projectRef.CommitQueue.Message)
 	}
 }
 
