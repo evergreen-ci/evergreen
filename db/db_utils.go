@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
 )
 
 var (
@@ -130,7 +131,7 @@ func DropCollections(collections ...string) error {
 	defer session.Close()
 	for _, coll := range collections {
 		if err := db.C(coll).DropCollection(); err != nil {
-			return errors.Wrapf(err, "couldn't drop collection '%s'", coll)
+			return errors.Wrapf(err, "dropping collection '%s'", coll)
 		}
 	}
 	return nil
@@ -147,13 +148,27 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 	return errors.WithStack(err)
 }
 
-// DropIndex drops all indexes in a collection.
-func DropAllIndexes(collection string) error {
+// DropAllIndexes drops all indexes in the specified collections, returning an
+// error immediately if dropping the indexes in any one of them fails.
+func DropAllIndexes(collections ...string) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
-	_, err := env.DB().Collection(collection).Indexes().DropAll(ctx)
-	return errors.WithStack(err)
+	for _, coll := range collections {
+		if _, err := env.DB().Collection(coll).Indexes().DropAll(ctx); err != nil {
+			// DropAll errors if the collection does not exist, so make this
+			// idempotent by ignoring the error for the case of a nonexistent
+			// collection.
+			if mongoErr, ok := err.(driver.Error); ok && mongoErr.NamespaceNotFound() {
+				continue
+			}
+			if cmdErr, ok := err.(mongo.CommandError); ok && cmdErr.HasErrorCode(26) {
+				continue
+			}
+			return errors.Wrapf(err, "dropping indexes in collection '%s'", coll)
+		}
+	}
+	return nil
 }
 
 // Remove removes one item matching the query from the specified collection.
