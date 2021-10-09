@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -1493,6 +1494,15 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
+	}
+	if t.DisplayOnly {
+		execTasks, err := Find(ByIds(t.ExecutionTasks))
+		if err != nil {
+			return evergreen.TaskFailed
+		}
+		sort.Sort(ByPriority(execTasks))
+		statusTask := execTasks[0]
+		return statusTask.ResultStatus()
 	}
 	if t.Aborted && t.IsFinished() {
 		return evergreen.TaskAborted

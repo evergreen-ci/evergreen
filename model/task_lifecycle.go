@@ -1446,7 +1446,6 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	}
 
 	update := bson.M{
-		task.DisplayStatusKey: statusTask.ResultStatus(),
 		task.StatusKey:        statusTask.Status,
 		task.ActivatedKey:     dt.Activated,
 		task.ActivatedTimeKey: dt.ActivatedTime,
@@ -1483,7 +1482,6 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	dt.Status = statusTask.Status
 	dt.Details = statusTask.Details
 	dt.TimeTaken = timeTaken
-	dt.DisplayStatus = statusTask.ResultStatus()
 	if !wasFinished && dt.IsFinished() {
 		event.LogTaskFinished(dt.Id, dt.Execution, "", dt.ResultStatus())
 	}
