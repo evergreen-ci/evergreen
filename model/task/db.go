@@ -812,6 +812,69 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
+// ByExecutionTasksAndMaxExecution returns the tasks corresponding to the passed in taskIds and execution,
+// or the most recent executions of those tasks if they do not have a matching execution
+func ByExecutionTasksAndMaxExecution(taskIds []string, execution int) ([]Task, error) {
+	pipeline := []bson.M{}
+	match := bson.M{
+		"$match": bson.M{
+			IdKey: bson.M{
+				"$in": taskIds,
+			},
+			ExecutionKey: bson.M{
+				"$lte": execution,
+			},
+		},
+	}
+	pipeline = append(pipeline, match)
+	// Get the taskIds that were not found in the previous match stage
+	result := []Task{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "Error finding tasks in task collection")
+	}
+	taskMap := map[string]bool{}
+	for _, t := range result {
+		taskMap[t.Id] = true
+	}
+	missingTasks := []string{}
+	for _, taskId := range taskIds {
+		if _, ok := taskMap[taskId]; !ok {
+			missingTasks = append(missingTasks, taskId)
+		}
+	}
+	if len(missingTasks) > 0 {
+		oldTasks := []Task{}
+		oldTaskPipeline := []bson.M{}
+		match = bson.M{
+			"$match": bson.M{
+				OldTaskIdKey: bson.M{
+					"$in": missingTasks,
+				},
+				ExecutionKey: bson.M{
+					"$lte": execution,
+				},
+			},
+		}
+		oldTaskPipeline = append(oldTaskPipeline, match)
+		// filter by the old taskids that have the highest execution
+		sort := bson.M{
+			"$sort": bson.M{
+				ExecutionKey: -1,
+			},
+		}
+		oldTaskPipeline = append(oldTaskPipeline, sort)
+		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
+			return nil, errors.Wrap(err, "error finding tasks in old tasks collection")
+		}
+
+		result = append(result, oldTasks...)
+	}
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return result, nil
+}
+
 type BuildVariantTuple struct {
 	BuildVariant string `bson:"build_variant"`
 	DisplayName  string `bson:"display_name"`
