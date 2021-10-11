@@ -3092,37 +3092,23 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	return apiTask, nil
 }
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
-	i, err := obj.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
-	}
-	if len(t.ExecutionTasks) == 0 {
+	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
 	}
-	executionTasks := []*restModel.APITask{}
-	for _, execTaskID := range t.ExecutionTasks {
-		execT, err := task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, &t.Execution)
-		if err != nil {
-			// The task is not found, possibly because the execution is out of sync with the display task. Get the latest instead.
-			execT, err = task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, nil)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
-			}
-		}
-		if execT != nil {
-			apiTask := &restModel.APITask{}
-			if err = apiTask.BuildFromService(execT); err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
-			}
-			executionTasks = append(executionTasks, apiTask)
-		}
+	tasks, err := task.ByExecutionTasksAndMaxExecution(obj.ExecutionTasks, obj.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding execution tasks for task: %s : %s", *obj.Id, err.Error()))
 	}
-
-	return executionTasks, nil
+	apiTasks := []*restModel.APITask{}
+	for _, t := range tasks {
+		apiTask := &restModel.APITask{}
+		err = apiTask.BuildFromService(&t)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err))
+		}
+		apiTasks = append(apiTasks, apiTask)
+	}
+	return apiTasks, nil
 }
 
 func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
