@@ -423,7 +423,7 @@ func (r *projectSettingsResolver) Vars(ctx context.Context, a *restModel.APIProj
 }
 
 func (r *projectSettingsResolver) Aliases(ctx context.Context, a *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
-	aliases, err := model.FindAliasesForProject(utility.FromStringPtr(a.ProjectRef.Id))
+	aliases, err := model.FindAliasesForProject(utility.FromStringPtr(a.ProjectRef.Id), "")
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding aliases for project: %s", err.Error()))
 	}

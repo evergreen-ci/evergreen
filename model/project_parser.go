@@ -85,6 +85,7 @@ type ParserProject struct {
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
+	Aliases                []ProjectAlias                 `yaml:"aliases,omitempty" bson:"aliases,omitempty"`
 
 	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
 	// Values for the below fields set on this struct will take precedence over the project page and will

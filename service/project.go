@@ -129,13 +129,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 	projVars = projVars.RedactPrivateVars()
 
-	projectAliases, err := model.FindAliasesForProject(projRef.Id)
+	projectAliases, err := model.FindAliasesForProject(projRef.Id, "")
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	if len(projectAliases) == 0 && projRef.UseRepoSettings {
-		projectAliases, err = model.FindAliasesForProject(projRef.RepoRefId)
+		projectAliases, err = model.FindAliasesForProject(projRef.RepoRefId, "")
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -707,7 +707,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	origProjectAliases, _ := model.FindAliasesForProject(id)
+	origProjectAliases, _ := model.FindAliasesForProject(id, "")
 	var projectAliases []model.ProjectAlias
 	projectAliases = append(projectAliases, responseRef.GitHubPRAliases...)
 	projectAliases = append(projectAliases, responseRef.GithubChecksAliases...)
@@ -735,7 +735,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions:      origSubscriptions,
 	}
 
-	currentAliases, _ := model.FindAliasesForProject(id)
+	currentAliases, _ := model.FindAliasesForProject(id, "")
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
 	after := &model.ProjectSettings{
 		ProjectRef:         *projectRef,
