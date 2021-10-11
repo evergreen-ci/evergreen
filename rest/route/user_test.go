@@ -303,7 +303,7 @@ func TestGetUserPermissions(t *testing.T) {
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	u := user.DBUser{
 		Id:          "user",
-		SystemRoles: []string{"role1"},
+		SystemRoles: []string{"role1", evergreen.BasicProjectAccessRole, evergreen.BasicDistroAccessRole},
 	}
 	require.NoError(t, u.Insert())
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
@@ -553,17 +553,12 @@ func TestGetUsersForResourceId(t *testing.T) {
 			assert.Equal(t, resp.Status(), http.StatusOK)
 			userPermissions, ok := resp.Data().(UsersPermissionsResult)
 			assert.True(t, ok)
-			assert.Len(t, userPermissions, 2) // only user1 and user2 have permissions for p1
+			assert.Len(t, userPermissions, 1) // only user1 should be included; user2 only has basic access
 			u1Permissions := userPermissions[u1.Username()]
 			assert.Equal(t, u1Permissions[evergreen.PermissionTasks], evergreen.TasksAdmin.Value)
 			assert.Equal(t, u1Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsModify.Value)
-			assert.Equal(t, u1Permissions[evergreen.PermissionLogs], evergreen.LogsView.Value)
+			assert.Equal(t, u1Permissions[evergreen.PermissionLogs], 0) // only relevant to basic project access
 			assert.Equal(t, u1Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsEdit.Value)
-			u2Permissions := userPermissions[u2.Username()]
-			assert.Equal(t, u2Permissions[evergreen.PermissionTasks], evergreen.TasksView.Value)
-			assert.Equal(t, u2Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsView.Value)
-			assert.Equal(t, u2Permissions[evergreen.PermissionLogs], evergreen.LogsView.Value)
-			assert.Equal(t, u2Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsNone.Value) // wasn't given admin
 		},
 		"p2": func(t *testing.T) {
 			body := []byte(`{"resource_type": "project", "resource_id":"p2"}`)
@@ -577,17 +572,16 @@ func TestGetUsersForResourceId(t *testing.T) {
 			assert.Equal(t, resp.Status(), http.StatusOK)
 			userPermissions, ok := resp.Data().(UsersPermissionsResult)
 			assert.True(t, ok)
-			assert.Len(t, userPermissions, 3) // all three users have permission for p2
+			assert.Len(t, userPermissions, 3)
 			u1Permissions := userPermissions[u1.Username()]
 			assert.Equal(t, u1Permissions[evergreen.PermissionTasks], evergreen.TasksAdmin.Value)
 			assert.Equal(t, u1Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsModify.Value)
-			assert.Equal(t, u1Permissions[evergreen.PermissionLogs], evergreen.LogsView.Value)
+			assert.Equal(t, u1Permissions[evergreen.PermissionLogs], 0) // only relevant to basic project access
 			assert.Equal(t, u1Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsEdit.Value)
 			u2Permissions := userPermissions[u2.Username()]
 			assert.Equal(t, u2Permissions[evergreen.PermissionTasks], evergreen.TasksView.Value)
-			assert.Equal(t, u2Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsView.Value)
-			assert.Equal(t, u2Permissions[evergreen.PermissionLogs], evergreen.LogsView.Value)
-			assert.Equal(t, u2Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsNone.Value) // wasn't given admin
+			assert.Equal(t, u2Permissions[evergreen.PermissionLogs], 0)            // only relevant to basic project access
+			assert.Equal(t, u2Permissions[evergreen.PermissionProjectSettings], 0) // wasn't given admin
 			u3Permissions := userPermissions[u3.Username()]
 			assert.Len(t, u3Permissions, 1)
 			assert.Equal(t, u3Permissions[evergreen.PermissionTasks], evergreen.TasksView.Value)
