@@ -155,6 +155,81 @@ var (
 		},
 	}
 
+	// This should reflect Task.ResultStatus()
+	resultStatusExpression = bson.M{
+		"$switch": bson.M{
+			"branches": []bson.M{
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []interface{}{"$" + ActivatedKey, false}},
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+						},
+					},
+					"then": evergreen.TaskInactive,
+				},
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []interface{}{"$" + ActivatedKey, true}},
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
+						},
+					},
+					"then": evergreen.TaskUnstarted,
+				},
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskFailed}},
+							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailDescription), evergreen.TaskDescriptionHeartbeat}},
+						},
+					},
+					"then": evergreen.TaskSystemUnresponse,
+				},
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskFailed}},
+							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+						},
+					},
+					"then": evergreen.TaskSystemTimedOut,
+				},
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskFailed}},
+							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
+						},
+					},
+					"then": evergreen.TaskSystemFailed,
+				},
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskFailed}},
+							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSetup}},
+						},
+					},
+					"then": evergreen.TaskSetupFailed,
+				},
+				{
+					"case": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + StatusKey, evergreen.TaskFailed}},
+							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+						},
+					},
+					"then": evergreen.TaskTestTimedOut,
+				},
+			},
+			"default": "$" + StatusKey,
+		},
+	}
+
 	// This should reflect Task.GetDisplayStatus()
 	displayStatusExpression = bson.M{
 		"$switch": bson.M{
