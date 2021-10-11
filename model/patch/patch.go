@@ -882,9 +882,14 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 		if err != nil {
 			return nil, errors.Wrap(err, "can't fetch patch contents")
 		}
-		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
-		if err != nil {
-			return nil, errors.Wrap(err, "can't convert diff to mbox format")
+		var mboxPatch string
+		if diff[:4] == "From" {
+			mboxPatch = diff
+		} else {
+			mboxPatch, err = addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
+			if err != nil {
+				return nil, errors.Wrap(err, "can't convert diff to mbox format")
+			}
 		}
 		patchFileID := mgobson.NewObjectId()
 		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
