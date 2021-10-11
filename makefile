@@ -35,12 +35,6 @@ export GOROOT := $(shell cygpath -m $(GOROOT))
 endif
 
 export GO111MODULE := off
-# Using the race detector requires that cgo be enabled.
-ifneq ($(RACE_DETECTOR),)
-export CGO_ENABLED := 1
-else
-export CGO_ENABLED := 0
-endif
 # end go runtime settings
 
 
