@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/timber"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -20,7 +21,8 @@ type GetOptions struct {
 	// Request information. See Cedar's REST documentation for more
 	// information:
 	// `https://github.com/evergreen-ci/cedar/wiki/Rest-V1-Usage`.
-	TaskID string
+	TaskID    string
+	Execution *int
 }
 
 // Validate ensures TestResultsGetOptions is configured correctly.
@@ -29,12 +31,13 @@ func (opts GetOptions) Validate() error {
 
 	catcher.Add(opts.Cedar.Validate())
 	catcher.NewWhen(opts.TaskID == "", "must provide a task id")
+	catcher.NewWhen(opts.Execution == nil, "must provide an execution #")
 
 	return catcher.Resolve()
 }
 
 func (opts GetOptions) parse() string {
-	urlString := fmt.Sprintf("%s/rest/v1/test_results/task_id/%s/count", opts.Cedar.BaseURL, url.PathEscape(opts.TaskID))
+	urlString := fmt.Sprintf("%s/rest/v1/test_results/task_id/%s/%d/count", opts.Cedar.BaseURL, url.PathEscape(opts.TaskID), utility.FromIntPtr(opts.Execution))
 	return urlString
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/timber"
 	perf "github.com/evergreen-ci/timber/perf"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -24,7 +25,7 @@ func (opts GetCedarPerfCountOptions) convert() perf.GetOptions {
 			BaseURL: fmt.Sprintf("https://%s", opts.BaseURL),
 		},
 		TaskID:    opts.TaskID,
-		Execution: opts.Execution,
+		Execution: utility.ToIntPtr(opts.Execution),
 	}
 }
 
