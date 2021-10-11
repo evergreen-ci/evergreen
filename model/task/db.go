@@ -857,13 +857,6 @@ func ByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Task, 
 			},
 		}
 		oldTaskPipeline = append(oldTaskPipeline, match)
-		// filter by the old taskids that have the highest execution
-		sort := bson.M{
-			"$sort": bson.M{
-				ExecutionKey: -1,
-			},
-		}
-		oldTaskPipeline = append(oldTaskPipeline, sort)
 		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
 			return nil, errors.Wrap(err, "error finding tasks in old tasks collection")
 		}
