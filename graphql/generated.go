@@ -1249,7 +1249,7 @@ type UserResolver interface {
 type VersionResolver interface {
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
 
-	TaskStatusCounts(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*StatusCount, error)
+	TaskStatusCounts(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error)
 	BuildVariants(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error)
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Patch(ctx context.Context, obj *model.APIVersion) (*model.APIPatch, error)
@@ -6381,7 +6381,7 @@ type Query {
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
-  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
+  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]! @deprecated(reason: "Use version.buildVariants instead")
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   spruceConfig: SpruceConfig
@@ -23339,7 +23339,7 @@ func (ec *executionContext) _SpruceConfig_spawnHost(ctx context.Context, field g
 	return ec.marshalNSpawnHostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISpawnHostConfig(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _StatusCount_status(ctx context.Context, field graphql.CollectedField, obj *StatusCount) (ret graphql.Marshaler) {
+func (ec *executionContext) _StatusCount_status(ctx context.Context, field graphql.CollectedField, obj *task.StatusCount) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -23373,7 +23373,7 @@ func (ec *executionContext) _StatusCount_status(ctx context.Context, field graph
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _StatusCount_count(ctx context.Context, field graphql.CollectedField, obj *StatusCount) (ret graphql.Marshaler) {
+func (ec *executionContext) _StatusCount_count(ctx context.Context, field graphql.CollectedField, obj *task.StatusCount) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -30339,9 +30339,9 @@ func (ec *executionContext) _Version_taskStatusCounts(ctx context.Context, field
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*StatusCount)
+	res := resTmp.([]*task.StatusCount)
 	fc.Result = res
-	return ec.marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐStatusCountᚄ(ctx, field.Selections, res)
+	return ec.marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Version_buildVariants(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
@@ -37210,7 +37210,7 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 
 var statusCountImplementors = []string{"StatusCount"}
 
-func (ec *executionContext) _StatusCount(ctx context.Context, sel ast.SelectionSet, obj *StatusCount) graphql.Marshaler {
+func (ec *executionContext) _StatusCount(ctx context.Context, sel ast.SelectionSet, obj *task.StatusCount) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, statusCountImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -41092,11 +41092,11 @@ func (ec *executionContext) unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreen�
 	return ec.unmarshalInputSpawnVolumeInput(ctx, v)
 }
 
-func (ec *executionContext) marshalNStatusCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐStatusCount(ctx context.Context, sel ast.SelectionSet, v StatusCount) graphql.Marshaler {
+func (ec *executionContext) marshalNStatusCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx context.Context, sel ast.SelectionSet, v task.StatusCount) graphql.Marshaler {
 	return ec._StatusCount(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐStatusCount(ctx context.Context, sel ast.SelectionSet, v *StatusCount) graphql.Marshaler {
+func (ec *executionContext) marshalNStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx context.Context, sel ast.SelectionSet, v *task.StatusCount) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -43382,7 +43382,7 @@ func (ec *executionContext) marshalOSpruceConfig2ᚖgithubᚗcomᚋevergreenᚑc
 	return ec._SpruceConfig(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐStatusCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*StatusCount) graphql.Marshaler {
+func (ec *executionContext) marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*task.StatusCount) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -43409,7 +43409,7 @@ func (ec *executionContext) marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreen�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐStatusCount(ctx, sel, v[i])
+			ret[i] = ec.marshalNStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)

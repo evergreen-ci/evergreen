@@ -188,7 +188,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			return errors.WithStack(err)
 		}
 	}
-	ok, err := model.DoProjectActivation(projectRef.Id)
+	ok, err := model.DoProjectActivation(projectRef.Id, time.Now())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "problem activating recent commit for project",
