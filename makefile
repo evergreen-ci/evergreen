@@ -35,6 +35,12 @@ export GOROOT := $(shell cygpath -m $(GOROOT))
 endif
 
 export GO111MODULE := off
+# Using the race detector requires that cgo be enabled.
+ifneq ($(RACE_DETECTOR),)
+export CGO_ENABLED := 1
+else
+export CGO_ENABLED := 0
+endif
 # end go runtime settings
 
 
@@ -83,7 +89,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
 	@$(gobin) build -o $@ $<
