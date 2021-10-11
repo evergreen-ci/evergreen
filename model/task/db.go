@@ -814,7 +814,7 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 
 // ByExecutionTasksAndMaxExecution returns the tasks corresponding to the passed in taskIds and execution,
 // or the most recent executions of those tasks if they do not have a matching execution
-func ByExecutionTasksAndMaxExecution(taskIds []string, execution int) ([]Task, error) {
+func ByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Task, error) {
 	pipeline := []bson.M{}
 	match := bson.M{
 		"$match": bson.M{
@@ -838,8 +838,9 @@ func ByExecutionTasksAndMaxExecution(taskIds []string, execution int) ([]Task, e
 	}
 	missingTasks := []string{}
 	for _, taskId := range taskIds {
-		if _, ok := taskMap[taskId]; !ok {
-			missingTasks = append(missingTasks, taskId)
+		tId := utility.FromStringPtr(taskId)
+		if _, ok := taskMap[tId]; !ok {
+			missingTasks = append(missingTasks, tId)
 		}
 	}
 	if len(missingTasks) > 0 {

@@ -2775,6 +2775,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 }
 
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
+	tasksToFetch := []*string{utility.ToStringPtr("t1"), utility.ToStringPtr("t2")}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
@@ -2802,7 +2803,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := ByExecutionTasksAndMaxExecution([]string{"t1", "t2"}, 1)
+		tasks, err := ByExecutionTasksAndMaxExecution(tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
@@ -2840,7 +2841,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := ByExecutionTasksAndMaxExecution([]string{"t1", "t2"}, 2)
+		tasks, err := ByExecutionTasksAndMaxExecution(tasksToFetch, 2)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
@@ -2883,7 +2884,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := ByExecutionTasksAndMaxExecution([]string{"t1", "t2"}, 1)
+		tasks, err := ByExecutionTasksAndMaxExecution(tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
