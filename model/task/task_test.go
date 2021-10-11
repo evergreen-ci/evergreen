@@ -2803,7 +2803,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := ByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
@@ -2841,7 +2841,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := ByExecutionTasksAndMaxExecution(tasksToFetch, 2)
+		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 2)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
@@ -2884,7 +2884,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := ByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))

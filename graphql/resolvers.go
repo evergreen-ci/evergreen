@@ -3095,7 +3095,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
 	}
-	tasks, err := task.ByExecutionTasksAndMaxExecution(obj.ExecutionTasks, obj.Execution)
+	tasks, err := task.FindByExecutionTasksAndMaxExecution(obj.ExecutionTasks, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding execution tasks for task: %s : %s", *obj.Id, err.Error()))
 	}
@@ -3104,7 +3104,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 		apiTask := &restModel.APITask{}
 		err = apiTask.BuildFromService(&t)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, apiTask)
 	}

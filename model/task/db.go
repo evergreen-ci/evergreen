@@ -812,9 +812,9 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
-// ByExecutionTasksAndMaxExecution returns the tasks corresponding to the passed in taskIds and execution,
+// FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the passed in taskIds and execution,
 // or the most recent executions of those tasks if they do not have a matching execution
-func ByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Task, error) {
+func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Task, error) {
 	pipeline := []bson.M{}
 	match := bson.M{
 		"$match": bson.M{
@@ -827,22 +827,17 @@ func ByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Task, 
 		},
 	}
 	pipeline = append(pipeline, match)
-	// Get the taskIds that were not found in the previous match stage
 	result := []Task{}
 	if err := Aggregate(pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "Error finding tasks in task collection")
 	}
-	taskMap := map[string]bool{}
+	// Get the taskIds that were not found in the previous match stage
+	foundIds := []string{}
 	for _, t := range result {
-		taskMap[t.Id] = true
+		foundIds = append(foundIds, t.Id)
 	}
-	missingTasks := []string{}
-	for _, taskId := range taskIds {
-		tId := utility.FromStringPtr(taskId)
-		if _, ok := taskMap[tId]; !ok {
-			missingTasks = append(missingTasks, tId)
-		}
-	}
+
+	missingTasks, _ := utility.StringSliceSymmetricDifference(utility.FromStringPtrSlice(taskIds), foundIds)
 	if len(missingTasks) > 0 {
 		oldTasks := []Task{}
 		oldTaskPipeline := []bson.M{}
