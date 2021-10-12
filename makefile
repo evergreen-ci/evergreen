@@ -189,7 +189,11 @@ $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
 #end generated config
 
 # generate rest model
-generate-rest-model:$(buildDir)/codegen
+# build-codegen is a special target to build all packages before performing code generation so that goimports can
+# properly locate package imports.
+build-codegen:
+	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach target,$(packages),./$(target))))
+generate-rest-model:$(buildDir)/codegen build-codegen
 	./$(buildDir)/codegen --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
 $(buildDir)/codegen:
 	$(gobin) build -o $(buildDir)/codegen cmd/codegen/entry.go
@@ -512,6 +516,9 @@ $(buildDir):
 $(tmpDir):$(buildDir)
 	mkdir -p $@
 $(buildDir)/output.%.test:$(tmpDir) .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+# Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
+$(buildDir)/output.cmd-codegen-core.test: $(tmpDir) build-codegen .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test:$(tmpDir) .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
