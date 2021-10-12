@@ -1,4 +1,7 @@
 directive @requireSuperUser on FIELD_DEFINITION 
+directive @requireEditProjectSettings(
+  projectId: String
+) on FIELD_DEFINITION
 
 type Query {
   userPatches(
@@ -77,15 +80,15 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
-  projectSettings(identifier: String!): ProjectSettings!
+  projectSettings(identifier: String!): ProjectSettings! @requireEditProjectSettings(projectId: projectId)
 }
 
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: ProjectInput!): Project! @requireSuperUser
-  attachProjectToRepo(projectId: String!): Project!
-  detachProjectFromRepo(projectId: String!): Project!
+  attachProjectToRepo(projectId: String!): Project! @requireEditProjectSettings(projectId: projectId)
+  detachProjectFromRepo(projectId: String!): Project! @requireEditProjectSettings(projectId: projectId)
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String

@@ -3693,5 +3693,21 @@ func New(apiURL string) Config {
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
 	}
+	c.Directives.RequireEditProjectSettings = func(ctx context.Context, obj interface{}, next graphql.Resolver, projectId *string) (res interface{}, err error) {
+		user := gimlet.GetUser(ctx)
+		if user == nil {
+			return nil, Forbidden.Send(ctx, "user not logged in")
+		}
+		opts := gimlet.PermissionOpts{
+			Resource:      *projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s is not a project admin and does not have permission to access this resolver", user.Username()))
+	}
 	return c
 }

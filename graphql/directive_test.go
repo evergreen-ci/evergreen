@@ -38,7 +38,15 @@ func setupPermissions(t *testing.T, state *atomicGraphQLState) {
 		Scope:       "superuser_scope",
 		Permissions: map[string]int{"admin_settings": 10, "project_create": 10, "distro_create": 10, "modify_roles": 10},
 	}
+	projectAdminRole := gimlet.Role{
+		ID:          "projectAdmin",
+		Name:        "projectEdit",
+		Scope:       "projectAdmin",
+		Permissions: map[string]int{"project_settings": 20},
+	}
 	err = roleManager.UpdateRole(superUserRole)
+	require.NoError(t, err)
+	err = roleManager.UpdateRole(projectAdminRole)
 	require.NoError(t, err)
 
 	superUserScope := gimlet.Scope{
@@ -47,7 +55,15 @@ func setupPermissions(t *testing.T, state *atomicGraphQLState) {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{"super_user"},
 	}
+	projectAdminScope := gimlet.Scope{
+		ID:        "projectAdmin",
+		Name:      "projectAdminScope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"testProject"},
+	}
 	err = roleManager.AddScope(superUserScope)
+	require.NoError(t, err)
+	err = roleManager.AddScope(projectAdminScope)
 	require.NoError(t, err)
 }
 
@@ -85,6 +101,45 @@ func TestSuperUser(t *testing.T) {
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireSuperUser(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
+}
+
+func TestProjectAdmin(t *testing.T) {
+	setupPermissions(t, &atomicGraphQLState{})
+	const email = "testuser@mongodb.com"
+	const accessToken = "access_token"
+	const refreshToken = "refresh_token"
+	config := graphql.New("/graphql")
+	require.NotNil(t, config)
+	ctx := context.Background()
+	obj := interface{}(nil)
+
+	// callCount keeps track of how many times the function is called
+	callCount := 0
+	next := func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		callCount++
+		return nil, nil
+	}
+
+	usr, err := user.GetOrCreateUser(apiUser, "Test User", email, accessToken, refreshToken, []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+	projectName := "testProject"
+	res, err := config.Directives.RequireEditProjectSettings(ctx, obj, next, &projectName)
+	require.Error(t, err, "user testuser does not have permission to access this resolver")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	err = usr.AddRole("projectAdmin")
+	require.NoError(t, err)
+
+	res, err = config.Directives.RequireEditProjectSettings(ctx, obj, next, &projectName)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)

@@ -90,7 +90,7 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
 		{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
 	}
-	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser"}
+	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "modify_project_tasks", "superuser", "projectAdmin"}
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
@@ -164,7 +164,15 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		Scope:       "superuser_scope",
 		Permissions: map[string]int{"admin_settings": 10, "project_create": 10, "distro_create": 10, "modify_roles": 10},
 	}
+	projectAdminRole := gimlet.Role{
+		ID:          "projectAdmin",
+		Name:        "projectEdit",
+		Scope:       "projectAdmin",
+		Permissions: map[string]int{"project_settings": 20},
+	}
 	err = roleManager.UpdateRole(superUserRole)
+	require.NoError(t, err)
+	err = roleManager.UpdateRole(projectAdminRole)
 	require.NoError(t, err)
 
 	superUserScope := gimlet.Scope{
@@ -173,7 +181,17 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{"super_user"},
 	}
+	projectAdminScope := gimlet.Scope{
+		ID:        "projectAdmin",
+		Name:      "projectAdminScope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"testProject"},
+	}
+
 	err = roleManager.AddScope(superUserScope)
+	require.NoError(t, err)
+
+	err = roleManager.AddScope(projectAdminScope)
 	require.NoError(t, err)
 
 	state.apiKey = apiKey
