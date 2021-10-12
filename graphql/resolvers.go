@@ -3707,7 +3707,7 @@ func New(apiURL string) Config {
 		if user.HasPermission(opts) {
 			return next(ctx)
 		}
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s is not a project admin and does not have permission to access this resolver", user.Username()))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver for the project %s", user.Username(), *projectId))
 	}
 	return c
 }
