@@ -84,7 +84,7 @@ type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
-  createProject(project: ProjectInput!): Project! @requireSuperUser
+  createProject(project: CreateProjectInput!): Project! @requireSuperUser
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -401,6 +401,12 @@ input ProjectInput {
 
   hidden: Boolean
   useRepoSettings: Boolean
+}
+
+input CreateProjectInput {
+  identifier: String!
+  owner: String!
+  repo: String!
 }
 
 input TriggerAliasInput {

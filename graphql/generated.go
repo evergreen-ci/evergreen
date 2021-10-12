@@ -6440,7 +6440,7 @@ type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
-  createProject(project: ProjectInput!): Project! @requireSuperUser
+  createProject(project: CreateProjectInput!): Project! @requireSuperUser
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -6757,6 +6757,12 @@ input ProjectInput {
 
   hidden: Boolean
   useRepoSettings: Boolean
+}
+
+input CreateProjectInput {
+  identifier: String!
+  owner: String!
+  repo: String!
 }
 
 input TriggerAliasInput {
@@ -7893,7 +7899,7 @@ func (ec *executionContext) field_Mutation_createProject_args(ctx context.Contex
 	args := map[string]interface{}{}
 	var arg0 model.APIProjectRef
 	if tmp, ok := rawArgs["project"]; ok {
-		arg0, err = ec.unmarshalNProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, tmp)
+		arg0, err = ec.unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -32814,6 +32820,36 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
+	var it model.APIProjectRef
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "identifier":
+			var err error
+			it.Identifier, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "owner":
+			var err error
+			it.Owner, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "repo":
+			var err error
+			it.Repo, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
 	var it DisplayTask
 	var asMap = obj.(map[string]interface{})
@@ -40581,6 +40617,10 @@ func (ec *executionContext) marshalNCommitQueueItem2githubᚗcomᚋevergreenᚑc
 	return ec._CommitQueueItem(ctx, sel, &v)
 }
 
+func (ec *executionContext) unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
+	return ec.unmarshalInputCreateProjectInput(ctx, v)
+}
+
 func (ec *executionContext) marshalNDependency2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependency(ctx context.Context, sel ast.SelectionSet, v Dependency) graphql.Marshaler {
 	return ec._Dependency(ctx, sel, &v)
 }
@@ -41747,10 +41787,6 @@ func (ec *executionContext) marshalNProjectBuildVariant2ᚖgithubᚗcomᚋevergr
 		return graphql.Null
 	}
 	return ec._ProjectBuildVariant(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
-	return ec.unmarshalInputProjectInput(ctx, v)
 }
 
 func (ec *executionContext) marshalNProjectSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx context.Context, sel ast.SelectionSet, v model.APIProjectSettings) graphql.Marshaler {

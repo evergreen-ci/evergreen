@@ -120,6 +120,8 @@ models:
     fields:
       patches:
         resolver: true
+  CreateProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   CommitQueueParams:
