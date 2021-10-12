@@ -884,34 +884,26 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 		}
 		var mboxPatch string
 		if IsMailboxDiff(diff) {
-			newModulePatches = append(newModulePatches, ModulePatch{
-				ModuleName: modulePatch.ModuleName,
-				IsMbox:     true,
-				PatchSet: PatchSet{
-					PatchFileId:    modulePatch.PatchSet.PatchFileId,
-					CommitMessages: []string{commitMessage},
-					Summary:        modulePatch.PatchSet.Summary,
-				},
-			})
-		} else {
-			mboxPatch, err = addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
-			if err != nil {
-				return nil, errors.Wrap(err, "can't convert diff to mbox format")
-			}
-			patchFileID := mgobson.NewObjectId()
-			if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
-				return nil, errors.Wrap(err, "can't write new patch to db")
-			}
-			newModulePatches = append(newModulePatches, ModulePatch{
-				ModuleName: modulePatch.ModuleName,
-				IsMbox:     true,
-				PatchSet: PatchSet{
-					PatchFileId:    patchFileID.Hex(),
-					CommitMessages: []string{commitMessage},
-					Summary:        modulePatch.PatchSet.Summary,
-				},
-			})
+			newModulePatches = append(newModulePatches, modulePatch)
+			continue
 		}
+		mboxPatch, err = addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't convert diff to mbox format")
+		}
+		patchFileID := mgobson.NewObjectId()
+		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
+			return nil, errors.Wrap(err, "can't write new patch to db")
+		}
+		newModulePatches = append(newModulePatches, ModulePatch{
+			ModuleName: modulePatch.ModuleName,
+			IsMbox:     true,
+			PatchSet: PatchSet{
+				PatchFileId:    patchFileID.Hex(),
+				CommitMessages: []string{commitMessage},
+				Summary:        modulePatch.PatchSet.Summary,
+			},
+		})
 
 	}
 
