@@ -185,7 +185,7 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		ID:        "projectAdmin",
 		Name:      "projectAdminScope",
 		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"testProject"},
+		Resources: []string{"projectId"},
 	}
 
 	err = roleManager.AddScope(superUserScope)
