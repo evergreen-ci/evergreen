@@ -883,7 +883,7 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 			return nil, errors.Wrap(err, "can't fetch patch contents")
 		}
 		var mboxPatch string
-		if diff[:4] == "From" {
+		if len(diff) >= 4 && diff[:4] == "From" {
 			mboxPatch = diff
 		} else {
 			mboxPatch, err = addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
