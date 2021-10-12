@@ -536,9 +536,6 @@ tasks:
         vars:
           target: revendor
       - func: run-make
-        vars:
-          target: build
-      - func: run-make
         vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
