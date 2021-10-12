@@ -77,13 +77,13 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
-  projectSettings(identifier: String!, isRepo: Boolean!): ProjectSettings!
+  projectSettings(identifier: String!): ProjectSettings!
 }
 
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!, isRepo: Boolean!): ProjectSettings!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   createProject(project: ProjectInput!): Project! @requireSuperUser
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
@@ -320,7 +320,7 @@ input SubscriptionInput {
   subscriber: SubscriberInput!
   owner_type: String
   owner: String
-  trigger_data: StringMap
+  trigger_data: StringMap!
 }
 
 input UserSettingsInput {
@@ -363,7 +363,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String!
+  id: String
   identifier: String
   displayName: String
   enabled: Boolean

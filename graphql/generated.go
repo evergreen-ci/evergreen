@@ -406,7 +406,7 @@ type ComplexityRoot struct {
 		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                   func(childComplexity int, taskID string) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
-		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section string, isRepo bool) int
+		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section string) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
@@ -648,7 +648,7 @@ type ComplexityRoot struct {
 		PatchBuildVariants       func(childComplexity int, patchID string) int
 		PatchTasks               func(childComplexity int, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) int
 		Project                  func(childComplexity int, projectID string) int
-		ProjectSettings          func(childComplexity int, identifier string, isRepo bool) int
+		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
 		SpruceConfig             func(childComplexity int) int
 		SubnetAvailabilityZones  func(childComplexity int) int
@@ -1070,7 +1070,7 @@ type IssueLinkResolver interface {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
-	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string, isRepo bool) (*model.APIProjectSettings, error)
+	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
@@ -1180,7 +1180,7 @@ type QueryResolver interface {
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error)
 	TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error)
 	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
-	ProjectSettings(ctx context.Context, identifier string, isRepo bool) (*model.APIProjectSettings, error)
+	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
 }
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
@@ -2862,7 +2862,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveProjectSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string), args["isRepo"].(bool)), true
+		return e.complexity.Mutation.SaveProjectSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string)), true
 
 	case "Mutation.saveSubscription":
 		if e.complexity.Mutation.SaveSubscription == nil {
@@ -4254,7 +4254,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.ProjectSettings(childComplexity, args["identifier"].(string), args["isRepo"].(bool)), true
+		return e.complexity.Query.ProjectSettings(childComplexity, args["identifier"].(string)), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -6433,13 +6433,13 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
-  projectSettings(identifier: String!, isRepo: Boolean!): ProjectSettings!
+  projectSettings(identifier: String!): ProjectSettings!
 }
 
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!, isRepo: Boolean!): ProjectSettings!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   createProject(project: ProjectInput!): Project! @requireSuperUser
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
@@ -6676,7 +6676,7 @@ input SubscriptionInput {
   subscriber: SubscriberInput!
   owner_type: String
   owner: String
-  trigger_data: StringMap
+  trigger_data: StringMap!
 }
 
 input UserSettingsInput {
@@ -6719,7 +6719,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String!
+  id: String
   identifier: String
   displayName: String
   enabled: Boolean
@@ -8279,14 +8279,6 @@ func (ec *executionContext) field_Mutation_saveProjectSettingsForSection_args(ct
 		}
 	}
 	args["section"] = arg1
-	var arg2 bool
-	if tmp, ok := rawArgs["isRepo"]; ok {
-		arg2, err = ec.unmarshalNBoolean2bool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["isRepo"] = arg2
 	return args, nil
 }
 
@@ -8959,14 +8951,6 @@ func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context
 		}
 	}
 	args["identifier"] = arg0
-	var arg1 bool
-	if tmp, ok := rawArgs["isRepo"]; ok {
-		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["isRepo"] = arg1
 	return args, nil
 }
 
@@ -15375,7 +15359,7 @@ func (ec *executionContext) _Mutation_saveProjectSettingsForSection(ctx context.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveProjectSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string), args["isRepo"].(bool))
+		return ec.resolvers.Mutation().SaveProjectSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -22875,7 +22859,7 @@ func (ec *executionContext) _Query_projectSettings(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ProjectSettings(rctx, args["identifier"].(string), args["isRepo"].(bool))
+		return ec.resolvers.Query().ProjectSettings(rctx, args["identifier"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33352,7 +33336,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		switch k {
 		case "id":
 			var err error
-			it.Id, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.Id, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -33946,7 +33930,7 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 			}
 		case "trigger_data":
 			var err error
-			it.TriggerData, err = ec.unmarshalOStringMap2map(ctx, v)
+			it.TriggerData, err = ec.unmarshalNStringMap2map(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42084,6 +42068,29 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalNString2string(ctx, sel, *v)
+}
+
+func (ec *executionContext) unmarshalNStringMap2map(ctx context.Context, v interface{}) (map[string]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	return UnmarshalStringMap(v)
+}
+
+func (ec *executionContext) marshalNStringMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := MarshalStringMap(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNSubscriber2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSubscriber(ctx context.Context, sel ast.SelectionSet, v Subscriber) graphql.Marshaler {

@@ -10,7 +10,6 @@ mutation {
             }
         }
         section: "variables",
-        isRepo: false
     ) {
         vars {
             vars
