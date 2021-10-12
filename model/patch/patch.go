@@ -882,7 +882,7 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 		if err != nil {
 			return nil, errors.Wrap(err, "can't fetch patch contents")
 		}
-		if modulePatch.IsMbox {
+		if IsMailboxDiff(diff) {
 			newModulePatches = append(newModulePatches, modulePatch)
 			continue
 		}
