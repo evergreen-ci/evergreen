@@ -3244,16 +3244,20 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 	index := 0
 	versionsCheckedCount := 0
+
+	// We will loop through each version returned from GetMainlineCommitVersionsWithOptions and see if there is a commit that matches the filter paramaters (if any)
+	// If there is a match, we will add it to the array of versions to be returned to the user,
+	// If there are no matches, we will call GetMainlineCommitVersionsWithOptions again with the next order number to check and repeat the process
 	for matchingVersionCount < limit {
 		// If we no longer have any more versions to check break out and return what we have
 		if index >= len(versions) {
 			break
 		}
-		// If we have checked more versions then the MaxMainlineCommitVersionLimit then break out and return what we have
+		// If we have checked more versions than the MaxMainlineCommitVersionLimit then break out and return what we have
 		if versionsCheckedCount >= model.MaxMainlineCommitVersionLimit {
 			// Return an error if we did not find any versions that match
 			if matchingVersionCount == 0 {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: exceeded max limit of %d versions", model.MaxMainlineCommitVersionLimit))
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Matching version not found in %d most recent versions", model.MaxMainlineCommitVersionLimit))
 			}
 			break
 		}
@@ -3276,7 +3280,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		shouldCollapse := false
 		if !utility.FromBoolPtr(v.Activated) {
 			shouldCollapse = true
-		} else if buildVariantOptions != nil && (len(buildVariantOptions.Tasks) > 0 || len(buildVariantOptions.Variants) > 0 || len(buildVariantOptions.Statuses) > 0) {
+		} else if buildVariantOptions.isPopulated() {
 			opts := task.HasMatchingTasksOptions{
 				TaskNames: buildVariantOptions.Tasks,
 				Variants:  buildVariantOptions.Variants,
@@ -3290,14 +3294,14 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				shouldCollapse = true
 			}
 		}
-		// If a version is activated we append it directly to our returned list of mainlineCommits
+		// If a version matches our filter critera we append it directly to our returned list of mainlineCommits
 		if !shouldCollapse {
 			matchingVersionCount++
 			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
 			mainlineCommitVersion.Version = &apiVersion
 
 		} else {
-			// If a version is not activated we roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
+			// If a version does not match our filter criteria roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
 			// and then append it to our returned list.
 			// If we have any versions already we should check the most recent one first otherwise create a new one
 			if len(mainlineCommits.Versions) > 0 {
@@ -3323,7 +3327,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 		index++
 		// If we have exhausted all of our versions we should fetch some more.
-		if index == len(versions) {
+		if index == len(versions) && matchingVersionCount < limit {
 			skipOrderNumber := versions[len(versions)-1].RevisionOrderNumber
 			opts := model.MainlineCommitVersionOptions{
 				Limit:           limit,

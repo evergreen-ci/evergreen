@@ -3083,7 +3083,7 @@ type HasMatchingTasksOptions struct {
 	Statuses  []string
 }
 
-// HasMatchingTasks returns true if the version has tasks with the given statuses,
+// HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
 	options := GetTasksByVersionOptions{
 		TaskNames: opts.TaskNames,
