@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -27,7 +28,8 @@ func init() {
 }
 
 type versionActivationCatchup struct {
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	job.Base  `bson:"metadata" json:"metadata" yaml:"metadata"`
+	TimeStamp string `bson:"timestamp" json:"timestamp" yaml:"timestamp"`
 }
 
 func makeVersionActivationCatchupJob() *versionActivationCatchup {
@@ -44,10 +46,10 @@ func makeVersionActivationCatchupJob() *versionActivationCatchup {
 
 }
 
-func NewVersionActivationJob(id string) amboy.Job {
+func NewVersionActivationJob(ts string) amboy.Job {
 	j := makeVersionActivationCatchupJob()
-
-	j.SetID(fmt.Sprintf("%s.%s", versionActivationCatchupJobName, id))
+	j.TimeStamp = ts
+	j.SetID(fmt.Sprintf("%s.%s", versionActivationCatchupJobName, ts))
 	j.SetPriority(-1)
 	return j
 }
@@ -76,13 +78,19 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 		return
 	}
 
+	ts, err := time.Parse(TSFormat, j.TimeStamp)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
 	count := 0
 	projectsActivated := []string{}
 	for _, ref := range projects {
 		if !ref.IsEnabled() {
 			continue
 		}
-		ok, err := repotracker.ActivateBuildsForProject(ref)
+		ok, err := repotracker.ActivateBuildsForProject(ref, ts)
 		j.AddError(errors.Wrapf(err,
 			"problem activating builds for project %s", ref.Id))
 		if ok {
@@ -97,5 +105,6 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 		"projects_activated": projectsActivated,
 		"active":             count,
 		"errors":             j.HasErrors(),
+		"timestamp_used":     ts,
 	})
 }

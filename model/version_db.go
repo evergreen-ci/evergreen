@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -225,8 +226,8 @@ func VersionBySystemRequesterOrdered(projectId string, startOrder int) db.Q {
 }
 
 // ByMostRecentNonIgnored finds all non-ignored versions within a project,
-// ordered by most recently created to oldest.
-func VersionByMostRecentNonIgnored(projectId string) db.Q {
+// ordered by most recently created to oldest, before a given time.
+func VersionByMostRecentNonIgnored(projectId string, ts time.Time) db.Q {
 	return db.Query(
 		bson.M{
 			VersionRequesterKey: bson.M{
@@ -234,6 +235,7 @@ func VersionByMostRecentNonIgnored(projectId string) db.Q {
 			},
 			VersionIdentifierKey: projectId,
 			VersionIgnoredKey:    bson.M{"$ne": true},
+			VersionCreateTimeKey: bson.M{"$lte": ts},
 		},
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }

@@ -6381,7 +6381,7 @@ type Query {
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
-  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
+  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]! @deprecated(reason: "Use version.buildVariants instead")
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   spruceConfig: SpruceConfig
