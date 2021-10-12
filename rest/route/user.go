@@ -357,7 +357,11 @@ func (h *allUsersPermissionsGetHandler) Parse(ctx context.Context, r *http.Reque
 
 func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	// get roles for resource ID
-	allRoles, _ := h.rm.GetAllRoles()
+	allRoles, err := h.rm.GetAllRoles()
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error getting roles"))
+	}
+
 	roles, err := h.rm.FilterForResource(allRoles, h.input.ResourceId, h.input.ResourceType)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding roles for resource"))
@@ -365,8 +369,11 @@ func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responde
 	roleIds := []string{}
 	permissionsMap := map[string]gimlet.Permissions{}
 	for _, role := range roles {
-		roleIds = append(roleIds, role.ID)
-		permissionsMap[role.ID] = role.Permissions
+		// don't include basic roles
+		if !utility.StringSliceContains(evergreen.BasicAccessRoles, role.ID) {
+			roleIds = append(roleIds, role.ID)
+			permissionsMap[role.ID] = role.Permissions
+		}
 	}
 	// get users with roles
 	usersWithRoles, err := user.FindByRoles(roleIds)
@@ -445,7 +452,9 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if u == nil {
 		return gimlet.NewJSONErrorResponse(errors.New("user not found"))
 	}
-	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, u.Roles(), h.rm)
+	rolesToSearch, _ := utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.BasicAccessRoles)
+	// filter out the roles that everybody has automatically
+	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, rolesToSearch, h.rm)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting permission summary",
