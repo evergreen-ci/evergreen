@@ -14,16 +14,16 @@ tasks:
           token: ${github}
 
 modules:
-  - name: evergreen
-    repo: https://github.com/deafgoat/mci_test.git
+  - name: enterprise
+    repo: https://github.com/10gen/mongo-enterprise-modules.git
     prefix: src/mongo/db/modules
-    branch: master
+    branch: v2.6
 
 buildvariants:
   - name: linux-64
     display_name: Linux 64-bit
     modules:
-      - evergreen
+      - enterprise
     test_flags: --continue-on-failure
     expansions:
       blah: "blah"
