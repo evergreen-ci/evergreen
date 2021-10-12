@@ -627,7 +627,7 @@ const (
 type GetProjectOpts struct {
 	Ref          *ProjectRef
 	PatchOpts    *PatchOpts
-	LocalModules *map[string]string
+	LocalModules map[string]string
 	RemotePath   string
 	Revision     string
 	Token        string
@@ -692,14 +692,14 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 
 func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName, filename string) ([]byte, error) {
 	// Look through any given local modules first
-	if opts.LocalModules != nil {
-		if path, ok := (*opts.LocalModules)[moduleName]; ok {
-			moduleOpts := GetProjectOpts{
-				RemotePath:   fmt.Sprintf("%s/%s", path, filename),
-				ReadFileFrom: ReadFromLocal,
-			}
-			return retrieveFile(ctx, moduleOpts)
+	if path, ok := opts.LocalModules[moduleName]; ok {
+		moduleOpts := GetProjectOpts{
+			RemotePath:   fmt.Sprintf("%s/%s", path, filename),
+			ReadFileFrom: ReadFromLocal,
 		}
+		return retrieveFile(ctx, moduleOpts)
+	} else if opts.ReadFileFrom == ReadFromLocal {
+		return nil, errors.Errorf("local path for module '%s' is unspecified", moduleName)
 	}
 	// Retrieve from github
 	module, err := GetModuleByName(modules, moduleName)
