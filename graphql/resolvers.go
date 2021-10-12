@@ -3030,8 +3030,8 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 				return false, err
 			}
 			for _, projectName := range perfPlugin.Projects {
-				if projectName != pRef.Id && projectName != pRef.Identifier {
-					return false, nil
+				if projectName == pRef.Id || projectName == pRef.Identifier {
+					return true, nil
 				}
 			}
 		}
@@ -3050,7 +3050,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 			return false, nil
 		}
 	}
-	return true, nil
+	return false, nil
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
