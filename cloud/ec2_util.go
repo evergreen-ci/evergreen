@@ -320,7 +320,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 		return errors.New("instance missing public dns name")
 	}
 	if instance.PrivateIpAddress == nil {
-		return errors.New("instance missing public ip address")
+		return errors.New("instance missing private ip address")
 	}
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
