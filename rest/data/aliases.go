@@ -37,7 +37,7 @@ func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string, aliasesT
 	}
 
 	if len(aliases) == 0 && repoId != "" {
-		aliases, err = model.FindAliasesForProject(repoId, "")
+		aliases, err = model.FindAliasesForRepo(repoId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding aliases for repo '%s'", repoId)
 		}

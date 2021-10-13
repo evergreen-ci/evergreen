@@ -999,7 +999,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.True(t, projectVars.PrivateVars["sdc"])
 	assert.True(t, projectVars.RestrictedVars["ever"])
 
-	projectAliases, err = FindAliasesForProject(repoRef.Id, "")
+	projectAliases, err = FindAliasesForRepo(repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, projectAliases, 2)
 	for _, a := range projectAliases {

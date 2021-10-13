@@ -135,7 +135,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(projectAliases) == 0 && projRef.UseRepoSettings {
-		projectAliases, err = model.FindAliasesForProject(projRef.RepoRefId, "")
+		projectAliases, err = model.FindAliasesForRepo(projRef.RepoRefId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

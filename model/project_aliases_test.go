@@ -2,10 +2,10 @@ package model
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
 	mgobson "gopkg.in/mgo.v2/bson"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

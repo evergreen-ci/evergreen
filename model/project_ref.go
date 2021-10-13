@@ -549,7 +549,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 
 	// Handle each category of aliases as it's own case
-	repoAliases, err := FindAliasesForProject(before.ProjectRef.RepoRefId, "")
+	repoAliases, err := FindAliasesForRepo(before.ProjectRef.RepoRefId)
 	catcher.Wrap(err, "error finding repo aliases")
 
 	hasInternalAliases := map[string]bool{}
