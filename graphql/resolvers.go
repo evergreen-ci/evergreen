@@ -3294,7 +3294,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				shouldCollapse = true
 			}
 		}
-		// If a version matches our filter critera we append it directly to our returned list of mainlineCommits
+		// If a version matches our filter criteria we append it directly to our returned list of mainlineCommits
 		if !shouldCollapse {
 			matchingVersionCount++
 			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
