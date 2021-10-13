@@ -118,6 +118,8 @@ models:
         resolver: true
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  CopyProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
   CommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   PatchTriggerAlias:

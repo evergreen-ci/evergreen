@@ -95,6 +95,7 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
+	s.Require().NotNil(newProject)
 	s.NotEqual("projectC", utility.FromStringPtr(newProject.Id))
 	s.Equal("projectC", utility.FromStringPtr(newProject.Identifier))
 	s.Equal("abcd", utility.FromStringPtr(newProject.Branch))

@@ -108,7 +108,7 @@ type Connector interface {
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
 	// CopyProject copies the passed in project with the given project identifier, and returns the new project.
-	CopyProject(context.Context, *model.ProjectRef, string) (*restModel.APIProjectRef, error)
+	CopyProject(context.Context, CopyProjectOpts) (*restModel.APIProjectRef, error)
 	GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error)
 
 	UpdateRepo(*model.RepoRef) error

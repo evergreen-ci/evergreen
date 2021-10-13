@@ -84,6 +84,7 @@ type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: ProjectInput!): Project! @requireSuperUser
+  copyProject(project: CopyProjectInput!): Project! @requireSuperUser
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -314,6 +315,12 @@ input ProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+}
+
+input CopyProjectInput {
+  projectIdToCopy: String
+  newProjectIdentifier: String!
+  newProjectId: String!
 }
 
 input SubscriptionInput {

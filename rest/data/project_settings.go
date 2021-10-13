@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -15,18 +17,48 @@ import (
 // This file is used to combine operations across data connectors, to avoid
 // duplicated connector usage across the codebase.
 
-func (sc *DBConnector) CopyProject(ctx context.Context, projectToCopy *model.ProjectRef, newProject string) (*restModel.APIProjectRef, error) {
-	// copy project, disable necessary settings
+type CopyProjectOpts struct {
+	ProjectIdToCopy      string
+	NewProjectIdentifier string
+	NewProjectId         string
+}
+
+func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error finding project '%s'", opts.ProjectIdToCopy)
+	}
+	if projectToCopy == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' doesn't exist", opts.ProjectIdToCopy),
+		}
+	}
+
+	// verify project with new name doesn't exist
+	if err = sc.verifyUniqueProject(opts.NewProjectIdentifier); err != nil {
+		return nil, err
+	}
+
 	oldId := projectToCopy.Id
+	if opts.NewProjectId != "" {
+		if err = sc.verifyUniqueProject(opts.NewProjectId); err != nil {
+			return nil, err
+		}
+		projectToCopy.Id = opts.NewProjectId
+	} else {
+		projectToCopy.Id = "" // this will be regenerated during Create
+	}
+
+	// copy project, disable necessary settings
 	oldIdentifier := projectToCopy.Identifier
-	projectToCopy.Id = "" // this will be regenerated during Create
-	projectToCopy.Identifier = newProject
+	projectToCopy.Identifier = opts.NewProjectIdentifier
 	projectToCopy.Enabled = utility.FalsePtr()
 	projectToCopy.PRTestingEnabled = nil
 	projectToCopy.CommitQueue.Enabled = nil
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err := sc.CreateProject(projectToCopy, u); err != nil {
-		return nil, errors.Wrapf(err, "Database error creating project for id '%s'", newProject)
+		return nil, errors.Wrapf(err, "Database error creating project '%s'", opts.NewProjectIdentifier)
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
 	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
@@ -45,9 +77,27 @@ func (sc *DBConnector) CopyProject(ctx context.Context, projectToCopy *model.Pro
 	}
 	// set the same admin roles from the old project on the newly copied project.
 	if err := sc.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
-		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", newProject)
+		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 	return apiProjectRef, nil
+}
+
+func (sc *DBConnector) verifyUniqueProject(name string) error {
+	_, err := sc.FindProjectById(name, false)
+	if err == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot reuse '%s' for project", name),
+		}
+	}
+	apiErr, ok := err.(gimlet.ErrorResponse)
+	if !ok {
+		return errors.Errorf("Type assertion failed: type %T does not hold an error", err)
+	}
+	if apiErr.StatusCode != http.StatusNotFound {
+		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
+	}
+	return nil
 }
 
 func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
@@ -169,18 +219,60 @@ func (sc *MockConnector) SaveProjectSettingsForSection(ctx context.Context, proj
 	return nil
 }
 
-func (sc *MockConnector) CopyProject(ctx context.Context, projectToCopy *model.ProjectRef, newProject string) (*restModel.APIProjectRef, error) {
-	// copy project, disable necessary settings
+func (sc *MockConnector) verifyUniqueProject(name string) error {
+	_, err := sc.FindProjectById(name, false)
+	if err == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot reuse '%s' for project", name),
+		}
+	}
+	apiErr, ok := err.(gimlet.ErrorResponse)
+	if !ok {
+		return errors.Errorf("Type assertion failed: type %T does not hold an error", err)
+	}
+	if apiErr.StatusCode != http.StatusNotFound {
+		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
+	}
+	return nil
+}
+
+func (sc *MockConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error finding project '%s'", opts.ProjectIdToCopy)
+	}
+	if projectToCopy == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' doesn't exist", opts.ProjectIdToCopy),
+		}
+	}
+
+	// verify project with new name doesn't exist
+	if err = sc.verifyUniqueProject(opts.NewProjectIdentifier); err != nil {
+		return nil, err
+	}
+
 	oldId := projectToCopy.Id
+	if opts.NewProjectId != "" {
+		if err = sc.verifyUniqueProject(opts.NewProjectId); err != nil {
+			return nil, err
+		}
+		projectToCopy.Id = opts.NewProjectId
+	} else {
+		projectToCopy.Id = "" // this will be regenerated during Create
+	}
+
+	// copy project, disable necessary settings
 	oldIdentifier := projectToCopy.Identifier
-	projectToCopy.Id = "" // this will be regenerated during Create
-	projectToCopy.Identifier = newProject
+	projectToCopy.Identifier = opts.NewProjectIdentifier
 	projectToCopy.Enabled = utility.FalsePtr()
 	projectToCopy.PRTestingEnabled = nil
 	projectToCopy.CommitQueue.Enabled = nil
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err := sc.CreateProject(projectToCopy, u); err != nil {
-		return nil, errors.Wrapf(err, "Database error creating project for id '%s'", newProject)
+		return nil, errors.Wrapf(err, "Database error creating project for id '%s'", opts.NewProjectIdentifier)
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
 	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
@@ -199,7 +291,7 @@ func (sc *MockConnector) CopyProject(ctx context.Context, projectToCopy *model.P
 	}
 	// set the same admin roles from the old project on the newly copied project.
 	if err := sc.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
-		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", newProject)
+		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 	return apiProjectRef, nil
 }

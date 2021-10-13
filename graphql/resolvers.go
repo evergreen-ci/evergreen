@@ -1092,6 +1092,23 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	return &apiProjectRef, nil
 }
 
+func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	projectRef, err := r.sc.CopyProject(ctx, opts)
+	if err != nil {
+		apiErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			if apiErr.StatusCode == http.StatusBadRequest {
+				return nil, InputValidationError.Send(ctx, apiErr.Message)
+			}
+			// include StatusNotFound as an internal error because we determine this input
+			return nil, InternalServerError.Send(ctx, apiErr.Message)
+		}
+		return nil, InternalServerError.Send(ctx, err.Error())
+
+	}
+	return projectRef, nil
+}
+
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
