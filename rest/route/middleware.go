@@ -412,6 +412,14 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		}))
 		return
 	}
+	err = projRef.MergeWithParserProject("")
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		}))
+		return
+	}
 
 	if !projRef.CommitQueue.IsEnabled() {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

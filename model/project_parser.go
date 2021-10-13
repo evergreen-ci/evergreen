@@ -89,7 +89,8 @@ type ParserProject struct {
 	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
 	// Values for the below fields set on this struct will take precedence over the project page and will
 	// be the configs used for a given project during runtime.
-	DeactivatePrevious *bool `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+	DeactivatePrevious *bool              `yaml:"deactivate_previous"    bson:"deactivate_previous,omitempty"`
+	CommitQueue        *CommitQueueParams `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
 
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
@@ -778,6 +779,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		BuildBaronSettings:     pp.BuildBaronSettings,
 		PerfEnabled:            utility.FromBoolPtr(pp.PerfEnabled),
 		DeactivatePrevious:     utility.FromBoolPtr(pp.DeactivatePrevious),
+		CommitQueue:            pp.CommitQueue,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)

@@ -419,6 +419,9 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	if err != nil {
 		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
 	}
+	if err = projectRef.MergeWithParserProject(""); err != nil {
+		return errors.Wrap(err, "can't merge parser project with project ref")
+	}
 	cq, err := client.GetCommitQueue(ctx, projectRef.Id)
 	if err != nil {
 		return err
@@ -550,6 +553,10 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 			err = errors.WithStack(err)
 		}
 		return errors.Wrap(err, "can't get project ref")
+	}
+	err = ref.MergeWithParserProject("")
+	if err != nil {
+		return errors.Wrap(err, "can't merge parser project with project ref")
 	}
 	if !ref.CommitQueue.IsEnabled() {
 		return errors.New("commit queue not enabled for project")
