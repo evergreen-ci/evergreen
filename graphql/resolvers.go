@@ -3012,6 +3012,9 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
+		return false, nil
+	}
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, err
@@ -3019,9 +3022,6 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if flags.PluginAdminPageDisabled {
 		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
 	} else {
-		if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
-			return false, nil
-		}
 		var perfPlugin *plugin.PerfPlugin
 		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)
 		if err != nil {
