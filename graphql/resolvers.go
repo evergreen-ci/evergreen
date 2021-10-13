@@ -3245,17 +3245,17 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	index := 0
 	versionsCheckedCount := 0
 
-	// We will loop through each version returned from GetMainlineCommitVersionsWithOptions and see if there is a commit that matches the filter paramaters (if any)
-	// If there is a match, we will add it to the array of versions to be returned to the user,
-	// If there are no matches, we will call GetMainlineCommitVersionsWithOptions again with the next order number to check and repeat the process
+	// We will loop through each version returned from GetMainlineCommitVersionsWithOptions and see if there is a commit that matches the filter parameters (if any).
+	// If there is a match, we will add it to the array of versions to be returned to the user.
+	// If there are not enough matches to satisfy our limit, we will call GetMainlineCommitVersionsWithOptions again with the next order number to check and repeat the process.
 	for matchingVersionCount < limit {
-		// If we no longer have any more versions to check break out and return what we have
-		if index >= len(versions) {
+		// If we no longer have any more versions to check break out and return what we have.
+		if len(versions) == 0 {
 			break
 		}
-		// If we have checked more versions than the MaxMainlineCommitVersionLimit then break out and return what we have
+		// If we have checked more versions than the MaxMainlineCommitVersionLimit then break out and return what we have.
 		if versionsCheckedCount >= model.MaxMainlineCommitVersionLimit {
-			// Return an error if we did not find any versions that match
+			// Return an error if we did not find any versions that match.
 			if matchingVersionCount == 0 {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Matching version not found in %d most recent versions", model.MaxMainlineCommitVersionLimit))
 			}
