@@ -148,6 +148,8 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 	return errors.WithStack(err)
 }
 
+const errorCodeNamespaceNotFound = 26
+
 // DropAllIndexes drops all indexes in the specified collections, returning an
 // error immediately if dropping the indexes in any one of them fails.
 func DropAllIndexes(collections ...string) error {
@@ -162,7 +164,7 @@ func DropAllIndexes(collections ...string) error {
 			if mongoErr, ok := err.(driver.Error); ok && mongoErr.NamespaceNotFound() {
 				continue
 			}
-			if cmdErr, ok := err.(mongo.CommandError); ok && cmdErr.HasErrorCode(26) {
+			if cmdErr, ok := err.(mongo.CommandError); ok && cmdErr.HasErrorCode(errorCodeNamespaceNotFound) {
 				continue
 			}
 			return errors.Wrapf(err, "dropping indexes in collection '%s'", coll)
