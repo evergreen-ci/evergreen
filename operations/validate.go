@@ -85,8 +85,9 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 		pair := strings.Split(module, "=")
 		if len(pair) != 2 {
 			catcher.Errorf("expected only one '=' sign while parsing local module '%s'", module)
+		} else {
+			moduleMap[pair[0]] = pair[1]
 		}
-		moduleMap[pair[0]] = pair[1]
 	}
 	return moduleMap, catcher.Resolve()
 }

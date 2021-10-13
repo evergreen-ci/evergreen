@@ -590,12 +590,13 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 		var yaml []byte
 		if path.Module != "" {
-			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module, path.FileName)
+			opts.RemotePath = path.FileName
+			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
 		} else {
 			yaml, err = retrieveFile(ctx, *opts)
 		}
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, "failed to retrieve file '%s'", path.FileName)
 		}
 		add, err := createIntermediateProject(yaml)
 		if err != nil {
@@ -690,11 +691,11 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 }
 
-func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName, filename string) ([]byte, error) {
+func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName string) ([]byte, error) {
 	// Look through any given local modules first
 	if path, ok := opts.LocalModules[moduleName]; ok {
 		moduleOpts := GetProjectOpts{
-			RemotePath:   fmt.Sprintf("%s/%s", path, filename),
+			RemotePath:   fmt.Sprintf("%s/%s", path, opts.RemotePath),
 			ReadFileFrom: ReadFromLocal,
 		}
 		return retrieveFile(ctx, moduleOpts)
@@ -713,7 +714,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 			Owner: repoOwner,
 			Repo:  repoName,
 		},
-		RemotePath:   filename,
+		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
 		Token:        opts.Token,
 		ReadFileFrom: ReadfromGithub,
