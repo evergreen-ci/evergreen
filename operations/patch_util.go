@@ -153,7 +153,7 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 }
 
 func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {
-	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
+	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost, "")
 	if err != nil {
 		return err
 	}
@@ -431,9 +431,11 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 
 // getPatchDisplay returns a human-readable summary representation of a patch object
 // which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
+func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, link string) (string, error) {
 	var out bytes.Buffer
-
+	if link == "" {
+		link = p.GetURL(uiHost)
+	}
 	err := patchDisplayTemplate.Execute(&out, struct {
 		Patch         *patch.Patch
 		ShowSummary   bool
@@ -443,7 +445,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 		Patch:         p,
 		ShowSummary:   summarize,
 		ShowFinalized: p.IsCommitQueuePatch(),
-		Link:          p.GetURL(uiHost),
+		Link:          link,
 	})
 	if err != nil {
 		return "", err
@@ -461,7 +463,7 @@ func getAPIPatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost str
 		return "", errors.New("service patch is not a Patch")
 	}
 
-	return getPatchDisplay(&servicePatch, summarize, uiHost)
+	return getPatchDisplay(&servicePatch, summarize, uiHost, servicePatch.GetCommitQueueURL(uiHost))
 }
 
 func isCommitRange(commits string) bool {
