@@ -1,8 +1,6 @@
 package db
 
 import (
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -77,7 +75,6 @@ func (q Q) Hint(hint interface{}) Q {
 func FindOneQ(collection string, q Q, out interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
 		return err
 	}
 	defer session.Close()
@@ -96,8 +93,7 @@ func FindOneQ(collection string, q Q, out interface{}) error {
 func FindAllQ(collection string, q Q, out interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-		return errors.WithStack(err)
+		return err
 	}
 	defer session.Close()
 
