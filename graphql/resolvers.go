@@ -3019,6 +3019,9 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if flags.PluginAdminPageDisabled {
 		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
 	} else {
+		if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
+			return false, nil
+		}
 		var perfPlugin *plugin.PerfPlugin
 		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)
 		if err != nil {
@@ -3029,10 +3032,15 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 			if err != nil {
 				return false, err
 			}
+			projectMatches := false
 			for _, projectName := range perfPlugin.Projects {
-				if projectName != pRef.Id && projectName != pRef.Identifier {
-					return false, nil
+				if projectName == pRef.Id || projectName == pRef.Identifier {
+					projectMatches = true
+					break
 				}
+			}
+			if !projectMatches {
+				return false, nil
 			}
 		}
 		opts := apimodels.GetCedarPerfCountOptions{
