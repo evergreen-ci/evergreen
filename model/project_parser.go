@@ -596,7 +596,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			yaml, err = retrieveFile(ctx, *opts)
 		}
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "failed to retrieve file '%s'", path.FileName)
+			return intermediateProject, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
 		}
 		add, err := createIntermediateProject(yaml)
 		if err != nil {
