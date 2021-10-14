@@ -91,7 +91,10 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 		Convey("only hosts in the database who are marked decommissioned"+
 			" should be returned", func() {
 
-			require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+			require.NoError(t, db.DropCollections(host.Collection), "dropping hosts collection")
+			defer func() {
+				assert.NoError(t, db.DropCollections(host.Collection))
+			}()
 			setupHostTerminationQueryIndex(t)
 
 			// insert hosts with different statuses
@@ -148,8 +151,10 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 func TestFlaggingUnprovisionedHosts(t *testing.T) {
 	Convey("When flagging unprovisioned hosts to be terminated", t, func() {
 
-		// reset the db
-		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+		require.NoError(t, db.DropCollections(host.Collection), "dropping hosts collection")
+		defer func() {
+			assert.NoError(t, db.DropCollections(host.Collection))
+		}()
 		setupHostTerminationQueryIndex(t)
 
 		Convey("hosts that have not hit the provisioning limit should"+
@@ -267,8 +272,10 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
-		// reset the db
-		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+		require.NoError(t, db.DropCollections(host.Collection), "dropping hosts collection")
+		defer func() {
+			assert.NoError(t, db.DropCollections(host.Collection))
+		}()
 		setupHostTerminationQueryIndex(t)
 
 		Convey("only hosts whose provisioning failed should be"+
@@ -308,8 +315,10 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 func TestFlaggingExpiredHosts(t *testing.T) {
 	Convey("When flagging expired hosts to be terminated", t, func() {
 
-		// reset the db
-		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+		require.NoError(t, db.DropCollections(host.Collection), "dropping hosts collection")
+		defer func() {
+			assert.NoError(t, db.DropCollections(host.Collection))
+		}()
 		setupHostTerminationQueryIndex(t)
 
 		Convey("hosts started by the default user should be filtered"+
