@@ -37,10 +37,5 @@ type MigrationMetadataIterator interface {
 }
 
 func NewMigrationHelper(e Environment) MigrationHelper {
-	if e.PreferClient() {
-		return NewClientMigrationHelper(e)
-	}
-
 	return NewClientMigrationHelper(e)
-	// return NewLegacyMigrationHelper(e)
 }

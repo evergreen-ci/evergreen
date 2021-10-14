@@ -580,7 +580,6 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			grip.Critical(message.NewError(errors.WithStack(err)))
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
-		opts.RemotePath = path.FileName
 		// read from the patch diff if a change has been made in any of the include files
 		if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
 			if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ConfigChanged(path.FileName) {
@@ -589,9 +588,16 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 				opts.ReadFileFrom = ReadFromPatch
 			}
 		}
-		yaml, err := retrieveFile(ctx, *opts)
+		var yaml []byte
+		opts.Identifier = identifier
+		if path.Module != "" {
+			opts.RemotePath = path.FileName
+			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
+		} else {
+			yaml, err = retrieveFile(ctx, *opts)
+		}
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
 		}
 		add, err := createIntermediateProject(yaml)
 		if err != nil {
@@ -623,10 +629,12 @@ const (
 type GetProjectOpts struct {
 	Ref          *ProjectRef
 	PatchOpts    *PatchOpts
+	LocalModules map[string]string
 	RemotePath   string
 	Revision     string
 	Token        string
 	ReadFileFrom string
+	Identifier   string
 }
 
 type PatchOpts struct {
@@ -675,14 +683,45 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
+			return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Identifier, opts.Revision)
 		}
 		fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
+			return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Identifier)
 		}
 		return fileContents, nil
 	}
+}
+
+func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName string) ([]byte, error) {
+	// Look through any given local modules first
+	if path, ok := opts.LocalModules[moduleName]; ok {
+		moduleOpts := GetProjectOpts{
+			RemotePath:   fmt.Sprintf("%s/%s", path, opts.RemotePath),
+			ReadFileFrom: ReadFromLocal,
+		}
+		return retrieveFile(ctx, moduleOpts)
+	} else if opts.ReadFileFrom == ReadFromLocal {
+		return nil, errors.Errorf("local path for module '%s' is unspecified", moduleName)
+	}
+	// Retrieve from github
+	module, err := GetModuleByName(modules, moduleName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get module for module name '%s'", moduleName)
+	}
+	repoOwner, repoName := module.GetRepoOwnerAndName()
+	moduleOpts := GetProjectOpts{
+		Ref: &ProjectRef{
+			Owner: repoOwner,
+			Repo:  repoName,
+		},
+		RemotePath:   opts.RemotePath,
+		Revision:     module.Branch,
+		Token:        opts.Token,
+		ReadFileFrom: ReadfromGithub,
+		Identifier:   moduleName,
+	}
+	return retrieveFile(ctx, moduleOpts)
 }
 
 func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, error) {

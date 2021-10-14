@@ -3077,6 +3077,42 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 	return StatusCount, nil
 }
 
+type HasMatchingTasksOptions struct {
+	TaskNames []string
+	Variants  []string
+	Statuses  []string
+}
+
+// HasMatchingTasks returns true if the version has tasks with the given statuses
+func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	options := GetTasksByVersionOptions{
+		TaskNames: opts.TaskNames,
+		Variants:  opts.Variants,
+		Statuses:  opts.Statuses,
+	}
+	pipeline := getTasksByVersionPipeline(versionID, options)
+	pipeline = append(pipeline, bson.M{"$count": "count"})
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return false, err
+	}
+	type Count struct {
+		Count int `bson:"count"`
+	}
+	count := []*Count{}
+	err = cursor.All(ctx, &count)
+	if err != nil {
+		return false, err
+	}
+	if len(count) == 0 {
+		return false, nil
+	}
+	return count[0].Count > 0, nil
+}
+
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
 	var match bson.M = bson.M{}
 

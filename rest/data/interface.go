@@ -397,7 +397,7 @@ type Connector interface {
 	GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error)
 	// SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
 	// RepoRef related functions and collection instead of ProjectRef.
-	SaveProjectSettingsForSection(context.Context, string, *restModel.APIProjectSettings, model.ProjectPageSection, bool, string) error
+	SaveProjectSettingsForSection(context.Context, string, *restModel.APIProjectSettings, model.ProjectPageSection, bool, string) (*restModel.APIProjectSettings, error)
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)
