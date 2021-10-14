@@ -1027,29 +1027,20 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 }
 
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
-	res := &restModel.APIProjectSettings{}
 	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
 	if projectRef == nil {
-		// If the project ref doesn't exist for the identifier, we may be looking for a repo, so check that collection.
-		repoRef, err := model.FindOneRepoRef(identifier)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
-		}
-		if repoRef != nil {
-			projectRef = &repoRef.ProjectRef
-		}
+		return nil, ResourceNotFound.Send(ctx, "project doesn't exist")
 	}
-	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, "project/repo doesn't exist")
+
+	res := &restModel.APIProjectSettings{
+		ProjectRef: restModel.APIProjectRef{},
 	}
-	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+	if err = res.ProjectRef.BuildFromService(projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
-	res.ProjectRef = apiProjectRef
 	return res, nil
 }
 
@@ -2152,6 +2143,16 @@ func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.AP
 		return TaskQueueItemTypePatch, nil
 	}
 	return TaskQueueItemTypeCommit, nil
+}
+
+func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section string) (*restModel.APIProjectSettings, error) {
+	projectId := utility.FromStringPtr(obj.ProjectRef.Id)
+	usr := MustHaveUser(ctx)
+	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), false, usr.Username())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error saving project settings for section: %s", err.Error()))
+	}
+	return changes, nil
 }
 
 func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {

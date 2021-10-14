@@ -83,7 +83,8 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  createProject(project: ProjectInput!): Project! @requireSuperUser
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
+  createProject(project: CreateProjectInput!): Project! @requireSuperUser
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -310,13 +311,8 @@ input DisplayTask {
   ExecTasks: [String!]!
 }
 
-input ProjectInput {
-  identifier: String!
-  owner: String!
-  repo: String!
-}
-
 input SubscriptionInput {
+  id: String
   resource_type: String
   trigger: String
   selectors: [SelectorInput!]!
@@ -356,6 +352,142 @@ input PatchesInput {
   patchName: String! = ""
   statuses: [String!]! = []
   includeCommitQueue: Boolean! = false
+}
+
+input ProjectSettingsInput {
+  githubWebhooksEnabled: Boolean
+  projectRef: ProjectInput
+  vars: ProjectVarsInput
+  aliases: [ProjectAliasInput]
+  subscriptions: [SubscriptionInput]
+}
+
+input ProjectInput {
+  id: String!
+  identifier: String
+  displayName: String
+  enabled: Boolean
+  private: Boolean
+  owner: String
+  repo: String
+  branch: String
+  remotePath: String
+  patchingDisabled: Boolean
+  repotrackerDisabled: Boolean
+  dispatchingDisabled: Boolean
+  prTestingEnabled: Boolean
+  githubChecksEnabled: Boolean
+  batchTime: Int
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  notifyOnBuildFailure: Boolean
+  triggers: [TriggerAliasInput]
+  patchTriggerAliases: [PatchTriggerAliasInput]
+  githubTriggerAliases: [String]
+  periodicBuilds: [PeriodicBuildInput]
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParamsInput
+  admins: [String]
+  spawnHostScriptPath: String
+  tracksPushEvents: Boolean
+  taskSync: TaskSyncOptionsInput
+  gitTagAuthorizedUsers: [String]
+  gitTagAuthorizedTeams: [String]
+  gitTagVersionsEnabled: Boolean
+
+  filesIgnoredFromCache: [String]
+  disabledStatsCache: Boolean
+  workstationConfig: WorkstationConfigInput
+
+  hidden: Boolean
+  useRepoSettings: Boolean
+}
+
+input CreateProjectInput {
+  identifier: String!
+  owner: String!
+  repo: String!
+}
+
+input TriggerAliasInput {
+  project: String
+  level: String!
+  definitionID: String!
+  buildVariantRegex: String!
+  taskRegex: String!
+  status: String!
+  dateCutoff: Int!
+  configFile: String!
+  generateFile: String!
+  command: String!
+  alias: String!
+}
+
+input PeriodicBuildInput {
+  id: String!
+  configFile: String!
+  intervalHours: Int!
+  alias: String!
+  message: String!
+  nextRunTime: Time!
+}
+
+input CommitQueueParamsInput {
+  enabled: Boolean
+  mergeMethod: String
+  message: String
+}
+
+input TaskSyncOptionsInput {
+  configEnabled: Boolean!
+  patchEnabled: Boolean!
+}
+
+input WorkstationConfigInput {
+  setupCommands: [WorkstationSetupCommandInput]
+  gitClone: Boolean!
+}
+
+input WorkstationSetupCommandInput {
+  Command: String!
+  Directory: String
+}
+
+input PatchTriggerAliasInput {
+  alias: String!
+  childProjectId: String!
+  childProjectIdentifier: String!
+  taskSpecifiers: [TaskSpecifierInput]
+  status: String
+  parentAsModule: String
+  variantsTasks: [VariantTaskInput]!
+}
+
+input TaskSpecifierInput {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
+}
+
+input ProjectVarsInput {
+  vars: StringMap
+  privateVarsList: [String]
+}
+
+input VariantTaskInput {
+  name: String!
+  tasks: [String!]!
+}
+
+input ProjectAliasInput {
+  id: String!
+  alias: String!
+  gitTag: String!
+  variant: String!
+  task: String!
+  remotePath: String!
+  variantTags: [String!]!
+  taskTags: [String!]!
 }
 
 input SpawnHostInput {

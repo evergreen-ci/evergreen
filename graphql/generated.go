@@ -406,6 +406,7 @@ type ComplexityRoot struct {
 		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                   func(childComplexity int, taskID string) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
+		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section string) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
@@ -1069,6 +1070,7 @@ type IssueLinkResolver interface {
 type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
+	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
@@ -2849,6 +2851,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RestartVersions(childComplexity, args["versionId"].(string), args["abort"].(bool), args["versionsToRestart"].([]*model1.VersionToRestart)), true
+
+	case "Mutation.saveProjectSettingsForSection":
+		if e.complexity.Mutation.SaveProjectSettingsForSection == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveProjectSettingsForSection_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveProjectSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string)), true
 
 	case "Mutation.saveSubscription":
 		if e.complexity.Mutation.SaveSubscription == nil {
@@ -6425,7 +6439,8 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  createProject(project: ProjectInput!): Project! @requireSuperUser
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
+  createProject(project: CreateProjectInput!): Project! @requireSuperUser
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -6652,13 +6667,8 @@ input DisplayTask {
   ExecTasks: [String!]!
 }
 
-input ProjectInput {
-  identifier: String!
-  owner: String!
-  repo: String!
-}
-
 input SubscriptionInput {
+  id: String
   resource_type: String
   trigger: String
   selectors: [SelectorInput!]!
@@ -6698,6 +6708,142 @@ input PatchesInput {
   patchName: String! = ""
   statuses: [String!]! = []
   includeCommitQueue: Boolean! = false
+}
+
+input ProjectSettingsInput {
+  githubWebhooksEnabled: Boolean
+  projectRef: ProjectInput
+  vars: ProjectVarsInput
+  aliases: [ProjectAliasInput]
+  subscriptions: [SubscriptionInput]
+}
+
+input ProjectInput {
+  id: String!
+  identifier: String
+  displayName: String
+  enabled: Boolean
+  private: Boolean
+  owner: String
+  repo: String
+  branch: String
+  remotePath: String
+  patchingDisabled: Boolean
+  repotrackerDisabled: Boolean
+  dispatchingDisabled: Boolean
+  prTestingEnabled: Boolean
+  githubChecksEnabled: Boolean
+  batchTime: Int
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  notifyOnBuildFailure: Boolean
+  triggers: [TriggerAliasInput]
+  patchTriggerAliases: [PatchTriggerAliasInput]
+  githubTriggerAliases: [String]
+  periodicBuilds: [PeriodicBuildInput]
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParamsInput
+  admins: [String]
+  spawnHostScriptPath: String
+  tracksPushEvents: Boolean
+  taskSync: TaskSyncOptionsInput
+  gitTagAuthorizedUsers: [String]
+  gitTagAuthorizedTeams: [String]
+  gitTagVersionsEnabled: Boolean
+
+  filesIgnoredFromCache: [String]
+  disabledStatsCache: Boolean
+  workstationConfig: WorkstationConfigInput
+
+  hidden: Boolean
+  useRepoSettings: Boolean
+}
+
+input CreateProjectInput {
+  identifier: String!
+  owner: String!
+  repo: String!
+}
+
+input TriggerAliasInput {
+  project: String
+  level: String!
+  definitionID: String!
+  buildVariantRegex: String!
+  taskRegex: String!
+  status: String!
+  dateCutoff: Int!
+  configFile: String!
+  generateFile: String!
+  command: String!
+  alias: String!
+}
+
+input PeriodicBuildInput {
+  id: String!
+  configFile: String!
+  intervalHours: Int!
+  alias: String!
+  message: String!
+  nextRunTime: Time!
+}
+
+input CommitQueueParamsInput {
+  enabled: Boolean
+  mergeMethod: String
+  message: String
+}
+
+input TaskSyncOptionsInput {
+  configEnabled: Boolean!
+  patchEnabled: Boolean!
+}
+
+input WorkstationConfigInput {
+  setupCommands: [WorkstationSetupCommandInput]
+  gitClone: Boolean!
+}
+
+input WorkstationSetupCommandInput {
+  Command: String!
+  Directory: String
+}
+
+input PatchTriggerAliasInput {
+  alias: String!
+  childProjectId: String!
+  childProjectIdentifier: String!
+  taskSpecifiers: [TaskSpecifierInput]
+  status: String
+  parentAsModule: String
+  variantsTasks: [VariantTaskInput]!
+}
+
+input TaskSpecifierInput {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
+}
+
+input ProjectVarsInput {
+  vars: StringMap
+  privateVarsList: [String]
+}
+
+input VariantTaskInput {
+  name: String!
+  tasks: [String!]!
+}
+
+input ProjectAliasInput {
+  id: String!
+  alias: String!
+  gitTag: String!
+  variant: String!
+  task: String!
+  remotePath: String!
+  variantTags: [String!]!
+  taskTags: [String!]!
 }
 
 input SpawnHostInput {
@@ -7753,7 +7899,7 @@ func (ec *executionContext) field_Mutation_createProject_args(ctx context.Contex
 	args := map[string]interface{}{}
 	var arg0 model.APIProjectRef
 	if tmp, ok := rawArgs["project"]; ok {
-		arg0, err = ec.unmarshalNProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, tmp)
+		arg0, err = ec.unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -8117,6 +8263,28 @@ func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Cont
 		}
 	}
 	args["versionsToRestart"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveProjectSettingsForSection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.APIProjectSettings
+	if tmp, ok := rawArgs["projectSettings"]; ok {
+		arg0, err = ec.unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectSettings"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["section"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["section"] = arg1
 	return args, nil
 }
 
@@ -15179,6 +15347,47 @@ func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context,
 	res := resTmp.(*model.APIProjectRef)
 	fc.Result = res
 	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_saveProjectSettingsForSection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_saveProjectSettingsForSection_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SaveProjectSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectSettings)
+	fc.Result = res
+	return ec.marshalNProjectSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_createProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -32589,6 +32798,66 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Context, obj interface{}) (model.APICommitQueueParams, error) {
+	var it model.APICommitQueueParams
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "enabled":
+			var err error
+			it.Enabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "mergeMethod":
+			var err error
+			it.MergeMethod, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "message":
+			var err error
+			it.Message, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
+	var it model.APIProjectRef
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "identifier":
+			var err error
+			it.Identifier, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "owner":
+			var err error
+			it.Owner, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "repo":
+			var err error
+			it.Repo, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
 	var it DisplayTask
 	var asMap = obj.(map[string]interface{})
@@ -32899,6 +33168,60 @@ func (ec *executionContext) unmarshalInputPatchConfigure(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Context, obj interface{}) (model.APIPatchTriggerDefinition, error) {
+	var it model.APIPatchTriggerDefinition
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "alias":
+			var err error
+			it.Alias, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "childProjectId":
+			var err error
+			it.ChildProjectId, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "childProjectIdentifier":
+			var err error
+			it.ChildProjectIdentifier, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskSpecifiers":
+			var err error
+			it.TaskSpecifiers, err = ec.unmarshalOTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "status":
+			var err error
+			it.Status, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "parentAsModule":
+			var err error
+			it.ParentAsModule, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "variantsTasks":
+			var err error
+			it.VariantsTasks, err = ec.unmarshalNVariantTaskInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj interface{}) (PatchesInput, error) {
 	var it PatchesInput
 	var asMap = obj.(map[string]interface{})
@@ -32941,27 +33264,399 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPeriodicBuildInput(ctx context.Context, obj interface{}) (model.APIPeriodicBuildDefinition, error) {
+	var it model.APIPeriodicBuildDefinition
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+			it.ID, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "configFile":
+			var err error
+			it.ConfigFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "intervalHours":
+			var err error
+			it.IntervalHours, err = ec.unmarshalNInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "alias":
+			var err error
+			it.Alias, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "message":
+			var err error
+			it.Message, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "nextRunTime":
+			var err error
+			it.NextRunTime, err = ec.unmarshalNTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputProjectAliasInput(ctx context.Context, obj interface{}) (model.APIProjectAlias, error) {
+	var it model.APIProjectAlias
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+			it.ID, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "alias":
+			var err error
+			it.Alias, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "gitTag":
+			var err error
+			it.GitTag, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "variant":
+			var err error
+			it.Variant, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "task":
+			var err error
+			it.Task, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "remotePath":
+			var err error
+			it.RemotePath, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "variantTags":
+			var err error
+			it.VariantTags, err = ec.unmarshalNString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskTags":
+			var err error
+			it.TaskTags, err = ec.unmarshalNString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
 	var it model.APIProjectRef
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
 		switch k {
+		case "id":
+			var err error
+			it.Id, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "identifier":
 			var err error
-			it.Identifier, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.Identifier, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "displayName":
+			var err error
+			it.DisplayName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "enabled":
+			var err error
+			it.Enabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "private":
+			var err error
+			it.Private, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "owner":
 			var err error
-			it.Owner, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.Owner, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 		case "repo":
 			var err error
-			it.Repo, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.Repo, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "branch":
+			var err error
+			it.Branch, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "remotePath":
+			var err error
+			it.RemotePath, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "patchingDisabled":
+			var err error
+			it.PatchingDisabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "repotrackerDisabled":
+			var err error
+			it.RepotrackerDisabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "dispatchingDisabled":
+			var err error
+			it.DispatchingDisabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "prTestingEnabled":
+			var err error
+			it.PRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "githubChecksEnabled":
+			var err error
+			it.GithubChecksEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "batchTime":
+			var err error
+			it.BatchTime, err = ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "deactivatePrevious":
+			var err error
+			it.DeactivatePrevious, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "defaultLogger":
+			var err error
+			it.DefaultLogger, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "notifyOnBuildFailure":
+			var err error
+			it.NotifyOnBuildFailure, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "triggers":
+			var err error
+			it.Triggers, err = ec.unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinition(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "patchTriggerAliases":
+			var err error
+			it.PatchTriggerAliases, err = ec.unmarshalOPatchTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "githubTriggerAliases":
+			var err error
+			it.GithubTriggerAliases, err = ec.unmarshalOString2ᚕᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "periodicBuilds":
+			var err error
+			it.PeriodicBuilds, err = ec.unmarshalOPeriodicBuildInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinition(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "cedarTestResultsEnabled":
+			var err error
+			it.CedarTestResultsEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "commitQueue":
+			var err error
+			it.CommitQueue, err = ec.unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "admins":
+			var err error
+			it.Admins, err = ec.unmarshalOString2ᚕᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "spawnHostScriptPath":
+			var err error
+			it.SpawnHostScriptPath, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "tracksPushEvents":
+			var err error
+			it.TracksPushEvents, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskSync":
+			var err error
+			it.TaskSync, err = ec.unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "gitTagAuthorizedUsers":
+			var err error
+			it.GitTagAuthorizedUsers, err = ec.unmarshalOString2ᚕᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "gitTagAuthorizedTeams":
+			var err error
+			it.GitTagAuthorizedTeams, err = ec.unmarshalOString2ᚕᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "gitTagVersionsEnabled":
+			var err error
+			it.GitTagVersionsEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "filesIgnoredFromCache":
+			var err error
+			it.FilesIgnoredFromCache, err = ec.unmarshalOString2ᚕᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "disabledStatsCache":
+			var err error
+			it.DisabledStatsCache, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "workstationConfig":
+			var err error
+			it.WorkstationConfig, err = ec.unmarshalOWorkstationConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "hidden":
+			var err error
+			it.Hidden, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "useRepoSettings":
+			var err error
+			it.UseRepoSettings, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Context, obj interface{}) (model.APIProjectSettings, error) {
+	var it model.APIProjectSettings
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "githubWebhooksEnabled":
+			var err error
+			it.GitHubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "projectRef":
+			var err error
+			it.ProjectRef, err = ec.unmarshalOProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "vars":
+			var err error
+			it.Vars, err = ec.unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "aliases":
+			var err error
+			it.Aliases, err = ec.unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "subscriptions":
+			var err error
+			it.Subscriptions, err = ec.unmarshalOSubscriptionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputProjectVarsInput(ctx context.Context, obj interface{}) (model.APIProjectVars, error) {
+	var it model.APIProjectVars
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "vars":
+			var err error
+			it.Vars, err = ec.unmarshalOStringMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "privateVarsList":
+			var err error
+			it.PrivateVarsList, err = ec.unmarshalOString2ᚕstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -33229,6 +33924,12 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 
 	for k, v := range asMap {
 		switch k {
+		case "id":
+			var err error
+			it.ID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "resource_type":
 			var err error
 			it.ResourceType, err = ec.unmarshalOString2ᚖstring(ctx, v)
@@ -33274,6 +33975,138 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 		case "trigger_data":
 			var err error
 			it.TriggerData, err = ec.unmarshalNStringMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context, obj interface{}) (model.APITaskSpecifier, error) {
+	var it model.APITaskSpecifier
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "patchAlias":
+			var err error
+			it.PatchAlias, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskRegex":
+			var err error
+			it.TaskRegex, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "variantRegex":
+			var err error
+			it.VariantRegex, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTaskSyncOptionsInput(ctx context.Context, obj interface{}) (model.APITaskSyncOptions, error) {
+	var it model.APITaskSyncOptions
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "configEnabled":
+			var err error
+			it.ConfigEnabled, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "patchEnabled":
+			var err error
+			it.PatchEnabled, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context, obj interface{}) (model.APITriggerDefinition, error) {
+	var it model.APITriggerDefinition
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "project":
+			var err error
+			it.Project, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "level":
+			var err error
+			it.Level, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "definitionID":
+			var err error
+			it.DefinitionID, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "buildVariantRegex":
+			var err error
+			it.BuildVariantRegex, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskRegex":
+			var err error
+			it.TaskRegex, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "status":
+			var err error
+			it.Status, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "dateCutoff":
+			var err error
+			it.DateCutoff, err = ec.unmarshalNInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "configFile":
+			var err error
+			it.ConfigFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "generateFile":
+			var err error
+			it.GenerateFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "command":
+			var err error
+			it.Command, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "alias":
+			var err error
+			it.Alias, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -33391,6 +34224,30 @@ func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputVariantTaskInput(ctx context.Context, obj interface{}) (model.VariantTask, error) {
+	var it model.VariantTask
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "name":
+			var err error
+			it.Name, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "tasks":
+			var err error
+			it.Tasks, err = ec.unmarshalNString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputVariantTasks(ctx context.Context, obj interface{}) (VariantTasks, error) {
 	var it VariantTasks
 	var asMap = obj.(map[string]interface{})
@@ -33460,6 +34317,54 @@ func (ec *executionContext) unmarshalInputVolumeHost(ctx context.Context, obj in
 		case "hostId":
 			var err error
 			it.HostID, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputWorkstationConfigInput(ctx context.Context, obj interface{}) (model.APIWorkstationConfig, error) {
+	var it model.APIWorkstationConfig
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "setupCommands":
+			var err error
+			it.SetupCommands, err = ec.unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "gitClone":
+			var err error
+			it.GitClone, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputWorkstationSetupCommandInput(ctx context.Context, obj interface{}) (model.APIWorkstationSetupCommand, error) {
+	var it model.APIWorkstationSetupCommand
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "Command":
+			var err error
+			it.Command, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "Directory":
+			var err error
+			it.Directory, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -35197,6 +36102,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "removeFavoriteProject":
 			out.Values[i] = ec._Mutation_removeFavoriteProject(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "saveProjectSettingsForSection":
+			out.Values[i] = ec._Mutation_saveProjectSettingsForSection(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -39715,6 +40625,10 @@ func (ec *executionContext) marshalNCommitQueueItem2githubᚗcomᚋevergreenᚑc
 	return ec._CommitQueueItem(ctx, sel, &v)
 }
 
+func (ec *executionContext) unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
+	return ec.unmarshalInputCreateProjectInput(ctx, v)
+}
+
 func (ec *executionContext) marshalNDependency2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependency(ctx context.Context, sel ast.SelectionSet, v Dependency) graphql.Marshaler {
 	return ec._Dependency(ctx, sel, &v)
 }
@@ -40883,10 +41797,6 @@ func (ec *executionContext) marshalNProjectBuildVariant2ᚖgithubᚗcomᚋevergr
 	return ec._ProjectBuildVariant(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
-	return ec.unmarshalInputProjectInput(ctx, v)
-}
-
 func (ec *executionContext) marshalNProjectSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx context.Context, sel ast.SelectionSet, v model.APIProjectSettings) graphql.Marshaler {
 	return ec._ProjectSettings(ctx, sel, &v)
 }
@@ -41701,6 +42611,26 @@ func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑci
 	return ret
 }
 
+func (ec *executionContext) unmarshalNVariantTaskInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, v interface{}) ([]model.VariantTask, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.VariantTask, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOVariantTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) unmarshalNVariantTasks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasks(ctx context.Context, v interface{}) (VariantTasks, error) {
 	return ec.unmarshalInputVariantTasks(ctx, v)
 }
@@ -42382,6 +43312,10 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 
 func (ec *executionContext) marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
 	return ec._CommitQueueParams(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, v interface{}) (model.APICommitQueueParams, error) {
+	return ec.unmarshalInputCommitQueueParamsInput(ctx, v)
 }
 
 func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx context.Context, sel ast.SelectionSet, v []*Dependency) graphql.Marshaler {
@@ -43117,6 +44051,30 @@ func (ec *executionContext) marshalOPatchTriggerAlias2ᚕgithubᚗcomᚋevergree
 	return ret
 }
 
+func (ec *executionContext) unmarshalOPatchTriggerAliasInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, v interface{}) (model.APIPatchTriggerDefinition, error) {
+	return ec.unmarshalInputPatchTriggerAliasInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOPatchTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, v interface{}) ([]model.APIPatchTriggerDefinition, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APIPatchTriggerDefinition, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOPatchTriggerAliasInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalOPeriodicBuild2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinition(ctx context.Context, sel ast.SelectionSet, v model.APIPeriodicBuildDefinition) graphql.Marshaler {
 	return ec._PeriodicBuild(ctx, sel, &v)
 }
@@ -43159,6 +44117,30 @@ func (ec *executionContext) marshalOPeriodicBuild2ᚕgithubᚗcomᚋevergreenᚑ
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) unmarshalOPeriodicBuildInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinition(ctx context.Context, v interface{}) (model.APIPeriodicBuildDefinition, error) {
+	return ec.unmarshalInputPeriodicBuildInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOPeriodicBuildInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinition(ctx context.Context, v interface{}) ([]model.APIPeriodicBuildDefinition, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APIPeriodicBuildDefinition, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOPeriodicBuildInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinition(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
@@ -43221,6 +44203,46 @@ func (ec *executionContext) marshalOProjectAlias2ᚖgithubᚗcomᚋevergreenᚑc
 		return graphql.Null
 	}
 	return ec._ProjectAlias(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOProjectAliasInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx context.Context, v interface{}) (model.APIProjectAlias, error) {
+	return ec.unmarshalInputProjectAliasInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx context.Context, v interface{}) ([]model.APIProjectAlias, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APIProjectAlias, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOProjectAliasInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
+	return ec.unmarshalInputProjectInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOProjectSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx context.Context, v interface{}) (model.APIProjectSettings, error) {
+	return ec.unmarshalInputProjectSettingsInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx context.Context, v interface{}) (*model.APIProjectSettings, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalOProjectSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx, v)
+	return &res, err
 }
 
 func (ec *executionContext) marshalOProjectSubscriber2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriber(ctx context.Context, sel ast.SelectionSet, v model.APISubscriber) graphql.Marshaler {
@@ -43287,6 +44309,10 @@ func (ec *executionContext) marshalOProjectVars2ᚖgithubᚗcomᚋevergreenᚑci
 		return graphql.Null
 	}
 	return ec._ProjectVars(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOProjectVarsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx context.Context, v interface{}) (model.APIProjectVars, error) {
+	return ec.unmarshalInputProjectVarsInput(ctx, v)
 }
 
 func (ec *executionContext) unmarshalOPublicKeyInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx context.Context, v interface{}) (PublicKeyInput, error) {
@@ -43438,6 +44464,38 @@ func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.S
 	return graphql.MarshalString(v)
 }
 
+func (ec *executionContext) unmarshalOString2ᚕstring(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOString2ᚕstring(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalOString2string(ctx, sel, v[i])
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
 	var vSlice []interface{}
 	if v != nil {
@@ -43561,6 +44619,30 @@ func (ec *executionContext) marshalOStringMap2map(ctx context.Context, sel ast.S
 		return graphql.Null
 	}
 	return MarshalStringMap(v)
+}
+
+func (ec *executionContext) unmarshalOSubscriptionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, v interface{}) (model.APISubscription, error) {
+	return ec.unmarshalInputSubscriptionInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOSubscriptionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, v interface{}) ([]model.APISubscription, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APISubscription, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOSubscriptionInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx context.Context, sel ast.SelectionSet, v model.APITask) graphql.Marshaler {
@@ -43706,8 +44788,36 @@ func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑ
 	return ret
 }
 
+func (ec *executionContext) unmarshalOTaskSpecifierInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, v interface{}) (model.APITaskSpecifier, error) {
+	return ec.unmarshalInputTaskSpecifierInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, v interface{}) ([]model.APITaskSpecifier, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APITaskSpecifier, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOTaskSpecifierInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalOTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, sel ast.SelectionSet, v model.APITaskSyncOptions) graphql.Marshaler {
 	return ec._TaskSyncOptions(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, v interface{}) (model.APITaskSyncOptions, error) {
+	return ec.unmarshalInputTaskSyncOptionsInput(ctx, v)
 }
 
 func (ec *executionContext) unmarshalOTestSortCategory2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx context.Context, v interface{}) (TestSortCategory, error) {
@@ -43801,6 +44911,30 @@ func (ec *executionContext) marshalOTriggerAlias2ᚕgithubᚗcomᚋevergreenᚑc
 	return ret
 }
 
+func (ec *executionContext) unmarshalOTriggerAliasInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinition(ctx context.Context, v interface{}) (model.APITriggerDefinition, error) {
+	return ec.unmarshalInputTriggerAliasInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinition(ctx context.Context, v interface{}) ([]model.APITriggerDefinition, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APITriggerDefinition, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOTriggerAliasInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinition(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalOUIConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, sel ast.SelectionSet, v model.APIUIConfig) graphql.Marshaler {
 	return ec._UIConfig(ctx, sel, &v)
 }
@@ -43871,6 +45005,10 @@ func (ec *executionContext) unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergr
 
 func (ec *executionContext) marshalOVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {
 	return ec._VariantTask(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOVariantTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, v interface{}) (model.VariantTask, error) {
+	return ec.unmarshalInputVariantTaskInput(ctx, v)
 }
 
 func (ec *executionContext) marshalOVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx context.Context, sel ast.SelectionSet, v model.APIVersion) graphql.Marshaler {
@@ -44005,6 +45143,10 @@ func (ec *executionContext) marshalOWorkstationConfig2githubᚗcomᚋevergreen�
 	return ec._WorkstationConfig(ctx, sel, &v)
 }
 
+func (ec *executionContext) unmarshalOWorkstationConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx context.Context, v interface{}) (model.APIWorkstationConfig, error) {
+	return ec.unmarshalInputWorkstationConfigInput(ctx, v)
+}
+
 func (ec *executionContext) marshalOWorkstationSetupCommand2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, sel ast.SelectionSet, v model.APIWorkstationSetupCommand) graphql.Marshaler {
 	return ec._WorkstationSetupCommand(ctx, sel, &v)
 }
@@ -44047,6 +45189,30 @@ func (ec *executionContext) marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋev
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) unmarshalOWorkstationSetupCommandInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, v interface{}) (model.APIWorkstationSetupCommand, error) {
+	return ec.unmarshalInputWorkstationSetupCommandInput(ctx, v)
+}
+
+func (ec *executionContext) unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, v interface{}) ([]model.APIWorkstationSetupCommand, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APIWorkstationSetupCommand, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalOWorkstationSetupCommandInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋvendorᚋgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

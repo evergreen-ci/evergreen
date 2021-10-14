@@ -35,6 +35,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   VariantTask:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
+  VariantTaskInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
   ChildPatchAlias:
@@ -111,35 +113,59 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  ProjectSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:
       patches:
         resolver: true
+  CreateProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   CommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  CommitQueueParamsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   PatchTriggerAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
+  PatchTriggerAliasInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   TaskSpecifier:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
+  TaskSpecifierInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
   TriggerAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
+  TriggerAliasInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   PeriodicBuild:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
+  PeriodicBuildInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
   TaskSyncOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
+  TaskSyncOptionsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
   WorkstationConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
+  WorkstationConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
   WorkstationSetupCommand:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationSetupCommand
+  WorkstationSetupCommandInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationSetupCommand
   ProjectVars:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
     fields:
       privateVars:
         resolver: true
+  ProjectVarsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
   ProjectAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
+  ProjectAliasInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
   ProjectSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
