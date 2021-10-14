@@ -435,7 +435,7 @@ const (
 	GitTagRequester             = "git_tag_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
-	MergeTestRequester          = "merge_test"
+	MergeTestRequester          = "merge_test" // commit queue
 	AdHocRequester              = "ad_hoc"
 )
 
