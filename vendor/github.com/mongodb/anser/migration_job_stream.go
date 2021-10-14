@@ -55,39 +55,24 @@ func (j *streamMigrationJob) Run(ctx context.Context) {
 
 	env := j.Env()
 
-	if producer, ok := env.GetLegacyDocumentProcessor(j.Definition.ProcessorName); ok {
-		session, err := env.GetSession()
-		if err != nil {
-			j.AddError(errors.Wrap(err, "problem getting database session"))
-			return
-		}
-		defer session.Close()
-
-		iter := producer.Load(session, j.Definition.Namespace, j.Definition.Query)
-		if iter == nil {
-			j.AddError(errors.Errorf("document processor for %s could not return iterator",
-				j.Definition.Migration))
-			return
-		}
-
-		j.AddError(producer.Migrate(iter))
-	} else if producer, ok := env.GetDocumentProcessor(j.Definition.ProcessorName); ok {
-		client, err := env.GetClient()
-		if err != nil {
-			j.AddError(errors.Wrap(err, "problem getting database client"))
-			return
-		}
-
-		iter := producer.Load(client, j.Definition.Namespace, j.Definition.Query)
-		if iter == nil {
-			j.AddError(errors.Errorf("document processor for %s could not return iterator",
-				j.Definition.Migration))
-			return
-		}
-
-		j.AddError(producer.Migrate(iter))
-	} else {
+	producer, ok := env.GetDocumentProcessor(j.Definition.ProcessorName)
+	if !ok {
 		j.AddError(errors.Errorf("producer named '%s' is not defined", j.Definition.ProcessorName))
+		return
 	}
 
+	client, err := env.GetClient()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "problem getting database client"))
+		return
+	}
+
+	iter := producer.Load(client, j.Definition.Namespace, j.Definition.Query)
+	if iter == nil {
+		j.AddError(errors.Errorf("document processor for %s could not return iterator",
+			j.Definition.Migration))
+		return
+	}
+
+	j.AddError(producer.Migrate(iter))
 }
