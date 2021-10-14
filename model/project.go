@@ -315,6 +315,16 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	return reflect.DeepEqual(manifestModules, projectModules)
 }
 
+func GetModuleByName(moduleList ModuleList, moduleName string) (*Module, error) {
+	for _, module := range moduleList {
+		if module.Name == moduleName {
+			return &module, nil
+		}
+	}
+
+	return nil, errors.Errorf("Module '%s' doesn't exist", moduleName)
+}
+
 type TestSuite struct {
 	Name  string `yaml:"name,omitempty"`
 	Phase string `yaml:"phase,omitempty"`
