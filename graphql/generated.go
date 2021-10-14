@@ -6719,7 +6719,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String
+  id: String!
   identifier: String
   displayName: String
   enabled: Boolean
@@ -33372,7 +33372,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		switch k {
 		case "id":
 			var err error
-			it.Id, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Id, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}

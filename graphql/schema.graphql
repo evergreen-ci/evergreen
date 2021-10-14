@@ -363,7 +363,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String
+  id: String!
   identifier: String
   displayName: String
   enabled: Boolean
