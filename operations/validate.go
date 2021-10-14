@@ -28,7 +28,7 @@ func Validate() cli.Command {
 			Usage: "include long validation checks (only applies if the check is over some threshold, in which case a warning is issued)",
 		}, cli.StringSliceFlag{
 			Name:  joinFlagNames(localModulesFlagName, "lm"),
-			Usage: "specify a local modules as MODULE_NAME=PATH pairs",
+			Usage: "specify local modules as MODULE_NAME=PATH pairs",
 		}),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {

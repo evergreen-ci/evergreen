@@ -589,6 +589,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			}
 		}
 		var yaml []byte
+		opts.Identifier = identifier
 		if path.Module != "" {
 			opts.RemotePath = path.FileName
 			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
@@ -633,6 +634,7 @@ type GetProjectOpts struct {
 	Revision     string
 	Token        string
 	ReadFileFrom string
+	Identifier   string
 }
 
 type PatchOpts struct {
@@ -681,11 +683,11 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Ref.Id, opts.Revision)
+			return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Identifier, opts.Revision)
 		}
 		fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Ref.Id)
+			return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Identifier)
 		}
 		return fileContents, nil
 	}
@@ -710,7 +712,6 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	repoOwner, repoName := module.GetRepoOwnerAndName()
 	moduleOpts := GetProjectOpts{
 		Ref: &ProjectRef{
-			Id:    module.Name,
 			Owner: repoOwner,
 			Repo:  repoName,
 		},
@@ -718,6 +719,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		Revision:     module.Branch,
 		Token:        opts.Token,
 		ReadFileFrom: ReadfromGithub,
+		Identifier:   moduleName,
 	}
 	return retrieveFile(ctx, moduleOpts)
 }
