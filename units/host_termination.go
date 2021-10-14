@@ -324,6 +324,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,
 			"job":      j.ID(),
+			"reason":   j.Reason,
 			"message":  "problem getting cloud host instance status",
 		}))
 
