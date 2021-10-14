@@ -3206,7 +3206,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId 
 }
 
 // Will return an array of activated and unactivated versions
-func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error) {
+func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
 	projectId, err := model.GetIdForProject(options.ProjectID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
@@ -3216,31 +3216,17 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		limit = utility.FromIntPtr(options.Limit)
 	}
 	opts := model.MainlineCommitVersionOptions{
-		Activated:       true,
 		Limit:           limit,
 		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
 	}
 
-	activatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+	versions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
 	}
 
-	opts = model.MainlineCommitVersionOptions{
-		Activated:       false,
-		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
-	}
-	unactivatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting unactivated versions: %s", err.Error()))
-	}
-
-	versions := append(activatedVersions, unactivatedVersions...)
-	sort.Slice(versions, func(i, j int) bool {
-		return versions[i].RevisionOrderNumber > versions[j].RevisionOrderNumber
-	})
 	var mainlineCommits MainlineCommits
-	activatedVersionCount := 0
+	matchingVersionCount := 0
 
 	// We only want to return the PrevPageOrderNumber if a user is not on the first page
 	if options.SkipOrderNumber != nil {
@@ -3260,10 +3246,27 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 	}
 
-	for _, v := range versions {
-		if activatedVersionCount == limit {
+	index := 0
+	versionsCheckedCount := 0
+
+	// We will loop through each version returned from GetMainlineCommitVersionsWithOptions and see if there is a commit that matches the filter parameters (if any).
+	// If there is a match, we will add it to the array of versions to be returned to the user.
+	// If there are not enough matches to satisfy our limit, we will call GetMainlineCommitVersionsWithOptions again with the next order number to check and repeat the process.
+	for matchingVersionCount < limit {
+		// If we no longer have any more versions to check break out and return what we have.
+		if len(versions) == 0 {
 			break
 		}
+		// If we have checked more versions than the MaxMainlineCommitVersionLimit then break out and return what we have.
+		if versionsCheckedCount >= model.MaxMainlineCommitVersionLimit {
+			// Return an error if we did not find any versions that match.
+			if matchingVersionCount == 0 {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Matching version not found in %d most recent versions", model.MaxMainlineCommitVersionLimit))
+			}
+			break
+		}
+		versionsCheckedCount++
+		v := versions[index]
 		apiVersion := restModel.APIVersion{}
 		err = apiVersion.BuildFromService(&v)
 		if err != nil {
@@ -3278,15 +3281,31 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			}
 		}
 		mainlineCommitVersion := MainlineCommitVersion{}
-
-		// If a version is activated we append it directly to our returned list of mainlineCommits
-		if utility.FromBoolPtr(v.Activated) {
-			activatedVersionCount++
+		shouldCollapse := false
+		if !utility.FromBoolPtr(v.Activated) {
+			shouldCollapse = true
+		} else if buildVariantOptions.isPopulated() {
+			opts := task.HasMatchingTasksOptions{
+				TaskNames: buildVariantOptions.Tasks,
+				Variants:  buildVariantOptions.Variants,
+				Statuses:  buildVariantOptions.Statuses,
+			}
+			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking if version has tasks: %s", err.Error()))
+			}
+			if !hasTasks {
+				shouldCollapse = true
+			}
+		}
+		// If a version matches our filter criteria we append it directly to our returned list of mainlineCommits
+		if !shouldCollapse {
+			matchingVersionCount++
 			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
 			mainlineCommitVersion.Version = &apiVersion
 
 		} else {
-			// If a version is not activated we roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
+			// If a version does not match our filter criteria roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
 			// and then append it to our returned list.
 			// If we have any versions already we should check the most recent one first otherwise create a new one
 			if len(mainlineCommits.Versions) > 0 {
@@ -3309,6 +3328,21 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		// Only add a mainlineCommit if a new one was added and it's not a modified existing RolledUpVersion
 		if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
 			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+		}
+		index++
+		// If we have exhausted all of our versions we should fetch some more.
+		if index == len(versions) && matchingVersionCount < limit {
+			skipOrderNumber := versions[len(versions)-1].RevisionOrderNumber
+			opts := model.MainlineCommitVersionOptions{
+				Limit:           limit,
+				SkipOrderNumber: skipOrderNumber,
+			}
+
+			versions, err = model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
+			}
+			index = 0
 		}
 	}
 

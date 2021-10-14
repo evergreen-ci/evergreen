@@ -444,38 +444,31 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 	}
 	assert.NoError(t, v.Insert())
+
 	opts := MainlineCommitVersionOptions{
-		Limit:     4,
-		Activated: true,
+		Limit: 4,
 	}
 	versions, err := GetMainlineCommitVersionsWithOptions(p.Id, opts)
 	assert.NoError(t, err)
-	assert.Len(t, versions, 2)
+	assert.Len(t, versions, 4)
 	assert.EqualValues(t, "my_version", versions[0].Id)
+	assert.EqualValues(t, "your_version", versions[1].Id)
+	assert.EqualValues(t, "another_version", versions[2].Id)
+	assert.EqualValues(t, "yet_another_version", versions[3].Id)
 
 	opts = MainlineCommitVersionOptions{
 		Limit:           4,
-		Activated:       true,
 		SkipOrderNumber: 10,
 	}
 	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
 	assert.NoError(t, err)
-	assert.Len(t, versions, 1)
+	assert.Len(t, versions, 3)
 	assert.EqualValues(t, "your_version", versions[0].Id)
-
-	opts = MainlineCommitVersionOptions{
-		Limit:     4,
-		Activated: false,
-	}
-	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
-	assert.NoError(t, err)
-	assert.Len(t, versions, 2)
-	assert.EqualValues(t, "another_version", versions[0].Id)
-	assert.EqualValues(t, "yet_another_version", versions[1].Id)
+	assert.EqualValues(t, "another_version", versions[1].Id)
+	assert.EqualValues(t, "yet_another_version", versions[2].Id)
 
 	opts = MainlineCommitVersionOptions{
 		Limit:           4,
-		Activated:       false,
 		SkipOrderNumber: 8,
 	}
 	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)

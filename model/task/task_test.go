@@ -2774,6 +2774,59 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 
 }
 
+func TestHasMatchingTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskFailed,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t4 := Task{
+		Id:        "t4",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	t5 := Task{
+		Id:        "t5",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskStatusPending,
+	}
+	t6 := Task{
+		Id:        "t6",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	opts := HasMatchingTasksOptions{
+		Statuses: []string{evergreen.TaskFailed},
+	}
+	hasMatchingTasks, err := HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.True(t, hasMatchingTasks)
+
+	opts.Statuses = []string{evergreen.TaskWillRun}
+
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.False(t, hasMatchingTasks)
+}
+
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 	tasksToFetch := []*string{utility.ToStringPtr("t1"), utility.ToStringPtr("t2")}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
