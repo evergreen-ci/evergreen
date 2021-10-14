@@ -77,7 +77,7 @@ func (s *ProjectCopySuite) TestParse() {
 }
 
 func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
-	ctx := context.Background()
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "me"})
 	s.route.oldProject = "projectA"
 	s.route.newProject = "projectB"
 	resp := s.route.Run(ctx)

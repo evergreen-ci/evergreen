@@ -6733,9 +6733,9 @@ input CreateProjectInput {
 }
 
 input CopyProjectInput {
-  projectIdToCopy: String
+  projectIdToCopy: String!
   newProjectIdentifier: String!
-  newProjectId: String!
+  newProjectId: String
 }
 
 input ProjectSettingsInput {
@@ -32933,7 +32933,7 @@ func (ec *executionContext) unmarshalInputCopyProjectInput(ctx context.Context, 
 		switch k {
 		case "projectIdToCopy":
 			var err error
-			it.ProjectIdToCopy, err = ec.unmarshalOString2string(ctx, v)
+			it.ProjectIdToCopy, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -32945,7 +32945,7 @@ func (ec *executionContext) unmarshalInputCopyProjectInput(ctx context.Context, 
 			}
 		case "newProjectId":
 			var err error
-			it.NewProjectId, err = ec.unmarshalNString2string(ctx, v)
+			it.NewProjectId, err = ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}

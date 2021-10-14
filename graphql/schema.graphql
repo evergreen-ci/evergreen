@@ -359,12 +359,13 @@ input CreateProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+  id: String
 }
 
 input CopyProjectInput {
-  projectIdToCopy: String
+  projectIdToCopy: String!
   newProjectIdentifier: String!
-  newProjectId: String!
+  newProjectId: String
 }
 
 input ProjectSettingsInput {
