@@ -15,6 +15,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -154,6 +155,31 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 
 func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {
 	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
+	if err != nil {
+		return err
+	}
+
+	grip.Info("Patch successfully created.")
+	grip.Info(patchDisp)
+
+	if p.Browse {
+		browserCmd, err := findBrowserCommand()
+		if err != nil || len(browserCmd) == 0 {
+			grip.Warningf("cannot find browser command: %s", err)
+			return nil
+		}
+
+		browserCmd = append(browserCmd, newPatch.GetURL(conf.UIServerHost))
+		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
+		return cmd.Run()
+	}
+
+	return nil
+}
+
+func (p *patchParams) displayCommitQueuePatch(conf *ClientSettings, newPatch *patch.Patch) error {
+	env := evergreen.GetEnvironment()
+	patchDisp, err := getCommitQueuePatchDisplay(newPatch, p.ShowSummary, env.Settings().Ui.UIv2Url)
 	if err != nil {
 		return err
 	}
