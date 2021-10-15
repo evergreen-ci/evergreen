@@ -839,7 +839,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 				continue
 			}
 
-			dir = filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
+			dir = filepath.Join(c.Directory, expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name)
 		}
 
 		if len(patchPart.PatchSet.Patch) == 0 {
@@ -879,8 +879,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		patchCommandStrings = append(patchCommandStrings, applyCommand)
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
 
-		cmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", cmdsJoined}).
-			Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).
+		cmd := jpm.CreateCommand(ctx).Directory(conf.WorkDir).Add([]string{"bash", "-c", cmdsJoined}).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
 		if err = cmd.Run(ctx); err != nil {
