@@ -447,7 +447,18 @@ func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bo
 }
 
 func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
-	projectRef.Id = mgobson.NewObjectId().Hex()
+	if projectRef.Identifier != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Identifier); err != nil {
+			return err
+		}
+	}
+	if projectRef.Id != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Id); err != nil {
+			return err
+		}
+	} else {
+		projectRef.Id = mgobson.NewObjectId().Hex()
+	}
 	for _, p := range pc.CachedProjects {
 		if p.Id == projectRef.Id {
 			return gimlet.ErrorResponse{

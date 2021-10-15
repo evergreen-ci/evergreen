@@ -5,8 +5,8 @@ mutation {
                 id: "1234"
             }
             vars: {
-                vars: {hello: "world", goodbye: "now"},
-                privateVarsList: ["hello", "goodbye"]
+                vars: {goodbye: "now"},
+                privateVarsList: ["goodbye"]
             }
         }
         section: "variables",

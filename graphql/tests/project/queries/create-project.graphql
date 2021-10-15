@@ -9,6 +9,4 @@ mutation {
     identifier
     repo
   }
-}	ProjectIdToCopy      string
-NewProjectIdentifier string
-NewProjectId         string
+}
