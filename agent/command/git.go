@@ -643,7 +643,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
-	// Retrive the patch for the version if one exists.
+	// Retrieve the patch for the version if one exists.
 	var p *patch.Patch
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
