@@ -1,7 +1,6 @@
 package db
 
 import (
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -74,28 +73,38 @@ func (q Q) Hint(hint interface{}) Q {
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
 func FindOneQ(collection string, q Q, out interface{}) error {
-	return FindOne(
-		collection,
-		q.filter,
-		q.projection,
-		q.sort,
-		q.hint,
-		out,
-	)
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(1).
+		Hint(q.hint).
+		One(out)
 }
 
 // FindAllQ runs a Q query against the given collection, applying the results to "out."
 func FindAllQ(collection string, q Q, out interface{}) error {
-	return errors.WithStack(FindAll(
-		collection,
-		q.filter,
-		q.projection,
-		q.sort,
-		q.skip,
-		q.limit,
-		q.hint,
-		out,
-	))
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(q.limit).
+		Hint(q.hint).
+		All(out)
 }
 
 // CountQ runs a Q count query against the given collection.

@@ -196,50 +196,6 @@ func RemoveAll(collection string, query interface{}) error {
 	return err
 }
 
-// FindOne finds one item from the specified collection and unmarshals it into the
-// provided interface, which must be a pointer.
-func FindOne(collection string, query interface{},
-	projection interface{}, sort []string, hint interface{}, out interface{}) error {
-
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-		return err
-	}
-	defer session.Close()
-
-	q := db.C(collection).Find(query).Select(projection).Limit(1).Hint(hint)
-	if len(sort) != 0 {
-		q = q.Sort(sort...)
-	}
-	return q.One(out)
-}
-
-// FindAll finds the items from the specified collection and unmarshals them into the
-// provided interface, which must be a slice.
-func FindAll(collection string, query interface{},
-	projection interface{}, sort []string, skip int, limit int, hint interface{},
-	out interface{}) error {
-
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-		return errors.WithStack(err)
-	}
-	defer session.Close()
-
-	q := db.C(collection).Find(query).Hint(hint)
-	if projection != nil {
-		q = q.Select(projection)
-	}
-
-	if len(sort) != 0 {
-		q = q.Sort(sort...)
-	}
-
-	return errors.WithStack(q.Skip(skip).Limit(limit).All(out))
-}
-
 // Update updates one matching document in the collection.
 func Update(collection string, query interface{}, update interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
@@ -255,7 +211,6 @@ func Update(collection string, query interface{}, update interface{}) error {
 
 // UpdateId updates one _id-matching document in the collection.
 func UpdateId(collection string, id, update interface{}) error {
-
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -298,7 +253,6 @@ func UpdateAll(collection string, query interface{}, update interface{}) (*db.Ch
 
 // Upsert run the specified update against the collection as an upsert operation.
 func Upsert(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
-
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
