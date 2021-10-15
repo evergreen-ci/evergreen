@@ -49,7 +49,7 @@ func NewVolumeExpirationWarningsJob(id string) amboy.Job {
 	j := makeVolumeExpirationWarningsJob()
 	j.SetID(fmt.Sprintf("%s.%s", volumeExpirationWarningsName, id))
 	j.SetScopes([]string{volumeExpirationWarningsName})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	return j
 }
 

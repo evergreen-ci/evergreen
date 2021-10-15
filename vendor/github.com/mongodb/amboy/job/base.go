@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/pkg/errors"
@@ -37,13 +38,14 @@ type Base struct {
 	JobType        amboy.JobType `bson:"job_type" json:"job_type" yaml:"job_type"`
 	RequiredScopes []string      `bson:"required_scopes" json:"required_scopes" yaml:"required_scopes"`
 
-	applyScopesOnEnqueue bool
-	retryInfo            amboy.JobRetryInfo
-	priority             int
-	timeInfo             amboy.JobTimeInfo
-	status               amboy.JobStatusInfo
-	dep                  dependency.Manager
-	mutex                sync.RWMutex
+	enqueueScopes    []string
+	enqueueAllScopes bool
+	retryInfo        amboy.JobRetryInfo
+	priority         int
+	timeInfo         amboy.JobTimeInfo
+	status           amboy.JobStatusInfo
+	dep              dependency.Manager
+	mutex            sync.RWMutex
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -308,23 +310,53 @@ func (b *Base) Scopes() []string {
 	return b.RequiredScopes
 }
 
-// SetShouldApplyScopesOnEnqueue overrides the default behavior of scopes so
-// that they apply when the job is inserted into the queue rather than when the
-// job is dispatched.
-func (b *Base) SetShouldApplyScopesOnEnqueue(val bool) {
+// SetEnqueueScopes overrides the default behavior for the given scopes so that
+// they apply when the job is inserted into the queue rather than when the job
+// is dispatched. This filter will be ignored if EnqueueAllScopes is true.
+func (b *Base) SetEnqueueScopes(scopes ...string) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	b.applyScopesOnEnqueue = val
+	b.enqueueScopes = scopes
 }
 
-// ShouldApplyShouldScopesOnEnqueue returns whether the job's scopes are applied on
-// enqueue. If false, the scopes are applied when the job is dispatched.
-func (b *Base) ShouldApplyScopesOnEnqueue() bool {
+// EnqueueScopes returns the subset of the job's scopes that will be applied on
+// enqueue, if any.
+func (b *Base) EnqueueScopes() []string {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
 
-	return b.applyScopesOnEnqueue
+	if b.enqueueAllScopes {
+		return b.RequiredScopes
+	}
+
+	scopes := utility.StringSliceIntersection(b.RequiredScopes, b.enqueueScopes)
+	if len(scopes) == 0 {
+		return nil
+	}
+
+	return scopes
+}
+
+// SetEnqueueAllScopes overrides the default behavior of scopes so that they all
+// apply when the job is inserted into the queue rather than when the job is
+// dispatched.
+func (b *Base) SetEnqueueAllScopes(val bool) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	b.enqueueAllScopes = val
+}
+
+// EnqueueAllScopes returns whether all of the job's scopes are applied on
+// enqueue. If false, the subset of scopes that are selected to apply on enqueue
+// with SetEnqueueScopes will apply on enqueue; the remaining scopes will apply
+// on dispatch.
+func (b *Base) EnqueueAllScopes() bool {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
+	return b.enqueueAllScopes
 }
 
 // RetryInfo returns information and options for the job's retry policies.

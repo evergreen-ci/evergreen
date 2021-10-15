@@ -84,12 +84,12 @@ func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
 		q.mu.Unlock()
 		return amboy.NewDuplicateJobErrorf("cannot dispatch '%s', already complete", name)
 	}
-	if j.ShouldApplyScopesOnEnqueue() {
-		if err := q.scopes.Acquire(name, j.Scopes()); err != nil {
-			q.mu.Unlock()
-			return errors.Wrapf(err, "applying scopes to job")
-		}
+
+	if err := q.scopes.Acquire(j.ID(), j.EnqueueScopes()); err != nil {
+		q.mu.Unlock()
+		return errors.Wrapf(err, "applying scopes to job")
 	}
+
 	q.pendingStorage[name] = j
 	q.storage[name] = j
 	q.mu.Unlock()
