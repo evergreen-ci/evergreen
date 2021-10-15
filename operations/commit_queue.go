@@ -291,7 +291,8 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem creating a commit queue patch")
 			}
-			patchDisp, err := getAPIPatchDisplay(mergePatch, false, "https://spruce.mongodb.com")
+			env := evergreen.GetEnvironment()
+			patchDisp, err := getAPIPatchDisplay(mergePatch, false, env.Settings().Ui.UIv2Url)
 			if err != nil {
 				grip.Errorf("can't print patch display for new patch '%s'", mergePatch.Id)
 			}
@@ -473,7 +474,7 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	if p.Author != "" {
 		grip.Infof("Author: %s", p.Author)
 	}
-	disp, err := getPatchDisplay(p, false, uiServerHost, "")
+	disp, err := getPatchDisplay(p, false, uiServerHost)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch display"))
 		return

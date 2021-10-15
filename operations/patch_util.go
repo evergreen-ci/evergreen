@@ -153,7 +153,7 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 }
 
 func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {
-	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost, "")
+	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
 	if err != nil {
 		return err
 	}
@@ -431,11 +431,9 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 
 // getPatchDisplay returns a human-readable summary representation of a patch object
 // which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, link string) (string, error) {
+func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
 	var out bytes.Buffer
-	if link == "" {
-		link = p.GetURL(uiHost)
-	}
+
 	err := patchDisplayTemplate.Execute(&out, struct {
 		Patch         *patch.Patch
 		ShowSummary   bool
@@ -445,7 +443,30 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, link string)
 		Patch:         p,
 		ShowSummary:   summarize,
 		ShowFinalized: p.IsCommitQueuePatch(),
-		Link:          link,
+		Link:          p.GetURL(uiHost),
+	})
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// getCommitQueuePatchDisplay returns a human-readable summary representation of a patch object
+// which can be written to the terminal, and links to the new UI commit queue page for
+// the project in question in the CLI
+func getCommitQueuePatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
+	var out bytes.Buffer
+
+	err := patchDisplayTemplate.Execute(&out, struct {
+		Patch         *patch.Patch
+		ShowSummary   bool
+		ShowFinalized bool
+		Link          string
+	}{
+		Patch:         p,
+		ShowSummary:   summarize,
+		ShowFinalized: p.IsCommitQueuePatch(),
+		Link:          p.GetCommitQueueURL(uiHost),
 	})
 	if err != nil {
 		return "", err
@@ -463,7 +484,7 @@ func getAPIPatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost str
 		return "", errors.New("service patch is not a Patch")
 	}
 
-	return getPatchDisplay(&servicePatch, summarize, uiHost, servicePatch.GetCommitQueueURL(uiHost))
+	return getCommitQueuePatchDisplay(&servicePatch, summarize, uiHost)
 }
 
 func isCommitRange(commits string) bool {
