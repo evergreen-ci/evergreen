@@ -1949,6 +1949,8 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
+		// if the aborting task is part of a display task, we also don't want to mark it as aborted
+		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
