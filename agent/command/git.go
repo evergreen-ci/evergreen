@@ -141,7 +141,7 @@ func getProjectMethodAndToken(projectToken, globalToken, globalCloneMethod strin
 	return "", "", errors.Errorf("unrecognized clone method '%s'", globalCloneMethod)
 }
 
-// parseToken parses the OAuth token, if it is in the format "token <!-- <token> -->";
+// parseToken parses the OAuth token, if it is in the format "token <token>";
 // otherwise, it returns the token unchanged.
 func parseToken(token string) (string, error) {
 	if !strings.HasPrefix(token, "token") {
