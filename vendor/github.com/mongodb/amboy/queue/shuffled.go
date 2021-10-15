@@ -113,10 +113,8 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 		return errors.Wrap(err, "invalid job timeinfo")
 	}
 
-	if j.ShouldApplyScopesOnEnqueue() {
-		if err := q.scopes.Acquire(id, j.Scopes()); err != nil {
-			return errors.Wrapf(err, "applying scopes to job")
-		}
+	if err := q.scopes.Acquire(id, j.EnqueueScopes()); err != nil {
+		return errors.Wrapf(err, "applying scopes to job")
 	}
 
 	ret := make(chan error)

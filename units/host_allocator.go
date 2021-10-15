@@ -61,7 +61,7 @@ func NewHostAllocatorJob(env evergreen.Environment, distroID string, timestamp t
 	j.env = env
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostAllocatorJobName, distroID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 
 	return j
 }

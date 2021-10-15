@@ -133,16 +133,14 @@ func (q *limitedSizeSerializableLocal) Put(ctx context.Context, j amboy.Job) err
 		return amboy.NewDuplicateJobErrorf("cannot enqueue duplicate job '%s'", j.ID())
 	}
 
-	if j.ShouldApplyScopesOnEnqueue() {
-		if err := q.scopes.Acquire(name, j.Scopes()); err != nil {
-			return errors.Wrapf(err, "applying scopes to job")
-		}
+	if err := q.scopes.Acquire(name, j.EnqueueScopes()); err != nil {
+		return errors.Wrapf(err, "applying scopes to job")
 	}
 
 	if err := q.tryPutPending(j); err != nil {
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(err, "adding new job")
-		catcher.Wrapf(q.scopes.Release(name, j.Scopes()), "releasing new job's acquired scopes")
+		catcher.Wrapf(q.scopes.Release(name, j.EnqueueScopes()), "releasing new job's acquired scopes")
 		return catcher.Resolve()
 	}
 
@@ -493,10 +491,14 @@ func (q *limitedSizeSerializableLocal) Complete(ctx context.Context, j amboy.Job
 func (q *limitedSizeSerializableLocal) complete(ctx context.Context, j amboy.Job) error {
 	name := q.getNameWithMetadata(j)
 
-	if !j.RetryInfo().ShouldRetry() || !j.ShouldApplyScopesOnEnqueue() {
-		if err := q.scopes.Release(name, j.Scopes()); err != nil {
-			return errors.Wrapf(err, "releasing scopes '%s'", j.Scopes())
-		}
+	var scopesToRelease []string
+	if j.RetryInfo().ShouldRetry() {
+		scopesToRelease, _ = utility.StringSliceSymmetricDifference(j.Scopes(), j.EnqueueScopes())
+	} else {
+		scopesToRelease = j.Scopes()
+	}
+	if err := q.scopes.Release(name, scopesToRelease); err != nil {
+		return errors.Wrapf(err, "releasing scopes '%s'", scopesToRelease)
 	}
 
 	q.prepareComplete(j)
@@ -583,14 +585,14 @@ func (q *limitedSizeSerializableLocal) CompleteRetryingAndPut(ctx context.Contex
 
 	q.prepareCompleteRetrying(toComplete)
 
-	if err := q.scopes.ReleaseAndAcquire(toCompleteName, toComplete.Scopes(), toPutName, toPut.Scopes()); err != nil {
+	if err := q.scopes.ReleaseAndAcquire(toCompleteName, toComplete.Scopes(), toPutName, toPut.EnqueueScopes()); err != nil {
 		return errors.Wrap(err, "releasing scopes from completed job and acquiring scopes for new job")
 	}
 
 	if err := q.tryPutPending(toPut); err != nil {
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(err, "adding new job")
-		catcher.Wrapf(q.scopes.ReleaseAndAcquire(toPutName, toPut.Scopes(), toCompleteName, toComplete.Scopes()), "releasing scopes from new job and re-acquiring scopes of completed job")
+		catcher.Wrapf(q.scopes.ReleaseAndAcquire(toPutName, toPut.Scopes(), toCompleteName, toComplete.EnqueueScopes()), "releasing scopes from new job and re-acquiring scopes of completed job")
 		return catcher.Resolve()
 	}
 

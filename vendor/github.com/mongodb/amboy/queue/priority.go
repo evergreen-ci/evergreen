@@ -62,10 +62,8 @@ func (q *priorityLocalQueue) Put(ctx context.Context, j amboy.Job) error {
 		return errors.Wrap(err, "invalid job timeinfo")
 	}
 
-	if j.ShouldApplyScopesOnEnqueue() {
-		if err := q.scopes.Acquire(j.ID(), j.Scopes()); err != nil {
-			return errors.Wrapf(err, "applying scopes to job")
-		}
+	if err := q.scopes.Acquire(j.ID(), j.EnqueueScopes()); err != nil {
+		return errors.Wrapf(err, "applying scopes to job")
 	}
 
 	return q.storage.Insert(j)

@@ -437,12 +437,12 @@ func TestQueueSmoke(t *testing.T) {
 
 				t.Run(runner.Name+"Pool", func(t *testing.T) {
 					var (
-						testRetryOnce                sync.Once
-						testWaitUntilOnce            sync.Once
-						testDispatchByOnce           sync.Once
-						testMaxTimeOnce              sync.Once
-						testScopesOnce               sync.Once
-						testApplyScopesOnEnqueueOnce sync.Once
+						testRetryOnce         sync.Once
+						testWaitUntilOnce     sync.Once
+						testDispatchByOnce    sync.Once
+						testMaxTimeOnce       sync.Once
+						testScopesOnce        sync.Once
+						testEnqueueScopesOnce sync.Once
 					)
 
 					for _, size := range DefaultSizeTestCases() {
@@ -465,18 +465,18 @@ func TestQueueSmoke(t *testing.T) {
 						t.Run("MaxSize"+size.Name, func(t *testing.T) {
 							if !test.SkipUnordered {
 								t.Run("Unordered", func(t *testing.T) {
-									UnorderedTest(bctx, t, test, runner, size)
+									unorderedTest(bctx, t, test, runner, size)
 								})
 							}
 							if test.OrderedSupported {
 								t.Run("Ordered", func(t *testing.T) {
-									OrderedTest(bctx, t, test, runner, size)
+									orderedTest(bctx, t, test, runner, size)
 								})
 							}
 							if test.WaitUntilSupported {
 								testWaitUntilOnce.Do(func() {
 									t.Run("WaitUntil", func(t *testing.T) {
-										WaitUntilTest(bctx, t, test, runner, size)
+										waitUntilTest(bctx, t, test, runner, size)
 									})
 								})
 							}
@@ -484,42 +484,42 @@ func TestQueueSmoke(t *testing.T) {
 							if test.DispatchBySupported {
 								testDispatchByOnce.Do(func() {
 									t.Run("DispatchBy", func(t *testing.T) {
-										DispatchByTest(bctx, t, test, runner, size)
+										dispatchByTest(bctx, t, test, runner, size)
 									})
 								})
 							}
 							if test.MaxTimeSupported {
 								testMaxTimeOnce.Do(func() {
 									t.Run("MaxTime", func(t *testing.T) {
-										MaxTimeTest(bctx, t, test, runner, size)
+										maxTimeTest(bctx, t, test, runner, size)
 									})
 								})
 							}
 
-							if test.RetrySupported && size.Size >= 2 {
+							if test.RetrySupported && size.Size >= 4 {
 								testRetryOnce.Do(func() {
 									t.Run("Retry", func(t *testing.T) {
-										RetryableTest(bctx, t, test, runner, size)
+										retryableTest(bctx, t, test, runner, size)
 									})
 								})
 							}
 
 							t.Run("OneExecution", func(t *testing.T) {
-								OneExecutionTest(bctx, t, test, runner, size)
+								oneExecutionTest(bctx, t, test, runner, size)
 							})
 
 							if test.ScopesSupported {
 								if test.SingleWorker && (!test.OrderedSupported || test.OrderedStartsBefore) && size.Size >= 4 {
 									testScopesOnce.Do(func() {
 										t.Run("ScopedLock", func(t *testing.T) {
-											ScopedLockTest(bctx, t, test, runner, size)
+											scopedLockTest(bctx, t, test, runner, size)
 										})
 									})
 								}
-								if size.Size >= 2 {
-									testApplyScopesOnEnqueueOnce.Do(func() {
-										t.Run("ApplyScopesOnEnqueue", func(t *testing.T) {
-											ApplyScopesOnEnqueueTest(bctx, t, test, runner, size)
+								if size.Size >= 4 {
+									testEnqueueScopesOnce.Do(func() {
+										t.Run("EnqueueScopes", func(t *testing.T) {
+											enqueueScopesTest(bctx, t, test, runner, size)
 										})
 									})
 								}
@@ -527,12 +527,12 @@ func TestQueueSmoke(t *testing.T) {
 
 							if test.IsRemote && test.MultiSupported && !runner.SkipMulti {
 								t.Run("MultiExecution", func(t *testing.T) {
-									MultiExecutionTest(bctx, t, test, runner, size)
+									multiExecutionTest(bctx, t, test, runner, size)
 								})
 
 								if size.Size < 8 {
 									t.Run("ManyQueues", func(t *testing.T) {
-										ManyQueueTest(bctx, t, test, runner, size)
+										manyQueueTest(bctx, t, test, runner, size)
 									})
 								}
 							}
@@ -592,7 +592,7 @@ func TestQueueSmoke(t *testing.T) {
 	}
 }
 
-func UnorderedTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func unorderedTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithCancel(bctx)
 	defer cancel()
 
@@ -658,7 +658,7 @@ func UnorderedTest(bctx context.Context, t *testing.T, test QueueTestCase, runne
 	grip.Infof("completed results check for %d worker smoke test", size.Size)
 }
 
-func OrderedTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func orderedTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithCancel(bctx)
 	defer cancel()
 
@@ -714,7 +714,7 @@ func OrderedTest(bctx context.Context, t *testing.T, test QueueTestCase, runner 
 	require.Equal(t, statCounter, numJobs)
 }
 
-func WaitUntilTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func waitUntilTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithTimeout(bctx, 2*time.Minute)
 	defer cancel()
 
@@ -752,7 +752,7 @@ func WaitUntilTest(bctx context.Context, t *testing.T, test QueueTestCase, runne
 				cmd = fmt.Sprintf("echo %s.%d.waiter", name, num)
 				j2 := job.NewShellJob(cmd, "")
 				j2.UpdateTimeInfo(amboy.JobTimeInfo{
-					WaitUntil: time.Now().Add(time.Hour),
+					WaitUntil: time.Now().Add(4 * amboy.LockTimeout),
 				})
 				ti2 := j2.TimeInfo()
 				require.NotZero(t, ti2.WaitUntil)
@@ -811,7 +811,7 @@ waitLoop:
 	assert.Equal(t, numJobs, completed)
 }
 
-func DispatchByTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func dispatchByTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithTimeout(bctx, 2*time.Minute)
 	defer cancel()
 
@@ -855,7 +855,7 @@ waitLoop:
 	assert.Equal(t, size.Size, stats.Completed)
 }
 
-func MaxTimeTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func maxTimeTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithTimeout(bctx, 10*time.Second)
 	defer cancel()
 	q, closer, err := test.Constructor(ctx, newDriverID(), size.Size)
@@ -886,7 +886,7 @@ func MaxTimeTest(bctx context.Context, t *testing.T, test QueueTestCase, runner 
 	}
 }
 
-func OneExecutionTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func oneExecutionTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	if test.Name == "LocalOrdered" {
 		t.Skip("topological sort deadlocks")
 	}
@@ -921,7 +921,7 @@ func OneExecutionTest(bctx context.Context, t *testing.T, test QueueTestCase, ru
 	assert.Equal(t, count, mockJobCounters.Count())
 }
 
-func MultiExecutionTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func multiExecutionTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithTimeout(bctx, 2*time.Minute)
 	defer cancel()
 	name := newDriverID()
@@ -1006,7 +1006,7 @@ func MultiExecutionTest(bctx context.Context, t *testing.T, test QueueTestCase, 
 	assert.Equal(t, len(results), firstCount)
 }
 
-func ManyQueueTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func manyQueueTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithCancel(bctx)
 	defer cancel()
 
@@ -1062,7 +1062,7 @@ func ManyQueueTest(bctx context.Context, t *testing.T, test QueueTestCase, runne
 	assert.Equal(t, size.Size*inside*outside, mockJobCounters.Count())
 }
 
-func ScopedLockTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func scopedLockTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	ctx, cancel := context.WithTimeout(bctx, time.Minute)
 	defer cancel()
 	q, closer, err := test.Constructor(ctx, newDriverID(), 2*size.Size)
@@ -1102,38 +1102,81 @@ waitLoop:
 	assert.Equal(t, size.Size, stats.Completed)
 }
 
-func ApplyScopesOnEnqueueTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func enqueueScopesTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, q amboy.Queue){
-		"PutJobAppliesScopeAndPreservesSettings": func(ctx context.Context, t *testing.T, q amboy.Queue) {
+		"PutJobEnqueuesWithScopesAndPreservesSettings": func(ctx context.Context, t *testing.T, q amboy.Queue) {
 			j := newSleepJob()
 			j.Sleep = 10 * time.Millisecond
-			j.SetScopes([]string{"scope"})
-			j.SetShouldApplyScopesOnEnqueue(true)
+			scopes := []string{"scope1", "scope2"}
+			j.SetScopes(scopes)
+			j.SetEnqueueScopes(scopes[0])
 
 			require.NoError(t, q.Put(ctx, j))
 			fetchedJob, ok := q.Get(ctx, j.ID())
 			require.True(t, ok)
-			assert.EqualValues(t, j.Scopes(), fetchedJob.Scopes())
-			assert.True(t, fetchedJob.ShouldApplyScopesOnEnqueue())
+			assert.Equal(t, j.Scopes(), fetchedJob.Scopes())
+			assert.False(t, fetchedJob.EnqueueAllScopes())
+			assert.Equal(t, j.Scopes(), fetchedJob.Scopes())
+			assert.Equal(t, scopes[:1], j.EnqueueScopes())
 		},
-		"PutJobFollowedBySaveSucceeds": func(ctx context.Context, t *testing.T, q amboy.Queue) {
+		"PutJobEnqueuesWithAllScopesAndPreservesSettings": func(ctx context.Context, t *testing.T, q amboy.Queue) {
 			j := newSleepJob()
 			j.Sleep = 10 * time.Millisecond
+			j.SetScopes([]string{"scope1", "scope2"})
+			j.SetEnqueueAllScopes(true)
+
+			require.NoError(t, q.Put(ctx, j))
+			fetchedJob, ok := q.Get(ctx, j.ID())
+			require.True(t, ok)
+			assert.True(t, fetchedJob.EnqueueAllScopes())
+			assert.Equal(t, j.Scopes(), fetchedJob.Scopes())
+			assert.Equal(t, fetchedJob.Scopes(), fetchedJob.EnqueueScopes())
+			assert.Equal(t, j.EnqueueScopes(), fetchedJob.EnqueueScopes())
+		},
+		"PutJobEnqueuedWithScopesFollowedBySaveSucceeds": func(ctx context.Context, t *testing.T, q amboy.Queue) {
+			j := newSleepJob()
+			j.Sleep = 10 * time.Millisecond
+			// Prevent the job from actually dispatching, which would cause Save
+			// to fail since the dispatcher takes ownership of the job once it's
+			// been dispatched.
+			j.SetTimeInfo(amboy.JobTimeInfo{
+				WaitUntil: time.Now().Add(time.Hour),
+			})
 			j.SetScopes([]string{"scope"})
-			j.SetShouldApplyScopesOnEnqueue(true)
+			j.SetEnqueueAllScopes(true)
 			require.NoError(t, q.Put(ctx, j))
 			require.NoError(t, q.Save(ctx, j))
 		},
-		"PutJobPreventsEnqueueingDuplicateScopeUntilJobCompletes": func(ctx context.Context, t *testing.T, q amboy.Queue) {
+		"PutJobPreventsEnqueueingDuplicateScopesUntilJobCompletes": func(ctx context.Context, t *testing.T, q amboy.Queue) {
 			j1 := newSleepJob()
 			j1.Sleep = 10 * time.Millisecond
-			j1.SetScopes([]string{"scope"})
-			j1.SetShouldApplyScopesOnEnqueue(true)
+			scopes := []string{"scope1", "scope2"}
+			j1.SetScopes(scopes)
+			j1.SetEnqueueAllScopes(true)
 
 			j2 := newSleepJob()
 			j2.Sleep = 10 * time.Millisecond
-			j2.SetScopes([]string{"scope"})
-			j2.SetShouldApplyScopesOnEnqueue(true)
+			j2.SetScopes(scopes)
+			j2.SetEnqueueAllScopes(true)
+
+			require.NoError(t, q.Put(ctx, j1))
+			require.Error(t, q.Put(ctx, j2))
+
+			require.True(t, amboy.WaitInterval(ctx, q, 10*time.Millisecond))
+
+			require.NoError(t, q.Put(ctx, j2))
+		},
+		"PutJobPreventsEnqueueingDuplicateSubsetOfScopesUntilJobCompletes": func(ctx context.Context, t *testing.T, q amboy.Queue) {
+			j1 := newSleepJob()
+			j1.Sleep = 10 * time.Millisecond
+			scopes := []string{"scope1", "scope2"}
+			j1.SetScopes(scopes)
+			j1.SetEnqueueScopes(scopes[0])
+
+			j2 := newSleepJob()
+			j2.Sleep = 10 * time.Millisecond
+			j2.SetScopes(scopes)
+			j2.SetEnqueueAllScopes(true)
 
 			require.NoError(t, q.Put(ctx, j1))
 			require.Error(t, q.Put(ctx, j2))
@@ -1161,7 +1204,7 @@ func ApplyScopesOnEnqueueTest(bctx context.Context, t *testing.T, test QueueTest
 	}
 }
 
-func RetryableTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
+func retryableTest(bctx context.Context, t *testing.T, test QueueTestCase, runner PoolTestCase, size SizeTestCase) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, rh amboy.RetryHandler, rq amboy.RetryableQueue){
 		"JobRetriesOnce": func(ctx context.Context, t *testing.T, rh amboy.RetryHandler, rq amboy.RetryableQueue) {
 			j := newMockRetryableJob("id")
@@ -1205,15 +1248,45 @@ func RetryableTest(bctx context.Context, t *testing.T, test QueueTestCase, runne
 		"ScopedJobRetriesOnceThenAllowsLaterJobToTakeScope": func(ctx context.Context, t *testing.T, rh amboy.RetryHandler, rq amboy.RetryableQueue) {
 			j := newMockRetryableJob("id")
 			j.NumTimesToRetry = 1
-			j.SetShouldApplyScopesOnEnqueue(true)
+			j.SetEnqueueAllScopes(true)
 			scopes := []string{"scope"}
 			j.SetScopes(scopes)
 
 			require.NoError(t, rq.Put(ctx, j))
+			require.True(t, amboy.WaitInterval(ctx, rq, 100*time.Millisecond))
 
 			jobAfterRetry := newMockRetryableJob("id1")
 			jobAfterRetry.SetScopes(scopes)
+
+			require.NoError(t, rq.Put(ctx, jobAfterRetry))
 			require.True(t, amboy.WaitInterval(ctx, rq, 100*time.Millisecond))
+
+			assert.Equal(t, 3, rq.Stats(ctx).Completed)
+			var foundFirstAttempt, foundSecondAttempt bool
+			for completed := range rq.Results(ctx) {
+				assert.False(t, completed.RetryInfo().ShouldRetry())
+				if completed.RetryInfo().CurrentAttempt == 0 {
+					foundFirstAttempt = true
+				}
+				if completed.RetryInfo().CurrentAttempt == 1 {
+					foundSecondAttempt = true
+				}
+			}
+			assert.True(t, foundFirstAttempt, "first job attempt should have completed")
+			assert.True(t, foundSecondAttempt, "second job attempt should have completed")
+		},
+		"ScopedJobRetriesOnceThenAllowsLaterJobToTakeConflictingSubsetOfScopes": func(ctx context.Context, t *testing.T, rh amboy.RetryHandler, rq amboy.RetryableQueue) {
+			j := newMockRetryableJob("id")
+			j.NumTimesToRetry = 1
+			scopes := []string{"scope1", "scope2"}
+			j.SetEnqueueScopes(scopes[0])
+			j.SetScopes(scopes)
+
+			require.NoError(t, rq.Put(ctx, j))
+			require.True(t, amboy.WaitInterval(ctx, rq, 100*time.Millisecond))
+
+			jobAfterRetry := newMockRetryableJob("id1")
+			jobAfterRetry.SetScopes(scopes)
 
 			require.NoError(t, rq.Put(ctx, jobAfterRetry))
 			require.True(t, amboy.WaitInterval(ctx, rq, 100*time.Millisecond))
