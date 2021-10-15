@@ -38,6 +38,10 @@ func (c *NotifyConfig) Get(env Environment) error {
 		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
 
+	// Clear the struct because Decode will not set fields that are omitempty to
+	// the zero value if they're zero in the database.
+	*c = NotifyConfig{}
+
 	if err := res.Decode(c); err != nil {
 		return errors.Wrap(err, "problem decoding result")
 	}
@@ -96,6 +100,11 @@ func (c *AlertsConfig) Get(env Environment) error {
 		}
 		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
+
+	// Clear the struct because Decode will not set fields that are omitempty to
+	// the zero value if they're zero in the database.
+	*c = AlertsConfig{}
+
 	if err := res.Decode(c); err != nil {
 		return errors.Wrap(err, "problem decoding result")
 	}
