@@ -31,6 +31,7 @@
       "result": {
         "data": {
           "createProject": {
+            "id": "grumpyCat",
             "identifier": "catVideos",
             "repo": "catGenerator"
           }

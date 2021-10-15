@@ -6730,6 +6730,7 @@ input CreateProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+  id: String
 }
 
 input CopyProjectInput {
@@ -32976,6 +32977,12 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 		case "repo":
 			var err error
 			it.Repo, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "id":
+			var err error
+			it.Id, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
