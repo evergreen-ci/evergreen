@@ -180,12 +180,7 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 
 	parserProject := &ParserProject{
 		Id: "version1",
-		Aliases: []ProjectAlias{
-			{
-				ID:        mgobson.NewObjectId(),
-				ProjectID: "project-1",
-				Alias:     evergreen.CommitQueueAlias,
-			},
+		PatchAliases: []ProjectAlias{
 			{
 				ID:        mgobson.NewObjectId(),
 				ProjectID: "project-1",
@@ -195,6 +190,12 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 				ID:        mgobson.NewObjectId(),
 				ProjectID: "project-1",
 				Alias:     "alias-1",
+			},
+		},
+		CommitQueueAliases: []ProjectAlias{
+			{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: "project-1",
 			},
 		},
 	}

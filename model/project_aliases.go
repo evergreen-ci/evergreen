@@ -70,7 +70,7 @@ type ProjectAlias struct {
 
 type ProjectAliases []ProjectAlias
 
-// FindAliasesForProject fetches all aliases for a given project
+// FindAliasesForProject fetches all aliases for a given project and optional version
 func FindAliasesForProject(projectID string, version string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
@@ -82,12 +82,10 @@ func FindAliasesForProject(projectID string, version string) ([]ProjectAlias, er
 	}
 	parserProject, err := ParserProjectByVersion(projectID, version)
 	if err != nil {
-		return []ProjectAlias{}, errors.Wrap(err, "error finding project parser")
+		return nil, errors.Wrap(err, "error finding project parser")
 	}
-	if parserProject != nil && len(parserProject.Aliases) > 0 {
-		parserProjectAliases := aliasesToMap(parserProject.Aliases)
-		dbAliases := aliasesToMap(out)
-		return mergeAliasMaps(parserProjectAliases, dbAliases), nil
+	if parserProject != nil {
+		return mergeAliases(parserProject, out), nil
 	}
 	return out, nil
 }
@@ -107,16 +105,16 @@ func FindAliasesForRepo(repoId string) ([]ProjectAlias, error) {
 }
 
 // findAliasInRepo finds all aliases with a given name for a repo.
-// Typically FindAliasInRepo should be used.
-func findAliasInRepo(projectID, alias string) ([]ProjectAlias, error) {
+// Typically FindAliasInProjectOrRepo should be used.
+func findAliasInRepo(repoID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
-		projectIDKey: projectID,
+		projectIDKey: repoID,
 		aliasKey:     alias,
 	})
 	err := db.FindAllQ(ProjectAliasCollection, q, &out)
 	if err != nil {
-		return []ProjectAlias{}, errors.Wrap(err, "error finding project aliases")
+		return nil, errors.Wrap(err, "error finding project aliases")
 	}
 	return out, nil
 }
@@ -125,23 +123,23 @@ func findAliasInRepo(projectID, alias string) ([]ProjectAlias, error) {
 // Typically FindAliasInProjectOrRepo should be used.
 func findAliasInProject(projectID, alias string, version string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
-	q := db.Query(bson.M{
-		projectIDKey: projectID,
-		aliasKey:     alias,
-	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding project aliases")
-	}
 	parserProject, err := ParserProjectByVersion(projectID, version)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project parser")
 	}
-	if parserProject != nil && len(parserProject.Aliases) > 0 {
-		parserProjectAliases := aliasesToMap(parserProject.Aliases)
+	if parserProject != nil {
+		parserProjectAliases := aliasesToMap(getFullParserProjectAliases(parserProject))
 		if parserProjectAliases[alias] != nil {
 			return parserProjectAliases[alias], nil
 		}
+	}
+	q := db.Query(bson.M{
+		projectIDKey: projectID,
+		aliasKey:     alias,
+	})
+	err = db.FindAllQ(ProjectAliasCollection, q, &out)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project aliases")
 	}
 	return out, nil
 }
@@ -154,15 +152,44 @@ func aliasesToMap(aliases []ProjectAlias) map[string][]ProjectAlias {
 	return output
 }
 
-func mergeAliasMaps(parserProjectAliases map[string][]ProjectAlias, dbAliases map[string][]ProjectAlias) []ProjectAlias {
+func getFullParserProjectAliases(parserProject *ParserProject) []ProjectAlias {
+	var parserProjectAliases []ProjectAlias
+	if parserProject != nil {
+		for _, commitQueueAlias := range parserProject.CommitQueueAliases {
+			commitQueueAlias.Alias = evergreen.CommitQueueAlias
+			parserProjectAliases = append(parserProjectAliases, commitQueueAlias)
+		}
+		for _, gitTagAlias := range parserProject.GitTagAliases {
+			gitTagAlias.Alias = evergreen.GitTagAlias
+			parserProjectAliases = append(parserProjectAliases, gitTagAlias)
+		}
+		for _, githubPrAlias := range parserProject.GitHubPRAliases {
+			githubPrAlias.Alias = evergreen.GithubPRAlias
+			parserProjectAliases = append(parserProjectAliases, githubPrAlias)
+		}
+		for _, gitHubCheckAlias := range parserProject.GitHubChecksAliases {
+			gitHubCheckAlias.Alias = evergreen.GithubChecksAlias
+			parserProjectAliases = append(parserProjectAliases, gitHubCheckAlias)
+		}
+		for _, patchAlias := range parserProject.PatchAliases {
+			parserProjectAliases = append(parserProjectAliases, patchAlias)
+		}
+	}
+	return parserProjectAliases
+}
+
+func mergeAliases(parserProject *ParserProject, databaseAliases []ProjectAlias) []ProjectAlias {
+	parserProjectAliases := getFullParserProjectAliases(parserProject)
+	ppAliasMap := aliasesToMap(parserProjectAliases)
+	dbAliasMap := aliasesToMap(databaseAliases)
 	var out []ProjectAlias
-	for _, v := range parserProjectAliases {
+	for _, v := range ppAliasMap {
 		for _, alias := range v {
 			out = append(out, alias)
 		}
 	}
-	for k, v := range dbAliases {
-		if parserProjectAliases[k] == nil {
+	for k, v := range dbAliasMap {
+		if ppAliasMap[k] == nil {
 			for _, alias := range v {
 				out = append(out, alias)
 			}
