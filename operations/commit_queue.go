@@ -599,7 +599,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	if err != nil {
 		return err
 	}
-	if err = patchParams.displayPatch(conf, patch); err != nil {
+	if err = patchParams.displayCommitQueuePatch(conf, patch); err != nil {
 		grip.Error("Patch information cannot be displayed.")
 	}
 
