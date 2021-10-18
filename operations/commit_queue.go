@@ -176,7 +176,12 @@ func mergeCommand() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			return params.mergeBranch(ctx, conf, client, ac)
+			settings, err := client.GetSettings(ctx)
+			if err != nil {
+				return errors.Wrap(err, "problem retrieving admin settings")
+			}
+
+			return params.mergeBranch(ctx, conf, client, ac, settings.Ui.UIv2Url)
 		},
 	}
 }
@@ -291,8 +296,11 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem creating a commit queue patch")
 			}
-			env := evergreen.GetEnvironment()
-			patchDisp, err := getAPIPatchDisplay(mergePatch, false, env.Settings().Ui.UIv2Url)
+			settings, err := client.GetSettings(ctx)
+			if err != nil {
+				return errors.Wrap(err, "problem retrieving admin settings")
+			}
+			patchDisp, err := getAPIPatchDisplay(mergePatch, false, settings.Ui.UIv2Url)
 			if err != nil {
 				grip.Errorf("can't print patch display for new patch '%s'", mergePatch.Id)
 			}
@@ -515,10 +523,10 @@ type mergeParams struct {
 	force       bool
 }
 
-func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
+func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient, uiV2Url string) error {
 	if p.id == "" {
 		showCQMessageForProject(ac, p.project)
-		if err := p.uploadMergePatch(conf, ac); err != nil {
+		if err := p.uploadMergePatch(conf, ac, uiV2Url); err != nil {
 			return err
 		}
 	} else {
@@ -536,7 +544,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	return nil
 }
 
-func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
+func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, uiV2Url string) error {
 	patchParams := &patchParams{
 		Project:     p.project,
 		SkipConfirm: p.skipConfirm,
@@ -599,7 +607,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	if err != nil {
 		return err
 	}
-	if err = patchParams.displayCommitQueuePatch(conf, patch); err != nil {
+	if err = patchParams.displayCommitQueuePatch(conf, patch, uiV2Url); err != nil {
 		grip.Error("Patch information cannot be displayed.")
 	}
 

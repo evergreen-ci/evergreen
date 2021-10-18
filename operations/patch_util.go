@@ -15,7 +15,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -177,9 +176,8 @@ func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) 
 	return nil
 }
 
-func (p *patchParams) displayCommitQueuePatch(conf *ClientSettings, newPatch *patch.Patch) error {
-	env := evergreen.GetEnvironment()
-	patchDisp, err := getCommitQueuePatchDisplay(newPatch, p.ShowSummary, env.Settings().Ui.UIv2Url)
+func (p *patchParams) displayCommitQueuePatch(conf *ClientSettings, newPatch *patch.Patch, uiV2Url string) error {
+	patchDisp, err := getCommitQueuePatchDisplay(newPatch, p.ShowSummary, uiV2Url)
 	if err != nil {
 		return err
 	}
