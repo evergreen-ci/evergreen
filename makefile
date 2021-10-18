@@ -24,14 +24,30 @@ ifneq (,$(GOROOT))
 gobin := $(GOROOT)/bin/go
 endif
 
+gocache := $(GOCACHE)
+ifeq (,$(gocache))
+gocache := $(abspath $(buildDir)/.cache)
+endif
+lintCache := $(GOLANGCI_LINT_CACHE)
+ifeq (,$(lintCache))
+lintCache := $(abspath $(buildDir)/.lint-cache)
+endif
+
 gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
 gopath := $(shell cygpath -m $(gopath))
-export GOCACHE := $(shell cygpath -m $(abspath $(buildDir)/.cache))
-export GOLANGCI_LINT_CACHE := $(shell cygpath -m $(abspath $(buildDir)/.lint-cache))
+gocache := $(shell cygpath -m $(gocache))
+lintCache := $(shell cygpath -m $(lintCache))
 export GOPATH := $(gopath)
 export GOROOT := $(shell cygpath -m $(GOROOT))
+endif
+
+ifneq ($(gocache),$(GOCACHE))
+export GOCACHE := $(gocache)
+endif
+ifneq ($(lintCache),$(GOLANGCI_LINT_CACHE))
+export GOLANGCI_LINT_CACHE := $(lintCache)
 endif
 
 export GO111MODULE := off
@@ -164,7 +180,6 @@ $(gopath)/bin:
 # end dependency installation tools
 
 
-lintDeps := $(buildDir)/.lintSetup $(buildDir)/golangci-lint $(buildDir)/run-linter
 # lint setup targets
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	$(gobin) get github.com/evergreen-ci/evg-lint/...
