@@ -1045,15 +1045,6 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 }
 
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
-	if err != nil {
-		// if the project is not found, the err will be nil based on how FindBranchProjectRef is set up
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
-	}
-	if projectRef != nil {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot create project with identifier '%s', identifier already in use", *project.Identifier))
-	}
-
 	i, err := project.ToService()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API error converting from model.APIProjectRef to model.ProjectRef: %s ", err.Error()))
@@ -1065,10 +1056,18 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err = r.sc.CreateProject(dbProjectRef, u); err != nil {
-		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Database error for insert() project with project name '%s'", *project.Identifier).Error())
+		apiErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			if apiErr.StatusCode == http.StatusBadRequest {
+				return nil, InputValidationError.Send(ctx, apiErr.Message)
+			}
+			// StatusNotFound and other error codes are really internal errors bc we determine this input
+			return nil, InternalServerError.Send(ctx, apiErr.Message)
+		}
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
-	projectRef, err = model.FindBranchProjectRef(*project.Identifier)
+	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
@@ -1081,6 +1080,23 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 
 	return &apiProjectRef, nil
+}
+
+func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	projectRef, err := r.sc.CopyProject(ctx, opts)
+	if err != nil {
+		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
+		if ok {
+			if apiErr.StatusCode == http.StatusBadRequest {
+				return nil, InputValidationError.Send(ctx, apiErr.Message)
+			}
+			// StatusNotFound and other error codes are really internal errors bc we determine this input
+			return nil, InternalServerError.Send(ctx, apiErr.Message)
+		}
+		return nil, InternalServerError.Send(ctx, err.Error())
+
+	}
+	return projectRef, nil
 }
 
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {

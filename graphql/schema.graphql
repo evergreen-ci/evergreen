@@ -83,8 +83,9 @@ type Query {
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
+  copyProject(project: CopyProjectInput!): Project! @requireSuperUser
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -354,6 +355,19 @@ input PatchesInput {
   includeCommitQueue: Boolean! = false
 }
 
+input CreateProjectInput {
+  identifier: String!
+  owner: String!
+  repo: String!
+  id: String
+}
+
+input CopyProjectInput {
+  projectIdToCopy: String!
+  newProjectIdentifier: String!
+  newProjectId: String
+}
+
 input ProjectSettingsInput {
   githubWebhooksEnabled: Boolean
   projectRef: ProjectInput
@@ -401,12 +415,6 @@ input ProjectInput {
 
   hidden: Boolean
   useRepoSettings: Boolean
-}
-
-input CreateProjectInput {
-  identifier: String!
-  owner: String!
-  repo: String!
 }
 
 input TriggerAliasInput {

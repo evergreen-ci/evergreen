@@ -361,16 +361,7 @@ func (projectRef *ProjectRef) Insert() error {
 }
 
 func (p *ProjectRef) Add(creator *user.DBUser) error {
-	if p.Id != "" {
-		// verify that this is a unique ID
-		conflictingRef, err := FindBranchProjectRef(p.Id)
-		if err != nil {
-			return errors.Wrap(err, "error checking for conflicting project ref")
-		}
-		if conflictingRef != nil {
-			return errors.New("ID already being used as ID or identifier for another project")
-		}
-	} else {
+	if p.Id == "" {
 		p.Id = mgobson.NewObjectId().Hex()
 	}
 

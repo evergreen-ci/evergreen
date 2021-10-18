@@ -806,6 +806,18 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	newProject.Id = projectWithId.Id
+	if newProject.Id != "" { // verify that this is a unique ID
+		conflictingRef, err := model.FindBranchProjectRef(newProject.Id)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error checking for conflicting project ref: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if conflictingRef != nil {
+			http.Error(w, "ID already being used as ID or identifier for another project", http.StatusBadRequest)
+			return
+		}
+	}
+
 	err = newProject.Add(dbUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

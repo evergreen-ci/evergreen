@@ -107,8 +107,10 @@ type Connector interface {
 	// Create/Update a project the given projectRef
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
+	// VerifyUniqueProject returns a bad request error if the project ID / identifier is already in use.
+	VerifyUniqueProject(string) error
 	// CopyProject copies the passed in project with the given project identifier, and returns the new project.
-	CopyProject(context.Context, *model.ProjectRef, string) (*restModel.APIProjectRef, error)
+	CopyProject(context.Context, CopyProjectOpts) (*restModel.APIProjectRef, error)
 	GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error)
 
 	UpdateRepo(*model.RepoRef) error

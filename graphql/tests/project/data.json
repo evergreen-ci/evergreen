@@ -2,7 +2,21 @@
   "project_ref": [
     {
       "_id": "evergreen",
-      "identifier": "evergreen"
+      "identifier": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "enabled": true
+    },
+    {
+      "_id": "logkeeper",
+      "identifier": "keeperOfLogs"
+    }
+  ],
+  "project_vars": [
+    {
+      "_id": "evergreen",
+      "vars": {"hello": "world", "foo":  "bar"},
+      "private_vars": {"hello":  true, "foo":  false}
     }
   ],
   "patches": [

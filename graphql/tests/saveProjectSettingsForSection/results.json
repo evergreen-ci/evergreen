@@ -23,8 +23,8 @@
         "data": {
           "saveProjectSettingsForSection": {
             "vars": {
-              "vars": {"hello": "world", "goodbye":  "now"},
-              "privateVars": ["hello", "goodbye"]
+              "vars": {"goodbye":  "now"},
+              "privateVars": ["goodbye"]
             }
           }
         }
