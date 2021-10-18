@@ -123,6 +123,11 @@ var projectSyntaxValidators = []projectValidator{
 	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
+	validateGitTagAliases,
+	validateGitHubPRAliases,
+	validateGitHubChecksAliases,
+	validatePatchAliases,
+	validateCommitQueueAliases,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -398,6 +403,41 @@ func dependencyCycleExists(node model.TVPair, allNodes []model.TVPair, visited m
 
 	// no cycle found
 	return nil
+}
+
+func constructAliasValidationErrors(errs []string) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, errorMsg := range errs {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: errorMsg,
+		})
+	}
+	return validationErrs
+}
+
+func validateGitHubPRAliases(p *model.Project) ValidationErrors {
+	errs := model.ValidateProjectAliases(p.GitHubPRAliases, "GitHub PR Aliases")
+	return constructAliasValidationErrors(errs)
+}
+
+func validateGitHubChecksAliases(p *model.Project) ValidationErrors {
+	errs := model.ValidateProjectAliases(p.GitHubChecksAliases, "Github Checks Aliases")
+	return constructAliasValidationErrors(errs)
+}
+
+func validateCommitQueueAliases(p *model.Project) ValidationErrors {
+	errs := model.ValidateProjectAliases(p.CommitQueueAliases, "Commit Queue Aliases")
+	return constructAliasValidationErrors(errs)
+}
+
+func validatePatchAliases(p *model.Project) ValidationErrors {
+	errs := model.ValidateProjectAliases(p.PatchAliases, "Patch Aliases")
+	return constructAliasValidationErrors(errs)
+}
+
+func validateGitTagAliases(p *model.Project) ValidationErrors {
+	errs := model.ValidateProjectAliases(p.GitTagAliases, "Git Tag Aliases")
+	return constructAliasValidationErrors(errs)
 }
 
 // Ensures that the project has at least one buildvariant and also that all the
