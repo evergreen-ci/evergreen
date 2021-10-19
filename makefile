@@ -24,17 +24,39 @@ ifneq (,$(GOROOT))
 gobin := $(GOROOT)/bin/go
 endif
 
+gocache := $(GOCACHE)
+ifeq (,$(gocache))
+gocache := $(abspath $(buildDir)/.cache)
+endif
+lintCache := $(GOLANGCI_LINT_CACHE)
+ifeq (,$(lintCache))
+lintCache := $(abspath $(buildDir)/.lint-cache)
+endif
+
 gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
 gopath := $(shell cygpath -m $(gopath))
-export GOCACHE := $(shell cygpath -m $(abspath $(buildDir)/.cache))
-export GOLANGCI_LINT_CACHE := $(shell cygpath -m $(abspath $(buildDir)/.lint-cache))
+gocache := $(shell cygpath -m $(gocache))
+lintCache := $(shell cygpath -m $(lintCache))
 export GOPATH := $(gopath)
 export GOROOT := $(shell cygpath -m $(GOROOT))
 endif
 
+ifneq ($(gocache),$(GOCACHE))
+export GOCACHE := $(gocache)
+endif
+ifneq ($(lintCache),$(GOLANGCI_LINT_CACHE))
+export GOLANGCI_LINT_CACHE := $(lintCache)
+endif
+
 export GO111MODULE := off
+ifneq (,$(RACE_DETECTOR))
+# cgo is required for using the race detector.
+export CGO_ENABLED=1
+else
+export CGO_ENABLED=0
+endif
 # end go runtime settings
 
 
@@ -83,7 +105,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
 	@$(gobin) build -o $@ $<
@@ -158,7 +180,6 @@ $(gopath)/bin:
 # end dependency installation tools
 
 
-lintDeps := $(buildDir)/.lintSetup $(buildDir)/golangci-lint $(buildDir)/run-linter
 # lint setup targets
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	$(gobin) get github.com/evergreen-ci/evg-lint/...
@@ -189,7 +210,11 @@ $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
 #end generated config
 
 # generate rest model
-generate-rest-model:$(buildDir)/codegen
+# build-codegen is a special target to build all packages before performing code generation so that goimports can
+# properly locate package imports.
+build-codegen:
+	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach target,$(packages),./$(target))))
+generate-rest-model:$(buildDir)/codegen build-codegen
 	./$(buildDir)/codegen --config "rest/model/schema/type_mapping.yml" --schema "rest/model/schema/rest_model.graphql" --model "rest/model/generated.go" --helper "rest/model/generated_converters.go"
 $(buildDir)/codegen:
 	$(gobin) build -o $(buildDir)/codegen cmd/codegen/entry.go
@@ -512,6 +537,9 @@ $(buildDir):
 $(tmpDir):$(buildDir)
 	mkdir -p $@
 $(buildDir)/output.%.test:$(tmpDir) .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+# Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
+$(buildDir)/output.cmd-codegen-core.test: $(tmpDir) build-codegen .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 $(buildDir)/output-dlv.%.test:$(tmpDir) .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@

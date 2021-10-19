@@ -1027,42 +1027,24 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 }
 
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
-	res := &restModel.APIProjectSettings{}
 	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
 	if projectRef == nil {
-		// If the project ref doesn't exist for the identifier, we may be looking for a repo, so check that collection.
-		repoRef, err := model.FindOneRepoRef(identifier)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
-		}
-		if repoRef != nil {
-			projectRef = &repoRef.ProjectRef
-		}
+		return nil, ResourceNotFound.Send(ctx, "project doesn't exist")
 	}
-	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, "project/repo doesn't exist")
+
+	res := &restModel.APIProjectSettings{
+		ProjectRef: restModel.APIProjectRef{},
 	}
-	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+	if err = res.ProjectRef.BuildFromService(projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
-	res.ProjectRef = apiProjectRef
 	return res, nil
 }
 
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
-	if err != nil {
-		// if the project is not found, the err will be nil based on how FindBranchProjectRef is set up
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
-	}
-	if projectRef != nil {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot create project with identifier '%s', identifier already in use", *project.Identifier))
-	}
-
 	i, err := project.ToService()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API error converting from model.APIProjectRef to model.ProjectRef: %s ", err.Error()))
@@ -1074,10 +1056,18 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err = r.sc.CreateProject(dbProjectRef, u); err != nil {
-		return nil, InternalServerError.Send(ctx, errors.Wrapf(err, "Database error for insert() project with project name '%s'", *project.Identifier).Error())
+		apiErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			if apiErr.StatusCode == http.StatusBadRequest {
+				return nil, InputValidationError.Send(ctx, apiErr.Message)
+			}
+			// StatusNotFound and other error codes are really internal errors bc we determine this input
+			return nil, InternalServerError.Send(ctx, apiErr.Message)
+		}
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
-	projectRef, err = model.FindBranchProjectRef(*project.Identifier)
+	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}
@@ -1090,6 +1080,23 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 
 	return &apiProjectRef, nil
+}
+
+func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	projectRef, err := r.sc.CopyProject(ctx, opts)
+	if err != nil {
+		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
+		if ok {
+			if apiErr.StatusCode == http.StatusBadRequest {
+				return nil, InputValidationError.Send(ctx, apiErr.Message)
+			}
+			// StatusNotFound and other error codes are really internal errors bc we determine this input
+			return nil, InternalServerError.Send(ctx, apiErr.Message)
+		}
+		return nil, InternalServerError.Send(ctx, err.Error())
+
+	}
+	return projectRef, nil
 }
 
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
@@ -2154,6 +2161,16 @@ func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.AP
 	return TaskQueueItemTypeCommit, nil
 }
 
+func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section string) (*restModel.APIProjectSettings, error) {
+	projectId := utility.FromStringPtr(obj.ProjectRef.Id)
+	usr := MustHaveUser(ctx)
+	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), false, usr.Username())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error saving project settings for section: %s", err.Error()))
+	}
+	return changes, nil
+}
+
 func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := MustHaveUser(ctx)
 	pRef, err := r.sc.FindProjectById(projectID, false)
@@ -3118,37 +3135,23 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	return apiTask, nil
 }
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
-	i, err := obj.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
-	}
-	if len(t.ExecutionTasks) == 0 {
+	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
 	}
-	executionTasks := []*restModel.APITask{}
-	for _, execTaskID := range t.ExecutionTasks {
-		execT, err := task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, &t.Execution)
-		if err != nil {
-			// The task is not found, possibly because the execution is out of sync with the display task. Get the latest instead.
-			execT, err = task.FindOneIdAndExecutionWithDisplayStatus(execTaskID, nil)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting execution task with id: %s : %s", execTaskID, err.Error()))
-			}
-		}
-		if execT != nil {
-			apiTask := &restModel.APITask{}
-			if err = apiTask.BuildFromService(execT); err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task: %s to APITask", execT.Id))
-			}
-			executionTasks = append(executionTasks, apiTask)
-		}
+	tasks, err := task.FindByExecutionTasksAndMaxExecution(obj.ExecutionTasks, obj.Execution)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding execution tasks for task: %s : %s", *obj.Id, err.Error()))
 	}
-
-	return executionTasks, nil
+	apiTasks := []*restModel.APITask{}
+	for _, t := range tasks {
+		apiTask := &restModel.APITask{}
+		err = apiTask.BuildFromService(&t)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err.Error()))
+		}
+		apiTasks = append(apiTasks, apiTask)
+	}
+	return apiTasks, nil
 }
 
 func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
@@ -3238,7 +3241,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId 
 }
 
 // Will return an array of activated and unactivated versions
-func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions) (*MainlineCommits, error) {
+func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
 	projectId, err := model.GetIdForProject(options.ProjectID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
@@ -3248,31 +3251,17 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		limit = utility.FromIntPtr(options.Limit)
 	}
 	opts := model.MainlineCommitVersionOptions{
-		Activated:       true,
 		Limit:           limit,
 		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
 	}
 
-	activatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+	versions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
 	}
 
-	opts = model.MainlineCommitVersionOptions{
-		Activated:       false,
-		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
-	}
-	unactivatedVersions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting unactivated versions: %s", err.Error()))
-	}
-
-	versions := append(activatedVersions, unactivatedVersions...)
-	sort.Slice(versions, func(i, j int) bool {
-		return versions[i].RevisionOrderNumber > versions[j].RevisionOrderNumber
-	})
 	var mainlineCommits MainlineCommits
-	activatedVersionCount := 0
+	matchingVersionCount := 0
 
 	// We only want to return the PrevPageOrderNumber if a user is not on the first page
 	if options.SkipOrderNumber != nil {
@@ -3292,10 +3281,27 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		}
 	}
 
-	for _, v := range versions {
-		if activatedVersionCount == limit {
+	index := 0
+	versionsCheckedCount := 0
+
+	// We will loop through each version returned from GetMainlineCommitVersionsWithOptions and see if there is a commit that matches the filter parameters (if any).
+	// If there is a match, we will add it to the array of versions to be returned to the user.
+	// If there are not enough matches to satisfy our limit, we will call GetMainlineCommitVersionsWithOptions again with the next order number to check and repeat the process.
+	for matchingVersionCount < limit {
+		// If we no longer have any more versions to check break out and return what we have.
+		if len(versions) == 0 {
 			break
 		}
+		// If we have checked more versions than the MaxMainlineCommitVersionLimit then break out and return what we have.
+		if versionsCheckedCount >= model.MaxMainlineCommitVersionLimit {
+			// Return an error if we did not find any versions that match.
+			if matchingVersionCount == 0 {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Matching version not found in %d most recent versions", model.MaxMainlineCommitVersionLimit))
+			}
+			break
+		}
+		versionsCheckedCount++
+		v := versions[index]
 		apiVersion := restModel.APIVersion{}
 		err = apiVersion.BuildFromService(&v)
 		if err != nil {
@@ -3310,15 +3316,31 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			}
 		}
 		mainlineCommitVersion := MainlineCommitVersion{}
-
-		// If a version is activated we append it directly to our returned list of mainlineCommits
-		if utility.FromBoolPtr(v.Activated) {
-			activatedVersionCount++
+		shouldCollapse := false
+		if !utility.FromBoolPtr(v.Activated) {
+			shouldCollapse = true
+		} else if buildVariantOptions.isPopulated() {
+			opts := task.HasMatchingTasksOptions{
+				TaskNames: buildVariantOptions.Tasks,
+				Variants:  buildVariantOptions.Variants,
+				Statuses:  buildVariantOptions.Statuses,
+			}
+			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error checking if version has tasks: %s", err.Error()))
+			}
+			if !hasTasks {
+				shouldCollapse = true
+			}
+		}
+		// If a version matches our filter criteria we append it directly to our returned list of mainlineCommits
+		if !shouldCollapse {
+			matchingVersionCount++
 			mainlineCommits.NextPageOrderNumber = utility.ToIntPtr(v.RevisionOrderNumber)
 			mainlineCommitVersion.Version = &apiVersion
 
 		} else {
-			// If a version is not activated we roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
+			// If a version does not match our filter criteria roll up all the unactivated versions that are sequentially near each other into a single MainlineCommitVersion,
 			// and then append it to our returned list.
 			// If we have any versions already we should check the most recent one first otherwise create a new one
 			if len(mainlineCommits.Versions) > 0 {
@@ -3341,6 +3363,21 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		// Only add a mainlineCommit if a new one was added and it's not a modified existing RolledUpVersion
 		if mainlineCommitVersion.Version != nil || mainlineCommitVersion.RolledUpVersions != nil {
 			mainlineCommits.Versions = append(mainlineCommits.Versions, &mainlineCommitVersion)
+		}
+		index++
+		// If we have exhausted all of our versions we should fetch some more.
+		if index == len(versions) && matchingVersionCount < limit {
+			skipOrderNumber := versions[len(versions)-1].RevisionOrderNumber
+			opts := model.MainlineCommitVersionOptions{
+				Limit:           limit,
+				SkipOrderNumber: skipOrderNumber,
+			}
+
+			versions, err = model.GetMainlineCommitVersionsWithOptions(projectId, opts)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
+			}
+			index = 0
 		}
 	}
 

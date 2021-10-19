@@ -53,7 +53,7 @@ functions:
       working_dir: gopath/src/github.com/mongodb/amboy
       binary: make
       args: ["${make_args}", "${target}"]
-      include_expansions_in_env: ["DISABLE_COVERAGE", "GO_BIN_PATH", "GOROOT", "RACE_DETECTOR"]
+      include_expansions_in_env: ["DISABLE_COVERAGE", "GOROOT", "RACE_DETECTOR"]
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
@@ -63,8 +63,8 @@ functions:
       type: setup
       params:
         command: make get-mongodb
+        include_expansions_in_env: ["MONGODB_URL"]
         env:
-          MONGODB_URL: ${mongodb_url}
           DECOMPRESS: ${decompress}
         working_dir: gopath/src/github.com/mongodb/amboy
     - command: subprocess.exec
@@ -169,11 +169,9 @@ buildvariants:
     display_name: Race Detector
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       GOROOT: /opt/golang/go1.16
       RACE_DETECTOR: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
-      test_timeout: 15m
+      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
     run_on:
       - archlinux-new-large
     tasks:
@@ -184,10 +182,8 @@ buildvariants:
     run_on:
       - archlinux-new-large
     expansions:
-      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       GOROOT: /opt/golang/go1.16
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
-      test_timeout: 15m
+      MONGODB_URL: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
     tasks:
       - name: ".report"
         stepback: false
@@ -198,9 +194,8 @@ buildvariants:
       - ubuntu1804-large
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       GOROOT: /opt/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz
+      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz
     tasks:
       - build
       - ".test"
@@ -209,10 +204,8 @@ buildvariants:
     display_name: macOS 10.14
     expansions:
       DISABLE_COVERAGE: true
-      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       GOROOT: /opt/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
-      test_timeout: 15m
+      MONGODB_URL: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     run_on:
       - macos-1014
     tasks:
@@ -227,13 +220,9 @@ buildvariants:
       - windows-64-vs2017-large
       - windows-64-vs2017-small
     expansions:
-      GO_BIN_PATH: /cygdrive/c/golang/go1.16/bin/go
       GOROOT: C:/golang/go1.16
       DISABLE_COVERAGE: true
-      test_timeout: 15m
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
-      extension: ".exe"
-      archiveExt: ".zip"
+      MONGODB_URL: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
     tasks:
       - build
       - ".test"

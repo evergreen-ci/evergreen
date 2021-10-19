@@ -1227,3 +1227,9 @@ func setVersionActivationStatus(sc data.Connector, version *model.Version) error
 		return errors.Wrapf(version.SetActivated(), "Error updating version activated status for `%s`", version.Id)
 	}
 }
+func (buildVariantOptions *BuildVariantOptions) isPopulated() bool {
+	if buildVariantOptions == nil {
+		return false
+	}
+	return len(buildVariantOptions.Tasks) > 0 || len(buildVariantOptions.Variants) > 0 || len(buildVariantOptions.Statuses) > 0
+}

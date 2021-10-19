@@ -123,7 +123,7 @@ imports:
   - name: github.com/mongodb/grip
     version: d883a62b49faf8279c9209d28db88858a103177e
   - name: github.com/mongodb/amboy
-    version: 1553970ee7418f62c686a17ec859f53ddbd5dffd
+    version: 979c6e9dc53e8615577c938691b1ccea0f6a101c
   - name: github.com/evergreen-ci/cocoa
     version: d44632fb91055d88e16411f9983f273cb3efa5d3
   - name: github.com/evergreen-ci/gimlet
@@ -174,7 +174,7 @@ imports:
   - name: github.com/evergreen-ci/birch
     version: 9279ecfa890703259ea90af5d1c1fac4e9869bb2
   - name: github.com/mongodb/anser
-    version: 7c3b6870adfb65e15f5b130bae0adbb7efc67718
+    version: 5a61fd7ac02b2355c8e6f17bda3cdb7be9c9acf1
   - name: github.com/mongodb/ftdc
     version: fd0bfc553fcbcdfdb56f202df39992382971c3a1
 

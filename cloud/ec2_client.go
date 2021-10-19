@@ -1227,8 +1227,8 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:   aws.String("public_dns_name"),
-						PublicIpAddress: aws.String(MockIPV4),
+						PublicDnsName:    aws.String("public_dns_name"),
+						PrivateIpAddress: aws.String(MockIPV4),
 						NetworkInterfaces: []*ec2.InstanceNetworkInterface{
 							&ec2.InstanceNetworkInterface{
 								Ipv6Addresses: []*ec2.InstanceIpv6Address{
@@ -1305,9 +1305,9 @@ func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInst
 		Placement: &ec2.Placement{
 			AvailabilityZone: aws.String("us-east-1a"),
 		},
-		PublicDnsName:   aws.String("public_dns_name"),
-		PublicIpAddress: aws.String("12.34.56.78"),
-		LaunchTime:      aws.Time(time.Now()),
+		PublicDnsName:    aws.String("public_dns_name"),
+		PrivateIpAddress: aws.String("12.34.56.78"),
+		LaunchTime:       aws.Time(time.Now()),
 	}
 	return &ec2.StartInstancesOutput{}, nil
 }
@@ -1489,7 +1489,7 @@ func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	instance.InstanceType = aws.String("m3.4xlarge")
 	instance.LaunchTime = aws.Time(time.Now())
 	instance.PublicDnsName = aws.String("public_dns_name")
-	instance.PublicIpAddress = aws.String(MockIPV4)
+	instance.PrivateIpAddress = aws.String(MockIPV4)
 	ipv6 := ec2.InstanceIpv6Address{}
 	ipv6.SetIpv6Address(MockIPV6)
 	instance.NetworkInterfaces = []*ec2.InstanceNetworkInterface{

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
@@ -287,7 +285,6 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 // specified in the request (we still want this in yaml).
 func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	useLatestParser := r.FormValue("latest_parser") == "true"
 	srcVersion := projCtx.Version
 	if srcVersion == nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "version not found"})
@@ -296,37 +293,6 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
-	// fetch project from github directly
-	if useLatestParser {
-		settings := restapi.GetSettings()
-		oauthToken, err := settings.GetGithubOauthToken()
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error getting github oauth token"})
-			return
-		}
-		pRef, err := model.FindMergedProjectRef(srcVersion.Identifier)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding project ref"})
-			return
-		}
-		if pRef == nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "project ref not found"})
-			return
-		}
-		configFile, err := thirdparty.GetGithubFile(r.Context(), oauthToken, pRef.Owner, pRef.Repo, pRef.RemotePath, pRef.Branch)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error fetching project file"})
-			return
-		}
-		fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "unable to decode config file"})
-			return
-		}
-		_, err = w.Write(fileContents)
-		grip.Warning(errors.Wrap(err, "problem writing response"))
-		return
-	}
 	var config []byte
 	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
 	if err != nil {
