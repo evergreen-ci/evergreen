@@ -766,6 +766,7 @@ type ComplexityRoot struct {
 		Priority                func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
+		ProjectIdentifier       func(childComplexity int) int
 		ReliesOn                func(childComplexity int) int
 		Requester               func(childComplexity int) int
 		Restarts                func(childComplexity int) int
@@ -4945,6 +4946,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.ProjectId(childComplexity), true
 
+	case "Task.projectIdentifier":
+		if e.complexity.Task.ProjectIdentifier == nil {
+			break
+		}
+
+		return e.complexity.Task.ProjectIdentifier(childComplexity), true
+
 	case "Task.reliesOn":
 		if e.complexity.Task.ReliesOn == nil {
 			break
@@ -7146,6 +7154,7 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
+  projectIdentifier: String!
   reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
@@ -25243,6 +25252,40 @@ func (ec *executionContext) _Task_projectId(ctx context.Context, field graphql.C
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectIdentifier, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_reliesOn(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -37660,6 +37703,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			})
 		case "projectId":
 			out.Values[i] = ec._Task_projectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "projectIdentifier":
+			out.Values[i] = ec._Task_projectIdentifier(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
