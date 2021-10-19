@@ -395,9 +395,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "error expanding github parameters")
 	}
 
-	var projectMethod string
-	var projectToken string
-	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
+	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get method of cloning and token")
 	}
@@ -438,16 +436,15 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	logger client.LoggerProducer,
 	conf *internal.TaskConfig,
 	jpm jasper.Manager,
-	opts cloneOpts) (string, error) {
-
-	stdErr := noopWriteCloser{&bytes.Buffer{}}
+	opts cloneOpts) error {
 
 	gitCommands, err := c.buildCloneCommand(ctx, conf, logger, opts)
 	if err != nil {
-		return "", err
+		return err
 	}
 	fetchScript := strings.Join(gitCommands, "\n")
 
+	stdErr := noopWriteCloser{&bytes.Buffer{}}
 	fetchSourceCmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
 
@@ -460,7 +457,13 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 
 	err = fetchSourceCmd.Run(ctx)
 	out := stdErr.String()
-	return out, err
+	if out != "" {
+		if opts.token != "" {
+			out = strings.Replace(out, opts.token, "[redacted oauth token]", -1)
+		}
+		logger.Execution().Error(out)
+	}
+	return err
 }
 
 func (c *gitFetchProject) fetchAdditionalPatches(ctx context.Context,
@@ -492,7 +495,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	var module *model.Module
 	module, err = conf.Project.GetModuleByName(moduleName)
 	if err != nil {
-		return errors.Errorf("Couldn't get module %s: %v", moduleName, err)
+		return errors.Wrapf(err, "Couldn't get module %s", moduleName)
 	}
 	if module == nil {
 		return errors.Errorf("No module found for %s", moduleName)
@@ -500,18 +503,19 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	moduleBase := filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
 
-	var revision string
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
 	// We ignore set-module changes for commit queue, since we should verify HEAD before merging.
+	var modulePatch *patch.ModulePatch
+	var revision string
 	if p != nil {
-		patchModule := p.FindModule(moduleName)
-		if patchModule != nil {
+		modulePatch := p.FindModule(moduleName)
+		if modulePatch != nil {
 			if conf.Task.Requester == evergreen.MergeTestRequester {
 				revision = module.Branch
 				c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
 			} else {
-				revision = patchModule.Githash
+				revision = modulePatch.Githash
 				if revision != "" {
 					c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
 				}
@@ -544,17 +548,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
 	if err != nil {
 		return err
-	}
-
-	var modulePatch *patch.ModulePatch
-	if p != nil {
-		// find module among the patch's Patches
-		for i := range p.Patches {
-			if p.Patches[i].ModuleName == moduleName {
-				modulePatch = &p.Patches[i]
-				break
-			}
-		}
 	}
 
 	opts := cloneOpts{
@@ -597,7 +590,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	return err
 }
 
-func (c *gitFetchProject) applyAdditionalPatches(ctx context.Context,
+func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 	conf *internal.TaskConfig,
 	comm client.Communicator,
 	logger client.LoggerProducer,
@@ -632,13 +625,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	jpm := c.JasperManager()
 
 	// Clone the project.
-	out, err := c.fetchSource(ctx, logger, conf, jpm, opts)
-	if out != "" {
-		if opts.token != "" {
-			out = strings.Replace(out, opts.token, "[redacted oauth token]", -1)
-		}
-		logger.Execution().Error(out)
-	}
+	err := c.fetchSource(ctx, logger, conf, jpm, opts)
 	if err != nil {
 		return errors.Wrap(err, "problem running fetch command")
 	}
@@ -647,16 +634,16 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	var p *patch.Patch
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
-		logger.Execution().Info("Fetching additional patches.")
+		logger.Execution().Info("Fetching patch.")
 		p, err = comm.GetTaskPatch(ctx, td, "")
 		if err != nil {
 			return errors.Wrap(err, "Failed to get patch")
 		}
 	}
 
-	// Retrieve Additional patches are for commit
-	// queue batch execution. Patches will be applied in the order returned,
-	// with the main patch being applied last.
+	// Additional patches are for commit queue batch execution. Patches
+	// will be applied in the order returned, with the main patch being
+	// applied last.
 	var additionalPatches []string
 	if conf.Task.Requester == evergreen.MergeTestRequester {
 		additionalPatches, err = c.fetchAdditionalPatches(ctx, conf, comm, logger, td)
@@ -679,7 +666,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	// Apply additional patches for commit queue batch execution.
 	if conf.Task.Requester == evergreen.MergeTestRequester && !conf.Task.CommitQueueMerge {
 		for _, patchId := range additionalPatches {
-			err := c.applyAdditionalPatches(ctx, conf, comm, logger, td, patchId)
+			err := c.applyAdditionalPatch(ctx, conf, comm, logger, td, patchId)
 			if err != nil {
 				return err
 			}
