@@ -124,7 +124,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	ac, _, err := s.conf.getLegacyClients()
 	s.NoError(err)
 
-	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci"))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)
@@ -177,7 +177,7 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 	s.NoError(grip.SetSender(send.MakePlainLogger()))
 	ac, _, err := s.conf.getLegacyClients()
 	s.NoError(err)
-	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci"))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)
@@ -225,7 +225,7 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	ac, _, err := s.conf.getLegacyClients()
 	s.NoError(err)
 
-	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci"))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)
@@ -283,7 +283,7 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 
 	ac, _, err := s.conf.getLegacyClients()
 	s.NoError(err)
-	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci", s.conf.UIServerHost))
+	s.NoError(listCommitQueue(s.ctx, s.client, ac, "mci"))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)
