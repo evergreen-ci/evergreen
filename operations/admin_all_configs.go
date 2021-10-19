@@ -55,8 +55,7 @@ func fetchAllProjectConfigs() cli.Command {
 }
 
 // fetchAndWriteConfig downloads the most recent config for a project
-// and writes it to "project_name.yml" locally. If shouldFetch is set, then
-// we get the files directly from Github.
+// and writes it to "project_name.yml" locally.
 func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeDisabled bool) error {
 	catcher := grip.NewSimpleCatcher()
 	type projectRepo struct {
