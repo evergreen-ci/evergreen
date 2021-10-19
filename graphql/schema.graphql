@@ -78,6 +78,7 @@ type Query {
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
+  repoSettings(id: String!): RepoSettings!
 }
 
 type Mutation {
@@ -973,6 +974,14 @@ type GroupedProjects {
 }
 
 type ProjectSettings {
+  githubWebhooksEnabled: Boolean!
+  projectRef: Project
+  vars: ProjectVars
+  aliases: [ProjectAlias]
+  subscriptions: [ProjectSubscription]
+}
+
+type RepoSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars

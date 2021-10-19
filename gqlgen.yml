@@ -113,6 +113,17 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  RepoSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+    fields:
+      githubWebhooksEnabled:
+        resolver: true
+      vars:
+        resolver: true
+      aliases:
+        resolver: true
+      subscriptions:
+        resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
   Project:

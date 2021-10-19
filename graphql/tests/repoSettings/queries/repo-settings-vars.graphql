@@ -1,0 +1,8 @@
+{
+    repoSettings(id: "1234") {
+        vars{
+            vars
+            privateVars
+        }
+    }
+}
