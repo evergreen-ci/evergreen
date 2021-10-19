@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "query_file": "generalSection.graphql",
+      "result": {
+        "data": {
+          "saveRepoSettingsForSection": {
+            "projectRef": {
+              "enabled": true,
+              "remotePath": "my_path_is_new",
+              "spawnHostScriptPath": ""
+            },
+            "vars": {
+              "vars": {"hello": "something-different"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "varsSection.graphql",
+      "result": {
+        "data": {
+          "saveRepoSettingsForSection": {
+            "vars": {
+              "vars": {"goodbye":  "now"},
+              "privateVars": ["goodbye"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -409,6 +409,7 @@ type ComplexityRoot struct {
 		RestartTask                   func(childComplexity int, taskID string) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section string) int
+		SaveRepoSettingsForSection    func(childComplexity int, projectSettings *model.APIProjectSettings, section string) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
@@ -1075,6 +1076,7 @@ type MutationResolver interface {
 	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts) (*model.APIProjectRef, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
+	SaveRepoSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
@@ -2878,6 +2880,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.SaveProjectSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string)), true
+
+	case "Mutation.saveRepoSettingsForSection":
+		if e.complexity.Mutation.SaveRepoSettingsForSection == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveRepoSettingsForSection_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveRepoSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string)), true
 
 	case "Mutation.saveSubscription":
 		if e.complexity.Mutation.SaveSubscription == nil {
@@ -6457,6 +6471,7 @@ type Mutation {
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
+  saveRepoSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
@@ -8304,6 +8319,28 @@ func (ec *executionContext) field_Mutation_restartVersions_args(ctx context.Cont
 }
 
 func (ec *executionContext) field_Mutation_saveProjectSettingsForSection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.APIProjectSettings
+	if tmp, ok := rawArgs["projectSettings"]; ok {
+		arg0, err = ec.unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectSettings"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["section"]; ok {
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["section"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveRepoSettingsForSection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *model.APIProjectSettings
@@ -15533,6 +15570,47 @@ func (ec *executionContext) _Mutation_saveProjectSettingsForSection(ctx context.
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().SaveProjectSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectSettings)
+	fc.Result = res
+	return ec.marshalNProjectSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_saveRepoSettingsForSection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_saveRepoSettingsForSection_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SaveRepoSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -36251,6 +36329,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "saveProjectSettingsForSection":
 			out.Values[i] = ec._Mutation_saveProjectSettingsForSection(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "saveRepoSettingsForSection":
+			out.Values[i] = ec._Mutation_saveRepoSettingsForSection(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

@@ -86,6 +86,7 @@ type Mutation {
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
+  saveRepoSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
