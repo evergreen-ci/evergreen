@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -458,19 +457,6 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueu
 		return "", err
 	}
 	return out.String(), nil
-}
-
-func getAPICommitQueuePatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost string) (string, error) {
-	servicePatchIface, err := apiPatch.ToService()
-	if err != nil {
-		return "", errors.Wrap(err, "can't convert patch to service")
-	}
-	servicePatch, ok := servicePatchIface.(patch.Patch)
-	if !ok {
-		return "", errors.New("service patch is not a Patch")
-	}
-
-	return getPatchDisplay(&servicePatch, summarize, uiHost, true)
 }
 
 func isCommitRange(commits string) bool {

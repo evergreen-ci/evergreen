@@ -413,7 +413,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "can't upload backport patch")
 			}
 
-			if err = patchParams.displayPatch(backportPatch, settings.Ui.UIv2Url, false); err != nil {
+			if err = patchParams.displayPatch(backportPatch, settings.Ui.UIv2Url, true); err != nil {
 				return errors.Wrap(err, "problem getting result display")
 			}
 
@@ -724,4 +724,17 @@ func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchI
 	if message != "" {
 		grip.Info(message)
 	}
+}
+
+func getAPICommitQueuePatchDisplay(apiPatch *restModel.APIPatch, summarize bool, uiHost string) (string, error) {
+	servicePatchIface, err := apiPatch.ToService()
+	if err != nil {
+		return "", errors.Wrap(err, "can't convert patch to service")
+	}
+	servicePatch, ok := servicePatchIface.(patch.Patch)
+	if !ok {
+		return "", errors.New("service patch is not a Patch")
+	}
+
+	return getPatchDisplay(&servicePatch, summarize, uiHost, true)
 }
