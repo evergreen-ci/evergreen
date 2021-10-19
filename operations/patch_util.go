@@ -152,8 +152,8 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 	return nil
 }
 
-func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {
-	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
+func (p *patchParams) displayPatch(newPatch *patch.Patch, uiHost string, isCommitQueuePatch bool) error {
+	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, uiHost, isCommitQueuePatch)
 	if err != nil {
 		return err
 	}
@@ -167,32 +167,11 @@ func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) 
 			grip.Warningf("cannot find browser command: %s", err)
 			return nil
 		}
-
-		browserCmd = append(browserCmd, newPatch.GetURL(conf.UIServerHost))
-		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
-		return cmd.Run()
-	}
-
-	return nil
-}
-
-func (p *patchParams) displayCommitQueuePatch(conf *ClientSettings, newPatch *patch.Patch, uiV2Url string) error {
-	patchDisp, err := getCommitQueuePatchDisplay(newPatch, p.ShowSummary, uiV2Url)
-	if err != nil {
-		return err
-	}
-
-	grip.Info("Patch successfully created.")
-	grip.Info(patchDisp)
-
-	if p.Browse {
-		browserCmd, err := findBrowserCommand()
-		if err != nil || len(browserCmd) == 0 {
-			grip.Warningf("cannot find browser command: %s", err)
-			return nil
+		url := newPatch.GetURL(uiHost)
+		if isCommitQueuePatch {
+			url = newPatch.GetCommitQueueURL(uiHost)
 		}
-
-		browserCmd = append(browserCmd, newPatch.GetURL(conf.UIServerHost))
+		browserCmd = append(browserCmd, url)
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
 		return cmd.Run()
 	}
@@ -455,8 +434,14 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 
 // getPatchDisplay returns a human-readable summary representation of a patch object
 // which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
+func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueuePatch bool) (string, error) {
 	var out bytes.Buffer
+	var link string
+	if isCommitQueuePatch {
+		link = p.GetCommitQueueURL(uiHost)
+	} else {
+		link = p.GetURL(uiHost)
+	}
 
 	err := patchDisplayTemplate.Execute(&out, struct {
 		Patch         *patch.Patch
@@ -467,7 +452,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 		Patch:         p,
 		ShowSummary:   summarize,
 		ShowFinalized: p.IsCommitQueuePatch(),
-		Link:          p.GetURL(uiHost),
+		Link:          link,
 	})
 	if err != nil {
 		return "", err
@@ -475,30 +460,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 	return out.String(), nil
 }
 
-// getCommitQueuePatchDisplay returns a human-readable summary representation of a patch object
-// which can be written to the terminal, and links to the new UI commit queue page for
-// the project in question in the CLI
-func getCommitQueuePatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
-	var out bytes.Buffer
-
-	err := patchDisplayTemplate.Execute(&out, struct {
-		Patch         *patch.Patch
-		ShowSummary   bool
-		ShowFinalized bool
-		Link          string
-	}{
-		Patch:         p,
-		ShowSummary:   summarize,
-		ShowFinalized: p.IsCommitQueuePatch(),
-		Link:          p.GetCommitQueueURL(uiHost),
-	})
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
-}
-
-func getAPIPatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost string) (string, error) {
+func getAPICommitQueuePatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost string) (string, error) {
 	servicePatchIface, err := apiPatch.ToService()
 	if err != nil {
 		return "", errors.Wrap(err, "can't convert patch to service")
@@ -508,7 +470,7 @@ func getAPIPatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost str
 		return "", errors.New("service patch is not a Patch")
 	}
 
-	return getCommitQueuePatchDisplay(&servicePatch, summarize, uiHost)
+	return getPatchDisplay(&servicePatch, summarize, uiHost, true)
 }
 
 func isCommitRange(commits string) bool {
