@@ -7154,7 +7154,7 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
-  projectIdentifier: String!
+  projectIdentifier: String
   reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
@@ -25276,14 +25276,11 @@ func (ec *executionContext) _Task_projectIdentifier(ctx context.Context, field g
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_reliesOn(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -37708,9 +37705,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "projectIdentifier":
 			out.Values[i] = ec._Task_projectIdentifier(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "reliesOn":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
