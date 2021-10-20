@@ -499,11 +499,6 @@ func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("no project found named '%v'", id), http.StatusNotFound)
 		return
 	}
-	if err = projectRef.MergeWithParserProject(""); err != nil {
-		// todo (EVG-15562): incorporate this into FindMergedProjectRef
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
 	gimlet.WriteJSON(w, projectRef)
 }
 

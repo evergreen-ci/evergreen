@@ -62,7 +62,7 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 	job.QueueID = queueID
 	job.env = env
 	job.SetID(fmt.Sprintf("%s:%s_%s", commitQueueJobName, queueID, id))
-	job.SetShouldApplyScopesOnEnqueue(true)
+	job.SetEnqueueAllScopes(true)
 	job.SetScopes([]string{fmt.Sprintf("%s.%s", commitQueueJobName, queueID)})
 
 	return job
@@ -98,11 +98,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 	if projectRef == nil {
 		j.AddError(errors.Errorf("no project found for queue id %s", j.QueueID))
-		return
-	}
-	err = projectRef.MergeWithParserProject("")
-	if err != nil {
-		j.AddError(errors.Wrap(err, "can't merge parser project with project ref"))
 		return
 	}
 	if !projectRef.CommitQueue.IsEnabled() {

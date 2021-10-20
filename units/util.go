@@ -29,8 +29,8 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 				return errors.Wrap(err, "error getting containers")
 			}
 
-			for _, container := range containers {
-				catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, &container, reason))
+			for i := range containers {
+				catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, &containers[i], reason))
 			}
 			catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, parent, reason))
 		}

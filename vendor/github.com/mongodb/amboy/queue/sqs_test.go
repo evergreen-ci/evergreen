@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -18,6 +19,16 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func skipSQSTestIfUnsupported(t *testing.T) {
+	skip, err := strconv.ParseBool(os.Getenv("SKIP_INTEGRATION_TESTS"))
+	if err == nil && !skip {
+		return
+	}
+	if skip || runtime.GOOS != "linux" {
+		t.Skip("skipping SQS tests")
+	}
+}
+
 type SQSFifoQueueSuite struct {
 	queue amboy.Queue
 	suite.Suite
@@ -29,9 +40,7 @@ func awsTestCredentialsFromEnv() *credentials.Credentials {
 }
 
 func TestSQSFifoQueueSuite(t *testing.T) {
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		t.Skip("skipping SQS tests on non-core platforms")
-	}
+	skipSQSTestIfUnsupported(t)
 	suite.Run(t, new(SQSFifoQueueSuite))
 }
 

@@ -2728,6 +2728,47 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 	assert.Equal(t, evergreen.TaskFailed, tasks[2].DisplayStatus)
 }
 
+func TestAbortVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	finishedExecTask := &Task{
+		Id:      "et1",
+		Version: "v1",
+		Status:  evergreen.TaskSucceeded,
+	}
+	failingExecTask := &Task{
+		Id:      "et2",
+		Version: "v1",
+		Status:  evergreen.TaskFailed,
+	}
+	otherExecTask := &Task{
+		Id:      "et3",
+		Version: "v1",
+		Status:  evergreen.TaskStarted,
+	}
+	dt := &Task{
+		Id:             "dt",
+		Version:        "v1",
+		Status:         evergreen.TaskStarted,
+		ExecutionTasks: []string{"et1", "et2", "et3"},
+	}
+	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
+
+	assert.NoError(t, AbortVersion("v1", AbortInfo{TaskID: "et2"}))
+
+	var err error
+	dt, err = FindOneId("dt")
+	assert.NoError(t, err)
+	require.NotNil(t, dt)
+	assert.False(t, dt.Aborted)
+	assert.Empty(t, dt.AbortInfo.TaskID)
+
+	otherExecTask, err = FindOneId("et3")
+	assert.NoError(t, err)
+	require.NotNil(t, otherExecTask)
+	assert.True(t, otherExecTask.Aborted)
+	assert.NotEmpty(t, otherExecTask.AbortInfo.TaskID)
+}
+
 func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
@@ -2772,6 +2813,59 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(stats))
 
+}
+
+func TestHasMatchingTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskFailed,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t4 := Task{
+		Id:        "t4",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	t5 := Task{
+		Id:        "t5",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskStatusPending,
+	}
+	t6 := Task{
+		Id:        "t6",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	opts := HasMatchingTasksOptions{
+		Statuses: []string{evergreen.TaskFailed},
+	}
+	hasMatchingTasks, err := HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.True(t, hasMatchingTasks)
+
+	opts.Statuses = []string{evergreen.TaskWillRun}
+
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.False(t, hasMatchingTasks)
 }
 
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {

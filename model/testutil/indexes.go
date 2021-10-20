@@ -4,17 +4,13 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/mongodb/grip"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// AddTestIndexes drops all existing indexes and adds indexes for a given
-// collection
+// AddTestIndexes adds indexes in a given collection for testing.
 func AddTestIndexes(collection string, unique, sparse bool, key ...string) error {
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(db.DropAllIndexes(collection))
 	spec := bson.D{}
 	for _, k := range key {
 		if strings.HasPrefix(k, "-") {
@@ -24,10 +20,8 @@ func AddTestIndexes(collection string, unique, sparse bool, key ...string) error
 		}
 	}
 
-	catcher.Add(db.EnsureIndex(collection, mongo.IndexModel{
+	return db.EnsureIndex(collection, mongo.IndexModel{
 		Keys:    spec,
 		Options: options.Index().SetUnique(unique).SetSparse(sparse),
-	}))
-
-	return catcher.Resolve()
+	})
 }

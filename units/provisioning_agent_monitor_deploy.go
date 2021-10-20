@@ -62,7 +62,7 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 	j.env = env
 	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", agentMonitorDeployJobName, j.HostID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(agentMonitorPutRetries),

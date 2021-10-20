@@ -31,10 +31,58 @@
       "result": {
         "data": {
           "createProject": {
+            "id": "grumpyCat",
             "identifier": "catVideos",
             "repo": "catGenerator"
           }
         }
+      }
+    },
+    {
+      "query_file": "copy-project.graphql",
+      "result": {
+        "data": {
+          "copyProject": {
+            "id": "newAndImproved",
+            "identifier": "spruce",
+            "owner": "evergreen-ci",
+            "enabled": false
+          }
+        }
+      }
+    },
+    {
+      "query_file": "copy-project-dup-identifier.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "cannot reuse 'logkeeper' for project",
+            "path": [
+              "copyProject"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "copy-project-dup-id.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "cannot reuse 'keeperOfLogs' for project",
+            "path": [
+              "copyProject"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
       }
     },
     {
