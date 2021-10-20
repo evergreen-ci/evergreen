@@ -23,7 +23,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()
 		grip.Critical(message.Fields{
-			"path":    "/graph/query",
+			"path":    "/graphql/query",
 			"message": "unhandled panic",
 			"error":   err,
 			"query":   queryPath,

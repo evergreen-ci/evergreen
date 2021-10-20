@@ -42,7 +42,7 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 func formError(ctx context.Context, msg string, code GqlError) *gqlerror.Error {
 	queryPath := graphql.GetFieldContext(ctx).Path()
 	grip.Warning(message.Fields{
-		"path":    "/graph/query",
+		"path":    "/graphql/query",
 		"message": msg,
 		"query":   queryPath,
 		"code":    string(code),
