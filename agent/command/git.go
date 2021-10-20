@@ -777,8 +777,9 @@ func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, 
 	patchCommands := []string{
 		fmt.Sprintf("set -o xtrace"),
 		fmt.Sprintf("set -o errexit"),
-		fmt.Sprintf("ls"),
-		fmt.Sprintf("cd '%s'", dir),
+	}
+	if dir != "" {
+		patchCommands = append(patchCommands, fmt.Sprintf("cd '%s'", dir))
 	}
 	if conf.Task.Requester != evergreen.MergeTestRequester {
 		patchCommands = append(patchCommands, fmt.Sprintf("git reset --hard '%s'", modulePatch.Githash))
@@ -803,12 +804,8 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			return errors.New("apply patch operation canceled")
 		}
 
-		var dir string
-		if patchPart.ModuleName == "" {
-			// if patch is not part of a module, just apply patch against src root
-			dir = c.Directory
-
-		} else {
+		var moduleDir string
+		if patchPart.ModuleName != "" {
 			// if patch is part of a module, apply patch in module root
 			module, err := conf.Project.GetModuleByName(patchPart.ModuleName)
 			if err != nil {
@@ -826,7 +823,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 				continue
 			}
 
-			dir = filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
+			moduleDir = filepath.ToSlash(filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name))
 		}
 
 		if len(patchPart.PatchSet.Patch) == 0 {
@@ -857,7 +854,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		tempAbsPath := tempFile.Name()
 
 		// this applies the patch using the patch files in the temp directory
-		patchCommandStrings := getPatchCommands(patchPart, conf, dir, tempAbsPath)
+		patchCommandStrings := getPatchCommands(patchPart, conf, moduleDir, tempAbsPath)
 		applyCommand, err := c.getApplyCommand(tempAbsPath)
 		if err != nil {
 			logger.Execution().Error("Could not to determine patch type")
