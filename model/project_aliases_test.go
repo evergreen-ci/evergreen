@@ -161,7 +161,12 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 }
 
 func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
-	s.Require().NoError(db.ClearCollections(ProjectAliasCollection, ParserProjectCollection))
+	s.Require().NoError(db.ClearCollections(ProjectAliasCollection, ParserProjectCollection, VersionCollection))
+	v1 := Version{
+		Id:         "project-1",
+		Identifier: "project-1",
+		Requester:  evergreen.GitTagRequester,
+	}
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
 		Alias:     evergreen.CommitQueueAlias,
@@ -177,9 +182,10 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 	s.NoError(a1.Upsert())
 	s.NoError(a2.Upsert())
 	s.NoError(a3.Upsert())
+	s.NoError(v1.Insert())
 
 	parserProject := &ParserProject{
-		Id: "version1",
+		Id: "project-1",
 		PatchAliases: []ProjectAlias{
 			{
 				ID:        mgobson.NewObjectId(),
