@@ -773,13 +773,13 @@ func (c *gitFetchProject) getApplyCommand(patchFile string) (string, error) {
 
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that
 // need to be executed, except for apply. If the patch is empty it will not apply the patch.
-func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, dir, patchPath string) []string {
+func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, moduleDir, patchPath string) []string {
 	patchCommands := []string{
 		fmt.Sprintf("set -o xtrace"),
 		fmt.Sprintf("set -o errexit"),
 	}
-	if dir != "" {
-		patchCommands = append(patchCommands, fmt.Sprintf("cd '%s'", dir))
+	if moduleDir != "" {
+		patchCommands = append(patchCommands, fmt.Sprintf("cd '%s'", moduleDir))
 	}
 	if conf.Task.Requester != evergreen.MergeTestRequester {
 		patchCommands = append(patchCommands, fmt.Sprintf("git reset --hard '%s'", modulePatch.Githash))
