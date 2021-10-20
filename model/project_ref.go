@@ -881,7 +881,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 func getCommonAliases(projectIds []string) (ProjectAliases, error) {
 	commonAliases := []ProjectAlias{}
 	for i, id := range projectIds {
-		aliases, err := FindAliasesForProject(id, "")
+		aliases, err := FindAliasesForProjectFromDb(id)
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding aliases for project")
 		}
@@ -1384,7 +1384,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	if projectVars == nil {
 		projectVars = &ProjectVars{}
 	}
-	projectAliases, err := FindAliasesForProject(p.Id, "")
+	projectAliases, err := FindAliasesForProject(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Id)
 	}

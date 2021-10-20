@@ -124,7 +124,7 @@ func (s *ProjectAliasSuite) TestFindAliasesForProject() {
 	}
 	s.NoError(a1.Upsert())
 
-	out, err := FindAliasesForProject("project-1", "")
+	out, err := FindAliasesForProject("project-1")
 	s.NoError(err)
 	s.Len(out, 2)
 }
@@ -155,7 +155,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.NoError(a2.Upsert())
 	s.NoError(a3.Upsert())
 
-	found, err := findAliasInProject("project-1", "alias-1", "")
+	found, err := findAliasInProject("project-1", "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
 }
@@ -201,7 +201,7 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 	}
 	s.NoError(parserProject.TryUpsert())
 
-	projectAliases, err := FindAliasesForProject("project-1", "version1")
+	projectAliases, err := FindAliasesForProject("project-1")
 	s.NoError(err)
 	s.Len(projectAliases, 4)
 	aliasMap := aliasesToMap(projectAliases)
@@ -287,12 +287,12 @@ func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 	}
 	s.NoError(UpsertAliasesForProject(s.aliases, "new-project"))
 
-	found, err := FindAliasesForProject("new-project", "")
+	found, err := FindAliasesForProject("new-project")
 	s.NoError(err)
 	s.Len(found, 10)
 
 	// verify old aliases not overwritten
-	found, err = FindAliasesForProject("old-project", "")
+	found, err = FindAliasesForProject("old-project")
 	s.NoError(err)
 	s.Len(found, 10)
 }
