@@ -45,7 +45,7 @@ func formError(ctx context.Context, msg string, code GqlError) *gqlerror.Error {
 		"path":    "/graphql/query",
 		"message": msg,
 		"query":   queryPath,
-		"code":    string(code),
+		"code":    code,
 	})
 	return &gqlerror.Error{
 		Message: msg,
