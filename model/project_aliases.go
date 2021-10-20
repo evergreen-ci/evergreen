@@ -70,24 +70,21 @@ type ProjectAlias struct {
 
 type ProjectAliases []ProjectAlias
 
-// FindAliasesForProject fetches all aliases for a given project
-func FindAliasesForProject(projectID string) ([]ProjectAlias, error) {
-	var out []ProjectAlias
-	q := db.Query(bson.M{
-		projectIDKey: projectID,
-	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+// FindAllAliasesForProject fetches aliases for a project from the aliases collection
+// and merges them with the aliases defined in the project yaml.
+func FindAllAliasesForProject(projectID string) ([]ProjectAlias, error) {
+	dbAliases, err := FindAliasesForProjectFromDb(projectID)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project aliases")
+		return nil, err
 	}
 	parserProject, err := ParserProjectByVersion(projectID, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project parser")
 	}
 	if parserProject != nil {
-		return mergeAliases(parserProject, out), nil
+		return mergeAliases(parserProject, dbAliases), nil
 	}
-	return out, nil
+	return dbAliases, nil
 }
 
 // FindAliasesForProjectFromDb fetches all aliases for a given project without merging with aliases from the parser project
@@ -135,7 +132,6 @@ func findAliasInRepo(repoID, alias string) ([]ProjectAlias, error) {
 // findAliasInProject finds all aliases with a given name for a project.
 // Typically FindAliasInProjectOrRepo should be used.
 func findAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
-	var out []ProjectAlias
 	parserProject, err := ParserProjectByVersion(projectID, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project parser")
@@ -146,11 +142,22 @@ func findAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 			return parserProjectAliases[alias], nil
 		}
 	}
+	dbAliases, err := findAliasInProjectFromDb(projectID, alias)
+	if err != nil {
+		return nil, err
+	}
+	return dbAliases, nil
+}
+
+// findAliasInProjectFromDb finds all aliases with a given name for a project without checking the parser project.
+// Typically FindAliasInProjectOrRepo should be used.
+func findAliasInProjectFromDb(projectID, alias string) ([]ProjectAlias, error) {
+	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
 		aliasKey:     alias,
 	})
-	err = db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project aliases")
 	}
@@ -221,7 +228,23 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
+	return tryGetRepoAliases(projectID, alias, aliases)
+}
 
+// FindAliasInProjectOrRepoFromDb finds all aliases with a given name for a project without merging with parser project.
+// If the project has no aliases, the repo is checked for aliases.
+func FindAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, error) {
+	aliases, err := findAliasInProjectFromDb(projectID, alias)
+	if err != nil {
+		return aliases, errors.Wrapf(err, "error finding aliases for project '%s'", projectID)
+	}
+	if len(aliases) > 0 {
+		return aliases, nil
+	}
+	return tryGetRepoAliases(projectID, alias, aliases)
+}
+
+func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) ([]ProjectAlias, error) {
 	project, err := FindBranchProjectRef(projectID)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "error finding project '%s'", projectID)

@@ -696,7 +696,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project auth for admins"))
 	}
 
-	projectAliases, err := dbModel.FindAliasesForProject(project.Id)
+	projectAliases, err := dbModel.FindAliasesForProjectFromDb(project.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project aliases for '%s' could not be found", project.Id))
 	}

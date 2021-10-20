@@ -707,7 +707,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	origProjectAliases, _ := model.FindAliasesForProject(id)
+	origProjectAliases, _ := model.FindAliasesForProjectFromDb(id)
 	var projectAliases []model.ProjectAlias
 	projectAliases = append(projectAliases, responseRef.GitHubPRAliases...)
 	projectAliases = append(projectAliases, responseRef.GithubChecksAliases...)
@@ -735,7 +735,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions:      origSubscriptions,
 	}
 
-	currentAliases, _ := model.FindAliasesForProject(id)
+	currentAliases, _ := model.FindAliasesForProjectFromDb(id)
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
 	after := &model.ProjectSettings{
 		ProjectRef:         *projectRef,
@@ -933,7 +933,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, err := model.FindAliasInProjectOrRepo(projectId, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}

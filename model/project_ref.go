@@ -1384,7 +1384,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	if projectVars == nil {
 		projectVars = &ProjectVars{}
 	}
-	projectAliases, err := FindAliasesForProject(p.Id)
+	projectAliases, err := FindAliasesForProjectFromDb(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Id)
 	}

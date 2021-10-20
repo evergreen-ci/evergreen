@@ -61,7 +61,7 @@ func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string, aliasesT
 
 // CopyProjectAliases finds the aliases for a given project and inserts them for the new project.
 func (d *DBAliasConnector) CopyProjectAliases(oldProjectId, newProjectId string) error {
-	aliases, err := model.FindAliasesForProject(oldProjectId)
+	aliases, err := model.FindAliasesForProjectFromDb(oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "error finding aliases for project '%s'", oldProjectId)
 	}
