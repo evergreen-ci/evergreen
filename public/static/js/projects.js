@@ -224,6 +224,37 @@ mciModule.controller(
       }
     };
 
+    // addJiraField adds a jira field to the task annotation settings
+    $scope.addJiraField = function () {
+      if(!$scope.settingsFormData.task_annotation_settings.jira_custom_fields){
+          $scope.settingsFormData.task_annotation_settings.jira_custom_fields = []
+      }
+      $scope.settingsFormData.task_annotation_settings.jira_custom_fields.push({"field" : $scope.jira_field, "display_text" : $scope.jira_display_text});
+      $scope.jira_display_text = "";
+      $scope.jira_field = "";
+    };
+
+    // removeJiraField removes a jira field to the task annotation settings located at index
+    $scope.removeJiraField = function (index) {
+      $scope.settingsFormData.task_annotation_settings.jira_custom_fields.splice(index, 1);
+      $scope.isDirty = true;
+    };
+
+    // addTicketSearchProject adds an ticket search project name to the build baron settings
+    $scope.addTicketSearchProject = function () {
+      if(!$scope.settingsFormData.build_baron_settings.ticket_search_projects){
+          $scope.settingsFormData.build_baron_settings.ticket_search_projects = []
+      }
+      $scope.settingsFormData.build_baron_settings.ticket_search_projects.push($scope.ticket_search_project);
+      $scope.ticket_search_project = "";
+    };
+
+    // removeTicketSearchProject removes the ticket search project name from the build baron settings located at index
+    $scope.removeTicketSearchProject = function (index) {
+      $scope.settingsFormData.build_baron_settings.ticket_search_projects.splice(index, 1);
+      $scope.isDirty = true;
+    };
+
     // addAdmin adds an admin name to the settingsFormData's list of admins
     $scope.addAdmin = function () {
       $scope.settingsFormData.admins.push($scope.admin_name);
@@ -448,8 +479,10 @@ mciModule.controller(
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
             use_repo_settings: $scope.projectRef.use_repo_settings,
+            build_baron_settings: data.ProjectRef.build_baron_settings || {},
+            task_annotation_settings: data.ProjectRef.task_annotation_settings || {},
+            perf_enabled: data.ProjectRef.perf_enabled || false,
           };
-
           // Divide aliases into categories
           $scope.settingsFormData.github_aliases = $scope.aliases.filter(
             function (d) {
@@ -595,6 +628,10 @@ mciModule.controller(
 
       if ($scope.admin_name) {
         $scope.addAdmin();
+      }
+
+      if ($scope.ticket_search_project) {
+        $scope.addTicketSearchProject();
       }
 
       if ($scope.git_tag_user_name) {
