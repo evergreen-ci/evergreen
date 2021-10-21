@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/apollotracing"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // Handler returns a gimlet http handler func used as the gql route handler
@@ -29,6 +30,19 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			"query":   queryPath,
 		})
 		return errors.New("internal server error")
+	})
+
+	srv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
+		fieldCtx := graphql.GetFieldContext(ctx)
+		queryPath := fieldCtx.Path()
+		args := fieldCtx.Args
+		grip.Error(message.Fields{
+			"path":    "/graphql/query",
+			"message": err,
+			"query":   queryPath,
+			"args":    args,
+		})
+		return graphql.DefaultErrorPresenter(ctx, err)
 	})
 	return srv.ServeHTTP
 }
