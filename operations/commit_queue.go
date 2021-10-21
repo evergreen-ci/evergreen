@@ -77,7 +77,7 @@ func listQueue() cli.Command {
 				return errors.Wrap(err, "problem accessing legacy evergreen client")
 			}
 
-			return listCommitQueue(ctx, client, ac, projectID)
+			return listCommitQueue(ctx, client, ac, projectID, conf.UIServerHost)
 		},
 	}
 }
@@ -422,14 +422,10 @@ func backport() cli.Command {
 	}
 }
 
-func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacyClient, projectID string) error {
+func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacyClient, projectID string, uiServerHost string) error {
 	projectRef, err := ac.GetProjectRef(projectID)
 	if err != nil {
 		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
-	}
-	settings, err := client.GetSettings(ctx)
-	if err != nil {
-		return errors.Wrap(err, "problem retrieving admin settings")
 	}
 	cq, err := client.GetCommitQueue(ctx, projectRef.Id)
 	if err != nil {
@@ -441,7 +437,6 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	}
 
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
-	uiServerHost := settings.Ui.UIv2Url
 	for i, item := range cq.Queue {
 		grip.Infof("%d:", i)
 		if utility.FromStringPtr(item.Source) == commitqueue.SourcePullRequest {
