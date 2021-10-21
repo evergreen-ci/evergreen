@@ -109,6 +109,8 @@ type Connector interface {
 	UpdateProject(*model.ProjectRef) error
 	// VerifyUniqueProject returns a bad request error if the project ID / identifier is already in use.
 	VerifyUniqueProject(string) error
+	// GroupProjectsByRepo takes in an array of projects and groups them in a map based on the repo they are part of
+	GroupProjectsByRepo(projects []model.ProjectRef) map[string][]model.ProjectRef
 	// CopyProject copies the passed in project with the given project identifier, and returns the new project.
 	CopyProject(context.Context, CopyProjectOpts) (*restModel.APIProjectRef, error)
 	GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error)

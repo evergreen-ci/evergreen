@@ -96,6 +96,16 @@ func (sc *DBProjectConnector) VerifyUniqueProject(name string) error {
 	return nil
 }
 
+// GroupProjectsByRepo takes in an array of projects and groups them in a map based on the repo they are part of
+func (sc *DBProjectConnector) GroupProjectsByRepo(projects []model.ProjectRef) map[string][]model.ProjectRef {
+	groupedProject := make(map[string][]model.ProjectRef)
+	for _, project := range projects {
+		repoProjects := groupedProject[project.Repo]
+		groupedProject[project.Repo] = append(repoProjects, project)
+	}
+	return groupedProject
+}
+
 // UpdateRepo updates the given model.RepoRef.Id. We use EnsureCommitQueueExistsForProject to ensure that only values relevant to repos get updated.
 func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 	err := repoRef.Upsert()
@@ -528,6 +538,16 @@ func (sc *MockProjectConnector) VerifyUniqueProject(name string) error {
 		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
 	}
 	return nil
+}
+
+// GroupProjectsByRepo takes in an array of projects and groups them in a map based on the repo they are part of
+func (sc *MockProjectConnector) GroupProjectsByRepo(projects []model.ProjectRef) map[string][]model.ProjectRef {
+	groupedProject := make(map[string][]model.ProjectRef)
+	for _, project := range projects {
+		repoProjects := groupedProject[project.Repo]
+		groupedProject[project.Repo] = append(repoProjects, project)
+	}
+	return groupedProject
 }
 
 func (pc *MockProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
