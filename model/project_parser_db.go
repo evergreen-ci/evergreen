@@ -1,8 +1,6 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -79,7 +77,7 @@ func ParserProjectByVersion(projectId string, version string) (*ParserProject, e
 				"project_id": projectId,
 				"version":    version,
 			}))
-			return nil, errors.Wrap(err, fmt.Sprintf("Unable to retrieve last good version for project '%s'", projectId))
+			return nil, errors.Wrapf(err, "Unable to retrieve last good version for project '%s'", projectId)
 		}
 		version = lastGoodVersion.Id
 		lookupVersion = true
@@ -92,7 +90,7 @@ func ParserProjectByVersion(projectId string, version string) (*ParserProject, e
 			"version":        version,
 			"lookup_version": lookupVersion,
 		}))
-		return nil, errors.Wrap(err, fmt.Sprintf("Error retrieving parser project for version '%s'", version))
+		return nil, errors.Wrapf(err, "Error retrieving parser project for version '%s'", version)
 	}
 	return parserProject, nil
 }
