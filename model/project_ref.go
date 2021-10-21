@@ -405,28 +405,8 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // the project ref scanning for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project parser level will be set on the project ref.
 func (p *ProjectRef) MergeWithParserProject(version string) error {
-	lookupVersion := false
-	if version == "" {
-		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(p.Id, -1)
-		if err != nil || lastGoodVersion == nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":    fmt.Sprintf("Unable to retrieve last good version for project '%s'", p.Id),
-				"project_id": p.Id,
-				"version":    version,
-			}))
-			return err
-		}
-		version = lastGoodVersion.Id
-		lookupVersion = true
-	}
-	parserProject, err := ParserProjectFindOneById(version)
+	parserProject, err := ParserProjectByVersion(p.Id, version)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":        fmt.Sprintf("Error retrieving parser project for version '%s'", version),
-			"project_id":     p.Id,
-			"version":        version,
-			"lookup_version": lookupVersion,
-		}))
 		return err
 	}
 	if parserProject != nil {
@@ -560,7 +540,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 
 	// Handle each category of aliases as it's own case
-	repoAliases, err := FindAliasesForProject(before.ProjectRef.RepoRefId)
+	repoAliases, err := FindAliasesForRepo(before.ProjectRef.RepoRefId)
 	catcher.Wrap(err, "error finding repo aliases")
 
 	hasInternalAliases := map[string]bool{}
@@ -892,7 +872,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 func getCommonAliases(projectIds []string) (ProjectAliases, error) {
 	commonAliases := []ProjectAlias{}
 	for i, id := range projectIds {
-		aliases, err := FindAliasesForProject(id)
+		aliases, err := FindAliasesForProjectFromDb(id)
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding aliases for project")
 		}
@@ -1395,7 +1375,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	if projectVars == nil {
 		projectVars = &ProjectVars{}
 	}
-	projectAliases, err := FindAliasesForProject(p.Id)
+	projectAliases, err := FindAliasesForProjectFromDb(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Id)
 	}

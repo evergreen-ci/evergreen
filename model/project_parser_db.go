@@ -65,6 +65,36 @@ func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
 	return project, err
 }
 
+// ParserProjectByVersion finds a parser project with a given version.
+// If version is empty the last known good config will be returned
+func ParserProjectByVersion(projectId string, version string) (*ParserProject, error) {
+	lookupVersion := false
+	if version == "" {
+		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(projectId, -1)
+		if err != nil || lastGoodVersion == nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "Unable to retrieve last good version for project",
+				"project_id": projectId,
+				"version":    version,
+			}))
+			return nil, errors.Wrapf(err, "Unable to retrieve last good version for project '%s'", projectId)
+		}
+		version = lastGoodVersion.Id
+		lookupVersion = true
+	}
+	parserProject, err := ParserProjectFindOneById(version)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":        "Error retrieving parser project for version",
+			"project_id":     projectId,
+			"version":        version,
+			"lookup_version": lookupVersion,
+		}))
+		return nil, errors.Wrapf(err, "Error retrieving parser project for version '%s'", version)
+	}
+	return parserProject, nil
+}
+
 // ParserProjectById returns a query to find a parser project by id.
 func ParserProjectById(id string) db.Q {
 	return db.Query(bson.M{ParserProjectIdKey: id})
