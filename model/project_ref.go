@@ -723,7 +723,14 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
-		return mergeBranchAndRepoSettings(pRef, repoRef)
+		pRef, err = mergeBranchAndRepoSettings(pRef, repoRef)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, identifier)
+		}
+	}
+	err = pRef.MergeWithParserProject("")
+	if err != nil {
+		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
 	}
 	return pRef, nil
 }
@@ -1396,10 +1403,6 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 func IsPerfEnabledForProject(projectId string) bool {
 	projectRef, err := FindMergedProjectRef(projectId)
 	if err != nil || projectRef == nil {
-		return false
-	}
-	err = projectRef.MergeWithParserProject("")
-	if err != nil {
 		return false
 	}
 	return projectRef.IsPerfEnabled()

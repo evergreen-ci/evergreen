@@ -223,12 +223,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	err = projectRef.MergeWithParserProject(t.Version)
-	if err != nil {
-		err = errors.Wrapf(err, "Unable to merge parser project with project ref %s", t.Project)
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, deactivatePrevious)
 	if err != nil {
