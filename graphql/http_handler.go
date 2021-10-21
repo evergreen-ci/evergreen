@@ -36,12 +36,11 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 		fieldCtx := graphql.GetFieldContext(ctx)
 		queryPath := fieldCtx.Path()
 		args := fieldCtx.Args
-		grip.Error(message.Fields{
-			"path":    "/graphql/query",
-			"message": err,
-			"query":   queryPath,
-			"args":    args,
-		})
+		grip.Error(message.WrapError(err, message.Fields{
+			"path":  "/graphql/query",
+			"query": queryPath,
+			"args":  args,
+		}))
 		return graphql.DefaultErrorPresenter(ctx, err)
 	})
 	return srv.ServeHTTP
