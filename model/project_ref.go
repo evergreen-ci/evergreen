@@ -2165,7 +2165,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	return string(fileContents), nil
 }
 
-func (t TriggerDefinition) Validate(parentProject string) error {
+func (t *TriggerDefinition) Validate(parentProject string) error {
 	upstreamProject, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "error finding upstream project %s", t.Project)
@@ -2176,6 +2176,8 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	if upstreamProject.Id == parentProject {
 		return errors.New("a project cannot trigger itself")
 	}
+	// should be saved using its ID, in case the user used the project's identifier
+	t.Project = upstreamProject.Id
 	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask {
 		return errors.Errorf("invalid level: %s", t.Level)
 	}
@@ -2192,6 +2194,9 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	}
 	if t.ConfigFile == "" && t.GenerateFile == "" {
 		return errors.New("must provide a config file or generated tasks file")
+	}
+	if t.DefinitionID == "" {
+		t.DefinitionID = utility.RandomString()
 	}
 	return nil
 }

@@ -95,14 +95,18 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
+	idToIdentifier := map[string]string{}
 	for i, t := range projRef.PatchTriggerAliases {
-		var childProject *model.ProjectRef
-		childProject, err = model.FindBranchProjectRef(t.ChildProject)
+		if identifier, ok := idToIdentifier[t.ChildProject]; ok {
+			projRef.PatchTriggerAliases[i].ChildProject = identifier
+			continue
+		}
+		identifier, err := model.GetIdentifierForProject(t.ChildProject)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			continue
 		}
-		if childProject == nil {
+		if identifier == "" {
 			gimlet.WriteJSONResponse(w, http.StatusNotFound,
 				gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
@@ -110,7 +114,29 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 				})
 			continue
 		}
-		projRef.PatchTriggerAliases[i].ChildProject = childProject.Identifier
+		idToIdentifier[t.ChildProject] = identifier // store for future references
+		projRef.PatchTriggerAliases[i].ChildProject = identifier
+	}
+	for i, t := range projRef.Triggers {
+		if identifier, ok := idToIdentifier[t.Project]; ok {
+			projRef.Triggers[i].Project = identifier
+			continue
+		}
+		identifier, err := model.GetIdentifierForProject(t.Project)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			continue
+		}
+		if identifier == "" {
+			gimlet.WriteJSONResponse(w, http.StatusNotFound,
+				gimlet.ErrorResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    fmt.Sprintf("child project '%s' of patch trigger alias cannot be found", t.Project),
+				})
+			continue
+		}
+		idToIdentifier[t.Project] = identifier // store for future references
+		projRef.Triggers[i].Project = identifier
 	}
 
 	var projVars *model.ProjectVars
@@ -528,11 +554,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	catcher := grip.NewSimpleCatcher()
-	for i, t := range responseRef.Triggers {
-		catcher.Add(t.Validate(id))
-		if t.DefinitionID == "" {
-			responseRef.Triggers[i].DefinitionID = utility.RandomString()
-		}
+	for i := range responseRef.Triggers {
+		catcher.Add(responseRef.Triggers[i].Validate(id))
 	}
 	for i := range responseRef.PatchTriggerAliases {
 		responseRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(responseRef.PatchTriggerAliases[i], id)
