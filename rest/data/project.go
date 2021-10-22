@@ -328,7 +328,11 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
 					}
 				}
-				changes[project.Id] = key
+				if existingKey, ok := changes[project.Id]; ok {
+					changes[project.Id] = fmt.Sprintf("%s, %s", existingKey, key)
+				} else {
+					changes[project.Id] = key
+				}
 			}
 		}
 	}
@@ -661,7 +665,11 @@ func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement,
 				if !dryRun {
 					cachedVars.Vars[key] = replacement
 				}
-				changes[cachedVars.Id] = key
+				if existingKey, ok := changes[cachedVars.Id]; ok {
+					changes[cachedVars.Id] = fmt.Sprintf("%s, %s", existingKey, key)
+				} else {
+					changes[cachedVars.Id] = key
+				}
 			}
 		}
 	}
