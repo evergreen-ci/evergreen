@@ -394,11 +394,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
-	for i, trigger := range h.newProjectRef.Triggers {
-		catcher.Add(trigger.Validate(h.newProjectRef.Id))
-		if trigger.DefinitionID == "" {
-			h.newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
-		}
+	for i := range h.newProjectRef.Triggers {
+		catcher.Add(h.newProjectRef.Triggers[i].Validate(h.newProjectRef.Id))
 	}
 	for i := range h.newProjectRef.PatchTriggerAliases {
 		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
