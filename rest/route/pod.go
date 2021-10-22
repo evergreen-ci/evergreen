@@ -64,6 +64,7 @@ func (h *podPostHandler) validatePayload() error {
 	catcher.NewWhen(h.p.OS == "", "missing OS")
 	catcher.NewWhen(h.p.Arch == "", "missing architecture")
 	catcher.NewWhen(h.p.OS == model.APIPodOS(pod.OSWindows) && h.p.WindowsVersion == "", "must specify a Windows version for a Windows pod")
+	catcher.NewWhen(h.p.OS != model.APIPodOS(pod.OSWindows) && h.p.WindowsVersion != "", "cannot specify a Windows version for a non-Windows pod")
 	catcher.NewWhen(utility.FromIntPtr(h.p.CPU) <= 0, "CPU must be a positive non-zero value")
 	catcher.NewWhen(utility.FromIntPtr(h.p.Memory) <= 0, "memory must be a positive non-zero value")
 	for i, envVar := range h.p.EnvVars {
