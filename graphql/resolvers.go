@@ -2649,7 +2649,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if t == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
 		}
-		break
 	case "build":
 		b, buildErr := r.sc.FindBuildById(id)
 		if buildErr != nil {
@@ -2658,7 +2657,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if b == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
 		}
-		break
 	case "version":
 		v, versionErr := r.sc.FindVersionById(id)
 		if versionErr != nil {
@@ -2667,7 +2665,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if v == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
 		}
-		break
 	case "project":
 		p, projectErr := r.sc.FindProjectById(id, false)
 		if projectErr != nil {
@@ -2676,7 +2673,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if p == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project with id %s", id))
 		}
-		break
 	default:
 		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
 	}
