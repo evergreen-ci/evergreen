@@ -478,7 +478,7 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	if p.Author != "" {
 		grip.Infof("Author: %s", p.Author)
 	}
-	disp, err := getPatchDisplay(p, false, uiServerHost, true)
+	disp, err := getPatchDisplay(p, false, uiServerHost, false)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch display"))
 		return
