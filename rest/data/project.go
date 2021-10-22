@@ -286,7 +286,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
-func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjects, err := model.GetVarsByValue(toReplace)
 	if err != nil {
@@ -295,7 +295,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 	if matchingProjects == nil {
 		catcher.New("no projects with matching value found")
 	}
-	changes := map[string]string{}
+	changes := map[string][]string{}
 	for _, project := range matchingProjects {
 		for key, val := range project.Vars {
 			if val == toReplace {
@@ -328,11 +328,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
 					}
 				}
-				if existingKey, ok := changes[project.Id]; ok {
-					changes[project.Id] = fmt.Sprintf("%s, %s", existingKey, key)
-				} else {
-					changes[project.Id] = key
-				}
+				changes[project.Id] = append(changes[project.Id], key)
 			}
 		}
 	}
@@ -657,19 +653,15 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
-func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
-	changes := map[string]string{}
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
+	changes := map[string][]string{}
 	for _, cachedVars := range pc.CachedVars {
 		for key, val := range cachedVars.Vars {
 			if toReplace == val {
 				if !dryRun {
 					cachedVars.Vars[key] = replacement
 				}
-				if existingKey, ok := changes[cachedVars.Id]; ok {
-					changes[cachedVars.Id] = fmt.Sprintf("%s, %s", existingKey, key)
-				} else {
-					changes[cachedVars.Id] = key
-				}
+				changes[cachedVars.Id] = append(changes[cachedVars.Id], key)
 			}
 		}
 	}

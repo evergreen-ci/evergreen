@@ -814,15 +814,17 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 				"replacement": "brown"
 		}`)
 
-	expectedResp := map[string]string{"dimoxinil": "banana, lemon"}
-
 	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunTrue))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Data(), expectedResp)
+	respMap := resp.Data().(map[string][]string)
+	s.NotNil(respMap["dimoxinil"])
+	s.Equal(len(respMap["dimoxinil"]), 2)
+	s.Contains(respMap["dimoxinil"], "banana")
+	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
 	s.Equal("yellow", s.sc.CachedVars[0].Vars["banana"])
 
@@ -832,7 +834,11 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Data(), expectedResp)
+	respMap = resp.Data().(map[string][]string)
+	s.NotNil(respMap["dimoxinil"])
+	s.Equal(len(respMap["dimoxinil"]), 2)
+	s.Contains(respMap["dimoxinil"], "banana")
+	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
 	s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
 }
