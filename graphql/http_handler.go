@@ -38,8 +38,12 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 
 	srv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
 		fieldCtx := graphql.GetFieldContext(ctx)
-		queryPath := fieldCtx.Path()
-		args := fieldCtx.Args
+		queryPath := ""
+		args := map[string]interface{}{}
+		if fieldCtx != nil {
+			queryPath = fieldCtx.Path().String()
+			args = fieldCtx.Args
+		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"path":  "/graphql/query",
 			"query": queryPath,
