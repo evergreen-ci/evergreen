@@ -2196,6 +2196,8 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	if upstreamProject.Id == parentProject {
 		return errors.New("a project cannot trigger itself")
 	}
+	// should be saved using its ID, in case the user used the project's identifier
+	t.Project = upstreamProject.Id
 	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask {
 		return errors.Errorf("invalid level: %s", t.Level)
 	}

@@ -235,9 +235,7 @@ func triggerDownstreamProjectsForBuild(b *build.Build, e *event.EventLogEntry, p
 	versions := []model.Version{}
 projectLoop:
 	for _, ref := range downstreamProjects {
-
 		for _, trigger := range ref.Triggers {
-
 			if trigger.Level != model.ProjectTriggerLevelBuild {
 				continue
 			}
