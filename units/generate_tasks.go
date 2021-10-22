@@ -297,6 +297,19 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 	if !shouldNoop {
 		j.AddError(task.MarkGeneratedTasks(j.TaskID))
+		activatedTasks, err := task.CountActivatedTasksForVersion(t.Version)
+		if err != nil {
+			j.AddError(err)
+			return
+		}
+		if activatedTasks > evergreen.NumTasksForLargePatch {
+			grip.Info(message.Fields{
+				"message":             "version has large number of activated tasks",
+				"op":                  "generate.tasks",
+				"num_tasks_activated": activatedTasks,
+				"version":             t.Version,
+			})
+		}
 	}
 }
 

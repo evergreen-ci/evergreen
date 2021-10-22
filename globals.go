@@ -137,6 +137,9 @@ const (
 
 	DisabledTaskPriority = int64(-1)
 
+	// if a patch has NumTasksForLargePatch number of tasks or greater, we log to splunk for investigation
+	NumTasksForLargePatch = 10000
+
 	// LogMessage struct versions
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
