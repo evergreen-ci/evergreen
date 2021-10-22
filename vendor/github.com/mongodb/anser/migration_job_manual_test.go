@@ -4,12 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/anser/client"
-	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
@@ -56,65 +53,6 @@ func TestManualMigration(t *testing.T) {
 		assert.Contains(t, err.Error(), "could not find migration named")
 	})
 
-	t.Run("Legacy", func(t *testing.T) {
-		// set a migration job name
-		assert.NoError(t, env.RegisterLegacyManualMigrationOperation("passing", func(s db.Session, d bson.RawD) error { return nil }))
-		assert.NoError(t, env.RegisterLegacyManualMigrationOperation("failing", func(s db.Session, d bson.RawD) error { return errors.New("manual fail") }))
-		defer func() { env.LegacyMigrationRegistry = make(map[string]db.MigrationOperation) }()
-
-		t.Run("NoSession", func(t *testing.T) {
-			// reset, define a job but have the session acquisition fail
-			job = factory().(*manualMigrationJob)
-			job.MigrationHelper = mh
-			job.Definition.OperationName = "passing"
-			env.SessionError = errors.New("no session, sorry")
-			defer func() { env.SessionError = nil }()
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-
-			require.True(t, job.HasErrors())
-			err = job.Error()
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "no session, sorry")
-		})
-		t.Run("Passing", func(t *testing.T) {
-			job = factory().(*manualMigrationJob)
-			job.MigrationHelper = mh
-			job.Definition.OperationName = "passing"
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-			assert.False(t, job.HasErrors())
-		})
-		t.Run("Failing", func(t *testing.T) {
-			// reset and have a job that always fails and make sure the error propagates
-			job = factory().(*manualMigrationJob)
-			job.MigrationHelper = mh
-			job.Definition.OperationName = "failing"
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-
-			require.True(t, job.HasErrors())
-			err = job.Error()
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "manual fail")
-		})
-		t.Run("DBError", func(t *testing.T) {
-			// reset and have the db operation fail
-			job = factory().(*manualMigrationJob)
-			job.Definition.OperationName = "passing"
-			job.Definition.Namespace = model.Namespace{DB: "foo", Collection: "bar"}
-			job.MigrationHelper = mh
-			env.Session = mock.NewSession()
-			env.Session.DB("foo").C("bar").(*mock.LegacyCollection).QueryError = errors.New("query error")
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-
-			require.True(t, job.HasErrors())
-			err = job.Error()
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "query error")
-		})
-	})
 	t.Run("Client", func(t *testing.T) {
 		assert.NoError(t, env.RegisterManualMigrationOperation("passing", func(c client.Client, d *birch.Document) error { return nil }))
 		assert.NoError(t, env.RegisterManualMigrationOperation("failing", func(c client.Client, d *birch.Document) error { return errors.New("manual fail") }))

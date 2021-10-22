@@ -129,13 +129,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 	projVars = projVars.RedactPrivateVars()
 
-	projectAliases, err := model.FindAliasesForProject(projRef.Id)
+	projectAliases, err := model.FindAliasesForProjectFromDb(projRef.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	if len(projectAliases) == 0 && projRef.UseRepoSettings {
-		projectAliases, err = model.FindAliasesForProject(projRef.RepoRefId)
+		projectAliases, err = model.FindAliasesForRepo(projRef.RepoRefId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -712,7 +712,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	origProjectAliases, _ := model.FindAliasesForProject(id)
+	origProjectAliases, _ := model.FindAliasesForProjectFromDb(id)
 	var projectAliases []model.ProjectAlias
 	projectAliases = append(projectAliases, responseRef.GitHubPRAliases...)
 	projectAliases = append(projectAliases, responseRef.GithubChecksAliases...)
@@ -740,7 +740,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions:      origSubscriptions,
 	}
 
-	currentAliases, _ := model.FindAliasesForProject(id)
+	currentAliases, _ := model.FindAliasesForProjectFromDb(id)
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
 	after := &model.ProjectSettings{
 		ProjectRef:         *projectRef,
@@ -811,6 +811,18 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	newProject.Id = projectWithId.Id
+	if newProject.Id != "" { // verify that this is a unique ID
+		conflictingRef, err := model.FindBranchProjectRef(newProject.Id)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error checking for conflicting project ref: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if conflictingRef != nil {
+			http.Error(w, "ID already being used as ID or identifier for another project", http.StatusBadRequest)
+			return
+		}
+	}
+
 	err = newProject.Add(dbUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -938,7 +950,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, err := model.FindAliasInProjectOrRepo(projectId, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}

@@ -11,40 +11,34 @@ import (
 )
 
 type Environment struct {
-	ShouldPreferClient bool
-	IsSetup            bool
-	ReturnNilClient    bool
-	SetupError         error
-	SessionError       error
-	ClientError        error
-	QueueError         error
-	NetworkError       error
+	IsSetup         bool
+	ReturnNilClient bool
+	SetupError      error
+	SessionError    error
+	ClientError     error
+	QueueError      error
+	NetworkError    error
 
-	PreferedSetup           interface{}
-	Session                 *Session
-	Client                  *Client
-	Network                 *DependencyNetwork
-	Queue                   amboy.Queue
-	SetupClient             client.Client
-	SetupSession            db.Session
-	Closers                 []func() error
-	DependencyManagers      map[string]*DependencyManager
-	LegacyMigrationRegistry map[string]db.MigrationOperation
-	LegacyProcessorRegistry map[string]db.Processor
-	MigrationRegistry       map[string]client.MigrationOperation
-	ProcessorRegistry       map[string]client.Processor
-	MetaNS                  model.Namespace
+	Session            *Session
+	Client             *Client
+	Network            *DependencyNetwork
+	Queue              amboy.Queue
+	SetupClient        client.Client
+	SetupSession       db.Session
+	Closers            []func() error
+	DependencyManagers map[string]*DependencyManager
+	MigrationRegistry  map[string]client.MigrationOperation
+	ProcessorRegistry  map[string]client.Processor
+	MetaNS             model.Namespace
 }
 
 func NewEnvironment() *Environment {
 	return &Environment{
-		Session:                 NewSession(),
-		Network:                 NewDependencyNetwork(),
-		DependencyManagers:      make(map[string]*DependencyManager),
-		LegacyMigrationRegistry: make(map[string]db.MigrationOperation),
-		LegacyProcessorRegistry: make(map[string]db.Processor),
-		MigrationRegistry:       make(map[string]client.MigrationOperation),
-		ProcessorRegistry:       make(map[string]client.Processor),
+		Session:            NewSession(),
+		Network:            NewDependencyNetwork(),
+		DependencyManagers: make(map[string]*DependencyManager),
+		MigrationRegistry:  make(map[string]client.MigrationOperation),
+		ProcessorRegistry:  make(map[string]client.Processor),
 	}
 }
 
@@ -96,34 +90,6 @@ func (e *Environment) GetDependencyNetwork() (model.DependencyNetworker, error) 
 	return e.Network, nil
 }
 
-func (e *Environment) RegisterLegacyManualMigrationOperation(name string, op db.MigrationOperation) error {
-	if _, ok := e.LegacyMigrationRegistry[name]; ok {
-		return errors.Errorf("migration operation %s already exists", name)
-	}
-
-	e.LegacyMigrationRegistry[name] = op
-	return nil
-}
-
-func (e *Environment) GetLegacyManualMigrationOperation(name string) (db.MigrationOperation, bool) {
-	op, ok := e.LegacyMigrationRegistry[name]
-	return op, ok
-}
-
-func (e *Environment) RegisterLegacyDocumentProcessor(name string, docp db.Processor) error {
-	if _, ok := e.LegacyProcessorRegistry[name]; ok {
-		return errors.Errorf("document processor named %s already registered", name)
-	}
-
-	e.LegacyProcessorRegistry[name] = docp
-	return nil
-}
-
-func (e *Environment) GetLegacyDocumentProcessor(name string) (db.Processor, bool) {
-	docp, ok := e.LegacyProcessorRegistry[name]
-	return docp, ok
-}
-
 func (e *Environment) RegisterManualMigrationOperation(name string, op client.MigrationOperation) error {
 	if _, ok := e.MigrationRegistry[name]; ok {
 		return errors.Errorf("migration operation %s already exists", name)
@@ -172,6 +138,3 @@ func (e *Environment) Close() error {
 	}
 	return catcher.Resolve()
 }
-
-func (e *Environment) PreferClient() bool           { return e.ShouldPreferClient }
-func (e *Environment) SetPreferedDB(in interface{}) { e.PreferedSetup = in }

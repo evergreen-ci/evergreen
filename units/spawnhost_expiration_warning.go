@@ -49,7 +49,7 @@ func NewSpawnhostExpirationWarningsJob(id string) amboy.Job {
 	j := makeSpawnhostExpirationWarningsJob()
 	j.SetID(fmt.Sprintf("%s.%s", spawnhostExpirationWarningsName, id))
 	j.SetScopes([]string{spawnhostExpirationWarningsName})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	return j
 }
 

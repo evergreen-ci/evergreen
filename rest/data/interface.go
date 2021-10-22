@@ -107,8 +107,10 @@ type Connector interface {
 	// Create/Update a project the given projectRef
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
+	// VerifyUniqueProject returns a bad request error if the project ID / identifier is already in use.
+	VerifyUniqueProject(string) error
 	// CopyProject copies the passed in project with the given project identifier, and returns the new project.
-	CopyProject(context.Context, *model.ProjectRef, string) (*restModel.APIProjectRef, error)
+	CopyProject(context.Context, CopyProjectOpts) (*restModel.APIProjectRef, error)
 	GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error)
 
 	UpdateRepo(*model.RepoRef) error
@@ -397,7 +399,7 @@ type Connector interface {
 	GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error)
 	// SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
 	// RepoRef related functions and collection instead of ProjectRef.
-	SaveProjectSettingsForSection(context.Context, string, *restModel.APIProjectSettings, model.ProjectPageSection, bool, string) error
+	SaveProjectSettingsForSection(context.Context, string, *restModel.APIProjectSettings, model.ProjectPageSection, bool, string) (*restModel.APIProjectSettings, error)
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)

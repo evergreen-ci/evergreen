@@ -11,18 +11,23 @@ import (
 // instances. Interchange is also used internally as part of JobGroup
 // Job type.
 type JobInterchange struct {
-	Name                 string                 `bson:"_id" json:"name" yaml:"name"`
-	Type                 string                 `json:"type" bson:"type" yaml:"type"`
-	Group                string                 `bson:"group,omitempty" json:"group,omitempty" yaml:"group,omitempty"`
-	Version              int                    `json:"version" bson:"version" yaml:"version"`
-	Priority             int                    `json:"priority" bson:"priority" yaml:"priority"`
-	Status               amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`
-	Scopes               []string               `bson:"scopes,omitempty" json:"scopes,omitempty" yaml:"scopes,omitempty"`
-	ApplyScopesOnEnqueue bool                   `bson:"apply_scopes_on_enqueue" json:"apply_scopes_on_enqueue,omitempty" yaml:"apply_scopes_on_enqueue,omitempty"`
-	RetryInfo            amboy.JobRetryInfo     `bson:"retry_info" json:"retry_info,omitempty" yaml:"retry_info,omitempty"`
-	TimeInfo             amboy.JobTimeInfo      `bson:"time_info" json:"time_info,omitempty" yaml:"time_info,omitempty"`
-	Job                  rawJob                 `json:"job" bson:"job" yaml:"job"`
-	Dependency           *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
+	Name          string              `bson:"_id" json:"name" yaml:"name"`
+	Type          string              `json:"type" bson:"type" yaml:"type"`
+	Group         string              `bson:"group,omitempty" json:"group,omitempty" yaml:"group,omitempty"`
+	Version       int                 `json:"version" bson:"version" yaml:"version"`
+	Priority      int                 `json:"priority" bson:"priority" yaml:"priority"`
+	Status        amboy.JobStatusInfo `bson:"status" json:"status" yaml:"status"`
+	Scopes        []string            `bson:"scopes,omitempty" json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	EnqueueScopes []string            `bson:"enqueue_scopes,omitempty" json:"enqueue_scopes,omitempty" yaml:"enqueue_scopes,omitempty"`
+	// TODO (EVG-15582): remove this field after all jobs containing this field
+	// have hit their 90 day TTL (2022-02-01) since no jobs will be stored with
+	// this field anymore.
+	EnqueueAllScopesDeprecated bool                   `bson:"apply_scopes_on_enqueue,omitempty" json:"apply_scopes_on_enqueue,omitempty" yaml:"apply_scopes_on_enqueue,omitempty"`
+	EnqueueAllScopes           bool                   `bson:"enqueue_all_scopes,omitempty" json:"enqueue_all_scopes,omitempty" yaml:"enqueue_all_scopes,omitempty"`
+	RetryInfo                  amboy.JobRetryInfo     `bson:"retry_info" json:"retry_info,omitempty" yaml:"retry_info,omitempty"`
+	TimeInfo                   amboy.JobTimeInfo      `bson:"time_info" json:"time_info,omitempty" yaml:"time_info,omitempty"`
+	Job                        rawJob                 `json:"job" bson:"job" yaml:"job"`
+	Dependency                 *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
 }
 
 // MakeJobInterchange changes a Job interface into a JobInterchange
@@ -45,16 +50,17 @@ func MakeJobInterchange(j amboy.Job, f amboy.Format) (*JobInterchange, error) {
 	}
 
 	output := &JobInterchange{
-		Name:                 j.ID(),
-		Type:                 typeInfo.Name,
-		Version:              typeInfo.Version,
-		Priority:             j.Priority(),
-		Status:               j.Status(),
-		TimeInfo:             j.TimeInfo(),
-		ApplyScopesOnEnqueue: j.ShouldApplyScopesOnEnqueue(),
-		RetryInfo:            j.RetryInfo(),
-		Job:                  data,
-		Dependency:           dep,
+		Name:             j.ID(),
+		Type:             typeInfo.Name,
+		Version:          typeInfo.Version,
+		Priority:         j.Priority(),
+		Status:           j.Status(),
+		TimeInfo:         j.TimeInfo(),
+		EnqueueScopes:    j.EnqueueScopes(),
+		EnqueueAllScopes: j.EnqueueAllScopes(),
+		RetryInfo:        j.RetryInfo(),
+		Job:              data,
+		Dependency:       dep,
 	}
 
 	return output, nil
@@ -92,7 +98,8 @@ func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 	job.SetDependency(dep)
 	job.SetPriority(j.Priority)
 	job.SetStatus(j.Status)
-	job.SetShouldApplyScopesOnEnqueue(j.ApplyScopesOnEnqueue)
+	job.SetEnqueueScopes(j.EnqueueScopes...)
+	job.SetEnqueueAllScopes(j.EnqueueAllScopes || j.EnqueueAllScopesDeprecated)
 	job.UpdateTimeInfo(j.TimeInfo)
 	job.UpdateRetryInfo(j.RetryInfo.Options())
 

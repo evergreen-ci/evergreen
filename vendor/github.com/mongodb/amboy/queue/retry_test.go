@@ -874,7 +874,7 @@ func TestRetryHandlerQueueIntegration(t *testing.T) {
 							j := newMockRetryableJob("id")
 							scopes := []string{"scope"}
 							j.SetScopes(scopes)
-							j.SetShouldApplyScopesOnEnqueue(true)
+							j.SetEnqueueAllScopes(true)
 							j.UpdateRetryInfo(amboy.JobRetryOptions{
 								NeedsRetry: utility.TruePtr(),
 							})

@@ -13,7 +13,6 @@ import (
 func fetchAllProjectConfigs() cli.Command {
 	const (
 		includeDisabledFlagName = "include-disabled"
-		fetchFlagName           = "fetch"
 	)
 
 	return cli.Command{
@@ -24,16 +23,11 @@ func fetchAllProjectConfigs() cli.Command {
 				Name:  includeDisabledFlagName,
 				Usage: "include disabled projects",
 			},
-			cli.BoolFlag{
-				Name:  fetchFlagName,
-				Usage: "fetch yamls directly from Github",
-			},
 		},
 		Usage:  "download the configuration files of all evergreen projects to the current directory",
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			includeDisabled := c.BoolT(includeDisabledFlagName)
-			shouldFetch := c.Bool(fetchFlagName)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -55,15 +49,14 @@ func fetchAllProjectConfigs() cli.Command {
 				return errors.Wrap(err, "can't fetch projects from evergreen")
 			}
 
-			return fetchAndWriteConfigs(rc, projects, shouldFetch, includeDisabled)
+			return fetchAndWriteConfigs(rc, projects, includeDisabled)
 		},
 	}
 }
 
 // fetchAndWriteConfig downloads the most recent config for a project
-// and writes it to "project_name.yml" locally. If shouldFetch is set, then
-// we get the files directly from Github.
-func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, shouldFetch, includeDisabled bool) error {
+// and writes it to "project_name.yml" locally.
+func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeDisabled bool) error {
 	catcher := grip.NewSimpleCatcher()
 	type projectRepo struct {
 		Owner      string
@@ -97,7 +90,7 @@ func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, shouldFe
 			continue
 		}
 
-		config, err := c.GetConfig(versions[0], shouldFetch)
+		config, err := c.GetConfig(versions[0])
 		if err != nil {
 			catcher.Wrapf(err, "failed to fetch config for project '%s', version '%s'", p.Identifier, versions[0])
 			continue

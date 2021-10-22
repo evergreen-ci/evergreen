@@ -46,6 +46,16 @@ func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*mod
 
 // CreateProject inserts the given model.ProjectRef.
 func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+	if projectRef.Identifier != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Identifier); err != nil {
+			return err
+		}
+	}
+	if projectRef.Id != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Id); err != nil {
+			return err
+		}
+	}
 	err := projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -64,6 +74,24 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Id),
 		}
+	}
+	return nil
+}
+
+func (sc *DBProjectConnector) VerifyUniqueProject(name string) error {
+	_, err := sc.FindProjectById(name, false)
+	if err == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot reuse '%s' for project", name),
+		}
+	}
+	apiErr, ok := err.(gimlet.ErrorResponse)
+	if !ok {
+		return errors.Errorf("Type assertion failed: type %T does not hold an error", err)
+	}
+	if apiErr.StatusCode != http.StatusNotFound {
+		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
 	}
 	return nil
 }
@@ -419,7 +447,18 @@ func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bo
 }
 
 func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
-	projectRef.Id = mgobson.NewObjectId().Hex()
+	if projectRef.Identifier != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Identifier); err != nil {
+			return err
+		}
+	}
+	if projectRef.Id != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Id); err != nil {
+			return err
+		}
+	} else {
+		projectRef.Id = mgobson.NewObjectId().Hex()
+	}
 	for _, p := range pc.CachedProjects {
 		if p.Id == projectRef.Id {
 			return gimlet.ErrorResponse{
@@ -471,6 +510,24 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 		StatusCode: http.StatusInternalServerError,
 		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Id),
 	}
+}
+
+func (sc *MockProjectConnector) VerifyUniqueProject(name string) error {
+	_, err := sc.FindProjectById(name, false)
+	if err == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot reuse '%s' for project", name),
+		}
+	}
+	apiErr, ok := err.(gimlet.ErrorResponse)
+	if !ok {
+		return errors.Errorf("Type assertion failed: type %T does not hold an error", err)
+	}
+	if apiErr.StatusCode != http.StatusNotFound {
+		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
+	}
+	return nil
 }
 
 func (pc *MockProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {

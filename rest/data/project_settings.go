@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -15,18 +17,41 @@ import (
 // This file is used to combine operations across data connectors, to avoid
 // duplicated connector usage across the codebase.
 
-func (sc *DBConnector) CopyProject(ctx context.Context, projectToCopy *model.ProjectRef, newProject string) (*restModel.APIProjectRef, error) {
-	// copy project, disable necessary settings
+type CopyProjectOpts struct {
+	ProjectIdToCopy      string
+	NewProjectIdentifier string
+	NewProjectId         string
+}
+
+func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error finding project '%s'", opts.ProjectIdToCopy)
+	}
+	if projectToCopy == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' doesn't exist", opts.ProjectIdToCopy),
+		}
+	}
+
 	oldId := projectToCopy.Id
+	// project ID will be validated or generated during CreateProject
+	if opts.NewProjectId != "" {
+		projectToCopy.Id = opts.NewProjectId
+	} else {
+		projectToCopy.Id = ""
+	}
+
+	// copy project, disable necessary settings
 	oldIdentifier := projectToCopy.Identifier
-	projectToCopy.Id = "" // this will be regenerated during Create
-	projectToCopy.Identifier = newProject
+	projectToCopy.Identifier = opts.NewProjectIdentifier
 	projectToCopy.Enabled = utility.FalsePtr()
 	projectToCopy.PRTestingEnabled = nil
 	projectToCopy.CommitQueue.Enabled = nil
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err := sc.CreateProject(projectToCopy, u); err != nil {
-		return nil, errors.Wrapf(err, "Database error creating project for id '%s'", newProject)
+		return nil, err
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
 	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
@@ -45,28 +70,28 @@ func (sc *DBConnector) CopyProject(ctx context.Context, projectToCopy *model.Pro
 	}
 	// set the same admin roles from the old project on the newly copied project.
 	if err := sc.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
-		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", newProject)
+		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 	return apiProjectRef, nil
 }
 
 func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
-	section model.ProjectPageSection, isRepo bool, userId string) error {
+	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
 	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end
 	before, err := model.GetProjectSettingsById(projectId, isRepo)
 	if err != nil {
-		return errors.Wrap(err, "error getting before project settings event")
+		return nil, errors.Wrap(err, "error getting before project settings event")
 	}
 	v, err := changes.ProjectRef.ToService()
 	if err != nil {
-		return errors.Wrap(err, "error converting project ref")
+		return nil, errors.Wrap(err, "error converting project ref")
 	}
 	newProjectRef := v.(*model.ProjectRef)
 	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as newProjectRef.
 	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
 	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
 	if err != nil {
-		return errors.Wrapf(err, "error merging project ref")
+		return nil, errors.Wrapf(err, "error merging project ref")
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -77,7 +102,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		if mergedProjectRef.Owner != before.ProjectRef.Owner || mergedProjectRef.Repo != before.ProjectRef.Repo {
 			_, err = sc.EnableWebhooks(ctx, mergedProjectRef)
 			if err != nil {
-				return errors.Wrapf(err, "Error enabling webhooks for project '%s'", projectId)
+				return nil, errors.Wrapf(err, "Error enabling webhooks for project '%s'", projectId)
 			}
 		}
 		modified = true
@@ -87,17 +112,18 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		adminsToDelete, adminsToAdd := utility.StringSliceSymmetricDifference(before.ProjectRef.Admins, mergedProjectRef.Admins)
 		makeRestricted := !before.ProjectRef.IsRestricted() && mergedProjectRef.IsRestricted()
 		makeUnrestricted := before.ProjectRef.IsRestricted() && !mergedProjectRef.IsRestricted()
+		modified = true
 		if isRepo {
 			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
 			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
 			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
-				return errors.Wrap(err, "error updating repo admin roles")
+				catcher.Wrap(err, "error updating repo admin roles")
 			}
+			newProjectRef.Admins = repoRef.Admins
 			branchProjects, err := model.FindMergedProjectRefsForRepo(repoRef)
 			if err != nil {
-				return errors.Wrapf(err, "error finding branch projects for repo")
+				return nil, errors.Wrapf(err, "error finding branch projects for repo")
 			}
-			modified = true
 			if makeRestricted {
 				catcher.Wrap(repoRef.MakeRestricted(branchProjects), "error making repo restricted")
 			}
@@ -106,9 +132,8 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 			}
 		} else {
 			if err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
-				return errors.Wrap(err, "error updating project admin roles")
+				catcher.Wrap(err, "error updating project admin roles")
 			}
-			modified = true
 			if makeRestricted {
 				catcher.Wrap(before.ProjectRef.MakeRestricted(), "error making branch restricted")
 			}
@@ -126,7 +151,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		}
 		changes.Vars.VarsToDelete = toDelete
 		if err = sc.UpdateProjectVars(projectId, &changes.Vars, false); err != nil { // destructively modifies vars
-			return errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
+			return nil, errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
 		}
 		modified = true
 	case model.ProjectPageGithubAndCQSection, model.ProjectPagePatchAliasSection:
@@ -134,7 +159,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
 		if err = sc.SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
-			return errors.Wrapf(err, "Database error saving subscriptions for project '%s'", projectId)
+			return nil, errors.Wrapf(err, "Database error saving subscriptions for project '%s'", projectId)
 		}
 		modified = true
 		subscriptionsToKeep := []string{}
@@ -154,33 +179,59 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
-		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
+		return nil, errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
 	}
-
+	res := restModel.APIProjectSettings{}
 	if modified || modifiedProjectRef {
-		catcher.Add(model.GetAndLogProjectModified(projectId, userId, isRepo, before))
+		after, err := model.GetProjectSettingsById(projectId, isRepo)
+		if err != nil {
+			catcher.Wrapf(err, "error getting after project settings event")
+		} else {
+			catcher.Add(model.LogProjectModified(projectId, userId, before, after))
+			res, err = restModel.DbProjectSettingsToRestModel(*after)
+			if err != nil {
+				catcher.Wrapf(err, "error converting project settings")
+			}
+		}
 	}
 
-	return errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
+	return &res, errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
 }
 
 func (sc *MockConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
-	section model.ProjectPageSection, isRepo bool, userId string) error {
-	return nil
+	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
+	return nil, nil
 }
 
-func (sc *MockConnector) CopyProject(ctx context.Context, projectToCopy *model.ProjectRef, newProject string) (*restModel.APIProjectRef, error) {
-	// copy project, disable necessary settings
+func (sc *MockConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error finding project '%s'", opts.ProjectIdToCopy)
+	}
+	if projectToCopy == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' doesn't exist", opts.ProjectIdToCopy),
+		}
+	}
+
 	oldId := projectToCopy.Id
+	// project ID will be validated or generated during CreateProject
+	if opts.NewProjectId != "" {
+		projectToCopy.Id = opts.NewProjectId
+	} else {
+		projectToCopy.Id = ""
+	}
+
+	// copy project, disable necessary settings
 	oldIdentifier := projectToCopy.Identifier
-	projectToCopy.Id = "" // this will be regenerated during Create
-	projectToCopy.Identifier = newProject
+	projectToCopy.Identifier = opts.NewProjectIdentifier
 	projectToCopy.Enabled = utility.FalsePtr()
 	projectToCopy.PRTestingEnabled = nil
 	projectToCopy.CommitQueue.Enabled = nil
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err := sc.CreateProject(projectToCopy, u); err != nil {
-		return nil, errors.Wrapf(err, "Database error creating project for id '%s'", newProject)
+		return nil, errors.Wrapf(err, "Database error creating project for id '%s'", opts.NewProjectIdentifier)
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
 	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
@@ -199,7 +250,7 @@ func (sc *MockConnector) CopyProject(ctx context.Context, projectToCopy *model.P
 	}
 	// set the same admin roles from the old project on the newly copied project.
 	if err := sc.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
-		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", newProject)
+		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 	return apiProjectRef, nil
 }
