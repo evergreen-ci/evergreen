@@ -200,14 +200,14 @@ mciModule.controller(
     };
 
     $scope.shouldDisableWebhook = function () {
-      return ($scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
+      return $scope.settingsFormData.build_baron_settings && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
           || $scope.settingsFormData.build_baron_settings.ticket_create_project
-          || $scope.ticket_search_project;
+          || $scope.ticket_search_project);
     };
 
     $scope.shouldDisableBB = function () {
-      return $scope.settingsFormData.task_annotation_settings.web_hook.endpoint
-          || $scope.settingsFormData.task_annotation_settings.web_hook.secret;
+      return $scope.settingsFormData.task_annotation_settings && ($scope.settingsFormData.task_annotation_settings.web_hook.endpoint
+          || $scope.settingsFormData.task_annotation_settings.web_hook.secret);
     };
 
     $scope.bbConfigIsValid = function () {
