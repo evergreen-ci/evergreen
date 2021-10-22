@@ -106,7 +106,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			continue
 		}
-		if identifier != "" {
+		if identifier == "" {
 			gimlet.WriteJSONResponse(w, http.StatusNotFound,
 				gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
@@ -127,7 +127,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			continue
 		}
-		if identifier != "" {
+		if identifier == "" {
 			gimlet.WriteJSONResponse(w, http.StatusNotFound,
 				gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
@@ -554,11 +554,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	catcher := grip.NewSimpleCatcher()
-	for i, t := range responseRef.Triggers {
-		catcher.Add(t.Validate(id))
-		if t.DefinitionID == "" {
-			responseRef.Triggers[i].DefinitionID = utility.RandomString()
-		}
+	for i := range responseRef.Triggers {
+		catcher.Add(responseRef.Triggers[i].Validate(id))
 	}
 	for i := range responseRef.PatchTriggerAliases {
 		responseRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(responseRef.PatchTriggerAliases[i], id)
