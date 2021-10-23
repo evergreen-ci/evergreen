@@ -6611,6 +6611,7 @@ input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
   skipOrderNumber: Int = 0
+  shouldCollapse: Boolean = false
 }
 
 type BuildVariantTuple {
@@ -7461,7 +7462,7 @@ type Project {
   githubTriggerAliases: [String]
   periodicBuilds: [PeriodicBuild]
   cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParams
+  commitQueue: CommitQueueParams!
   admins: [String]
   spawnHostScriptPath: String!
   tracksPushEvents: Boolean
@@ -20148,11 +20149,14 @@ func (ec *executionContext) _Project_commitQueue(ctx context.Context, field grap
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(model.APICommitQueueParams)
 	fc.Result = res
-	return ec.marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, field.Selections, res)
+	return ec.marshalNCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_admins(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -33225,6 +33229,12 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 			if err != nil {
 				return it, err
 			}
+		case "shouldCollapse":
+			var err error
+			it.ShouldCollapse, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -37208,6 +37218,9 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_cedarTestResultsEnabled(ctx, field, obj)
 		case "commitQueue":
 			out.Values[i] = ec._Project_commitQueue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "admins":
 			out.Values[i] = ec._Project_admins(ctx, field, obj)
 		case "spawnHostScriptPath":
@@ -40800,6 +40813,10 @@ func (ec *executionContext) marshalNCommitQueueItem2githubᚗcomᚋevergreenᚑc
 	return ec._CommitQueueItem(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
+	return ec._CommitQueueParams(ctx, sel, &v)
+}
+
 func (ec *executionContext) unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx context.Context, v interface{}) (data.CopyProjectOpts, error) {
 	return ec.unmarshalInputCopyProjectInput(ctx, v)
 }
@@ -43491,10 +43508,6 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 	}
 	wg.Wait()
 	return ret
-}
-
-func (ec *executionContext) marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
-	return ec._CommitQueueParams(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, v interface{}) (model.APICommitQueueParams, error) {

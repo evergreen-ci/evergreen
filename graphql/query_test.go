@@ -90,6 +90,7 @@ func TestMainlineCommits(t *testing.T) {
 		ProjectID:       projectId,
 		SkipOrderNumber: nil,
 		Limit:           utility.ToIntPtr(2),
+		ShouldCollapse:  utility.ToBoolPtr(false),
 	}
 	buildVariantOptions := graphql.BuildVariantOptions{}
 	res, err := config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
@@ -103,6 +104,9 @@ func TestMainlineCommits(t *testing.T) {
 	buildVariantOptions = graphql.BuildVariantOptions{
 		Statuses: []string{evergreen.TaskFailed},
 	}
+
+	mainlineCommitOptions.ShouldCollapse = utility.ToBoolPtr(true)
+	// Should return all mainline commits while folding up inactive/unmatching ones when there are filters and shouldCollapse is true
 	res, err = config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
 	require.NoError(t, err)
 	require.NotNil(t, res)
@@ -120,6 +124,28 @@ func TestMainlineCommits(t *testing.T) {
 	require.NotNil(t, res.Versions[2].Version)
 
 	lastCommit := res.Versions[len(res.Versions)-1].Version
+	require.NotNil(t, lastCommit)
+	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
+
+	mainlineCommitOptions.ShouldCollapse = utility.ToBoolPtr(false)
+	// Should return all mainline commits without folding up unmatching ones when there are filters and shouldCollapse is false
+	res, err = config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+
+	require.Equal(t, 10, utility.FromIntPtr(res.NextPageOrderNumber))
+	require.Nil(t, res.PrevPageOrderNumber)
+	require.Equal(t, 3, len(res.Versions))
+
+	require.Nil(t, res.Versions[0].RolledUpVersions)
+	require.NotNil(t, res.Versions[0].Version)
+
+	require.NotNil(t, res.Versions[1].RolledUpVersions)
+	require.Equal(t, 1, len(res.Versions[1].RolledUpVersions))
+
+	require.NotNil(t, res.Versions[2].Version)
+
+	lastCommit = res.Versions[len(res.Versions)-1].Version
 	require.NotNil(t, lastCommit)
 	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
 }
