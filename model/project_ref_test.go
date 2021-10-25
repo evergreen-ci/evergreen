@@ -779,6 +779,13 @@ func TestGroupProjectsByRepo(t *testing.T) {
 
 	assert.Equal(2, len(groupedProjects["gimlet"]))
 	assert.Equal(3, len(groupedProjects["mongo"]))
+
+	assert.Equal("projectB", groupedProjects["mongo"][0].Id)
+	assert.Equal("projectC", groupedProjects["mongo"][1].Id)
+	assert.Equal("projectD", groupedProjects["mongo"][2].Id)
+
+	assert.Equal("projectE", groupedProjects["gimlet"][0].Id)
+	assert.Equal("projectF", groupedProjects["gimlet"][1].Id)
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
