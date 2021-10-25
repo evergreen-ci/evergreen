@@ -591,7 +591,7 @@ func getMockProjectsConnector() *data.MockConnector {
 			CachedVars: []*serviceModel.ProjectVars{
 				{
 					Id:   "dimoxinil",
-					Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
+					Vars: map[string]string{"apple": "green", "banana": "yellow"},
 				},
 			},
 		},
@@ -820,11 +820,6 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	respMap := resp.Data().(map[string][]string)
-	s.NotNil(respMap["dimoxinil"])
-	s.Equal(len(respMap["dimoxinil"]), 2)
-	s.Contains(respMap["dimoxinil"], "banana")
-	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
 	s.Equal("yellow", s.sc.CachedVars[0].Vars["banana"])
 
@@ -834,11 +829,6 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	respMap = resp.Data().(map[string][]string)
-	s.NotNil(respMap["dimoxinil"])
-	s.Equal(len(respMap["dimoxinil"]), 2)
-	s.Contains(respMap["dimoxinil"], "banana")
-	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
 	s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
 }
