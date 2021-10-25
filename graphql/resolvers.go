@@ -400,7 +400,7 @@ func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProje
 }
 
 func (r *projectResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
-	return []string{model.EvergreenLogSender, model.BuildloggerLogSender}, nil
+	return model.ValidDefaultLoggers, nil
 }
 
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, a *restModel.APIProjectSettings) (bool, error) {
