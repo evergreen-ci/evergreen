@@ -157,9 +157,13 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 			timingMsg[k] = v.Seconds()
 		}
 	}).Seconds()
-	j.AddError(jobContext.catcher.Resolve())
+	ctxError := jobContext.catcher.Resolve()
+	j.AddError(ctxError)
 	if j.HasErrors() {
-		return
+		errorMsg := ctxError.Error()
+		if !strings.Contains(errorMsg, evergreen.KeyTooLargeToIndexError) && !strings.Contains(errorMsg, evergreen.InvalidDivideInputError) {
+			return
+		}
 	}
 
 	timingMsg["save_stats_status"] = reportTiming(func() {
