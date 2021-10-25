@@ -13,7 +13,7 @@
                 "mergeMethod": "squash"
               },
               "periodicBuilds": null,
-              "githubChecksEnabled": null,
+              "githubChecksEnabled": false,
               "patchingDisabled": false,
               "prTestingEnabled": true,
               "batchTime": 2,

@@ -1,11 +1,16 @@
 package model
 
 import (
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -261,7 +266,7 @@ func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
 
 type APIWorkstationConfig struct {
 	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
-	GitClone      bool                         `bson:"git_clone" json:"git_clone"`
+	GitClone      *bool                        `bson:"git_clone" json:"git_clone"`
 }
 
 type APIWorkstationSetupCommand struct {
@@ -271,7 +276,7 @@ type APIWorkstationSetupCommand struct {
 
 func (c *APIWorkstationConfig) ToService() (interface{}, error) {
 	res := model.WorkstationConfig{}
-	res.GitClone = utility.ToBoolPtr(c.GitClone)
+	res.GitClone = utility.BoolPtrCopy(c.GitClone)
 	for _, apiCmd := range c.SetupCommands {
 		cmd := model.WorkstationSetupCommand{}
 		cmd.Command = utility.FromStringPtr(apiCmd.Command)
@@ -290,7 +295,7 @@ func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 		config = *h.(*model.WorkstationConfig)
 	}
 
-	c.GitClone = utility.FromBoolPtr(config.GitClone)
+	c.GitClone = utility.BoolPtrCopy(config.GitClone)
 	for _, cmd := range config.SetupCommands {
 		apiCmd := APIWorkstationSetupCommand{}
 		apiCmd.Command = utility.ToStringPtr(cmd.Command)
@@ -506,21 +511,6 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 		return errors.New("Invalid type of the argument")
 	}
 
-	cq := APICommitQueueParams{}
-	if err := cq.BuildFromService(projectRef.CommitQueue); err != nil {
-		return errors.Wrap(err, "can't convert commit queue parameters")
-	}
-
-	var taskSync APITaskSyncOptions
-	if err := taskSync.BuildFromService(projectRef.TaskSync); err != nil {
-		return errors.Wrap(err, "cannot convert task sync options to API representation")
-	}
-
-	workstationConfig := APIWorkstationConfig{}
-	if err := workstationConfig.BuildFromService(projectRef.WorkstationConfig); err != nil {
-		return errors.Wrap(err, "cannot convert workstation config")
-	}
-
 	p.Owner = utility.ToStringPtr(projectRef.Owner)
 	p.Repo = utility.ToStringPtr(projectRef.Repo)
 	p.Branch = utility.ToStringPtr(projectRef.Branch)
@@ -540,9 +530,6 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.GithubChecksEnabled = utility.BoolPtrCopy(projectRef.GithubChecksEnabled)
 	p.UseRepoSettings = projectRef.UseRepoSettings
 	p.RepoRefId = utility.ToStringPtr(projectRef.RepoRefId)
-	p.CommitQueue = cq
-	p.TaskSync = taskSync
-	p.WorkstationConfig = workstationConfig
 	p.Hidden = utility.BoolPtrCopy(projectRef.Hidden)
 	p.PatchingDisabled = utility.BoolPtrCopy(projectRef.PatchingDisabled)
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
@@ -555,6 +542,24 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.GitTagAuthorizedTeams = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
 	p.GithubTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubTriggerAliases)
+
+	cq := APICommitQueueParams{}
+	if err := cq.BuildFromService(projectRef.CommitQueue); err != nil {
+		return errors.Wrap(err, "can't convert commit queue parameters")
+	}
+	p.CommitQueue = cq
+
+	var taskSync APITaskSyncOptions
+	if err := taskSync.BuildFromService(projectRef.TaskSync); err != nil {
+		return errors.Wrap(err, "cannot convert task sync options to API representation")
+	}
+	p.TaskSync = taskSync
+
+	workstationConfig := APIWorkstationConfig{}
+	if err := workstationConfig.BuildFromService(projectRef.WorkstationConfig); err != nil {
+		return errors.Wrap(err, "cannot convert workstation config")
+	}
+	p.WorkstationConfig = workstationConfig
 
 	// Copy triggers
 	if projectRef.Triggers != nil {
@@ -595,4 +600,31 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	}
 
 	return nil
+}
+
+// DefaultUnsetBooleans is used to set booleans to their default value.
+func (pRef *APIProjectRef) DefaultUnsetBooleans() {
+	reflected := reflect.ValueOf(pRef).Elem()
+	recursivelyDefaultBooleans(reflected)
+}
+
+func recursivelyDefaultBooleans(structToSet reflect.Value) {
+	var err error
+	var i int
+	defer func() {
+		grip.Error(recovery.HandlePanicWithError(recover(), err, fmt.Sprintf("panicked for field '%d'", i)))
+	}()
+	falseType := reflect.TypeOf(false)
+	// Iterate through each field of the struct.
+	for i = 0; i < structToSet.NumField(); i++ {
+		field := structToSet.Field(i)
+
+		// If it's a boolean pointer, set the default recursively.
+		if field.Type() == reflect.PtrTo(falseType) && util.IsFieldUndefined(field) {
+			field.Set(reflect.New(falseType))
+
+		} else if field.Kind() == reflect.Struct {
+			recursivelyDefaultBooleans(field)
+		}
+	}
 }

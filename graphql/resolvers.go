@@ -71,6 +71,7 @@ func (r *Resolver) User() UserResolver {
 func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }
+
 func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
@@ -1095,6 +1096,8 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 	if err = res.ProjectRef.BuildFromService(repoRef.ProjectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
+
+	res.ProjectRef.DefaultUnsetBooleans()
 	return res, nil
 }
 
