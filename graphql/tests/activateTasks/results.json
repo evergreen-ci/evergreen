@@ -4,10 +4,7 @@
       "query_file": "activate-tasks.graphql",
       "result": {
         "data": {
-          "abortTask": {
-            "activated": false,
-            "aborted": true
-          }
+          "activateTasks": true
         }
       }
     }
