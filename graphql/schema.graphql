@@ -1082,11 +1082,11 @@ type Project {
   githubTriggerAliases: [String]
   periodicBuilds: [PeriodicBuild]
   cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParams
+  commitQueue: CommitQueueParams!
   admins: [String]
   spawnHostScriptPath: String!
   tracksPushEvents: Boolean
-  taskSync: TaskSyncOptions
+  taskSync: TaskSyncOptions!
   gitTagAuthorizedUsers: [String]
   gitTagAuthorizedTeams: [String]
   gitTagVersionsEnabled: Boolean
@@ -1134,8 +1134,8 @@ type CommitQueueParams {
 }
 
 type TaskSyncOptions {
-  configEnabled: Boolean!
-  patchEnabled: Boolean!
+  configEnabled: Boolean
+  patchEnabled: Boolean
 }
 
 type WorkstationConfig {

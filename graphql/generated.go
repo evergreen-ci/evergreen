@@ -7465,7 +7465,7 @@ type Project {
   admins: [String]
   spawnHostScriptPath: String!
   tracksPushEvents: Boolean
-  taskSync: TaskSyncOptions
+  taskSync: TaskSyncOptions!
   gitTagAuthorizedUsers: [String]
   gitTagAuthorizedTeams: [String]
   gitTagVersionsEnabled: Boolean
@@ -7513,8 +7513,8 @@ type CommitQueueParams {
 }
 
 type TaskSyncOptions {
-  configEnabled: Boolean!
-  patchEnabled: Boolean!
+  configEnabled: Boolean
+  patchEnabled: Boolean
 }
 
 type WorkstationConfig {
@@ -20275,11 +20275,14 @@ func (ec *executionContext) _Project_taskSync(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(model.APITaskSyncOptions)
 	fc.Result = res
-	return ec.marshalOTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx, field.Selections, res)
+	return ec.marshalNTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_gitTagAuthorizedUsers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -28181,14 +28184,11 @@ func (ec *executionContext) _TaskSyncOptions_configEnabled(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskSyncOptions_patchEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITaskSyncOptions) (ret graphql.Marshaler) {
@@ -28215,14 +28215,11 @@ func (ec *executionContext) _TaskSyncOptions_patchEnabled(ctx context.Context, f
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskTestResult_totalTestCount(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
@@ -37222,6 +37219,9 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_tracksPushEvents(ctx, field, obj)
 		case "taskSync":
 			out.Values[i] = ec._Project_taskSync(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "gitTagAuthorizedUsers":
 			out.Values[i] = ec._Project_gitTagAuthorizedUsers(ctx, field, obj)
 		case "gitTagAuthorizedTeams":
@@ -39433,14 +39433,8 @@ func (ec *executionContext) _TaskSyncOptions(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("TaskSyncOptions")
 		case "configEnabled":
 			out.Values[i] = ec._TaskSyncOptions_configEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "patchEnabled":
 			out.Values[i] = ec._TaskSyncOptions_patchEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -42612,6 +42606,10 @@ func (ec *executionContext) marshalNTaskSortCategory2githubᚗcomᚋevergreenᚑ
 	return v
 }
 
+func (ec *executionContext) marshalNTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, sel ast.SelectionSet, v model.APITaskSyncOptions) graphql.Marshaler {
+	return ec._TaskSyncOptions(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNTaskTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResult(ctx context.Context, sel ast.SelectionSet, v TaskTestResult) graphql.Marshaler {
 	return ec._TaskTestResult(ctx, sel, &v)
 }
@@ -44995,10 +44993,6 @@ func (ec *executionContext) unmarshalOTaskSpecifierInput2ᚕgithubᚗcomᚋeverg
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) marshalOTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, sel ast.SelectionSet, v model.APITaskSyncOptions) graphql.Marshaler {
-	return ec._TaskSyncOptions(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, v interface{}) (model.APITaskSyncOptions, error) {

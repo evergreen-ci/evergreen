@@ -95,14 +95,18 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
+	idToIdentifier := map[string]string{}
 	for i, t := range projRef.PatchTriggerAliases {
-		var childProject *model.ProjectRef
-		childProject, err = model.FindBranchProjectRef(t.ChildProject)
+		if identifier, ok := idToIdentifier[t.ChildProject]; ok {
+			projRef.PatchTriggerAliases[i].ChildProject = identifier
+			continue
+		}
+		identifier, err := model.GetIdentifierForProject(t.ChildProject)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			continue
 		}
-		if childProject == nil {
+		if identifier == "" {
 			gimlet.WriteJSONResponse(w, http.StatusNotFound,
 				gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
@@ -110,7 +114,29 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 				})
 			continue
 		}
-		projRef.PatchTriggerAliases[i].ChildProject = childProject.Identifier
+		idToIdentifier[t.ChildProject] = identifier // store for future references
+		projRef.PatchTriggerAliases[i].ChildProject = identifier
+	}
+	for i, t := range projRef.Triggers {
+		if identifier, ok := idToIdentifier[t.Project]; ok {
+			projRef.Triggers[i].Project = identifier
+			continue
+		}
+		identifier, err := model.GetIdentifierForProject(t.Project)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			continue
+		}
+		if identifier == "" {
+			gimlet.WriteJSONResponse(w, http.StatusNotFound,
+				gimlet.ErrorResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    fmt.Sprintf("child project '%s' of patch trigger alias cannot be found", t.Project),
+				})
+			continue
+		}
+		idToIdentifier[t.Project] = identifier // store for future references
+		projRef.Triggers[i].Project = identifier
 	}
 
 	var projVars *model.ProjectVars
@@ -129,13 +155,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 	projVars = projVars.RedactPrivateVars()
 
-	projectAliases, err := model.FindAliasesForProject(projRef.Id)
+	projectAliases, err := model.FindAliasesForProjectFromDb(projRef.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	if len(projectAliases) == 0 && projRef.UseRepoSettings {
-		projectAliases, err = model.FindAliasesForProject(projRef.RepoRefId)
+		projectAliases, err = model.FindAliasesForRepo(projRef.RepoRefId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -528,11 +554,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	catcher := grip.NewSimpleCatcher()
-	for i, t := range responseRef.Triggers {
-		catcher.Add(t.Validate(id))
-		if t.DefinitionID == "" {
-			responseRef.Triggers[i].DefinitionID = utility.RandomString()
-		}
+	for i := range responseRef.Triggers {
+		catcher.Add(responseRef.Triggers[i].Validate(id))
 	}
 	for i := range responseRef.PatchTriggerAliases {
 		responseRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(responseRef.PatchTriggerAliases[i], id)
@@ -707,7 +730,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	origProjectAliases, _ := model.FindAliasesForProject(id)
+	origProjectAliases, _ := model.FindAliasesForProjectFromDb(id)
 	var projectAliases []model.ProjectAlias
 	projectAliases = append(projectAliases, responseRef.GitHubPRAliases...)
 	projectAliases = append(projectAliases, responseRef.GithubChecksAliases...)
@@ -735,7 +758,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions:      origSubscriptions,
 	}
 
-	currentAliases, _ := model.FindAliasesForProject(id)
+	currentAliases, _ := model.FindAliasesForProjectFromDb(id)
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
 	after := &model.ProjectSettings{
 		ProjectRef:         *projectRef,
@@ -945,7 +968,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, err := model.FindAliasInProjectOrRepo(projectId, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}
