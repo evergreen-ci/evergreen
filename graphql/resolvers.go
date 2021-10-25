@@ -2475,6 +2475,19 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	return newPatch, nil
 }
 
+func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) ([]*restModel.APITask, error) {
+	scheduledTasks := []*restModel.APITask{}
+	count := 0
+	for _, taskId := range taskIds {
+		task, err := SetScheduled(ctx, r.sc, taskId, true)
+		if err != nil {
+			return scheduledTasks, InternalServerError.Send(ctx, errors.Wrapf(err, "Failed to schedule %d", len(taskIds)-count).Error())
+		}
+		count++
+		scheduledTasks = append(scheduledTasks, task)
+	}
+	return scheduledTasks, nil
+}
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	task, err := SetScheduled(ctx, r.sc, taskID, true)
 	if err != nil {

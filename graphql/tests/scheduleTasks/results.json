@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "query_file": "schedule-tasks.graphql",
+      "result": {
+        "data": {
+          "scheduleTasks": [
+            {
+              "status": "started"
+            }
+          ]
+        }
+      } 
+    },
+    {
+      "query_file": "schedule-tasks-failure.graphql",
+      "result": {
+        "data": {
+          "scheduleTasks": [
+            {
+              "status": "started"
+            }
+          ]
+        }
+      } 
+    }
+]
+}
