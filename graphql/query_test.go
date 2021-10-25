@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,10 +31,10 @@ func getContext(t *testing.T) context.Context {
 	ctx := context.Background()
 	usr, err := user.GetOrCreateUser(apiUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
-	require.NotNil(t, usr)
+	assert.NotNil(t, usr)
 
 	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx)
+	assert.NotNil(t, ctx)
 	return ctx
 }
 
@@ -76,7 +77,7 @@ func TestMainlineCommits(t *testing.T) {
 	setupPermissions(t, &atomicGraphQLState{})
 	populateMainlineCommits(t)
 	config := graphql.New("/graphql")
-	require.NotNil(t, config)
+	assert.NotNil(t, config)
 	ctx := getContext(t)
 
 	ref := model.ProjectRef{
@@ -95,10 +96,10 @@ func TestMainlineCommits(t *testing.T) {
 	buildVariantOptions := graphql.BuildVariantOptions{}
 	res, err := config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
 	require.NoError(t, err)
-	require.NotNil(t, res)
+	assert.NotNil(t, res)
 
 	require.Equal(t, 10, utility.FromIntPtr(res.NextPageOrderNumber))
-	require.Nil(t, res.PrevPageOrderNumber)
+	assert.Nil(t, res.PrevPageOrderNumber)
 	require.Equal(t, 3, len(res.Versions))
 
 	buildVariantOptions = graphql.BuildVariantOptions{
@@ -109,43 +110,43 @@ func TestMainlineCommits(t *testing.T) {
 	// Should return all mainline commits while folding up inactive/unmatching ones when there are filters and shouldCollapse is true
 	res, err = config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
 	require.NoError(t, err)
-	require.NotNil(t, res)
+	assert.NotNil(t, res)
 
 	require.Equal(t, 6, utility.FromIntPtr(res.NextPageOrderNumber))
-	require.Nil(t, res.PrevPageOrderNumber)
+	assert.Nil(t, res.PrevPageOrderNumber)
 	require.Equal(t, 3, len(res.Versions))
 
-	require.Nil(t, res.Versions[0].RolledUpVersions)
-	require.NotNil(t, res.Versions[0].Version)
+	assert.Nil(t, res.Versions[0].RolledUpVersions)
+	assert.NotNil(t, res.Versions[0].Version)
 
-	require.NotNil(t, res.Versions[1].RolledUpVersions)
+	assert.NotNil(t, res.Versions[1].RolledUpVersions)
 	require.Equal(t, 5, len(res.Versions[1].RolledUpVersions))
 
-	require.NotNil(t, res.Versions[2].Version)
+	assert.NotNil(t, res.Versions[2].Version)
 
 	lastCommit := res.Versions[len(res.Versions)-1].Version
-	require.NotNil(t, lastCommit)
+	assert.NotNil(t, lastCommit)
 	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
 
 	mainlineCommitOptions.ShouldCollapse = utility.FalsePtr()
 	// Should return all mainline commits without folding up unmatching ones when there are filters and shouldCollapse is false
 	res, err = config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
 	require.NoError(t, err)
-	require.NotNil(t, res)
+	assert.NotNil(t, res)
 
 	require.Equal(t, 10, utility.FromIntPtr(res.NextPageOrderNumber))
-	require.Nil(t, res.PrevPageOrderNumber)
+	assert.Nil(t, res.PrevPageOrderNumber)
 	require.Equal(t, 3, len(res.Versions))
 
-	require.Nil(t, res.Versions[0].RolledUpVersions)
-	require.NotNil(t, res.Versions[0].Version)
+	assert.Nil(t, res.Versions[0].RolledUpVersions)
+	assert.NotNil(t, res.Versions[0].Version)
 
-	require.NotNil(t, res.Versions[1].RolledUpVersions)
+	assert.NotNil(t, res.Versions[1].RolledUpVersions)
 	require.Equal(t, 1, len(res.Versions[1].RolledUpVersions))
 
-	require.NotNil(t, res.Versions[2].Version)
+	assert.NotNil(t, res.Versions[2].Version)
 
 	lastCommit = res.Versions[len(res.Versions)-1].Version
-	require.NotNil(t, lastCommit)
+	assert.NotNil(t, lastCommit)
 	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
 }
