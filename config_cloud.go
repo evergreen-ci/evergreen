@@ -33,10 +33,6 @@ func (c *CloudProviders) Get(env Environment) error {
 		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
 
-	// Clear the struct because Decode will not set fields that are omitempty to
-	// the zero value if they're zero in the database.
-	*c = CloudProviders{}
-
 	if err := res.Decode(c); err != nil {
 		return errors.Wrap(err, "problem decoding result")
 	}
@@ -122,9 +118,9 @@ func (c *S3Credentials) Validate() error {
 // AWSPodConfig represents configuration for using pods backed by AWS.
 type AWSPodConfig struct {
 	// Role is the role to assume to make API calls that manage pods.
-	Role string `bson:"role,omitempty" json:"role,omitempty" yaml:"role,omitempty"`
+	Role string `bson:"role" json:"role" yaml:"role"`
 	// Region is the region where the pods are managed.
-	Region string `bson:"region,omitempty" json:"region,omitempty" yaml:"region,omitempty"`
+	Region string `bson:"region" json:"region" yaml:"region"`
 	// ECS represents configuration for using AWS ECS to manage pods.
 	ECS ECSConfig `bson:"ecs" json:"ecs" yaml:"ecs"`
 	// SecretsManager represents configuration for using AWS Secrets Manager
@@ -140,22 +136,22 @@ func (c *AWSPodConfig) Validate() error {
 // ECSConfig represents configuration for AWS ECS.
 type ECSConfig struct {
 	// TaskDefinitionPrefix is the prefix for the task definition families.
-	TaskDefinitionPrefix string `bson:"task_definition_prefix,omitempty" json:"task_definition_prefix,omitempty" yaml:"task_definition_prefix,omitempty"`
+	TaskDefinitionPrefix string `bson:"task_definition_prefix" json:"task_definition_prefix" yaml:"task_definition_prefix"`
 	// TaskRole is the IAM role that ECS tasks can assume to make AWS requests.
-	TaskRole string `bson:"task_role,omitempty" json:"task_role,omitempty" yaml:"task_role,omitempty"`
+	TaskRole string `bson:"task_role" json:"task_role" yaml:"task_role"`
 	// ExecutionRole is the IAM role that ECS container instances can assume to
 	// make AWS requests.
-	ExecutionRole string `bson:"execution_role,omitempty" json:"execution_role,omitempty" yaml:"execution_role,omitempty"`
+	ExecutionRole string `bson:"execution_role" json:"execution_role" yaml:"execution_role"`
 	// AWSVPC specifies configuration when ECS tasks use AWSVPC networking.
-	AWSVPC AWSVPCConfig `bson:"awsvpc,omitempty" json:"awsvpc,omitempty" yaml:"awsvpc,omitempty"`
+	AWSVPC AWSVPCConfig `bson:"awsvpc" json:"awsvpc" yaml:"awsvpc"`
 	// Clusters specify the configuration of each particular ECS cluster.
-	Clusters []ECSClusterConfig `bson:"clusters,omitempty" json:"clusters,omitempty" yaml:"clusters,omitempty"`
+	Clusters []ECSClusterConfig `bson:"clusters" json:"clusters" yaml:"clusters"`
 }
 
 // AWSVPCConfig represents configuration when using AWSVPC networking in ECS.
 type AWSVPCConfig struct {
-	Subnets        []string `bson:"subnets,omitempty" json:"subnets,omitempty" yaml:"subnets,omitempty"`
-	SecurityGroups []string `bson:"security_groups,omitempty" json:"security_groups,omitempty" yaml:"security_groups,omitempty"`
+	Subnets        []string `bson:"subnets" json:"subnets" yaml:"subnets"`
+	SecurityGroups []string `bson:"security_groups" json:"security_groups" yaml:"security_groups"`
 }
 
 // Validate checks that the required ECS configuration options are given.
@@ -171,9 +167,9 @@ func (c *ECSConfig) Validate() error {
 // cluster.
 type ECSClusterConfig struct {
 	// Name is the ECS cluster name.
-	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
+	Name string `bson:"name" json:"name" yaml:"name"`
 	// Platform is the platform supported by the cluster.
-	Platform ECSClusterPlatform `bson:"platform,omitempty" json:"platform,omitempty" yaml:"platform,omitempty"`
+	Platform ECSClusterPlatform `bson:"platform" json:"platform" yaml:"platform"`
 }
 
 // Validate checks that the ECS cluster configuration has the required fields
@@ -188,7 +184,7 @@ func (c *ECSClusterConfig) Validate() error {
 // SecretsManagerConfig represents configuration for AWS Secrets Manager.
 type SecretsManagerConfig struct {
 	// SecretPrefix is the prefix for secret names.
-	SecretPrefix string `bson:"secret_prefix,omitempty" json:"secret_prefix,omitempty" yaml:"secret_prefix,omitempty"`
+	SecretPrefix string `bson:"secret_prefix" json:"secret_prefix" yaml:"secret_prefix"`
 }
 
 // DockerConfig stores auth info for Docker.
