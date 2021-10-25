@@ -47,7 +47,6 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	winVer, err := p.WindowsVersion.ToService()
 	if err != nil {
 		return nil, err

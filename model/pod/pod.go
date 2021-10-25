@@ -221,12 +221,6 @@ func (v WindowsVersion) Validate() error {
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
-func (v WindowsVersion) IsZero() bool {
-	return v == ""
-}
-
-// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
-// zero value for BSON marshalling.
 func (o TaskContainerCreationOptions) IsZero() bool {
 	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.OS == "" && o.Arch == "" && len(o.EnvVars) == 0 && len(o.EnvSecrets) == 0
 }
