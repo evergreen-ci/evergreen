@@ -277,7 +277,7 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 	}
 
 	placementOpts := cocoa.NewECSPodPlacementOptions()
-	if !containerOpts.WindowsVersion.IsZero() {
+	if containerOpts.WindowsVersion != "" {
 		windowsVersionConstraint := fmt.Sprintf("%s == %s", ecsWindowsVersionTagConstraint, containerOpts.WindowsVersion)
 		placementOpts.AddInstanceFilters(windowsVersionConstraint)
 	}
