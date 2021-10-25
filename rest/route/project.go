@@ -394,11 +394,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
-	for i, trigger := range h.newProjectRef.Triggers {
-		catcher.Add(trigger.Validate(h.newProjectRef.Id))
-		if trigger.DefinitionID == "" {
-			h.newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
-		}
+	for i := range h.newProjectRef.Triggers {
+		catcher.Add(h.newProjectRef.Triggers[i].Validate(h.newProjectRef.Id))
 	}
 	for i := range h.newProjectRef.PatchTriggerAliases {
 		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
@@ -696,7 +693,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project auth for admins"))
 	}
 
-	projectAliases, err := dbModel.FindAliasesForProject(project.Id)
+	projectAliases, err := dbModel.FindAliasesForProjectFromDb(project.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project aliases for '%s' could not be found", project.Id))
 	}

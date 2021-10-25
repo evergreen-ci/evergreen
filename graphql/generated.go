@@ -576,6 +576,7 @@ type ComplexityRoot struct {
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
 		UseRepoSettings         func(childComplexity int) int
+		ValidDefaultLoggers     func(childComplexity int) int
 		WorkstationConfig       func(childComplexity int) int
 	}
 
@@ -831,6 +832,7 @@ type ComplexityRoot struct {
 		Priority                func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
+		ProjectIdentifier       func(childComplexity int) int
 		ReliesOn                func(childComplexity int) int
 		Requester               func(childComplexity int) int
 		Restarts                func(childComplexity int) int
@@ -1194,6 +1196,7 @@ type PatchResolver interface {
 }
 type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
+	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
 }
 type ProjectSettingsResolver interface {
@@ -3902,6 +3905,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.UseRepoSettings(childComplexity), true
 
+	case "Project.validDefaultLoggers":
+		if e.complexity.Project.ValidDefaultLoggers == nil {
+			break
+		}
+
+		return e.complexity.Project.ValidDefaultLoggers(childComplexity), true
+
 	case "Project.workstationConfig":
 		if e.complexity.Project.WorkstationConfig == nil {
 			break
@@ -5370,6 +5380,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.ProjectId(childComplexity), true
+
+	case "Task.projectIdentifier":
+		if e.complexity.Task.ProjectIdentifier == nil {
+			break
+		}
+
+		return e.complexity.Task.ProjectIdentifier(childComplexity), true
 
 	case "Task.reliesOn":
 		if e.complexity.Task.ReliesOn == nil {
@@ -7001,6 +7018,8 @@ input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
   skipOrderNumber: Int = 0
+  # shouldCollapse is used to determine if unmatching active versions should be collapsed
+  shouldCollapse: Boolean = false
 }
 
 type BuildVariantTuple {
@@ -7713,6 +7732,7 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
+  projectIdentifier: String
   reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
@@ -7858,7 +7878,7 @@ type Project {
   githubTriggerAliases: [String!]
   periodicBuilds: [PeriodicBuild!]
   cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParams
+  commitQueue: CommitQueueParams!
   admins: [String]
   spawnHostScriptPath: String!
   tracksPushEvents: Boolean
@@ -7876,6 +7896,7 @@ type Project {
   repoRefId: String!
 
   isFavorite: Boolean!
+  validDefaultLoggers: [String!]!
   patches(patchesInput: PatchesInput!): Patches!
 }
 
@@ -20627,11 +20648,14 @@ func (ec *executionContext) _Project_commitQueue(ctx context.Context, field grap
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(model.APICommitQueueParams)
 	fc.Result = res
-	return ec.marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, field.Selections, res)
+	return ec.marshalNCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_admins(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -21084,6 +21108,40 @@ func (ec *executionContext) _Project_isFavorite(ctx context.Context, field graph
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Project_validDefaultLoggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Project",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Project().ValidDefaultLoggers(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_patches(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -27591,6 +27649,37 @@ func (ec *executionContext) _Task_projectId(ctx context.Context, field graphql.C
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Task_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectIdentifier, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_reliesOn(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -35217,6 +35306,12 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 			if err != nil {
 				return it, err
 			}
+		case "shouldCollapse":
+			var err error
+			it.ShouldCollapse, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -39212,6 +39307,9 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_cedarTestResultsEnabled(ctx, field, obj)
 		case "commitQueue":
 			out.Values[i] = ec._Project_commitQueue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "admins":
 			out.Values[i] = ec._Project_admins(ctx, field, obj)
 		case "spawnHostScriptPath":
@@ -39262,6 +39360,20 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Project_isFavorite(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "validDefaultLoggers":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Project_validDefaultLoggers(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -41122,6 +41234,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "projectIdentifier":
+			out.Values[i] = ec._Task_projectIdentifier(ctx, field, obj)
 		case "reliesOn":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -43158,6 +43272,10 @@ func (ec *executionContext) marshalNCommitQueue2ᚖgithubᚗcomᚋevergreenᚑci
 
 func (ec *executionContext) marshalNCommitQueueItem2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueItem(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueItem) graphql.Marshaler {
 	return ec._CommitQueueItem(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
+	return ec._CommitQueueParams(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx context.Context, v interface{}) (data.CopyProjectOpts, error) {
@@ -45926,10 +46044,6 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 	}
 	wg.Wait()
 	return ret
-}
-
-func (ec *executionContext) marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
-	return ec._CommitQueueParams(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, v interface{}) (model.APICommitQueueParams, error) {

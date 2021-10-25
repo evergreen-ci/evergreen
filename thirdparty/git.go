@@ -297,6 +297,9 @@ func ParseGitUrl(url string) (string, string, error) {
 		repo = splitRepo[0]
 	}
 
+	if len(owner) == 0 || len(repo) == 0 {
+		return "", "", errors.Errorf("Couldn't parse owner and repo from %s", url)
+	}
 	return owner, repo, nil
 }
 

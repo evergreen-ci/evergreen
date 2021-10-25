@@ -233,6 +233,8 @@ input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
   skipOrderNumber: Int = 0
+  # shouldCollapse is used to determine if unmatching active versions should be collapsed
+  shouldCollapse: Boolean = false
 }
 
 type BuildVariantTuple {
@@ -945,6 +947,7 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
+  projectIdentifier: String
   reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
@@ -1090,7 +1093,7 @@ type Project {
   githubTriggerAliases: [String!]
   periodicBuilds: [PeriodicBuild!]
   cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParams
+  commitQueue: CommitQueueParams!
   admins: [String]
   spawnHostScriptPath: String!
   tracksPushEvents: Boolean
@@ -1108,6 +1111,7 @@ type Project {
   repoRefId: String!
 
   isFavorite: Boolean!
+  validDefaultLoggers: [String!]!
   patches(patchesInput: PatchesInput!): Patches!
 }
 

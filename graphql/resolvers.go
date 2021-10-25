@@ -405,6 +405,10 @@ func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProje
 	return false, nil
 }
 
+func (r *projectResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
+	return model.ValidDefaultLoggers, nil
+}
+
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, a *restModel.APIProjectSettings) (bool, error) {
 	hook, err := model.FindGithubHook(utility.FromStringPtr(a.ProjectRef.Owner), utility.FromStringPtr(a.ProjectRef.Repo))
 	if err != nil {
@@ -429,7 +433,7 @@ func getAPIVarsForProject(ctx context.Context, projectId string) (*restModel.API
 }
 
 func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restModel.APIProjectAlias, error) {
-	aliases, err := model.FindAliasesForProject(projectId)
+	aliases, err := model.FindAliasesForProjectFromDb(projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding aliases for project: %s", err.Error()))
 	}
@@ -2706,7 +2710,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if t == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
 		}
-		break
 	case "build":
 		b, buildErr := r.sc.FindBuildById(id)
 		if buildErr != nil {
@@ -2715,7 +2718,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if b == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
 		}
-		break
 	case "version":
 		v, versionErr := r.sc.FindVersionById(id)
 		if versionErr != nil {
@@ -2724,7 +2726,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if v == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
 		}
-		break
 	case "project":
 		p, projectErr := r.sc.FindProjectById(id, false)
 		if projectErr != nil {
@@ -2733,7 +2734,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if p == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project with id %s", id))
 		}
-		break
 	default:
 		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
 	}
@@ -3354,7 +3354,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		shouldCollapse := false
 		if !utility.FromBoolPtr(v.Activated) {
 			shouldCollapse = true
-		} else if buildVariantOptions.isPopulated() {
+		} else if buildVariantOptions.isPopulated() && utility.FromBoolPtr(options.ShouldCollapse) {
 			opts := task.HasMatchingTasksOptions{
 				TaskNames: buildVariantOptions.Tasks,
 				Variants:  buildVariantOptions.Variants,

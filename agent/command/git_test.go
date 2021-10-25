@@ -91,6 +91,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.Require().NoError(err)
 	s.taskConfig1, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData1)
+	s.Require().NoError(err)
 	s.taskConfig1.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 	s.Require().NoError(err)
 
@@ -136,12 +137,14 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig5, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData5)
 	s.Require().NoError(err)
 
-	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath4, modelutil.InlinePatch)
+	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath4, modelutil.InlinePatch)
+	s.Require().NoError(err)
 	s.modelData6.Task.Requester = evergreen.MergeTestRequester
 	s.Require().NoError(err)
 	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData6)
 	s.Require().NoError(err)
 	s.taskConfig6.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
+	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
@@ -912,7 +915,7 @@ func (s *GitGetProjectSuite) TestMergeMultiplePatches() {
 	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{
 		Id: "p",
 		Patches: []patch.ModulePatch{
-			{Githash: "d0d878e81b303fd2abbf09331e54af41d6cd0c7d", PatchSet: patch.PatchSet{PatchFileId: "patchfile1"}},
+			{Githash: "d0d878e81b303fd2abbf09331e54af41d6cd0c7d", PatchSet: patch.PatchSet{PatchFileId: "patchfile1"}, ModuleName: "evergreen"},
 		},
 	})
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
