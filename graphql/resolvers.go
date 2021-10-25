@@ -399,6 +399,10 @@ func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProje
 	return false, nil
 }
 
+func (r *projectResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
+	return []string{model.EvergreenLogSender, model.BuildloggerLogSender}, nil
+}
+
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, a *restModel.APIProjectSettings) (bool, error) {
 	hook, err := model.FindGithubHook(utility.FromStringPtr(a.ProjectRef.Owner), utility.FromStringPtr(a.ProjectRef.Repo))
 	if err != nil {
