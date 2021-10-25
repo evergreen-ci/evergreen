@@ -1102,6 +1102,7 @@ type Project {
   repoRefId: String
 
   isFavorite: Boolean!
+  validDefaultLoggers: [String!]!
   patches(patchesInput: PatchesInput!): Patches!
 }
 
