@@ -517,6 +517,15 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, a *restModel
 	return res, nil
 }
 
+func (r *mutationResolver) ActivateTasks(ctx context.Context, taskIds []string) (bool, error) {
+	usr := MustHaveUser(ctx)
+	userID := usr.Username()
+	if err := task.ActivateTasksByIdsWithDependencies(taskIds, userID); err != nil {
+		return false, InternalServerError.Send(ctx, err.Error())
+	}
+	return true, nil
+}
+
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(identifier)
 	if err != nil || p == nil {

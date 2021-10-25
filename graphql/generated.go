@@ -383,6 +383,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AbortTask                     func(childComplexity int, taskID string) int
+		ActivateTasks                 func(childComplexity int, taskIds []string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject            func(childComplexity int, identifier string) int
 		AttachProjectToRepo           func(childComplexity int, projectID string) int
@@ -1114,6 +1115,7 @@ type MutationResolver interface {
 	BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
+	ActivateTasks(ctx context.Context, taskIds []string) (bool, error)
 }
 type PatchResolver interface {
 	AuthorDisplayName(ctx context.Context, obj *model.APIPatch) (string, error)
@@ -2572,6 +2574,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AbortTask(childComplexity, args["taskId"].(string)), true
+
+	case "Mutation.activateTasks":
+		if e.complexity.Mutation.ActivateTasks == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_activateTasks_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ActivateTasks(childComplexity, args["taskIds"].([]string)), true
 
 	case "Mutation.addAnnotationIssue":
 		if e.complexity.Mutation.AddAnnotationIssue == nil {
@@ -6530,6 +6544,7 @@ type Mutation {
   bbCreateTicket(taskId: String!, execution: Int): Boolean!
   clearMySubscriptions: Int!
   overrideTaskDependencies(taskId: String!): Task!
+  activateTasks(taskIds: [String!]!): Boolean!
 }
 
 input VersionToRestart {
@@ -7461,7 +7476,7 @@ type Project {
   githubTriggerAliases: [String]
   periodicBuilds: [PeriodicBuild]
   cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParams
+  commitQueue: CommitQueueParams!
   admins: [String]
   spawnHostScriptPath: String!
   tracksPushEvents: Boolean
@@ -7821,6 +7836,20 @@ func (ec *executionContext) field_Mutation_abortTask_args(ctx context.Context, r
 		}
 	}
 	args["taskId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_activateTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []string
+	if tmp, ok := rawArgs["taskIds"]; ok {
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskIds"] = arg0
 	return args, nil
 }
 
@@ -17088,6 +17117,47 @@ func (ec *executionContext) _Mutation_overrideTaskDependencies(ctx context.Conte
 	return ec.marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_activateTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_activateTasks_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ActivateTasks(rctx, args["taskIds"].([]string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Note_message(ctx context.Context, field graphql.CollectedField, obj *model.APINote) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -20148,11 +20218,14 @@ func (ec *executionContext) _Project_commitQueue(ctx context.Context, field grap
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(model.APICommitQueueParams)
 	fc.Result = res
-	return ec.marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, field.Selections, res)
+	return ec.marshalNCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_admins(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -36460,6 +36533,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "activateTasks":
+			out.Values[i] = ec._Mutation_activateTasks(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -37208,6 +37286,9 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_cedarTestResultsEnabled(ctx, field, obj)
 		case "commitQueue":
 			out.Values[i] = ec._Project_commitQueue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "admins":
 			out.Values[i] = ec._Project_admins(ctx, field, obj)
 		case "spawnHostScriptPath":
@@ -40800,6 +40881,10 @@ func (ec *executionContext) marshalNCommitQueueItem2githubᚗcomᚋevergreenᚑc
 	return ec._CommitQueueItem(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
+	return ec._CommitQueueParams(ctx, sel, &v)
+}
+
 func (ec *executionContext) unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx context.Context, v interface{}) (data.CopyProjectOpts, error) {
 	return ec.unmarshalInputCopyProjectInput(ctx, v)
 }
@@ -43491,10 +43576,6 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 	}
 	wg.Wait()
 	return ret
-}
-
-func (ec *executionContext) marshalOCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
-	return ec._CommitQueueParams(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, v interface{}) (model.APICommitQueueParams, error) {
