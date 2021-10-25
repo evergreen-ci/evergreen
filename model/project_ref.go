@@ -499,7 +499,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	p.UseRepoSettings = false
 	p.RepoRefId = ""
 
-	mergedProject, err := FindMergedProjectRef(p.Id)
+	mergedProject, err := FindMergedProjectRef(p.Id, "")
 	if err != nil {
 		return errors.Wrap(err, "error finding merged project ref")
 	}
@@ -707,7 +707,7 @@ func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
-func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
+func FindMergedProjectRef(identifier string, version string) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
@@ -725,10 +725,10 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 		}
 		pRef, err = mergeBranchAndRepoSettings(pRef, repoRef)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, identifier)
+			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	err = pRef.MergeWithParserProject("")
+	err = pRef.MergeWithParserProject(version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
 	}
@@ -1401,7 +1401,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 }
 
 func IsPerfEnabledForProject(projectId string) bool {
-	projectRef, err := FindMergedProjectRef(projectId)
+	projectRef, err := FindMergedProjectRef(projectId, "")
 	if err != nil || projectRef == nil {
 		return false
 	}
@@ -2129,7 +2129,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project")
 	}
-	pRef, err := FindMergedProjectRef(projectId)
+	pRef, err := FindMergedProjectRef(projectId, "")
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting project '%s'", projectId)
 	}

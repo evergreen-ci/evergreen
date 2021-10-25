@@ -159,7 +159,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 		return evergreen.WebHook{}, false, err
 	}
 	if flags.PluginAdminPageDisabled {
-		projectRef, err := model.FindMergedProjectRef(project)
+		projectRef, err := model.FindMergedProjectRef(project, version)
 		if err != nil || projectRef == nil {
 			return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
 		}
@@ -223,7 +223,7 @@ func BbGetProject(settings *evergreen.Settings, projectId string, version string
 				return *parserProject.BuildBaronSettings, true
 			}
 		}
-		projectRef, err := model.FindMergedProjectRef(projectId)
+		projectRef, err := model.FindMergedProjectRef(projectId, version)
 		if err != nil || projectRef == nil {
 			return evergreen.BuildBaronSettings{}, false
 		}

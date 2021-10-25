@@ -729,7 +729,7 @@ func TestDeleteProject(t *testing.T) {
 		resp := pdh.Run(ctx)
 		assert.Equal(t, http.StatusOK, resp.Status())
 
-		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id)
+		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "")
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
 			Id:              projects[i].Id,

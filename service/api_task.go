@@ -194,7 +194,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.Project)
+	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
@@ -495,7 +495,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			continue
 		}
 
-		projectRef, err := model.FindMergedProjectRef(nextTask.Project)
+		projectRef, err := model.FindMergedProjectRef(nextTask.Project, nextTask.Version)
 		errMsg := message.Fields{
 			"task_id":            nextTask.Id,
 			"message":            "could not find project ref for next task, skipping",

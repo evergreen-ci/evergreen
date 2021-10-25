@@ -976,7 +976,7 @@ func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder {
-	proj, err := dbModel.FindMergedProjectRef(p.projectID)
+	proj, err := dbModel.FindMergedProjectRef(p.projectID, "")
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting project",
