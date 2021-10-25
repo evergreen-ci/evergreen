@@ -15,14 +15,19 @@
     {
       "query_file": "schedule-tasks-failure.graphql",
       "result": {
-        "data": {
-          "scheduleTasks": [
-            {
-              "status": "started"
+        "data": null,
+        "errors": [
+          {
+            "message": "Failed to schedule 1: input: task non-existent not found",
+            "path": [
+              "scheduleTasks"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
             }
-          ]
-        }
-      } 
+          }
+        ]
+      }
     }
-]
+  ]
 }
