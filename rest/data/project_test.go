@@ -273,21 +273,6 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 	s.Require().NoError(s.teardown())
 }
 
-func (s *ProjectConnectorGetSuite) TestGroupProjectsByRepo() {
-	groupedProjects := s.ctx.GroupProjectsByRepo(
-		[]model.ProjectRef{
-			{Id: "projectB", Repo: "mongo"},
-			{Id: "projectC", Repo: "mongo"},
-			{Id: "projectD", Repo: "mongo"},
-			{Id: "projectE", Repo: "gimlet"},
-			{Id: "projectF", Repo: "gimlet"},
-		},
-	)
-
-	s.Equal(2, len(groupedProjects["gimlet"]))
-	s.Equal(3, len(groupedProjects["mongo"]))
-}
-
 func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
 	projects, err := s.ctx.FindProjects("", 8, 1)
 	s.NoError(err)

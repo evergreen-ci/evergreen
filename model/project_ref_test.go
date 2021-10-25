@@ -765,6 +765,22 @@ func TestDefaultRepoBySection(t *testing.T) {
 	}
 }
 
+func TestGroupProjectsByRepo(t *testing.T) {
+	assert := assert.New(t)
+	groupedProjects := GroupProjectsByRepo(
+		[]ProjectRef{
+			{Id: "projectB", RepoRefId: "mongo"},
+			{Id: "projectC", RepoRefId: "mongo"},
+			{Id: "projectD", RepoRefId: "mongo"},
+			{Id: "projectE", RepoRefId: "gimlet"},
+			{Id: "projectF", RepoRefId: "gimlet"},
+		},
+	)
+
+	assert.Equal(2, len(groupedProjects["gimlet"]))
+	assert.Equal(3, len(groupedProjects["mongo"]))
+}
+
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
