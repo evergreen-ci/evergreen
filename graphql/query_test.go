@@ -90,7 +90,7 @@ func TestMainlineCommits(t *testing.T) {
 		ProjectID:       projectId,
 		SkipOrderNumber: nil,
 		Limit:           utility.ToIntPtr(2),
-		ShouldCollapse:  utility.ToBoolPtr(false),
+		ShouldCollapse:  utility.FalsePtr(),
 	}
 	buildVariantOptions := graphql.BuildVariantOptions{}
 	res, err := config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
@@ -105,7 +105,7 @@ func TestMainlineCommits(t *testing.T) {
 		Statuses: []string{evergreen.TaskFailed},
 	}
 
-	mainlineCommitOptions.ShouldCollapse = utility.ToBoolPtr(true)
+	mainlineCommitOptions.ShouldCollapse = utility.TruePtr()
 	// Should return all mainline commits while folding up inactive/unmatching ones when there are filters and shouldCollapse is true
 	res, err = config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
 	require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestMainlineCommits(t *testing.T) {
 	require.NotNil(t, lastCommit)
 	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
 
-	mainlineCommitOptions.ShouldCollapse = utility.ToBoolPtr(false)
+	mainlineCommitOptions.ShouldCollapse = utility.FalsePtr()
 	// Should return all mainline commits without folding up unmatching ones when there are filters and shouldCollapse is false
 	res, err = config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
 	require.NoError(t, err)
