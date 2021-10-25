@@ -1000,18 +1000,19 @@ Evergreen Projects
           </div>
         </div>
         <div id="plugin-info">
-          <div class="h3">Performance Plugin</div>
+          <div class="h3">Performance</div>
           <div class="form-group">
             <div class="col-lg-4 col-header">
-              <label class="control-label">Enabled&nbsp;&nbsp;
-                <input type="checkbox" name="perf_enabled" ng-model="settingsFormData.perf_enabled"/>
-              </label>
-              <div class="muted small">When checked, performance plugin will be enabled.</div>
+              <input type="checkbox" id="perf-plugin" name="perf_enabled" ng-model="settingsFormData.perf_enabled"/>
+              <label for="perf-plugin" class="control-label">Enable Performance Plugin</label>
             </div>
           </div>
           <div class="h3">Build Baron Plugin</div>
           <div class="form-group">
-            <div class="col-lg-4"> <label class="control-label"> Project To Create Tickets In JIRA </label> </div>
+            <div class="col-lg-8">
+              <div class="muted small">Define either a webhook for custom build failure ticket creation, or specify existing JIRA projects.</div>
+              <label class="control-label"> Project To Create Tickets In JIRA </label>
+            </div>
           </div>
           <div class="form-group">
             <div class="col-lg-4">
@@ -1039,11 +1040,30 @@ Evergreen Projects
               </button>
             </div>
           </div>
+          <div class="form-group">
+            <div class="col-lg-8">
+              <label class="control-label"> Webhook </label>
+              <div class="muted small">To use a custom setup for creating build failure tickets, specify a webhook endpoint and secret.</div>
+            </div>
+          </div>
+          <div id="webhook" class="form-group">
+            <div class="col-lg-3">
+              <input class="form-control" ng-disabled="shouldDisableWebhook()" ng-model="settingsFormData.task_annotation_settings.web_hook.endpoint" type="text" placeholder="endpoint">
+            </div>
+            <div class="col-lg-3">
+              <input class="form-control" ng-disabled="shouldDisableWebhook()" ng-model="settingsFormData.task_annotation_settings.web_hook.secret" type="text" placeholder="secret">
+            </div>
+          </div>
 
           <div class="h3">Task Annotation Settings</div>
           <div class="form-group">
             <div class="col-lg-3"> <label class="control-label"> JIRA custom field </label> </div>
             <div class="col-lg-3"> <label class="control-label"> JIRA custom display text </label> </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-8">
+              <div class="muted small">To display a specific field when displaying jira links, specify a custom JIRA field and display text.</div>
+            </div>
           </div>
           <div id="jira_custom_fields" class="form-group" ng-repeat="(index, jiraField) in settingsFormData.task_annotation_settings.jira_custom_fields">
             <div class="col-lg-6"> <label class="control-label">[[jiraField]]</label> </div>
@@ -1064,18 +1084,6 @@ Evergreen Projects
               <button class="plus-button btn btn-primary" ng-disabled="!(jira_field) || !(jira_display_text)" type="button" ng-click="addJiraField()">
                 <i class="fa fa-plus"></i>
               </button>
-            </div>
-          </div>
-          <div class="form-group">
-            <div class="col-lg-4"> <label class="control-label"> Webhook </label> </div>
-            <div class="muted small">To use a custom setup for creating build failure tickets, specify a webhook endpoint and secret.</div>
-          </div>
-          <div id="webhook" class="form-group">
-            <div class="col-lg-3">
-              <input class="form-control" ng-disabled="shouldDisableWebhook()" ng-model="settingsFormData.task_annotation_settings.web_hook.endpoint" type="text" placeholder="endpoint">
-            </div>
-            <div class="col-lg-3">
-              <input class="form-control" ng-disabled="shouldDisableWebhook()" ng-model="settingsFormData.task_annotation_settings.web_hook.secret" type="text" placeholder="secret">
             </div>
           </div>
         </div>
